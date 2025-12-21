@@ -40,28 +40,22 @@ export const Team = () => {
     };
 
     return (
-        <div className="max-w-4xl mx-auto p-6 flex flex-col gap-6">
-            <div className="flex items-center justify-between">
+        <div className="max-w-4xl mx-auto p-6 flex flex-col gap-6 animate-fade-up">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                    <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white">Team</h1>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm">Manage members in this workspace.</p>
+                    <span className="app-pill w-fit">Workspace</span>
+                    <h1 className="text-3xl font-display font-bold text-ink">Team</h1>
+                    <p className="text-muted text-sm">Manage members in this workspace.</p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <input
-                        readOnly
-                        value={inviteLink}
-                        className="w-72 text-sm border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 bg-white dark:bg-card-dark"
-                    />
-                    <button
-                        onClick={handleCopy}
-                        className="px-3 py-2 rounded-lg bg-black text-white dark:bg-white dark:text-black text-sm font-bold"
-                    >
+                <div className="app-panel flex items-center gap-2 px-3 py-2">
+                    <input readOnly value={inviteLink} className="input-field w-64 px-3 py-2 text-sm" />
+                    <button onClick={handleCopy} className="btn-primary px-3 py-2 text-sm font-bold">
                         {copied ? 'Copied!' : 'Copy Invite'}
                     </button>
                 </div>
             </div>
 
-            <div className="bg-white dark:bg-card-dark border border-gray-200 dark:border-gray-800 rounded-xl shadow-sm">
+            <div className="app-card">
                 <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
                     <span className="text-sm font-bold text-gray-700 dark:text-gray-200">Members</span>
                     <span className="text-xs text-gray-500">{users.length} people</span>

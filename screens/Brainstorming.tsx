@@ -3,6 +3,13 @@ import { generateBrainstormIdeas } from '../services/geminiService';
 import { getUserIdeas, saveIdea } from '../services/dataService';
 import { Idea } from '../types';
 
+const promptSuggestions = [
+    'A mobile app for local fitness challenges and community rewards.',
+    'A dashboard that helps remote teams run async retrospectives.',
+    'A SaaS for tracking sustainability goals across departments.',
+    'An AI assistant for planning cross-team product launches.'
+];
+
 export const Brainstorming = () => {
     const [prompt, setPrompt] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
@@ -30,93 +37,100 @@ export const Brainstorming = () => {
         setError(null);
         try {
             const newIdeas = await generateBrainstormIdeas(prompt);
-            
-            // Save to Firestore
             for (const idea of newIdeas) {
                 await saveIdea(idea);
             }
-            
-            // Refresh list
             const updated = await getUserIdeas();
             setIdeas(updated);
             setPrompt('');
         } catch (e) {
             console.error(e);
-            setError(e instanceof Error ? e.message : "Failed to generate ideas.");
+            setError(e instanceof Error ? e.message : 'Failed to generate ideas.');
         } finally {
             setIsGenerating(false);
         }
     };
 
     return (
-        <div className="max-w-[1200px] mx-auto px-4 md:px-6 lg:px-10 py-6 md:py-10">
-             <nav className="flex flex-wrap gap-2 pb-6">
-                <a className="text-gray-500 hover:text-primary dark:hover:text-white transition-colors text-sm font-medium leading-normal flex items-center gap-1" href="#">
-                    <span className="material-symbols-outlined text-[18px]">dashboard</span> Dashboard
-                </a>
-                <span className="text-gray-500 text-sm font-medium leading-normal">/</span>
-                <span className="text-neutral-900 dark:text-white text-sm font-medium leading-normal">Brainstorming</span>
-            </nav>
-
-            <div className="flex flex-col gap-8 mb-12">
+        <div className="max-w-[1200px] mx-auto px-4 md:px-6 lg:px-10 py-6 md:py-10 animate-fade-up">
+            <div className="flex flex-col gap-8 mb-10">
                 <div className="flex flex-col gap-3 max-w-3xl">
-                    <h1 className="text-neutral-900 dark:text-white text-3xl md:text-4xl lg:text-5xl font-extrabold leading-tight tracking-[-0.033em]">Let's kick off your new project</h1>
-                    <p className="text-gray-500 text-lg font-normal leading-relaxed">Describe your goal, and let AI help you brainstorm features, tasks, and user stories.</p>
+                    <span className="app-pill w-fit">AI Studio</span>
+                    <h1 className="text-3xl md:text-4xl lg:text-5xl font-display font-bold leading-tight text-ink">
+                        Shape a project with a single prompt
+                    </h1>
+                    <p className="text-muted text-lg leading-relaxed">
+                        Describe your goal and let Gemini draft features, tasks, and storylines to get you moving.
+                    </p>
                 </div>
 
-                <div className="w-full">
-                    <div className="relative group">
-                        <div className="absolute -inset-0.5 bg-gradient-to-r from-gray-900/10 to-gray-500/10 rounded-xl blur opacity-25 group-hover:opacity-50 transition duration-200"></div>
-                        <textarea 
-                            value={prompt}
-                            onChange={(e) => setPrompt(e.target.value)}
-                            className="relative w-full resize-none rounded-xl border border-gray-200 dark:border-neutral-700 bg-white dark:bg-card-dark p-6 text-base md:text-lg text-neutral-900 dark:text-white placeholder:text-gray-400 focus:border-black dark:focus:border-white focus:ring-2 focus:ring-black/5 dark:focus:ring-white/20 focus:outline-none min-h-[160px] shadow-sm transition-all" 
-                            placeholder="Describe your project idea in a few sentences... e.g., A mobile app for tracking local coffee shop loyalty cards that allows users to scan QR codes and redeem rewards."
-                        ></textarea>
+                <div className="w-full app-panel p-6 space-y-4">
+                    <textarea
+                        value={prompt}
+                        onChange={(e) => setPrompt(e.target.value)}
+                        className="textarea-field w-full min-h-[160px] p-4 text-base"
+                        placeholder="Describe your project idea in a few sentences..."
+                    ></textarea>
+                    <div className="flex flex-wrap gap-2">
+                        {promptSuggestions.map((suggestion) => (
+                            <button
+                                key={suggestion}
+                                type="button"
+                                onClick={() => setPrompt(suggestion)}
+                                className="app-tag hover:border-black"
+                            >
+                                {suggestion}
+                            </button>
+                        ))}
                     </div>
-                    <div className="flex flex-wrap items-center gap-4 mt-4">
-                        <button 
+                    <div className="flex flex-wrap items-center gap-4">
+                        <button
                             onClick={handleGenerate}
                             disabled={isGenerating || !prompt.trim()}
-                            className="flex items-center justify-center gap-2 h-12 px-6 bg-primary hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 text-white text-base font-bold rounded-lg shadow-lg shadow-gray-900/10 transition-all transform active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                            className="inline-flex items-center justify-center gap-2 px-6 py-3 btn-primary text-sm font-bold disabled:opacity-70 disabled:cursor-not-allowed"
                         >
-                            <span className={`material-symbols-outlined text-[20px] ${isGenerating ? 'animate-spin' : ''}`}>{isGenerating ? 'autorenew' : 'auto_awesome'}</span>
+                            <span className={`material-symbols-outlined text-[20px] ${isGenerating ? 'animate-spin' : ''}`}>
+                                {isGenerating ? 'autorenew' : 'auto_awesome'}
+                            </span>
                             <span>{isGenerating ? 'Dreaming...' : 'Generate AI Ideas'}</span>
                         </button>
+                        <span className="text-xs text-muted">Tip: Keep it to 2-3 sentences for sharper results.</span>
                     </div>
                 </div>
             </div>
 
-            <div className="w-full h-px bg-gray-200 dark:bg-neutral-800 mb-8"></div>
-
             {error && (
-                <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-900/30 text-rose-700 dark:text-rose-200 border border-rose-200 dark:border-rose-800">
-                    {error}
-                </div>
+                <div className="p-3 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">{error}</div>
             )}
 
             <div className="flex flex-col gap-6">
                 <div className="flex items-center justify-between">
-                    <h3 className="text-neutral-900 dark:text-white text-xl font-bold flex items-center gap-2">
-                        <span className="material-symbols-outlined text-primary dark:text-white">lightbulb</span>
+                    <h3 className="text-xl font-display font-bold flex items-center gap-2 text-ink">
+                        <span className="material-symbols-outlined text-primary">lightbulb</span>
                         Brainstorming Board
                     </h3>
                 </div>
 
                 {isLoading ? (
-                    <div className="flex justify-center py-10"><span className="material-symbols-outlined animate-spin">progress_activity</span></div>
+                    <div className="flex justify-center py-10">
+                        <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                    </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                         {ideas.map((idea) => (
-                            <div key={idea.id} className="group relative flex flex-col p-5 bg-white dark:bg-card-dark rounded-xl border border-gray-200 dark:border-neutral-800 hover:border-black/50 dark:hover:border-white/50 hover:shadow-md transition-all cursor-pointer">
+                            <div key={idea.id} className="app-card group relative flex flex-col p-5">
                                 <div className="flex justify-between items-start mb-3">
                                     <div className="flex items-center gap-2">
-                                        <span className="px-2 py-1 bg-gray-100 dark:bg-neutral-800 text-black dark:text-white text-xs font-bold uppercase tracking-wider rounded">{idea.type}</span>
-                                        {idea.generated && <span className="material-symbols-outlined text-[16px] text-black dark:text-white" title="AI Generated">auto_awesome</span>}
+                                        <span className="app-tag">{idea.type}</span>
+                                        {idea.generated && (
+                                            <span className="material-symbols-outlined text-[16px] text-ink" title="AI Generated">
+                                                auto_awesome
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
-                                <h4 className="text-neutral-900 dark:text-white text-lg font-bold mb-2 leading-tight">{idea.title}</h4>
-                                <p className="text-gray-500 text-sm leading-relaxed mb-4 flex-1">{idea.description}</p>
+                                <h4 className="text-ink text-lg font-display font-bold mb-2 leading-tight">{idea.title}</h4>
+                                <p className="text-muted text-sm leading-relaxed mb-4 flex-1">{idea.description}</p>
                             </div>
                         ))}
                     </div>

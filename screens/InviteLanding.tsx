@@ -35,23 +35,21 @@ export const InviteLanding = () => {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-white dark:bg-background-dark px-6">
-            <div className="max-w-md w-full bg-white dark:bg-card-dark border border-gray-200 dark:border-gray-800 rounded-2xl shadow-lg p-8 space-y-4">
-                <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Join this Team</h1>
-                <p className="text-gray-600 dark:text-gray-400 text-sm">
-                    You have been invited to join workspace <span className="font-semibold text-black dark:text-white">{tenantId}</span>.
+        <div className="min-h-screen flex items-center justify-center px-6">
+            <div className="app-panel max-w-md w-full p-8 space-y-4 animate-fade-up">
+                <span className="app-pill w-fit">Invitation</span>
+                <h1 className="text-2xl font-display font-bold text-ink">Join this Team</h1>
+                <p className="text-muted text-sm">
+                    You have been invited to join workspace <span className="font-semibold text-ink">{tenantId}</span>.
                 </p>
-                {status && <div className="text-sm text-gray-500">{status}</div>}
+                {status && <div className="text-sm text-muted">{status}</div>}
                 {!auth.currentUser && (
-                    <button
-                        onClick={handleAccept}
-                        className="w-full h-11 rounded-lg bg-black text-white dark:bg-white dark:text-black font-bold text-sm"
-                    >
+                    <button onClick={handleAccept} className="w-full h-11 btn-primary font-bold text-sm">
                         Accept & Continue
                     </button>
                 )}
                 {auth.currentUser && (
-                    <p className="text-sm text-gray-500">You are signed in. Attempting to join automatically...</p>
+                    <p className="text-sm text-muted">You are signed in. Attempting to join automatically...</p>
                 )}
             </div>
         </div>

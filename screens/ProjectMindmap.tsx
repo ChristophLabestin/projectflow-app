@@ -1432,10 +1432,10 @@ export const ProjectMindmap = () => {
         });
 
     return (
-        <div className="w-full flex flex-col gap-3 pb-4">
+        <div className="w-full flex flex-col gap-3 pb-4 animate-fade-up">
             <div
                 ref={containerRef}
-                className={`${isFullscreen ? 'fixed inset-0 z-50 rounded-none border-0' : 'relative rounded-2xl border border-slate-200'} w-full bg-[#f9fafb] overflow-hidden`}
+                className={`${isFullscreen ? 'fixed inset-0 z-50 rounded-none border-0' : 'relative rounded-3xl border border-line/70'} w-full bg-[var(--color-surface-card)]/80 backdrop-blur-sm overflow-hidden`}
                 style={{ touchAction: 'none', height: canvasHeight }}
                 onPointerDown={handlePanStart}
                 onPointerMove={handlePointerMove}
@@ -1448,10 +1448,10 @@ export const ProjectMindmap = () => {
                     className="absolute top-4 left-1/2 -translate-x-1/2 z-30"
                     onPointerDown={(e) => e.stopPropagation()}
                 >
-                    <div className="bg-white/95 backdrop-blur border border-slate-200 rounded-full shadow-xl flex items-center gap-2 px-3 py-2">
+                    <div className="app-panel rounded-full flex items-center gap-2 px-3 py-2 shadow-lift">
                         <button
                             onClick={() => { setSelectedIdeaId(null); }}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-bold border border-slate-200 hover:border-black bg-white"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-bold btn-secondary"
                         >
                             <span className="material-symbols-outlined text-[16px]">add</span>
                             Add idea
@@ -1459,28 +1459,28 @@ export const ProjectMindmap = () => {
                         <button
                             onClick={handleAutoGroup}
                             disabled={aiLoading || loading || !ideas.length}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-bold border border-slate-200 hover:border-black disabled:opacity-50 bg-white"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-bold btn-secondary disabled:opacity-50"
                         >
                             <span className="material-symbols-outlined text-[16px]">auto_awesome</span>
                             {aiLoading ? 'Grouping…' : 'Auto-group'}
                         </button>
                         <button
                             onClick={() => centerView()}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-bold border border-slate-200 hover:border-black bg-white"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-bold btn-secondary"
                         >
                             <span className="material-symbols-outlined text-[16px]">center_focus_strong</span>
                             Center
                         </button>
                         <button
                             onClick={() => { setDrawerMode('map'); setEditTitle(activeMindmap?.name || ''); }}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-bold border border-slate-200 hover:border-black bg-white"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-bold btn-secondary"
                         >
                             <span className="material-symbols-outlined text-[16px]">edit_note</span>
                             Map settings
                         </button>
                         <button
                             onClick={() => setIsFullscreen((prev) => !prev)}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-bold border border-slate-200 hover:border-black bg-white"
+                            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-bold btn-secondary"
                         >
                             <span className="material-symbols-outlined text-[16px]">{isFullscreen ? 'fullscreen_exit' : 'fullscreen'}</span>
                             {isFullscreen ? 'Exit' : 'Fullscreen'}
@@ -1514,199 +1514,199 @@ export const ProjectMindmap = () => {
                         onPointerDown={(e) => e.stopPropagation()}
                     >
                         <div className="flex flex-col gap-3 pb-2">
-                        <div className="bg-white/95 backdrop-blur border border-slate-200 rounded-2xl shadow-xl overflow-hidden">
-                            <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-slate-200">
-                                <div>
-                                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500 font-bold">Map navigator</p>
-                                    <p className="text-base font-extrabold text-slate-900">{activeMindmap?.name || 'Mindmap'}</p>
-                                    <p className="text-xs text-slate-500">Switch layouts or create new ones.</p>
+                            <div className="app-panel overflow-hidden">
+                                <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-slate-200">
+                                    <div>
+                                        <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500 font-bold">Map navigator</p>
+                                        <p className="text-base font-extrabold text-slate-900">{activeMindmap?.name || 'Mindmap'}</p>
+                                        <p className="text-xs text-slate-500">Switch layouts or create new ones.</p>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowMapMenu((prev) => !prev)}
+                                        className="size-9 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-700 hover:border-black"
+                                    >
+                                        <span className="material-symbols-outlined text-[18px]">unfold_more</span>
+                                    </button>
                                 </div>
-                                <button
-                                    onClick={() => setShowMapMenu((prev) => !prev)}
-                                    className="size-9 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-700 hover:border-black"
-                                >
-                                    <span className="material-symbols-outlined text-[18px]">unfold_more</span>
-                                </button>
-                            </div>
-                            {showMapMenu && (
-                                <div className="px-3 py-3 space-y-2 max-h-52 overflow-y-auto">
-                                    {mindmaps.map((map) => (
-                                        <button
-                                            key={map.id}
-                                            onClick={() => { setActiveMindmapId(map.id); setShowMapMenu(false); }}
-                                            className={`w-full text-left px-3 py-2 rounded-xl border text-sm font-semibold flex items-center justify-between ${map.id === activeMindmap?.id ? 'border-black/60 bg-slate-50' : 'border-slate-200 hover:border-slate-400'}`}
-                                        >
-                                            <span>{map.name}</span>
-                                            {map.id === activeMindmap?.id && <span className="text-[11px] uppercase text-slate-500 font-bold">Active</span>}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                            <div className="px-3 py-3 border-t border-slate-200 flex gap-2">
-                                <button
-                                    onClick={async () => {
-                                        if (!id) return;
-                                        const newId = await createMindmap(id, 'New Mindmap');
-                                        const refreshed = await getProjectMindmaps(id);
-                                        setMindmaps(refreshed);
-                                        setActiveMindmapId(newId);
-                                        setShowMapMenu(false);
-                                    }}
-                                    className="flex-1 px-3 py-2 rounded-xl text-sm font-bold bg-black text-white hover:bg-slate-900"
-                                >
-                                    + New mindmap
-                                </button>
-                                <button
-                                    onClick={() => { setDrawerMode('map'); setEditTitle(activeMindmap?.name || ''); }}
-                                    className="px-3 py-2 rounded-xl text-sm font-bold border border-slate-200 hover:border-black bg-white"
-                                >
-                                    Rename
-                                </button>
-                            </div>
-                            <div className="px-3 py-3 border-t border-slate-200">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-[11px] uppercase tracking-[0.12em] text-slate-500 font-bold">Branches</span>
-                                    <span className="text-xs text-slate-500">{mapSummary.collapsedCount} collapsed</span>
-                                </div>
-                                <div className="grid gap-2 max-h-60 overflow-y-auto">
-                                    {groups.map((group) => {
-                                        const collapsed = collapsedGroups.has(group);
-                                        const visuals = getGroupVisual(group);
-                                        return (
+                                {showMapMenu && (
+                                    <div className="px-3 py-3 space-y-2 max-h-52 overflow-y-auto">
+                                        {mindmaps.map((map) => (
                                             <button
-                                                key={group}
-                                                onClick={() => toggleGroup(group)}
-                                                className="w-full text-left px-3 py-2 rounded-xl border text-sm font-semibold flex items-center justify-between gap-2 transition-transform hover:translate-x-[2px]"
-                                                style={{ backgroundColor: visuals.bg, borderColor: visuals.border, color: visuals.text }}
+                                                key={map.id}
+                                                onClick={() => { setActiveMindmapId(map.id); setShowMapMenu(false); }}
+                                                className={`w-full text-left px-3 py-2 rounded-xl border text-sm font-semibold flex items-center justify-between ${map.id === activeMindmap?.id ? 'border-black/60 bg-slate-50' : 'border-slate-200 hover:border-slate-400'}`}
                                             >
-                                                <div className="flex items-center gap-2">
-                                                    <span className="material-symbols-outlined text-[16px]">account_tree</span>
-                                                    <span>{group}</span>
-                                                </div>
-                                                <div className="flex items-center gap-1 text-xs font-bold">
-                                                    <span>{groupIdeaCounts[group] || 0}</span>
-                                                    <span className="material-symbols-outlined text-[16px]">{collapsed ? 'chevron_right' : 'expand_more'}</span>
-                                                </div>
+                                                <span>{map.name}</span>
+                                                {map.id === activeMindmap?.id && <span className="text-[11px] uppercase text-slate-500 font-bold">Active</span>}
                                             </button>
-                                        );
-                                    })}
+                                        ))}
+                                    </div>
+                                )}
+                                <div className="px-3 py-3 border-t border-slate-200 flex gap-2">
+                                    <button
+                                        onClick={async () => {
+                                            if (!id) return;
+                                            const newId = await createMindmap(id, 'New Mindmap');
+                                            const refreshed = await getProjectMindmaps(id);
+                                            setMindmaps(refreshed);
+                                            setActiveMindmapId(newId);
+                                            setShowMapMenu(false);
+                                        }}
+                                        className="flex-1 px-3 py-2 rounded-xl text-sm font-bold bg-black text-white hover:bg-slate-900"
+                                    >
+                                        + New mindmap
+                                    </button>
+                                    <button
+                                        onClick={() => { setDrawerMode('map'); setEditTitle(activeMindmap?.name || ''); }}
+                                        className="px-3 py-2 rounded-xl text-sm font-bold border border-slate-200 hover:border-black bg-white"
+                                    >
+                                        Rename
+                                    </button>
+                                </div>
+                                <div className="px-3 py-3 border-t border-slate-200">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className="text-[11px] uppercase tracking-[0.12em] text-slate-500 font-bold">Branches</span>
+                                        <span className="text-xs text-slate-500">{mapSummary.collapsedCount} collapsed</span>
+                                    </div>
+                                    <div className="grid gap-2 max-h-60 overflow-y-auto">
+                                        {groups.map((group) => {
+                                            const collapsed = collapsedGroups.has(group);
+                                            const visuals = getGroupVisual(group);
+                                            return (
+                                                <button
+                                                    key={group}
+                                                    onClick={() => toggleGroup(group)}
+                                                    className="w-full text-left px-3 py-2 rounded-xl border text-sm font-semibold flex items-center justify-between gap-2 transition-transform hover:translate-x-[2px]"
+                                                    style={{ backgroundColor: visuals.bg, borderColor: visuals.border, color: visuals.text }}
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="material-symbols-outlined text-[16px]">account_tree</span>
+                                                        <span>{group}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 text-xs font-bold">
+                                                        <span>{groupIdeaCounts[group] || 0}</span>
+                                                        <span className="material-symbols-outlined text-[16px]">{collapsed ? 'chevron_right' : 'expand_more'}</span>
+                                                    </div>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <div className="bg-white/95 backdrop-blur border border-slate-200 rounded-2xl shadow-xl overflow-hidden">
-                            <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-slate-200">
-                                <div>
-                                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500 font-bold">Quick add idea</p>
-                                    <p className="text-xs text-slate-500">Drop ideas straight onto this map.</p>
-                                </div>
-                                <button
+                            <div className="app-panel overflow-hidden">
+                                <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-slate-200">
+                                    <div>
+                                        <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500 font-bold">Quick add idea</p>
+                                        <p className="text-xs text-slate-500">Drop ideas straight onto this map.</p>
+                                    </div>
+                                    <button
                                         onClick={() => { setSelectedIdeaId(null); newIdeaInputRef.current?.focus(); }}
                                         className="size-9 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-700 hover:border-black"
                                     >
                                         <span className="material-symbols-outlined text-[18px]">open_in_new</span>
                                     </button>
-                            </div>
-                            <div className="p-3 flex flex-col gap-2">
-                                <input
-                                    value={newIdeaTitle}
-                                    onChange={(e) => setNewIdeaTitle(e.target.value)}
-                                    placeholder="Idea title"
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black/10"
-                                    ref={newIdeaInputRef}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            handleAddIdea();
-                                        }
-                                    }}
-                                />
-                                <textarea
-                                    value={newIdeaDesc}
-                                    onChange={(e) => setNewIdeaDesc(e.target.value)}
-                                    placeholder="Optional context, links, or acceptance criteria"
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm min-h-[80px] focus:outline-none focus:ring-2 focus:ring-black/10"
-                                />
-                                {selectedIdeaId && activeIdea && (
-                                    <label className="flex items-center gap-2 text-xs text-slate-600">
-                                        <input
-                                            type="checkbox"
-                                            checked={attachToSelectedIdea}
-                                            onChange={(e) => {
-                                                setAttachToSelectedIdea(e.target.checked);
-                                            }}
-                                            className="rounded border-slate-300"
-                                        />
-                                        Attach as child of “{activeIdea.title}”
-                                    </label>
-                                )}
-                                {selectedGroup && (
-                                    <label className="flex items-center gap-2 text-xs text-slate-600">
-                                        <input
-                                            type="checkbox"
-                                            checked={attachToSelectedGroup}
-                                            onChange={(e) => setAttachToSelectedGroup(e.target.checked)}
-                                            className="rounded border-slate-300"
-                                        />
-                                        Link to branch “{selectedGroup}”
-                                    </label>
-                                )}
-                                <button
-                                    onClick={handleAddIdea}
-                                    disabled={actionLoading || !newIdeaTitle.trim()}
-                                    className="w-full px-4 py-2 rounded-xl bg-black text-white text-sm font-bold hover:bg-slate-900 disabled:opacity-50"
-                                >
-                                    Drop on map
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="bg-white/95 backdrop-blur border border-slate-200 rounded-2xl shadow-xl overflow-hidden">
-                            <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-slate-200">
-                                <div>
-                                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500 font-bold">Add branch</p>
-                                    <p className="text-xs text-slate-500">Create a new branch node, optionally attached to a selected node.</p>
+                                </div>
+                                <div className="p-3 flex flex-col gap-2">
+                                    <input
+                                        value={newIdeaTitle}
+                                        onChange={(e) => setNewIdeaTitle(e.target.value)}
+                                        placeholder="Idea title"
+                                        className="input-field w-full px-3 py-2 text-sm"
+                                        ref={newIdeaInputRef}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleAddIdea();
+                                            }
+                                        }}
+                                    />
+                                    <textarea
+                                        value={newIdeaDesc}
+                                        onChange={(e) => setNewIdeaDesc(e.target.value)}
+                                        placeholder="Optional context, links, or acceptance criteria"
+                                        className="textarea-field w-full px-3 py-2 text-sm min-h-[80px]"
+                                    />
+                                    {selectedIdeaId && activeIdea && (
+                                        <label className="flex items-center gap-2 text-xs text-slate-600">
+                                            <input
+                                                type="checkbox"
+                                                checked={attachToSelectedIdea}
+                                                onChange={(e) => {
+                                                    setAttachToSelectedIdea(e.target.checked);
+                                                }}
+                                                className="rounded border-slate-300"
+                                            />
+                                            Attach as child of “{activeIdea.title}”
+                                        </label>
+                                    )}
+                                    {selectedGroup && (
+                                        <label className="flex items-center gap-2 text-xs text-slate-600">
+                                            <input
+                                                type="checkbox"
+                                                checked={attachToSelectedGroup}
+                                                onChange={(e) => setAttachToSelectedGroup(e.target.checked)}
+                                                className="rounded border-slate-300"
+                                            />
+                                            Link to branch “{selectedGroup}”
+                                        </label>
+                                    )}
+                                    <button
+                                        onClick={handleAddIdea}
+                                        disabled={actionLoading || !newIdeaTitle.trim()}
+                                        className="w-full px-4 py-2 btn-primary text-sm font-bold disabled:opacity-50"
+                                    >
+                                        Drop on map
+                                    </button>
                                 </div>
                             </div>
-                            <div className="p-3 flex flex-col gap-2">
-                                <input
-                                    value={newBranchName}
-                                    onChange={(e) => setNewBranchName(e.target.value)}
-                                    placeholder="Branch name"
-                                    className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black/10"
-                                />
-                                {selectedIdeaId && activeIdea && (
-                                    <label className="flex items-center gap-2 text-xs text-slate-600">
-                                        <input
-                                            type="checkbox"
-                                            checked={attachBranchToSelected}
-                                            onChange={(e) => setAttachBranchToSelected(e.target.checked)}
-                                            className="rounded border-slate-300"
-                                        />
-                                        Attach to “{activeIdea.title}”
-                                    </label>
-                                )}
-                                {selectedGroup && (
-                                    <label className="flex items-center gap-2 text-xs text-slate-600">
-                                        <input
-                                            type="checkbox"
-                                            checked={attachBranchToSelected}
-                                            onChange={(e) => setAttachBranchToSelected(e.target.checked)}
-                                            className="rounded border-slate-300"
-                                        />
-                                        Attach to branch “{selectedGroup}”
-                                    </label>
-                                )}
-                                <button
-                                    onClick={handleAddBranch}
-                                    disabled={actionLoading || !newBranchName.trim()}
-                                    className="w-full px-4 py-2 rounded-xl bg-white text-sm font-bold border border-slate-200 hover:border-black disabled:opacity-50"
-                                >
-                                    Add branch
-                                </button>
+
+                            <div className="app-panel overflow-hidden">
+                                <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-slate-200">
+                                    <div>
+                                        <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500 font-bold">Add branch</p>
+                                        <p className="text-xs text-slate-500">Create a new branch node, optionally attached to a selected node.</p>
+                                    </div>
+                                </div>
+                                <div className="p-3 flex flex-col gap-2">
+                                    <input
+                                        value={newBranchName}
+                                        onChange={(e) => setNewBranchName(e.target.value)}
+                                        placeholder="Branch name"
+                                        className="input-field w-full px-3 py-2 text-sm"
+                                    />
+                                    {selectedIdeaId && activeIdea && (
+                                        <label className="flex items-center gap-2 text-xs text-slate-600">
+                                            <input
+                                                type="checkbox"
+                                                checked={attachBranchToSelected}
+                                                onChange={(e) => setAttachBranchToSelected(e.target.checked)}
+                                                className="rounded border-slate-300"
+                                            />
+                                            Attach to “{activeIdea.title}”
+                                        </label>
+                                    )}
+                                    {selectedGroup && (
+                                        <label className="flex items-center gap-2 text-xs text-slate-600">
+                                            <input
+                                                type="checkbox"
+                                                checked={attachBranchToSelected}
+                                                onChange={(e) => setAttachBranchToSelected(e.target.checked)}
+                                                className="rounded border-slate-300"
+                                            />
+                                            Attach to branch “{selectedGroup}”
+                                        </label>
+                                    )}
+                                    <button
+                                        onClick={handleAddBranch}
+                                        disabled={actionLoading || !newBranchName.trim()}
+                                        className="w-full px-4 py-2 btn-secondary text-sm font-bold disabled:opacity-50"
+                                    >
+                                        Add branch
+                                    </button>
+                                </div>
                             </div>
                         </div>
-                    </div>
                     </div>
                 )}
 
@@ -1735,195 +1735,195 @@ export const ProjectMindmap = () => {
                         onWheel={(e) => e.stopPropagation()}
                         onPointerDown={(e) => e.stopPropagation()}
                     >
-                    <div className="bg-white/95 backdrop-blur border border-slate-200 rounded-2xl shadow-xl overflow-hidden flex flex-col">
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
-                            <div>
-                                <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500 font-bold">Idea inspector</p>
-                                <p className="font-bold text-slate-900">
-                                    {drawerMode === 'map'
-                                        ? 'Mindmap settings'
-                                        : selectedGroup || activeIdea?.title || 'Select a node'}
-                                </p>
+                        <div className="app-panel overflow-hidden flex flex-col">
+                            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+                                <div>
+                                    <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500 font-bold">Idea inspector</p>
+                                    <p className="font-bold text-slate-900">
+                                        {drawerMode === 'map'
+                                            ? 'Mindmap settings'
+                                            : selectedGroup || activeIdea?.title || 'Select a node'}
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => (activeIdea ? focusNode(activeIdea.id) : centerView())}
+                                    className="px-3 py-1.5 rounded-full border border-slate-200 text-sm font-bold hover:border-black bg-white"
+                                >
+                                    Focus
+                                </button>
                             </div>
-                            <button
-                                onClick={() => (activeIdea ? focusNode(activeIdea.id) : centerView())}
-                                className="px-3 py-1.5 rounded-full border border-slate-200 text-sm font-bold hover:border-black bg-white"
-                            >
-                                Focus
-                            </button>
-                        </div>
-                        <div className="px-4 pt-3 flex flex-wrap gap-2">
-                            <button
-                                onClick={() => {
-                                    setDrawerMode('edit');
-                                    if (activeIdea) {
-                                        setEditTitle(activeIdea.title);
-                                        setEditDesc(activeIdea.description);
-                                        setEditGroup(normalizeGroupName(activeIdea.type));
-                                        setCustomGroup('');
-                                    }
-                                }}
-                                className={`px-3 py-1.5 rounded-full text-xs font-bold border ${drawerMode === 'edit' ? 'border-black bg-black text-white' : 'border-slate-200 bg-white hover:border-black'}`}
-                            >
-                                Edit / branches
-                            </button>
-                            <button
-                                onClick={() => { setDrawerMode('map'); setEditTitle(activeMindmap?.name || ''); }}
-                                className={`px-3 py-1.5 rounded-full text-xs font-bold border ${drawerMode === 'map' ? 'border-black bg-black text-white' : 'border-slate-200 bg-white hover:border-black'}`}
-                            >
-                                Map settings
-                            </button>
-                        </div>
-                        <div className="p-4 space-y-3 border-t border-slate-100">
-                            {drawerMode === 'map' && (
-                                <>
-                                    <input
-                                        value={editTitle}
-                                        onChange={(e) => setEditTitle(e.target.value)}
-                                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black/10"
-                                        placeholder="Mindmap name"
-                                    />
-                                    <button
-                                        onClick={async () => {
-                                            if (!activeMindmapId) return;
-                                            setActionLoading(true);
-                                        try {
-                                            await updateMindmapName(activeMindmapId, editTitle || activeMindmap?.name || 'Mindmap', id);
-                                        const refreshed = await getProjectMindmaps(id!);
-                                        setMindmaps(refreshed);
-                                        setStatus('Mindmap renamed.');
-                                        } catch (e) {
-                                            console.error(e);
-                                            setError('Failed to rename mindmap.');
-                                        } finally {
-                                            setActionLoading(false);
+                            <div className="px-4 pt-3 flex flex-wrap gap-2">
+                                <button
+                                    onClick={() => {
+                                        setDrawerMode('edit');
+                                        if (activeIdea) {
+                                            setEditTitle(activeIdea.title);
+                                            setEditDesc(activeIdea.description);
+                                            setEditGroup(normalizeGroupName(activeIdea.type));
+                                            setCustomGroup('');
                                         }
-                                        }}
-                                        disabled={actionLoading || !editTitle.trim()}
-                                        className="w-full px-4 py-2 rounded-lg bg-black text-white text-sm font-bold disabled:opacity-50"
-                                    >
-                                        Save name
-                                    </button>
-                                </>
-                            )}
-
-                            {drawerMode === 'edit' && (
-                                selectedGroup ? (
-                                    <>
-                                        <input
-                                            value={renameGroupName}
-                                            onChange={(e) => setRenameGroupName(e.target.value)}
-                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black/10"
-                                            placeholder="Branch name"
-                                        />
-                                        <button
-                                            onClick={() => {
-                                                setLinkMode({ type: 'branchParent' });
-                                                setStatus('Select a node or branch to link this branch to.');
-                                            }}
-                                            className="w-full px-4 py-2 rounded-lg border border-slate-200 text-sm font-bold hover:border-black bg-white"
-                                        >
-                                            Change parent link
-                                        </button>
-                                        <button
-                                            onClick={handleRenameGroup}
-                                            disabled={actionLoading || !renameGroupName.trim()}
-                                            className="w-full px-4 py-2 rounded-lg bg-black text-white text-sm font-bold disabled:opacity-50"
-                                        >
-                                            Rename branch
-                                        </button>
-                                        <button
-                                            onClick={() => setConfirmDeleteBranch(selectedGroup)}
-                                            disabled={actionLoading}
-                                            className="w-full px-4 py-2 rounded-lg border border-rose-200 text-sm font-bold text-rose-600"
-                                        >
-                                            Delete branch
-                                        </button>
-                                    </>
-                                ) : activeIdea ? (
+                                    }}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-bold border ${drawerMode === 'edit' ? 'border-black bg-black text-white' : 'border-slate-200 bg-white hover:border-black'}`}
+                                >
+                                    Edit / branches
+                                </button>
+                                <button
+                                    onClick={() => { setDrawerMode('map'); setEditTitle(activeMindmap?.name || ''); }}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-bold border ${drawerMode === 'map' ? 'border-black bg-black text-white' : 'border-slate-200 bg-white hover:border-black'}`}
+                                >
+                                    Map settings
+                                </button>
+                            </div>
+                            <div className="p-4 space-y-3 border-t border-slate-100">
+                                {drawerMode === 'map' && (
                                     <>
                                         <input
                                             value={editTitle}
                                             onChange={(e) => setEditTitle(e.target.value)}
                                             className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black/10"
-                                            placeholder="Title"
-                                        />
-                                        <textarea
-                                            value={editDesc}
-                                            onChange={(e) => setEditDesc(e.target.value)}
-                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm min-h-[100px] focus:outline-none focus:ring-2 focus:ring-black/10"
-                                            placeholder="Description"
+                                            placeholder="Mindmap name"
                                         />
                                         <button
-                                            onClick={() => {
-                                                setLinkMode({ type: 'ideaLink' });
-                                                setStatus('Select a branch or node to relink this idea.');
+                                            onClick={async () => {
+                                                if (!activeMindmapId) return;
+                                                setActionLoading(true);
+                                                try {
+                                                    await updateMindmapName(activeMindmapId, editTitle || activeMindmap?.name || 'Mindmap', id);
+                                                    const refreshed = await getProjectMindmaps(id!);
+                                                    setMindmaps(refreshed);
+                                                    setStatus('Mindmap renamed.');
+                                                } catch (e) {
+                                                    console.error(e);
+                                                    setError('Failed to rename mindmap.');
+                                                } finally {
+                                                    setActionLoading(false);
+                                                }
                                             }}
-                                            className="w-full px-4 py-2 rounded-lg border border-slate-200 text-sm font-bold hover:border-black bg-white"
+                                            disabled={actionLoading || !editTitle.trim()}
+                                            className="w-full px-4 py-2 rounded-lg bg-black text-white text-sm font-bold disabled:opacity-50"
                                         >
-                                            Relink (pick node/branch)
+                                            Save name
                                         </button>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            <button
-                                                onClick={handleSaveIdea}
-                                                disabled={actionLoading}
-                                                className="px-4 py-2 rounded-lg bg-black text-white text-sm font-bold disabled:opacity-50"
-                                            >
-                                                Save
-                                            </button>
-                                            <button
-                                                onClick={() => activeIdea && handleConvertIdea(activeIdea)}
-                                                disabled={actionLoading}
-                                                className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-bold col-span-2"
-                                            >
-                                                Convert to task
-                                            </button>
-                                            <button
-                                                onClick={() => selectedIdeaId && setConfirmDeleteId(selectedIdeaId)}
-                                                disabled={actionLoading}
-                                                className="px-4 py-2 rounded-lg border border-rose-200 text-sm font-bold text-rose-600 col-span-2"
-                                            >
-                                                Delete idea
-                                            </button>
-                                        </div>
                                     </>
-                                ) : (
-                                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-3 py-4 text-sm text-slate-600">
-                                        Select a node or branch to edit.
+                                )}
+
+                                {drawerMode === 'edit' && (
+                                    selectedGroup ? (
+                                        <>
+                                            <input
+                                                value={renameGroupName}
+                                                onChange={(e) => setRenameGroupName(e.target.value)}
+                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black/10"
+                                                placeholder="Branch name"
+                                            />
+                                            <button
+                                                onClick={() => {
+                                                    setLinkMode({ type: 'branchParent' });
+                                                    setStatus('Select a node or branch to link this branch to.');
+                                                }}
+                                                className="w-full px-4 py-2 rounded-lg border border-slate-200 text-sm font-bold hover:border-black bg-white"
+                                            >
+                                                Change parent link
+                                            </button>
+                                            <button
+                                                onClick={handleRenameGroup}
+                                                disabled={actionLoading || !renameGroupName.trim()}
+                                                className="w-full px-4 py-2 rounded-lg bg-black text-white text-sm font-bold disabled:opacity-50"
+                                            >
+                                                Rename branch
+                                            </button>
+                                            <button
+                                                onClick={() => setConfirmDeleteBranch(selectedGroup)}
+                                                disabled={actionLoading}
+                                                className="w-full px-4 py-2 rounded-lg border border-rose-200 text-sm font-bold text-rose-600"
+                                            >
+                                                Delete branch
+                                            </button>
+                                        </>
+                                    ) : activeIdea ? (
+                                        <>
+                                            <input
+                                                value={editTitle}
+                                                onChange={(e) => setEditTitle(e.target.value)}
+                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black/10"
+                                                placeholder="Title"
+                                            />
+                                            <textarea
+                                                value={editDesc}
+                                                onChange={(e) => setEditDesc(e.target.value)}
+                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm min-h-[100px] focus:outline-none focus:ring-2 focus:ring-black/10"
+                                                placeholder="Description"
+                                            />
+                                            <button
+                                                onClick={() => {
+                                                    setLinkMode({ type: 'ideaLink' });
+                                                    setStatus('Select a branch or node to relink this idea.');
+                                                }}
+                                                className="w-full px-4 py-2 rounded-lg border border-slate-200 text-sm font-bold hover:border-black bg-white"
+                                            >
+                                                Relink (pick node/branch)
+                                            </button>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    onClick={handleSaveIdea}
+                                                    disabled={actionLoading}
+                                                    className="px-4 py-2 rounded-lg bg-black text-white text-sm font-bold disabled:opacity-50"
+                                                >
+                                                    Save
+                                                </button>
+                                                <button
+                                                    onClick={() => activeIdea && handleConvertIdea(activeIdea)}
+                                                    disabled={actionLoading}
+                                                    className="px-4 py-2 rounded-lg border border-slate-200 text-sm font-bold col-span-2"
+                                                >
+                                                    Convert to task
+                                                </button>
+                                                <button
+                                                    onClick={() => selectedIdeaId && setConfirmDeleteId(selectedIdeaId)}
+                                                    disabled={actionLoading}
+                                                    className="px-4 py-2 rounded-lg border border-rose-200 text-sm font-bold text-rose-600 col-span-2"
+                                                >
+                                                    Delete idea
+                                                </button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-3 py-4 text-sm text-slate-600">
+                                            Select a node or branch to edit.
+                                        </div>
+                                    )
+                                )}
+                            </div>
+                            {ideasOutsideActive.length > 0 && (
+                                <div className="p-4 border-t border-slate-100 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500 font-bold">Ideas outside this map</p>
+                                            <p className="text-xs text-slate-500">Attach ideas from other mindmaps.</p>
+                                        </div>
+                                        <span className="text-xs font-bold text-slate-600">{ideasOutsideActive.length}</span>
                                     </div>
-                                )
+                                    <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                                        {ideasOutsideActive.map((idea) => (
+                                            <div key={idea.id} className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/90 px-3 py-2 flex items-center justify-between gap-3">
+                                                <div className="flex-1">
+                                                    <p className="text-sm font-bold text-slate-900">{idea.title}</p>
+                                                    <p className="text-xs text-slate-500">From {mindmaps.find((m) => m.id === idea.mindmapId)?.name || 'Default mindmap'}</p>
+                                                </div>
+                                                <button
+                                                    onClick={() => handleImportIdeaToActive(idea)}
+                                                    disabled={actionLoading}
+                                                    className="px-3 py-2 rounded-lg bg-black text-white text-sm font-bold disabled:opacity-50 shrink-0"
+                                                    title={selectedIdeaId ? 'Add under the selected node' : 'Add to root'}
+                                                >
+                                                    +
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             )}
                         </div>
-                        {ideasOutsideActive.length > 0 && (
-                            <div className="p-4 border-t border-slate-100 space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <p className="text-[11px] uppercase tracking-[0.12em] text-slate-500 font-bold">Ideas outside this map</p>
-                                        <p className="text-xs text-slate-500">Attach ideas from other mindmaps.</p>
-                                    </div>
-                                    <span className="text-xs font-bold text-slate-600">{ideasOutsideActive.length}</span>
-                                </div>
-                                <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-                                    {ideasOutsideActive.map((idea) => (
-                                        <div key={idea.id} className="rounded-xl border border-slate-200 bg-white/90 px-3 py-2 flex items-center justify-between gap-3">
-                                            <div className="flex-1">
-                                                <p className="text-sm font-bold text-slate-900">{idea.title}</p>
-                                                <p className="text-xs text-slate-500">From {mindmaps.find((m) => m.id === idea.mindmapId)?.name || 'Default mindmap'}</p>
-                                            </div>
-                                            <button
-                                                onClick={() => handleImportIdeaToActive(idea)}
-                                                disabled={actionLoading}
-                                                className="px-3 py-2 rounded-lg bg-black text-white text-sm font-bold disabled:opacity-50 shrink-0"
-                                                title={selectedIdeaId ? 'Add under the selected node' : 'Add to root'}
-                                            >
-                                                +
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
                     </div>
                 )}
 
@@ -2008,7 +2008,7 @@ export const ProjectMindmap = () => {
                     )}
                 </div>
 
-                
+
                 {confirmDeleteId && (
                     <div
                         className="absolute inset-0 z-40 bg-black/20 flex items-center justify-center"
@@ -2037,7 +2037,7 @@ export const ProjectMindmap = () => {
                                 <button
                                     onClick={() => confirmDeleteId && handleDeleteIdea(confirmDeleteId)}
                                     disabled={actionLoading}
-                                    className="px-4 py-2 rounded-lg bg-rose-600 text-white text-sm font-bold hover:bg-rose-700 disabled:opacity-60"
+                                    className="px-4 py-2 rounded-lg btn-primary text-sm font-bold disabled:opacity-60"
                                 >
                                     Delete
                                 </button>
@@ -2073,7 +2073,7 @@ export const ProjectMindmap = () => {
                                 <button
                                     onClick={() => confirmDeleteBranch && handleDeleteBranch(confirmDeleteBranch)}
                                     disabled={actionLoading}
-                                    className="px-4 py-2 rounded-lg bg-rose-600 text-white text-sm font-bold hover:bg-rose-700 disabled:opacity-60"
+                                    className="px-4 py-2 rounded-lg btn-primary text-sm font-bold disabled:opacity-60"
                                 >
                                     Delete branch
                                 </button>

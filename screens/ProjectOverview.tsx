@@ -1,83 +1,66 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { getProjectById, toggleTaskStatus, updateProjectFields, addActivityEntry, deleteProjectById, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, getActiveTenantId } from '../services/dataService';
+import { getProjectById, toggleTaskStatus, updateProjectFields, addActivityEntry, deleteProjectById, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues, getActiveTenantId, inviteMember } from '../services/dataService';
 import { TaskCreateModal } from '../components/TaskCreateModal';
 import { generateProjectReport, getGeminiInsight } from '../services/geminiService';
-import { Activity, Idea, Project, Task } from '../types';
+import { Activity, Idea, Project, Task, Issue, ProjectRole } from '../types';
 import { toMillis } from '../utils/time';
 import { auth, storage } from '../services/firebase';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { Badge } from '../components/ui/Badge';
+import { Modal } from '../components/ui/Modal';
+import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
+import { Textarea } from '../components/ui/Textarea';
+import { ImageCropper } from '../components/ui/ImageCropper';
+import { DonutChart } from '../components/charts/DonutChart';
+import { TeamCard } from '../components/TeamCard';
+import { InviteMemberModal } from '../components/InviteMemberModal';
+import { useProjectPermissions } from '../hooks/useProjectPermissions';
 
 const cleanText = (value?: string | null) => (value || '').replace(/\*\*/g, '');
+
+
 const timeAgo = (timestamp?: any) => {
     if (!timestamp) return '';
     const diff = Date.now() - toMillis(timestamp);
     const mins = Math.max(0, Math.round(diff / 60000));
-    if (mins < 60) return `${mins || 1} min${mins === 1 ? '' : 's'} ago`;
+    if (mins < 60) return `${mins || 1}m ago`;
     const hours = Math.round(mins / 60);
-    if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+    if (hours < 24) return `${hours}h ago`;
     const days = Math.round(hours / 24);
-    return `${days} day${days === 1 ? '' : 's'} ago`;
-};
-const formatToParagraph = (value: string) => {
-    const cleaned = value
-        .split(/\n+/)
-        .map(line => line.replace(/^[*-]\s*/, '').trim())
-        .filter(Boolean)
-        .join(' ');
-    return cleaned;
+    return `${days}d ago`;
 };
 
-const buildSimpleSummary = (raw: string, project?: Project | null, tasks: Task[] = [], ideas: Idea[] = []) => {
-    const paragraph = formatToParagraph(cleanText(raw || '')).replace(/\s+/g, ' ').trim();
-    const sentences = paragraph.split(/(?<=[.!?])\s+/).filter(Boolean);
-    const noiseTokens = ['status report', 'status:', 'priority:', 'start:', 'due:', 'dates:', 'description:'];
-    const filteredSentences = sentences.filter(s => !noiseTokens.some(n => s.toLowerCase().includes(n)));
-
-    const projectName = project?.title || 'This project';
-    const topTasks = tasks.slice(0, 3).map(t => t.title).filter(Boolean);
-    const topIdeas = ideas.slice(0, 2).map(i => i.title).filter(Boolean);
-
-    const firstIdea = filteredSentences[0]?.replace(/^(this project|project)\s+/i, '').replace(/^is\s+/i, '').replace(/^aims to\s+/i, '').trim();
-    const ideaLead = topIdeas.length ? `${projectName} is a project exploring ${topIdeas.join(', ')}.` : '';
-    const lead = firstIdea
-        ? `${projectName} is ${firstIdea}`
-        : (ideaLead || `${projectName} is a project to achieve its key goals.`);
-
-    const taskLine = topTasks.length ? `It tackles work like ${topTasks.join(', ')}.` : '';
-    const ideaLine = topIdeas.length ? `It explores ideas such as ${topIdeas.join(', ')}.` : '';
-
-    const combined = [lead, taskLine, ideaLine].filter(Boolean).join(' ');
-    const trimmed = combined.length > 260 ? `${combined.slice(0, 257).trimEnd()}...` : combined;
-    return trimmed || `${projectName} is a project to achieve its key goals.`;
-};
 const activityIcon = (type?: Activity['type'], actionText?: string) => {
     const action = (actionText || '').toLowerCase();
     if (type === 'task') {
-        if (action.includes('deleted') || action.includes('remove')) {
-            return { bg: 'bg-rose-100', icon: 'delete', iconColor: 'text-rose-700' };
-        }
-        if (action.includes('reopened')) {
-            return { bg: 'bg-amber-100', icon: 'undo', iconColor: 'text-amber-700' };
-        }
-        if (action.includes('completed') || action.includes('done')) {
-            return { bg: 'bg-emerald-100', icon: 'check', iconColor: 'text-emerald-700' };
-        }
-        return { bg: 'bg-blue-100', icon: 'add_task', iconColor: 'text-blue-700' };
+        if (action.includes('deleted') || action.includes('remove')) return { icon: 'delete', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-500/10' };
+        if (action.includes('reopened')) return { icon: 'undo', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-500/10' };
+        if (action.includes('completed') || action.includes('done')) return { icon: 'check_circle', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-500/10' };
+        return { icon: 'add_task', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-500/10' };
     }
-    if (type === 'status') return { bg: 'bg-indigo-100', icon: 'swap_horiz', iconColor: 'text-indigo-700' };
-    if (type === 'report') return { bg: 'bg-purple-100', icon: 'auto_awesome', iconColor: 'text-purple-700' };
-    if (type === 'comment') return { bg: 'bg-amber-100', icon: 'chat_bubble', iconColor: 'text-amber-700' };
-    if (type === 'file') return { bg: 'bg-slate-100', icon: 'attach_file', iconColor: 'text-slate-700' };
-    if (type === 'commit') return { bg: 'bg-blue-100', icon: 'code', iconColor: 'text-blue-700' };
-    if (type === 'priority') {
-        if (action.includes('raised') || action.includes('high') || action.includes('urgent')) {
-            return { bg: 'bg-rose-100', icon: 'priority_high', iconColor: 'text-rose-700' };
-        }
-        return { bg: 'bg-emerald-100', icon: 'low_priority', iconColor: 'text-emerald-700' };
-    }
-    return { bg: 'bg-slate-100', icon: 'more_horiz', iconColor: 'text-slate-700' };
+    if (type === 'status') return { icon: 'swap_horiz', color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-100 dark:bg-indigo-500/10' };
+    if (type === 'report') return { icon: 'auto_awesome', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-500/10' };
+    if (type === 'comment') return { icon: 'chat_bubble', color: 'text-amber-600', bg: 'bg-amber-100' };
+    if (type === 'file') return { icon: 'attach_file', color: 'text-slate-600', bg: 'bg-slate-100' };
+    if (type === 'commit') return { icon: 'code', color: 'text-blue-600', bg: 'bg-blue-100' };
+    if (type === 'priority') return { icon: 'priority_high', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-500/10' };
+    return { icon: 'more_horiz', color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-700/50' };
 };
+
+const getModuleIcon = (name: string) => {
+    if (name === 'tasks') return { icon: 'check_circle', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' };
+    if (name === 'ideas') return { icon: 'lightbulb', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' };
+    if (name === 'mindmap') return { icon: 'hub', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-500/10' };
+    if (name === 'issues') return { icon: 'bug_report', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10' };
+    if (name === 'activity') return { icon: 'history', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' };
+    return { icon: 'more_horiz', color: 'text-slate-600 dark:text-slate-400', bg: 'bg-[var(--color-surface-hover)]' };
+};
+
+import { updatePresence } from '../services/dataService';
 
 export const ProjectOverview = () => {
     const { id } = useParams<{ id: string }>();
@@ -85,31 +68,100 @@ export const ProjectOverview = () => {
     const [project, setProject] = useState<Project | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
-    const [savingStatus, setSavingStatus] = useState(false);
-    const [savingPriority, setSavingPriority] = useState(false);
     const [insight, setInsight] = useState<string | null>(null);
     const [activity, setActivity] = useState<Activity[]>([]);
     const [ideas, setIdeas] = useState<Idea[]>([]);
+    const [issues, setIssues] = useState<Issue[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [report, setReport] = useState<string | null>(null);
     const [reportLoading, setReportLoading] = useState(false);
     const [lastReport, setLastReport] = useState<string | null>(null);
     const [showInsight, setShowInsight] = useState<boolean>(true);
-    const [showMenu, setShowMenu] = useState(false);
+
+    // Modals
     const [showEditModal, setShowEditModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showTaskModal, setShowTaskModal] = useState(false);
+    const [showInviteModal, setShowInviteModal] = useState(false);
+
+    // Permission system
+    const { can, isOwner } = useProjectPermissions(project);
+
+    // Edit Form State
     const [editTitle, setEditTitle] = useState('');
     const [editDescription, setEditDescription] = useState('');
     const [editStatus, setEditStatus] = useState<Project['status']>('Active');
     const [editPriority, setEditPriority] = useState<Project['priority'] | 'High' | 'Medium' | 'Low' | 'Urgent'>('Medium');
     const [editStartDate, setEditStartDate] = useState('');
     const [editDueDate, setEditDueDate] = useState('');
+    const [editModules, setEditModules] = useState<Project['modules']>([]);
+    const [editLinks, setEditLinks] = useState<{ title: string; url: string }[]>([]);
+    const [editExternalResources, setEditExternalResources] = useState<{ title: string; url: string; icon?: string }[]>([]);
     const [editCoverFile, setEditCoverFile] = useState<File | null>(null);
     const [editIconFile, setEditIconFile] = useState<File | null>(null);
+    const [editGalleryFiles, setEditGalleryFiles] = useState<File[]>([]);
+    const [editKeptGalleryUrls, setEditKeptGalleryUrls] = useState<string[]>([]);
+    const [showGalleryModal, setShowGalleryModal] = useState(false);
+    const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+    const [coverRemoved, setCoverRemoved] = useState(false);
+    const [iconRemoved, setIconRemoved] = useState(false);
     const [savingEdit, setSavingEdit] = useState(false);
     const [deletingProject, setDeletingProject] = useState(false);
-    const [generatingDesc, setGeneratingDesc] = useState(false);
+
+    // Cropper State
+    const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+    const [cropAspectRatio, setCropAspectRatio] = useState(1);
+    const [cropType, setCropType] = useState<'cover' | 'icon' | null>(null);
+
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'icon') => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = () => {
+                setCropImageSrc(reader.result as string);
+                setCropType(type);
+                setCropAspectRatio(type === 'cover' ? 16 / 9 : 1);
+            };
+            reader.readAsDataURL(file);
+        }
+        e.target.value = '';
+    };
+
+    const handleCropComplete = (croppedBlob: Blob) => {
+        if (cropType === 'cover') {
+            const file = new File([croppedBlob], "cover.jpg", { type: "image/jpeg" });
+            setEditCoverFile(file);
+            setCoverRemoved(false);
+        } else if (cropType === 'icon') {
+            const file = new File([croppedBlob], "icon.jpg", { type: "image/jpeg" });
+            setEditIconFile(file);
+            setIconRemoved(false);
+        }
+        closeCropper();
+    };
+
+    const closeCropper = () => {
+        setCropImageSrc(null);
+        setCropType(null);
+    };
+
+    // Presence
+    useEffect(() => {
+        if (!id) return;
+        updatePresence(id, 'online');
+        const interval = setInterval(() => updatePresence(id, 'online'), 60000); // Heartbeat
+
+        const handleUnload = () => {
+            updatePresence(id, 'offline');
+        };
+        window.addEventListener('beforeunload', handleUnload);
+
+        return () => {
+            clearInterval(interval);
+            updatePresence(id, 'offline');
+            window.removeEventListener('beforeunload', handleUnload);
+        };
+    }, [id]);
 
     useEffect(() => {
         if (!id) return;
@@ -124,16 +176,38 @@ export const ProjectOverview = () => {
                     return;
                 }
                 setProject(projData);
+                // Initialize form
                 setEditTitle(projData.title || '');
                 setEditDescription(projData.description || '');
                 setEditStatus(projData.status || 'Active');
                 setEditPriority(projData.priority || 'Medium');
                 setEditStartDate(projData.startDate || '');
                 setEditDueDate(projData.dueDate || '');
+                setEditModules(projData.modules || ['tasks', 'ideas', 'mindmap', 'activity']);
+                setEditLinks(projData.links || []);
+                setEditExternalResources(projData.externalResources || []);
+                setEditKeptGalleryUrls(projData.screenshots || []);
+                setEditGalleryFiles([]);
+                setCoverRemoved(false);
+                setIconRemoved(false);
                 setEditCoverFile(null);
                 setEditIconFile(null);
+
                 const ai = await getGeminiInsight();
                 setInsight(ai);
+
+                // Subscribe to real-time data using the correct tenant
+                const unsubTasks = subscribeProjectTasks(id, setTasks, projData.tenantId);
+                const unsubActivity = subscribeProjectActivity(id, setActivity, projData.tenantId);
+                const unsubIdeas = subscribeProjectIdeas(id, setIdeas, projData.tenantId);
+                const unsubIssues = subscribeProjectIssues(id, setIssues, projData.tenantId);
+
+                return () => {
+                    unsubTasks();
+                    unsubActivity();
+                    unsubIdeas();
+                    unsubIssues();
+                };
             } catch (error) {
                 console.error(error);
                 setError("Failed to load project data.");
@@ -142,18 +216,6 @@ export const ProjectOverview = () => {
             }
         };
         fetchData();
-    }, [id]);
-
-    useEffect(() => {
-        if (!id) return;
-        const unsubTasks = subscribeProjectTasks(id, setTasks);
-        const unsubActivity = subscribeProjectActivity(id, setActivity);
-        const unsubIdeas = subscribeProjectIdeas(id, setIdeas);
-        return () => {
-            unsubTasks();
-            unsubActivity();
-            unsubIdeas();
-        };
     }, [id]);
 
     useEffect(() => {
@@ -169,81 +231,27 @@ export const ProjectOverview = () => {
     }, [activity]);
 
     const handleToggleTask = async (taskId: string, currentStatus: boolean) => {
-        // Optimistic update
+        if (!project) return;
         setTasks(tasks.map(t => t.id === taskId ? { ...t, isCompleted: !currentStatus } : t));
-        await toggleTaskStatus(taskId, currentStatus);
+        await toggleTaskStatus(taskId, currentStatus, project.id);
     };
 
     const handleGenerateReport = async () => {
         if (!project) return;
         setReportLoading(true);
-        setError(null);
         try {
             const rep = await generateProjectReport(project, tasks);
             setReport(rep);
             setLastReport(rep);
-            await addActivityEntry(project.id, { action: "Generated project report", target: project.title, details: rep, type: "report", user: auth?.currentUser?.displayName || "User" });
+            await addActivityEntry(project.id, { action: "Generated report", target: project.title, details: rep, type: "report", user: auth?.currentUser?.displayName || "User" });
         } catch (e) {
             console.error(e);
-            setError("Could not generate report. Please try again.");
         } finally {
             setReportLoading(false);
         }
     };
 
-    if (loading) return <div className="flex h-full items-center justify-center"><span className="material-symbols-outlined animate-spin text-4xl">progress_activity</span></div>;
-    if (!project) return <div className="p-8">Project not found</div>;
-
-    const completedTasks = tasks.filter(t => t.isCompleted).length;
-    const progress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
-    const openTasks = tasks.length - completedTasks;
-
-    const statusOptions: Project['status'][] = ['Brainstorming', 'Planning', 'Active', 'Review', 'On Hold', 'Completed'];
-    const priorityOptions: Array<Project['priority'] | 'High' | 'Medium' | 'Low' | 'Urgent'> = ['Low', 'Medium', 'High', 'Urgent'];
-    const urgentCount = tasks.filter(t => t.priority === 'Urgent').length;
-    const ideasCount = ideas.length;
-
-    const priorityTasks = [...tasks].sort((a, b) => {
-        const rank: Record<string, number> = { 'Urgent': 0, 'High': 1, 'Medium': 2, 'Low': 3 };
-        return (rank[a.priority || 'Medium'] ?? 2) - (rank[b.priority || 'Medium'] ?? 2);
-    }).slice(0, 4);
-    const recentTasks = [...tasks].sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt)).slice(0, 5);
-
-    const handleStatusChange = async (nextStatus: Project['status']) => {
-        if (!project || project.status === nextStatus) return;
-        setSavingStatus(true);
-        const prev = project.status;
-        setProject({ ...project, status: nextStatus });
-        try {
-            await updateProjectFields(project.id, { status: nextStatus }, { action: `Status set to ${nextStatus}`, target: "Status", type: "status" });
-        } catch (err) {
-            console.error(err);
-            setProject({ ...project, status: prev });
-        } finally {
-            setSavingStatus(false);
-        }
-    };
-
-    const handlePriorityChange = async (nextPriority: string) => {
-        if (!project || project.priority === nextPriority) return;
-        setSavingPriority(true);
-        const prev = project.priority;
-        setProject({ ...project, priority: nextPriority });
-        try {
-            await updateProjectFields(project.id, { priority: nextPriority }, { action: `Priority set to ${nextPriority}`, target: "Priority", type: "priority" });
-        } catch (err) {
-            console.error(err);
-            setProject({ ...project, priority: prev });
-        } finally {
-            setSavingPriority(false);
-        }
-    };
-
-    const reportButtonLabel = report || lastReport
-        ? (reportLoading ? 'Generating...' : 'Generate new report')
-        : (reportLoading ? 'Generating...' : 'Generate report');
-
-    const uploadProjectAsset = async (file: File, kind: 'cover' | 'icon') => {
+    const uploadProjectAsset = async (file: File, kind: 'cover' | 'icon' | 'gallery') => {
         const tenant = getActiveTenantId() || project?.ownerId || auth?.currentUser?.uid || 'public';
         const path = `tenants/${tenant}/projects/${Date.now()}_${kind}_${file.name}`;
         const storageRef = ref(storage, path);
@@ -261,29 +269,34 @@ export const ProjectOverview = () => {
                 status: editStatus,
                 priority: editPriority,
                 startDate: editStartDate || null,
-                dueDate: editDueDate || null
+                dueDate: editDueDate || null,
+                modules: editModules,
+                links: editLinks,
+                externalResources: editExternalResources
             };
 
             if (editCoverFile) {
                 updates.coverImage = await uploadProjectAsset(editCoverFile, 'cover');
-            }
-            if (editIconFile) {
-                updates.squareIcon = await uploadProjectAsset(editIconFile, 'icon');
+            } else if (coverRemoved) {
+                updates.coverImage = null;
             }
 
+            if (editIconFile) {
+                updates.squareIcon = await uploadProjectAsset(editIconFile, 'icon');
+            } else if (iconRemoved) {
+                updates.squareIcon = null;
+            }
+
+            // Handle Gallery
+            const newGalleryUrls = await Promise.all(editGalleryFiles.map(f => uploadProjectAsset(f, 'gallery')));
+            updates.screenshots = [...editKeptGalleryUrls, ...newGalleryUrls];
+
             await updateProjectFields(project.id, updates, { action: 'Updated project details', target: project.title, type: 'status' });
+
+            // Optimistic update or refetch
             const refreshed = await getProjectById(project.id);
             if (refreshed) setProject(refreshed);
-            if (refreshed) {
-                setEditTitle(refreshed.title || '');
-                setEditDescription(refreshed.description || '');
-                setEditStatus(refreshed.status || 'Active');
-                setEditPriority(refreshed.priority || 'Medium');
-                setEditStartDate(refreshed.startDate || '');
-                setEditDueDate(refreshed.dueDate || '');
-            }
-            setEditCoverFile(null);
-            setEditIconFile(null);
+
             setShowEditModal(false);
         } catch (err) {
             console.error(err);
@@ -293,19 +306,12 @@ export const ProjectOverview = () => {
         }
     };
 
-    const handleGenerateDescription = async () => {
-        if (!project) return;
-        setGeneratingDesc(true);
-        setError(null);
-        try {
-            const description = await generateProjectReport(project, tasks);
-            setEditDescription(buildSimpleSummary(description || '', project, tasks, ideas));
-        } catch (err) {
-            console.error(err);
-            setError('Failed to generate description.');
-        } finally {
-            setGeneratingDesc(false);
+    const handleGallerySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            const files = Array.from(e.target.files);
+            setEditGalleryFiles(prev => [...prev, ...files]);
         }
+        e.target.value = '';
     };
 
     const handleDeleteProject = async () => {
@@ -323,417 +329,592 @@ export const ProjectOverview = () => {
         }
     };
 
+    const handleInvite = async () => {
+        const tenantId = getActiveTenantId() || auth.currentUser?.uid;
+        if (!tenantId) return;
+        // Hash router compatible
+        const base = window.location.href.split('#')[0];
+        // Use the new project invite route
+        const link = `${base}#/invite-project/${id}?tenantId=${tenantId}`;
+        try {
+            await navigator.clipboard.writeText(link);
+            alert("Project Invite link copied to clipboard!");
+        } catch (e) {
+            console.error(e);
+            alert("Failed to copy link.");
+        }
+    };
+
+    if (loading) return (
+        <div className="flex items-center justify-center p-12">
+            <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-3xl">progress_activity</span>
+        </div>
+    );
+    if (!project) return <div className="p-8">Project not found</div>;
+
+    const completedTasks = tasks.filter(t => t.isCompleted).length;
+    const progress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
+    const openTasks = tasks.length - completedTasks;
+    const urgentCount = tasks.filter(t => t.priority === 'Urgent').length;
+    const recentTasks = [...tasks].sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt)).slice(0, 5);
+
     return (
-        <div className="max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-6 relative space-y-8">
-            {error && <div className="p-3 rounded-lg bg-rose-50 text-rose-600 border border-rose-200">{error}</div>}
-            <section className="space-y-6 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6">
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-                    <div className="xl:col-span-8 space-y-3">
-                        <div className="flex flex-wrap items-center gap-3">
-                            {project.squareIcon && (
-                                <div className="size-12 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-white">
-                                    <img src={project.squareIcon} alt="" className="w-full h-full object-cover" />
-                                </div>
-                            )}
-                            <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight">{project.title}</h1>
-                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-xs font-bold uppercase tracking-wide border border-emerald-200 dark:border-emerald-800">{project.status || 'Active'}</span>
-                        </div>
-                        {project.description && (
-                            <p className="text-slate-600 dark:text-slate-400 text-base md:text-lg leading-relaxed max-w-3xl">
-                                {project.description}
-                            </p>
-                        )}
-                    </div>
-                    <div className="xl:col-span-4 w-full flex flex-col gap-3 items-stretch">
-                        <div className="flex flex-wrap items-center justify-end gap-3">
-                            <button onClick={() => setShowTaskModal(true)} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-black text-white text-sm font-bold shadow-sm hover:bg-slate-900">
-                                <span className="material-symbols-outlined text-[18px]">add</span>
-                                New Task
-                            </button>
-                            <Link to={`/project/${id}/ideas`} className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-bold text-slate-700 dark:text-slate-200 hover:border-slate-400">
-                                <span className="material-symbols-outlined text-[18px]">lightbulb</span>
-                                Ideas
-                            </Link>
-                            <div className="relative">
-                                <button onClick={() => setShowMenu(prev => !prev)} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-500 hover:border-slate-400">
-                                    <span className="material-symbols-outlined">more_horiz</span>
-                                </button>
-                                {showMenu && (
-                                    <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg shadow-lg z-30">
-                                        <button
-                                            onClick={() => { setShowMenu(false); setShowEditModal(true); }}
-                                            className="w-full text-left px-4 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
-                                        >
-                                            Edit project
-                                        </button>
-                                        <button
-                                            onClick={() => { setShowMenu(false); setShowDeleteModal(true); }}
-                                            className="w-full text-left px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/30"
-                                        >
-                                            Delete project
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
+        <div className="flex flex-col gap-6 fade-in">
+            <ImageCropper
+                isOpen={!!cropImageSrc}
+                imageSrc={cropImageSrc}
+                aspectRatio={cropAspectRatio}
+                onCropComplete={handleCropComplete}
+                onCancel={closeCropper}
+            />
+            {/* Header Section */}
+            <div className="flex flex-col gap-6">
+                {/* Cover Image */}
+                <div className="relative w-full h-48 md:h-64 rounded-xl overflow-hidden bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)]">
+                    {project.coverImage ? (
+                        <img src={project.coverImage} alt="Cover" className="w-full h-full object-cover" />
+                    ) : (
+                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/30 opacity-50" />
+                    )}
+                    <div className="absolute top-4 right-4 flex gap-2">
+                        <Button variant="secondary" size="sm" onClick={() => setShowEditModal(true)} icon={<span className="material-symbols-outlined">edit</span>}>
+                            Edit
+                        </Button>
+                        <Button variant="secondary" size="sm" onClick={() => setShowDeleteModal(true)} icon={<span className="material-symbols-outlined text-rose-500">delete</span>} />
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-                    <div className="xl:col-span-2 space-y-6">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <StatCard label="Open Tasks" value={openTasks} delta={`${tasks.length} total`} deltaColor="text-slate-500" icon="checklist" />
-                            <StatCard label="Ideas" value={ideasCount} delta={`${ideasCount} collected`} deltaColor="text-slate-500" icon="lightbulb" />
-                            <StatCard label="Blockers" value={urgentCount} delta={urgentCount ? 'Needs attention' : 'All clear'} deltaColor={urgentCount ? 'text-rose-500' : 'text-emerald-500'} icon="warning" />
-                            <StatCard label="Progress" value={`${progress}%`} delta={`${completedTasks} done`} deltaColor="text-slate-500" icon="trending_up" />
-                        </div>
-
-                        {(report || lastReport) && (
-                            <div className="border border-slate-200 dark:border-slate-800 rounded-xl bg-white dark:bg-slate-900 p-5 shadow-sm space-y-2">
-                                <div className="flex items-center justify-between gap-2">
-                                    <div className="flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-[18px] text-slate-500">description</span>
-                                        <h4 className="font-bold text-slate-900 dark:text-white">Generated Report</h4>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <button onClick={() => setReport(null)} className="text-xs text-slate-500">Clear</button>
-                                        <button
-                                            onClick={handleGenerateReport}
-                                            disabled={reportLoading}
-                                            className="px-3 py-1.5 text-xs font-bold rounded-lg bg-black text-white disabled:opacity-50"
-                                        >
-                                            {reportButtonLabel}
-                                        </button>
-                                    </div>
-                                </div>
-                                <p className="text-sm text-slate-700 dark:text-slate-200 leading-relaxed whitespace-pre-wrap">{cleanText(report || lastReport)}</p>
-                            </div>
-                        )}
-
-                        {showInsight && (
-                            <div className="border border-slate-200 dark:border-slate-800 rounded-xl bg-gradient-to-br from-white to-slate-50 dark:from-slate-900 dark:to-slate-900/50 p-5 shadow-sm">
-                                <div className="flex items-start justify-between gap-3">
-                                    <div>
-                                        <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-[0.05em] mb-2">
-                                            <span className="material-symbols-outlined text-[18px]">stars</span>
-                                            Gemini Insight
-                                        </div>
-                                        <p className="text-slate-800 dark:text-slate-100 font-medium leading-relaxed">
-                                            {cleanText(insight) || "Generate a report to get tailored guidance for this project."}
-                                        </p>
-                                        <div className="flex gap-3 mt-3">
-                                            <button onClick={handleGenerateReport} disabled={reportLoading} className="px-3 py-2 text-sm font-bold rounded-lg bg-black text-white disabled:opacity-50">
-                                                {reportButtonLabel}
-                                            </button>
-                                            <button onClick={() => setShowInsight(false)} className="px-3 py-2 text-sm font-bold text-slate-600 dark:text-slate-300">Dismiss for a month</button>
-                                        </div>
-                                    </div>
-                                    <span className="material-symbols-outlined text-slate-300 text-[32px]">auto_awesome</span>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-5 space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <p className="text-xs font-bold uppercase text-slate-500">Tasks Snapshot</p>
-                                    <p className="text-sm text-slate-500">Recent work across this project</p>
-                                </div>
-                                <Link to={`/project/${id}/tasks`} className="text-sm font-bold text-black dark:text-white hover:underline">Open tasks</Link>
-                            </div>
-                            <div className="flex gap-3 flex-wrap">
-                                <span className="px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-semibold border border-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:border-slate-700">Open: {openTasks}</span>
-                                <span className="px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 text-xs font-semibold border border-emerald-200">Done: {completedTasks}</span>
-                                <span className="px-3 py-1 rounded-full bg-rose-100 text-rose-700 text-xs font-semibold border border-rose-200">Urgent: {urgentCount}</span>
-                            </div>
-                            <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                                {recentTasks.length === 0 ? (
-                                    <div className="py-6 text-sm text-slate-500 text-center">No tasks yet. Start by creating one.</div>
-                                ) : recentTasks.map(task => (
-                                    <div key={task.id} className="py-3 flex items-start gap-3">
-                                        <input
-                                            type="checkbox"
-                                            readOnly
-                                            checked={task.isCompleted}
-                                            onClick={() => handleToggleTask(task.id, task.isCompleted)}
-                                            className="mt-1 size-4 rounded border-slate-300 dark:border-slate-600 text-black"
-                                        />
-                                        <div className="flex-1 min-w-0">
-                                            <Link to={`/project/${id}/tasks/${task.id}`} className={`text-sm font-bold truncate ${task.isCompleted ? 'text-slate-500 line-through' : 'text-slate-900 dark:text-white'}`}>
-                                                {task.title}
-                                            </Link>
-                                            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 mt-1">
-                                                {task.priority && <span className="px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold">{task.priority}</span>}
-                                                {task.status && <span className="px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 font-semibold">{task.status}</span>}
-                                                {task.dueDate && <span className="flex items-center gap-1"><span className="material-symbols-outlined text-[12px]">calendar_today</span>{new Date(task.dueDate).toLocaleDateString()}</span>}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                    </div>
-
-                    <div className="space-y-4">
-                <div id="details" className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-5 space-y-4">
-                    <div className="flex items-center gap-3">
-                        <div className="flex-1 h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                            <div className="h-full bg-slate-900 dark:bg-white rounded-full" style={{ width: `${progress}%` }}></div>
-                        </div>
-                        <span className="text-xs text-slate-600 font-semibold whitespace-nowrap">{progress}% Done</span>
-                    </div>
-                    <h3 className="font-bold text-slate-900 dark:text-white mb-4">Project Details</h3>
-                            <div className="space-y-4 text-sm">
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Start Date</span>
-                                    <span className="font-medium text-gray-900 dark:text-white">{project.startDate || 'Not set'}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Due Date</span>
-                                    <span className="font-medium text-gray-900 dark:text-white">{project.dueDate || 'Not set'}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-gray-500">Priority</span>
-                                    <span className="font-medium text-gray-900 dark:text-white">{project.priority || 'Medium'}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm p-5 space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h4 className="text-lg font-extrabold text-slate-900 dark:text-white">Activity Stream</h4>
-                            </div>
-                            <div className="space-y-6">
-                                {activity.length === 0 ? (
-                                    <div className="text-sm text-slate-500">No recent activity.</div>
-                                ) : activity.slice(0,4).map((item, idx, arr) => {
-                                    const iconMeta = activityIcon(item.type, item.action);
-                                    return (
-                                        <div key={item.id} className="relative pl-7">
-                                            {idx < arr.length - 1 && <span className="absolute left-3 top-6 bottom-[-10px] w-px bg-slate-200"></span>}
-                                            <span className={`absolute left-0 top-2 size-7 rounded-full flex items-center justify-center ${iconMeta.bg}`}>
-                                                <span className={`material-symbols-outlined text-[16px] ${iconMeta.iconColor}`}>{iconMeta.icon}</span>
-                                            </span>
-                                            <div className="flex-1 min-w-0 space-y-1 pl-2">
-                                                <p className="text-base text-slate-800 dark:text-slate-200 leading-snug">
-                                                    <span className="font-extrabold">{item.user || 'User'}</span> {item.action}
-                                                </p>
-                                                <p className="text-sm text-slate-500 leading-snug line-clamp-2">"{cleanText(item.details || item.target)}"</p>
-                                                <p className="text-sm text-slate-400">{timeAgo(item.createdAt) || 'Just now'}</p>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                            <div className="pt-2 border-t border-slate-200">
-                                <Link to={`/project/${id}/activity`} className="block text-center text-base font-semibold text-slate-500 hover:text-slate-800">
-                                    View all history
-                                </Link>
-                            </div>
-                        </div>
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-4">
-                            <div className="flex items-center justify-between mb-3">
-                                <h4 className="font-bold text-slate-900 dark:text-white">Recent Ideas</h4>
-                                <Link to={`/project/${id}/ideas`} className="text-xs text-slate-500">View all</Link>
-                            </div>
-                            <div className="space-y-3 text-sm text-slate-600 dark:text-slate-300">
-                                {ideas.length === 0 ? (
-                                    <div className="text-slate-500 text-sm">No recent ideas.</div>
-                                ) : ideas.slice(0,3).map(idea => (
-                                    <div key={idea.id} className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-                                        <p className="font-semibold text-slate-800 dark:text-slate-100">{idea.title}</p>
-                                        <p className="text-xs text-slate-500 line-clamp-2">{idea.description}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-4">
-                            <div className="flex items-center justify-between mb-3">
-                                <h4 className="font-bold text-slate-900 dark:text-white">Gallery</h4>
-                                {project?.screenshots?.length ? <span className="text-xs text-slate-500">{project.screenshots.length} screenshots</span> : null}
-                            </div>
-                            {project?.screenshots && project.screenshots.length > 0 ? (
-                                <div className="grid grid-cols-2 gap-3">
-                                    {project.screenshots.map((shot, idx) => (
-                                        <div key={idx} className="relative aspect-video rounded-lg overflow-hidden border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/40">
-                                            <img src={shot} alt={`Screenshot ${idx + 1}`} className="w-full h-full object-cover" />
-                                        </div>
-                                    ))}
-                                </div>
+                <div className="flex flex-col md:flex-row gap-6 md:items-start px-2">
+                    {/* Project Icon */}
+                    <div className="relative -mt-16 md:-mt-20 shrink-0">
+                        <div className="size-24 md:size-32 rounded-2xl border-4 border-[var(--color-surface-paper)] bg-white shadow-md overflow-hidden flex items-center justify-center">
+                            {project.squareIcon ? (
+                                <img src={project.squareIcon} alt="" className="w-full h-full object-cover" />
                             ) : (
-                                <div className="text-sm text-slate-500 dark:text-slate-400">No screenshots yet.</div>
+                                <span className="text-4xl font-bold text-indigo-500">{project.title.charAt(0)}</span>
                             )}
                         </div>
                     </div>
+
+                    {/* Title & Desc */}
+                    <div className="flex-1 space-y-2">
+                        <div className="flex items-center gap-3 flex-wrap">
+                            <h1 className="text-3xl font-bold text-[var(--color-text-main)]">{project.title}</h1>
+                            <Badge variant={project.status === 'Active' ? 'success' : 'primary'}>{project.status}</Badge>
+                            <Badge variant="secondary">{project.priority} Priority</Badge>
+                        </div>
+                        <p className="text-[var(--color-text-muted)] text-lg leading-relaxed max-w-3xl">
+                            {project.description || 'No description provided.'}
+                        </p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center gap-3 pt-2">
+                        <Button onClick={() => setShowTaskModal(true)} icon={<span className="material-symbols-outlined">add_task</span>}>New Task</Button>
+                        {project.modules?.includes('ideas') && (
+                            <Link to={`/project/${id}/ideas`}>
+                                <Button variant="secondary" icon={<span className="material-symbols-outlined">lightbulb</span>}>Ideas</Button>
+                            </Link>
+                        )}
+                    </div>
                 </div>
-            </section>
+            </div>
 
-            {showEditModal && (
-                <Modal onClose={() => setShowEditModal(false)}>
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="font-bold text-slate-900 dark:text-white">Edit Project</h3>
-                            <button onClick={() => setShowEditModal(false)} className="text-sm text-slate-500">Close</button>
-                        </div>
-                        <div className="space-y-3">
-                            <div className="flex flex-col gap-1">
-                                <label className="text-xs font-bold text-slate-500 uppercase">Title</label>
-                                <input value={editTitle} onChange={(e) => setEditTitle(e.target.value)} className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm" />
+            {/* Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                {/* Left Col */}
+                <div className="lg:col-span-2 space-y-6">
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                        <Card padding="sm" className="flex items-center gap-4 p-4 col-span-1 sm:col-span-2 md:col-span-2">
+                            <div className="relative size-16 shrink-0">
+                                <DonutChart
+                                    data={[
+                                        { name: 'Completed', value: completedTasks, color: 'var(--color-success)' },
+                                        { name: 'Open', value: openTasks, color: 'var(--color-surface-border)' }
+                                    ]}
+                                    size={64}
+                                    thickness={8}
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center text-xs font-bold">{progress}%</div>
                             </div>
-                            <div className="flex flex-col gap-1">
-                                <label className="text-xs font-bold text-slate-500 uppercase">Description</label>
-                                <textarea value={editDescription} onChange={(e) => setEditDescription(e.target.value)} className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm" rows={4} />
-                                <div className="flex justify-between items-center">
-                                    <span className="text-[11px] text-slate-500">Let Gemini draft a description from tasks and ideas.</span>
-                                    <button
-                                        type="button"
-                                        onClick={handleGenerateDescription}
-                                        disabled={generatingDesc}
-                                        className="text-xs font-bold px-2 py-1 rounded-md border border-slate-200 dark:border-slate-700 hover:border-slate-400 disabled:opacity-50"
+                            <div>
+                                <h4 className="text-sm font-bold text-[var(--color-text-main)]">Task Progress</h4>
+                                <p className="text-xs text-[var(--color-text-muted)]">{completedTasks} of {tasks.length} tasks completed</p>
+                            </div>
+                        </Card>
+
+                        {[
+                            { label: 'Open Tasks', value: openTasks, icon: 'list' },
+                            { label: 'Urgent', value: urgentCount, icon: 'warning', color: urgentCount > 0 ? 'text-rose-500' : undefined },
+                        ].map((stat, i) => (
+                            <Card key={i} padding="sm" className="flex flex-col items-center justify-center text-center py-4">
+                                <span className={`material-symbols-outlined text-2xl mb-1 ${stat.color || 'text-[var(--color-text-subtle)]'}`}>{stat.icon}</span>
+                                <span className="text-xl font-bold text-[var(--color-text-main)]">{stat.value}</span>
+                                <span className="text-xs text-[var(--color-text-muted)] uppercase font-semibold">{stat.label}</span>
+                            </Card>
+                        ))}
+                    </div>
+
+                    {/* AI Insight */}
+                    {showInsight && (
+                        <div className="rounded-xl p-5 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/20 dark:to-blue-950/20 border border-indigo-100 dark:border-indigo-900/50">
+                            <div className="flex items-start gap-4">
+                                <span className="material-symbols-outlined text-indigo-500 text-3xl">auto_awesome</span>
+                                <div className="space-y-2 flex-1">
+                                    <h3 className="font-bold text-indigo-900 dark:text-indigo-100">Project Insight</h3>
+                                    <p className="text-sm text-indigo-800 dark:text-indigo-200 leading-relaxed">
+                                        {cleanText(insight) || "Generate a report to get get tailored guidance."}
+                                    </p>
+                                    <div className="flex gap-3 pt-2">
+                                        <Button size="sm" variant="primary" onClick={handleGenerateReport} isLoading={reportLoading}>
+                                            {report || lastReport ? 'Update Report' : 'Generate Report'}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Recent Tasks */}
+                    <Card>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="h4">Recent Tasks</h3>
+                            <Link to={`/project/${id}/tasks`} className="text-sm font-semibold text-[var(--color-primary)] hover:underline">View All</Link>
+                        </div>
+                        <div className="divide-y divide-[var(--color-surface-border)]">
+                            {recentTasks.length === 0 ? (
+                                <p className="text-center py-6 text-[var(--color-text-muted)]">No tasks yet.</p>
+                            ) : recentTasks.map(task => (
+                                <div key={task.id} className="py-3 flex items-start gap-3 hover:bg-[var(--color-surface-hover)] -mx-4 px-4 transition-colors">
+                                    <input
+                                        type="checkbox"
+                                        checked={task.isCompleted}
+                                        onChange={() => handleToggleTask(task.id, task.isCompleted)}
+                                        className="mt-1 size-4 rounded border-[var(--color-line-dark)] text-[var(--color-primary)]"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                        <Link to={`/project/${id}/tasks/${task.id}`} className={`text-sm font-medium truncate block ${task.isCompleted ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)]'}`}>
+                                            {task.title}
+                                        </Link>
+                                        <div className="flex gap-2 mt-1">
+                                            {task.priority && <Badge size="sm" variant="outline">{task.priority}</Badge>}
+                                            {task.dueDate && <span className="text-xs text-[var(--color-text-subtle)] flex items-center gap-1"><span className="material-symbols-outlined text-[10px]">event</span> {new Date(task.dueDate).toLocaleDateString()}</span>}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </Card>
+
+                    {/* Recent Issues */}
+                    {project.modules?.includes('issues') && (
+                        <Card>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="h4">Recent Issues</h3>
+                                <Link to={`/project/${id}/issues`} className="text-sm font-semibold text-[var(--color-primary)] hover:underline">View All</Link>
+                            </div>
+                            <div className="divide-y divide-[var(--color-surface-border)]">
+                                {issues.length === 0 ? (
+                                    <p className="text-center py-6 text-[var(--color-text-muted)]">No open issues.</p>
+                                ) : issues.slice(0, 5).map(issue => (
+                                    <div key={issue.id} className="py-3 flex items-start gap-3 hover:bg-[var(--color-surface-hover)] -mx-4 px-4 transition-colors">
+                                        <div className={`mt-1 size-2 rounded-full shrink-0 ${issue.status === 'Open' ? 'bg-blue-500' : issue.status === 'In Progress' ? 'bg-amber-500' : 'bg-green-500'}`} />
+                                        <div className="flex-1 min-w-0">
+                                            <Link to={`/project/${id}/issues`} className="text-sm font-medium truncate block text-[var(--color-text-main)] hover:text-[var(--color-primary)]">
+                                                {issue.title}
+                                            </Link>
+                                            <div className="flex gap-2 mt-1">
+                                                <Badge size="sm" variant={issue.priority === 'Urgent' ? 'error' : 'secondary'}>{issue.priority}</Badge>
+                                                <span className="text-xs text-[var(--color-text-subtle)]">{issue.status}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </Card>
+                    )}
+                    {/* Project Links */}
+                    <Card>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="h4">Links</h3>
+                        </div>
+                        {project?.links && project.links.length > 0 ? (
+                            <div className="space-y-2">
+                                {project.links.map((link, i) => (
+                                    <a
+                                        key={i}
+                                        href={link.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-3 p-3 rounded-lg border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] transition-colors group"
                                     >
-                                        {generatingDesc ? 'Generating…' : 'Generate description'}
+                                        <div className="size-8 rounded-full bg-[var(--color-text-main)] text-[var(--color-surface-bg)] flex items-center justify-center shrink-0">
+                                            <span className="material-symbols-outlined text-[18px]">link</span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-semibold text-sm truncate group-hover:text-[var(--color-primary)] transition-colors">{link.title}</p>
+                                            <p className="text-xs text-[var(--color-text-muted)] truncate">{link.url}</p>
+                                        </div>
+                                        <span className="material-symbols-outlined text-[16px] text-[var(--color-text-subtle)]">open_in_new</span>
+                                    </a>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-[var(--color-text-muted)]">No important links added.</p>
+                        )}
+                    </Card>
+                </div>
+
+                {/* Right Col */}
+                <div className="space-y-6">
+                    {/* Team Card */}
+                    <TeamCard projectId={id || ''} tenantId={project?.tenantId} onInvite={handleInvite} />
+
+                    {/* Activity Stream */}
+                    <Card>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="h4">Activity</h3>
+                            <Link to={`/project/${id}/activity`} className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-primary)]">View History</Link>
+                        </div>
+                        <div className="space-y-6">
+                            {activity.slice(0, 5).map((item, idx) => {
+                                const { icon, color, bg } = activityIcon(item.type, item.action);
+                                return (
+                                    <div key={item.id} className="flex gap-3 relative">
+                                        {idx !== 4 && <div className="absolute left-3.5 top-8 bottom-[-16px] w-px bg-[var(--color-surface-border)]" />}
+                                        <div className={`size-7 rounded-full shrink-0 flex items-center justify-center ${bg} ${color}`}>
+                                            <span className="material-symbols-outlined text-[16px]">{icon}</span>
+                                        </div>
+                                        <div className="space-y-1 pb-1">
+                                            <p className="text-sm text-[var(--color-text-main)] leading-snug">
+                                                <span className="font-semibold">{item.user}</span> {item.action}
+                                            </p>
+                                            <p className="text-xs text-[var(--color-text-muted)]">{timeAgo(item.createdAt)}</p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {activity.length === 0 && <p className="text-sm text-[var(--color-text-muted)]">No recent activity.</p>}
+                        </div>
+                    </Card>
+
+                    {/* Screenshots */}
+                    <Card>
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="h4">Gallery</h3>
+                            <Button size="sm" variant="ghost" onClick={() => { setSelectedImageIndex(0); setShowGalleryModal(true); }}>View All</Button>
+                        </div>
+                        {project?.screenshots?.length ? (
+                            <div className="grid grid-cols-2 gap-2">
+                                {project.screenshots.slice(0, 4).map((shot, i) => (
+                                    <div
+                                        key={i}
+                                        className="aspect-video rounded-lg bg-[var(--color-surface-hover)] overflow-hidden border border-[var(--color-surface-border)] cursor-pointer hover:opacity-90 transition-opacity"
+                                        onClick={() => { setSelectedImageIndex(i); setShowGalleryModal(true); }}
+                                    >
+                                        <img src={shot} alt="" className="w-full h-full object-cover" />
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="py-6 text-center border-2 border-dashed border-[var(--color-surface-border)] rounded-lg">
+                                <p className="text-xs text-[var(--color-text-muted)]">No screenshots uploaded.</p>
+                            </div>
+                        )}
+                    </Card>
+                </div>
+            </div >
+
+            {/* Gallery Modal */}
+            < Modal isOpen={showGalleryModal} onClose={() => setShowGalleryModal(false)} title="Project Gallery" size="xl" >
+                <div className="space-y-4">
+                    <div className="aspect-video w-full bg-black rounded-xl overflow-hidden flex items-center justify-center relative group">
+                        {project?.screenshots?.[selectedImageIndex] ? (
+                            <>
+                                <img src={project.screenshots[selectedImageIndex]} alt="Gallery" className="max-w-full max-h-[70vh] object-contain" />
+                                {selectedImageIndex > 0 && (
+                                    <button
+                                        className="absolute left-4 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100"
+                                        onClick={(e) => { e.stopPropagation(); setSelectedImageIndex(selectedImageIndex - 1); }}
+                                    >
+                                        <span className="material-symbols-outlined">chevron_left</span>
                                     </button>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-bold text-slate-500 uppercase">Status</label>
-                                    <select value={editStatus} onChange={(e) => setEditStatus(e.target.value as Project['status'])} className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm">
-                                        {statusOptions.map(s => <option key={s} value={s}>{s}</option>)}
-                                    </select>
-                                </div>
-                                <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-bold text-slate-500 uppercase">Priority</label>
-                                    <select value={editPriority} onChange={(e) => setEditPriority(e.target.value as any)} className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm">
-                                        {priorityOptions.map(p => <option key={p} value={p}>{p}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-bold text-slate-500 uppercase">Start Date</label>
-                                    <input
-                                        type="date"
-                                        value={editStartDate}
-                                        onChange={(e) => setEditStartDate(e.target.value)}
-                                        className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
-                                    />
-                                </div>
-                                <div className="flex flex-col gap-1">
-                                    <label className="text-xs font-bold text-slate-500 uppercase">Due Date</label>
-                                    <input
-                                        type="date"
-                                        value={editDueDate}
-                                        onChange={(e) => setEditDueDate(e.target.value)}
-                                        className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-transparent px-3 py-2 text-sm"
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-xs font-bold text-slate-500 uppercase">Cover image</label>
-                                    <label className="relative h-24 rounded-lg border-2 border-dashed border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 flex items-center justify-center cursor-pointer overflow-hidden">
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            className="absolute inset-0 opacity-0 cursor-pointer"
-                                            onChange={(e) => {
-                                                if (e.target.files && e.target.files[0]) setEditCoverFile(e.target.files[0]);
-                                            }}
-                                        />
-                                        {editCoverFile ? (
-                                            <img src={URL.createObjectURL(editCoverFile)} alt="Cover preview" className="w-full h-full object-cover" />
-                                        ) : project?.coverImage ? (
-                                            <img src={project.coverImage} alt="Current cover" className="w-full h-full object-cover opacity-80" />
+                                )}
+                                {project.screenshots && selectedImageIndex < project.screenshots.length - 1 && (
+                                    <button
+                                        className="absolute right-4 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100"
+                                        onClick={(e) => { e.stopPropagation(); setSelectedImageIndex(selectedImageIndex + 1); }}
+                                    >
+                                        <span className="material-symbols-outlined">chevron_right</span>
+                                    </button>
+                                )}
+                            </>
+                        ) : (
+                            <p className="text-white/50">No Image</p>
+                        )}
+                    </div>
+                    <div className="flex gap-2 overflow-x-auto py-2">
+                        {project?.screenshots?.map((shot, idx) => (
+                            <button
+                                key={idx}
+                                onClick={() => setSelectedImageIndex(idx)}
+                                className={`shrink-0 w-20 h-14 rounded-lg overflow-hidden border-2 transition-all ${selectedImageIndex === idx ? 'border-[var(--color-primary)] opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                            >
+                                <img src={shot} alt="" className="w-full h-full object-cover" />
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            </Modal >
+
+            {/* Edit Modal */}
+            < Modal
+                isOpen={showEditModal}
+                onClose={() => setShowEditModal(false)}
+                title="Edit Project Details"
+                size="xl"
+                footer={
+                    <>
+                        <Button variant="ghost" onClick={() => setShowEditModal(false)}>Cancel</Button>
+                        <Button onClick={handleSaveEdit} isLoading={savingEdit}>Save Changes</Button>
+                    </>
+                }
+            >
+                <div className="space-y-6">
+                    {/* Top Row: Title & Description */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="md:col-span-2 space-y-4">
+                            <Input label="Project Title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+                            <Textarea
+                                label="Description"
+                                value={editDescription}
+                                onChange={(e) => setEditDescription(e.target.value)}
+                                rows={4}
+                            />
+                        </div>
+
+                        <div className="space-y-4">
+                            <Select label="Status" value={editStatus} onChange={(e) => setEditStatus(e.target.value as any)}>
+                                <option>Active</option>
+                                <option>Planning</option>
+                                <option>Completed</option>
+                                <option>On Hold</option>
+                            </Select>
+
+                            <Select label="Priority" value={editPriority} onChange={(e) => setEditPriority(e.target.value as any)}>
+                                <option>Low</option>
+                                <option>Medium</option>
+                                <option>High</option>
+                                <option>Urgent</option>
+                            </Select>
+
+                            {/* Restored Image Uploads */}
+                            <div className="space-y-2 pt-2 border-t border-[var(--color-surface-border)]">
+                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Assets</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <label className="cursor-pointer group relative flex flex-col items-center justify-center h-20 rounded-xl border border-dashed border-[var(--color-surface-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] transition-all overflow-hidden bg-cover bg-center" style={{ backgroundImage: !coverRemoved && (editCoverFile || project.coverImage) ? `url(${editCoverFile ? URL.createObjectURL(editCoverFile) : project.coverImage})` : 'none' }}>
+                                        <input type="file" className="absolute inset-0 opacity-0 cursor-pointer z-10" accept="image/*" onChange={(e) => handleFileSelect(e, 'cover')} />
+                                        {!coverRemoved && (editCoverFile || project.coverImage) ? (
+                                            <div className="absolute top-1 right-1 z-20">
+                                                <Button size="icon" variant="danger" className="size-6" onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    setEditCoverFile(null);
+                                                    setCoverRemoved(true);
+                                                }}>
+                                                    <span className="material-symbols-outlined text-[14px]">delete</span>
+                                                </Button>
+                                            </div>
                                         ) : (
-                                            <div className="flex flex-col items-center gap-1 text-slate-500 text-xs font-semibold">
-                                                <span className="material-symbols-outlined text-base">cloud_upload</span>
-                                                Upload cover
+                                            <div className={`absolute inset-0 flex flex-col items-center justify-center transition-colors ${!coverRemoved && (editCoverFile || project.coverImage) ? 'bg-black/50 text-white opacity-0 group-hover:opacity-100' : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]'}`}>
+                                                <span className="material-symbols-outlined text-[20px]">image</span>
+                                                <span className="text-[10px] font-medium mt-1">Change Cover</span>
+                                            </div>
+                                        )}
+                                    </label>
+                                    <label className="cursor-pointer group relative flex flex-col items-center justify-center h-20 rounded-xl border border-dashed border-[var(--color-surface-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] transition-all overflow-hidden bg-cover bg-center" style={{ backgroundImage: !iconRemoved && (editIconFile || project.squareIcon) ? `url(${editIconFile ? URL.createObjectURL(editIconFile) : project.squareIcon})` : 'none' }}>
+                                        <input type="file" className="absolute inset-0 opacity-0 cursor-pointer z-10" accept="image/*" onChange={(e) => handleFileSelect(e, 'icon')} />
+                                        {!iconRemoved && (editIconFile || project.squareIcon) ? (
+                                            <div className="absolute top-1 right-1 z-20">
+                                                <Button size="icon" variant="danger" className="size-6" onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    setEditIconFile(null);
+                                                    setIconRemoved(true);
+                                                }}>
+                                                    <span className="material-symbols-outlined text-[14px]">delete</span>
+                                                </Button>
+                                            </div>
+                                        ) : (
+                                            <div className={`absolute inset-0 flex flex-col items-center justify-center transition-colors ${!iconRemoved && (editIconFile || project.squareIcon) ? 'bg-black/50 text-white opacity-0 group-hover:opacity-100' : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]'}`}>
+                                                <span className="material-symbols-outlined text-[20px]">apps</span>
+                                                <span className="text-[10px] font-medium mt-1">Change Icon</span>
                                             </div>
                                         )}
                                     </label>
                                 </div>
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-xs font-bold text-slate-500 uppercase">Square icon</label>
-                                    <label className="relative size-24 rounded-lg border-2 border-dashed border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 flex items-center justify-center cursor-pointer overflow-hidden">
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            className="absolute inset-0 opacity-0 cursor-pointer"
-                                            onChange={(e) => {
-                                                if (e.target.files && e.target.files[0]) setEditIconFile(e.target.files[0]);
-                                            }}
-                                        />
-                                        {editIconFile ? (
-                                            <img src={URL.createObjectURL(editIconFile)} alt="Icon preview" className="w-full h-full object-cover" />
-                                        ) : project?.squareIcon ? (
-                                            <img src={project.squareIcon} alt="Current icon" className="w-full h-full object-cover opacity-80" />
-                                        ) : (
-                                            <div className="flex flex-col items-center gap-1 text-slate-500 text-xs font-semibold">
-                                                <span className="material-symbols-outlined text-base">apps</span>
-                                                Upload icon
-                                            </div>
-                                        )}
-                                    </label>
-                                </div>
                             </div>
                         </div>
-                        <div className="flex justify-end gap-2">
-                            <button onClick={() => setShowEditModal(false)} className="px-3 py-2 text-sm font-bold border border-slate-200 dark:border-slate-700 rounded-lg">Cancel</button>
-                            <button onClick={handleSaveEdit} disabled={savingEdit} className="px-4 py-2 text-sm font-bold bg-black text-white rounded-lg disabled:opacity-50">
-                                {savingEdit ? 'Saving...' : 'Save'}
-                            </button>
+                    </div>
+
+                    <div className="h-px bg-[var(--color-surface-border)]" />
+
+                    {/* Modules Grid */}
+                    <div className="space-y-3">
+                        <label className="text-sm font-bold text-[var(--color-text-main)]">Enabled Modules</label>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                            {['tasks', 'ideas', 'mindmap', 'activity', 'issues'].map(mod => (
+                                <label key={mod} className={`
+                                    flex flex-col items-center justify-center gap-2 cursor-pointer p-3 rounded-xl border transition-all text-center
+                                    ${editModules?.includes(mod as any)
+                                        ? 'border-[var(--color-primary)] bg-[var(--color-surface-hover)]'
+                                        : 'border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'}
+                                `}>
+                                    <input
+                                        type="checkbox"
+                                        checked={editModules ? editModules.includes(mod as any) : true}
+                                        onChange={(e) => {
+                                            const current = editModules || ['tasks', 'ideas', 'mindmap', 'activity', 'issues'];
+                                            let next = [...current];
+                                            if (e.target.checked) {
+                                                if (!next.includes(mod as any)) next.push(mod as any);
+                                            } else {
+                                                next = next.filter(m => m !== mod);
+                                            }
+                                            setEditModules(next as any);
+                                        }}
+                                        className="hidden"
+                                    />
+                                    <div className={`
+                                        size-8 rounded-full flex items-center justify-center transition-colors
+                                        ${editModules?.includes(mod as any) ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-surface-border)] text-[var(--color-text-muted)]'}
+                                    `}>
+                                        <span className="material-symbols-outlined text-[18px]">
+                                            {mod === 'tasks' ? 'check_circle' :
+                                                mod === 'ideas' ? 'lightbulb' :
+                                                    mod === 'mindmap' ? 'hub' :
+                                                        mod === 'activity' ? 'history' : 'bug_report'}
+                                        </span>
+                                    </div>
+                                    <span className="text-xs font-semibold capitalize">{mod}</span>
+                                </label>
+                            ))}
                         </div>
                     </div>
-                </Modal>
-            )}
 
-            {showDeleteModal && (
-                <Modal onClose={() => setShowDeleteModal(false)}>
-                    <div className="space-y-4">
-                        <h3 className="font-bold text-slate-900 dark:text-white">Delete Project</h3>
-                        <p className="text-sm text-slate-600 dark:text-slate-300">Are you sure you want to delete this project? This cannot be undone.</p>
-                        <div className="flex justify-end gap-2">
-                            <button onClick={() => setShowDeleteModal(false)} className="px-3 py-2 text-sm font-bold border border-slate-200 dark:border-slate-700 rounded-lg">Cancel</button>
-                            <button onClick={handleDeleteProject} disabled={deletingProject} className="px-4 py-2 text-sm font-bold bg-rose-600 text-white rounded-lg disabled:opacity-50">
-                                {deletingProject ? 'Deleting...' : 'Delete'}
-                            </button>
+                    <div className="h-px bg-[var(--color-surface-border)]" />
+
+                    {/* Resources & Links */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Sidebar Resources */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-[var(--color-text-main)]">Sidebar Resources</label>
+                                <Button size="sm" variant="ghost" onClick={() => setEditExternalResources([...editExternalResources, { title: '', url: '', icon: 'open_in_new' }])} icon={<span className="material-symbols-outlined">add</span>}>
+                                    Add
+                                </Button>
+                            </div>
+                            <div className="space-y-3 max-h-[200px] overflow-y-auto pr-1">
+                                {editExternalResources.length === 0 && <p className="text-xs text-[var(--color-text-muted)] py-2">No sidebar resources.</p>}
+                                {editExternalResources.map((res, idx) => (
+                                    <div key={idx} className="flex gap-2 items-start group">
+                                        <div className="flex-1 space-y-2">
+                                            <Input
+                                                placeholder="Label"
+                                                value={res.title}
+                                                onChange={(e) => {
+                                                    const newRes = [...editExternalResources];
+                                                    newRes[idx].title = e.target.value;
+                                                    setEditExternalResources(newRes);
+                                                }}
+                                            />
+                                            <Input
+                                                placeholder="https://..."
+                                                value={res.url}
+                                                onChange={(e) => {
+                                                    const newRes = [...editExternalResources];
+                                                    newRes[idx].url = e.target.value;
+                                                    setEditExternalResources(newRes);
+                                                }}
+                                            />
+                                        </div>
+                                        <button onClick={() => setEditExternalResources(editExternalResources.filter((_, i) => i !== idx))} className="text-[var(--color-text-muted)] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity pt-2">
+                                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Overview Links */}
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-bold text-[var(--color-text-main)]">Overview Links</label>
+                                <Button size="sm" variant="ghost" onClick={() => setEditLinks([...editLinks, { title: '', url: '' }])} icon={<span className="material-symbols-outlined">add</span>}>
+                                    Add
+                                </Button>
+                            </div>
+                            <div className="space-y-3 max-h-[200px] overflow-y-auto pr-1">
+                                {editLinks.length === 0 && <p className="text-xs text-[var(--color-text-muted)] py-2">No overview links.</p>}
+                                {editLinks.map((link, idx) => (
+                                    <div key={idx} className="flex gap-2 items-start group">
+                                        <div className="flex-1 space-y-2">
+                                            <Input
+                                                placeholder="Title"
+                                                value={link.title}
+                                                onChange={(e) => {
+                                                    const newLinks = [...editLinks];
+                                                    newLinks[idx].title = e.target.value;
+                                                    setEditLinks(newLinks);
+                                                }}
+                                            />
+                                            <Input
+                                                placeholder="https://..."
+                                                value={link.url}
+                                                onChange={(e) => {
+                                                    const newLinks = [...editLinks];
+                                                    newLinks[idx].url = e.target.value;
+                                                    setEditLinks(newLinks);
+                                                }}
+                                            />
+                                        </div>
+                                        <button onClick={() => setEditLinks(editLinks.filter((_, i) => i !== idx))} className="text-[var(--color-text-muted)] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity pt-2">
+                                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
-                </Modal>
-            )}
+                </div>
+            </Modal >
 
-            {showTaskModal && project && (
+            {/* Delete Modal */}
+            < Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Delete Project"
+                footer={
+                    <>
+                        <Button variant="ghost" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
+                        <Button variant="danger" onClick={handleDeleteProject} isLoading={deletingProject}>Delete Project</Button>
+                    </>
+                }
+            >
+                <p className="text-sm text-[var(--color-text-muted)]">
+                    Are you sure you want to delete <span className="font-bold text-[var(--color-text-main)]">{project.title}</span>? This action cannot be undone and will remove all associated tasks and data.
+                </p>
+            </Modal >
+
+            {showTaskModal && (
                 <TaskCreateModal
-                    projectId={project.id}
+                    projectId={id!}
                     onClose={() => setShowTaskModal(false)}
-                    onCreated={(updatedTasks) => {
-                        setTasks(updatedTasks);
+                    onCreated={() => {
+                        // Task subscription will handle update
                         setShowTaskModal(false);
                     }}
                 />
             )}
-
-        </div>
+        </div >
     );
 };
-
-const Modal = ({ children, onClose }: { children: React.ReactNode; onClose: () => void }) => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={onClose}>
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xl w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
-            {children}
-        </div>
-    </div>
-);
-
-const StatCard = ({ label, value, delta, deltaColor, icon }: { label: string; value: string | number; delta: string; deltaColor: string; icon: string }) => (
-    <div className="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-        <div className="flex items-center justify-between">
-            <div className="text-xs font-bold text-slate-500 uppercase">{label}</div>
-            <span className="material-symbols-outlined text-slate-400 text-[18px]">{icon}</span>
-        </div>
-        <div className="mt-2 text-2xl font-extrabold text-slate-900 dark:text-white">{value}</div>
-        <p className={`text-xs ${deltaColor}`}>{delta}</p>
-    </div>
-);

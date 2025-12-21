@@ -1,40 +1,93 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { generateProjectDescription } from '../services/geminiService';
 import { createProject } from '../services/dataService';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
+import { Textarea } from '../components/ui/Textarea';
+import { Card } from '../components/ui/Card';
+import { ProjectModule } from '../types';
+
+import { ImageCropper } from '../components/ui/ImageCropper';
 
 export const CreateProjectForm = () => {
     const navigate = useNavigate();
+    const [step, setStep] = useState(1);
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [startDate, setStartDate] = useState('');
     const [dueDate, setDueDate] = useState('');
     const [priority, setPriority] = useState('Medium');
     const [status, setStatus] = useState('Planning');
+    const [modules, setModules] = useState<ProjectModule[]>(['tasks', 'ideas', 'activity']);
+    const [links, setLinks] = useState<{ title: string; url: string }[]>([]);
+
+    // File & Cropping State
     const [coverFile, setCoverFile] = useState<File | null>(null);
     const [squareIconFile, setSquareIconFile] = useState<File | null>(null);
     const [screenshotFiles, setScreenshotFiles] = useState<File[]>([]);
+
+    // Cropper Modal State
+    const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+    const [cropAspectRatio, setCropAspectRatio] = useState(1);
+    const [cropType, setCropType] = useState<'cover' | 'icon' | null>(null);
+
     const [isGenerating, setIsGenerating] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    const minDueDate = useMemo(() => (startDate ? startDate : undefined), [startDate]);
+
     const handleGenerateDesc = async () => {
-        if(!name) return;
+        if (!name) return;
         setIsGenerating(true);
         try {
-            const desc = await generateProjectDescription(name, "A software development project");
+            const desc = await generateProjectDescription(name, 'A software development project');
             setDescription(desc);
         } catch (err) {
-            console.error("Failed to generate description:", err);
-            alert(err instanceof Error ? err.message : "Could not generate description. Please check your Gemini API key.");
+            console.error('Failed to generate description:', err);
         } finally {
             setIsGenerating(false);
         }
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'icon') => {
         if (e.target.files && e.target.files[0]) {
-            setCoverFile(e.target.files[0]);
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            reader.onload = () => {
+                setCropImageSrc(reader.result as string);
+                setCropType(type);
+                setCropAspectRatio(type === 'cover' ? 16 / 9 : 1);
+            };
+            reader.readAsDataURL(file);
         }
+        // Reset input value to allow re-selecting same file
+        e.target.value = '';
+    };
+
+    const handleGallerySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files) {
+            const files = Array.from(e.target.files);
+            setScreenshotFiles(prev => [...prev, ...files]);
+        }
+        e.target.value = '';
+    };
+
+    const handleCropComplete = (croppedBlob: Blob) => {
+        if (cropType === 'cover') {
+            const file = new File([croppedBlob], "cover.jpg", { type: "image/jpeg" });
+            setCoverFile(file);
+        } else if (cropType === 'icon') {
+            const file = new File([croppedBlob], "icon.jpg", { type: "image/jpeg" });
+            setSquareIconFile(file);
+        }
+        closeCropper();
+    };
+
+    const closeCropper = () => {
+        setCropImageSrc(null);
+        setCropType(null);
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -43,233 +96,319 @@ export const CreateProjectForm = () => {
 
         setIsSubmitting(true);
         try {
-            await createProject({
-                title: name,
-                description,
-                startDate,
-                dueDate,
-                priority,
-                status: status as any,
-            }, coverFile || undefined, squareIconFile || undefined, screenshotFiles.length ? screenshotFiles : undefined);
-            
+            await createProject(
+                {
+                    title: name,
+                    description,
+                    startDate,
+                    dueDate,
+                    priority,
+                    status: status as any,
+                    modules,
+                    links
+                },
+                coverFile || undefined,
+                squareIconFile || undefined,
+                screenshotFiles.length ? screenshotFiles : undefined
+            );
             navigate('/projects');
         } catch (error) {
-            console.error("Error creating project:", error);
-            alert("Failed to create project. See console for details.");
+            console.error('Error creating project:', error);
         } finally {
             setIsSubmitting(false);
         }
     };
 
     return (
-        <div className="max-w-[1200px] mx-auto flex flex-col gap-6 md:gap-8 pb-10 p-4 md:p-8">
-            <form onSubmit={handleSubmit}>
-                <div className="flex flex-wrap justify-between items-end gap-4 mb-8">
-                    <div className="flex flex-col gap-1">
-                        <nav className="flex text-sm text-gray-500 dark:text-gray-400 font-medium mb-1">
-                            <Link to="/projects" className="hover:text-black transition-colors">Projects</Link>
-                            <span className="mx-2">/</span>
-                            <Link to="/create" className="hover:text-black transition-colors">Create New</Link>
-                        </nav>
-                        <h1 className="text-gray-900 dark:text-white text-3xl font-extrabold leading-tight tracking-[-0.033em]">Create New Project</h1>
-                        <p className="text-gray-500 dark:text-gray-400 text-base font-medium">Define your project goals, timeline, and team.</p>
-                    </div>
-                    <div className="flex gap-3">
-                        <Link to="/create" className="flex items-center gap-2 h-10 px-6 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-card-dark text-gray-600 dark:text-gray-300 text-sm font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                            Cancel
-                        </Link>
-                        <button 
-                            type="submit" 
-                            disabled={isSubmitting}
-                            className="flex items-center gap-2 h-10 px-6 rounded-lg bg-black text-white text-sm font-bold hover:bg-gray-800 transition-colors shadow-lg shadow-black/10 disabled:opacity-50"
-                        >
-                            {isSubmitting ? (
-                                <span className="material-symbols-outlined text-[20px] animate-spin">progress_activity</span>
-                            ) : (
-                                <span className="material-symbols-outlined text-[20px]">check</span>
-                            )}
-                            <span>{isSubmitting ? 'Creating...' : 'Create Project'}</span>
-                        </button>
-                    </div>
-                </div>
+        <div className="max-w-5xl mx-auto flex flex-col gap-8 pb-10 p-4 animate-fade-up">
+            {/* Cropper Modal */}
+            <ImageCropper
+                isOpen={!!cropImageSrc}
+                imageSrc={cropImageSrc}
+                aspectRatio={cropAspectRatio}
+                onCropComplete={handleCropComplete}
+                onCancel={closeCropper}
+            />
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-                    <div className="lg:col-span-2 flex flex-col gap-6">
-                        <div className="bg-white dark:bg-card-dark rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 flex flex-col gap-6">
-                            <div className="flex items-center gap-2 pb-4 border-b border-gray-100 dark:border-gray-700">
-                                <span className="material-symbols-outlined text-black">feed</span>
-                                <h3 className="text-gray-900 dark:text-white text-lg font-bold">Project Essentials</h3>
-                            </div>
-                            <div className="space-y-4">
-                                <div className="flex flex-col gap-1.5">
-                                    <label className="text-sm font-bold text-gray-900 dark:text-gray-200" htmlFor="projectName">Project Name <span className="text-red-500">*</span></label>
-                                    <input 
-                                        value={name} onChange={e => setName(e.target.value)}
-                                        className="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-black focus:ring-black" id="projectName" placeholder="e.g. Q4 Marketing Campaign" required type="text"
-                                    />
-                                </div>
-                                
-                                <div className="flex flex-col gap-1.5 pt-2">
-                                    <div className="flex justify-between items-center">
-                                        <label className="text-sm font-bold text-gray-900 dark:text-gray-200" htmlFor="description">Description</label>
-                                        <button 
-                                            type="button" 
-                                            onClick={handleGenerateDesc}
-                                            disabled={isGenerating || !name}
-                                            className="flex items-center gap-1.5 text-xs font-bold text-black hover:text-gray-700 transition-colors bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-md border border-gray-200 dark:border-gray-700 disabled:opacity-50"
-                                        >
-                                            <span className={`material-symbols-outlined text-sm ${isGenerating ? 'animate-spin' : ''}`}>{isGenerating ? 'autorenew' : 'auto_awesome'}</span>
-                                            Generate with Gemini
-                                        </button>
-                                    </div>
-                                    <textarea 
-                                        value={description} onChange={e => setDescription(e.target.value)}
-                                        className="form-textarea w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white placeholder:text-gray-400 focus:border-black focus:ring-black resize-none" id="description" placeholder="Describe the project goals and scope..." rows={5}
-                                    ></textarea>
-                                </div>
-                            </div>
+            <div className="flex flex-col gap-2">
+                <nav className="flex text-sm text-[var(--color-text-muted)] font-medium items-center gap-2">
+                    <Link to="/projects" className="hover:text-[var(--color-text-main)] transition-colors">Projects</Link>
+                    <span>/</span>
+                    <Link to="/create" className="hover:text-[var(--color-text-main)] transition-colors">New</Link>
+                </nav>
+                <div className="flex justify-between items-end">
+                    <div>
+                        <h1 className="h2 text-[var(--color-text-main)]">
+                            {step === 1 ? 'Choose Template' : 'Project Details'}
+                        </h1>
+                        <p className="text-[var(--color-text-muted)] text-sm">
+                            {step === 1
+                                ? 'Start with a pre-configured setup or customize your modules.'
+                                : 'Define your project goals and timeline.'}
+                        </p>
+                    </div>
+
+                    {step === 2 && (
+                        <div className="flex gap-3">
+                            <Button variant="ghost" onClick={() => setStep(1)}>Back</Button>
+                            <Button onClick={handleSubmit} isLoading={isSubmitting} icon={<span className="material-symbols-outlined">check</span>}>
+                                Create Project
+                            </Button>
                         </div>
-                         <div className="bg-white dark:bg-card-dark rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 flex flex-col gap-6">
-                            <div className="flex items-center gap-2 pb-4 border-b border-gray-100 dark:border-gray-700">
-                                <span className="material-symbols-outlined text-black">date_range</span>
-                                <h3 className="text-gray-900 dark:text-white text-lg font-bold">Timeline & Planning</h3>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div className="flex flex-col gap-1.5">
-                                    <label className="text-sm font-bold text-gray-900 dark:text-gray-200" htmlFor="startDate">Start Date</label>
-                                    <input 
-                                        value={startDate} onChange={e => setStartDate(e.target.value)}
-                                        className="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:border-black focus:ring-black" id="startDate" type="date"
-                                    />
+                    )}
+                </div>
+            </div>
+
+            {/* Step 1: Templates & Modules */}
+            {step === 1 && (
+                <div className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {[
+                            { id: 'default', title: 'Standard', desc: 'Tasks, Ideas & Activity', modules: ['tasks', 'ideas', 'activity'] },
+                            { id: 'software', title: 'Software', desc: 'Tasks, Issues & Activity', modules: ['tasks', 'issues', 'activity'] },
+                            { id: 'creative', title: 'Creative', desc: 'Ideas, Mindmap & Activity', modules: ['ideas', 'mindmap', 'activity'] },
+                        ].map((tmpl) => (
+                            <div
+                                key={tmpl.id}
+                                onClick={() => setModules(tmpl.modules as any)}
+                                className={`
+                                    cursor-pointer p-6 rounded-2xl border-2 transition-all text-center flex flex-col items-center gap-4 group
+                                    ${JSON.stringify(modules.sort()) === JSON.stringify(tmpl.modules.sort())
+                                        ? 'border-[var(--color-text-main)] bg-[var(--color-surface-card)] shadow-lg'
+                                        : 'border-[var(--color-surface-border)] bg-[var(--color-surface-card)] hover:border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'}
+                                `}
+                            >
+                                <div className={`
+                                    size-14 rounded-full flex items-center justify-center transition-colors
+                                    ${JSON.stringify(modules.sort()) === JSON.stringify(tmpl.modules.sort())
+                                        ? 'bg-[var(--color-text-main)] text-[var(--color-surface-bg)]'
+                                        : 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] group-hover:bg-[var(--color-surface-border)]'}
+                                `}>
+                                    <span className="material-symbols-outlined text-[28px]">
+                                        {tmpl.id === 'default' ? 'folder_open' : tmpl.id === 'software' ? 'terminal' : 'palette'}
+                                    </span>
                                 </div>
-                                <div className="flex flex-col gap-1.5">
-                                    <label className="text-sm font-bold text-gray-900 dark:text-gray-200" htmlFor="dueDate">Due Date</label>
-                                    <input 
-                                        value={dueDate} onChange={e => setDueDate(e.target.value)}
-                                        className="form-input w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:border-black focus:ring-black" id="dueDate" type="date"
-                                    />
-                                </div>
-                                 <div className="flex flex-col gap-1.5">
-                                    <label className="text-sm font-bold text-gray-900 dark:text-gray-200" htmlFor="priority">Priority</label>
-                                    <select 
-                                        value={priority} onChange={e => setPriority(e.target.value)}
-                                        className="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:border-black focus:ring-black" id="priority"
-                                    >
-                                        <option>Low</option>
-                                        <option>Medium</option>
-                                        <option>High</option>
-                                        <option>Urgent</option>
-                                    </select>
-                                </div>
-                                <div className="flex flex-col gap-1.5">
-                                    <label className="text-sm font-bold text-gray-900 dark:text-gray-200" htmlFor="status">Initial Status</label>
-                                    <select 
-                                        value={status} onChange={e => setStatus(e.target.value)}
-                                        className="form-select w-full rounded-lg border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-white focus:border-black focus:ring-black" id="status"
-                                    >
-                                        <option>Planning</option>
-                                        <option>Active</option>
-                                        <option>On Hold</option>
-                                    </select>
+                                <div>
+                                    <h4 className="font-bold text-lg">{tmpl.title}</h4>
+                                    <p className="text-sm text-[var(--color-text-muted)]">{tmpl.desc}</p>
                                 </div>
                             </div>
-                         </div>
+                        ))}
                     </div>
 
-                    <div className="flex flex-col gap-6">
-                         <div className="bg-white dark:bg-card-dark rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6 flex flex-col gap-4">
-                            <h3 className="text-gray-900 dark:text-white text-lg font-bold border-b border-gray-100 dark:border-gray-700 pb-4">Assets</h3>
-                            <div className="flex flex-col gap-3">
-                                 <label className="text-sm font-bold text-gray-900 dark:text-gray-200">Cover Image</label>
-                                 <div 
-                                    className="w-full h-32 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 flex flex-col items-center justify-center cursor-pointer hover:border-black transition-colors group relative overflow-hidden"
-                                 >
-                                    <input 
-                                        type="file" 
-                                        accept="image/*"
-                                        onChange={handleFileChange}
-                                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-                                    />
-                                    {coverFile ? (
-                                        <div className="absolute inset-0 z-0">
-                                            <img src={URL.createObjectURL(coverFile)} alt="Preview" className="w-full h-full object-cover opacity-60" />
-                                            <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white font-medium text-sm">Change Image</div>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <span className="material-symbols-outlined text-gray-400 group-hover:text-black mb-1">cloud_upload</span>
-                                            <span className="text-xs font-medium text-gray-400 group-hover:text-black">Click to upload</span>
-                                        </>
-                                    )}
-                                 </div>
-                            </div>
-                            <div className="flex flex-col gap-3">
-                                <label className="text-sm font-bold text-gray-900 dark:text-gray-200">Square Icon (for lists & selectors)</label>
-                                <div
-                                    className="w-28 h-28 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 flex flex-col items-center justify-center cursor-pointer hover:border-black transition-colors group relative overflow-hidden"
+                    <Card className="p-6">
+                        <h3 className="h4 flex items-center gap-2 mb-4">
+                            <span className="material-symbols-outlined">tune</span>
+                            Customize Modules
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {[
+                                { id: 'tasks', label: 'Tasks', desc: 'Manage todos and milestones' },
+                                { id: 'ideas', label: 'Ideas', desc: 'Brainstorming and concepts' },
+                                { id: 'mindmap', label: 'Mindmap', desc: 'Visual planning board' },
+                                { id: 'activity', label: 'Activity', desc: 'Track project history' },
+                                { id: 'issues', label: 'Issues', desc: 'Bug tracking and tickets' },
+                            ].map((mod) => (
+                                <div key={mod.id}
+                                    onClick={() => {
+                                        const newModules = modules.includes(mod.id as any)
+                                            ? modules.filter(m => m !== mod.id)
+                                            : [...modules, mod.id as any];
+                                        setModules(newModules);
+                                    }}
+                                    className={`
+                                        cursor-pointer p-3 rounded-lg border transition-all flex items-center gap-3
+                                        ${modules.includes(mod.id as any)
+                                            ? 'border-[var(--color-text-main)] bg-[var(--color-surface-hover)]'
+                                            : 'border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'}
+                                    `}
                                 >
-                                    <input
-                                        type="file"
-                                        accept="image/*"
-                                        onChange={(e) => {
-                                            if (e.target.files && e.target.files[0]) {
-                                                setSquareIconFile(e.target.files[0]);
-                                            }
-                                        }}
-                                        className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-                                    />
-                                    {squareIconFile ? (
-                                        <img src={URL.createObjectURL(squareIconFile)} alt="Icon preview" className="w-full h-full object-cover" />
-                                    ) : (
-                                        <>
-                                            <span className="material-symbols-outlined text-gray-400 group-hover:text-black mb-1">apps</span>
-                                            <span className="text-[11px] font-medium text-gray-400 group-hover:text-black text-center px-2">Upload square icon</span>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="flex flex-col gap-3">
-                                <label className="text-sm font-bold text-gray-900 dark:text-gray-200">Screenshots</label>
-                                <div className="w-full rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 p-3 flex flex-col gap-3">
-                                    <div className="flex items-center justify-between">
-                                        <p className="text-xs text-gray-500 dark:text-gray-400">Upload up to 6 screenshots (optional).</p>
-                                        <label className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md border border-gray-200 dark:border-gray-700 text-xs font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-900 cursor-pointer hover:border-black">
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                multiple
-                                                onChange={(e) => {
-                                                    const files = e.target.files ? Array.from(e.target.files).slice(0, 6) : [];
-                                                    setScreenshotFiles(files);
-                                                }}
-                                                className="hidden"
-                                            />
-                                            <span className="material-symbols-outlined text-sm">upload</span>
-                                            Add
-                                        </label>
+                                    <div className={`
+                                        size-5 rounded border flex items-center justify-center transition-colors
+                                        ${modules.includes(mod.id as any)
+                                            ? 'bg-[var(--color-text-main)] border-[var(--color-text-main)]'
+                                            : 'border-[var(--color-text-subtle)]'}
+                                    `}>
+                                        {modules.includes(mod.id as any) && <span className="material-symbols-outlined text-[var(--color-surface-bg)] text-[14px] font-bold">check</span>}
                                     </div>
-                                    {screenshotFiles.length > 0 && (
-                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                            {screenshotFiles.map((file) => (
-                                                <div key={file.name} className="relative aspect-video rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700">
-                                                    <img src={URL.createObjectURL(file)} alt={file.name} className="w-full h-full object-cover" />
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setScreenshotFiles((prev) => prev.filter((f) => f.name !== file.name))}
-                                                        className="absolute top-1 right-1 size-6 rounded-full bg-black/60 text-white flex items-center justify-center text-xs"
-                                                    >
-                                                        ×
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                    <div>
+                                        <h4 className="font-bold text-sm">{mod.label}</h4>
+                                        <p className="text-xs text-[var(--color-text-muted)]">{mod.desc}</p>
+                                    </div>
                                 </div>
-                            </div>
+                            ))}
                         </div>
+                    </Card>
+
+                    <div className="flex justify-end pt-4">
+                        <Button size="lg" onClick={() => setStep(2)} icon={<span className="material-symbols-outlined">arrow_forward</span>}>
+                            Next Step
+                        </Button>
                     </div>
                 </div>
-            </form>
+            )}
+
+            {/* Step 2: Details Form */}
+            {step === 2 && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
+                    <div className="lg:col-span-2 space-y-6">
+                        <Card className="space-y-6">
+                            <h3 className="h4 flex items-center gap-2 border-b border-[var(--color-surface-border)] pb-3">
+                                <span className="material-symbols-outlined">feed</span>
+                                Essentials
+                            </h3>
+                            <div className="space-y-4">
+                                <Input label="Project Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Q4 Marketing Campaign" required autoFocus />
+
+                                <div className="space-y-1">
+                                    <div className="flex justify-between items-center">
+                                        <label className="text-sm font-bold text-[var(--color-text-main)]">Description</label>
+                                        <Button size="sm" variant="ghost" type="button" onClick={handleGenerateDesc} loading={isGenerating} disabled={!name} icon={<span className="material-symbols-outlined">auto_awesome</span>}>
+                                            Generate
+                                        </Button>
+                                    </div>
+                                    <Textarea
+                                        value={description}
+                                        onChange={(e) => setDescription(e.target.value)}
+                                        placeholder="Describe the project goals..."
+                                        rows={5}
+                                    />
+                                </div>
+                            </div>
+                        </Card>
+
+                        <Card className="space-y-6">
+                            <h3 className="h4 flex items-center gap-2 border-b border-[var(--color-surface-border)] pb-3">
+                                <span className="material-symbols-outlined">date_range</span>
+                                Planning
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Input label="Start Date" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+                                <Input label="Due Date" type="date" value={dueDate} min={minDueDate} onChange={(e) => setDueDate(e.target.value)} />
+                                <Select label="Priority" value={priority} onChange={(e) => setPriority(e.target.value)}>
+                                    {['Low', 'Medium', 'High', 'Urgent'].map(o => <option key={o}>{o}</option>)}
+                                </Select>
+                                <Select label="Status" value={status} onChange={(e) => setStatus(e.target.value)}>
+                                    {['Planning', 'Active', 'On Hold'].map(o => <option key={o}>{o}</option>)}
+                                </Select>
+                            </div>
+                        </Card>
+
+                        {/* Links Section */}
+                        <Card className="space-y-4">
+                            <h3 className="h4 border-b border-[var(--color-surface-border)] pb-3">External Links</h3>
+                            <div className="space-y-3">
+                                {links.map((link, idx) => (
+                                    <div key={idx} className="flex gap-2">
+                                        <Input
+                                            placeholder="Title"
+                                            value={link.title}
+                                            onChange={(e) => {
+                                                const newLinks = [...links];
+                                                newLinks[idx].title = e.target.value;
+                                                setLinks(newLinks);
+                                            }}
+                                            className="flex-1"
+                                        />
+                                        <Input
+                                            placeholder="URL"
+                                            value={link.url}
+                                            onChange={(e) => {
+                                                const newLinks = [...links];
+                                                newLinks[idx].url = e.target.value;
+                                                setLinks(newLinks);
+                                            }}
+                                            className="flex-[2]"
+                                        />
+                                        <Button variant="ghost" size="icon" onClick={() => setLinks(links.filter((_, i) => i !== idx))}>
+                                            <span className="material-symbols-outlined">close</span>
+                                        </Button>
+                                    </div>
+                                ))}
+                                <Button variant="secondary" size="sm" onClick={() => setLinks([...links, { title: '', url: '' }])} icon={<span className="material-symbols-outlined">add</span>}>
+                                    Add Link
+                                </Button>
+                            </div>
+                        </Card>
+                    </div>
+
+                    <div className="space-y-6">
+                        <Card className="space-y-4">
+                            <h3 className="h4 border-b border-[var(--color-surface-border)] pb-3">Assets</h3>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-[var(--color-text-main)]">Cover Image</label>
+                                <label className="w-full h-32 rounded-xl border-2 border-dashed border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] flex flex-col items-center justify-center cursor-pointer hover:border-[var(--color-text-main)] transition-colors relative overflow-hidden group">
+                                    <input type="file" accept="image/*" onChange={(e) => handleFileSelect(e, 'cover')} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                                    {coverFile ? (
+                                        <>
+                                            <img src={URL.createObjectURL(coverFile)} alt="Preview" className="w-full h-full object-cover" />
+                                            <div className="absolute top-2 right-2 z-20">
+                                                <Button size="icon" variant="danger" onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    setCoverFile(null);
+                                                }}>
+                                                    <span className="material-symbols-outlined">delete</span>
+                                                </Button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="flex flex-col items-center text-[var(--color-text-muted)] group-hover:text-[var(--color-text-main)]">
+                                            <span className="material-symbols-outlined">image</span>
+                                            <span className="text-xs font-semibold">Upload Cover</span>
+                                        </div>
+                                    )}
+                                </label>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-[var(--color-text-main)]">Icon</label>
+                                <label className="size-20 rounded-xl border-2 border-dashed border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] flex flex-col items-center justify-center cursor-pointer hover:border-[var(--color-text-main)] transition-colors relative overflow-hidden group">
+                                    <input type="file" accept="image/*" onChange={(e) => handleFileSelect(e, 'icon')} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
+                                    {squareIconFile ? (
+                                        <>
+                                            <img src={URL.createObjectURL(squareIconFile)} alt="Preview" className="w-full h-full object-cover" />
+                                            <div className="absolute -top-1 -right-1 z-20 scale-75">
+                                                <Button size="icon" variant="danger" onClick={(e) => {
+                                                    e.preventDefault();
+                                                    e.stopPropagation();
+                                                    setSquareIconFile(null);
+                                                }}>
+                                                    <span className="material-symbols-outlined">close</span>
+                                                </Button>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <span className="material-symbols-outlined text-[var(--color-text-muted)] group-hover:text-[var(--color-text-main)]">apps</span>
+                                    )}
+                                </label>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold text-[var(--color-text-main)]">Gallery</label>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {screenshotFiles.map((file, idx) => (
+                                        <div key={idx} className="relative aspect-video rounded-lg overflow-hidden border border-[var(--color-surface-border)] group">
+                                            <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover" />
+                                            <div className="absolute top-1 right-1">
+                                                <Button size="icon" variant="danger" className="size-6" onClick={() => setScreenshotFiles(prev => prev.filter((_, i) => i !== idx))}>
+                                                    <span className="material-symbols-outlined text-[14px]">delete</span>
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <label className="aspect-video rounded-lg border-2 border-dashed border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] flex flex-col items-center justify-center cursor-pointer hover:border-[var(--color-text-main)] transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]">
+                                        <input type="file" accept="image/*" multiple onChange={handleGallerySelect} className="hidden" />
+                                        <span className="material-symbols-outlined">add_photo_alternate</span>
+                                        <span className="text-xs font-semibold mt-1">Add Images</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </Card>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

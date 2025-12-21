@@ -35,13 +35,14 @@ export const ProjectDetails = () => {
     }
 
     return (
-        <div className="max-w-[900px] mx-auto flex flex-col gap-6">
+        <div className="max-w-[900px] mx-auto flex flex-col gap-6 animate-fade-up">
             <div>
-                <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Project Details</h1>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">Key metadata for this project.</p>
+                <span className="app-pill w-fit">Details</span>
+                <h1 className="text-2xl font-display font-bold text-ink">Project Details</h1>
+                <p className="text-muted text-sm">Key metadata for this project.</p>
             </div>
 
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm p-6 space-y-5">
+            <div className="app-card p-6 space-y-5">
                 <DetailRow label="Title" value={project.title} />
                 <DetailRow label="Description" value={project.description || 'Not set'} />
                 <DetailRow label="Status" value={project.status || 'Unknown'} />

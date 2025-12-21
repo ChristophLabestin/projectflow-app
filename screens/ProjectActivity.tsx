@@ -1,16 +1,26 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { getProjectActivity } from '../services/dataService';
 import { Activity } from '../types';
 import { toMillis } from '../utils/time';
+import { Card } from '../components/ui/Card';
+import { Badge } from '../components/ui/Badge';
 
 const cleanText = (value?: string | null) => (value || '').replace(/\*\*/g, '');
+
+const activityIcon = (type?: Activity['type'], actionText?: string) => {
+    const action = (actionText || '').toLowerCase();
+    if (type === 'task') return { icon: 'task_alt', color: 'text-emerald-600', bg: 'bg-emerald-50' };
+    if (type === 'status') return { icon: 'flag', color: 'text-indigo-600', bg: 'bg-indigo-50' };
+    if (type === 'report') return { icon: 'article', color: 'text-purple-600', bg: 'bg-purple-50' };
+    if (type === 'priority') return { icon: 'priority_high', color: 'text-rose-600', bg: 'bg-rose-50' };
+    return { icon: 'history', color: 'text-[var(--color-text-muted)]', bg: 'bg-[var(--color-surface-hover)]' };
+};
 
 export const ProjectActivity = () => {
     const { id } = useParams<{ id: string }>();
     const [activity, setActivity] = useState<Activity[]>([]);
     const [loading, setLoading] = useState(true);
-    const [selected, setSelected] = useState<Activity | null>(null);
 
     useEffect(() => {
         if (!id) return;
@@ -21,68 +31,63 @@ export const ProjectActivity = () => {
         })();
     }, [id]);
 
-    return (
-        <div className="max-w-[900px] mx-auto flex flex-col gap-4">
-            <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">Activity</h1>
-            {loading ? (
-                <div className="flex justify-center py-10">
-                    <span className="material-symbols-outlined animate-spin text-3xl text-gray-400">progress_activity</span>
-                </div>
-            ) : activity.length === 0 ? (
-                <div className="text-sm text-gray-500">No activity logged yet.</div>
-            ) : (
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-sm divide-y divide-slate-100 dark:divide-slate-800">
-                    {activity.map(item => (
-                        <button
-                            key={item.id}
-                            onClick={() => setSelected(item)}
-                            className="w-full text-left flex items-center gap-3 p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
-                        >
-                            <div className="size-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
-                                <span className="material-symbols-outlined text-[18px]">
-                                    {item.type === 'task' ? 'check_circle' : item.type === 'status' ? 'flag' : item.type === 'priority' ? 'priority' : item.type === 'report' ? 'description' : 'history'}
-                                </span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <p className="text-sm text-slate-900 dark:text-slate-100"><span className="font-bold">{item.user}</span> {cleanText(item.action)}</p>
-                                <p className="text-xs text-slate-500 line-clamp-1">{cleanText(item.details || item.target)}</p>
-                            </div>
-                            <span className="text-xs text-slate-400">{item.createdAt ? new Date(toMillis(item.createdAt)).toLocaleString() : ''}</span>
-                        </button>
-                    ))}
-                </div>
-            )}
+    if (loading) return (
+        <div className="flex items-center justify-center p-12">
+            <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-3xl">rotate_right</span>
+        </div>
+    );
 
-            {selected && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4" onClick={() => setSelected(null)}>
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl max-w-xl w-full border border-slate-200 dark:border-slate-800 p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-start justify-between gap-3">
-                            <div className="flex items-center gap-3">
-                                <div className="size-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
-                                    <span className="material-symbols-outlined text-[22px]">
-                                        {selected.type === 'task' ? 'check_circle' : selected.type === 'status' ? 'flag' : selected.type === 'priority' ? 'priority' : selected.type === 'report' ? 'description' : 'history'}
-                                    </span>
-                                </div>
-                                <div>
-                                    <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{selected.user}</p>
-                                    <p className="text-xs text-slate-500">{selected.createdAt ? new Date(toMillis(selected.createdAt)).toLocaleString() : ''}</p>
-                                </div>
-                            </div>
-                            <button onClick={() => setSelected(null)} className="p-2 rounded-full hover:bg-slate-100 dark:hover.bg-slate-800 text-slate-500">
-                                <span className="material-symbols-outlined">close</span>
-                            </button>
-                        </div>
-                        <div className="space-y-3">
-                            <p className="text-base text-slate-900 dark:text-slate-100 font-semibold">{cleanText(selected.action)}</p>
-                            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
-                                <p className="text-sm text-slate-700 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">
-                                    {cleanText(selected.details || selected.target)}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+    return (
+        <div className="max-w-4xl mx-auto flex flex-col gap-6 fade-in">
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="h2 text-[var(--color-text-main)]">Activity Log</h1>
+                    <p className="text-[var(--color-text-muted)] text-sm">History of changes and updates.</p>
                 </div>
-            )}
+                <Link to={`/project/${id}`}>
+                    <button className="text-sm font-bold text-[var(--color-primary)] hover:underline">Back to Overview</button>
+                </Link>
+            </div>
+
+            <Card padding="lg">
+                <div className="space-y-8 relative">
+                    {/* Vertical Line */}
+                    <div className="absolute top-2 bottom-2 left-6 w-px bg-[var(--color-surface-border)]" />
+
+                    {activity.length === 0 ? (
+                        <p className="text-[var(--color-text-muted)] pl-12">No activity recorded yet.</p>
+                    ) : (
+                        activity.map((item) => {
+                            const { icon, color, bg } = activityIcon(item.type, item.action);
+                            return (
+                                <div key={item.id} className="relative pl-12">
+                                    <div className={`
+                                        absolute left-1.5 top-0 size-9 rounded-full border-4 border-[var(--color-surface-paper)] 
+                                        flex items-center justify-center ${bg} ${color}
+                                     `}>
+                                        <span className="material-symbols-outlined text-[16px]">{icon}</span>
+                                    </div>
+
+                                    <div className="flex flex-col gap-1">
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-bold text-[var(--color-text-main)] text-sm">{item.user}</span>
+                                            <span className="text-xs text-[var(--color-text-subtle)]">• {new Date(toMillis(item.createdAt)).toLocaleString()}</span>
+                                        </div>
+                                        <p className="text-sm text-[var(--color-text-main)]">
+                                            {cleanText(item.action)}
+                                        </p>
+                                        <div className="p-3 rounded-lg bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] mt-1">
+                                            <p className="text-sm text-[var(--color-text-muted)]">
+                                                {cleanText(item.details || item.target)}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+            </Card>
         </div>
     );
 };
