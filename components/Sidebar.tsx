@@ -276,6 +276,14 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                                     onClick={isDrawer ? onClose : undefined}
                                 />
                             )}
+                            {(!workspace.modules || workspace.modules.includes('social')) && (
+                                <NavItem
+                                    to={`/project/${workspace.projectId}/social`}
+                                    icon="campaign"
+                                    label="Social"
+                                    onClick={isDrawer ? onClose : undefined}
+                                />
+                            )}
                             {(!workspace.modules || workspace.modules.includes('activity')) && (
                                 <NavItem
                                     to={`/project/${workspace.projectId}/activity`}

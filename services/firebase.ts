@@ -29,6 +29,6 @@ try {
   throw error;
 }
 
-import { GithubAuthProvider } from "firebase/auth";
+import { GithubAuthProvider, FacebookAuthProvider } from "firebase/auth";
 
-export { auth, db, storage, GithubAuthProvider };
+export { auth, db, storage, GithubAuthProvider, FacebookAuthProvider };

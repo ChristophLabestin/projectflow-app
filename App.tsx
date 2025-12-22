@@ -30,6 +30,14 @@ import { JoinWorkspaceViaLink } from './screens/JoinWorkspaceViaLink';
 import { Profile } from './screens/Profile';
 import { Settings } from './screens/Settings';
 import { Notifications } from './screens/Notifications';
+import { SocialLayout } from './screens/social/SocialLayout';
+import { SocialDashboard } from './screens/social/SocialDashboard';
+import { CampaignList } from './screens/social/CampaignList';
+import { PostList } from './screens/social/PostList';
+import { SocialCalendar } from './screens/social/SocialCalendar';
+import { SocialSettings } from './screens/social/SocialSettings';
+import { SocialAssets } from './screens/social/SocialAssets';
+import { CreateSocialPost } from './screens/social/CreateSocialPost';
 import { auth } from './services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -135,6 +143,16 @@ const App = () => {
                                 <Route path="issues/:issueId" element={<ProjectIssueDetail />} />
                                 <Route path="mindmap" element={<ProjectMindmap />} />
                                 <Route path="milestones" element={<ProjectMilestones />} />
+                                <Route path="social" element={<SocialLayout />}>
+                                    <Route index element={<SocialDashboard />} />
+                                    <Route path="campaigns" element={<CampaignList />} />
+                                    <Route path="posts" element={<PostList />} />
+                                    <Route path="calendar" element={<SocialCalendar />} />
+                                    <Route path="settings" element={<SocialSettings />} />
+                                    <Route path="assets" element={<SocialAssets />} />
+                                </Route>
+                                <Route path="social/create" element={<CreateSocialPost />} />
+                                <Route path="social/edit/:postId" element={<CreateSocialPost />} />
                             </Route>
                         </Route>
 

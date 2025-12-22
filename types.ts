@@ -118,7 +118,7 @@ export interface Comment {
     createdAt: any;
 }
 
-export type ProjectModule = 'tasks' | 'ideas' | 'mindmap' | 'activity' | 'issues' | 'milestones';
+export type ProjectModule = 'tasks' | 'ideas' | 'mindmap' | 'activity' | 'issues' | 'milestones' | 'social';
 
 export interface Task {
     id: string;
@@ -336,4 +336,91 @@ export interface GeminiReport {
     createdAt: any;
     createdBy: string;
     userName: string;
+}
+
+// --- Social Media Module Types ---
+
+export type SocialPlatform = 'Instagram' | 'Facebook' | 'LinkedIn' | 'TikTok' | 'X';
+export type SocialPostStatus = 'Draft' | 'In Review' | 'Approved' | 'Scheduled' | 'Publishing' | 'Published' | 'Failed' | 'Needs Manual Publish' | 'Archived';
+export type SocialPostFormat = 'Image' | 'Video' | 'Carousel' | 'Story' | 'Reel';
+
+export interface SocialCampaign {
+    id: string;
+    projectId: string;
+    name: string;
+    goal?: string;
+    startDate?: string; // ISO Date
+    endDate?: string;   // ISO Date
+    targetAudience?: string;
+    toneOfVoice?: string;
+    status: 'Planning' | 'Active' | 'Completed' | 'Paused';
+    ownerId: string;
+    createdAt: any;
+    updatedAt: any;
+    color?: string; // For calendar visualization
+}
+
+export interface SocialAsset {
+    id: string;
+    projectId: string;
+    campaignId?: string;
+    url: string;
+    storagePath: string; // Firebase Storage path
+    type: 'image' | 'video';
+    filename: string;
+    mimeType: string;
+    size: number;
+    width?: number;
+    height?: number;
+    tags?: string[];
+    createdAt: any;
+    createdBy: string;
+}
+
+
+export interface SocialIntegration {
+    id: string;
+    projectId: string;
+    platform: SocialPlatform;
+    username: string;
+    avatarUrl?: string;
+    status: 'Connected' | 'Expired' | 'Disconnected';
+    accessToken?: string; // Should be kept secure/server-side in real app
+    connectedAt: string;
+    expiresAt?: string;
+}
+
+export interface SocialPost {
+    id: string;
+    projectId: string;
+    campaignId?: string;
+    platform: SocialPlatform;
+    content: {
+        caption: string;
+        hashtags: string[];
+        mentions?: string[];
+        location?: string;
+        linkInBio?: string;
+    };
+    assets: SocialAsset[]; // Ordered list of assets for this post
+    format: SocialPostFormat;
+    status: SocialPostStatus;
+    scheduledFor?: string; // ISO string
+    publishedAt?: string; // ISO string
+    publishedUrl?: string; // New field
+    createdBy: string;
+    createdAt: any;
+    updatedAt: any;
+
+    // Approval Workflow
+    approvals?: {
+        required: boolean;
+        status: 'Pending' | 'Approved' | 'Rejected';
+        approvedBy?: string;
+        approvedAt?: any;
+    }[];
+
+    // Publishing Metadata
+    externalId?: string; // ID from the platform (e.g. IG Media ID)
+    error?: string; // Last error message if failed
 }

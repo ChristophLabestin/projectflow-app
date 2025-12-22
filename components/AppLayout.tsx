@@ -248,8 +248,8 @@ export const AppLayout = () => {
                 </header>
 
                 {/* Main Scroll Area */}
-                <main className={`flex-1 overflow-y-auto w-full dotted-bg ${location.pathname === '/create' ? 'p-0 overflow-hidden' : 'p-4 sm:p-6 lg:p-8'}`}>
-                    <div className={`${location.pathname === '/create' ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}`}>
+                <main className={`flex-1 overflow-y-auto w-full dotted-bg ${location.pathname === '/create' || location.pathname.includes('/social') ? 'p-0 overflow-hidden' : 'p-4 sm:p-6 lg:p-8'}`}>
+                    <div className={`${location.pathname === '/create' || location.pathname.includes('/social') ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}`}>
                         <Outlet context={{ setTaskTitle }} />
                     </div>
                 </main>
