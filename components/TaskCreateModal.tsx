@@ -6,15 +6,18 @@ import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
 import { Textarea } from './ui/Textarea';
+import { DatePicker } from './ui/DatePicker';
 import { Card } from './ui/Card';
+import { MultiAssigneeSelector } from './MultiAssigneeSelector';
 
 type Props = {
     projectId: string;
+    tenantId?: string;
     onClose: () => void;
     onCreated?: (tasks: Task[], categories: TaskCategory[]) => void;
 };
 
-export const TaskCreateModal: React.FC<Props> = ({ projectId, onClose, onCreated }) => {
+export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose, onCreated }) => {
     const [newTaskTitle, setNewTaskTitle] = useState('');
     const [newTaskDue, setNewTaskDue] = useState('');
     const [newTaskPriority, setNewTaskPriority] = useState<Task['priority']>('Medium');
@@ -22,6 +25,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, onClose, onCreated
     const [newTaskCategoryInput, setNewTaskCategoryInput] = useState('');
     const [newTaskStatus, setNewTaskStatus] = useState<TaskStatus>('Open');
     const [newTaskDescription, setNewTaskDescription] = useState('');
+    const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
     const [isAdding, setIsAdding] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [categories, setCategories] = useState<TaskCategory[]>([]);
@@ -33,8 +37,8 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, onClose, onCreated
         (async () => {
             try {
                 const [catData, taskData] = await Promise.all([
-                    getProjectCategories(projectId),
-                    getProjectTasks(projectId)
+                    getProjectCategories(projectId, tenantId),
+                    getProjectTasks(projectId, tenantId)
                 ]);
                 setCategories(catData);
                 setTasks(taskData);
@@ -42,7 +46,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, onClose, onCreated
                 console.error('Failed to load data for task modal', err);
             }
         })();
-    }, [projectId]);
+    }, [projectId, tenantId]);
 
     useEffect(() => {
         const handleKey = (event: KeyboardEvent) => {
@@ -89,11 +93,12 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, onClose, onCreated
             await addTask(projectId, newTaskTitle.trim(), newTaskDue || undefined, undefined, newTaskPriority, {
                 description: newTaskDescription,
                 category: categoriesToSave.length ? categoriesToSave : undefined,
-                status: newTaskStatus
-            });
+                status: newTaskStatus,
+                assigneeIds: assigneeIds
+            }, tenantId);
             const [refreshedTasks, refreshedCategories] = await Promise.all([
-                getProjectTasks(projectId),
-                getProjectCategories(projectId)
+                getProjectTasks(projectId, tenantId),
+                getProjectCategories(projectId, tenantId)
             ]);
             setTasks(refreshedTasks);
             setCategories(refreshedCategories);
@@ -234,12 +239,15 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, onClose, onCreated
                         </div>
 
                         <Card className="flex flex-col gap-4 h-fit">
-                            <Input
-                                label="Due Date"
-                                type="date"
-                                value={newTaskDue}
-                                onChange={(e) => setNewTaskDue(e.target.value)}
-                            />
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] ml-1">Due Date</label>
+                                <DatePicker
+                                    value={newTaskDue}
+                                    onChange={setNewTaskDue}
+                                    placeholder="Set due date"
+                                    align="right"
+                                />
+                            </div>
 
                             <Select
                                 label="Priority"
@@ -260,9 +268,19 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, onClose, onCreated
                                 <option value="Backlog">Backlog</option>
                                 <option value="Open">Open</option>
                                 <option value="In Progress">In Progress</option>
+                                <option value="On Hold">On Hold</option>
                                 <option value="Blocked">Blocked</option>
                                 <option value="Done">Done</option>
                             </Select>
+
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] ml-1">Assignees</label>
+                                <MultiAssigneeSelector
+                                    projectId={projectId}
+                                    assigneeIds={assigneeIds}
+                                    onChange={setAssigneeIds}
+                                />
+                            </div>
 
                             <div className="text-xs text-[var(--color-text-muted)] mt-2">
                                 Tip: Use categories and status to keep the board organized.

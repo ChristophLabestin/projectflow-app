@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, updateProfile } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { bootstrapTenantForCurrentUser, getActiveTenantId } from '../services/dataService';
@@ -16,11 +16,39 @@ export const Login = () => {
 
     const navigate = useNavigate();
     const location = useLocation();
+    const [searchParams] = useSearchParams();
+
+    // Get redirect URL from query param OR from location.state
+    const redirectUrl = searchParams.get('redirect') || (location.state as any)?.from?.pathname || '/';
+
+    useEffect(() => {
+        // If already logged in AND we have a redirect that isn't the current page, redirect now
+        if (auth.currentUser && redirectUrl !== window.location.pathname) {
+            handleAuthSuccess();
+        }
+    }, [auth.currentUser, redirectUrl]);
 
     useEffect(() => {
         const inviteTenant = (location.state as any)?.inviteTenantId || getActiveTenantId();
-        if (inviteTenant) setIsRegister(true);
-    }, [location.state]);
+        if (inviteTenant || searchParams.get('redirect')) {
+            setIsRegister(true);
+        }
+    }, [location.state, searchParams]);
+
+    const handleAuthSuccess = async () => {
+        // If we have a complex redirect URL (with search params), we need to extract the path and search
+        if (redirectUrl.startsWith('http')) {
+            // It's a full URL, but we want to navigate within the app
+            try {
+                const url = new URL(redirectUrl);
+                navigate(url.pathname + url.search);
+            } catch (e) {
+                navigate('/');
+            }
+        } else {
+            navigate(redirectUrl);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -36,7 +64,7 @@ export const Login = () => {
                 await signInWithEmailAndPassword(auth, email, password);
                 await bootstrapTenantForCurrentUser();
             }
-            navigate('/');
+            await handleAuthSuccess();
         } catch (err: any) {
             console.error(err);
             setError(err.message || 'An error occurred.');
@@ -50,7 +78,7 @@ export const Login = () => {
             const provider = new GoogleAuthProvider();
             await signInWithPopup(auth, provider);
             await bootstrapTenantForCurrentUser();
-            navigate('/');
+            await handleAuthSuccess();
         } catch (err) {
             console.error(err);
             setError('Failed to sign in with Google.');
@@ -62,7 +90,7 @@ export const Login = () => {
             const provider = new GithubAuthProvider();
             await signInWithPopup(auth, provider);
             await bootstrapTenantForCurrentUser();
-            navigate('/');
+            await handleAuthSuccess();
         } catch (err) {
             console.error(err);
             setError('Failed to sign in with GitHub.');

@@ -33,9 +33,8 @@ export const ProjectInviteLanding = () => {
     const handleAccept = () => {
         if (!tenantId) return;
         setActiveTenantId(tenantId);
-        // Pass intent to login screen if needed, or just let them login and return here
-        // Ideally we redirect to login with a "from" state, but this simple app might just need login first.
-        navigate('/login', { state: { from: window.location.pathname + window.location.search, inviteTenantId: tenantId } });
+        const returnUrl = window.location.pathname + window.location.search;
+        navigate(`/login?redirect=${encodeURIComponent(returnUrl)}`, { state: { from: returnUrl, inviteTenantId: tenantId } });
     };
 
     if (!projectId || !tenantId) {

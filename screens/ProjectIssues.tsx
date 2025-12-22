@@ -1,284 +1,367 @@
-import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { subscribeProjectIssues, getProjectById, createIssue, subscribeTenantUsers } from '../services/dataService';
+import { Issue, Project, Member } from '../types';
+import { auth } from '../services/firebase';
 import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
-import { Select } from '../components/ui/Select';
 import { Textarea } from '../components/ui/Textarea';
-import { Issue } from '../types';
-import { createIssue, subscribeProjectIssues, updateIssue, deleteIssue, addTask } from '../services/dataService';
+import { Select } from '../components/ui/Select';
+import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { toMillis } from '../utils/time';
-import { Link } from 'react-router-dom';
-import { AssigneeSelector } from '../components/AssigneeSelector';
+import { MultiAssigneeSelector } from '../components/MultiAssigneeSelector';
 
 export const ProjectIssues = () => {
     const { id } = useParams<{ id: string }>();
+    const navigate = useNavigate();
     const [issues, setIssues] = useState<Issue[]>([]);
-    const [showModal, setShowModal] = useState(false);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [filter, setFilter] = useState<'Active' | 'Resolved' | 'All'>('Active');
+    const [search, setSearch] = useState('');
+    const [project, setProject] = useState<Project | null>(null);
+    const [allUsers, setAllUsers] = useState<Member[]>([]);
 
-    // Form State
-    const [title, setTitle] = useState('');
-    const [desc, setDesc] = useState('');
-    const [priority, setPriority] = useState<Issue['priority']>('Medium');
-    const [status, setStatus] = useState<Issue['status']>('Open');
-    const [assigneeId, setAssigneeId] = useState('');
-    const [assigneeName, setAssigneeName] = useState('');
+    // Modal State
+    const [showNewIssueModal, setShowNewIssueModal] = useState(false);
+
+    // New Issue Form State
+    const [newIssueTitle, setNewIssueTitle] = useState('');
+    const [newIssueDescription, setNewIssueDescription] = useState('');
+    const [newIssuePriority, setNewIssuePriority] = useState<Issue['priority']>('Medium');
+    const [newIssueAssigneeIds, setNewIssueAssigneeIds] = useState<string[]>([]);
+    const [submitting, setSubmitting] = useState(false);
+
+    const user = auth.currentUser;
 
     useEffect(() => {
         if (!id) return;
-        const unsub = subscribeProjectIssues(id, setIssues);
-        return () => unsub();
+
+        let mounted = true;
+        let unsubIssues: (() => void) | undefined;
+        let unsubUsers: (() => void) | undefined;
+
+        getProjectById(id).then((foundProject) => {
+            if (!mounted || !foundProject) {
+                if (mounted) setLoading(false);
+                return;
+            }
+
+            setProject(foundProject);
+
+            unsubIssues = subscribeProjectIssues(id, (loadedIssues) => {
+                if (mounted) {
+                    setIssues(loadedIssues);
+                    setLoading(false);
+                }
+            }, foundProject.tenantId);
+
+            if (foundProject.tenantId) {
+                unsubUsers = subscribeTenantUsers((users) => {
+                    if (mounted) setAllUsers(users as Member[]);
+                }, foundProject.tenantId);
+            }
+        }).catch((err) => {
+            console.error("Failed to load project for issues", err);
+            if (mounted) setLoading(false);
+        });
+
+        return () => {
+            mounted = false;
+            if (unsubIssues) unsubIssues();
+            if (unsubUsers) unsubUsers();
+        };
     }, [id]);
 
-    const handleSubmit = async () => {
-        if (!id || !title) return;
-        setLoading(true);
+    const handleCreateIssue = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!user || !id || !project || !newIssueTitle.trim()) return;
+
+        setSubmitting(true);
         try {
             await createIssue(id, {
-                title,
-                description: desc,
-                priority,
-                status,
-                assignee: assigneeName,
-                assigneeId
-            });
-            setShowModal(false);
+                title: newIssueTitle.trim(),
+                description: newIssueDescription.trim(),
+                priority: newIssuePriority,
+                assigneeIds: newIssueAssigneeIds,
+            }, project.tenantId);
+            setShowNewIssueModal(false);
             resetForm();
-        } catch (e) {
-            console.error(e);
+        } catch (error) {
+            console.error("Error creating issue:", error);
         } finally {
-            setLoading(false);
+            setSubmitting(false);
         }
     };
 
     const resetForm = () => {
-        setTitle('');
-        setDesc('');
-        setPriority('Medium');
-        setStatus('Open');
-        setStatus('Open');
-        setAssigneeId('');
-        setAssigneeName('');
-    };
+        setNewIssueTitle('');
+        setNewIssueDescription('');
+        setNewIssuePriority('Medium');
+        setNewIssueAssigneeIds([]);
+    }
 
-    const handleStatusChange = async (issue: Issue, newStatus: Issue['status']) => {
-        if (!id) return;
-        await updateIssue(issue.id, { status: newStatus }, id);
-    };
+    const filteredIssues = useMemo(() => {
+        return issues.filter(i => {
+            const matchesSearch = i.title.toLowerCase().includes(search.toLowerCase()) ||
+                (i.description?.toLowerCase().includes(search.toLowerCase()));
 
-    const handleDelete = async (issueId: string) => {
-        if (!id || !confirm('Delete this issue?')) return;
-        await deleteIssue(issueId, id);
-    };
+            if (!matchesSearch) return false;
 
-    const handleConvertToTask = async (issue: Issue) => {
-        if (!id || !confirm(`Convert "${issue.title}" to a task? This will close the issue.`)) return;
-        try {
-            await addTask(id, issue.title, undefined, issue.assignee, issue.priority, {
-                description: `[From Issue] ${issue.description}`,
-                status: 'Open'
-            });
-            await updateIssue(issue.id, { status: 'Closed' }, id);
-            // Optional: Notification or toast here
-        } catch (e) {
-            console.error("Failed to convert issue", e);
-            alert("Failed to convert issue to task.");
-        }
-    };
+            if (filter === 'Active') return i.status !== 'Closed' && i.status !== 'Resolved';
+            if (filter === 'Resolved') return i.status === 'Resolved' || i.status === 'Closed';
+            return true;
+        });
+    }, [issues, filter, search]);
 
-    const getPriorityBadgeVariant = (p: string) => {
-        if (p === 'Urgent') return 'error';
-        if (p === 'High') return 'warning';
-        if (p === 'Medium') return 'default';
-        return 'success';
-    };
+    const stats = useMemo(() => ({
+        open: issues.filter(i => i.status === 'Open').length,
+        inProgress: issues.filter(i => i.status === 'In Progress').length,
+        resolved: issues.filter(i => i.status === 'Resolved' || i.status === 'Closed').length,
+        urgent: issues.filter(i => (i.priority === 'Urgent' || i.priority === 'High') && i.status !== 'Closed' && i.status !== 'Resolved').length
+    }), [issues]);
 
-    const getStatusBadgeVariant = (s: string) => {
-        if (s === 'Open') return 'primary';
-        if (s === 'In Progress') return 'warning';
-        if (s === 'Resolved') return 'success';
-        return 'secondary';
-    };
-
-    const openCount = issues.filter(i => i.status === 'Open').length;
-    const progressCount = issues.filter(i => i.status === 'In Progress').length;
-    const resolvedCount = issues.filter(i => i.status === 'Resolved' || i.status === 'Closed').length;
+    if (loading) return (
+        <div className="flex items-center justify-center p-12">
+            <span className="material-symbols-outlined text-[var(--color-primary)] animate-spin text-4xl">progress_activity</span>
+        </div>
+    );
 
     return (
-        <div className="max-w-6xl mx-auto space-y-6 fade-in p-6">
-            <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-6 fade-in max-w-5xl mx-auto pb-20">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="h2 text-[var(--color-text-main)]">Issues</h1>
-                    <p className="text-[var(--color-text-muted)]">Track, prioritize, and resolve project bugs.</p>
+                    <p className="text-[var(--color-text-muted)] text-sm">Track and resolve project bugs and improvements.</p>
                 </div>
-                <Button onClick={() => setShowModal(true)} icon={<span className="material-symbols-outlined">add</span>}>Report Issue</Button>
+                <Button onClick={() => setShowNewIssueModal(true)} icon={<span className="material-symbols-outlined">add</span>}>
+                    Report Issue
+                </Button>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Card padding="sm" className="p-4 flex items-center justify-between">
-                    <div>
-                        <p className="text-sm font-semibold text-[var(--color-text-muted)] uppercase">Open</p>
-                        <p className="text-3xl font-bold text-blue-600">{openCount}</p>
-                    </div>
-                    <div className="size-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                        <span className="material-symbols-outlined">bug_report</span>
-                    </div>
-                </Card>
-                <Card padding="sm" className="p-4 flex items-center justify-between">
-                    <div>
-                        <p className="text-sm font-semibold text-[var(--color-text-muted)] uppercase">In Progress</p>
-                        <p className="text-3xl font-bold text-amber-600">{progressCount}</p>
-                    </div>
-                    <div className="size-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
-                        <span className="material-symbols-outlined">pending_actions</span>
-                    </div>
-                </Card>
-                <Card padding="sm" className="p-4 flex items-center justify-between">
-                    <div>
-                        <p className="text-sm font-semibold text-[var(--color-text-muted)] uppercase">Resolved</p>
-                        <p className="text-3xl font-bold text-emerald-600">{resolvedCount}</p>
-                    </div>
-                    <div className="size-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600">
-                        <span className="material-symbols-outlined">check_circle</span>
-                    </div>
-                </Card>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {[
+                    { label: 'Active', value: stats.open + stats.inProgress, icon: 'bug_report', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/10' },
+                    { label: 'Resolved', value: stats.resolved, icon: 'check_circle', color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/10' },
+                    { label: 'Urgent', value: stats.urgent, icon: 'priority_high', color: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-900/10' },
+                    { label: 'Total', value: issues.length, icon: 'analytics', color: 'text-slate-500', bg: 'bg-slate-50 dark:bg-slate-900/10' },
+                ].map((stat, idx) => (
+                    <Card key={idx} className="p-4 flex items-center gap-3">
+                        <div className={`size-10 rounded-xl ${stat.bg} ${stat.color} flex items-center justify-center`}>
+                            <span className="material-symbols-outlined text-[20px]">{stat.icon}</span>
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{stat.label}</p>
+                            <p className="text-xl font-bold text-[var(--color-text-main)] leading-tight">{stat.value}</p>
+                        </div>
+                    </Card>
+                ))}
             </div>
 
-            {issues.length === 0 ? (
-                <Card className="p-12 text-center border-dashed flex flex-col items-center justify-center gap-4">
-                    <div className="size-16 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center">
-                        <span className="material-symbols-outlined text-3xl text-[var(--color-text-subtle)]">bug_report</span>
+            <Card padding="none" className="overflow-visible">
+                {/* Search & Filters */}
+                <div className="p-4 border-b border-[var(--color-surface-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex bg-[var(--color-surface-hover)] rounded-lg p-1">
+                        {(['Active', 'Resolved', 'All'] as const).map((f) => (
+                            <button
+                                key={f}
+                                onClick={() => setFilter(f)}
+                                className={`
+                                    px-4 py-1.5 rounded-md text-sm font-medium transition-all
+                                    ${filter === f ? 'bg-[var(--color-surface-paper)] text-[var(--color-text-main)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}
+                                `}
+                            >
+                                {f}
+                            </button>
+                        ))}
                     </div>
-                    <div>
-                        <h3 className="text-lg font-bold text-[var(--color-text-main)]">No issues yet</h3>
-                        <p className="text-[var(--color-text-muted)]">Everything seems to be running smoothly.</p>
+                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                        <Input
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            placeholder="Search issues..."
+                            className="w-full sm:w-64"
+                            icon={<span className="material-symbols-outlined">search</span>}
+                        />
                     </div>
-                    <Button variant="secondary" onClick={() => setShowModal(true)}>Report Issue</Button>
-                </Card>
-            ) : (
-                <Card className="overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="border-b border-[var(--color-surface-border)] bg-[var(--color-surface-hover)]">
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Issue</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Priority</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Assignee</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Date</th>
-                                    <th className="px-6 py-3 text-right text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-[var(--color-surface-border)] bg-[var(--color-surface-bg)]">
-                                {issues.map((issue) => (
-                                    <tr key={issue.id} className="hover:bg-[var(--color-surface-hover)] transition-colors group">
-                                        <td className="px-6 py-4">
-                                            <div className="flex flex-col">
-                                                <Link to={`/project/${id}/issues/${issue.id}`} className="font-semibold text-[var(--color-text-main)] hover:text-[var(--color-primary)] hover:underline">
+                </div>
+
+                {/* Issues List */}
+                <div className="flex flex-col gap-2 p-2">
+                    {filteredIssues.length === 0 ? (
+                        <div className="p-16 text-center flex flex-col items-center justify-center text-[var(--color-text-muted)] border-2 border-dashed border-[var(--color-surface-border)] rounded-2xl m-2">
+                            <div className="size-16 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center mb-4">
+                                <span className="material-symbols-outlined text-4xl opacity-20">bug_report</span>
+                            </div>
+                            <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-1">No issues found</h3>
+                            <p className="text-sm">Try adjusting your filters or search terms.</p>
+                        </div>
+                    ) : (
+                        filteredIssues.map(issue => (
+                            <div
+                                key={issue.id}
+                                onClick={() => navigate(`/project/${id}/issues/${issue.id}`)}
+                                className="group flex items-start gap-4 p-4 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] transition-all cursor-pointer"
+                            >
+                                <div className="flex-1 min-w-0 space-y-2">
+                                    <div className="flex items-start justify-between gap-4">
+                                        <div className="space-y-1">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-mono text-[var(--color-text-muted)] bg-[var(--color-surface-hover)] px-1.5 py-0.5 rounded">
+                                                    #{issue.id.slice(0, 6).toUpperCase()}
+                                                </span>
+                                                <span className={`text-sm font-semibold leading-tight group-hover:text-[var(--color-primary)] transition-colors ${issue.status === 'Closed' || issue.status === 'Resolved' ? 'text-[var(--color-text-muted)]' : 'text-[var(--color-text-main)]'}`}>
                                                     {issue.title}
-                                                </Link>
-                                                <span className="text-xs text-[var(--color-text-muted)] line-clamp-1">{issue.description || 'No description'}</span>
+                                                </span>
                                             </div>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <select
-                                                className="text-xs font-medium rounded-full px-2 py-1 border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] focus:ring-2 focus:ring-[var(--color-primary)] outline-none cursor-pointer hover:bg-[var(--color-surface-hover)]"
-                                                value={issue.status}
-                                                onChange={(e) => handleStatusChange(issue, e.target.value as any)}
-                                            >
-                                                <option>Open</option>
-                                                <option>In Progress</option>
-                                                <option>Resolved</option>
-                                                <option>Closed</option>
-                                            </select>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <Badge size="sm" variant={getPriorityBadgeVariant(issue.priority)}>{issue.priority}</Badge>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--color-text-muted)]">
-                                            {issue.assignee ? (
-                                                <div className="flex items-center gap-2">
-                                                    <div className="size-6 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center text-xs font-bold">
-                                                        {issue.assignee.charAt(0)}
-                                                    </div>
-                                                    <span>{issue.assignee}</span>
-                                                </div>
-                                            ) : (
-                                                <span className="text-[var(--color-text-subtle)]">-</span>
+                                            {issue.description && (
+                                                <p className="text-xs text-[var(--color-text-muted)] line-clamp-1">
+                                                    {issue.description}
+                                                </p>
                                             )}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-xs text-[var(--color-text-muted)]">
+                                        </div>
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center gap-3">
+                                        <Badge size="sm" variant={issue.status === 'Open' ? 'primary' : issue.status === 'Resolved' ? 'success' : 'secondary'}>
+                                            <span className="material-symbols-outlined text-[12px] mr-1">
+                                                {issue.status === 'Open' ? 'error' : issue.status === 'Resolved' ? 'check_circle' : 'cancel'}
+                                            </span>
+                                            {issue.status}
+                                        </Badge>
+
+                                        <PriorityBadge priority={issue.priority} />
+
+                                        <div className="flex -space-x-2">
+                                            {(issue.assigneeIds || []).slice(0, 3).map(uid => {
+                                                const member = allUsers.find(u => u.uid === uid || (u as any).id === uid);
+                                                return (
+                                                    <img
+                                                        key={uid}
+                                                        src={member?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'}
+                                                        className="size-5 rounded-full ring-2 ring-[var(--color-surface-bg)]"
+                                                        title={member?.displayName || 'Unknown'}
+                                                    />
+                                                );
+                                            })}
+                                            {issue.assigneeIds && issue.assigneeIds.length > 3 && (
+                                                <div className="size-5 rounded-full bg-[var(--color-surface-hover)] ring-2 ring-[var(--color-surface-bg)] flex items-center justify-center text-[8px] font-bold text-[var(--color-text-muted)]">
+                                                    +{issue.assigneeIds.length - 3}
+                                                </div>
+                                            )}
+                                            {(!issue.assigneeIds || issue.assigneeIds.length === 0) && !issue.assignee && (
+                                                <span className="text-[10px] text-[var(--color-text-muted)] flex items-center gap-1">
+                                                    <span className="material-symbols-outlined text-[14px]">person_off</span>
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="flex items-center gap-1 text-[10px] text-[var(--color-text-muted)] ml-auto">
+                                            <span className="material-symbols-outlined text-[14px]">calendar_today</span>
                                             {new Date(toMillis(issue.createdAt)).toLocaleDateString()}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                                            <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button
-                                                    onClick={() => handleConvertToTask(issue)}
-                                                    className="text-[var(--color-text-muted)] hover:text-[var(--color-primary)] p-1"
-                                                    title="Convert to Task"
-                                                >
-                                                    <span className="material-symbols-outlined text-[20px]">task_alt</span>
-                                                </button>
-                                                <button
-                                                    onClick={() => handleDelete(issue.id)}
-                                                    className="text-[var(--color-text-muted)] hover:text-rose-600 p-1"
-                                                    title="Delete Issue"
-                                                >
-                                                    <span className="material-symbols-outlined text-[20px]">delete</span>
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </Card>
-            )}
+                                        </div>
+                                    </div>
+                                </div>
 
-            <Modal isOpen={showModal} onClose={() => setShowModal(false)} title="Report New Issue">
-                <div className="space-y-4">
-                    <Input label="Issue Title" placeholder="What's the problem?" value={title} onChange={e => setTitle(e.target.value)} autoFocus />
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <Select label="Priority" value={priority} onChange={e => setPriority(e.target.value as any)}>
-                            <option>Low</option>
-                            <option>Medium</option>
-                            <option>High</option>
-                            <option>Urgent</option>
-                        </Select>
-                        <Select label="Status" value={status} onChange={e => setStatus(e.target.value as any)}>
-                            <option>Open</option>
-                            <option>In Progress</option>
-                            <option>Resolved</option>
-                            <option>Closed</option>
-                        </Select>
-                    </div>
-
-                    <AssigneeSelector
-                        projectId={id || ''}
-                        value={assigneeId}
-                        onChange={(uid, name) => { setAssigneeId(uid); setAssigneeName(name || ''); }}
-                    />
-
-                    <Textarea
-                        label="Description"
-                        placeholder="Describe the issue in detail..."
-                        value={desc}
-                        onChange={e => setDesc(e.target.value)}
-                        rows={5}
-                    />
-
-                    <div className="flex justify-end gap-3 pt-4">
-                        <Button variant="ghost" onClick={() => setShowModal(false)}>Cancel</Button>
-                        <Button onClick={handleSubmit} loading={loading}>Create Issue</Button>
-                    </div>
+                                <div className="opacity-0 group-hover:opacity-100 transition-opacity self-center">
+                                    <span className="material-symbols-outlined text-[var(--color-text-subtle)]">chevron_right</span>
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
-            </Modal>
-        </div>
+            </Card>
+
+            {/* Create Issue Modal */}
+            {showNewIssueModal && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-[var(--color-surface-border)] animate-in fade-in zoom-in-95 duration-200">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-xl font-bold text-[var(--color-text-main)]">Report New Issue</h2>
+                            <button onClick={() => setShowNewIssueModal(false)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors">
+                                <span className="material-symbols-outlined">close</span>
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleCreateIssue} className="space-y-5">
+                            <Input
+                                label="Title"
+                                value={newIssueTitle}
+                                onChange={(e) => setNewIssueTitle(e.target.value)}
+                                placeholder="Problem summary"
+                                className="w-full"
+                                required
+                                autoFocus
+                            />
+
+                            <Textarea
+                                label="Description"
+                                value={newIssueDescription}
+                                onChange={(e) => setNewIssueDescription(e.target.value)}
+                                placeholder="Steps to reproduce, expected behavior, etc."
+                                className="w-full min-h-[120px]"
+                            />
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <Select
+                                    label="Priority"
+                                    value={newIssuePriority}
+                                    onChange={(e) => setNewIssuePriority(e.target.value as any)}
+                                    className="w-full"
+                                >
+                                    <option value="Low">Low</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="High">High</option>
+                                    <option value="Urgent">Urgent</option>
+                                </Select>
+                                <div className="space-y-1">
+                                    <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase ml-1">Assignees</label>
+                                    <MultiAssigneeSelector
+                                        projectId={id!}
+                                        assigneeIds={newIssueAssigneeIds}
+                                        onChange={setNewIssueAssigneeIds}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-4 mt-2">
+                                <Button type="button" variant="ghost" onClick={() => setShowNewIssueModal(false)}>
+                                    Cancel
+                                </Button>
+                                <Button type="submit" isLoading={submitting}>
+                                    Report Issue
+                                </Button>
+                            </div>
+                        </form>
+                    </div>
+                </div >,
+                document.body
+            )}
+        </div >
+    );
+};
+
+const PriorityBadge = ({ priority }: { priority: string }) => {
+    const styles: Record<string, string> = {
+        'Urgent': 'bg-rose-50 text-rose-700 border-rose-200',
+        'High': 'bg-amber-50 text-amber-700 border-amber-200',
+        'Medium': 'bg-blue-50 text-blue-700 border-blue-200',
+        'Low': 'bg-slate-100 text-slate-700 border-slate-200',
+    };
+
+    const icons: Record<string, string> = {
+        'Urgent': 'error',
+        'High': 'keyboard_double_arrow_up',
+        'Medium': 'drag_handle',
+        'Low': 'keyboard_arrow_down',
+    }
+
+    return (
+        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${styles[priority] || styles['Medium']}`}>
+            <span className="material-symbols-outlined text-[12px]">{icons[priority]}</span>
+            {priority}
+        </span>
     );
 };

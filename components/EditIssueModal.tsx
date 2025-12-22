@@ -1,40 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Task } from '../types';
+import { Issue } from '../types';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Textarea } from './ui/Textarea';
-import { updateTaskFields } from '../services/dataService';
+import { updateIssue } from '../services/dataService';
 
-interface EditTaskModalProps {
-    task: Task;
+interface EditIssueModalProps {
+    issue: Issue;
     isOpen: boolean;
     onClose: () => void;
     onUpdate: () => void;
-    projectMembers: string[]; // List of UIDs (kept for signature compatibility)
 }
 
-export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onClose, onUpdate }) => {
-    const [title, setTitle] = useState(task.title);
-    const [description, setDescription] = useState(task.description || '');
-
+export const EditIssueModal: React.FC<EditIssueModalProps> = ({ issue, isOpen, onClose, onUpdate }) => {
+    const [title, setTitle] = useState(issue.title);
+    const [description, setDescription] = useState(issue.description || '');
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
-            setTitle(task.title);
-            setDescription(task.description || '');
+            setTitle(issue.title);
+            setDescription(issue.description || '');
         }
-    }, [isOpen, task]);
+    }, [isOpen, issue]);
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         try {
-            await updateTaskFields(task.id, {
+            await updateIssue(issue.id, {
                 title,
                 description
-            }, task.projectId);
+            }, issue.projectId, issue.tenantId);
             onUpdate();
             onClose();
         } catch (error) {
@@ -55,8 +53,8 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
                 {/* Header */}
                 <div className="p-4 border-b border-[var(--color-surface-border)] flex justify-between items-center">
                     <div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)]">Edit Task</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-1">Update task details and assignments.</p>
+                        <h3 className="text-xl font-bold text-[var(--color-text-main)]">Edit Issue</h3>
+                        <p className="text-sm text-[var(--color-text-muted)] mt-1">Update issue details. Changes will sync to GitHub if linked.</p>
                     </div>
                     <Button variant="ghost" onClick={onClose} size="sm">Close</Button>
                 </div>
@@ -67,7 +65,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
                             label="Title"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            placeholder="Task title"
+                            placeholder="Issue title"
                             required
                             className="text-lg font-medium"
                         />
@@ -77,7 +75,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
                             <Textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Describe the task..."
+                                placeholder="Describe the issue..."
                                 rows={8}
                                 className="min-h-[200px]"
                             />

@@ -19,14 +19,16 @@ let db;
 let storage;
 
 try {
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
-    storage = getStorage(app);
+  app = initializeApp(firebaseConfig);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  storage = getStorage(app);
 } catch (error) {
-    console.error("Firebase initialization error:", error);
-    // Throw error so it is visible in console if app fails to load
-    throw error;
+  console.error("Firebase initialization error:", error);
+  // Throw error so it is visible in console if app fails to load
+  throw error;
 }
 
-export { auth, db, storage };
+import { GithubAuthProvider } from "firebase/auth";
+
+export { auth, db, storage, GithubAuthProvider };

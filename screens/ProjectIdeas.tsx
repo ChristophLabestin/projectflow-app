@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { addTask, deleteIdea, getProjectIdeas, getProjectTasks, saveIdea, updateIdea, getProjectMindmaps, getProjectById } from '../services/dataService';
 import { generateProjectIdeasAI } from '../services/geminiService';
@@ -8,7 +8,10 @@ import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
+import { Textarea } from '../components/ui/Textarea';
 import { CommentSection } from '../components/CommentSection';
+import { auth } from '../services/firebase';
 
 export const ProjectIdeas = () => {
     const { id } = useParams<{ id: string }>();
@@ -18,6 +21,10 @@ export const ProjectIdeas = () => {
     const [project, setProject] = useState<Project | null>(null);
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
+
+    const isProjectOwner = useMemo(() => {
+        return project?.ownerId === auth.currentUser?.uid;
+    }, [project?.ownerId]);
 
     // UI State
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
@@ -141,16 +148,18 @@ export const ProjectIdeas = () => {
                     <p className="text-[var(--color-text-muted)] text-sm">Capture, organize, and refine project concepts.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <select
-                        value={mindmapFilter}
-                        onChange={(e) => setMindmapFilter(e.target.value)}
-                        className="h-10 rounded-lg border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
-                    >
-                        <option value="all">All Groups</option>
-                        {mindmaps.map((m) => (
-                            <option key={m.id} value={m.id}>{m.name}</option>
-                        ))}
-                    </select>
+                    <div className="w-48">
+                        <Select
+                            value={mindmapFilter}
+                            onChange={(e) => setMindmapFilter(e.target.value)}
+                            className="h-10"
+                        >
+                            <option value="all">All Groups</option>
+                            {mindmaps.map((m) => (
+                                <option key={m.id} value={m.id}>{m.name}</option>
+                            ))}
+                        </Select>
+                    </div>
                     <div className="flex items-center rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-paper)] overflow-hidden">
                         <button
                             onClick={() => setViewMode('list')}
@@ -282,11 +291,11 @@ export const ProjectIdeas = () => {
                     <Input label="Title" value={formData.title} onChange={(e) => setFormData({ ...formData, title: e.target.value })} placeholder="e.g. Add dark mode" />
                     <div className="space-y-1">
                         <label className="text-sm font-medium text-[var(--color-text-main)]">Description</label>
-                        <textarea
+                        <Textarea
                             value={formData.description}
                             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                             rows={4}
-                            className="w-full rounded-md border border-[var(--color-input-border)] bg-[var(--color-input-bg)] px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]"
+                            className="w-full"
                         />
                     </div>
                     <Input label="Type" value={formData.type} onChange={(e) => setFormData({ ...formData, type: e.target.value })} placeholder="e.g. Feature, Bug, Marketing" />
@@ -295,7 +304,7 @@ export const ProjectIdeas = () => {
                         <div className="pt-4 border-t border-[var(--color-surface-border)]">
                             <h4 className="text-sm font-bold text-[var(--color-text-main)] mb-2">Comments</h4>
                             <div className="h-64">
-                                <CommentSection projectId={id || ''} targetId={formData.id} targetType="idea" />
+                                <CommentSection projectId={id || ''} targetId={formData.id} targetType="idea" tenantId={project?.tenantId} isProjectOwner={isProjectOwner} />
                             </div>
                         </div>
                     )}

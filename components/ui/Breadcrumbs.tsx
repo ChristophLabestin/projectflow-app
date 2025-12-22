@@ -10,8 +10,8 @@ export const Breadcrumbs = ({ items = [] }: BreadcrumbsProps) => {
 
     // Default: Home icon
     const parts = [
-        <Link key="home" to="/" className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors">
-            <span className="material-symbols-outlined text-[18px] align-middle">home</span>
+        <Link key="home" to="/" className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors flex items-center">
+            <span className="material-symbols-outlined text-[20px]">home</span>
         </Link>
     ];
 
@@ -22,13 +22,13 @@ export const Breadcrumbs = ({ items = [] }: BreadcrumbsProps) => {
             );
             if (item.to) {
                 parts.push(
-                    <Link key={index} to={item.to} className="text-sm font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors">
+                    <Link key={index} to={item.to} className="text-sm font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors">
                         {item.label}
                     </Link>
                 );
             } else {
                 parts.push(
-                    <span key={index} className="text-sm font-bold text-[var(--color-text-main)]">
+                    <span key={index} className="text-sm font-semibold text-[var(--color-text-main)]">
                         {item.label}
                     </span>
                 );

@@ -1,16 +1,18 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
-import { getProjectCategories, getProjectTasks, getSubTasks, subscribeProjectTasks, toggleTaskStatus, updateTaskFields, deleteTask } from '../services/dataService';
-import { IdeaGroup, Task, TaskStatus, TaskCategory } from '../types';
+import { getProjectById, subscribeProjectTasks, toggleTaskStatus, updateTaskFields, deleteTask, getSubTasks } from '../services/dataService';
+import { Task, Project } from '../types';
 import { TaskCreateModal } from '../components/TaskCreateModal';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Input } from '../components/ui/Input';
+import { useProjectPermissions } from '../hooks/useProjectPermissions';
 
 export const ProjectTasks = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const [project, setProject] = useState<Project | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -21,14 +23,36 @@ export const ProjectTasks = () => {
     const [subtaskStats, setSubtaskStats] = useState<Record<string, { done: number; total: number }>>({});
     const location = useLocation();
 
+    // Permissions
+    const { can } = useProjectPermissions(project);
+
     useEffect(() => {
         if (!id) return;
         setLoading(true);
-        const unsub = subscribeProjectTasks(id, (taskData) => {
-            setTasks(taskData);
+
+        let unsub: (() => void) | undefined;
+
+        // Fetch project metadata first to get tenantId
+        getProjectById(id).then((p) => {
+            setProject(p);
+            if (!p) {
+                setLoading(false);
+                return;
+            }
+
+            // Subscribe to tasks with the correct tenantId
+            unsub = subscribeProjectTasks(id, (taskData) => {
+                setTasks(taskData);
+                setLoading(false);
+            }, p.tenantId);
+        }).catch(err => {
+            console.error(err);
             setLoading(false);
         });
-        return () => unsub();
+
+        return () => {
+            if (unsub) unsub();
+        };
     }, [id]);
 
     useEffect(() => {
@@ -49,10 +73,17 @@ export const ProjectTasks = () => {
     }, [tasks]);
 
     useEffect(() => {
-        if (new URLSearchParams(location.search).get('newTask') === '1') setShowCreateModal(true);
+        if (new URLSearchParams(location.search).get('newTask') === '1') {
+            // Only show if user can manage tasks, but we need to wait for project/permissions to load.
+            // Ideally we'd check can('canManageTasks') here but it might be premature. 
+            // We'll let the user try but hide the modal content or close it if permission denied?
+            // Better: update the state only if permitted.
+            setShowCreateModal(true);
+        }
     }, [location.search]);
 
     const handleToggle = async (taskId: string, currentStatus: boolean) => {
+        if (!can('canManageTasks')) return;
         // Optimistic
         setTasks(prev => prev.map(t => t.id === taskId ? { ...t, isCompleted: !currentStatus } : t));
         await toggleTaskStatus(taskId, currentStatus);
@@ -80,15 +111,26 @@ export const ProjectTasks = () => {
 
     const handleBulkDelete = async () => {
         if (!selectedIds.size) return;
+        if (!can('canManageTasks')) return;
         if (!confirm(`Delete ${selectedIds.size} tasks?`)) return;
         try {
-            await Promise.all(Array.from(selectedIds).map(id => deleteTask(id)));
+            await Promise.all(Array.from(selectedIds).map((id: string) => deleteTask(id)));
             setSelectedIds(new Set());
         } catch (e) {
             console.error(e);
             setError('Failed to delete tasks.');
         }
     };
+
+    const stats = useMemo(() => {
+        const total = tasks.length;
+        const open = tasks.filter(t => !t.isCompleted).length;
+        const completed = tasks.filter(t => t.isCompleted).length;
+        const urgent = tasks.filter(t => t.priority === 'Urgent' && !t.isCompleted).length;
+        const high = tasks.filter(t => t.priority === 'High' && !t.isCompleted).length;
+        const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+        return { total, open, completed, urgent, high, progress };
+    }, [tasks]);
 
     if (loading) return (
         <div className="flex items-center justify-center p-12">
@@ -97,119 +139,190 @@ export const ProjectTasks = () => {
     );
 
     return (
-        <div className="flex flex-col gap-6 fade-in max-w-5xl mx-auto">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-8 fade-in max-w-6xl mx-auto pb-12">
+
+            {/* Header & Actions */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h1 className="h2 text-[var(--color-text-main)]">Tasks</h1>
-                    <p className="text-[var(--color-text-muted)] text-sm">Manage and track your project work.</p>
+                    <h1 className="text-3xl font-bold text-[var(--color-text-main)] mb-2">Tasks</h1>
+                    <p className="text-[var(--color-text-muted)] text-lg">Manage, track, and prioritize your project work.</p>
                 </div>
-                <Button onClick={() => setShowCreateModal(true)} icon={<span className="material-symbols-outlined">add</span>}>
-                    New Task
-                </Button>
+                {can('canManageTasks') && (
+                    <Button
+                        onClick={() => setShowCreateModal(true)}
+                        icon={<span className="material-symbols-outlined">add</span>}
+                        variant="primary"
+                        size="lg"
+                        className="shadow-lg shadow-indigo-500/20"
+                    >
+                        New Task
+                    </Button>
+                )}
             </div>
 
-            <Card padding="none">
-                {/* Filters */}
-                <div className="p-4 border-b border-[var(--color-surface-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex bg-[var(--color-surface-hover)] rounded-lg p-1">
-                        {(['all', 'active', 'completed'] as const).map((f) => (
+            {/* Stats Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="p-5 rounded-xl bg-gradient-to-br from-indigo-50 to-white dark:from-indigo-900/20 dark:to-[var(--color-surface-bg)] border border-indigo-100 dark:border-indigo-500/10 shadow-sm relative overflow-hidden group">
+                    <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <span className="material-symbols-outlined text-6xl text-indigo-500">list_alt</span>
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1">Open Tasks</p>
+                        <p className="text-3xl font-bold text-[var(--color-text-main)]">{stats.open}</p>
+                    </div>
+                </div>
+
+                <div className="p-5 rounded-xl bg-gradient-to-br from-emerald-50 to-white dark:from-emerald-900/20 dark:to-[var(--color-surface-bg)] border border-emerald-100 dark:border-emerald-500/10 shadow-sm relative overflow-hidden group">
+                    <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <span className="material-symbols-outlined text-6xl text-emerald-500">check_circle</span>
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">Completed</p>
+                        <div className="flex items-baseline gap-2">
+                            <p className="text-3xl font-bold text-[var(--color-text-main)]">{stats.completed}</p>
+                            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+                                {stats.progress}%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-5 rounded-xl bg-gradient-to-br from-amber-50 to-white dark:from-amber-900/20 dark:to-[var(--color-surface-bg)] border border-amber-100 dark:border-amber-500/10 shadow-sm relative overflow-hidden group">
+                    <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <span className="material-symbols-outlined text-6xl text-amber-500">priority_high</span>
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">High Priority</p>
+                        <p className="text-3xl font-bold text-[var(--color-text-main)]">{stats.high}</p>
+                    </div>
+                </div>
+
+                <div className="p-5 rounded-xl bg-gradient-to-br from-rose-50 to-white dark:from-rose-900/20 dark:to-[var(--color-surface-bg)] border border-rose-100 dark:border-rose-500/10 shadow-sm relative overflow-hidden group">
+                    <div className="absolute right-0 top-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                        <span className="material-symbols-outlined text-6xl text-rose-500">warning</span>
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-rose-600 dark:text-rose-400 uppercase tracking-wider mb-1">Urgent</p>
+                        <p className="text-3xl font-bold text-[var(--color-text-main)]">{stats.urgent}</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Controls Bar */}
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 sticky top-4 z-10 backdrop-blur-xl bg-white/50 dark:bg-black/20 p-2 rounded-2xl border border-[var(--color-surface-border)] shadow-sm">
+
+                {/* Tabs */}
+                <div className="flex bg-[var(--color-surface-hover)] rounded-xl p-1 w-full md:w-auto">
+                    {(['active', 'completed', 'all'] as const).map((f) => (
+                        <button
+                            key={f}
+                            onClick={() => setFilter(f)}
+                            className={`
+                                flex-1 md:flex-none px-6 py-2 rounded-lg text-sm font-semibold transition-all capitalize
+                                ${filter === f
+                                    ? 'bg-[var(--color-surface-paper)] text-[var(--color-text-main)] shadow-sm'
+                                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-black/5 dark:hover:bg-white/5'}
+                            `}
+                        >
+                            {f}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Search */}
+                <div className="relative w-full md:w-80 group">
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search tasks..."
+                        className="w-full bg-[var(--color-surface-bg)] border-none ring-1 ring-[var(--color-surface-border)] focus:ring-2 focus:ring-[var(--color-primary)] rounded-xl pl-10 pr-4 py-2.5 text-sm transition-all"
+                    />
+                    <span className="material-symbols-outlined absolute left-3 top-2.5 text-[var(--color-text-muted)] group-focus-within:text-[var(--color-primary)] transition-colors">search</span>
+                </div>
+            </div>
+
+            {/* Task List */}
+            <div className="flex flex-col gap-3">
+                {filteredTasks.length === 0 ? (
+                    <div className="py-24 text-center flex flex-col items-center justify-center text-[var(--color-text-muted)] border-2 border-dashed border-[var(--color-surface-border)] rounded-2xl bg-[var(--color-surface-bg)]/50">
+                        <div className="bg-[var(--color-surface-hover)] p-4 rounded-full mb-4">
+                            <span className="material-symbols-outlined text-4xl opacity-50">checklist_rtl</span>
+                        </div>
+                        <h3 className="text-lg font-semibold text-[var(--color-text-main)] mb-1">No tasks found</h3>
+                        <p className="max-w-xs mx-auto">Try adjusting your filters or search terms, or create a new task.</p>
+                        {can('canManageTasks') && (
+                            <Button variant="secondary" className="mt-6" onClick={() => setShowCreateModal(true)}>Create Task</Button>
+                        )}
+                    </div>
+                ) : (
+                    filteredTasks.map(task => (
+                        <div
+                            key={task.id}
+                            onClick={() => navigate(`/project/${id}/tasks/${task.id}`)}
+                            className="group flex items-center gap-4 p-4 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] hover:shadow-md hover:bg-white dark:hover:bg-[var(--color-surface-hover)] transition-all cursor-pointer relative overflow-hidden"
+                        >
                             <button
-                                key={f}
-                                onClick={() => setFilter(f)}
+                                onClick={(e) => { e.stopPropagation(); handleToggle(task.id, task.isCompleted); }}
+                                disabled={!can('canManageTasks')}
                                 className={`
-                                    px-3 py-1.5 rounded-md text-sm font-medium transition-all capitalize
-                                    ${filter === f ? 'bg-[var(--color-surface-paper)] text-[var(--color-text-main)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}
+                                    flex-shrink-0 size-6 rounded-lg border-2 flex items-center justify-center transition-all duration-200 z-10
+                                    ${!can('canManageTasks') ? 'opacity-50 cursor-not-allowed' : ''}
+                                    ${task.isCompleted
+                                        ? 'bg-green-500 border-green-500 text-white shadow-sm shadow-green-500/20'
+                                        : 'border-[var(--color-surface-border)] hover:border-green-500 text-transparent bg-[var(--color-surface-paper)]'}
                                 `}
                             >
-                                {f}
+                                <span className="material-symbols-outlined text-[16px] font-bold">check</span>
                             </button>
-                        ))}
-                    </div>
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <Input
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search tasks..."
-                            className="w-full sm:w-64"
-                            icon={<span className="material-symbols-outlined">search</span>}
-                        />
-                    </div>
-                </div>
 
-                {/* Task List */}
-                <div className="flex flex-col gap-2">
-                    {filteredTasks.length === 0 ? (
-                        <div className="p-12 text-center flex flex-col items-center justify-center text-[var(--color-text-muted)] border-2 border-dashed border-[var(--color-surface-border)] rounded-xl">
-                            <span className="material-symbols-outlined text-4xl mb-2 opacity-20">checklist</span>
-                            <p>No tasks found.</p>
-                        </div>
-                    ) : (
-                        filteredTasks.map(task => (
-                            <div
-                                key={task.id}
-                                onClick={() => navigate(`/project/${id}/tasks/${task.id}`)}
-                                className="group flex items-start gap-4 p-4 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] hover:border-[var(--color-surface-border-hover)] hover:shadow-sm transition-all cursor-pointer"
-                            >
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); handleToggle(task.id, task.isCompleted); }}
-                                    className={`
-                                        mt-0.5 size-5 rounded-md border flex items-center justify-center transition-all duration-200
-                                        ${task.isCompleted
-                                            ? 'bg-black dark:bg-white border-black dark:border-white text-white dark:text-black'
-                                            : 'border-gray-300 dark:border-gray-600 bg-transparent hover:border-black dark:hover:border-white text-transparent'}
-                                    `}
-                                >
-                                    <span className="material-symbols-outlined text-[14px] font-bold">check</span>
-                                </button>
-
-                                <div className="flex-1 min-w-0 flex flex-col gap-1">
-                                    <div className="flex items-start justify-between gap-4">
-                                        <span className={`text-sm font-medium leading-tight transition-colors group-hover:text-[var(--color-primary)] ${task.isCompleted ? 'text-gray-400 line-through' : 'text-[var(--color-text-main)]'}`}>
-                                            {task.title}
-                                        </span>
-                                    </div>
-
-                                    <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--color-text-muted)] min-h-[20px]">
-                                        {task.priority && (
-                                            <Badge size="sm" variant={task.priority === 'Urgent' ? 'error' : task.priority === 'High' ? 'warning' : 'secondary'}>
-                                                {task.priority}
-                                            </Badge>
-                                        )}
-                                        {task.status && task.status !== 'Todo' && (
-                                            <Badge size="sm" variant="outline">{task.status}</Badge>
-                                        )}
-                                        {task.dueDate && (
-                                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[var(--color-surface-hover)]">
-                                                <span className="material-symbols-outlined text-[10px]">calendar_today</span>
-                                                <span>{new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                                            </div>
-                                        )}
-                                        {subtaskStats[task.id]?.total > 0 && (
-                                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-[var(--color-surface-hover)]">
-                                                <span className="material-symbols-outlined text-[10px]">checklist</span>
-                                                <span>{subtaskStats[task.id].done}/{subtaskStats[task.id].total}</span>
-                                            </div>
-                                        )}
-                                    </div>
+                            <div className="flex-1 min-w-0 flex flex-col gap-1 z-10">
+                                <div className="flex items-center gap-3">
+                                    <span className={`text-base font-semibold leading-tight transition-colors ${task.isCompleted ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)]'}`}>
+                                        {task.title}
+                                    </span>
+                                    {task.priority === 'Urgent' && <Badge size="sm" variant="danger" className="animate-pulse">Urgent</Badge>}
                                 </div>
 
-                                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <div className="p-1 rounded-md text-gray-400 group-hover:text-black dark:group-hover:text-white transition-colors">
-                                        <span className="material-symbols-outlined text-lg">chevron_right</span>
-                                    </div>
+                                <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--color-text-muted)]">
+                                    {task.priority && task.priority !== 'Urgent' && (
+                                        <Badge size="sm" variant={task.priority === 'High' ? 'warning' : 'secondary'}>
+                                            {task.priority}
+                                        </Badge>
+                                    )}
+                                    {task.status && (
+                                        <span className="flex items-center gap-1">
+                                            <span className={`size-1.5 rounded-full ${task.status === 'Done' ? 'bg-green-500' : task.status === 'In Progress' ? 'bg-amber-500' : 'bg-slate-300'}`}></span>
+                                            {task.status}
+                                        </span>
+                                    )}
+                                    {task.dueDate && (
+                                        <div className={`flex items-center gap-1 ${new Date(task.dueDate) < new Date() && !task.isCompleted ? 'text-rose-500 font-bold' : ''}`}>
+                                            <span className="material-symbols-outlined text-[14px]">calendar_today</span>
+                                            <span>{new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                        </div>
+                                    )}
+                                    {subtaskStats[task.id]?.total > 0 && (
+                                        <div className="flex items-center gap-1">
+                                            <span className="material-symbols-outlined text-[14px]">checklist</span>
+                                            <span>{subtaskStats[task.id].done}/{subtaskStats[task.id].total}</span>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
-                        ))
-                    )}
-                </div>
 
-                <div className="p-3 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] text-xs text-[var(--color-text-muted)] flex justify-between">
-                    <span>{openCount} active tasks</span>
-                    <span>{completedCount} completed</span>
-                </div>
-            </Card>
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                                <div className="p-2 rounded-full bg-[var(--color-surface-hover)] text-[var(--color-text-main)]">
+                                    <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                                </div>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
 
-            {showCreateModal && id && (
+            {/* Check permission before showing modal */}
+            {showCreateModal && id && can('canManageTasks') && (
                 <TaskCreateModal
                     projectId={id}
                     onClose={() => setShowCreateModal(false)}

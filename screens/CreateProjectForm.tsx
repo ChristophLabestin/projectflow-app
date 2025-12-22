@@ -11,8 +11,13 @@ import { ProjectModule } from '../types';
 
 import { ImageCropper } from '../components/ui/ImageCropper';
 
+import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
+
 export const CreateProjectForm = () => {
     const navigate = useNavigate();
+    const { can } = useWorkspacePermissions();
+
+
     const [step, setStep] = useState(1);
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
@@ -118,6 +123,20 @@ export const CreateProjectForm = () => {
             setIsSubmitting(false);
         }
     };
+
+
+    if (!can('canCreateProjects')) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
+                <span className="material-symbols-outlined text-4xl text-gray-400">lock</span>
+                <h2 className="text-xl font-bold">Access Denied</h2>
+                <p className="text-gray-500">You don't have permission to create projects.</p>
+                <Link to="/projects">
+                    <Button>Back to Projects</Button>
+                </Link>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-5xl mx-auto flex flex-col gap-8 pb-10 p-4 animate-fade-up">
@@ -260,20 +279,13 @@ export const CreateProjectForm = () => {
                             <div className="space-y-4">
                                 <Input label="Project Name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Q4 Marketing Campaign" required autoFocus />
 
-                                <div className="space-y-1">
-                                    <div className="flex justify-between items-center">
-                                        <label className="text-sm font-bold text-[var(--color-text-main)]">Description</label>
-                                        <Button size="sm" variant="ghost" type="button" onClick={handleGenerateDesc} loading={isGenerating} disabled={!name} icon={<span className="material-symbols-outlined">auto_awesome</span>}>
-                                            Generate
-                                        </Button>
-                                    </div>
-                                    <Textarea
-                                        value={description}
-                                        onChange={(e) => setDescription(e.target.value)}
-                                        placeholder="Describe the project goals..."
-                                        rows={5}
-                                    />
-                                </div>
+                                <Textarea
+                                    label="Description"
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                    placeholder="Describe the project goals..."
+                                    rows={5}
+                                />
                             </div>
                         </Card>
 
@@ -296,30 +308,32 @@ export const CreateProjectForm = () => {
 
                         {/* Links Section */}
                         <Card className="space-y-4">
-                            <h3 className="h4 border-b border-[var(--color-surface-border)] pb-3">External Links</h3>
+                            <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1 border-b border-[var(--color-surface-border)] pb-3">External Links</h3>
                             <div className="space-y-3">
                                 {links.map((link, idx) => (
                                     <div key={idx} className="flex gap-2">
-                                        <Input
-                                            placeholder="Title"
-                                            value={link.title}
-                                            onChange={(e) => {
-                                                const newLinks = [...links];
-                                                newLinks[idx].title = e.target.value;
-                                                setLinks(newLinks);
-                                            }}
-                                            className="flex-1"
-                                        />
-                                        <Input
-                                            placeholder="URL"
-                                            value={link.url}
-                                            onChange={(e) => {
-                                                const newLinks = [...links];
-                                                newLinks[idx].url = e.target.value;
-                                                setLinks(newLinks);
-                                            }}
-                                            className="flex-[2]"
-                                        />
+                                        <div className="flex-1 space-y-1">
+                                            <Input
+                                                placeholder="Title"
+                                                value={link.title}
+                                                onChange={(e) => {
+                                                    const newLinks = [...links];
+                                                    newLinks[idx].title = e.target.value;
+                                                    setLinks(newLinks);
+                                                }}
+                                                className="w-full"
+                                            />
+                                            <Input
+                                                placeholder="URL"
+                                                value={link.url}
+                                                onChange={(e) => {
+                                                    const newLinks = [...links];
+                                                    newLinks[idx].url = e.target.value;
+                                                    setLinks(newLinks);
+                                                }}
+                                                className="w-full"
+                                            />
+                                        </div>
                                         <Button variant="ghost" size="icon" onClick={() => setLinks(links.filter((_, i) => i !== idx))}>
                                             <span className="material-symbols-outlined">close</span>
                                         </Button>
@@ -334,10 +348,10 @@ export const CreateProjectForm = () => {
 
                     <div className="space-y-6">
                         <Card className="space-y-4">
-                            <h3 className="h4 border-b border-[var(--color-surface-border)] pb-3">Assets</h3>
+                            <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1 border-b border-[var(--color-surface-border)] pb-3">Assets</h3>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-bold text-[var(--color-text-main)]">Cover Image</label>
+                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Cover Image</label>
                                 <label className="w-full h-32 rounded-xl border-2 border-dashed border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] flex flex-col items-center justify-center cursor-pointer hover:border-[var(--color-text-main)] transition-colors relative overflow-hidden group">
                                     <input type="file" accept="image/*" onChange={(e) => handleFileSelect(e, 'cover')} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                                     {coverFile ? (
@@ -363,7 +377,7 @@ export const CreateProjectForm = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-bold text-[var(--color-text-main)]">Icon</label>
+                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Icon</label>
                                 <label className="size-20 rounded-xl border-2 border-dashed border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] flex flex-col items-center justify-center cursor-pointer hover:border-[var(--color-text-main)] transition-colors relative overflow-hidden group">
                                     <input type="file" accept="image/*" onChange={(e) => handleFileSelect(e, 'icon')} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                                     {squareIconFile ? (
@@ -386,7 +400,7 @@ export const CreateProjectForm = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-bold text-[var(--color-text-main)]">Gallery</label>
+                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Gallery</label>
                                 <div className="grid grid-cols-3 gap-3">
                                     {screenshotFiles.map((file, idx) => (
                                         <div key={idx} className="relative aspect-video rounded-lg overflow-hidden border border-[var(--color-surface-border)] group">

@@ -8,32 +8,48 @@ import {
     deleteDoc,
     query,
     where,
+    onSnapshot,
+    Timestamp,
     serverTimestamp,
     setDoc,
     collectionGroup,
     documentId,
-    onSnapshot,
     orderBy,
     limit,
     writeBatch,
+    increment,
+    Unsubscribe,
+    arrayUnion,
+    arrayRemove,
+    runTransaction
 } from "firebase/firestore";
-import { updateProfile } from "firebase/auth";
+import { updateProfile, linkWithPopup } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage, auth } from "./firebase";
-import type { Task, Idea, Activity, Project, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember } from '../types';
+import { db, storage, auth, GithubAuthProvider } from "./firebase";
+import type { Task, Idea, Activity, Project, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole } from '../types';
 import { toMillis } from "../utils/time";
+import {
+    notifyTaskAssignment,
+    notifyIssueAssignment,
+    notifyComment,
+    notifySubtaskAssignment,
+    notifyProjectInvite,
+    createNotification
+} from './notificationService';
+import { createGithubIssue, updateGithubIssue, addGithubIssueComment } from './githubService';
 
 const TENANTS = "tenants";
 const PROJECTS = "projects";
 const USERS = "users";
 const TASKS = "tasks";
 const SUBTASKS = "subtasks";
-const ISSUES = "issues";
+export const ISSUES = "issues";
 const IDEAS = "ideas";
 const MINDMAPS = "mindmaps";
 const ACTIVITIES = "activities";
 const CATEGORIES = "taskCategories";
 const COMMENTS = "comments";
+const GEMINI_REPORTS = "geminiReports";
 
 const TENANT_CACHE_KEY = "activeTenantId";
 
@@ -68,7 +84,7 @@ export const clearActiveTenantId = () => {
 
 export const getActiveTenantId = () => getCachedTenantId();
 
-const resolveTenantId = (tenantId?: string) => {
+export const resolveTenantId = (tenantId?: string) => {
     const user = auth.currentUser;
     const resolved = tenantId || getCachedTenantId() || user?.uid;
     if (!resolved) {
@@ -81,36 +97,72 @@ const tenantDocRef = (tenantId: string) => doc(db, TENANTS, tenantId);
 const tenantUsersCollection = (tenantId: string) => collection(tenantDocRef(tenantId), USERS);
 const projectsCollection = (tenantId: string) => collection(tenantDocRef(tenantId), PROJECTS);
 const projectDocRef = (tenantId: string, projectId: string) => doc(tenantDocRef(tenantId), PROJECTS, projectId);
-const projectSubCollection = (tenantId: string, projectId: string, sub: string) =>
+export const projectSubCollection = (tenantId: string, projectId: string, sub: string) =>
     collection(projectDocRef(tenantId, projectId), sub);
 
-const ensureTenantAndUser = async (tenantId: string) => {
+export const ensureTenantAndUser = async (tenantId: string, role?: WorkspaceRole) => {
     const user = auth.currentUser;
-    const isOwner = user?.uid === tenantId;
+    if (!user) return; // No user, nothing to do
+
+    const isOwner = user.uid === tenantId;
+
+    // Only the owner can create a tenant document
     if (isOwner) {
         await setDoc(
             tenantDocRef(tenantId),
             {
                 tenantId,
-                name: user?.displayName || "Workspace",
+                name: user.displayName || "Workspace",
                 updatedAt: serverTimestamp(),
             },
             { merge: true }
         );
     }
 
-    if (user) {
-        await setDoc(
-            doc(tenantUsersCollection(tenantId), user.uid),
-            {
-                uid: user.uid,
-                email: user.email || "",
-                displayName: user.displayName || "User",
-                photoURL: user.photoURL || "",
-                joinedAt: serverTimestamp(),
-            },
-            { merge: true }
-        );
+    // Check if tenant exists before writing user document
+    // This prevents creating spurious tenant documents when a wrong ID is passed
+    const tenantDoc = await getDoc(tenantDocRef(tenantId));
+    if (!tenantDoc.exists() && !isOwner) {
+        // Tenant doesn't exist and user is not the owner - don't create anything
+        console.warn(`ensureTenantAndUser: Tenant ${tenantId} does not exist and user is not owner. Skipping.`);
+        return;
+    }
+
+    const payload: any = {
+        uid: user.uid,
+        email: user.email || "",
+        displayName: user.displayName || "User",
+        photoURL: user.photoURL || "",
+        updatedAt: serverTimestamp(),
+    };
+
+    // Only update role if explicitly passed or if owner
+    if (role) {
+        payload.role = role;
+    } else if (isOwner) {
+        payload.role = 'Owner';
+    }
+
+    // Set joinedAt for new users
+    payload.joinedAt = serverTimestamp();
+
+    await setDoc(
+        doc(tenantUsersCollection(tenantId), user.uid),
+        payload,
+        { merge: true }
+    );
+
+    // Initialize AI usage if not present
+    const userRef = doc(tenantUsersCollection(tenantId), user.uid);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists() && !userSnap.data().aiUsage) {
+        await updateDoc(userRef, {
+            aiUsage: {
+                tokensUsed: 0,
+                tokenLimit: 1000000,
+                lastReset: serverTimestamp()
+            }
+        });
     }
 };
 
@@ -123,6 +175,67 @@ export const getUserProfile = async (userId: string, tenantId?: string) => {
 export const updateUserData = async (userId: string, data: Partial<any>, tenantId?: string) => {
     const resolvedTenant = resolveTenantId(tenantId);
     await setDoc(doc(tenantUsersCollection(resolvedTenant), userId), data, { merge: true });
+};
+
+export const linkWithGithub = async (): Promise<string> => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("No user logged in");
+
+    const provider = new GithubAuthProvider();
+    provider.addScope('repo');
+    provider.addScope('user');
+
+    try {
+        const result = await linkWithPopup(user, provider);
+        const credential = GithubAuthProvider.credentialFromResult(result);
+        if (!credential?.accessToken) {
+            throw new Error("Failed to get GitHub access token");
+        }
+        return credential.accessToken;
+    } catch (error: any) {
+        console.error("GitHub link error", error);
+        if (error.code === 'auth/credential-already-in-use') {
+            throw new Error("This GitHub account is already linked to another user.");
+        }
+        throw error;
+    }
+};
+
+export const getAIUsage = async (userId: string, tenantId?: string): Promise<AIUsage | null> => {
+    try {
+        const resolvedTenant = resolveTenantId(tenantId);
+        const userRef = doc(tenantUsersCollection(resolvedTenant), userId);
+        const snap = await getDoc(userRef);
+        if (snap.exists()) {
+            const data = snap.data() as Member;
+            // Monthly reset check
+            if (data.aiUsage) {
+                const lastReset = data.aiUsage.lastReset?.toDate?.() || new Date(data.aiUsage.lastReset);
+                const now = new Date();
+                if (now.getMonth() !== lastReset.getMonth() || now.getFullYear() !== lastReset.getFullYear()) {
+                    const resetUsage = {
+                        ...data.aiUsage,
+                        tokensUsed: 0,
+                        lastReset: serverTimestamp()
+                    };
+                    await updateDoc(userRef, { aiUsage: resetUsage });
+                    return resetUsage;
+                }
+            }
+            return data.aiUsage || null;
+        }
+    } catch (e) {
+        console.warn("Failed to get AI usage", e);
+    }
+    return null;
+};
+
+export const incrementAIUsage = async (userId: string, tokens: number, tenantId?: string) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const userRef = doc(tenantUsersCollection(resolvedTenant), userId);
+    await updateDoc(userRef, {
+        'aiUsage.tokensUsed': increment(tokens)
+    });
 };
 
 export const getTenant = async (tenantId: string) => {
@@ -153,16 +266,28 @@ const getProjectContextFromRef = (ref: { parent?: any }) => {
 };
 
 const findTaskDoc = async (taskId: string, projectId?: string, tenantId?: string) => {
-    if (projectId) {
-        const resolvedTenant = resolveTenantId(tenantId);
-        const directRef = doc(projectSubCollection(resolvedTenant, projectId, TASKS), taskId);
+    // If we have a tenantId, try direct lookup first
+    if (projectId && tenantId) {
+        const directRef = doc(projectSubCollection(tenantId, projectId, TASKS), taskId);
         const snap = await getDoc(directRef);
         if (snap.exists()) return snap;
     }
 
-    const cg = query(collectionGroup(db, TASKS), where(documentId(), "==", taskId));
+    // If only projectId, try to get project first to find its tenant
+    if (projectId && !tenantId) {
+        const project = await getProjectById(projectId);
+        if (project?.tenantId) {
+            const directRef = doc(projectSubCollection(project.tenantId, projectId, TASKS), taskId);
+            const snap = await getDoc(directRef);
+            if (snap.exists()) return snap;
+        }
+    }
+
+    // Fallback: global collectionGroup search
+    const cg = collectionGroup(db, TASKS);
     const snapshot = await getDocs(cg);
-    return snapshot.docs[0] || null;
+    const matchingDoc = snapshot.docs.find((d) => d.id === taskId);
+    return matchingDoc || null;
 };
 
 const findIdeaDoc = async (ideaId: string, projectId?: string, tenantId?: string) => {
@@ -235,17 +360,28 @@ export const addActivityEntry = async (projectId: string, payload: Omit<Activity
 
 // --- Tenants / Users ---
 
-export const joinTenant = async (tenantId: string) => {
+export const joinTenant = async (tenantId: string, role: WorkspaceRole = 'Member') => {
     setActiveTenantId(tenantId);
-    await ensureTenantAndUser(tenantId);
+    await ensureTenantAndUser(tenantId, role);
 };
 
 export const bootstrapTenantForCurrentUser = async (inviteTenantId?: string) => {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
+
+    // 1. Always ensure the user has their own personal tenant
+    await ensureTenantAndUser(user.uid);
+
+    // 2. Determine target tenant
+    // If invited, use that. Else cache. Else personal.
     const targetTenant = inviteTenantId || getCachedTenantId() || user.uid;
+
+    // 3. If target is different (e.g. joined via invite), ensure we are added to that tenant too
+    if (targetTenant !== user.uid) {
+        await ensureTenantAndUser(targetTenant);
+    }
+
     setActiveTenantId(targetTenant);
-    await ensureTenantAndUser(targetTenant);
 };
 
 // --- Projects ---
@@ -309,6 +445,7 @@ export const createProject = async (
         screenshots: screenshotUrls,
         progress: 0,
         members: [user.uid],
+        memberIds: [user.uid],
         createdAt: serverTimestamp()
     });
 
@@ -337,6 +474,44 @@ export const updateProjectFields = async (
             resolvedTenant
         );
     }
+};
+
+// --- Gemini Reports ---
+
+export const saveGeminiReport = async (projectId: string, content: string, tenantId?: string) => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+    const resolvedTenant = resolveTenantId(tenantId);
+
+    await addDoc(projectSubCollection(resolvedTenant, projectId, GEMINI_REPORTS), {
+        projectId,
+        content,
+        createdBy: user.uid,
+        userName: user.displayName || "User",
+        createdAt: serverTimestamp()
+    });
+
+    await logActivity(
+        projectId,
+        { action: "Generated project report", target: "AI Report", details: content, type: "report" },
+        resolvedTenant
+    );
+};
+
+export const getLatestGeminiReport = async (projectId: string, tenantId?: string): Promise<GeminiReport | null> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const q = query(
+        projectSubCollection(resolvedTenant, projectId, GEMINI_REPORTS),
+        orderBy("createdAt", "desc"),
+        limit(1)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    const data = snap.docs[0].data();
+    return {
+        id: snap.docs[0].id,
+        ...data
+    } as GeminiReport;
 };
 
 // Helper to extract tenant ID from a Document Reference path
@@ -394,7 +569,7 @@ export const getSharedProjects = async (): Promise<Project[]> => {
     // Query all projects where the user is a member
     const q = query(
         collectionGroup(db, PROJECTS),
-        where("members", "array-contains", user.uid)
+        where("memberIds", "array-contains", user.uid)
     );
 
     const snapshot = await getDocs(q);
@@ -407,6 +582,32 @@ export const getSharedProjects = async (): Promise<Project[]> => {
         } as Project))
         .filter(p => p.ownerId !== user.uid) // Exclude owned projects
         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+};
+
+
+export const getUserGlobalActivities = async (tenantId?: string, limitCount = 20): Promise<Activity[]> => {
+    const user = auth.currentUser;
+    if (!user) return [];
+
+    const resolvedTenant = resolveTenantId(tenantId);
+
+    const q = query(
+        collectionGroup(db, ACTIVITIES),
+        where("tenantId", "==", resolvedTenant),
+        orderBy("createdAt", "desc"),
+        limit(limitCount)
+    );
+
+    try {
+        const snapshot = await getDocs(q);
+        return snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as Activity));
+    } catch (error) {
+        console.error("Error fetching global activities:", error);
+        return [];
+    }
 };
 
 export const joinProject = async (projectId: string, tenantId: string, role: ProjectRole = 'Editor') => {
@@ -432,34 +633,57 @@ export const joinProject = async (projectId: string, tenantId: string, role: Pro
         const newMember: ProjectMember = {
             userId: user.uid,
             role,
-            joinedAt: serverTimestamp(),
+            joinedAt: new Date(), // Cannot use serverTimestamp() inside arrays
             invitedBy: data.ownerId,
         };
 
         await updateDoc(projectRef, {
-            members: [...members, newMember]
+            members: [...members, newMember],
+            memberIds: arrayUnion(user.uid)
         });
+
+        // Also add user profile to tenant's users collection for lookup
+        await setDoc(
+            doc(tenantUsersCollection(tenantId), user.uid),
+            {
+                uid: user.uid,
+                email: user.email || "",
+                displayName: user.displayName || "User",
+                photoURL: user.photoURL || "",
+                role: 'Member',
+                joinedAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+        );
+
         await logActivity(
             projectId,
             { action: `${user.displayName || "User"} joined the project`, target: "Team", type: "status", user: user.displayName || "User" },
             tenantId
         );
+
+        // Notify project owner
+        if (data.ownerId !== user.uid) {
+            await notifyProjectInvite(data.ownerId, data.title || 'Project', projectId, tenantId);
+        }
     }
 };
 
-export const getProjectMembers = async (projectId: string, tenantId?: string) => {
+export const getProjectMembers = async (projectId: string, tenantId?: string): Promise<string[]> => {
     const resolvedTenant = resolveTenantId(tenantId);
     const project = await getProjectById(projectId, resolvedTenant);
     if (!project || !project.members) return [];
 
-    // Support both legacy string[] and new ProjectMember[] formats
-    if (typeof project.members[0] === 'string') {
-        // Legacy format: return as-is (UIDs)
-        return project.members;
-    }
-
-    // New format: return ProjectMember array
-    return project.members;
+    // Handle mixed format: some elements might be strings, others might be ProjectMember objects
+    return project.members.map((member: string | ProjectMember) => {
+        if (typeof member === 'string') {
+            // Legacy format: plain UID string
+            return member;
+        }
+        // New format: ProjectMember object
+        return member.userId;
+    });
 };
 
 /**
@@ -568,17 +792,259 @@ export const removeMember = async (
     }
 
     const members = project.members || [];
+    console.log('Current members:', members);
+    console.log('Removing userId:', userId);
 
-    // Filter out the member
-    const updatedMembers = (members as ProjectMember[]).filter(m => m.userId !== userId);
+    // Filter out the member - handle both legacy string[] and new ProjectMember[] formats
+    const updatedMembers = members.filter(m => {
+        const memberId = typeof m === 'string' ? m : m.userId;
+        return memberId !== userId;
+    });
 
-    await updateDoc(projectRef, { members: updatedMembers });
+    console.log('Updated members:', updatedMembers);
+
+    await updateDoc(projectRef, {
+        members: updatedMembers as any,
+        memberIds: arrayRemove(userId),
+        updatedAt: serverTimestamp()
+    });
+
+    console.log('Member removed successfully');
+};
+
+/**
+ * Generate a shareable invite link for a project
+ */
+export const generateInviteLink = async (
+    projectId: string,
+    role: ProjectRole,
+    maxUses?: number,
+    expiresInHours: number = 24,
+    tenantId?: string
+): Promise<string> => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const resolvedTenant = resolveTenantId(tenantId);
+
+    // Verify user has permission to invite
+    const project = await getProjectById(projectId, resolvedTenant);
+    if (!project) throw new Error("Project not found");
+    if (project.ownerId !== user.uid) {
+        throw new Error("Only the project owner can create invite links");
+    }
+
+    // Create invite link document
+    const inviteLinksRef = collection(db, `tenants/${resolvedTenant}/projects/${projectId}/inviteLinks`);
+    const inviteLink = {
+        projectId,
+        role,
+        createdBy: user.uid,
+        createdAt: serverTimestamp(),
+        expiresAt: new Date(Date.now() + expiresInHours * 60 * 60 * 1000),
+        maxUses: maxUses || null,
+        uses: 0,
+        isActive: true
+    };
+
+    const docRef = await addDoc(inviteLinksRef, inviteLink);
+
+    // Generate URL
+    const base = window.location.origin;
+    return `${base}/join/${docRef.id}?projectId=${projectId}&tenantId=${resolvedTenant}`;
+};
+
+/**
+ * Validate and use an invite link
+ */
+export const validateInviteLink = async (
+    inviteLinkId: string,
+    projectId: string,
+    tenantId: string
+): Promise<ProjectRole> => {
+    const inviteLinkRef = doc(db, `tenants/${tenantId}/projects/${projectId}/inviteLinks`, inviteLinkId);
+    const inviteLinkDoc = await getDoc(inviteLinkRef);
+
+    if (!inviteLinkDoc.exists()) {
+        throw new Error("Invalid invite link");
+    }
+
+    const linkData = inviteLinkDoc.data();
+
+    // Check if link is active
+    if (!linkData.isActive) {
+        throw new Error("This invite link has been disabled");
+    }
+
+    // Check expiration
+    const expiresAt = linkData.expiresAt?.toDate?.() || new Date(linkData.expiresAt);
+    if (expiresAt < new Date()) {
+        throw new Error("This invite link has expired");
+    }
+
+    // Check max uses
+    if (linkData.maxUses && linkData.uses >= linkData.maxUses) {
+        throw new Error("This invite link has reached its maximum number of uses");
+    }
+
+    return linkData.role as ProjectRole;
+};
+
+/**
+ * Join a project using an invite link
+ */
+export const joinProjectViaLink = async (
+    inviteLinkId: string,
+    projectId: string,
+    tenantId: string
+): Promise<void> => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    // Validate the link and get the role
+    const role = await validateInviteLink(inviteLinkId, projectId, tenantId);
+
+    // Add user to project
+    const projectRef = doc(db, `tenants/${tenantId}/projects`, projectId);
+    const projectDoc = await getDoc(projectRef);
+
+    if (!projectDoc.exists()) {
+        throw new Error("Project not found");
+    }
+
+    const data = projectDoc.data();
+    const members = data.members || [];
+
+    // Check if already a member
+    // Support both legacy string[] and new ProjectMember[] formats
+    const isMember = typeof members[0] === 'string'
+        ? members.includes(user.uid)
+        : (members as ProjectMember[]).some((m: any) => m.userId === user.uid);
+
+    if (isMember) {
+        throw new Error("You are already a member of this project");
+    }
+
+    const newMember: ProjectMember = {
+        userId: user.uid,
+        role,
+        joinedAt: new Date(), // Cannot use serverTimestamp() inside arrays
+        invitedBy: "link", // Special marker
+    };
+
+    await updateDoc(projectRef, {
+        members: [...members, newMember],
+        memberIds: arrayUnion(user.uid) // Also add to memberIds for efficient querying
+    });
+
+    // Also ensure the user is added to the tenant users list (as a viewer or basic user)
+    // This is implicitly handled by ensureTenantAndUser but valid to reinforce here for metadata
+    await setDoc(doc(db, `tenants/${tenantId}/users`, user.uid), {
+        uid: user.uid,
+        displayName: user.displayName || 'User',
+        email: user.email,
+        photoURL: user.photoURL,
+        joinedAt: serverTimestamp(),
+        lastActive: serverTimestamp()
+    }, { merge: true });
+
+    // Increment link usage
+    const inviteLinkRef = doc(db, `tenants/${tenantId}/projects/${projectId}/inviteLinks`, inviteLinkId);
+    await updateDoc(inviteLinkRef, {
+        uses: increment(1)
+    });
 
     await logActivity(
         projectId,
-        { action: `Removed member from project`, target: "Team", type: "status" },
-        resolvedTenant
+        { action: `${user.displayName || "User"} joined the project`, target: "Team", type: "status", user: user.displayName || "User" },
+        tenantId
     );
+};
+
+// --- Workspace Invites ---
+
+/**
+ * Generate a shareable invite link for a workspace
+ */
+export const generateWorkspaceInviteLink = async (
+    role: WorkspaceRole = 'Member',
+    maxUses?: number,
+    expiresInHours: number = 24,
+    tenantId?: string
+): Promise<string> => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const resolvedTenant = resolveTenantId(tenantId);
+
+    // Create invite link document in tenant root
+    const inviteLinksRef = collection(db, `tenants/${resolvedTenant}/inviteLinks`);
+    const inviteLink = {
+        createdBy: user.uid,
+        createdAt: serverTimestamp(),
+        expiresAt: new Date(Date.now() + expiresInHours * 60 * 60 * 1000),
+        maxUses: maxUses || null,
+        uses: 0,
+        role, // Store role
+        isActive: true
+    };
+
+    const docRef = await addDoc(inviteLinksRef, inviteLink);
+
+    // Generate URL
+    const base = window.location.origin;
+    return `${base}/join-workspace/${docRef.id}?tenantId=${resolvedTenant}`;
+};
+
+/**
+ * Validate and use a workspace invite link
+ */
+export const validateWorkspaceInviteLink = async (
+    inviteLinkId: string,
+    tenantId: string
+): Promise<WorkspaceRole> => {
+    const inviteLinkRef = doc(db, `tenants/${tenantId}/inviteLinks`, inviteLinkId);
+    const inviteLinkDoc = await getDoc(inviteLinkRef);
+
+    if (!inviteLinkDoc.exists()) {
+        throw new Error("Invalid invite link");
+    }
+
+    const linkData = inviteLinkDoc.data();
+
+    if (!linkData.isActive) throw new Error("This invite link has been disabled");
+
+    const expiresAt = linkData.expiresAt?.toDate?.() || new Date(linkData.expiresAt);
+    if (expiresAt < new Date()) throw new Error("This invite link has expired");
+
+    if (linkData.maxUses && linkData.uses >= linkData.maxUses) {
+        throw new Error("This invite link has reached its maximum number of uses");
+    }
+
+    return (linkData.role || 'Member') as WorkspaceRole;
+};
+
+/**
+ * Join a workspace using an invite link
+ */
+export const joinWorkspaceViaLink = async (
+    inviteLinkId: string,
+    tenantId: string
+): Promise<void> => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    // Validate and get role
+    const role = await validateWorkspaceInviteLink(inviteLinkId, tenantId);
+
+    // Join with assigned role
+    await joinTenant(tenantId, role);
+
+    // Increment usage
+    const inviteLinkRef = doc(db, `tenants/${tenantId}/inviteLinks`, inviteLinkId);
+    await updateDoc(inviteLinkRef, {
+        uses: increment(1)
+    });
 };
 
 export const getUserProjects = async (tenantId?: string): Promise<Project[]> => {
@@ -593,6 +1059,51 @@ export const getUserProjects = async (tenantId?: string): Promise<Project[]> => 
         .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Project))
         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
 };
+
+/**
+ * Get all projects in the workspace (not just user-owned) for search purposes
+ */
+export const getAllWorkspaceProjects = async (tenantId?: string): Promise<Project[]> => {
+    const user = auth.currentUser;
+    if (!user) return [];
+
+    const resolvedTenant = tenantId || getCachedTenantId() || user.uid;
+    await ensureTenantAndUser(resolvedTenant);
+
+    const snapshot = await getDocs(projectsCollection(resolvedTenant));
+    return snapshot.docs
+        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Project))
+        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+};
+
+/**
+ * Get all tasks across all projects in the workspace for search purposes
+ */
+export const getAllWorkspaceTasks = async (tenantId?: string): Promise<Task[]> => {
+    const user = auth.currentUser;
+    if (!user) return [];
+
+    const resolvedTenant = tenantId || getCachedTenantId() || user.uid;
+    await ensureTenantAndUser(resolvedTenant);
+
+    // Get all projects first
+    const projects = await getAllWorkspaceProjects(resolvedTenant);
+
+    // Fetch tasks for all projects
+    const taskPromises = projects.map(async p => {
+        try {
+            const projectTasks = await getProjectTasks(p.id, p.tenantId);
+            return projectTasks.map(t => ({ ...t, tenantId: p.tenantId }));
+        } catch (e) {
+            console.warn(`Failed to fetch tasks for project ${p.id}`, e);
+            return [];
+        }
+    });
+
+    const results = await Promise.all(taskPromises);
+    return results.flat();
+};
+
 
 
 
@@ -636,7 +1147,7 @@ export const addTask = async (
     dueDate?: string,
     assignee?: string,
     priority: Task['priority'] = "Medium",
-    extra?: Partial<Pick<Task, 'description' | 'category' | 'status' | 'assigneeId'>>,
+    extra?: Partial<Pick<Task, 'description' | 'category' | 'status' | 'assigneeId' | 'assigneeIds' | 'linkedIssueId'>>,
     tenantId?: string
 ) => {
     const user = auth.currentUser;
@@ -645,7 +1156,7 @@ export const addTask = async (
     const resolvedTenant = resolveTenantId(tenantId);
     await ensureTenantAndUser(resolvedTenant);
 
-    const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, TASKS), {
+    const taskData: any = {
         projectId,
         tenantId: resolvedTenant,
         ownerId: user.uid,
@@ -657,18 +1168,66 @@ export const addTask = async (
         description: extra?.description || "",
         category: extra?.category || [],
         status: extra?.status || "Open",
-        assigneeId: extra?.assigneeId || (user.uid === assignee ? user.uid : undefined), // Proritize explicit ID
+        assigneeId: extra?.assigneeId || (user.uid === assignee ? user.uid : null),
+        assigneeIds: extra?.assigneeIds || (extra?.assigneeId ? [extra.assigneeId] : []),
         createdAt: serverTimestamp()
-    });
+    };
+
+    // Add linked issue if converting from an issue
+    if (extra?.linkedIssueId) {
+        taskData.linkedIssueId = extra.linkedIssueId;
+    }
+
+    const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, TASKS), taskData);
     await ensureCategory(projectId, extra?.category, resolvedTenant);
     await logActivity(projectId, { action: `Added task "${title}"`, target: "Tasks", type: "task" }, resolvedTenant);
+
+    // Sync progress
+    await syncProjectProgress(projectId, resolvedTenant);
+
+    // Send notifications to assignees
+    const assigneeIds = extra?.assigneeIds || (extra?.assigneeId ? [extra.assigneeId] : []);
+    for (const assigneeId of assigneeIds) {
+        if (assigneeId && assigneeId !== user.uid) {
+            await notifyTaskAssignment(assigneeId, title, projectId, docRef.id, resolvedTenant);
+        }
+    }
+
     return docRef.id;
+};
+
+/**
+ * Sync project progress based on task completion
+ */
+export const syncProjectProgress = async (projectId: string, tenantId?: string) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const snapshot = await getDocs(projectSubCollection(resolvedTenant, projectId, TASKS));
+    const tasks = snapshot.docs.map(d => d.data() as Task);
+
+    if (tasks.length === 0) {
+        await updateDoc(projectDocRef(resolvedTenant, projectId), { progress: 0 });
+        return;
+    }
+
+    const completedCount = tasks.filter(t => t.isCompleted || t.status === 'Done').length;
+    const progress = Math.round((completedCount / tasks.length) * 100);
+
+    await updateDoc(projectDocRef(resolvedTenant, projectId), {
+        progress,
+        updatedAt: serverTimestamp() // Force update to trigger UI re-fetch if needed
+    });
 };
 
 export const getTaskById = async (taskId: string, projectId?: string, tenantId?: string): Promise<Task | null> => {
     const taskSnap = await findTaskDoc(taskId, projectId, tenantId);
     if (taskSnap?.exists()) {
-        return { id: taskSnap.id, ...taskSnap.data() } as Task;
+        const { tenantId: extractedTenantId, projectId: extractedProjectId } = getProjectContextFromRef(taskSnap.ref);
+        return {
+            id: taskSnap.id,
+            tenantId: extractedTenantId,
+            projectId: extractedProjectId,
+            ...taskSnap.data()
+        } as Task;
     }
     return null;
 };
@@ -678,7 +1237,7 @@ export const getProjectTasks = async (projectId: string, tenantId?: string): Pro
     await ensureTenantAndUser(resolvedTenant);
     const snapshot = await getDocs(projectSubCollection(resolvedTenant, projectId, TASKS));
     return snapshot.docs
-        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Task))
+        .map(docSnap => ({ id: docSnap.id, ...docSnap.data(), path: docSnap.ref.path } as unknown as Task))
         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
 };
 
@@ -689,29 +1248,21 @@ export const getUserTasks = async (): Promise<Task[]> => {
     // Fallback Strategy: Scan current tenant projects manually.
     // This avoids needing complex CollectionGroup indexes for now.
 
-    // 1. Get all projects in current tenant (simple fetch)
-    // We try to get all and filter in memory to avoid "Missing Index" on filtered queries
+    const tenantId = resolveTenantId();
+    const projectsRef = projectsCollection(tenantId);
     let allProjects: Project[] = [];
     try {
-        const tenantId = resolveTenantId();
-        const projectsRef = projectsCollection(tenantId);
-        // Fetch ALL projects in tenant (assuming reasonable count) to avoid "Missing Index" on filtered queries
-        const snapshot = await getDocs(projectsRef);
-        allProjects = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Project));
+        const snap = await getDocs(projectsRef);
+        allProjects = snap.docs.map(d => ({ id: d.id, ...d.data() } as Project));
     } catch (e) {
-        console.warn("Error fetching projects for calendar", e);
+        console.warn("Failed to fetch projects for user tasks", e);
     }
 
-    // 2. Filter projects where user is member or owner
-    const relevantProjects = allProjects.filter(p =>
-        p.ownerId === user.uid || (p.members && p.members.includes(user.uid))
-    );
+    const relevantProjects = allProjects.filter(p => p.memberIds?.includes(user.uid) || p.ownerId === user.uid);
 
-    // 3. Fetch tasks for these projects
     const taskPromises = relevantProjects.map(async p => {
         try {
             const projectTasks = await getProjectTasks(p.id, p.tenantId);
-            // Inject tenantId for context-aware updates later
             return projectTasks.map(t => ({ ...t, tenantId: p.tenantId }));
         } catch (e) {
             return [];
@@ -721,38 +1272,141 @@ export const getUserTasks = async (): Promise<Task[]> => {
     const results = await Promise.all(taskPromises);
     const allTasks = results.flat();
 
-    // 4. Return all tasks
-    return allTasks.filter(t => t.ownerId === user.uid || t.assigneeId === user.uid || t.assignee === user.uid);
+    // Filter to tasks where user is the assignee or owner (if no assignee)
+    return allTasks.filter(t =>
+        t.assigneeId === user.uid ||
+        (t.assigneeIds && t.assigneeIds.includes(user.uid)) ||
+        (t.ownerId === user.uid && !t.assigneeId && (!t.assigneeIds || t.assigneeIds.length === 0))
+    );
 };
 
-export const updateTask = async (taskId: string, updates: Partial<Task>, projectId: string, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
+export const getUnassignedTasks = async (): Promise<Task[]> => {
+    const user = auth.currentUser;
+    if (!user) return [];
 
-    // Construct path: tenants/{tenantId}/projects/{projectId}/tasks/{taskId}
-    // Helper projectSubCollection gives collection ref. We need doc ref.
-    const colRef = projectSubCollection(resolvedTenant, projectId, TASKS);
-    const docRef = doc(colRef, taskId);
+    const tenantId = resolveTenantId();
+    const projectsRef = projectsCollection(tenantId);
+    let allProjects: Project[] = [];
+    try {
+        const snap = await getDocs(projectsRef);
+        allProjects = snap.docs.map(d => ({ id: d.id, ...d.data() } as Project));
+    } catch (e) {
+        console.warn("Failed to fetch projects for unassigned tasks", e);
+    }
 
-    await updateDoc(docRef, updates);
+    const relevantProjects = allProjects.filter(p => p.memberIds?.includes(user.uid) || p.ownerId === user.uid);
+
+    const taskPromises = relevantProjects.map(async p => {
+        try {
+            const projectTasks = await getProjectTasks(p.id, p.tenantId);
+            return projectTasks.map(t => ({ ...t, tenantId: p.tenantId }));
+        } catch (e) {
+            return [];
+        }
+    });
+
+    const results = await Promise.all(taskPromises);
+    const allTasks = results.flat();
+
+    // Unassigned means no assigneeId and no assigneeIds
+    return allTasks.filter(t => !t.assigneeId && (!t.assigneeIds || t.assigneeIds.length === 0));
+};
+
+export const getUsersTasks = async (userIds: string[]): Promise<Task[]> => {
+    if (!userIds || userIds.length === 0) return [];
+
+    const tenantId = resolveTenantId();
+    const projectsRef = projectsCollection(tenantId);
+    let allProjects: Project[] = [];
+    try {
+        const snap = await getDocs(projectsRef);
+        allProjects = snap.docs.map(d => ({ id: d.id, ...d.data() } as Project));
+    } catch (e) {
+        console.warn("Failed to fetch projects for team tasks", e);
+    }
+
+    // We only care about projects where at least one of the target users is a member
+    const relevantProjects = allProjects.filter(p =>
+        p.ownerId && userIds.includes(p.ownerId) ||
+        (p.memberIds && p.memberIds.some(uid => userIds.includes(uid)))
+    );
+
+    const taskPromises = relevantProjects.map(async p => {
+        try {
+            const projectTasks = await getProjectTasks(p.id, p.tenantId);
+            return projectTasks.map(t => ({ ...t, tenantId: p.tenantId }));
+        } catch (e) {
+            return [];
+        }
+    });
+
+    const results = await Promise.all(taskPromises);
+    const allTasks = results.flat();
+
+    // Filter to tasks assigned to ANY of the given user IDs
+    return allTasks.filter(t =>
+        (t.assigneeId && userIds.includes(t.assigneeId)) ||
+        (t.assigneeIds && t.assigneeIds.some(uid => userIds.includes(uid)))
+    );
+};
+
+export const updateTask = async (
+    taskId: string,
+    updates: Partial<Task>,
+    projectId?: string,
+    tenantId?: string,
+    path?: string
+) => {
+    // Robustly find task doc, handling stale tenantId/projectId if needed
+    // First try path if available
+    if (path) {
+        const ref = doc(db, path);
+        await updateDoc(ref, updates);
+        return;
+    }
+
+    const taskSnap = await findTaskDoc(taskId, projectId, tenantId);
+    if (!taskSnap) throw new Error("Task not found");
+
+    await updateDoc(taskSnap.ref, updates);
 };
 
 export const toggleTaskStatus = async (taskId: string, currentStatus: boolean, projectId?: string, tenantId?: string) => {
     const taskSnap = await findTaskDoc(taskId, projectId, tenantId);
     if (!taskSnap) throw new Error("Task not found");
 
-    await updateDoc(taskSnap.ref, { isCompleted: !currentStatus });
+    const newStatus = !currentStatus;
+    await updateDoc(taskSnap.ref, { isCompleted: newStatus });
     const data = taskSnap.data() as Task;
     const { tenantId: resolvedTenant } = getProjectContextFromRef(taskSnap.ref);
     await logActivity(
         data.projectId,
-        { action: `${!currentStatus ? "Completed" : "Reopened"} task "${data.title}"`, target: "Tasks", type: "task" },
+        { action: `${newStatus ? "Completed" : "Reopened"} task "${data.title}"`, target: "Tasks", type: "task" },
         resolvedTenant
     );
+    await syncProjectProgress(data.projectId, resolvedTenant);
+
+    // Sync linked issue status if this task was converted from an issue
+    if (data.linkedIssueId) {
+        try {
+            const issueRef = doc(projectSubCollection(resolvedTenant, data.projectId, ISSUES), data.linkedIssueId);
+            const newIssueStatus = newStatus ? 'Resolved' : 'Open';
+            await updateDoc(issueRef, { status: newIssueStatus });
+            await logActivity(
+                data.projectId,
+                { action: `Auto-${newStatus ? "resolved" : "reopened"} linked issue`, target: "Issues", type: "status" },
+                resolvedTenant
+            );
+        } catch (e) {
+            console.warn("Failed to sync linked issue status", e);
+        }
+    }
 };
 
 export const updateTaskFields = async (taskId: string, updates: Partial<Task>, projectId?: string, tenantId?: string) => {
     const taskSnap = await findTaskDoc(taskId, projectId, tenantId);
     if (!taskSnap) throw new Error("Task not found");
+    const oldData = taskSnap.data() as Task;
     const sanitized: Record<string, any> = {};
     Object.entries(updates).forEach(([key, value]) => {
         if (value !== undefined) sanitized[key] = value;
@@ -770,6 +1424,21 @@ export const updateTaskFields = async (taskId: string, updates: Partial<Task>, p
     if (sanitized.category) {
         await ensureCategory(data.projectId, sanitized.category, resolvedTenant);
     }
+    if (sanitized.isCompleted !== undefined || sanitized.status !== undefined) {
+        await syncProjectProgress(data.projectId, resolvedTenant);
+    }
+
+    // Notify newly assigned users
+    if (sanitized.assigneeIds) {
+        const oldAssignees = oldData.assigneeIds || [];
+        const newAssignees = sanitized.assigneeIds || [];
+        const addedAssignees = newAssignees.filter((id: string) => !oldAssignees.includes(id));
+        for (const assigneeId of addedAssignees) {
+            await notifyTaskAssignment(assigneeId, data.title, data.projectId, taskId, resolvedTenant);
+        }
+    } else if (sanitized.assigneeId && sanitized.assigneeId !== oldData.assigneeId) {
+        await notifyTaskAssignment(sanitized.assigneeId, data.title, data.projectId, taskId, resolvedTenant);
+    }
 };
 
 export const deleteTask = async (taskId: string, projectId?: string, tenantId?: string) => {
@@ -783,6 +1452,7 @@ export const deleteTask = async (taskId: string, projectId?: string, tenantId?: 
         { action: `Deleted task "${data.title}"`, target: "Tasks", type: "task" },
         resolvedTenant
     );
+    await syncProjectProgress(data.projectId, resolvedTenant);
 };
 
 // --- Subtasks ---
@@ -839,6 +1509,50 @@ export const toggleSubTaskStatus = async (
             { action: `${!currentStatus ? "Completed" : "Reopened"} subtask "${data.title}"`, target: parentTask.title, type: "task" },
             resolvedTenant
         );
+    }
+};
+
+export const deleteSubTask = async (subTaskId: string, taskId: string, projectId?: string, tenantId?: string) => {
+    const subSnap = await findSubtaskDoc(subTaskId, taskId, projectId, tenantId);
+    if (!subSnap) return;
+
+    const data = subSnap.data() as SubTask;
+    const { tenantId: resolvedTenant } = getProjectContextFromRef(subSnap.ref);
+
+    await deleteDoc(subSnap.ref);
+    await logActivity(
+        data.projectId,
+        { action: `Deleted subtask "${data.title}"`, target: "Tasks", type: "task" }, // context might differ but this works
+        resolvedTenant
+    );
+};
+
+export const updateSubtaskFields = async (
+    subTaskId: string,
+    updates: Partial<SubTask>,
+    taskId?: string,
+    projectId?: string,
+    tenantId?: string
+) => {
+    const subSnap = await findSubtaskDoc(subTaskId, taskId, projectId, tenantId);
+    if (!subSnap) throw new Error("Subtask not found");
+    const oldData = subSnap.data() as SubTask;
+    await updateDoc(subSnap.ref, updates);
+
+    // Notify if assignee changed
+    if (updates.assigneeId && updates.assigneeId !== oldData.assigneeId) {
+        const taskSnap = await findTaskDoc(oldData.taskId, projectId, tenantId);
+        const task = taskSnap?.data() as Task | undefined;
+        if (task) {
+            await notifySubtaskAssignment(
+                updates.assigneeId,
+                oldData.title,
+                task.title,
+                task.projectId,
+                oldData.taskId,
+                tenantId
+            );
+        }
     }
 };
 
@@ -949,7 +1663,7 @@ export const createIssue = async (projectId: string, issue: Partial<Issue>, tena
     const resolvedTenant = resolveTenantId(tenantId);
     await ensureTenantAndUser(resolvedTenant);
 
-    await addDoc(projectSubCollection(resolvedTenant, projectId, ISSUES), {
+    const issueData: any = {
         projectId,
         tenantId: resolvedTenant,
         ownerId: user.uid,
@@ -959,24 +1673,205 @@ export const createIssue = async (projectId: string, issue: Partial<Issue>, tena
         priority: issue.priority || "Medium",
         reporter: user.displayName || "User",
         assignee: issue.assignee || "",
-        assigneeId: issue.assigneeId,
+        assigneeId: issue.assigneeId || null,
+        assigneeIds: issue.assigneeIds || (issue.assigneeId ? [issue.assigneeId] : []),
         reporterId: user.uid,
         createdAt: serverTimestamp()
-    });
+    };
+
+    // GitHub Sync
+    try {
+        const project = await getProjectById(projectId, resolvedTenant);
+        if (project?.githubIssueSync && project.githubRepo) {
+            // Get token: project-level or user-level
+            let githubToken = project.githubToken;
+            if (!githubToken && user.uid) {
+                const profile = await getUserProfile(user.uid, resolvedTenant);
+                githubToken = profile?.githubToken;
+            }
+
+            if (githubToken) {
+                const ghIssue = await createGithubIssue(
+                    project.githubRepo,
+                    githubToken,
+                    issueData.title,
+                    issueData.description || "Created via ProjectFlow"
+                );
+                issueData.githubIssueUrl = ghIssue.url;
+                issueData.githubIssueNumber = ghIssue.number;
+            }
+        }
+    } catch (e) {
+        console.warn("GitHub issue sync failed", e);
+    }
+
+    await addDoc(projectSubCollection(resolvedTenant, projectId, ISSUES), issueData);
 
     await logActivity(projectId, { action: `Reported issue "${issue.title}"`, target: "Issues", type: "report" }, resolvedTenant);
 };
 
-export const updateIssue = async (issueId: string, updates: Partial<Issue>, projectId: string, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const ref = doc(projectSubCollection(resolvedTenant, projectId, ISSUES), issueId);
-    await updateDoc(ref, updates);
+const findIssueDoc = async (issueId: string, projectId?: string, tenantId?: string, path?: string) => {
+    if (path) {
+        const ref = doc(db, path);
+        const snap = await getDoc(ref);
+        if (snap.exists()) return snap;
+    }
+
+    if (projectId) {
+        const resolvedTenant = resolveTenantId(tenantId);
+        const ref = doc(projectSubCollection(resolvedTenant, projectId, ISSUES), issueId);
+        const snap = await getDoc(ref);
+        if (snap.exists()) return snap;
+    }
+
+    // Fallback: global collectionGroup search
+    const cg = collectionGroup(db, ISSUES);
+    const snapshot = await getDocs(cg);
+    return snapshot.docs.find(d => d.id === issueId) || null;
 };
 
-export const deleteIssue = async (issueId: string, projectId: string, tenantId?: string) => {
+export const getProjectIssues = async (projectId: string, tenantId?: string): Promise<Issue[]> => {
     const resolvedTenant = resolveTenantId(tenantId);
-    const ref = doc(projectSubCollection(resolvedTenant, projectId, ISSUES), issueId);
-    await deleteDoc(ref);
+    await ensureTenantAndUser(resolvedTenant);
+    const snapshot = await getDocs(projectSubCollection(resolvedTenant, projectId, ISSUES));
+    return snapshot.docs
+        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Issue))
+        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+};
+
+export const getIssueById = async (issueId: string, projectId?: string, tenantId?: string): Promise<Issue | null> => {
+    const issueSnap = await findIssueDoc(issueId, projectId, tenantId);
+    if (issueSnap?.exists()) {
+        const { tenantId: extractedTenantId, projectId: extractedProjectId } = getProjectContextFromRef(issueSnap.ref);
+        return {
+            id: issueSnap.id,
+            tenantId: extractedTenantId,
+            projectId: extractedProjectId,
+            ...issueSnap.data()
+        } as Issue;
+    }
+    return null;
+};
+
+
+export const updateIssue = async (issueId: string, updates: Partial<Issue>, projectId: string, tenantId?: string, path?: string) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    let issueData: Issue | null = null;
+    let issueRef: any = null;
+
+    // First try path if available
+    if (path) {
+        issueRef = doc(db, path);
+        const snap = await getDoc(issueRef);
+        if (snap.exists()) {
+            issueData = { id: snap.id, ...snap.data() } as Issue;
+        }
+        await updateDoc(issueRef, updates);
+    } else {
+        const issueSnap = await findIssueDoc(issueId, projectId, tenantId);
+        if (!issueSnap) throw new Error("Issue not found or access denied");
+        issueData = { id: issueSnap.id, ...issueSnap.data() } as Issue;
+        issueRef = issueSnap.ref;
+        await updateDoc(issueRef, updates);
+    }
+
+    // GitHub Sync (Status, Title, Description)
+    if (issueData?.githubIssueNumber && (updates.status || updates.title || updates.description)) {
+        try {
+            const project = await getProjectById(projectId, resolvedTenant);
+            if (project?.githubIssueSync && project.githubRepo) {
+                const user = auth.currentUser;
+                let githubToken = project.githubToken;
+                if (!githubToken && user?.uid) {
+                    const profile = await getUserProfile(user.uid, resolvedTenant);
+                    githubToken = profile?.githubToken;
+                }
+
+                if (githubToken) {
+                    const githubUpdates: any = {};
+                    if (updates.status) {
+                        githubUpdates.state = (updates.status === 'Resolved' || updates.status === 'Closed') ? 'closed' : 'open';
+                    }
+                    if (updates.title) {
+                        githubUpdates.title = updates.title;
+                    }
+                    if (updates.description) {
+                        githubUpdates.body = updates.description;
+                    }
+
+                    if (Object.keys(githubUpdates).length > 0) {
+                        await updateGithubIssue(project.githubRepo, githubToken, issueData.githubIssueNumber, githubUpdates);
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to sync changes to GitHub", e);
+        }
+    }
+
+    // Sync linked task status if this issue has a linked task
+    if (issueData?.linkedTaskId && updates.status) {
+        const isClosing = updates.status === 'Resolved' || updates.status === 'Closed';
+        const isReopening = updates.status === 'Open' || updates.status === 'In Progress';
+
+        if (isClosing || isReopening) {
+            try {
+                const taskRef = doc(projectSubCollection(resolvedTenant, projectId, TASKS), issueData.linkedTaskId);
+                const taskSnap = await getDoc(taskRef);
+                if (taskSnap.exists()) {
+                    const taskData = taskSnap.data() as Task;
+                    // Only update if status differs to avoid infinite loops
+                    const shouldComplete = isClosing && !taskData.isCompleted;
+                    const shouldReopen = isReopening && taskData.isCompleted;
+
+                    if (shouldComplete || shouldReopen) {
+                        await updateDoc(taskRef, {
+                            isCompleted: isClosing,
+                            status: isClosing ? 'Done' : 'Open'
+                        });
+                        await logActivity(
+                            projectId,
+                            { action: `Auto-${isClosing ? "completed" : "reopened"} linked task`, target: "Tasks", type: "task" },
+                            resolvedTenant
+                        );
+                        await syncProjectProgress(projectId, resolvedTenant);
+                    }
+                }
+            } catch (e) {
+                console.warn("Failed to sync linked task status", e);
+            }
+        }
+    }
+};
+
+export const deleteIssue = async (issueId: string, projectId: string, tenantId?: string, path?: string) => {
+    const issueSnap = await findIssueDoc(issueId, projectId, tenantId, path);
+    if (!issueSnap) return;
+    const issueData = issueSnap.data() as Issue;
+
+    // GitHub Sync: Close issue on delete
+    if (issueData?.githubIssueNumber) {
+        try {
+            const resolvedTenant = resolveTenantId(tenantId);
+            const project = await getProjectById(projectId, resolvedTenant);
+            if (project?.githubIssueSync && project.githubRepo) {
+                const user = auth.currentUser;
+                let githubToken = project.githubToken;
+                if (!githubToken && user?.uid) {
+                    const profile = await getUserProfile(user.uid, resolvedTenant);
+                    githubToken = profile?.githubToken;
+                }
+
+                if (githubToken) {
+                    await updateGithubIssue(project.githubRepo, githubToken, issueData.githubIssueNumber, { state: 'closed' });
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to close GitHub issue on delete", e);
+        }
+    }
+
+    await deleteDoc(issueSnap.ref);
 };
 
 export const subscribeProjectIssues = (
@@ -985,7 +1880,7 @@ export const subscribeProjectIssues = (
     tenantId?: string
 ) => {
     const resolvedTenant = resolveTenantId(tenantId);
-    ensureTenantAndUser(resolvedTenant).catch(() => undefined);
+    // Don't call ensureTenantAndUser here - this is a read operation
     return onSnapshot(projectSubCollection(resolvedTenant, projectId, ISSUES), (snap) => {
         const items = snap.docs
             .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Issue))
@@ -1002,7 +1897,7 @@ export const subscribeProjectTasks = (
     tenantId?: string
 ) => {
     const resolvedTenant = resolveTenantId(tenantId);
-    ensureTenantAndUser(resolvedTenant).catch(() => undefined);
+    // Don't call ensureTenantAndUser here - this is a read operation
     return onSnapshot(projectSubCollection(resolvedTenant, projectId, TASKS), (snap) => {
         const items = snap.docs
             .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Task))
@@ -1107,15 +2002,45 @@ export const subscribeProject = (
     callback: (project: Project | null) => void,
     tenantId?: string
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    ensureTenantAndUser(resolvedTenant).catch(() => undefined);
-    return onSnapshot(projectDocRef(resolvedTenant, projectId), (snap) => {
-        if (snap.exists()) {
-            callback({ id: snap.id, ...snap.data() } as Project);
-        } else {
+    // If tenantId is provided, subscribe directly
+    if (tenantId) {
+        ensureTenantAndUser(tenantId).catch(() => undefined);
+        return onSnapshot(projectDocRef(tenantId, projectId), (snap) => {
+            if (snap.exists()) {
+                callback({ id: snap.id, tenantId, ...snap.data() } as Project);
+            } else {
+                callback(null);
+            }
+        });
+    }
+
+    // Otherwise, find the project first to get its tenant
+    let unsubscribe: (() => void) | undefined;
+
+    getProjectById(projectId).then((project) => {
+        if (!project) {
             callback(null);
+            return;
         }
+
+        const projectTenantId = project.tenantId || resolveTenantId();
+        ensureTenantAndUser(projectTenantId).catch(() => undefined);
+
+        unsubscribe = onSnapshot(projectDocRef(projectTenantId, projectId), (snap) => {
+            if (snap.exists()) {
+                callback({ id: snap.id, tenantId: projectTenantId, ...snap.data() } as Project);
+            } else {
+                callback(null);
+            }
+        });
+    }).catch((err) => {
+        console.error("Failed to find project for subscription", err);
+        callback(null);
     });
+
+    return () => {
+        if (unsubscribe) unsubscribe();
+    };
 };
 
 export const subscribeProjectIdeas = (
@@ -1124,7 +2049,7 @@ export const subscribeProjectIdeas = (
     tenantId?: string
 ) => {
     const resolvedTenant = resolveTenantId(tenantId);
-    ensureTenantAndUser(resolvedTenant).catch(() => undefined);
+    // Don't call ensureTenantAndUser here - this is a read operation
     return onSnapshot(projectSubCollection(resolvedTenant, projectId, IDEAS), (snap) => {
         const items = snap.docs
             .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Idea))
@@ -1139,7 +2064,7 @@ export const subscribeProjectActivity = (
     tenantId?: string
 ) => {
     const resolvedTenant = resolveTenantId(tenantId);
-    ensureTenantAndUser(resolvedTenant).catch(() => undefined);
+    // Don't call ensureTenantAndUser here - this is a read operation
     return onSnapshot(projectSubCollection(resolvedTenant, projectId, ACTIVITIES), (snap) => {
         const items = snap.docs
             .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Activity))
@@ -1150,11 +2075,11 @@ export const subscribeProjectActivity = (
 };
 
 export const subscribeTenantUsers = (
-    callback: (users: { id: string; email?: string; displayName?: string; photoURL?: string; joinedAt?: any }[]) => void,
+    callback: (users: { id: string; email?: string; displayName?: string; photoURL?: string; joinedAt?: any; role?: WorkspaceRole; groupIds?: string[] }[]) => void,
     tenantId?: string
 ) => {
     const resolvedTenant = resolveTenantId(tenantId);
-    ensureTenantAndUser(resolvedTenant).catch(() => undefined);
+    // Don't call ensureTenantAndUser here - this is a read operation and shouldn't create data
     return onSnapshot(tenantUsersCollection(resolvedTenant), (snap) => {
         const items = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
         callback(items);
@@ -1176,7 +2101,7 @@ export const addComment = async (
     const resolvedTenant = resolveTenantId(tenantId);
     await ensureTenantAndUser(resolvedTenant);
 
-    await addDoc(projectSubCollection(resolvedTenant, projectId, COMMENTS), {
+    const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, COMMENTS), {
         projectId,
         targetId,
         targetType,
@@ -1196,13 +2121,81 @@ export const addComment = async (
             updateDoc(ideaSnap.ref, { comments: current + 1 });
         }
     }
+
+    // GitHub Comment Sync
+    if (targetType === 'issue') {
+        try {
+            const issue = await getIssueById(targetId, projectId, resolvedTenant);
+            if (issue?.githubIssueNumber) {
+                const project = await getProjectById(projectId, resolvedTenant);
+                if (project?.githubIssueSync && project.githubRepo) {
+                    let githubToken = project.githubToken;
+                    if (!githubToken && user.uid) {
+                        const profile = await getUserProfile(user.uid, resolvedTenant);
+                        githubToken = profile?.githubToken;
+                    }
+
+                    if (githubToken) {
+                        await addGithubIssueComment(
+                            project.githubRepo,
+                            githubToken,
+                            issue.githubIssueNumber,
+                            `${content}\n\n— *Shared from ProjectFlow by ${user.displayName || 'User'}*`
+                        );
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn("Failed to sync comment to GitHub", e);
+        }
+    }
+
+    // Notify the owner of the target item
+    let targetTitle = '';
+    let ownerId = '';
+
+    if (targetType === 'task') {
+        const taskSnap = await findTaskDoc(targetId, projectId, resolvedTenant);
+        if (taskSnap) {
+            const task = taskSnap.data() as Task;
+            targetTitle = task.title;
+            ownerId = task.ownerId;
+        }
+    } else if (targetType === 'issue') {
+        const issueSnap = await findIssueDoc(targetId, projectId, resolvedTenant);
+        if (issueSnap) {
+            const issue = issueSnap.data() as Issue;
+            targetTitle = issue.title;
+            ownerId = issue.ownerId;
+        }
+    } else if (targetType === 'idea') {
+        const ideaSnap = await findIdeaDoc(targetId, projectId, resolvedTenant);
+        if (ideaSnap) {
+            const idea = ideaSnap.data() as Idea;
+            targetTitle = idea.title;
+            ownerId = idea.ownerId || '';
+        }
+    }
+
+    // Send notification to owner (if not the commenter)
+    if (ownerId && ownerId !== user.uid) {
+        await notifyComment(
+            ownerId,
+            targetTitle,
+            targetType,
+            projectId,
+            targetId,
+            docRef.id,
+            resolvedTenant
+        );
+    }
 };
 
 export const getComments = async (
     projectId: string,
     targetId: string,
     tenantId?: string
-): Promise<Comment[]> => {
+): Promise<ProjectComment[]> => {
     const resolvedTenant = resolveTenantId(tenantId);
     const q = query(
         projectSubCollection(resolvedTenant, projectId, COMMENTS),
@@ -1210,14 +2203,14 @@ export const getComments = async (
     );
     const snapshot = await getDocs(q);
     return snapshot.docs
-        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Comment))
+        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as ProjectComment))
         .sort((a, b) => toMillis(a.createdAt) - toMillis(b.createdAt));
 };
 
 export const subscribeComments = (
     projectId: string,
     targetId: string,
-    callback: (comments: Comment[]) => void,
+    callback: (comments: ProjectComment[]) => void,
     tenantId?: string
 ) => {
     const resolvedTenant = resolveTenantId(tenantId);
@@ -1227,7 +2220,7 @@ export const subscribeComments = (
     );
     return onSnapshot(q, (snap) => {
         const items = snap.docs
-            .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Comment))
+            .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as ProjectComment))
             .sort((a, b) => toMillis(a.createdAt) - toMillis(b.createdAt));
         callback(items);
     });
@@ -1245,7 +2238,350 @@ export const getUserIssues = async (): Promise<Issue[]> => {
     const q = query(collectionGroup(db, ISSUES), where("assigneeId", "==", user.uid));
     const snapshot = await getDocs(q);
 
-    return snapshot.docs
-        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Issue))
-        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+    const assignedToMe = snapshot.docs.map(docSnap => {
+        const data = docSnap.data();
+        const pathParts = docSnap.ref.path.split('/');
+        const derivedTenantId = pathParts.length >= 2 && pathParts[0] === 'tenants' ? pathParts[1] : undefined;
+        const derivedProjectId = pathParts.length >= 4 && pathParts[2] === 'projects' ? pathParts[3] : undefined;
+
+        return {
+            id: docSnap.id,
+            ...data,
+            tenantId: data.tenantId || derivedTenantId,
+            projectId: data.projectId || derivedProjectId,
+            path: docSnap.ref.path
+        } as unknown as Issue;
+    });
+
+    // Also check assigneeIds array if it exists (for multiple assignees)
+    const q2 = query(collectionGroup(db, ISSUES), where("assigneeIds", "array-contains", user.uid));
+    const snapshot2 = await getDocs(q2);
+    const assignedViaArray = snapshot2.docs.map(docSnap => {
+        const data = docSnap.data();
+        const pathParts = docSnap.ref.path.split('/');
+        const derivedTenantId = pathParts.length >= 2 && pathParts[0] === 'tenants' ? pathParts[1] : undefined;
+        const derivedProjectId = pathParts.length >= 4 && pathParts[2] === 'projects' ? pathParts[3] : undefined;
+
+        return {
+            id: docSnap.id,
+            ...data,
+            tenantId: data.tenantId || derivedTenantId,
+            projectId: data.projectId || derivedProjectId,
+            path: docSnap.ref.path
+        } as unknown as Issue;
+    });
+
+    // Merge and deduplicate
+    const allIssues = [...assignedToMe];
+    assignedViaArray.forEach(issue => {
+        if (!allIssues.find(i => i.id === issue.id)) {
+            allIssues.push(issue);
+        }
+    });
+
+    return allIssues.sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+};
+
+export const subscribeTenantProjects = (
+    callback: (projects: Project[]) => void,
+    tenantId?: string
+) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    ensureTenantAndUser(resolvedTenant).catch(() => undefined);
+    return onSnapshot(projectsCollection(resolvedTenant), (snap) => {
+        const items = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Project));
+        callback(items);
+    });
+};
+
+// --- Workspace Groups & Permissions ---
+
+export const updateUserRole = async (
+    targetUserId: string,
+    newRole: WorkspaceRole,
+    tenantId?: string
+) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const userRef = doc(db, `tenants/${resolvedTenant}/users`, targetUserId);
+    await updateDoc(userRef, { role: newRole });
+};
+
+export const subscribeWorkspaceGroups = (
+    callback: (groups: WorkspaceGroup[]) => void,
+    tenantId?: string
+) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    return onSnapshot(collection(db, `tenants/${resolvedTenant}/groups`), (snap) => {
+        const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as WorkspaceGroup));
+        callback(items);
+    });
+};
+
+export const createWorkspaceGroup = async (
+    name: string,
+    color?: string,
+    description?: string,
+    tenantId?: string
+) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    await addDoc(collection(db, `tenants/${resolvedTenant}/groups`), {
+        tenantId: resolvedTenant,
+        name,
+        color: color || '#3b82f6', // Default blue
+        description: description || '',
+        memberIds: [],
+        createdAt: serverTimestamp()
+    });
+};
+
+export const updateWorkspaceGroup = async (
+    groupId: string,
+    data: Partial<WorkspaceGroup>,
+    tenantId?: string
+) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    await updateDoc(doc(db, `tenants/${resolvedTenant}/groups`, groupId), data);
+};
+
+export const deleteWorkspaceGroup = async (
+    groupId: string,
+    tenantId?: string
+) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    await deleteDoc(doc(db, `tenants/${resolvedTenant}/groups`, groupId));
+};
+
+export const addUserToGroup = async (
+    userId: string,
+    groupId: string,
+    tenantId?: string
+) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+
+    // Update Group
+    const groupRef = doc(db, `tenants/${resolvedTenant}/groups`, groupId);
+    await updateDoc(groupRef, {
+        memberIds: arrayUnion(userId)
+    });
+
+    // Update User
+    const userRef = doc(db, `tenants/${resolvedTenant}/users`, userId);
+    await updateDoc(userRef, {
+        groupIds: arrayUnion(groupId)
+    });
+};
+
+export const removeUserFromGroup = async (
+    userId: string,
+    groupId: string,
+    tenantId?: string
+) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+
+    // Update Group
+    const groupRef = doc(db, `tenants/${resolvedTenant}/groups`, groupId);
+    await updateDoc(groupRef, {
+        memberIds: arrayRemove(userId)
+    });
+
+    // Update User
+    const userRef = doc(db, `tenants/${resolvedTenant}/users`, userId);
+    await updateDoc(userRef, {
+        groupIds: arrayRemove(groupId)
+    });
+};
+
+/**
+ * Remove a user from the workspace completely.
+ * This removes them from all workspace groups and deletes their user document in the tenant.
+ */
+export const removeUserFromWorkspace = async (userId: string, tenantId: string) => {
+    // 1. Get user to find groups
+    const userRef = doc(db, `tenants/${tenantId}/users/${userId}`);
+    const userSnap = await getDoc(userRef);
+
+    if (userSnap.exists()) {
+        const userData = userSnap.data();
+        const groupIds = userData.groupIds || [];
+
+        // 2. Remove from all groups
+        for (const groupId of groupIds) {
+            await removeUserFromGroup(userId, groupId, tenantId);
+        }
+    }
+
+    // 3. Delete user document from tenant
+    await deleteDoc(userRef);
+};
+
+export const addProjectMember = async (
+    projectId: string,
+    userId: string,
+    role: ProjectRole = 'Viewer',
+    tenantId?: string
+) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const projectRef = projectDocRef(resolvedTenant, projectId);
+
+    // We need to fetch user details to add full ProjectMember object
+    const userProfile = await getUserProfile(userId, resolvedTenant);
+
+    const user = auth.currentUser;
+    const newMember: ProjectMember = {
+        userId,
+        role,
+        joinedAt: Timestamp.now(),
+        invitedBy: user?.uid || 'system',
+        displayName: userProfile?.displayName || 'Unknown',
+        email: userProfile?.email || '',
+        photoURL: userProfile?.photoURL || ''
+    };
+
+    await updateDoc(projectRef, {
+        members: arrayUnion(newMember),
+        memberIds: arrayUnion(userId)
+    });
+
+    try {
+        await logActivity(
+            projectId,
+            { action: `added ${userProfile?.displayName || 'a member'} to the team`, target: 'Team', type: 'member' },
+            resolvedTenant
+        );
+    } catch (e) {
+        console.warn('Failed to log activity', e);
+    }
+};
+
+export const requestJoinProject = async (projectId: string, tenantId?: string) => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("Must be logged in");
+
+    const resolvedTenant = resolveTenantId(tenantId);
+    await ensureTenantAndUser(resolvedTenant);
+
+    const project = await getProjectById(projectId, resolvedTenant);
+    if (!project) throw new Error("Project not found");
+
+    if (project.members?.some(m => m.userId === user.uid) || project.ownerId === user.uid) {
+        throw new Error("Already a member");
+    }
+
+    // Create a notification for the owner
+    const notification: Omit<Notification, 'id'> = {
+        type: 'project_join_request',
+        userId: project.ownerId,
+        title: 'Project Join Request',
+        message: `${user.displayName || 'A user'} requested to join ${project.title}`,
+        read: false,
+        createdAt: serverTimestamp(),
+        projectId: project.id,
+        actorId: user.uid,
+        actorName: user.displayName || 'Unknown',
+        actorPhotoURL: user.photoURL || null,
+        tenantId: resolvedTenant
+    };
+
+    await addDoc(collection(db, 'notifications'), notification);
+
+    await logActivity(
+        projectId,
+        { action: 'requested to join the project', target: 'Team', type: 'member' },
+        resolvedTenant
+    );
+};
+
+export const respondToJoinRequest = async (
+    notificationId: string,
+    projectId: string,
+    requesterId: string,
+    accept: boolean,
+    tenantId?: string
+) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const user = auth.currentUser;
+
+    // 1. Update the original notification to accepted/denied status to prevent re-use
+    // We update type so UI can show "Accepted" or "Denied" state
+    await updateDoc(doc(db, 'notifications', notificationId), {
+        type: accept ? 'project_join_request_accepted' : 'project_join_request_denied',
+        read: true
+    });
+
+    if (accept) {
+        // 2. Add member to project
+        await addProjectMember(projectId, requesterId, 'Editor', resolvedTenant);
+
+        // 3. Notify the requester
+        const project = await getProjectById(projectId, resolvedTenant);
+        await createNotification({
+            type: 'project_shared', // Re-using shared type for now, or could create specific 'request_approved'
+            userId: requesterId,
+            title: 'Request Approved',
+            message: `Your request to join ${project?.title || 'a project'} was approved.`,
+            projectId: projectId,
+            actorId: user?.uid,
+            tenantId: resolvedTenant
+        });
+    } else {
+        // Notify denial
+        const project = await getProjectById(projectId, resolvedTenant);
+        await createNotification({
+            type: 'project_shared', // Using generic type, message explains it
+            userId: requesterId,
+            title: 'Request Denied',
+            message: `Your request to join ${project?.title || 'a project'} was denied.`,
+            projectId: projectId,
+            actorId: user?.uid,
+            tenantId: resolvedTenant
+        });
+    }
+};
+
+export const updateProjectMemberRole = async (
+    projectId: string,
+    userId: string,
+    newRole: ProjectRole,
+    tenantId?: string
+) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const projectRef = projectDocRef(resolvedTenant, projectId);
+
+    await runTransaction(db, async (transaction) => {
+        const projectDoc = await transaction.get(projectRef);
+        if (!projectDoc.exists()) throw new Error("Project not found");
+
+        const data = projectDoc.data() as Project;
+        const members = data.members || [];
+        const memberIndex = members.findIndex(m => (typeof m === 'string' ? m : m.userId) === userId);
+
+        if (memberIndex === -1) throw new Error("Member not found in project");
+
+        const member = members[memberIndex];
+        let newMemberObj: ProjectMember;
+
+        if (typeof member === 'string') {
+            // Upgrade legacy string member to object
+            newMemberObj = {
+                userId: member,
+                role: newRole,
+                joinedAt: Timestamp.now(),
+                invitedBy: 'system',
+                displayName: 'Member', // Placeholder, ideally fetch or update later
+                email: '',
+                photoURL: ''
+            };
+        } else {
+            newMemberObj = {
+                ...member,
+                role: newRole
+            };
+        }
+
+        // Clone and update
+        const updatedMembers = [...members];
+        updatedMembers[memberIndex] = newMemberObj;
+
+        transaction.update(projectRef, { members: updatedMembers });
+    });
 };

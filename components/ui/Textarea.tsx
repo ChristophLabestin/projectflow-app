@@ -28,17 +28,14 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
                         placeholder-[var(--color-text-subtle)] 
                         transition-all 
                         focus:outline-none 
-                        focus:ring-2 
-                        focus:ring-[var(--color-primary-fade)]
+                        focus:ring-0
+                        focus:ring-offset-0
                         resize-y
                         min-h-[100px]
-                        ${error ? 'border-[var(--color-error)]' : 'border-[var(--color-surface-border)] focus:border-[var(--color-primary)]'}
+                        ${error ? 'border-[var(--color-error)]' : 'border-[var(--color-surface-border)]'}
                         ${className}
                     `}
-                    style={{
-                        backgroundColor: 'var(--color-surface-bg)',
-                        color: 'var(--color-text-main)'
-                    }}
+
                     {...props}
                 />
                 {error && (

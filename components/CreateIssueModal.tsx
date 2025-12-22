@@ -1,41 +1,46 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Task } from '../types';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Textarea } from './ui/Textarea';
-import { updateTaskFields } from '../services/dataService';
+import { createIssue } from '../services/dataService';
 
-interface EditTaskModalProps {
-    task: Task;
+interface CreateIssueModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onUpdate: () => void;
-    projectMembers: string[]; // List of UIDs (kept for signature compatibility)
+    projectId: string;
+    initialDescription?: string;
+    initialTitle?: string;
 }
 
-export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onClose, onUpdate }) => {
-    const [title, setTitle] = useState(task.title);
-    const [description, setDescription] = useState(task.description || '');
-
+export const CreateIssueModal: React.FC<CreateIssueModalProps> = ({
+    isOpen,
+    onClose,
+    projectId,
+    initialDescription = '',
+    initialTitle = ''
+}) => {
+    const [title, setTitle] = useState(initialTitle);
+    const [description, setDescription] = useState(initialDescription);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
-            setTitle(task.title);
-            setDescription(task.description || '');
+            setTitle(initialTitle || '');
+            setDescription(initialDescription || '');
         }
-    }, [isOpen, task]);
+        // Only run when opening the modal, to avoid overwriting user changes if props update unexpectedly
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isOpen]);
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         try {
-            await updateTaskFields(task.id, {
+            await createIssue(projectId, {
                 title,
                 description
-            }, task.projectId);
-            onUpdate();
+            });
             onClose();
         } catch (error) {
             console.error(error);
@@ -55,8 +60,8 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
                 {/* Header */}
                 <div className="p-4 border-b border-[var(--color-surface-border)] flex justify-between items-center">
                     <div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)]">Edit Task</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-1">Update task details and assignments.</p>
+                        <h3 className="text-xl font-bold text-[var(--color-text-main)]">Report Issue</h3>
+                        <p className="text-sm text-[var(--color-text-muted)] mt-1">Create a new issue in the project.</p>
                     </div>
                     <Button variant="ghost" onClick={onClose} size="sm">Close</Button>
                 </div>
@@ -67,7 +72,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
                             label="Title"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            placeholder="Task title"
+                            placeholder="Issue title"
                             required
                             className="text-lg font-medium"
                         />
@@ -77,7 +82,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
                             <Textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Describe the task..."
+                                placeholder="Describe the issue..."
                                 rows={8}
                                 className="min-h-[200px]"
                             />
@@ -86,7 +91,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
 
                     <div className="flex justify-end gap-2 mt-8 pt-4 border-t border-[var(--color-surface-border)]">
                         <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>Cancel</Button>
-                        <Button type="submit" isLoading={loading} disabled={!title.trim()}>Save Changes</Button>
+                        <Button type="submit" isLoading={loading} disabled={!title.trim()}>Create Issue</Button>
                     </div>
                 </form>
             </div>

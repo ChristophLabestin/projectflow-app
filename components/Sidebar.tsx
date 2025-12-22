@@ -3,6 +3,7 @@ import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { auth } from '../services/firebase';
 import { signOut } from 'firebase/auth';
 import { getProjectIdeas, getUserTasks } from '../services/dataService';
+import logo from '../assets/logo.svg';
 
 type SidebarProps = {
     isDrawer?: boolean;
@@ -12,6 +13,7 @@ type SidebarProps = {
         projectTitle?: string;
         tasksCount?: number;
         ideasCount?: number;
+        issuesCount?: number;
         modules?: string[];
         externalResources?: { title: string; url: string; icon?: string }[];
     };
@@ -92,8 +94,12 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                     getUserTasks(),
                     getProjectIdeas('').catch(() => [])
                 ]);
-                if (mounted) {
-                    setTaskCount(Array.isArray(tasks) ? tasks.filter(t => !t.isCompleted).length : 0);
+                if (mounted && user) {
+                    const myIncompleteTasks = Array.isArray(tasks) ? tasks.filter(t =>
+                        !t.isCompleted &&
+                        (t.assigneeId === user.uid || (t.assigneeIds && t.assigneeIds.includes(user.uid)))
+                    ) : [];
+                    setTaskCount(myIncompleteTasks.length);
                     setIdeaCount(Array.isArray(ideas) ? ideas.length : 0);
                 }
             } catch (e) {
@@ -103,7 +109,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
         return () => {
             mounted = false;
         };
-    }, []);
+    }, [user]);
 
     const handleSignOut = async () => {
         try {
@@ -124,7 +130,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
         >
             {/* Header */}
             <div className="flex items-center gap-3 px-6 py-5 border-b border-[var(--color-surface-border)]">
-                <img src="/assets/logo.svg" alt="ProjectFlow" className="size-8 object-contain" />
+                <img src={logo} alt="ProjectFlow" className="size-8 object-contain" />
                 <div className="flex-1 min-w-0">
                     <h2 className="text-lg font-bold leading-tight text-[var(--color-text-main)] tracking-tight">ProjectFlow</h2>
                     <p className="text-xs text-[var(--color-text-muted)] truncate">Workspace</p>
@@ -224,6 +230,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                                     to={`/project/${workspace.projectId}/issues`}
                                     icon="bug_report"
                                     label="Issues"
+                                    badge={workspace.issuesCount}
                                     onClick={isDrawer ? onClose : undefined}
                                 />
                             )}

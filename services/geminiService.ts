@@ -1,5 +1,29 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { Idea, MindmapGrouping, Project, Task } from "../types";
+import { Idea, MindmapGrouping, Project, Task, ProjectBlueprint, ProjectRisk } from "../types";
+import { auth } from "./firebase";
+import { getAIUsage, incrementAIUsage } from "./dataService";
+
+// Helper to check and track usage
+const runWithTokenCheck = async (operation: (ai: any) => Promise<any>): Promise<any> => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const usage = await getAIUsage(user.uid);
+    if (usage && usage.tokensUsed >= usage.tokenLimit) {
+        throw new Error(`AI token limit reached (${usage.tokensUsed.toLocaleString()} / ${usage.tokenLimit.toLocaleString()}). Limit resets monthly.`);
+    }
+
+    const ai = getAiClient();
+    const result = await operation(ai);
+
+    // Track usage
+    const tokens = result.usageMetadata?.totalTokenCount || 0;
+    if (tokens > 0) {
+        await incrementAIUsage(user.uid, tokens);
+    }
+
+    return result;
+};
 
 // Helper to get client instance safely
 const getAiClient = () => {
@@ -32,7 +56,7 @@ export const generateBrainstormIdeas = async (prompt: string): Promise<Idea[]> =
             },
         };
 
-        const response = await ai.models.generateContent({
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: `Generate 4-6 specific, actionable project ideas based on this goal: "${prompt}". 
             Keep descriptions concise (under 20 words).`,
@@ -41,13 +65,13 @@ export const generateBrainstormIdeas = async (prompt: string): Promise<Idea[]> =
                 responseSchema: responseSchema,
                 temperature: 0.7,
             }
-        });
+        }));
 
         const rawIdeas = JSON.parse(response.text || "[]");
         if (!Array.isArray(rawIdeas) || rawIdeas.length === 0) {
             throw new Error("Gemini returned no ideas");
         }
-        
+
         // Transform to Idea type with mock counts
         return rawIdeas.map((idea: any, index: number) => ({
             id: `gen-${Date.now()}-${index}`,
@@ -66,12 +90,11 @@ export const generateBrainstormIdeas = async (prompt: string): Promise<Idea[]> =
 
 export const generateProjectDescription = async (projectName: string, context: string): Promise<string> => {
     try {
-        const ai = getAiClient();
-        const response = await ai.models.generateContent({
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: `Write a professional, concise (1-2 sentences) project description for a project named "${projectName}". 
             Context: ${context || "A general software or business initiative."}.`,
-        });
+        }));
         return response.text || "";
     } catch (error) {
         console.error("Gemini Description Error:", error);
@@ -95,15 +118,15 @@ export const generateProjectReport = async (project: Project, tasks: Task[]): Pr
         Status: ${project.status}. Priority: ${project.priority || "Medium"}.
         Due date: ${project.dueDate || "Not set"}; Start date: ${project.startDate || "Not set"}.
         Open tasks (${openTasks.length}): ${openTasks.map(t => t.title).join("; ") || "None"}.
-        Completed tasks (${completed.length}): ${completed.slice(0,5).map(t => t.title).join("; ")}.
+        Completed tasks (${completed.length}): ${completed.slice(0, 5).map(t => t.title).join("; ")}.
         Assess whether the due date seems realistic given open tasks; explicitly say if it is at risk or on track and why.
         Keep it under 180 words. Provide a short risk/next steps section.
         `;
-        const response = await ai.models.generateContent({
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
             config: { temperature: 0.4 }
-        });
+        }));
         return response.text || "Report unavailable.";
     } catch (error) {
         console.error("Gemini Report Error:", error);
@@ -133,7 +156,7 @@ export const generateProjectIdeasAI = async (project: Project, tasks: Task[]): P
         Open tasks: ${tasks.filter(t => !t.isCompleted).map(t => t.title).join("; ") || "None"}.
         Balance quick wins and impactful improvements. Keep descriptions under 18 words.
         `;
-        const response = await ai.models.generateContent({
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
             config: {
@@ -141,7 +164,7 @@ export const generateProjectIdeasAI = async (project: Project, tasks: Task[]): P
                 responseSchema,
                 temperature: 0.6,
             }
-        });
+        }));
         const rawIdeas = JSON.parse(response.text || "[]");
         if (!Array.isArray(rawIdeas) || rawIdeas.length === 0) {
             throw new Error("Gemini returned no ideas");
@@ -185,7 +208,7 @@ export const suggestMindmapGrouping = async (project: Project, ideas: Idea[]): P
             .map((idea) => `- ${idea.id}: ${idea.title} — ${idea.description || 'No description'}`)
             .join('\n');
 
-        const response = await ai.models.generateContent({
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: `You are an AI mind-mapping assistant. Group the provided project ideas into 3-6 concise branches with short names (1-2 words).
 Project: "${project.title}".
@@ -200,7 +223,7 @@ Return JSON only. Each object must include:
                 responseSchema,
                 temperature: 0.5,
             }
-        });
+        }));
 
         const parsed = JSON.parse(response.text || "[]");
         return (Array.isArray(parsed) ? parsed : []).map((entry, index) => ({
@@ -211,5 +234,103 @@ Return JSON only. Each object must include:
     } catch (error) {
         console.error("Gemini Mindmap Grouping Error:", error);
         return [];
+    }
+};
+
+export const generateProjectBlueprint = async (prompt: string): Promise<ProjectBlueprint> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.OBJECT,
+            properties: {
+                title: { type: Type.STRING },
+                description: { type: Type.STRING },
+                targetAudience: { type: Type.STRING },
+                milestones: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            title: { type: Type.STRING },
+                            description: { type: Type.STRING },
+                        },
+                        required: ['title', 'description']
+                    }
+                },
+                initialTasks: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            title: { type: Type.STRING },
+                            priority: { type: Type.STRING, enum: ['Low', 'Medium', 'High'] },
+                        },
+                        required: ['title', 'priority']
+                    }
+                },
+                suggestedTechStack: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                }
+            },
+            required: ['title', 'description', 'targetAudience', 'milestones', 'initialTasks']
+        };
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-2.0-flash",
+            contents: `Create a comprehensive project blueprint for this idea: "${prompt}". 
+            Flesh out the name, a compelling description, identify the target audience, 
+            plan 3-5 major milestones, and list 5-8 initial setup and development tasks.`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.8,
+            }
+        }));
+
+        const blueprint = JSON.parse(response.text || "{}");
+        return {
+            ...blueprint,
+            id: `blueprint-${Date.now()}`,
+            createdAt: new Date(),
+        } as ProjectBlueprint;
+    } catch (error) {
+        console.error("Gemini Blueprint Error:", error);
+        throw error;
+    }
+};
+
+export const analyzeProjectRisks = async (context: string): Promise<ProjectRisk[]> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    risk: { type: Type.STRING },
+                    impact: { type: Type.STRING, enum: ['Low', 'Medium', 'High'] },
+                    probability: { type: Type.STRING, enum: ['Low', 'Medium', 'High'] },
+                    mitigation: { type: Type.STRING },
+                },
+                required: ['risk', 'impact', 'probability', 'mitigation']
+            }
+        };
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-2.0-flash",
+            contents: `Analyze the potential project risks for this project description: "${context}". 
+            Identify 4-6 specific risks, assess their impact and probability, and suggest a practical mitigation strategy for each.`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.6,
+            }
+        }));
+
+        return JSON.parse(response.text || "[]") as ProjectRisk[];
+    } catch (error) {
+        console.error("Gemini Risk Analysis Error:", error);
+        throw error;
     }
 };

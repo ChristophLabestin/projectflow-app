@@ -17,8 +17,8 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                 )}
                 <div className="relative group">
                     {icon && (
-                        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-subtle)] pointer-events-none group-focus-within:text-[var(--color-primary)] transition-colors">
-                            <span className="material-symbols-outlined text-[20px]">{icon}</span>
+                        <div className="absolute left-3 inset-y-0 flex items-center justify-center text-[var(--color-text-subtle)] pointer-events-none group-focus-within:text-[var(--color-primary)] transition-colors">
+                            <span className="material-symbols-outlined text-[20px] leading-none">{icon}</span>
                         </div>
                     )}
                     <select
@@ -36,16 +36,13 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                             placeholder-[var(--color-text-subtle)] 
                             transition-all 
                             focus:outline-none 
-                            focus:ring-2 
-                            focus:ring-[var(--color-primary-fade)]
+                            focus:ring-0
+                            focus:ring-offset-0
                             appearance-none
-                            ${error ? 'border-[var(--color-error)]' : 'border-[var(--color-surface-border)] focus:border-[var(--color-primary)]'}
+                            ${error ? 'border-[var(--color-error)]' : 'border-[var(--color-surface-border)]'}
                             ${className}
                         `}
-                        style={{
-                            backgroundColor: 'var(--color-surface-bg)',
-                            color: 'var(--color-text-main)'
-                        }}
+
                         {...props}
                     >
                         {children}

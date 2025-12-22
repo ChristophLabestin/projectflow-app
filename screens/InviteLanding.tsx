@@ -27,7 +27,8 @@ export const InviteLanding = () => {
     const handleAccept = () => {
         if (!tenantId) return;
         setActiveTenantId(tenantId);
-        navigate('/login', { state: { inviteTenantId: tenantId } });
+        const returnUrl = window.location.pathname + window.location.search;
+        navigate(`/login?redirect=${encodeURIComponent(returnUrl)}`, { state: { inviteTenantId: tenantId } });
     };
 
     if (!tenantId) {

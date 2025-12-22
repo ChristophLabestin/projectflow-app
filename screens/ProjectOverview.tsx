@@ -1,10 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { getProjectById, toggleTaskStatus, updateProjectFields, addActivityEntry, deleteProjectById, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues, getActiveTenantId, inviteMember } from '../services/dataService';
+import { getProjectById, toggleTaskStatus, updateProjectFields, addActivityEntry, deleteProjectById, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues, getActiveTenantId, generateInviteLink, getLatestGeminiReport, saveGeminiReport } from '../services/dataService';
 import { TaskCreateModal } from '../components/TaskCreateModal';
 import { generateProjectReport, getGeminiInsight } from '../services/geminiService';
-import { Activity, Idea, Project, Task, Issue, ProjectRole } from '../types';
-import { toMillis } from '../utils/time';
+import { Activity, Idea, Project, Task, Issue, ProjectRole, GeminiReport } from '../types';
+import { toMillis, timeAgo } from '../utils/time';
 import { auth, storage } from '../services/firebase';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { Button } from '../components/ui/Button';
@@ -19,20 +19,13 @@ import { DonutChart } from '../components/charts/DonutChart';
 import { TeamCard } from '../components/TeamCard';
 import { InviteMemberModal } from '../components/InviteMemberModal';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
+import { Checkbox } from '../components/ui/Checkbox';
+import { fetchLastCommits, fetchUserRepositories, GithubCommit, GithubRepo } from '../services/githubService';
+import { getUserProfile, linkWithGithub, updateUserData } from '../services/dataService';
 
 const cleanText = (value?: string | null) => (value || '').replace(/\*\*/g, '');
 
 
-const timeAgo = (timestamp?: any) => {
-    if (!timestamp) return '';
-    const diff = Date.now() - toMillis(timestamp);
-    const mins = Math.max(0, Math.round(diff / 60000));
-    if (mins < 60) return `${mins || 1}m ago`;
-    const hours = Math.round(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.round(hours / 24);
-    return `${days}d ago`;
-};
 
 const activityIcon = (type?: Activity['type'], actionText?: string) => {
     const action = (actionText || '').toLowerCase();
@@ -46,6 +39,7 @@ const activityIcon = (type?: Activity['type'], actionText?: string) => {
     if (type === 'report') return { icon: 'auto_awesome', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-500/10' };
     if (type === 'comment') return { icon: 'chat_bubble', color: 'text-amber-600', bg: 'bg-amber-100' };
     if (type === 'file') return { icon: 'attach_file', color: 'text-slate-600', bg: 'bg-slate-100' };
+    if (type === 'member') return { icon: 'person_add', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-500/10' };
     if (type === 'commit') return { icon: 'code', color: 'text-blue-600', bg: 'bg-blue-100' };
     if (type === 'priority') return { icon: 'priority_high', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-500/10' };
     return { icon: 'more_horiz', color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-700/50' };
@@ -73,9 +67,10 @@ export const ProjectOverview = () => {
     const [ideas, setIdeas] = useState<Idea[]>([]);
     const [issues, setIssues] = useState<Issue[]>([]);
     const [error, setError] = useState<string | null>(null);
+    const [unauthorized, setUnauthorized] = useState(false);
     const [report, setReport] = useState<string | null>(null);
     const [reportLoading, setReportLoading] = useState(false);
-    const [lastReport, setLastReport] = useState<string | null>(null);
+    const [pinnedReport, setPinnedReport] = useState<GeminiReport | null>(null);
     const [showInsight, setShowInsight] = useState<boolean>(true);
 
     // Modals
@@ -107,6 +102,17 @@ export const ProjectOverview = () => {
     const [iconRemoved, setIconRemoved] = useState(false);
     const [savingEdit, setSavingEdit] = useState(false);
     const [deletingProject, setDeletingProject] = useState(false);
+    const [connectingGithub, setConnectingGithub] = useState(false);
+
+    // GitHub Integration State
+    const [githubCommits, setGithubCommits] = useState<GithubCommit[]>([]);
+    const [githubLoading, setGithubLoading] = useState(false);
+    const [githubError, setGithubError] = useState<string | null>(null);
+
+    const [editGithubRepo, setEditGithubRepo] = useState('');
+    const [editGithubIssueSync, setEditGithubIssueSync] = useState(false);
+    const [userGithubRepos, setUserGithubRepos] = useState<GithubRepo[]>([]);
+    const [fetchingRepos, setFetchingRepos] = useState(false);
 
     // Cropper State
     const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
@@ -193,8 +199,54 @@ export const ProjectOverview = () => {
                 setEditCoverFile(null);
                 setEditIconFile(null);
 
+                // Initialize GitHub form
+                setEditGithubRepo(projData.githubRepo || '');
+                setEditGithubIssueSync(projData.githubIssueSync || false);
+
+                // Fetch User's Repositories & Token if they have a linked account
+                if (auth.currentUser) {
+                    // Check Unauthorized Access
+                    // 1. Check if user is in the tenant
+                    const tenantProfile = await getUserProfile(auth.currentUser.uid, projData.tenantId);
+
+                    // 2. Check if user is a member of the project
+                    const isProjectMember = projData.members?.some(m => m.userId === auth.currentUser?.uid) || projData.ownerId === auth.currentUser.uid;
+
+                    // If not in tenant AND not invited to project -> Unauthorized
+                    if (!tenantProfile && !isProjectMember) {
+                        setUnauthorized(true);
+                        setLoading(false);
+                        return;
+                    }
+
+                    const userProfile = tenantProfile || await getUserProfile(auth.currentUser.uid); // Fallback to default if cross-tenant?
+
+                    // Fetch GitHub commits if repository is set
+                    if (projData.githubRepo) {
+                        setGithubLoading(true);
+                        setGithubError(null);
+                        const token = projData.githubToken || userProfile?.githubToken;
+                        fetchLastCommits(projData.githubRepo, token)
+                            .then(setGithubCommits)
+                            .catch(err => setGithubError(err.message))
+                            .finally(() => setGithubLoading(false));
+                    }
+
+                    if (userProfile?.githubToken) {
+                        setFetchingRepos(true);
+                        fetchUserRepositories(userProfile.githubToken)
+                            .then(setUserGithubRepos)
+                            .catch(e => console.error("Failed to fetch user repos", e))
+                            .finally(() => setFetchingRepos(false));
+                    }
+                }
+
                 const ai = await getGeminiInsight();
                 setInsight(ai);
+
+                // Fetch latest pinned report
+                const latest = await getLatestGeminiReport(id);
+                setPinnedReport(latest);
 
                 // Subscribe to real-time data using the correct tenant
                 const unsubTasks = subscribeProjectTasks(id, setTasks, projData.tenantId);
@@ -218,17 +270,33 @@ export const ProjectOverview = () => {
         fetchData();
     }, [id]);
 
-    useEffect(() => {
-        const existingReport = activity.find(a => a.type === 'report');
-        setLastReport(existingReport?.details || null);
-        if (existingReport?.createdAt) {
-            const created = toMillis(existingReport.createdAt);
-            const aMonth = 1000 * 60 * 60 * 24 * 30;
-            setShowInsight(Date.now() - created > aMonth);
-        } else {
-            setShowInsight(!existingReport);
+    const handleConnectGithub = async () => {
+        if (!auth.currentUser) return;
+        setConnectingGithub(true);
+        try {
+            const token = await linkWithGithub();
+            await updateUserData(auth.currentUser.uid, { githubToken: token });
+            // Fetch repos immediately
+            setFetchingRepos(true);
+            const repos = await fetchUserRepositories(token);
+            setUserGithubRepos(repos);
+        } catch (error: any) {
+            console.error("Failed to link GitHub", error);
+        } finally {
+            setConnectingGithub(false);
+            setFetchingRepos(false);
         }
-    }, [activity]);
+    };
+
+    useEffect(() => {
+        if (pinnedReport?.createdAt) {
+            const created = toMillis(pinnedReport.createdAt);
+            const twoWeeks = 1000 * 60 * 60 * 24 * 14;
+            setShowInsight(Date.now() - created > twoWeeks);
+        } else {
+            setShowInsight(true);
+        }
+    }, [pinnedReport]);
 
     const handleToggleTask = async (taskId: string, currentStatus: boolean) => {
         if (!project) return;
@@ -242,8 +310,11 @@ export const ProjectOverview = () => {
         try {
             const rep = await generateProjectReport(project, tasks);
             setReport(rep);
-            setLastReport(rep);
-            await addActivityEntry(project.id, { action: "Generated report", target: project.title, details: rep, type: "report", user: auth?.currentUser?.displayName || "User" });
+            await saveGeminiReport(project.id, rep);
+
+            // Refresh pinned report
+            const latest = await getLatestGeminiReport(project.id);
+            setPinnedReport(latest);
         } catch (e) {
             console.error(e);
         } finally {
@@ -272,7 +343,9 @@ export const ProjectOverview = () => {
                 dueDate: editDueDate || null,
                 modules: editModules,
                 links: editLinks,
-                externalResources: editExternalResources
+                externalResources: editExternalResources,
+                githubRepo: editGithubRepo,
+                githubIssueSync: editGithubIssueSync
             };
 
             if (editCoverFile) {
@@ -329,20 +402,8 @@ export const ProjectOverview = () => {
         }
     };
 
-    const handleInvite = async () => {
-        const tenantId = getActiveTenantId() || auth.currentUser?.uid;
-        if (!tenantId) return;
-        // Hash router compatible
-        const base = window.location.href.split('#')[0];
-        // Use the new project invite route
-        const link = `${base}#/invite-project/${id}?tenantId=${tenantId}`;
-        try {
-            await navigator.clipboard.writeText(link);
-            alert("Project Invite link copied to clipboard!");
-        } catch (e) {
-            console.error(e);
-            alert("Failed to copy link.");
-        }
+    const handleInvite = () => {
+        setShowInviteModal(true);
     };
 
     if (loading) return (
@@ -350,6 +411,26 @@ export const ProjectOverview = () => {
             <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-3xl">progress_activity</span>
         </div>
     );
+
+    if (unauthorized) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
+                <div className="size-24 rounded-full bg-rose-100 dark:bg-rose-900/20 flex items-center justify-center mb-6">
+                    <span className="material-symbols-outlined text-5xl text-rose-500">lock</span>
+                </div>
+                <h1 className="text-3xl font-bold text-[var(--color-text-main)] mb-2">Access Denied</h1>
+                <p className="text-[var(--color-text-muted)] max-w-md mb-8">
+                    You do not have permission to view this project. You are not a member of this workspace nor have you been invited to this project.
+                </p>
+                <Link to="/projects">
+                    <Button variant="primary" icon={<span className="material-symbols-outlined">arrow_back</span>}>
+                        Back to Projects
+                    </Button>
+                </Link>
+            </div>
+        );
+    }
+
     if (!project) return <div className="p-8">Project not found</div>;
 
     const completedTasks = tasks.filter(t => t.isCompleted).length;
@@ -377,10 +458,14 @@ export const ProjectOverview = () => {
                         <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/30 opacity-50" />
                     )}
                     <div className="absolute top-4 right-4 flex gap-2">
-                        <Button variant="secondary" size="sm" onClick={() => setShowEditModal(true)} icon={<span className="material-symbols-outlined">edit</span>}>
-                            Edit
-                        </Button>
-                        <Button variant="secondary" size="sm" onClick={() => setShowDeleteModal(true)} icon={<span className="material-symbols-outlined text-rose-500">delete</span>} />
+                        {isOwner && (
+                            <>
+                                <Button variant="secondary" size="sm" onClick={() => setShowEditModal(true)} icon={<span className="material-symbols-outlined">edit</span>}>
+                                    Edit
+                                </Button>
+                                <Button variant="secondary" size="sm" onClick={() => setShowDeleteModal(true)} icon={<span className="material-symbols-outlined text-rose-500">delete</span>} />
+                            </>
+                        )}
                     </div>
                 </div>
 
@@ -410,7 +495,9 @@ export const ProjectOverview = () => {
 
                     {/* Actions */}
                     <div className="flex items-center gap-3 pt-2">
-                        <Button onClick={() => setShowTaskModal(true)} icon={<span className="material-symbols-outlined">add_task</span>}>New Task</Button>
+                        {can('canManageTasks') && (
+                            <Button onClick={() => setShowTaskModal(true)} icon={<span className="material-symbols-outlined">add_task</span>}>New Task</Button>
+                        )}
                         {project.modules?.includes('ideas') && (
                             <Link to={`/project/${id}/ideas`}>
                                 <Button variant="secondary" icon={<span className="material-symbols-outlined">lightbulb</span>}>Ideas</Button>
@@ -457,22 +544,53 @@ export const ProjectOverview = () => {
                         ))}
                     </div>
 
-                    {/* AI Insight */}
+                    {/* AI Insight / Generator */}
                     {showInsight && (
                         <div className="rounded-xl p-5 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/20 dark:to-blue-950/20 border border-indigo-100 dark:border-indigo-900/50">
                             <div className="flex items-start gap-4">
                                 <span className="material-symbols-outlined text-indigo-500 text-3xl">auto_awesome</span>
                                 <div className="space-y-2 flex-1">
-                                    <h3 className="font-bold text-indigo-900 dark:text-indigo-100">Project Insight</h3>
+                                    <h3 className="font-bold text-indigo-900 dark:text-indigo-100">AI Assistant</h3>
                                     <p className="text-sm text-indigo-800 dark:text-indigo-200 leading-relaxed">
-                                        {cleanText(insight) || "Generate a report to get get tailored guidance."}
+                                        {cleanText(insight) || "Generate a report to get tailored guidance."}
                                     </p>
                                     <div className="flex gap-3 pt-2">
                                         <Button size="sm" variant="primary" onClick={handleGenerateReport} isLoading={reportLoading}>
-                                            {report || lastReport ? 'Update Report' : 'Generate Report'}
+                                            {pinnedReport ? 'Update Report' : 'Generate Report'}
                                         </Button>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Latest Project Report */}
+                    {pinnedReport && (
+                        <div className="rounded-xl p-6 bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-sm">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-purple-100 dark:bg-purple-500/10 rounded-lg">
+                                        <span className="material-symbols-outlined text-purple-600 dark:text-purple-400">text_snippet</span>
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-[var(--color-text-main)]">Latest AI Report</h3>
+                                        <p className="text-[10px] text-[var(--color-text-muted)] font-medium uppercase tracking-wider">
+                                            Generated {timeAgo(pinnedReport.createdAt)} • By {pinnedReport.userName}
+                                        </p>
+                                    </div>
+                                </div>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={handleGenerateReport}
+                                    isLoading={reportLoading}
+                                    icon={<span className="material-symbols-outlined">refresh</span>}
+                                >
+                                    Regenerate
+                                </Button>
+                            </div>
+                            <div className="text-sm text-[var(--color-text-main)] leading-relaxed whitespace-pre-wrap prose prose-sm dark:prose-invert max-w-none">
+                                {cleanText(pinnedReport.content)}
                             </div>
                         </div>
                     )}
@@ -488,11 +606,10 @@ export const ProjectOverview = () => {
                                 <p className="text-center py-6 text-[var(--color-text-muted)]">No tasks yet.</p>
                             ) : recentTasks.map(task => (
                                 <div key={task.id} className="py-3 flex items-start gap-3 hover:bg-[var(--color-surface-hover)] -mx-4 px-4 transition-colors">
-                                    <input
-                                        type="checkbox"
+                                    <Checkbox
                                         checked={task.isCompleted}
                                         onChange={() => handleToggleTask(task.id, task.isCompleted)}
-                                        className="mt-1 size-4 rounded border-[var(--color-line-dark)] text-[var(--color-primary)]"
+                                        className="mt-1"
                                     />
                                     <div className="flex-1 min-w-0">
                                         <Link to={`/project/${id}/tasks/${task.id}`} className={`text-sm font-medium truncate block ${task.isCompleted ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)]'}`}>
@@ -570,7 +687,7 @@ export const ProjectOverview = () => {
                 {/* Right Col */}
                 <div className="space-y-6">
                     {/* Team Card */}
-                    <TeamCard projectId={id || ''} tenantId={project?.tenantId} onInvite={handleInvite} />
+                    <TeamCard projectId={id || ''} tenantId={project?.tenantId} onInvite={can('canInvite') ? handleInvite : undefined} />
 
                     {/* Activity Stream */}
                     <Card>
@@ -599,6 +716,69 @@ export const ProjectOverview = () => {
                             {activity.length === 0 && <p className="text-sm text-[var(--color-text-muted)]">No recent activity.</p>}
                         </div>
                     </Card>
+
+                    {/* GitHub Commits */}
+                    {project.githubRepo && (
+                        <Card>
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-indigo-500">terminal</span>
+                                    <h3 className="h4">Latest Commits</h3>
+                                </div>
+                                <a
+                                    href={`https://github.com/${project.githubRepo}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-primary)] flex items-center gap-1"
+                                >
+                                    Repo <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                                </a>
+                            </div>
+
+                            {githubLoading ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <span className="material-symbols-outlined animate-spin text-[var(--color-text-subtle)]">progress_activity</span>
+                                </div>
+                            ) : githubError ? (
+                                <p className="text-xs text-rose-500 py-4">{githubError}</p>
+                            ) : githubCommits.length === 0 ? (
+                                <p className="text-sm text-[var(--color-text-muted)] py-4 text-center">No recent commits found.</p>
+                            ) : (
+                                <div className="space-y-4">
+                                    {githubCommits.map((commit) => (
+                                        <div key={commit.sha} className="flex gap-3 relative last:mb-0">
+                                            <div className="size-8 rounded-lg overflow-hidden shrink-0 border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)]">
+                                                {commit.author?.avatar_url ? (
+                                                    <img src={commit.author.avatar_url} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-xs text-[var(--color-text-muted)]">
+                                                        {commit.commit.author.name.charAt(0)}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-[var(--color-text-main)] truncate leading-tight">
+                                                    {commit.commit.message.split('\n')[0]}
+                                                </p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <span className="text-[11px] text-[var(--color-text-muted)] font-semibold">{commit.author?.login || commit.commit.author.name}</span>
+                                                    <span className="text-[10px] text-[var(--color-text-subtle)]">• {timeAgo(new Date(commit.commit.author.date))}</span>
+                                                </div>
+                                            </div>
+                                            <a
+                                                href={commit.html_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="shrink-0 p-1 text-[var(--color-text-subtle)] hover:text-[var(--color-primary)] transition-colors"
+                                            >
+                                                <span className="material-symbols-outlined text-[18px]">arrow_outward</span>
+                                            </a>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </Card>
+                    )}
 
                     {/* Screenshots */}
                     <Card>
@@ -686,24 +866,40 @@ export const ProjectOverview = () => {
                     {/* Top Row: Title & Description */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div className="md:col-span-2 space-y-4">
-                            <Input label="Project Title" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+                            <Input
+                                label="Project Title"
+                                value={editTitle}
+                                onChange={(e) => setEditTitle(e.target.value)}
+                                className="w-full"
+                            />
                             <Textarea
                                 label="Description"
                                 value={editDescription}
                                 onChange={(e) => setEditDescription(e.target.value)}
                                 rows={4}
+                                className="w-full"
                             />
                         </div>
 
                         <div className="space-y-4">
-                            <Select label="Status" value={editStatus} onChange={(e) => setEditStatus(e.target.value as any)}>
+                            <Select
+                                label="Status"
+                                value={editStatus}
+                                onChange={(e) => setEditStatus(e.target.value as any)}
+                                className="w-full"
+                            >
                                 <option>Active</option>
                                 <option>Planning</option>
                                 <option>Completed</option>
                                 <option>On Hold</option>
                             </Select>
 
-                            <Select label="Priority" value={editPriority} onChange={(e) => setEditPriority(e.target.value as any)}>
+                            <Select
+                                label="Priority"
+                                value={editPriority}
+                                onChange={(e) => setEditPriority(e.target.value as any)}
+                                className="w-full"
+                            >
                                 <option>Low</option>
                                 <option>Medium</option>
                                 <option>High</option>
@@ -714,7 +910,7 @@ export const ProjectOverview = () => {
                             <div className="space-y-2 pt-2 border-t border-[var(--color-surface-border)]">
                                 <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Assets</label>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <label className="cursor-pointer group relative flex flex-col items-center justify-center h-20 rounded-xl border border-dashed border-[var(--color-surface-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] transition-all overflow-hidden bg-cover bg-center" style={{ backgroundImage: !coverRemoved && (editCoverFile || project.coverImage) ? `url(${editCoverFile ? URL.createObjectURL(editCoverFile) : project.coverImage})` : 'none' }}>
+                                    <label className="cursor-pointer group relative flex flex-col items-center justify-center h-20 rounded-xl border border-dashed border-[var(--color-surface-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] dark:bg-[var(--color-surface-hover)]/30 transition-all overflow-hidden bg-cover bg-center" style={{ backgroundImage: !coverRemoved && (editCoverFile || project.coverImage) ? `url(${editCoverFile ? URL.createObjectURL(editCoverFile) : project.coverImage})` : 'none' }}>
                                         <input type="file" className="absolute inset-0 opacity-0 cursor-pointer z-10" accept="image/*" onChange={(e) => handleFileSelect(e, 'cover')} />
                                         {!coverRemoved && (editCoverFile || project.coverImage) ? (
                                             <div className="absolute top-1 right-1 z-20">
@@ -734,7 +930,7 @@ export const ProjectOverview = () => {
                                             </div>
                                         )}
                                     </label>
-                                    <label className="cursor-pointer group relative flex flex-col items-center justify-center h-20 rounded-xl border border-dashed border-[var(--color-surface-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] transition-all overflow-hidden bg-cover bg-center" style={{ backgroundImage: !iconRemoved && (editIconFile || project.squareIcon) ? `url(${editIconFile ? URL.createObjectURL(editIconFile) : project.squareIcon})` : 'none' }}>
+                                    <label className="cursor-pointer group relative flex flex-col items-center justify-center h-20 rounded-xl border border-dashed border-[var(--color-surface-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] dark:bg-[var(--color-surface-hover)]/30 transition-all overflow-hidden bg-cover bg-center" style={{ backgroundImage: !iconRemoved && (editIconFile || project.squareIcon) ? `url(${editIconFile ? URL.createObjectURL(editIconFile) : project.squareIcon})` : 'none' }}>
                                         <input type="file" className="absolute inset-0 opacity-0 cursor-pointer z-10" accept="image/*" onChange={(e) => handleFileSelect(e, 'icon')} />
                                         {!iconRemoved && (editIconFile || project.squareIcon) ? (
                                             <div className="absolute top-1 right-1 z-20">
@@ -763,7 +959,7 @@ export const ProjectOverview = () => {
 
                     {/* Modules Grid */}
                     <div className="space-y-3">
-                        <label className="text-sm font-bold text-[var(--color-text-main)]">Enabled Modules</label>
+                        <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Enabled Modules</label>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                             {['tasks', 'ideas', 'mindmap', 'activity', 'issues'].map(mod => (
                                 <label key={mod} className={`
@@ -772,8 +968,7 @@ export const ProjectOverview = () => {
                                         ? 'border-[var(--color-primary)] bg-[var(--color-surface-hover)]'
                                         : 'border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'}
                                 `}>
-                                    <input
-                                        type="checkbox"
+                                    <Checkbox
                                         checked={editModules ? editModules.includes(mod as any) : true}
                                         onChange={(e) => {
                                             const current = editModules || ['tasks', 'ideas', 'mindmap', 'activity', 'issues'];
@@ -789,7 +984,7 @@ export const ProjectOverview = () => {
                                     />
                                     <div className={`
                                         size-8 rounded-full flex items-center justify-center transition-colors
-                                        ${editModules?.includes(mod as any) ? 'bg-[var(--color-primary)] text-white' : 'bg-[var(--color-surface-border)] text-[var(--color-text-muted)]'}
+                                        ${editModules?.includes(mod as any) ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)]' : 'bg-[var(--color-surface-border)] text-[var(--color-text-muted)]'}
                                     `}>
                                         <span className="material-symbols-outlined text-[18px]">
                                             {mod === 'tasks' ? 'check_circle' :
@@ -806,12 +1001,74 @@ export const ProjectOverview = () => {
 
                     <div className="h-px bg-[var(--color-surface-border)]" />
 
+                    {/* GitHub Integration Section */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">GitHub Integration</label>
+                            <Badge variant={editGithubRepo ? 'success' : 'secondary'}>{editGithubRepo ? 'Connected' : 'Disconnected'}</Badge>
+                        </div>
+                        <div className="bg-[var(--color-surface-hover)]/30 p-4 rounded-xl border border-[var(--color-surface-border)]">
+                            <div className="space-y-4">
+                                <label className="text-xs font-semibold text-[var(--color-text-muted)] ml-1">Repository Selection</label>
+                                {userGithubRepos.length > 0 ? (
+                                    <Select
+                                        value={editGithubRepo}
+                                        onChange={(e) => setEditGithubRepo(e.target.value)}
+                                        icon="terminal"
+                                    >
+                                        <option value="">Select a repository...</option>
+                                        {userGithubRepos.map(r => (
+                                            <option key={r.id} value={r.full_name}>
+                                                {r.full_name}
+                                            </option>
+                                        ))}
+                                    </Select>
+                                ) : (
+                                    <div className="flex flex-col items-center justify-center py-6 bg-[var(--color-surface-paper)] rounded-lg border border-dashed border-[var(--color-surface-border)] gap-3">
+                                        <div className="size-12 bg-zinc-900 rounded-xl flex items-center justify-center text-white">
+                                            <span className="material-symbols-outlined text-2xl">terminal</span>
+                                        </div>
+                                        <div className="text-center px-4">
+                                            <p className="text-sm font-semibold text-[var(--color-text-main)]">GitHub Connection Required</p>
+                                            <p className="text-xs text-[var(--color-text-muted)] mt-1">Connect your account to browse and sync with your repositories.</p>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            variant="primary"
+                                            onClick={handleConnectGithub}
+                                            isLoading={connectingGithub}
+                                        >
+                                            Link GitHub Account
+                                        </Button>
+                                    </div>
+                                )}
+                                {fetchingRepos && <p className="text-[10px] text-[var(--color-primary)] animate-pulse mt-1 ml-1">Fetching your repositories...</p>}
+                            </div>
+
+                            <div className="mt-4 pt-4 border-t border-[var(--color-surface-border)]">
+                                <div className="flex items-center gap-3 bg-[var(--color-surface-paper)]/50 p-3 rounded-lg border border-[var(--color-surface-border)]">
+                                    <Checkbox
+                                        id="github-sync-toggle"
+                                        checked={editGithubIssueSync}
+                                        onChange={(e) => setEditGithubIssueSync(e.target.checked)}
+                                    />
+                                    <label htmlFor="github-sync-toggle" className="text-sm font-medium cursor-pointer text-[var(--color-text-main)]">
+                                        Enable GitHub Issue Sync
+                                        <span className="block text-[10px] text-[var(--color-text-muted)] font-normal">Automatically cross-post issues to the selected repository</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="h-px bg-[var(--color-surface-border)]" />
+
                     {/* Resources & Links */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         {/* Sidebar Resources */}
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                                <label className="text-sm font-bold text-[var(--color-text-main)]">Sidebar Resources</label>
+                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Sidebar Resources</label>
                                 <Button size="sm" variant="ghost" onClick={() => setEditExternalResources([...editExternalResources, { title: '', url: '', icon: 'open_in_new' }])} icon={<span className="material-symbols-outlined">add</span>}>
                                     Add
                                 </Button>
@@ -820,7 +1077,7 @@ export const ProjectOverview = () => {
                                 {editExternalResources.length === 0 && <p className="text-xs text-[var(--color-text-muted)] py-2">No sidebar resources.</p>}
                                 {editExternalResources.map((res, idx) => (
                                     <div key={idx} className="flex gap-2 items-start group">
-                                        <div className="flex-1 space-y-2">
+                                        <div className="flex-1 space-y-1">
                                             <Input
                                                 placeholder="Label"
                                                 value={res.title}
@@ -851,7 +1108,7 @@ export const ProjectOverview = () => {
                         {/* Overview Links */}
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                                <label className="text-sm font-bold text-[var(--color-text-main)]">Overview Links</label>
+                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Overview Links</label>
                                 <Button size="sm" variant="ghost" onClick={() => setEditLinks([...editLinks, { title: '', url: '' }])} icon={<span className="material-symbols-outlined">add</span>}>
                                     Add
                                 </Button>
@@ -860,7 +1117,7 @@ export const ProjectOverview = () => {
                                 {editLinks.length === 0 && <p className="text-xs text-[var(--color-text-muted)] py-2">No overview links.</p>}
                                 {editLinks.map((link, idx) => (
                                     <div key={idx} className="flex gap-2 items-start group">
-                                        <div className="flex-1 space-y-2">
+                                        <div className="flex-1 space-y-1">
                                             <Input
                                                 placeholder="Title"
                                                 value={link.title}
@@ -905,13 +1162,26 @@ export const ProjectOverview = () => {
                 </p>
             </Modal >
 
-            {showTaskModal && (
+            {showTaskModal && can('canManageTasks') && (
                 <TaskCreateModal
                     projectId={id!}
+                    tenantId={project?.tenantId}
                     onClose={() => setShowTaskModal(false)}
                     onCreated={() => {
                         // Task subscription will handle update
                         setShowTaskModal(false);
+                    }}
+                />
+            )}
+
+            {showInviteModal && project && can('canInvite') && (
+                <InviteMemberModal
+                    isOpen={showInviteModal}
+                    onClose={() => setShowInviteModal(false)}
+                    projectTitle={project.title}
+                    onGenerateLink={async (role: ProjectRole, maxUses?: number, expiresInHours?: number) => {
+                        const { generateInviteLink } = await import('../services/dataService');
+                        return await generateInviteLink(id || '', role, maxUses, expiresInHours, project.tenantId);
                     }}
                 />
             )}

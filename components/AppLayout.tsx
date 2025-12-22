@@ -2,8 +2,10 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Outlet, useLocation, useParams, useNavigate, Link } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Breadcrumbs } from './ui/Breadcrumbs';
+import { AISearchBar } from './AISearchBar';
+import { NotificationDropdown } from './NotificationDropdown';
 import { auth } from '../services/firebase';
-import { getProjectById, getProjectIdeas, getProjectTasks, getUserProjects, subscribeProject } from '../services/dataService';
+import { getProjectById, getProjectIdeas, getProjectTasks, getUserProjects, subscribeProject, getProjectIssues, subscribeProjectTasks, subscribeProjectIssues, subscribeProjectIdeas } from '../services/dataService';
 import { Project } from '../types';
 
 export const AppLayout = () => {
@@ -22,8 +24,10 @@ export const AppLayout = () => {
     const [project, setProject] = useState<Project | null>(null);
     const [tasksCount, setTasksCount] = useState(0);
     const [ideasCount, setIdeasCount] = useState(0);
+    const [issuesCount, setIssuesCount] = useState(0);
     const [projectMenuOpen, setProjectMenuOpen] = useState(false);
     const [projectOptions, setProjectOptions] = useState<Project[]>([]);
+    const [taskTitle, setTaskTitle] = useState<string | null>(null);
 
     const user = auth?.currentUser;
     const navigate = useNavigate();
@@ -32,6 +36,7 @@ export const AppLayout = () => {
     useEffect(() => {
         setNavOpen(false);
         setProjectMenuOpen(false);
+        setTaskTitle(null);
     }, [location.pathname]);
 
     // Fetch Project Data if we are in a project
@@ -43,95 +48,134 @@ export const AppLayout = () => {
 
         let mounted = true;
         let unsubProject: (() => void) | undefined;
+        let unsubTasks: (() => void) | undefined;
+        let unsubIdeas: (() => void) | undefined;
+        let unsubIssues: (() => void) | undefined;
 
-        (async () => {
-            try {
-                // Subscribe to project updates
-                unsubProject = subscribeProject(projectId, (p) => {
-                    if (mounted) setProject(p);
-                });
+        // First, find the project to get its tenant
+        getProjectById(projectId).then(async (foundProject) => {
+            if (!mounted || !foundProject) {
+                if (mounted) setProject(null);
+                return;
+            }
 
-                // Fetch counts
-                const [tasks, ideas] = await Promise.all([
-                    getProjectTasks(projectId),
-                    getProjectIdeas(projectId)
-                ]);
+            const projectTenantId = foundProject.tenantId;
 
+            // Subscribe to project updates with the correct tenant
+            unsubProject = subscribeProject(projectId, (p) => {
+                if (mounted) setProject(p);
+            }, projectTenantId);
+
+            // Subscribe to tasks for real-time counts
+            unsubTasks = subscribeProjectTasks(projectId, (tasks) => {
                 if (mounted) {
-                    setTasksCount(tasks.length);
+                    const openTasks = tasks.filter(t => !t.isCompleted && t.status !== 'Done');
+                    setTasksCount(openTasks.length);
+                }
+            }, projectTenantId);
+
+            // Subscribe to ideas for real-time counts
+            unsubIdeas = subscribeProjectIdeas(projectId, (ideas) => {
+                if (mounted) {
                     setIdeasCount(ideas.length);
                 }
-            } catch (err) {
-                console.warn("Failed to load project data", err);
-            }
-        })();
+            }, projectTenantId);
+
+            // Subscribe to issues for real-time counts
+            unsubIssues = subscribeProjectIssues(projectId, (issues) => {
+                if (mounted) {
+                    const unresolvedIssues = issues.filter(i => i.status !== 'Resolved' && i.status !== 'Closed');
+                    setIssuesCount(unresolvedIssues.length);
+                }
+            }, projectTenantId);
+
+        }).catch(err => {
+            console.warn("Failed to load project data", err);
+        });
 
         return () => {
             mounted = false;
             if (unsubProject) unsubProject();
+            if (unsubTasks) unsubTasks();
+            if (unsubIdeas) unsubIdeas();
+            if (unsubIssues) unsubIssues();
         };
     }, [projectId]);
 
     // Global Breadcrumb Logic
     const breadcrumbs = useMemo(() => {
         const path = location.pathname;
-        const items: { label: string; to?: string }[] = [];
+        const rawItems: { label: string; to?: string }[] = [];
 
         // Always start with Dashboard or relevant root
         if (path === '/' || path === '/dashboard') {
-            items.push({ label: 'Dashboard' });
-            return items;
+            return [];
         }
-
-        items.push({ label: 'Dashboard', to: '/' });
 
         const parts = path.split('/').filter(Boolean);
 
         // Handle Projects Route
         if (parts[0] === 'projects') {
-            items.push({ label: 'Projects', to: '/projects' });
+            rawItems.push({ label: 'Projects', to: '/projects' });
         }
 
         // Handle Individual Project Routes
         else if (parts[0] === 'project' && parts[1]) {
-            items.push({ label: 'Projects', to: '/projects' });
+            rawItems.push({ label: 'Projects', to: '/projects' });
 
             // Project Title (or loading state)
             const pTitle = project?.title || 'Loading...';
-            items.push({ label: pTitle, to: `/project/${parts[1]}` });
+            rawItems.push({ label: pTitle, to: `/project/${parts[1]}` });
 
             // Project Sub-pages
             if (parts[2]) {
                 const sub = parts[2];
                 switch (sub) {
                     case 'tasks':
-                        items.push({ label: 'Tasks', to: `/project/${parts[1]}/tasks` });
-                        if (parts[3]) items.push({ label: 'Task Details' });
+                        rawItems.push({ label: 'Tasks', to: `/project/${parts[1]}/tasks` });
+                        if (parts[3]) rawItems.push({ label: taskTitle || 'Task Details' });
                         break;
                     case 'ideas':
-                        items.push({ label: 'Ideas', to: `/project/${parts[1]}/ideas` });
+                        rawItems.push({ label: 'Ideas', to: `/project/${parts[1]}/ideas` });
                         break;
                     case 'issues':
-                        items.push({ label: 'Issues', to: `/project/${parts[1]}/issues` });
+                        rawItems.push({ label: 'Issues', to: `/project/${parts[1]}/issues` });
                         break;
                     case 'activity':
-                        items.push({ label: 'Activity', to: `/project/${parts[1]}/activity` });
+                        rawItems.push({ label: 'Activity', to: `/project/${parts[1]}/activity` });
                         break;
                     default:
-                        items.push({ label: sub.charAt(0).toUpperCase() + sub.slice(1) });
+                        rawItems.push({ label: sub.charAt(0).toUpperCase() + sub.slice(1) });
                 }
             }
         }
 
         // Handle Other Top-Level Routes
-        else if (parts[0] === 'create') {
-            items.push({ label: 'New Project' });
+        else if (parts[0] === 'tasks') {
+            rawItems.push({ label: 'My Tasks' });
+        } else if (parts[0] === 'brainstorm') {
+            rawItems.push({ label: 'AI Studio' });
+        } else if (parts[0] === 'team') {
+            rawItems.push({ label: 'Team' });
+        } else if (parts[0] === 'calendar') {
+            rawItems.push({ label: 'Calendar' });
+        } else if (parts[0] === 'settings') {
+            rawItems.push({ label: 'Settings' });
+        } else if (parts[0] === 'create') {
+            rawItems.push({ label: 'New Project' });
         } else if (parts[0] === 'profile') {
-            items.push({ label: 'Profile' });
+            rawItems.push({ label: 'Profile' });
         }
 
-        return items;
-    }, [location.pathname, project]);
+        // Finalize: Remove link from the last item
+        return rawItems.map((item, idx) => {
+            if (idx === rawItems.length - 1) {
+                const { to, ...rest } = item;
+                return rest;
+            }
+            return item;
+        });
+    }, [location.pathname, project, taskTitle]);
 
     return (
         <div className="flex h-screen w-full bg-[var(--color-surface-bg)] overflow-hidden">
@@ -143,6 +187,7 @@ export const AppLayout = () => {
                         projectTitle: project?.title,
                         tasksCount,
                         ideasCount,
+                        issuesCount,
                         modules: project?.modules,
                         externalResources: project?.externalResources
                     } : undefined}
@@ -165,6 +210,7 @@ export const AppLayout = () => {
                                 projectTitle: project?.title,
                                 tasksCount,
                                 ideasCount,
+                                issuesCount,
                                 modules: project?.modules,
                                 externalResources: project?.externalResources
                             } : undefined}
@@ -193,27 +239,20 @@ export const AppLayout = () => {
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                        {/* Search (Mobile/Desktop) */}
-                        <div className="hidden sm:flex items-center bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-full px-4 py-1.5 w-64 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 transition-all">
-                            <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)]">search</span>
-                            <input
-                                className="bg-transparent border-none focus:outline-none text-sm ml-2 w-full text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)]"
-                                placeholder="Search..."
-                            />
+                        {/* AI-Powered Search (Mobile/Desktop) */}
+                        <div className="hidden sm:block">
+                            <AISearchBar />
                         </div>
 
-                        {/* Top Right Actions */}
-                        <button className="size-9 rounded-full hover:bg-[var(--color-surface-hover)] flex items-center justify-center text-[var(--color-text-muted)] transition-colors relative">
-                            <span className="material-symbols-outlined text-[20px]">notifications</span>
-                            <span className="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-white"></span>
-                        </button>
+                        {/* Notification Dropdown */}
+                        <NotificationDropdown />
                     </div>
                 </header>
 
                 {/* Main Scroll Area */}
                 <main className="flex-1 overflow-y-auto w-full p-4 sm:p-6 lg:p-8">
                     <div className="max-w-7xl mx-auto h-full">
-                        <Outlet />
+                        <Outlet context={{ setTaskTitle }} />
                     </div>
                 </main>
 

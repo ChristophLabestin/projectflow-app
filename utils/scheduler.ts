@@ -22,6 +22,7 @@ type SchedulableItem = {
     dueDate?: Date;
     priorityWeight: number;
     originalItem: Task | Issue;
+    assigneeIds: string[];
 };
 
 const PRIORITY_WEIGHTS = {
@@ -33,66 +34,61 @@ const PRIORITY_WEIGHTS = {
 };
 
 export const distributeTasks = (
-    tasks: Task[],
-    issues: Issue[],
-    preferences: SchedulerPreferences = { maxItemsPerDay: 5, includeWeekends: false, prioritizeOverdue: true }
+    tasks: Task[], // CURRENT user's tasks
+    issues: Issue[], // CURRENT user's issues
+    preferences: SchedulerPreferences = { maxItemsPerDay: 5, includeWeekends: false, prioritizeOverdue: true },
+    teamTasks: Task[] = [] // Co-assignees' tasks for global optimization
 ): ProposedSchedule[] => {
-    // 1. Normalize and Filter Items
-    const itemsToSchedule: SchedulableItem[] = [];
+    // 1. Pool All Items for Optimization
+    const allItems: SchedulableItem[] = [];
 
-    // Process Tasks
-    tasks.forEach(task => {
-        if (task.isCompleted || task.status === 'Done') return;
-
-        let weight = 1;
-        if (task.priority && task.priority in PRIORITY_WEIGHTS) {
-            weight = PRIORITY_WEIGHTS[task.priority as keyof typeof PRIORITY_WEIGHTS];
-        }
-
-        // Use scheduledDate if exists, else dueDate
-        const dateStr = task.scheduledDate || task.dueDate;
-
-        itemsToSchedule.push({
-            id: task.id,
-            type: 'task',
-            title: task.title,
-            dueDate: dateStr ? new Date(dateStr) : undefined,
-            priorityWeight: weight,
-            originalItem: task
-        });
-    });
-
-    // Process Issues
-    issues.forEach(issue => {
-        if (issue.status === 'Resolved' || issue.status === 'Closed') return;
+    const processItem = (item: Task | Issue, type: 'task' | 'issue') => {
+        const isCompleted = type === 'task' ? (item as Task).isCompleted : (item as Issue).status === 'Resolved' || (item as Issue).status === 'Closed';
+        if (isCompleted) return;
 
         let weight = 1;
-        if (issue.priority && issue.priority in PRIORITY_WEIGHTS) {
-            weight = PRIORITY_WEIGHTS[issue.priority as keyof typeof PRIORITY_WEIGHTS];
+        if (item.priority && item.priority in PRIORITY_WEIGHTS) {
+            weight = PRIORITY_WEIGHTS[item.priority as keyof typeof PRIORITY_WEIGHTS];
         }
 
-        // Issues rely on scheduledDate primarily
-        const dateStr = issue.scheduledDate;
+        const dateStr = item.scheduledDate || (type === 'task' ? (item as Task).dueDate : undefined);
 
-        itemsToSchedule.push({
-            id: issue.id,
-            type: 'issue',
-            title: issue.title,
+        let assigneeIds: string[] = [];
+        if ((item as any).assigneeIds && (item as any).assigneeIds.length > 0) {
+            assigneeIds = (item as any).assigneeIds;
+        } else if ((item as any).assigneeId) {
+            assigneeIds = [(item as any).assigneeId];
+        } else if ((item as any).ownerId) {
+            assigneeIds = [(item as any).ownerId];
+        }
+
+        allItems.push({
+            id: item.id,
+            type,
+            title: item.title,
             dueDate: dateStr ? new Date(dateStr) : undefined,
             priorityWeight: weight,
-            originalItem: issue
+            originalItem: item,
+            assigneeIds
         });
+    };
+
+    tasks.forEach(t => processItem(t, 'task'));
+    issues.forEach(i => processItem(i, 'issue'));
+    teamTasks.forEach(tt => processItem(tt, 'task'));
+
+    // Deduplicate pool
+    const poolMap = new Map<string, SchedulableItem>();
+    allItems.forEach(item => {
+        if (!poolMap.has(item.id)) {
+            poolMap.set(item.id, item);
+        }
     });
+    const pool = Array.from(poolMap.values());
 
-    // 2. Sort Items
-    // Priority:
-    // 1. Overdue (if enabled)
-    // 2. Priority Weight (Highest first)
-    // 3. Existing Due Date (Earliest first)
-
+    // 2. Sort pool by priority and date
     const today = startOfDay(new Date());
-
-    itemsToSchedule.sort((a, b) => {
+    pool.sort((a, b) => {
         const aOverdue = a.dueDate && isBefore(a.dueDate, today);
         const bOverdue = b.dueDate && isBefore(b.dueDate, today);
 
@@ -102,50 +98,48 @@ export const distributeTasks = (
         }
 
         if (a.priorityWeight !== b.priorityWeight) {
-            return b.priorityWeight - a.priorityWeight; // Higher priority first
+            return b.priorityWeight - a.priorityWeight;
         }
 
-        // If both have due dates, sort by date
         if (a.dueDate && b.dueDate) {
             return a.dueDate.getTime() - b.dueDate.getTime();
         }
 
-        // Prefer items with due dates over those without (or vice versa? Usually items with deadlines come first)
         if (a.dueDate && !b.dueDate) return -1;
         if (!a.dueDate && b.dueDate) return 1;
 
         return 0;
     });
 
-    // 3. Distribute
+    // 3. Global Load Tracking
+    const userDailyLoad: Record<string, Record<string, number>> = {}; // dateISO -> userId -> count
+
+    const isAvailable = (date: Date, userId: string) => {
+        const dateKey = startOfDay(date).toISOString();
+        const load = (userDailyLoad[dateKey] && userDailyLoad[dateKey][userId]) || 0;
+        return load < preferences.maxItemsPerDay;
+    };
+
+    const recordAssignment = (date: Date, userId: string) => {
+        const dateKey = startOfDay(date).toISOString();
+        if (!userDailyLoad[dateKey]) userDailyLoad[dateKey] = {};
+        userDailyLoad[dateKey][userId] = (userDailyLoad[dateKey][userId] || 0) + 1;
+    };
+
+    // 4. Distribute
     const proposedChanges: ProposedSchedule[] = [];
-    let currentDay = today;
 
-    // Track load per day
-    // We might want to respect existing valid future assignments, but the request implies re-distribution.
-    // However, moving a task that is comfortably in the future to Today might be annoying.
-    // Strategy: 
-    // - If a task is overdue, it MUST be rescheduled to Today+.
-    // - If a task has no date, it gets scheduled.
-    // - If a task has a future date, we check if that day is overloaded. If so, move it? 
-    // For V1 "Reset/Optimize", let's try to fill days sequentially starting today.
-
-    const dailyLoad: Record<string, number> = {};
-    const getLoad = (d: Date) => dailyLoad[d.toISOString()] || 0;
-    const incLoad = (d: Date) => dailyLoad[d.toISOString()] = getLoad(d) + 1;
-
-    // Helper to find next valid slot
-    const findNextSlot = (startDate: Date): Date => {
+    const findNextValidDateForAllUsers = (startDate: Date, assigneeIds: string[]): Date => {
         let candidate = startDate;
         while (true) {
-            // Skip weekends if requested
             if (!preferences.includeWeekends && isWeekend(candidate)) {
                 candidate = addDays(candidate, 1);
                 continue;
             }
 
-            // Check capacity
-            if (getLoad(candidate) < preferences.maxItemsPerDay) {
+            // Check if ALL assignees are available on this day
+            const everyoneAvailable = assigneeIds.every(uid => isAvailable(candidate, uid));
+            if (everyoneAvailable) {
                 return candidate;
             }
 
@@ -153,35 +147,25 @@ export const distributeTasks = (
         }
     };
 
-    itemsToSchedule.forEach(item => {
-        // If item is already scheduled for a valid future date and that day isn't full, keep it?
-        // Or strictly strictly repack?
-        // Let's go with a hybrid: 
-        // If overdue or undated -> Reschedule.
-        // If valid future -> Keep unless the user explicitly wants a full repack.
-        // For this implementation: "Stress Free" implies smoothing out spikes.
-        // Let's treat ALL items as a pool to get the optimal flow.
+    pool.forEach(item => {
+        const targetDate = findNextValidDateForAllUsers(today, item.assigneeIds);
 
-        const targetDate = findNextSlot(currentDay);
+        // Propose change if date is different or it was unscheduled
+        const originalDate = item.dueDate;
+        const needsUpdate = !originalDate || !isSameDay(originalDate, targetDate);
 
-        // Only propose a change if the date is different
-        // OR if we are just defining the schedule for everything.
-        // We return the proposed schedule for ALL items passed effectively.
-
-        proposedChanges.push({
-            taskId: item.id,
-            type: item.type,
-            newDate: targetDate,
-            originalDate: item.dueDate,
-            reason: item.dueDate && isBefore(item.dueDate, today) ? 'Overdue' : 'Optimized'
-        });
-
-        incLoad(targetDate);
-
-        // Optimization: If we filled today, advance currentDay pointer to avoid re-checking full days
-        if (getLoad(currentDay) >= preferences.maxItemsPerDay) {
-            currentDay = addDays(currentDay, 1);
+        if (needsUpdate) {
+            proposedChanges.push({
+                taskId: item.id,
+                type: item.type,
+                newDate: targetDate,
+                originalDate: originalDate,
+                reason: originalDate && isBefore(originalDate, today) ? 'Overdue' : 'Global Optimization'
+            });
         }
+
+        // Record load for all assignees
+        item.assigneeIds.forEach(uid => recordAssignment(targetDate, uid));
     });
 
     return proposedChanges;

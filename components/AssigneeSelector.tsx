@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { getProjectMembers, subscribeTenantUsers, getActiveTenantId } from '../services/dataService';
 import { auth } from '../services/firebase';
+import { Select } from './ui/Select';
 
 interface AssigneeSelectorProps {
     projectId: string;
@@ -55,26 +56,25 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({ projectId, v
     return (
         <div className="flex flex-col gap-1">
             {label && <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">{label}</label>}
-            <div className="relative">
-                <select
-                    value={value || ''}
-                    onChange={handleChange}
-                    className="w-full h-10 pl-3 pr-8 rounded-xl border border-[var(--color-input-border)] bg-[var(--color-input-bg)] text-sm outline-none focus:ring-2 focus:ring-[var(--color-primary)] appearance-none cursor-pointer"
-                >
-                    <option value="">Unassigned</option>
-                    {members.map(uid => {
-                        const user = userMap[uid];
-                        return (
-                            <option key={uid} value={uid}>
-                                {user ? user.displayName : `User ${uid.slice(0, 5)}...`}
-                            </option>
-                        );
-                    })}
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--color-text-muted)]">
-                    <span className="material-symbols-outlined text-[18px]">expand_more</span>
-                </div>
-            </div>
+            <Select
+                value={value || ''}
+                onChange={(e) => {
+                    const uid = e.target.value;
+                    const user = userMap[uid];
+                    onChange(uid, user?.displayName || 'Unknown');
+                }}
+                className="w-full"
+            >
+                <option value="">Unassigned</option>
+                {members.map(uid => {
+                    const user = userMap[uid];
+                    return (
+                        <option key={uid} value={uid}>
+                            {user ? user.displayName : `User ${uid.slice(0, 5)}...`}
+                        </option>
+                    );
+                })}
+            </Select>
         </div>
     );
 };

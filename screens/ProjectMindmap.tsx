@@ -3,6 +3,9 @@ import { Link, useParams } from 'react-router-dom';
 import { Idea, Mindmap, MindmapGrouping, Project } from '../types';
 import { addTask, deleteIdea, getProjectById, getProjectIdeas, getProjectMindmaps, saveIdea, updateIdea, createMindmap, updateMindmapName } from '../services/dataService';
 import { suggestMindmapGrouping } from '../services/geminiService';
+import { Input } from '../components/ui/Input';
+import { Textarea } from '../components/ui/Textarea';
+import { Checkbox } from '../components/ui/Checkbox';
 
 type MapNodeType = 'project' | 'group' | 'idea';
 
@@ -1608,11 +1611,11 @@ export const ProjectMindmap = () => {
                                     </button>
                                 </div>
                                 <div className="p-3 flex flex-col gap-2">
-                                    <input
+                                    <Input
                                         value={newIdeaTitle}
                                         onChange={(e) => setNewIdeaTitle(e.target.value)}
                                         placeholder="Idea title"
-                                        className="input-field w-full px-3 py-2 text-sm"
+                                        className="w-full text-sm"
                                         ref={newIdeaInputRef}
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter') {
@@ -1621,35 +1624,27 @@ export const ProjectMindmap = () => {
                                             }
                                         }}
                                     />
-                                    <textarea
+                                    <Textarea
                                         value={newIdeaDesc}
                                         onChange={(e) => setNewIdeaDesc(e.target.value)}
                                         placeholder="Optional context, links, or acceptance criteria"
-                                        className="textarea-field w-full px-3 py-2 text-sm min-h-[80px]"
+                                        className="w-full text-sm min-h-[80px]"
                                     />
                                     {selectedIdeaId && activeIdea && (
-                                        <label className="flex items-center gap-2 text-xs text-slate-600">
-                                            <input
-                                                type="checkbox"
-                                                checked={attachToSelectedIdea}
-                                                onChange={(e) => {
-                                                    setAttachToSelectedIdea(e.target.checked);
-                                                }}
-                                                className="rounded border-slate-300"
-                                            />
-                                            Attach as child of “{activeIdea.title}”
-                                        </label>
+                                        <Checkbox
+                                            checked={attachToSelectedIdea}
+                                            onChange={(e) => setAttachToSelectedIdea(e.target.checked)}
+                                            label={`Attach as child of “${activeIdea.title}”`}
+                                            className="text-xs text-slate-600"
+                                        />
                                     )}
                                     {selectedGroup && (
-                                        <label className="flex items-center gap-2 text-xs text-slate-600">
-                                            <input
-                                                type="checkbox"
-                                                checked={attachToSelectedGroup}
-                                                onChange={(e) => setAttachToSelectedGroup(e.target.checked)}
-                                                className="rounded border-slate-300"
-                                            />
-                                            Link to branch “{selectedGroup}”
-                                        </label>
+                                        <Checkbox
+                                            checked={attachToSelectedGroup}
+                                            onChange={(e) => setAttachToSelectedGroup(e.target.checked)}
+                                            label={`Link to branch “${selectedGroup}”`}
+                                            className="text-xs text-slate-600"
+                                        />
                                     )}
                                     <button
                                         onClick={handleAddIdea}
@@ -1669,33 +1664,27 @@ export const ProjectMindmap = () => {
                                     </div>
                                 </div>
                                 <div className="p-3 flex flex-col gap-2">
-                                    <input
+                                    <Input
                                         value={newBranchName}
                                         onChange={(e) => setNewBranchName(e.target.value)}
                                         placeholder="Branch name"
-                                        className="input-field w-full px-3 py-2 text-sm"
+                                        className="w-full text-sm"
                                     />
                                     {selectedIdeaId && activeIdea && (
-                                        <label className="flex items-center gap-2 text-xs text-slate-600">
-                                            <input
-                                                type="checkbox"
-                                                checked={attachBranchToSelected}
-                                                onChange={(e) => setAttachBranchToSelected(e.target.checked)}
-                                                className="rounded border-slate-300"
-                                            />
-                                            Attach to “{activeIdea.title}”
-                                        </label>
+                                        <Checkbox
+                                            checked={attachBranchToSelected}
+                                            onChange={(e) => setAttachBranchToSelected(e.target.checked)}
+                                            label={`Attach to “${activeIdea.title}”`}
+                                            className="text-xs text-slate-600"
+                                        />
                                     )}
                                     {selectedGroup && (
-                                        <label className="flex items-center gap-2 text-xs text-slate-600">
-                                            <input
-                                                type="checkbox"
-                                                checked={attachBranchToSelected}
-                                                onChange={(e) => setAttachBranchToSelected(e.target.checked)}
-                                                className="rounded border-slate-300"
-                                            />
-                                            Attach to branch “{selectedGroup}”
-                                        </label>
+                                        <Checkbox
+                                            checked={attachBranchToSelected}
+                                            onChange={(e) => setAttachBranchToSelected(e.target.checked)}
+                                            label={`Attach to branch “${selectedGroup}”`}
+                                            className="text-xs text-slate-600"
+                                        />
                                     )}
                                     <button
                                         onClick={handleAddBranch}
@@ -1777,10 +1766,10 @@ export const ProjectMindmap = () => {
                             <div className="p-4 space-y-3 border-t border-slate-100">
                                 {drawerMode === 'map' && (
                                     <>
-                                        <input
+                                        <Input
                                             value={editTitle}
                                             onChange={(e) => setEditTitle(e.target.value)}
-                                            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black/10"
+                                            className="w-full text-sm"
                                             placeholder="Mindmap name"
                                         />
                                         <button
@@ -1810,10 +1799,10 @@ export const ProjectMindmap = () => {
                                 {drawerMode === 'edit' && (
                                     selectedGroup ? (
                                         <>
-                                            <input
+                                            <Input
                                                 value={renameGroupName}
                                                 onChange={(e) => setRenameGroupName(e.target.value)}
-                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black/10"
+                                                className="w-full text-sm"
                                                 placeholder="Branch name"
                                             />
                                             <button
@@ -1842,16 +1831,16 @@ export const ProjectMindmap = () => {
                                         </>
                                     ) : activeIdea ? (
                                         <>
-                                            <input
+                                            <Input
                                                 value={editTitle}
                                                 onChange={(e) => setEditTitle(e.target.value)}
-                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-black/10"
+                                                className="w-full text-sm"
                                                 placeholder="Title"
                                             />
-                                            <textarea
+                                            <Textarea
                                                 value={editDesc}
                                                 onChange={(e) => setEditDesc(e.target.value)}
-                                                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm min-h-[100px] focus:outline-none focus:ring-2 focus:ring-black/10"
+                                                className="w-full text-sm min-h-[100px]"
                                                 placeholder="Description"
                                             />
                                             <button
