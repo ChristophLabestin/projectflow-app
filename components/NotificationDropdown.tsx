@@ -11,7 +11,11 @@ import { Button } from './ui/Button';
 import { Notification } from '../types';
 import { useToast } from '../context/UIContext';
 
-export const NotificationDropdown = () => {
+interface NotificationDropdownProps {
+    position?: 'topbar' | 'sidebar';
+}
+
+export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdownProps) => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(true);
@@ -137,37 +141,78 @@ export const NotificationDropdown = () => {
         }
     };
 
+    // Get notification accent color based on type
+    const getNotificationColor = (type: string) => {
+        switch (type) {
+            case 'task_assigned':
+            case 'subtask_assigned':
+                return 'from-blue-500 to-indigo-500';
+            case 'issue_assigned':
+                return 'from-rose-500 to-pink-500';
+            case 'comment_added':
+            case 'comment_mention':
+                return 'from-violet-500 to-purple-500';
+            case 'project_invite':
+            case 'project_shared':
+            case 'project_join_request':
+            case 'project_join_request_accepted':
+                return 'from-emerald-500 to-teal-500';
+            case 'project_join_request_denied':
+                return 'from-gray-500 to-slate-500';
+            default:
+                return 'from-gray-400 to-gray-500';
+        }
+    };
+
     return (
         <div className="relative" ref={dropdownRef}>
-            {/* Notification Bell Button */}
+            {/* Notification Bell Button - Enhanced */}
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className="size-9 rounded-full hover:bg-[var(--color-surface-hover)] flex items-center justify-center text-[var(--color-text-muted)] transition-colors relative"
+                className={`
+                    size-9 rounded-xl flex items-center justify-center transition-all duration-300 relative
+                    ${isOpen
+                        ? 'bg-[var(--color-primary)] text-white dark:text-black shadow-lg scale-95'
+                        : 'hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}
+                `}
             >
-                <span className="material-symbols-outlined text-[20px]">notifications</span>
+                <span className={`material-symbols-outlined text-[20px] transition-transform duration-300 ${isOpen ? 'rotate-12' : ''}`}>
+                    {unreadCount > 0 ? 'notifications_active' : 'notifications'}
+                </span>
                 {unreadCount > 0 && (
-                    <span className="absolute top-2 right-2 size-2 bg-red-500 rounded-full border-2 border-white"></span>
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] bg-gradient-to-br from-rose-500 to-pink-600 text-white text-[10px] font-black rounded-full flex items-center justify-center shadow-lg shadow-rose-500/30 animate-pulse">
+                        {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
                 )}
             </button>
 
-            {/* Dropdown Panel */}
+            {/* Dropdown Panel - Premium Redesign */}
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-2xl overflow-hidden z-50 animate-fade-in">
-                    {/* Header */}
-                    <div className="px-4 py-3 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]">
+                <div className={`absolute ${position === 'sidebar'
+                    ? 'left-full bottom-0 ml-3'
+                    : 'right-0 mt-2'
+                    } w-[340px] bg-[var(--color-surface-card)] rounded-2xl shadow-2xl overflow-hidden z-50 animate-fade-in`}
+                >
+                    {/* Header - Gradient Design */}
+                    <div className="relative px-5 py-4 bg-gradient-to-r from-[var(--color-surface-card)] to-[var(--color-surface-bg)] border-b border-[var(--color-surface-border)]">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-semibold text-[var(--color-text)]">
-                                Notifications
-                                {unreadCount > 0 && (
-                                    <span className="ml-2 px-2 py-0.5 text-xs bg-blue-500 text-white rounded-full">
-                                        {unreadCount}
-                                    </span>
-                                )}
-                            </h3>
+                            <div className="flex items-center gap-3">
+                                <div className="size-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                                    <span className="material-symbols-outlined text-white text-[22px]">notifications</span>
+                                </div>
+                                <div>
+                                    <h3 className="text-[15px] font-bold text-[var(--color-text-main)]">
+                                        Notifications
+                                    </h3>
+                                    <p className="text-[11px] text-[var(--color-text-muted)]">
+                                        {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up!'}
+                                    </p>
+                                </div>
+                            </div>
                             {unreadCount > 0 && (
                                 <button
                                     onClick={handleMarkAllAsRead}
-                                    className="text-xs text-blue-500 hover:text-blue-600 transition-colors"
+                                    className="text-[11px] font-bold text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
                                 >
                                     Mark all read
                                 </button>
@@ -175,38 +220,54 @@ export const NotificationDropdown = () => {
                         </div>
                     </div>
 
-                    {/* Notifications List */}
-                    <div className="max-h-[400px] overflow-y-auto">
+                    {/* Notifications List - Enhanced */}
+                    <div className="max-h-[380px] overflow-y-auto custom-scrollbar">
                         {loading ? (
-                            <div className="flex items-center justify-center py-8">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                            <div className="flex flex-col items-center justify-center py-12 gap-3">
+                                <div className="size-10 rounded-full border-2 border-indigo-500/30 border-t-indigo-500 animate-spin"></div>
+                                <p className="text-xs text-[var(--color-text-muted)]">Loading notifications...</p>
                             </div>
                         ) : notifications.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-8 text-center">
-                                <span className="material-symbols-outlined text-[48px] text-[var(--color-text-muted)] opacity-50">
-                                    notifications_off
-                                </span>
-                                <p className="text-sm text-[var(--color-text-muted)] mt-2">
-                                    No notifications yet
+                            <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+                                <div className="size-20 rounded-2xl bg-gradient-to-br from-[var(--color-surface-hover)] to-[var(--color-surface-bg)] flex items-center justify-center mb-4">
+                                    <span className="material-symbols-outlined text-[40px] text-[var(--color-text-subtle)]">
+                                        inbox
+                                    </span>
+                                </div>
+                                <h4 className="text-sm font-bold text-[var(--color-text-main)] mb-1">You're all caught up!</h4>
+                                <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
+                                    No new notifications. We'll let you know when something needs your attention.
                                 </p>
                             </div>
                         ) : (
-                            <div className="divide-y divide-[var(--color-surface-border)]">
-                                {notifications.slice(0, 20).map((notification) => (
+                            <div className="py-2">
+                                {notifications.slice(0, 15).map((notification, index) => (
                                     <div
                                         key={notification.id}
                                         role="button"
                                         tabIndex={0}
                                         onClick={() => handleNotificationClick(notification)}
-                                        className={`w-full text-left px-4 py-3 hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer ${!notification.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''
-                                            }`}
+                                        className={`
+                                            group relative mx-2 mb-1 px-3 py-3 rounded-xl cursor-pointer transition-all duration-200
+                                            ${!notification.read
+                                                ? 'bg-gradient-to-r from-indigo-50/80 to-transparent dark:from-indigo-900/20 dark:to-transparent'
+                                                : 'hover:bg-[var(--color-surface-hover)]'}
+                                        `}
+                                        style={{ animationDelay: `${index * 30}ms` }}
                                     >
+                                        {/* Colored accent bar for unread */}
+                                        {!notification.read && (
+                                            <div className={`absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full bg-gradient-to-b ${getNotificationColor(notification.type)}`} />
+                                        )}
+
                                         <div className="flex items-start gap-3">
-                                            {/* Icon */}
-                                            <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${!notification.read
-                                                ? 'bg-blue-500 text-white'
-                                                : 'bg-[var(--color-surface-bg)] text-[var(--color-text-muted)]'
-                                                }`}>
+                                            {/* Icon with gradient background */}
+                                            <div className={`
+                                                flex-shrink-0 size-9 rounded-xl flex items-center justify-center transition-all duration-200
+                                                ${!notification.read
+                                                    ? `bg-gradient-to-br ${getNotificationColor(notification.type)} text-white shadow-md`
+                                                    : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] group-hover:bg-[var(--color-surface-border)]'}
+                                            `}>
                                                 <span className="material-symbols-outlined text-[18px]">
                                                     {getNotificationIcon(notification.type)}
                                                 </span>
@@ -214,44 +275,41 @@ export const NotificationDropdown = () => {
 
                                             {/* Content */}
                                             <div className="flex-1 min-w-0">
-                                                <p className={`text-sm ${!notification.read
-                                                    ? 'font-semibold text-[var(--color-text)]'
-                                                    : 'text-[var(--color-text)]'
-                                                    }`}>
-                                                    {notification.title}
-                                                </p>
-                                                <p className="text-xs text-[var(--color-text-muted)] mt-0.5 line-clamp-2">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <p className={`text-[13px] leading-snug ${!notification.read
+                                                        ? 'font-semibold text-[var(--color-text-main)]'
+                                                        : 'text-[var(--color-text-main)]'
+                                                        }`}>
+                                                        {notification.title}
+                                                    </p>
+                                                    <span className="text-[10px] text-[var(--color-text-subtle)] shrink-0 mt-0.5">
+                                                        {formatTime(notification.createdAt)}
+                                                    </span>
+                                                </div>
+                                                <p className="text-[12px] text-[var(--color-text-muted)] mt-0.5 line-clamp-2 leading-relaxed">
                                                     {notification.message}
                                                 </p>
+
+                                                {/* Join Request Actions */}
                                                 {notification.type === 'project_join_request' && !notification.read && (
-                                                    <div className="flex items-center gap-2 mt-3 mb-1">
-                                                        <Button
-                                                            size="xs"
-                                                            variant="primary"
+                                                    <div className="flex items-center gap-2 mt-3">
+                                                        <button
                                                             onClick={(e) => handleJoinResponse(e, notification, true)}
-                                                            className="bg-emerald-500 hover:bg-emerald-600 border-emerald-500 text-white min-w-[70px]"
+                                                            className="flex-1 flex items-center justify-center gap-1.5 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold rounded-lg hover:shadow-lg hover:shadow-emerald-500/25 transition-all duration-200 hover:scale-[1.02]"
                                                         >
+                                                            <span className="material-symbols-outlined text-[14px]">check</span>
                                                             Accept
-                                                        </Button>
-                                                        <Button
-                                                            size="xs"
-                                                            variant="utility"
+                                                        </button>
+                                                        <button
                                                             onClick={(e) => handleJoinResponse(e, notification, false)}
-                                                            className="hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20 border-transparent min-w-[70px]"
+                                                            className="flex-1 flex items-center justify-center gap-1.5 h-8 bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] text-xs font-bold rounded-lg hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20 dark:hover:text-rose-400 transition-all duration-200"
                                                         >
-                                                            Deny
-                                                        </Button>
+                                                            <span className="material-symbols-outlined text-[14px]">close</span>
+                                                            Decline
+                                                        </button>
                                                     </div>
                                                 )}
-                                                <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                                                    {formatTime(notification.createdAt)}
-                                                </p>
                                             </div>
-
-                                            {/* Unread indicator */}
-                                            {!notification.read && (
-                                                <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                                            )}
                                         </div>
                                     </div>
                                 ))}
@@ -261,15 +319,16 @@ export const NotificationDropdown = () => {
 
                     {/* Footer */}
                     {notifications.length > 0 && (
-                        <div className="px-4 py-2 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]">
+                        <div className="px-4 py-3 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]/50">
                             <button
                                 onClick={() => {
                                     setIsOpen(false);
                                     navigate('/notifications');
                                 }}
-                                className="text-xs text-blue-500 hover:text-blue-600 transition-colors w-full text-center"
+                                className="w-full flex items-center justify-center gap-2 text-xs font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors py-1.5 rounded-lg hover:bg-[var(--color-surface-hover)]"
                             >
                                 View all notifications
+                                <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
                             </button>
                         </div>
                     )}

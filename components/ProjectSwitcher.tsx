@@ -80,11 +80,15 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                 onClick={() => setIsOpen(!isOpen)}
                 className={`
                     w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl 
-                    transition-all duration-200 border
+                    transition-all duration-200 border border-transparent
                     ${isOpen
-                        ? 'bg-[var(--color-surface-hover)] border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]'
-                        : 'bg-transparent border-transparent hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-surface-border)]'}
+                        ? 'bg-[var(--color-surface-hover)]'
+                        : 'bg-transparent hover:bg-[var(--color-surface-hover)]'}
+                    focus:outline-none focus:ring-0 focus-visible:outline-none focus:border-transparent
+                    outline-none active:bg-[var(--color-surface-hover)] active:outline-none
+                    select-none
                 `}
+                style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
             >
                 <div className="flex items-center gap-3 min-w-0">
                     <div className={`

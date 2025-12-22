@@ -18,33 +18,41 @@ export const StudioToolCard: React.FC<StudioToolCardProps> = ({
         <button
             onClick={onClick}
             className={`
-                flex flex-col text-left p-6 rounded-2xl transition-all duration-300 border-2
+                relative flex flex-col text-left p-6 rounded-2xl transition-all duration-400 overflow-hidden border
                 ${active
-                    ? `bg-white shadow-lift border-ink dark:bg-zinc-900 dark:border-white`
-                    : 'bg-white/50 border-transparent hover:border-ink/20 dark:bg-zinc-800/50 hover:dark:border-white/20'
+                    ? `bg-${color}-50/50 dark:bg-${color}-500/5 shadow-xl scale-[1.02] z-10 border-transparent`
+                    : 'bg-white/60 dark:bg-zinc-800/40 hover:bg-white dark:hover:bg-zinc-800 shadow-sm border-transparent hover:border-line dark:hover:border-white/10'
                 }
             `}
         >
+            {/* Accent Bar */}
+            {active && (
+                <div className={`absolute left-0 top-0 bottom-0 w-1.5 bg-${color}-500 animate-in fade-in slide-in-from-left duration-500`}></div>
+            )}
+
             <div className={`
                 w-12 h-12 rounded-xl flex items-center justify-center mb-6 
-                transition-transform duration-300 group-hover:scale-110
-                ${active ? 'bg-ink text-white dark:bg-white dark:text-ink' : `bg-${color}-100 text-${color}-600 dark:bg-${color}-900/30 dark:text-${color}-400`}
+                transition-all duration-300
+                ${active
+                    ? `bg-${color}-500 text-white shadow-lg shadow-${color}-500/20 scale-110`
+                    : `bg-${color}-100 text-${color}-600 dark:bg-${color}-900/30 dark:text-${color}-400`
+                }
             `}>
                 <span className="material-symbols-outlined text-[28px]">{icon}</span>
             </div>
 
-            <h3 className={`text-lg font-display font-bold mb-2 ${active ? 'text-ink dark:text-white' : 'text-ink/80 dark:text-white/80'}`}>
+            <h3 className={`text-lg font-display font-bold mb-2 transition-colors ${active ? 'text-ink dark:text-white' : 'text-ink/80 dark:text-white/80'}`}>
                 {title}
             </h3>
 
-            <p className={`text-sm leading-relaxed ${active ? 'text-muted' : 'text-muted/70'}`}>
+            <p className={`text-sm leading-relaxed transition-colors ${active ? 'text-ink/70 dark:text-white/70' : 'text-muted/70'}`}>
                 {description}
             </p>
 
             {active && (
-                <div className="mt-6 flex items-center gap-2 text-xs font-bold text-ink dark:text-white animate-fade-in">
-                    <span>Active Tool</span>
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></div>
+                <div className="mt-6 flex items-center gap-2 text-[10px] uppercase tracking-wider font-bold text-indigo-500 dark:text-indigo-400 animate-fade-in">
+                    <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                    <span>Currently Selected</span>
                 </div>
             )}
         </button>

@@ -3,7 +3,6 @@ import { Outlet, useLocation, useParams, useNavigate, Link } from 'react-router-
 import { Sidebar } from './Sidebar';
 import { Breadcrumbs } from './ui/Breadcrumbs';
 import { AISearchBar } from './AISearchBar';
-import { NotificationDropdown } from './NotificationDropdown';
 import { auth } from '../services/firebase';
 import { getProjectById, getProjectIdeas, getProjectTasks, getUserProjects, subscribeProject, getProjectIssues, subscribeProjectTasks, subscribeProjectIssues, subscribeProjectIdeas } from '../services/dataService';
 import { Project } from '../types';
@@ -189,7 +188,8 @@ export const AppLayout = () => {
                         ideasCount,
                         issuesCount,
                         modules: project?.modules,
-                        externalResources: project?.externalResources
+                        externalResources: project?.externalResources,
+                        isLoaded: Boolean(project)
                     } : undefined}
                 />
             </div>
@@ -212,7 +212,8 @@ export const AppLayout = () => {
                                 ideasCount,
                                 issuesCount,
                                 modules: project?.modules,
-                                externalResources: project?.externalResources
+                                externalResources: project?.externalResources,
+                                isLoaded: Boolean(project)
                             } : undefined}
                         />
                     </div>
@@ -223,7 +224,7 @@ export const AppLayout = () => {
             <div className="flex-1 flex flex-col min-w-0 h-full relative">
 
                 {/* Header */}
-                <header className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-card)]/80 backdrop-blur-md sticky top-0 z-30">
+                <header className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-card)] sticky top-0 z-30">
                     <div className="flex items-center gap-3 overflow-hidden">
                         <button
                             onClick={() => setNavOpen(true)}
@@ -243,17 +244,11 @@ export const AppLayout = () => {
                         <div className="hidden sm:block relative w-80 h-[42px] shrink-0">
                             <AISearchBar />
                         </div>
-
-                        {/* Spacer for Safari safe zone */}
-                        <div className="w-6 shrink-0" aria-hidden="true" />
-
-                        {/* Notification Dropdown */}
-                        <NotificationDropdown />
                     </div>
                 </header>
 
                 {/* Main Scroll Area */}
-                <main className={`flex-1 overflow-y-auto w-full ${location.pathname === '/create' ? 'p-0 overflow-hidden' : 'p-4 sm:p-6 lg:p-8'}`}>
+                <main className={`flex-1 overflow-y-auto w-full dotted-bg ${location.pathname === '/create' ? 'p-0 overflow-hidden' : 'p-4 sm:p-6 lg:p-8'}`}>
                     <div className={`${location.pathname === '/create' ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}`}>
                         <Outlet context={{ setTaskTitle }} />
                     </div>

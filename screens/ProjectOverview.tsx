@@ -756,36 +756,6 @@ export const ProjectOverview = () => {
                             </div>
                         </Card>
                     )}
-                    {/* Project Links */}
-                    <Card>
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="h4">Links</h3>
-                        </div>
-                        {project?.links && project.links.length > 0 ? (
-                            <div className="space-y-2">
-                                {project.links.map((link, i) => (
-                                    <a
-                                        key={i}
-                                        href={link.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-3 p-3 rounded-lg border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] transition-colors group"
-                                    >
-                                        <div className="size-8 rounded-full bg-[var(--color-text-main)] text-[var(--color-surface-bg)] flex items-center justify-center shrink-0">
-                                            <span className="material-symbols-outlined text-[18px]">link</span>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-semibold text-sm truncate group-hover:text-[var(--color-primary)] transition-colors">{link.title}</p>
-                                            <p className="text-xs text-[var(--color-text-muted)] truncate">{link.url}</p>
-                                        </div>
-                                        <span className="material-symbols-outlined text-[16px] text-[var(--color-text-subtle)]">open_in_new</span>
-                                    </a>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-sm text-[var(--color-text-muted)]">No important links added.</p>
-                        )}
-                    </Card>
                 </div>
 
                 {/* Right Col */}
@@ -890,6 +860,37 @@ export const ProjectOverview = () => {
                             )}
                         </Card>
                     )}
+
+                    {/* Project Links */}
+                    <Card>
+                        <div className="flex items-center justify-between mb-4">
+                            <h3 className="h4">Links</h3>
+                        </div>
+                        {project?.links && project.links.length > 0 ? (
+                            <div className="space-y-2">
+                                {project.links.map((link, i) => (
+                                    <a
+                                        key={i}
+                                        href={link.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-3 p-3 rounded-lg border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] transition-colors group"
+                                    >
+                                        <div className="size-8 rounded-full bg-[var(--color-text-main)] text-[var(--color-surface-bg)] flex items-center justify-center shrink-0">
+                                            <span className="material-symbols-outlined text-[18px]">link</span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-semibold text-sm truncate group-hover:text-[var(--color-primary)] transition-colors">{link.title}</p>
+                                            <p className="text-xs text-[var(--color-text-muted)] truncate">{link.url}</p>
+                                        </div>
+                                        <span className="material-symbols-outlined text-[16px] text-[var(--color-text-subtle)]">open_in_new</span>
+                                    </a>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-[var(--color-text-muted)]">No important links added.</p>
+                        )}
+                    </Card>
 
                     {/* Screenshots */}
                     <Card>

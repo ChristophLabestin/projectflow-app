@@ -10,6 +10,7 @@ import { Badge } from '../components/ui/Badge';
 import { Sparkline } from '../components/charts/Sparkline';
 import { DonutChart } from '../components/charts/DonutChart';
 import { ScheduledTasksCard } from '../components/dashboard/ScheduledTasksCard';
+import { LatestMilestoneCard } from '../components/dashboard/LatestMilestoneCard';
 
 
 const formatShortDate = (date: any) => {
@@ -1012,6 +1013,9 @@ export const Dashboard = () => {
                     </Card>
 
                     <ScheduledTasksCard tasks={tasks} issues={issues} />
+
+                    {/* Latest Milestone (if any project has milestones module) */}
+                    <LatestMilestoneCard projects={projects} />
 
                     {/* 2. Enhanced Live Activity (Hybrid Data) */}
                     <Card padding="none" className="max-h-[400px] flex flex-col">

@@ -48,9 +48,6 @@ export const Brainstorming = () => {
     const [blueprint, setBlueprint] = useState<ProjectBlueprint | null>(null);
     const [ideas, setIdeas] = useState<Idea[]>([]);
     const [risks, setRisks] = useState<ProjectRisk[]>([]);
-
-    const [history, setHistory] = useState<Idea[]>([]);
-    const [isLoadingHistory, setIsLoadingHistory] = useState(true);
     const [aiUsage, setAiUsage] = useState<AIUsage | null>(null);
 
     const fetchUsage = async () => {
@@ -63,20 +60,6 @@ export const Brainstorming = () => {
 
     useEffect(() => {
         fetchUsage();
-    }, []);
-
-    useEffect(() => {
-        const fetchHistory = async () => {
-            try {
-                const data = await getUserIdeas();
-                setHistory(data);
-            } catch (e) {
-                console.error(e);
-            } finally {
-                setIsLoadingHistory(false);
-            }
-        };
-        fetchHistory();
     }, []);
 
     const handleGenerate = async () => {
@@ -95,12 +78,10 @@ export const Brainstorming = () => {
             } else if (activeTool === 'Brainstormer') {
                 const result = await generateBrainstormIdeas(prompt);
                 setIdeas(result);
-                // Save ideas to history
+                // Save ideas to history (background)
                 for (const idea of result) {
                     await saveIdea(idea);
                 }
-                const updated = await getUserIdeas();
-                setHistory(updated);
             } else if (activeTool === 'RiskScout') {
                 const result = await analyzeProjectRisks(prompt);
                 setRisks(result);
@@ -176,59 +157,103 @@ export const Brainstorming = () => {
                 ))}
             </div>
 
-            {/* Prompt Area */}
-            <div className="app-panel p-6 md:p-8 space-y-6 bg-white dark:bg-zinc-900 shadow-soft">
-                <div className="flex items-center gap-3 mb-2">
-                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center bg-indigo-500 text-white`}>
-                        <span className="material-symbols-outlined text-[20px]">terminal</span>
-                    </div>
-                    <h3 className="text-xl font-display font-bold text-ink dark:text-white">Studio Input</h3>
-                </div>
+            {/* Studio Command - Clean Professional Design */}
+            <div className="max-w-4xl mx-auto">
+                <div className={`rounded-2xl border shadow-lg dark:shadow-2xl overflow-hidden transition-colors duration-300 ${activeTool === 'Architect'
+                    ? 'bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800/50'
+                    : activeTool === 'Brainstormer'
+                        ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50'
+                        : 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/50'
+                    }`}>
 
-                {aiUsage && (
-                    <div className="flex items-center justify-between p-3 px-4 bg-zinc-50 dark:bg-white/5 rounded-xl border border-line dark:border-white/5">
-                        <div className="flex items-center gap-2 text-sm text-muted">
-                            <span className="material-symbols-outlined text-[18px]">token</span>
-                            <span>AI Credit usage this month</span>
-                        </div>
-                        <div className="flex flex-col items-end">
-                            <span className="text-sm font-bold text-ink dark:text-white">
-                                {aiUsage.tokensUsed.toLocaleString()} / {aiUsage.tokenLimit.toLocaleString()}
-                            </span>
-                            <div className="w-32 h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full mt-1 overflow-hidden">
-                                <div
-                                    className={`h-full rounded-full ${aiUsage.tokensUsed >= aiUsage.tokenLimit * 0.9 ? 'bg-rose-500' : 'bg-indigo-500'}`}
-                                    style={{ width: `${Math.min(100, (aiUsage.tokensUsed / aiUsage.tokenLimit) * 100)}%` }}
-                                ></div>
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 dark:border-zinc-800">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors duration-300 ${activeTool === 'Architect'
+                                    ? 'bg-indigo-100 dark:bg-indigo-500/20'
+                                    : activeTool === 'Brainstormer'
+                                        ? 'bg-amber-100 dark:bg-amber-500/20'
+                                        : 'bg-rose-100 dark:bg-rose-500/20'
+                                }`}>
+                                <span className={`material-symbols-outlined text-[20px] transition-colors duration-300 ${activeTool === 'Architect'
+                                        ? 'text-indigo-600 dark:text-indigo-400'
+                                        : activeTool === 'Brainstormer'
+                                            ? 'text-amber-600 dark:text-amber-400'
+                                            : 'text-rose-600 dark:text-rose-400'
+                                    }`}>terminal</span>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-display font-bold text-zinc-900 dark:text-white">Studio Command</h3>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400">Describe your vision</p>
                             </div>
                         </div>
+
+                        {aiUsage && (
+                            <div className="flex items-center gap-3 text-xs">
+                                <span className="text-zinc-500 dark:text-zinc-400 font-medium">Usage</span>
+                                <div className="w-20 h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
+                                    <div
+                                        className={`h-full rounded-full transition-all duration-500 ${aiUsage.tokensUsed >= aiUsage.tokenLimit * 0.9
+                                            ? 'bg-rose-500'
+                                            : 'bg-indigo-500'
+                                            }`}
+                                        style={{ width: `${Math.min(100, (aiUsage.tokensUsed / aiUsage.tokenLimit) * 100)}%` }}
+                                    ></div>
+                                </div>
+                                <span className="text-zinc-700 dark:text-zinc-300 font-bold">{Math.round((aiUsage.tokensUsed / aiUsage.tokenLimit) * 100)}%</span>
+                            </div>
+                        )}
                     </div>
-                )}
 
-                <Textarea
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    className="w-full p-6 text-lg"
-                    placeholder={currentToolPlaceholder}
-                    rows={6}
-                />
-
-                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                    <div className="flex items-center gap-2 text-xs text-muted">
-                        <span className="material-symbols-outlined text-[14px]">info</span>
-                        <span>Specific prompts yield better results. Try focusing on your unique value prop.</span>
+                    {/* Input Area */}
+                    <div className="p-6">
+                        <Textarea
+                            value={prompt}
+                            onChange={(e) => setPrompt(e.target.value)}
+                            className={`w-full min-h-[200px] border-2 rounded-xl p-5 text-lg font-display text-zinc-900 dark:text-white focus:ring-2 focus:border-transparent resize-none transition-all ${activeTool === 'Architect'
+                                ? 'bg-white dark:bg-indigo-950/50 border-indigo-300 dark:border-indigo-500/50 focus:ring-indigo-500 placeholder:text-indigo-400 dark:placeholder:text-indigo-400/60'
+                                : activeTool === 'Brainstormer'
+                                    ? 'bg-white dark:bg-amber-950/50 border-amber-300 dark:border-amber-500/50 focus:ring-amber-500 placeholder:text-amber-400 dark:placeholder:text-amber-400/60'
+                                    : 'bg-white dark:bg-rose-950/50 border-rose-300 dark:border-rose-500/50 focus:ring-rose-500 placeholder:text-rose-400 dark:placeholder:text-rose-400/60'
+                                }`}
+                            placeholder={currentToolPlaceholder}
+                        />
                     </div>
 
-                    <button
-                        onClick={handleGenerate}
-                        disabled={isGenerating || !prompt.trim()}
-                        className="w-full md:w-auto inline-flex items-center justify-center gap-3 px-10 py-4 btn-primary rounded-xl text-base font-bold shadow-lift disabled:opacity-50 transition-all active:scale-95"
-                    >
-                        <span className={`material-symbols-outlined text-[22px] ${isGenerating ? 'animate-spin' : ''}`}>
-                            {isGenerating ? 'autorenew' : 'auto_awesome'}
-                        </span>
-                        <span>{isGenerating ? 'Synthesizing...' : `Run ${activeTool}`}</span>
-                    </button>
+                    {/* Footer */}
+                    <div className={`px-6 py-4 border-t flex flex-col sm:flex-row items-center justify-between gap-4 transition-colors duration-300 ${activeTool === 'Architect'
+                        ? 'bg-indigo-100/50 dark:bg-indigo-900/30 border-indigo-200/50 dark:border-indigo-700/30'
+                        : activeTool === 'Brainstormer'
+                            ? 'bg-amber-100/50 dark:bg-amber-900/30 border-amber-200/50 dark:border-amber-700/30'
+                            : 'bg-rose-100/50 dark:bg-rose-900/30 border-rose-200/50 dark:border-rose-700/30'
+                        }`}>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                            <span className="material-symbols-outlined text-[16px] align-middle mr-1">info</span>
+                            Be specific for better results
+                        </p>
+
+                        <button
+                            onClick={handleGenerate}
+                            disabled={isGenerating || !prompt.trim()}
+                            className={`
+                                w-full sm:w-auto h-12 px-8 rounded-xl font-display font-bold text-sm
+                                flex items-center justify-center gap-2 transition-all duration-200
+                                ${isGenerating || !prompt.trim()
+                                    ? 'bg-zinc-200 text-zinc-400 dark:bg-zinc-700 dark:text-zinc-500 cursor-not-allowed'
+                                    : activeTool === 'Architect'
+                                        ? 'bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 shadow-md'
+                                        : activeTool === 'Brainstormer'
+                                            ? 'bg-amber-500 text-white hover:bg-amber-600 active:scale-95 shadow-md'
+                                            : 'bg-rose-600 text-white hover:bg-rose-700 active:scale-95 shadow-md'
+                                }
+                            `}
+                        >
+                            <span className={`material-symbols-outlined text-[18px] ${isGenerating ? 'animate-spin' : ''}`}>
+                                {isGenerating ? 'refresh' : 'play_arrow'}
+                            </span>
+                            <span>{isGenerating ? 'Generating...' : `Execute ${activeTool}`}</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -267,36 +292,10 @@ export const Brainstorming = () => {
                         <RiskResult risks={risks} />
                     )}
                 </div>
-            )}
+            )
+            }
 
-            {/* Recent Ideas / History (simplified for cleaner UI) */}
-            <div className="pt-12 border-t border-line dark:border-white/5 space-y-6">
-                <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-display font-bold flex items-center gap-3 text-ink dark:text-white">
-                        <span className="material-symbols-outlined text-muted">history</span>
-                        Brainstorming Archive
-                    </h3>
-                </div>
 
-                {isLoadingHistory ? (
-                    <div className="flex justify-center py-12">
-                        <span className="material-symbols-outlined animate-spin text-ink/20">progress_activity</span>
-                    </div>
-                ) : history.length === 0 ? (
-                    <div className="text-center py-12 bg-zinc-50 dark:bg-white/5 rounded-3xl border border-dashed">
-                        <p className="text-muted">No recent ideas found. Start by running a studio tool!</p>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 opacity-70">
-                        {history.slice(0, 8).map((idea) => (
-                            <div key={idea.id} className="p-4 rounded-xl border border-line dark:border-white/5 bg-white/50 dark:bg-zinc-800/50">
-                                <h4 className="text-sm font-bold truncate mb-1">{idea.title}</h4>
-                                <p className="text-xs text-muted line-clamp-2">{idea.description}</p>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-        </div>
+        </div >
     );
 };

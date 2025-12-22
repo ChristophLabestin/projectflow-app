@@ -1,69 +1,139 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { generateProjectDescription } from '../services/geminiService';
-import { createProject, getWorkspaceMembers } from '../services/dataService';
+import { generateProjectDescription, generateProjectBlueprint } from '../services/geminiService';
+import { createProject, getWorkspaceMembers, createMilestone, addTask, getUserProfile, linkWithGithub, updateUserData } from '../services/dataService';
+import { fetchUserRepositories, GithubRepo } from '../services/githubService';
 import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Textarea } from '../components/ui/Textarea';
 import { ImageCropper } from '../components/ui/ImageCropper';
 import { DatePicker } from '../components/ui/DatePicker';
-import { ProjectModule } from '../types';
+import { ProjectModule, ProjectBlueprint } from '../types';
+import { useToast } from '../context/UIContext';
+import { auth } from '../services/firebase';
+
+const STEPS = [
+    { id: 0, label: 'Method' },
+    { id: 1, label: 'Details' },
+    { id: 2, label: 'Modules' },
+    { id: 3, label: 'Team' },
+    { id: 4, label: 'Timeline' },
+    { id: 5, label: 'Assets' },
+];
 
 export const CreateProjectWizard = () => {
     const navigate = useNavigate();
     const { can } = useWorkspacePermissions();
+    const { showToast } = useToast();
 
-    // --- State ---
-    const [currentStep, setCurrentStep] = useState(1);
-    const totalSteps = 5;
+    const [currentStep, setCurrentStep] = useState(0);
+    const [creationMode, setCreationMode] = useState<'scratch' | 'ai' | null>(null);
 
-    // Data
+    // Form Data
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [projectType, setProjectType] = useState<'standard' | 'software' | 'creative'>('standard');
-
     const [modules, setModules] = useState<ProjectModule[]>(['tasks', 'ideas', 'activity']);
-
     const [availableMembers, setAvailableMembers] = useState<any[]>([]);
     const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
-
     const [startDate, setStartDate] = useState('');
     const [dueDate, setDueDate] = useState('');
     const [priority, setPriority] = useState('Medium');
     const [status, setStatus] = useState('Planning');
-
     const [coverFile, setCoverFile] = useState<File | null>(null);
     const [squareIconFile, setSquareIconFile] = useState<File | null>(null);
+    const [links, setLinks] = useState<{ title: string; url: string }[]>([]);
+    const [externalResources, setExternalResources] = useState<{ title: string; url: string; icon?: string }[]>([]);
 
+    // AI State
+    const [aiPrompt, setAiPrompt] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [blueprint, setBlueprint] = useState<ProjectBlueprint | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Cropper
+    // Cropper State
     const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
     const [cropAspectRatio, setCropAspectRatio] = useState(1);
     const [cropType, setCropType] = useState<'cover' | 'icon' | null>(null);
 
-    // --- Effects ---
+    // GitHub State
+    const [githubToken, setGithubToken] = useState<string | null>(null);
+    const [githubRepos, setGithubRepos] = useState<GithubRepo[]>([]);
+    const [selectedGithubRepo, setSelectedGithubRepo] = useState<string>('');
+    const [loadingGithub, setLoadingGithub] = useState(false);
+    const [connectingGithub, setConnectingGithub] = useState(false);
+
     useEffect(() => {
         getWorkspaceMembers().then(members => {
             setAvailableMembers(members.filter(m => m.role !== 'Guest'));
         });
+        // Load GitHub token
+        const loadGithubData = async () => {
+            const user = auth.currentUser;
+            if (user) {
+                const profile = await getUserProfile(user.uid);
+                if (profile?.githubToken) {
+                    setGithubToken(profile.githubToken);
+                    setLoadingGithub(true);
+                    try {
+                        const repos = await fetchUserRepositories(profile.githubToken);
+                        setGithubRepos(repos);
+                    } catch (e) {
+                        console.error('Failed to fetch repos', e);
+                    } finally {
+                        setLoadingGithub(false);
+                    }
+                }
+            }
+        };
+        loadGithubData();
     }, []);
 
     useEffect(() => {
-        // Auto-set modules based on type
-        const defaults: Record<string, ProjectModule[]> = {
-            standard: ['tasks', 'ideas', 'milestones', 'activity'],
-            software: ['tasks', 'issues', 'activity'],
-            creative: ['ideas', 'mindmap', 'activity']
-        };
-        setModules(defaults[projectType] || defaults.standard);
-    }, [projectType]);
+        if (creationMode === 'scratch') {
+            const defaults: Record<string, ProjectModule[]> = {
+                standard: ['tasks', 'ideas', 'milestones', 'activity'],
+                software: ['tasks', 'issues', 'activity'],
+                creative: ['ideas', 'mindmap', 'activity']
+            };
+            setModules(defaults[projectType] || defaults.standard);
+        }
+    }, [projectType, creationMode]);
 
-    // --- Handlers ---
-    const handleNext = () => { if (currentStep < totalSteps) setCurrentStep(c => c + 1); };
-    const handleBack = () => { if (currentStep > 1) setCurrentStep(c => c - 1); };
+    const handleNext = () => setCurrentStep(c => Math.min(c + 1, 5));
+    const handleBack = () => {
+        if (currentStep === 1) {
+            setCurrentStep(0);
+            setCreationMode(null);
+            setBlueprint(null);
+        } else {
+            setCurrentStep(c => Math.max(c - 1, 0));
+        }
+    };
+
+    const handleMethodSelect = (mode: 'scratch' | 'ai') => {
+        setCreationMode(mode);
+        setCurrentStep(1);
+    };
+
+    const handleExecuteAI = async () => {
+        if (!aiPrompt.trim()) return;
+        setIsGenerating(true);
+        try {
+            const result = await generateProjectBlueprint(aiPrompt);
+            setBlueprint(result);
+            setName(result.title);
+            setDescription(result.description);
+            setModules(['tasks', 'milestones', 'activity', 'ideas']);
+            handleNext();
+        } catch (e) {
+            console.error(e);
+            showToast('Failed to generate blueprint.', 'error');
+        } finally {
+            setIsGenerating(false);
+        }
+    };
 
     const handleGenerateDesc = async () => {
         if (!name) return;
@@ -93,23 +163,46 @@ export const CreateProjectWizard = () => {
         const file = new File([blob], cropType === 'cover' ? "cover.jpg" : "icon.jpg", { type: "image/jpeg" });
         if (cropType === 'cover') setCoverFile(file);
         else setSquareIconFile(file);
-        setCropImageSrc(null); setCropType(null);
+        setCropImageSrc(null);
+        setCropType(null);
     };
 
     const handleSubmit = async () => {
         if (!name) return;
         setIsSubmitting(true);
         try {
-            await createProject({
-                title: name, description, startDate, dueDate, priority, status: status as any, modules
+            const projectId = await createProject({
+                title: name,
+                description,
+                startDate,
+                dueDate,
+                priority,
+                status: status as any,
+                modules,
+                links: links.filter(l => l.title && l.url),
+                externalResources: externalResources.filter(r => r.title && r.url),
+                ...(selectedGithubRepo && { githubRepo: selectedGithubRepo, githubIssueSync: true })
             }, coverFile || undefined, squareIconFile || undefined, undefined, selectedMemberIds);
+
+            if (blueprint) {
+                for (const ms of blueprint.milestones) {
+                    await createMilestone(projectId, { title: ms.title, description: ms.description, status: 'Pending' });
+                }
+                for (const task of blueprint.initialTasks) {
+                    await addTask(projectId, task.title, undefined, undefined, task.priority, { category: ['AI Generated'] });
+                }
+            }
+
             navigate('/projects');
-        } catch (e) { console.error(e); setIsSubmitting(false); }
+            showToast(`Project "${name}" created.`, 'success');
+        } catch (e) {
+            console.error(e);
+            setIsSubmitting(false);
+            showToast('Failed to create project.', 'error');
+        }
     };
 
-    if (!can('canCreateProjects')) return <div className="p-10 text-center">Access Denied</div>;
-
-    // --- Render Helpers ---
+    if (!can('canCreateProjects')) return <div className="p-10 text-center text-[var(--color-text-subtle)]">Access Denied</div>;
 
     const getTypeIcon = (type: string) => {
         switch (type) {
@@ -120,333 +213,670 @@ export const CreateProjectWizard = () => {
     };
 
     return (
-        <div className="flex h-full w-full overflow-hidden bg-[var(--color-surface-bg)] text-[var(--color-text-main)] font-sans transition-colors duration-300">
-            <ImageCropper isOpen={!!cropImageSrc} imageSrc={cropImageSrc} aspectRatio={cropAspectRatio} onCropComplete={handleCropComplete} onCancel={() => { setCropImageSrc(null); setCropType(null); }} />
+        <div className="flex-1 flex items-center justify-center p-8 lg:p-12 bg-gradient-to-br from-[var(--color-surface-bg)] via-[var(--color-surface-bg)] to-zinc-100/30 dark:to-zinc-800/10 overflow-auto">
+            <ImageCropper
+                isOpen={!!cropImageSrc}
+                imageSrc={cropImageSrc}
+                aspectRatio={cropAspectRatio}
+                onCropComplete={handleCropComplete}
+                onCancel={() => { setCropImageSrc(null); setCropType(null); }}
+            />
 
-            {/* --- LEFT PANEL: CONTROL CENTER (40%) --- */}
-            <div className="w-[40%] h-full flex flex-col border-r border-[var(--color-surface-border)] bg-[var(--color-surface-card)] relative z-10 shadow-xl">
-                {/* Header */}
-                <div className="p-8 pb-4">
-                    <Button variant="ghost" className="mb-6 -ml-2 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]" onClick={() => navigate('/projects')} icon={<span className="material-symbols-outlined">arrow_back</span>}>Exit</Button>
-                    <div className="flex items-center justify-between mb-2">
-                        <h1 className="text-2xl font-bold tracking-tight text-[var(--color-text-main)]">Create Project</h1>
-                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] border border-[var(--color-surface-border)]">Step {currentStep} of {totalSteps}</span>
-                    </div>
-                    <div className="w-full h-1 bg-[var(--color-surface-hover)] rounded-full overflow-hidden">
-                        <div className="h-full bg-[var(--color-primary)] transition-all duration-500 ease-out" style={{ width: `${(currentStep / totalSteps) * 100}%` }} />
-                    </div>
-                </div>
+            {/* Main Split Card Container - Fixed Height */}
+            <div className="w-full max-w-6xl h-[780px] bg-[var(--color-surface-card)] rounded-3xl shadow-2xl border border-[var(--color-surface-border)] flex overflow-hidden animate-fade-in">
 
-                {/* Scrollable Form Area */}
-                <div className="flex-1 overflow-y-auto px-8 py-4 space-y-8 custom-scrollbar">
+                {/* LEFT: Form Panel */}
+                <div className="w-[55%] flex flex-col border-r border-[var(--color-surface-border)]">
 
-                    {/* STEP 1: IDENTITY */}
-                    {currentStep === 1 && (
-                        <div className="space-y-6 animate-fade-up">
-                            <div className="space-y-1">
-                                <h2 className="text-xl font-bold text-[var(--color-text-main)]">What are we building?</h2>
-                                <p className="text-sm text-[var(--color-text-muted)]">Give your initiative a name and direction.</p>
-                            </div>
-                            <Input label="Project Name" autoFocus className="text-lg" value={name} onChange={e => setName(e.target.value)} placeholder="e.g. Apollo Launch" />
-                            <div className="space-y-2">
-                                <div className="flex justify-between">
-                                    <label className="text-sm font-semibold text-[var(--color-text-main)]">Description</label>
-                                    <button onClick={handleGenerateDesc} disabled={!name || isGenerating} className="text-xs font-bold text-amber-600 hover:text-amber-700 dark:text-amber-500 dark:hover:text-amber-400 flex items-center gap-1 transition-colors">
-                                        <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
-                                        {isGenerating ? 'Magic...' : 'Auto-Generate'}
-                                    </button>
-                                </div>
-                                <Textarea className="min-h-[100px]" value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the mission..." />
-                            </div>
-                            <div className="space-y-3">
-                                <label className="text-sm font-semibold text-[var(--color-text-main)]">Project Type</label>
-                                <div className="grid grid-cols-3 gap-3">
-                                    {['standard', 'software', 'creative'].map((t: any) => (
-                                        <button key={t} onClick={() => setProjectType(t)} className={`p-3 rounded-xl border-2 transition-all flex flex-col items-center gap-2 
-                                            ${projectType === t
-                                                ? 'border-[var(--color-primary)] bg-indigo-50 dark:bg-indigo-900/20 text-[var(--color-primary)]'
-                                                : 'border-[var(--color-surface-border)] hover:border-[var(--color-primary-light)] text-[var(--color-text-muted)] bg-[var(--color-surface-card)]'}`}>
-                                            <span className="material-symbols-outlined">{getTypeIcon(t)}</span>
-                                            <span className="text-xs font-bold capitalize">{t}</span>
-                                        </button>
-                                    ))}
-                                </div>
+                    {/* Header */}
+                    <header className="px-8 py-5 border-b border-[var(--color-surface-border)] flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-4">
+                            <div>
+                                <h1 className="text-lg font-bold text-[var(--color-text-main)]">New Project</h1>
+                                {currentStep > 0 && (
+                                    <p className="text-[11px] text-[var(--color-text-subtle)] font-medium">Step {currentStep} of 5 — {STEPS[currentStep]?.label}</p>
+                                )}
                             </div>
                         </div>
-                    )}
 
-                    {/* STEP 2: MODULES */}
-                    {currentStep === 2 && (
-                        <div className="space-y-6 animate-fade-up">
-                            <div className="space-y-1">
-                                <h2 className="text-xl font-bold text-[var(--color-text-main)]">Choose your tools</h2>
-                                <p className="text-sm text-[var(--color-text-muted)]">Enable the features your team needs.</p>
-                            </div>
-                            <div className="grid grid-cols-1 gap-3">
-                                {[
-                                    { id: 'tasks', label: 'Tasks', desc: 'Kanban boards & Lists', icon: 'check_circle' },
-                                    { id: 'ideas', label: 'Ideas', desc: 'Brainstorming & Validation', icon: 'lightbulb' },
-                                    { id: 'milestones', label: 'Milestones', desc: 'Roadmap & Goals', icon: 'flag' },
-                                    { id: 'mindmap', label: 'Mindmap', desc: 'Visual planning canvas', icon: 'account_tree' },
-                                    { id: 'issues', label: 'Issues', desc: 'Bug tracking & Tickets', icon: 'bug_report' },
-                                    { id: 'activity', label: 'Activity', desc: 'Audit logs & History', icon: 'history' },
-                                ].map(m => (
-                                    <div key={m.id} onClick={() => setModules(curr => curr.includes(m.id as any) ? curr.filter(x => x !== m.id) : [...curr, m.id as any])}
-                                        className={`p-4 rounded-xl border flex items-center gap-4 cursor-pointer transition-all 
-                                            ${modules.includes(m.id as any)
-                                                ? 'border-[var(--color-primary)] bg-[var(--color-surface-hover)] shadow-sm'
-                                                : 'border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] bg-[var(--color-surface-card)]'}`}>
-                                        <div className={`size-10 rounded-full flex items-center justify-center transition-colors 
-                                            ${modules.includes(m.id as any)
-                                                ? 'bg-[var(--color-primary)] text-white'
-                                                : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'}`}>
-                                            <span className="material-symbols-outlined">{m.icon}</span>
-                                        </div>
-                                        <div>
-                                            <div className="font-bold text-sm text-[var(--color-text-main)]">{m.label}</div>
-                                            <div className="text-xs text-[var(--color-text-muted)]">{m.desc}</div>
-                                        </div>
-                                        <div className="ml-auto">
-                                            {modules.includes(m.id as any) && <span className="material-symbols-outlined text-[var(--color-primary)]">check</span>}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                        {/* Step Pills */}
+                        <div className="flex items-center gap-1">
+                            {STEPS.slice(1).map((step) => (
+                                <div
+                                    key={step.id}
+                                    className={`h-2 rounded-full transition-all duration-500 ${currentStep >= step.id
+                                        ? 'w-6 bg-gradient-to-r from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 shadow-sm shadow-zinc-500/15'
+                                        : 'w-2 bg-[var(--color-surface-border)]'
+                                        }`}
+                                />
+                            ))}
                         </div>
-                    )}
+                    </header>
 
-                    {/* STEP 3: TEAM */}
-                    {currentStep === 3 && (
-                        <div className="space-y-6 animate-fade-up">
-                            <div className="space-y-1">
-                                <h2 className="text-xl font-bold text-[var(--color-text-main)]">Assemble the Squad</h2>
-                                <p className="text-sm text-[var(--color-text-muted)]">Select members to invite immediately.</p>
-                            </div>
-                            <Input placeholder="Search people..." icon="search" className="mb-2" />
-                            <div className="space-y-2">
-                                {availableMembers.map(user => (
-                                    <div key={user.uid} onClick={() => setSelectedMemberIds(curr => curr.includes(user.uid) ? curr.filter(id => id !== user.uid) : [...curr, user.uid])}
-                                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all 
-                                            ${selectedMemberIds.includes(user.uid)
-                                                ? 'border-green-500 bg-green-50/50 dark:bg-green-900/20'
-                                                : 'border-transparent hover:bg-[var(--color-surface-hover)]'}`}>
-                                        <div className="size-10 rounded-full bg-[var(--color-surface-hover)] overflow-hidden flex items-center justify-center text-[var(--color-text-muted)]">
-                                            {user.photoURL ? <img src={user.photoURL} className="size-full object-cover" /> : <span className="material-symbols-outlined">person</span>}
+                    {/* Content Area - Fixed Height with Overflow */}
+                    <div className="flex-1 p-8 overflow-y-auto overflow-x-visible custom-scrollbar">
+
+                        {/* Step 0: Method */}
+                        {currentStep === 0 && (
+                            <div className="space-y-8 animate-fade-in h-full flex flex-col">
+                                <div className="space-y-2">
+                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">How would you like to start?</h2>
+                                    <p className="text-sm text-[var(--color-text-subtle)]">Choose a method to set up your project.</p>
+                                </div>
+
+                                <div className="grid gap-5 flex-1 content-center">
+                                    <button
+                                        onClick={() => handleMethodSelect('scratch')}
+                                        className="group py-12 px-8 rounded-2xl bg-black/[0.03] dark:bg-white/[0.03] transition-all flex items-center gap-6 text-left hover:scale-[1.01] hover:shadow-lg hover:shadow-zinc-500/10"
+                                    >
+                                        <div className="size-16 rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 text-white dark:text-zinc-800 flex items-center justify-center shadow-lg shadow-zinc-500/15">
+                                            <span className="material-symbols-outlined text-[28px]">edit_note</span>
                                         </div>
                                         <div className="flex-1">
-                                            <div className="font-bold text-sm text-[var(--color-text-main)]">{user.displayName}</div>
-                                            <div className="text-xs text-[var(--color-text-muted)]">{user.email}</div>
+                                            <div className="text-lg font-bold text-[var(--color-text-main)]">Start from Scratch</div>
+                                            <div className="text-sm text-[var(--color-text-subtle)] mt-1">Manually configure all project settings and customize every detail.</div>
                                         </div>
-                                        <div className={`size-6 rounded-full border-2 flex items-center justify-center transition-colors 
-                                            ${selectedMemberIds.includes(user.uid)
-                                                ? 'border-green-500 bg-green-500 text-white'
-                                                : 'border-[var(--color-surface-border)]'}`}>
-                                            {selectedMemberIds.includes(user.uid) && <span className="material-symbols-outlined text-[14px]">check</span>}
+                                        <span className="material-symbols-outlined text-[var(--color-text-muted)] text-[28px] group-hover:translate-x-1 transition-transform">chevron_right</span>
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleMethodSelect('ai')}
+                                        className="group py-12 px-8 rounded-2xl bg-black/[0.03] dark:bg-white/[0.03] transition-all flex items-center gap-6 text-left hover:scale-[1.01] hover:shadow-lg hover:shadow-zinc-500/10"
+                                    >
+                                        <div className="size-16 rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 text-white dark:text-zinc-800 flex items-center justify-center shadow-lg shadow-zinc-500/15">
+                                            <span className="material-symbols-outlined text-[28px]">auto_awesome</span>
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="text-lg font-bold text-[var(--color-text-main)]">Use AI Architect</div>
+                                            <div className="text-sm text-[var(--color-text-subtle)] mt-1">Describe your idea and let AI generate a complete project blueprint.</div>
+                                        </div>
+                                        <span className="material-symbols-outlined text-[var(--color-text-muted)] text-[28px] group-hover:translate-x-1 transition-transform">chevron_right</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Step 1: Details (AI) */}
+                        {currentStep === 1 && creationMode === 'ai' && (
+                            <div className="space-y-6 animate-fade-in">
+                                <div className="space-y-2">
+                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">Describe Your Project</h2>
+                                    <p className="text-sm text-[var(--color-text-subtle)]">Provide a brief description and AI will generate a structure.</p>
+                                </div>
+
+                                <textarea
+                                    value={aiPrompt}
+                                    onChange={e => setAiPrompt(e.target.value)}
+                                    placeholder="e.g. A mobile app for tracking personal fitness goals with social features..."
+                                    className="w-full min-h-[200px] p-4 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl text-sm text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus:ring-2 focus:ring-zinc-500/20 focus:border-zinc-500 outline-none resize-none transition-all"
+                                />
+
+                                <Button
+                                    onClick={handleExecuteAI}
+                                    disabled={!aiPrompt.trim() || isGenerating}
+                                    className="w-full h-12 bg-gradient-to-r from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 hover:from-indigo-600 hover:to-violet-600"
+                                    variant="primary"
+                                >
+                                    {isGenerating ? (
+                                        <><span className="material-symbols-outlined animate-spin text-[18px] mr-2">progress_activity</span>Generating Blueprint...</>
+                                    ) : (
+                                        <><span className="material-symbols-outlined text-[18px] mr-2">magic_button</span>Generate Blueprint</>
+                                    )}
+                                </Button>
+                            </div>
+                        )}
+
+                        {/* Step 1: Details (Scratch) */}
+                        {currentStep === 1 && creationMode === 'scratch' && (
+                            <div className="space-y-5 animate-fade-in">
+                                <div className="space-y-2">
+                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">Project Details</h2>
+                                    <p className="text-sm text-[var(--color-text-subtle)]">Give your project a name and description.</p>
+                                </div>
+
+                                <div className="space-y-4">
+                                    <Input
+                                        label="Project Name"
+                                        value={name}
+                                        onChange={e => setName(e.target.value)}
+                                        placeholder="e.g. Q1 Marketing Campaign"
+                                        autoFocus
+                                    />
+
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between items-center">
+                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Description</label>
+                                            <button onClick={handleGenerateDesc} disabled={!name || isGenerating} className="text-[10px] font-semibold text-[var(--color-text-main)] hover:text-[var(--color-text-main)] disabled:opacity-30 flex items-center gap-1">
+                                                <span className={`material-symbols-outlined text-sm ${isGenerating ? 'animate-spin' : ''}`}>auto_awesome</span>
+                                                AI Compose
+                                            </button>
+                                        </div>
+                                        <Textarea
+                                            value={description}
+                                            onChange={e => setDescription(e.target.value)}
+                                            placeholder="Briefly describe the goals and scope..."
+                                            className="min-h-[80px]"
+                                        />
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Type</label>
+                                        <div className="grid grid-cols-3 gap-3">
+                                            {(['standard', 'software', 'creative'] as const).map(t => (
+                                                <button
+                                                    key={t}
+                                                    onClick={() => setProjectType(t)}
+                                                    className={`p-4 rounded-xl flex flex-col items-center gap-2 transition-all hover:scale-[1.02] hover:shadow-md ${projectType === t
+                                                        ? 'bg-gradient-to-br from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 text-white dark:text-zinc-800 shadow-lg shadow-zinc-500/10'
+                                                        : 'bg-black/[0.03] dark:bg-white/[0.03] text-[var(--color-text-subtle)]'
+                                                        }`}
+                                                >
+                                                    <span className="material-symbols-outlined text-[24px]">{getTypeIcon(t)}</span>
+                                                    <span className="text-[10px] font-bold uppercase">{t}</span>
+                                                </button>
+                                            ))}
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* STEP 4: PLANNING */}
-                    {currentStep === 4 && (
-                        <div className="space-y-6 animate-fade-up">
-                            <div className="space-y-1">
-                                <h2 className="text-xl font-bold text-[var(--color-text-main)]">Set the Pace</h2>
-                                <p className="text-sm text-[var(--color-text-muted)]">Define timeline and urgency.</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-1.5 px-1">
-                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Start Date</label>
-                                    <DatePicker value={startDate} onChange={setStartDate} placeholder="Pick start date" />
-                                </div>
-                                <div className="space-y-1.5 px-1">
-                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Due Date</label>
-                                    <DatePicker value={dueDate} onChange={setDueDate} placeholder="Pick due date" align="right" />
                                 </div>
                             </div>
-                            <div className="space-y-3 pt-2">
-                                <label className="text-sm font-semibold text-[var(--color-text-main)]">Priority Level</label>
-                                <div className="flex gap-2">
-                                    {['Low', 'Medium', 'High', 'Urgent'].map(p => (
-                                        <button key={p} onClick={() => setPriority(p)} className={`flex-1 py-2 rounded-lg text-sm font-bold border transition-all 
-                                            ${priority === p
-                                                ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-500'
-                                                : 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-text-muted)]'}`}>
-                                            {p}
-                                        </button>
-                                    ))}
+                        )}
+
+                        {/* Step 2: Modules - GRID LAYOUT */}
+                        {currentStep === 2 && (
+                            <div className="space-y-5 animate-fade-in">
+                                <div className="space-y-2">
+                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">Select Modules</h2>
+                                    <p className="text-sm text-[var(--color-text-subtle)]">Choose the tools you need for this project.</p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[
+                                        { id: 'tasks', label: 'Tasks', desc: 'Track work items', icon: 'check_circle' },
+                                        { id: 'issues', label: 'Issues', desc: 'Bug tracking', icon: 'bug_report' },
+                                        { id: 'ideas', label: 'Ideas', desc: 'Brainstorming', icon: 'lightbulb' },
+                                        { id: 'milestones', label: 'Milestones', desc: 'Key deadlines', icon: 'flag' },
+                                        { id: 'mindmap', label: 'Mind Map', desc: 'Visual structures', icon: 'account_tree' },
+                                        { id: 'activity', label: 'Activity', desc: 'Change log', icon: 'history' },
+                                    ].map(m => {
+                                        const isActive = modules.includes(m.id as any);
+                                        return (
+                                            <button
+                                                key={m.id}
+                                                onClick={() => setModules(curr => isActive ? curr.filter(x => x !== m.id) : [...curr, m.id as any])}
+                                                className={`p-4 rounded-xl flex items-center gap-3 transition-all hover:scale-[1.02] hover:shadow-md ${isActive
+                                                    ? 'bg-gradient-to-r from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 shadow-lg shadow-zinc-500/10'
+                                                    : 'bg-black/[0.03] dark:bg-white/[0.03]'
+                                                    }`}
+                                            >
+                                                <div className={`size-9 rounded-lg flex items-center justify-center transition-all shrink-0 ${isActive ? 'bg-white/20 dark:bg-black/10 text-white dark:text-zinc-800' : 'bg-[var(--color-surface-bg)] text-[var(--color-text-muted)]'}`}>
+                                                    <span className="material-symbols-outlined text-[18px]">{m.icon}</span>
+                                                </div>
+                                                <div className="flex-1 text-left min-w-0">
+                                                    <div className={`text-sm font-semibold truncate ${isActive ? 'text-white dark:text-zinc-800' : 'text-[var(--color-text-main)]'}`}>{m.label}</div>
+                                                    <div className={`text-[10px] truncate ${isActive ? 'text-white/70 dark:text-zinc-600' : 'text-[var(--color-text-subtle)]'}`}>{m.desc}</div>
+                                                </div>
+                                                {isActive && <span className="material-symbols-outlined text-white dark:text-zinc-800 text-[18px] shrink-0">check_circle</span>}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
-                            <div className="space-y-3 pt-2">
-                                <label className="text-sm font-semibold text-[var(--color-text-main)]">Initial Status</label>
-                                <select className="w-full p-3 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-input-bg)] text-[var(--color-text-main)] focus:ring-2 focus:ring-[var(--color-primary)] outline-none transition-all" value={status} onChange={e => setStatus(e.target.value)}>
-                                    <option>Planning</option>
-                                    <option>Active</option>
-                                    <option>On Hold</option>
-                                </select>
-                            </div>
-                        </div>
-                    )}
+                        )}
 
-                    {/* STEP 5: BRANDING */}
-                    {currentStep === 5 && (
-                        <div className="space-y-6 animate-fade-up">
-                            <div className="space-y-1">
-                                <h2 className="text-xl font-bold text-[var(--color-text-main)]">Final Touches</h2>
-                                <p className="text-sm text-[var(--color-text-muted)]">Make it recognizable.</p>
-                            </div>
+                        {/* Step 3: Team */}
+                        {currentStep === 3 && (
+                            <div className="space-y-5 animate-fade-in">
+                                <div className="space-y-2">
+                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">Add Team Members</h2>
+                                    <p className="text-sm text-[var(--color-text-subtle)]">Select people to invite to this project.</p>
+                                </div>
 
-                            <div className="space-y-4">
-                                <div className="p-4 rounded-xl border border-dashed border-[var(--color-surface-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] transition-all cursor-pointer relative group bg-[var(--color-surface-card)]">
-                                    <input type="file" className="absolute inset-0 opacity-0 z-10 cursor-pointer" onChange={e => handleFileSelect(e, 'cover')} accept="image/*" />
-                                    <div className="flex flex-col items-center gap-2 py-4">
-                                        <div className="size-12 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center">
-                                            <span className="material-symbols-outlined">image</span>
-                                        </div>
-                                        <div className="font-bold text-sm text-[var(--color-text-main)]">Upload Cover Image</div>
-                                        <div className="text-xs text-[var(--color-text-muted)]">Recommended 1200x600</div>
+                                {availableMembers.length === 0 ? (
+                                    <div className="text-center py-12 text-[var(--color-text-subtle)]">
+                                        <span className="material-symbols-outlined text-5xl opacity-30">group</span>
+                                        <p className="mt-3 text-sm">No team members available.</p>
                                     </div>
-                                </div>
-
-                                <div className="p-4 rounded-xl border border-dashed border-[var(--color-surface-border)] hover:border-[var(--color-primary)] hover:bg-blue-50/30 transition-all cursor-pointer relative group">
-                                    <input type="file" className="absolute inset-0 opacity-0 z-10 cursor-pointer" onChange={e => handleFileSelect(e, 'icon')} accept="image/*" />
-                                    <div className="flex items-center gap-4">
-                                        <div className="size-14 rounded-xl bg-[var(--color-surface-hover)] flex items-center justify-center text-[var(--color-text-muted)]">
-                                            {squareIconFile ? <img src={URL.createObjectURL(squareIconFile)} className="size-full object-cover rounded-xl" /> : <span className="material-symbols-outlined">apps</span>}
-                                        </div>
-                                        <div>
-                                            <div className="font-bold text-sm text-[var(--color-text-main)]">Upload Icon</div>
-                                            <div className="text-xs text-[var(--color-text-muted)]">Square ratio recommended</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                </div>
-
-                {/* Footer Controls */}
-                <div className="p-8 pt-4 border-t border-[var(--color-surface-border)] flex justify-between bg-[var(--color-surface-card)]">
-                    {currentStep > 1 ? (
-                        <Button variant="ghost" onClick={handleBack} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]">Back</Button>
-                    ) : <div></div>}
-
-                    {currentStep < totalSteps ? (
-                        <Button onClick={handleNext} disabled={!name} icon={<span className="material-symbols-outlined">arrow_forward</span>}>Continue</Button>
-                    ) : (
-                        <Button variant="primary" onClick={handleSubmit} isLoading={isSubmitting} className="w-32">Launch 🚀</Button>
-                    )}
-                </div>
-            </div>
-
-            {/* --- RIGHT PANEL: IMMERSIVE PREVIEW (60%) --- */}
-            <div className="w-[60%] h-full bg-[var(--color-surface-bg)] relative overflow-hidden flex items-center justify-center p-12">
-                {/* Background Decor */}
-                <div className="absolute top-0 left-0 w-full h-full opacity-40 dark:opacity-20 pointer-events-none">
-                    <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-200 dark:bg-purple-900 rounded-full blur-[100px]" />
-                    <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-200 dark:bg-blue-900 rounded-full blur-[100px]" />
-                </div>
-
-                <div className="relative z-10 w-full max-w-2xl transform transition-all duration-700 ease-out animate-fade-in-up">
-                    <div className="bg-white/80 dark:bg-black/40 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/50 dark:border-white/10 overflow-hidden">
-                        {/* Fake Browser Header */}
-                        <div className="h-8 bg-gray-100/50 dark:bg-zinc-800/50 border-b border-gray-200 dark:border-zinc-700 flex items-center px-4 gap-2">
-                            <div className="flex gap-1.5">
-                                <div className="size-3 rounded-full bg-red-400" />
-                                <div className="size-3 rounded-full bg-amber-400" />
-                                <div className="size-3 rounded-full bg-green-400" />
-                            </div>
-                            <div className="mx-auto text-[10px] font-mono text-gray-400 dark:text-gray-500">project-preview.local</div>
-                        </div>
-
-                        {/* Project Card Preview */}
-                        <div className="relative group bg-white dark:bg-zinc-900">
-                            {/* Cover */}
-                            <div className="h-48 w-full bg-slate-200 dark:bg-zinc-800 relative overflow-hidden">
-                                {coverFile ? (
-                                    <img src={URL.createObjectURL(coverFile)} className="w-full h-full object-cover" />
                                 ) : (
-                                    <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-300 dark:from-zinc-800 dark:to-zinc-700 flex items-center justify-center text-slate-400 dark:text-zinc-600">
-                                        <span className="material-symbols-outlined text-4xl">image</span>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {availableMembers.map(user => {
+                                            const isSelected = selectedMemberIds.includes(user.uid);
+                                            return (
+                                                <button
+                                                    key={user.uid}
+                                                    onClick={() => setSelectedMemberIds(curr => isSelected ? curr.filter(id => id !== user.uid) : [...curr, user.uid])}
+                                                    className={`p-4 rounded-xl flex items-center gap-3 transition-all hover:scale-[1.02] hover:shadow-md ${isSelected
+                                                        ? 'bg-gradient-to-r from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 shadow-lg shadow-zinc-500/10'
+                                                        : 'bg-black/[0.03] dark:bg-white/[0.03]'
+                                                        }`}
+                                                >
+                                                    <div className={`size-10 rounded-full overflow-hidden flex items-center justify-center shrink-0 ${isSelected ? 'bg-white/20 dark:bg-black/10' : 'bg-[var(--color-surface-bg)]'}`}>
+                                                        {user.photoURL ? <img src={user.photoURL} className="size-full object-cover" /> : <span className={`material-symbols-outlined text-base ${isSelected ? 'text-white dark:text-zinc-800' : 'text-[var(--color-text-subtle)]'}`}>person</span>}
+                                                    </div>
+                                                    <div className="flex-1 text-left min-w-0">
+                                                        <div className={`text-sm font-semibold truncate ${isSelected ? 'text-white dark:text-zinc-800' : 'text-[var(--color-text-main)]'}`}>{user.displayName}</div>
+                                                        <div className={`text-[10px] truncate ${isSelected ? 'text-white/70 dark:text-zinc-600' : 'text-[var(--color-text-subtle)]'}`}>{user.email}</div>
+                                                    </div>
+                                                    {isSelected && <span className="material-symbols-outlined text-white dark:text-zinc-800 text-[18px] shrink-0">check_circle</span>}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 )}
-                                <div className="absolute top-4 right-4">
-                                    <span className={`px-3 py-1 rounded-full text-xs font-bold text-white shadow-sm ${status === 'Planning' ? 'bg-blue-500' : 'bg-green-500'}`}>
-                                        {status}
+                            </div>
+                        )}
+
+                        {/* Step 4: Timeline */}
+                        {currentStep === 4 && (
+                            <div className="space-y-5 animate-fade-in">
+                                <div className="space-y-2">
+                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">Set Timeline</h2>
+                                    <p className="text-sm text-[var(--color-text-subtle)]">Define the project schedule and priority.</p>
+                                </div>
+
+                                <div className="space-y-5">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2 relative">
+                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Start Date</label>
+                                            <DatePicker value={startDate} onChange={setStartDate} />
+                                        </div>
+                                        <div className="space-y-2 relative">
+                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Due Date</label>
+                                            <DatePicker value={dueDate} onChange={setDueDate} align="right" />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Priority</label>
+                                        <div className="grid grid-cols-4 gap-2">
+                                            {['Low', 'Medium', 'High', 'Urgent'].map(p => (
+                                                <button
+                                                    key={p}
+                                                    onClick={() => setPriority(p)}
+                                                    className={`py-3 rounded-xl text-xs font-bold uppercase transition-all hover:scale-[1.02] hover:shadow-md ${priority === p
+                                                        ? 'bg-gradient-to-r from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 text-white dark:text-zinc-800 shadow-md shadow-zinc-500/10'
+                                                        : 'bg-black/[0.03] dark:bg-white/[0.03] text-[var(--color-text-subtle)]'
+                                                        }`}
+                                                >
+                                                    {p}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Initial Status</label>
+                                        <select
+                                            className="w-full h-11 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl px-4 text-sm text-[var(--color-text-main)] outline-none focus:ring-2 focus:ring-zinc-500/20 focus:border-zinc-500"
+                                            value={status}
+                                            onChange={e => setStatus(e.target.value)}
+                                        >
+                                            <option>Planning</option>
+                                            <option>Active</option>
+                                            <option>On Hold</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Step 5: Assets */}
+                        {currentStep === 5 && (
+                            <div className="space-y-5 animate-fade-in">
+                                <div className="space-y-2">
+                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">Upload Assets</h2>
+                                    <p className="text-sm text-[var(--color-text-subtle)]">Add a cover image and icon for your project.</p>
+                                </div>
+
+                                <div className="space-y-5">
+                                    <div className="relative h-36 rounded-2xl bg-gradient-to-br from-[var(--color-surface-bg)] to-[var(--color-surface-hover)] border border-dashed border-[var(--color-surface-border)] overflow-hidden flex flex-col items-center justify-center gap-2 group cursor-pointer hover:border-zinc-400 transition-colors">
+                                        <input type="file" className="absolute inset-0 opacity-0 z-10 cursor-pointer" onChange={e => handleFileSelect(e, 'cover')} accept="image/*" />
+                                        {coverFile ? (
+                                            <>
+                                                <img src={URL.createObjectURL(coverFile)} className="absolute inset-0 size-full object-cover" />
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); setCoverFile(null); }}
+                                                    className="absolute top-2 right-2 z-20 size-7 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors"
+                                                >
+                                                    <span className="material-symbols-outlined text-[16px]">close</span>
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <span className="material-symbols-outlined text-[28px] text-[var(--color-text-muted)]">add_photo_alternate</span>
+                                                <span className="text-xs font-medium text-[var(--color-text-muted)]">Upload Cover Image</span>
+                                            </>
+                                        )}
+                                        {!coverFile && (
+                                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                <span className="bg-white text-black px-4 py-1.5 rounded-full text-[10px] font-bold shadow-xl">Change</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="flex items-center gap-5">
+                                        <div className="relative size-20 rounded-2xl bg-gradient-to-br from-[var(--color-surface-bg)] to-[var(--color-surface-hover)] border border-dashed border-[var(--color-surface-border)] overflow-hidden flex items-center justify-center group cursor-pointer shrink-0 hover:border-zinc-400 transition-colors">
+                                            <input type="file" className="absolute inset-0 opacity-0 z-10 cursor-pointer" onChange={e => handleFileSelect(e, 'icon')} accept="image/*" />
+                                            {squareIconFile ? (
+                                                <>
+                                                    <img src={URL.createObjectURL(squareIconFile)} className="absolute inset-2 size-[calc(100%-16px)] object-cover rounded-xl" />
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); setSquareIconFile(null); }}
+                                                        className="absolute top-1 right-1 z-20 size-5 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors"
+                                                    >
+                                                        <span className="material-symbols-outlined text-[12px]">close</span>
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <span className="material-symbols-outlined text-[24px] text-[var(--color-text-muted)]">grid_view</span>
+                                            )}
+                                            {!squareIconFile && (
+                                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <span className="material-symbols-outlined text-white text-sm">edit</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div>
+                                            <div className="text-sm font-semibold text-[var(--color-text-main)]">Project Icon</div>
+                                            <p className="text-[10px] text-[var(--color-text-subtle)]">A square image for list views.</p>
+                                        </div>
+                                    </div>
+
+                                    {/* GitHub Integration - Only for Software Projects */}
+                                    {projectType === 'software' && (
+                                        <div className="pt-4 border-t border-[var(--color-surface-border)]">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div>
+                                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">GitHub Integration</label>
+                                                    <p className="text-[10px] text-[var(--color-text-subtle)] mt-0.5">Link a repository to sync issues.</p>
+                                                </div>
+                                            </div>
+                                            {!githubToken ? (
+                                                <button
+                                                    onClick={async () => {
+                                                        const user = auth.currentUser;
+                                                        if (!user) return;
+                                                        setConnectingGithub(true);
+                                                        try {
+                                                            const token = await linkWithGithub();
+                                                            await updateUserData(user.uid, { githubToken: token });
+                                                            setGithubToken(token);
+                                                            const repos = await fetchUserRepositories(token);
+                                                            setGithubRepos(repos);
+                                                        } catch (e: any) {
+                                                            console.error('Failed to link GitHub', e);
+                                                        } finally {
+                                                            setConnectingGithub(false);
+                                                        }
+                                                    }}
+                                                    disabled={connectingGithub}
+                                                    className="w-full p-4 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] hover:scale-[1.01] hover:shadow-md transition-all flex items-center gap-4"
+                                                >
+                                                    <div className="size-10 rounded-lg bg-[#24292f] dark:bg-white flex items-center justify-center">
+                                                        <svg className="size-5 text-white dark:text-[#24292f]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" /></svg>
+                                                    </div>
+                                                    <div className="flex-1 text-left">
+                                                        <div className="text-sm font-semibold text-[var(--color-text-main)]">
+                                                            {connectingGithub ? 'Connecting...' : 'Connect GitHub'}
+                                                        </div>
+                                                        <div className="text-[10px] text-[var(--color-text-subtle)]">Link your account to select a repository</div>
+                                                    </div>
+                                                    <span className="material-symbols-outlined text-[var(--color-text-muted)]">arrow_forward</span>
+                                                </button>
+                                            ) : (
+                                                <div className="space-y-2">
+                                                    <select
+                                                        value={selectedGithubRepo}
+                                                        onChange={(e) => setSelectedGithubRepo(e.target.value)}
+                                                        disabled={loadingGithub}
+                                                        className="w-full h-11 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl px-4 text-sm text-[var(--color-text-main)] outline-none focus:ring-2 focus:ring-zinc-500/20 focus:border-zinc-500"
+                                                    >
+                                                        <option value="">{loadingGithub ? 'Loading repositories...' : 'Select a repository'}</option>
+                                                        {githubRepos.map(repo => (
+                                                            <option key={repo.id} value={repo.full_name}>{repo.full_name}</option>
+                                                        ))}
+                                                    </select>
+                                                    {selectedGithubRepo && (
+                                                        <p className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                                            <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                                                            Issue sync will be enabled for this project
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {/* Links & Resources - Card Style */}
+                                    <div className="space-y-4 pt-4 border-t border-[var(--color-surface-border)]">
+                                        <div className="flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">link</span>
+                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Quick Links</label>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            {/* Sidebar Resources */}
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[10px] text-[var(--color-text-subtle)]">Sidebar Resources</span>
+                                                    <button
+                                                        onClick={() => setExternalResources([...externalResources, { title: '', url: '', icon: 'open_in_new' }])}
+                                                        className="text-[10px] font-medium text-[var(--color-text-main)] hover:underline"
+                                                    >
+                                                        + Add
+                                                    </button>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    {externalResources.map((res, idx) => (
+                                                        <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-[var(--color-surface-bg)] group">
+                                                            <span className="material-symbols-outlined text-[14px] text-[var(--color-text-muted)]">open_in_new</span>
+                                                            <input
+                                                                placeholder="Label"
+                                                                value={res.title}
+                                                                onChange={(e) => {
+                                                                    const newRes = [...externalResources];
+                                                                    newRes[idx].title = e.target.value;
+                                                                    setExternalResources(newRes);
+                                                                }}
+                                                                className="w-32 text-xs bg-transparent text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
+                                                            />
+                                                            <input
+                                                                placeholder="https://..."
+                                                                value={res.url}
+                                                                onChange={(e) => {
+                                                                    const newRes = [...externalResources];
+                                                                    newRes[idx].url = e.target.value;
+                                                                    setExternalResources(newRes);
+                                                                }}
+                                                                className="flex-1 min-w-0 text-xs bg-transparent text-[var(--color-text-subtle)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
+                                                            />
+                                                            <button
+                                                                onClick={() => setExternalResources(externalResources.filter((_, i) => i !== idx))}
+                                                                className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--color-text-muted)] hover:text-red-500"
+                                                            >
+                                                                <span className="material-symbols-outlined text-[14px]">close</span>
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                    {externalResources.length === 0 && (
+                                                        <button
+                                                            onClick={() => setExternalResources([{ title: '', url: '', icon: 'open_in_new' }])}
+                                                            className="w-full p-2.5 rounded-lg border border-dashed border-[var(--color-surface-border)] text-[10px] text-[var(--color-text-muted)] hover:border-zinc-400 hover:text-[var(--color-text-subtle)] transition-colors"
+                                                        >
+                                                            Add sidebar resource
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Overview Links */}
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[10px] text-[var(--color-text-subtle)]">Overview Links</span>
+                                                    <button
+                                                        onClick={() => setLinks([...links, { title: '', url: '' }])}
+                                                        className="text-[10px] font-medium text-[var(--color-text-main)] hover:underline"
+                                                    >
+                                                        + Add
+                                                    </button>
+                                                </div>
+                                                <div className="space-y-1.5">
+                                                    {links.map((link, idx) => (
+                                                        <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-[var(--color-surface-bg)] group">
+                                                            <span className="material-symbols-outlined text-[14px] text-[var(--color-text-muted)]">link</span>
+                                                            <input
+                                                                placeholder="Label"
+                                                                value={link.title}
+                                                                onChange={(e) => {
+                                                                    const newLinks = [...links];
+                                                                    newLinks[idx].title = e.target.value;
+                                                                    setLinks(newLinks);
+                                                                }}
+                                                                className="w-32 text-xs bg-transparent text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
+                                                            />
+                                                            <input
+                                                                placeholder="https://..."
+                                                                value={link.url}
+                                                                onChange={(e) => {
+                                                                    const newLinks = [...links];
+                                                                    newLinks[idx].url = e.target.value;
+                                                                    setLinks(newLinks);
+                                                                }}
+                                                                className="flex-1 min-w-0 text-xs bg-transparent text-[var(--color-text-subtle)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
+                                                            />
+                                                            <button
+                                                                onClick={() => setLinks(links.filter((_, i) => i !== idx))}
+                                                                className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--color-text-muted)] hover:text-red-500"
+                                                            >
+                                                                <span className="material-symbols-outlined text-[14px]">close</span>
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                    {links.length === 0 && (
+                                                        <button
+                                                            onClick={() => setLinks([{ title: '', url: '' }])}
+                                                            className="w-full p-2.5 rounded-lg border border-dashed border-[var(--color-surface-border)] text-[10px] text-[var(--color-text-muted)] hover:border-zinc-400 hover:text-[var(--color-text-subtle)] transition-colors"
+                                                        >
+                                                            Add overview link
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Footer */}
+                    <footer className="px-8 py-5 border-t border-[var(--color-surface-border)] flex items-center justify-between shrink-0">
+                        <div>
+                            {currentStep > 0 && (
+                                <button onClick={handleBack} className="px-4 py-2 text-sm font-semibold text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] rounded-xl transition-all flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+                                    Back
+                                </button>
+                            )}
+                        </div>
+                        <div className="flex gap-3">
+                            {currentStep > 0 && currentStep < 5 && (
+                                <Button onClick={handleNext} disabled={currentStep === 1 && !name} variant="primary" className="px-8 h-11 bg-gradient-to-r from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 hover:from-zinc-900 hover:to-black dark:hover:from-zinc-100 dark:hover:to-white !text-white dark:!text-zinc-900">
+                                    Continue
+                                </Button>
+                            )}
+                            {currentStep === 5 && (
+                                <Button onClick={handleSubmit} disabled={isSubmitting || !name} variant="primary" className="px-8 h-11 bg-gradient-to-r from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 hover:from-zinc-900 hover:to-black dark:hover:from-zinc-100 dark:hover:to-white !text-white dark:!text-zinc-900">
+                                    {isSubmitting ? 'Creating...' : 'Create Project'}
+                                </Button>
+                            )}
+                        </div>
+                    </footer>
+                </div>
+
+                {/* RIGHT: Preview Panel */}
+                <div className="w-[45%] bg-gradient-to-br from-slate-50 to-zinc-100/50 dark:from-slate-900/50 dark:to-zinc-800/30 flex items-center justify-center p-6 relative overflow-hidden">
+                    {/* Decorative Elements */}
+                    <div className="absolute top-0 right-0 w-72 h-72 bg-gradient-to-br from-zinc-400/10 to-zinc-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-zinc-400/5 to-zinc-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
+
+                    {/* Preview Card */}
+                    <div className="w-full max-w-sm bg-[var(--color-surface-card)] rounded-2xl shadow-2xl border border-[var(--color-surface-border)] overflow-hidden relative z-10 group">
+                        {/* Cover */}
+                        <div className="h-36 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 relative overflow-hidden">
+                            {coverFile ? (
+                                <img src={URL.createObjectURL(coverFile)} className="size-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                            ) : (
+                                <div className="size-full flex items-center justify-center opacity-20">
+                                    <span className="material-symbols-outlined text-6xl">landscape</span>
+                                </div>
+                            )}
+                            <div className="absolute top-3 right-3">
+                                <span className="px-2.5 py-1 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md rounded-full text-[9px] font-bold uppercase tracking-wider text-[var(--color-text-main)] shadow-sm">
+                                    {status}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Content */}
+                        <div className="p-6 pt-0 relative">
+                            <div className="size-16 bg-white dark:bg-zinc-900 rounded-xl absolute -top-8 left-6 shadow-xl border-4 border-[var(--color-surface-card)] overflow-hidden flex items-center justify-center">
+                                {squareIconFile ? (
+                                    <img src={URL.createObjectURL(squareIconFile)} className="size-full object-cover" />
+                                ) : (
+                                    <span className="material-symbols-outlined text-2xl text-[var(--color-text-main)]/50">{getTypeIcon(projectType)}</span>
+                                )}
+                            </div>
+
+                            <div className="pt-12 space-y-4">
+                                <div className="space-y-1">
+                                    <h3 className="text-lg font-bold text-[var(--color-text-main)] leading-tight truncate">{name || 'Project Name'}</h3>
+                                    <p className="text-xs text-[var(--color-text-subtle)] line-clamp-2">
+                                        {description || 'Your project description will appear here...'}
+                                    </p>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 py-4 border-y border-[var(--color-surface-border)]">
+                                    <div className="space-y-1">
+                                        <div className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Team</div>
+                                        <div className="flex -space-x-2 h-7">
+                                            {selectedMemberIds.length > 0 ? selectedMemberIds.slice(0, 3).map(id => (
+                                                <div key={id} className="size-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700 dark:from-zinc-300 dark:to-zinc-400 border-2 border-[var(--color-surface-card)] flex items-center justify-center font-bold text-[9px] text-white overflow-hidden">
+                                                    {availableMembers.find(m => m.uid === id)?.photoURL ?
+                                                        <img src={availableMembers.find(m => m.uid === id).photoURL} className="size-full object-cover" /> :
+                                                        availableMembers.find(m => m.uid === id)?.displayName?.charAt(0) || '?'
+                                                    }
+                                                </div>
+                                            )) : <span className="text-[10px] text-[var(--color-text-muted)] leading-7">—</span>}
+                                            {selectedMemberIds.length > 3 && (
+                                                <div className="size-7 rounded-full bg-[var(--color-surface-bg)] border-2 border-[var(--color-surface-card)] flex items-center justify-center text-[9px] font-bold text-[var(--color-text-subtle)]">
+                                                    +{selectedMemberIds.length - 3}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1 text-right">
+                                        <div className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Deadline</div>
+                                        <div className="text-sm font-bold text-[var(--color-text-main)]">{dueDate ? new Date(dueDate).toLocaleDateString() : '—'}</div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center justify-between">
+                                    <div className="flex gap-1.5">
+                                        {modules.slice(0, 5).map(m => (
+                                            <div key={m} className="size-2 rounded-full bg-gradient-to-r from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100" />
+                                        ))}
+                                        {modules.length > 5 && <span className="text-[8px] text-[var(--color-text-muted)] ml-0.5">+{modules.length - 5}</span>}
+                                    </div>
+                                    <span className={`px-2 py-1 rounded-md text-[8px] font-bold uppercase ${priority === 'Urgent' ? 'bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400' :
+                                        priority === 'High' ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400' :
+                                            priority === 'Medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400' :
+                                                'bg-green-100 text-green-600 dark:bg-green-900/20 dark:text-green-400'
+                                        }`}>
+                                        {priority}
                                     </span>
                                 </div>
                             </div>
-
-                            {/* Icon & Content */}
-                            <div className="p-8 pt-0 relative">
-                                <div className="size-20 rounded-2xl bg-white dark:bg-zinc-900 shadow-lg border-2 border-white dark:border-zinc-800 absolute -top-10 left-8 flex items-center justify-center overflow-hidden">
-                                    {squareIconFile ? (
-                                        <img src={URL.createObjectURL(squareIconFile)} className="size-full object-cover" />
-                                    ) : (
-                                        <span className="material-symbols-outlined text-3xl text-[var(--color-primary)]">{getTypeIcon(projectType)}</span>
-                                    )}
-                                </div>
-
-                                <div className="pt-14 space-y-4">
-                                    <div>
-                                        <h1 className="text-3xl font-bold text-gray-900 dark:text-white leading-tight">{name || 'Unlimited Potential'}</h1>
-                                        <p className="text-gray-500 dark:text-gray-400 mt-2 line-clamp-2">{description || 'Your project description will appear here. It describes the goals and scope of your new initiative.'}</p>
-                                    </div>
-
-                                    {/* Stats / Meta */}
-                                    <div className="flex gap-6 py-4 border-t border-gray-100 dark:border-zinc-800 mt-4">
-                                        <div>
-                                            <div className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider">Team</div>
-                                            <div className="flex -space-x-2 mt-1">
-                                                {selectedMemberIds.slice(0, 3).map((uid) => {
-                                                    const member = availableMembers.find(m => m.uid === uid);
-                                                    return (
-                                                        <div key={uid} className="size-8 rounded-full bg-indigo-100 dark:bg-indigo-900 ring-2 ring-white dark:ring-zinc-900 overflow-hidden flex items-center justify-center">
-                                                            {member?.photoURL ? (
-                                                                <img src={member.photoURL} alt={member.displayName} className="w-full h-full object-cover" />
-                                                            ) : (
-                                                                <span className="text-xs font-bold text-indigo-500 dark:text-indigo-300">
-                                                                    {member?.displayName?.charAt(0) || '?'}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
-                                                {selectedMemberIds.length === 0 && <div className="text-sm text-gray-400 font-medium">Just you</div>}
-                                                {selectedMemberIds.length > 3 && <div className="size-8 rounded-full bg-gray-100 dark:bg-zinc-800 ring-2 ring-white dark:ring-zinc-900 flex items-center justify-center text-xs text-gray-500">+{selectedMemberIds.length - 3}</div>}
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <div className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider">Deadline</div>
-                                            <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mt-2">{dueDate ? new Date(dueDate).toLocaleDateString() : 'TBD'}</div>
-                                        </div>
-                                        <div>
-                                            <div className="text-xs font-bold text-gray-400 dark:text-zinc-500 uppercase tracking-wider">Modules</div>
-                                            <div className="flex gap-1 mt-2">
-                                                {modules.slice(0, 4).map(m => (
-                                                    <span key={m} className="size-2 rounded-full bg-gray-300 dark:bg-zinc-600" title={m} />
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex justify-between items-center pt-2">
-                                        <div className={`px-2 py-1 bg-amber-50 dark:bg-amber-900/40 text-amber-700 dark:text-amber-500 text-xs font-bold rounded uppercase border border-amber-200 dark:border-amber-900`}>
-                                            {priority} Priority
-                                        </div>
-                                        <div className="text-xs text-gray-400 dark:text-zinc-500 italic">Pre-launch Preview</div>
-                                    </div>
-                                </div>
-                            </div>
                         </div>
-                    </div>
-
-                    <div className="text-center mt-8 space-y-2 opacity-50">
-                        <p className="text-sm font-medium text-[var(--color-text-muted)]">Live Workspace Preview</p>
-                        <p className="text-xs text-[var(--color-text-subtle)]">Everything looks good? Launch it.</p>
                     </div>
                 </div>
             </div>
