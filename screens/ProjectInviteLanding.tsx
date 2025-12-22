@@ -15,7 +15,8 @@ export const ProjectInviteLanding = () => {
             if (!projectId || !tenantId || !auth.currentUser) return;
             try {
                 setStatus('Joining workspace...');
-                await joinTenant(tenantId);
+                // Join as Guest first to prevent default 'Member' role
+                await joinTenant(tenantId, 'Guest');
 
                 setStatus('Joining project team...');
                 await joinProject(projectId, tenantId);

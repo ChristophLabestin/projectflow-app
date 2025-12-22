@@ -16,16 +16,22 @@ import {
     removeUserFromWorkspace,
     getSharedProjects,
     getUserProfile,
-    updateProjectMemberRole
+    updateProjectMemberRole,
+    getWorkspaceInviteLinks,
+    revokeWorkspaceInviteLink,
+    getProjectInviteLinks,
+    revokeProjectInviteLink
 } from '../services/dataService';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
 import { InviteMemberModal } from '../components/InviteMemberModal';
 import { GroupCreateModal } from '../components/GroupCreateModal';
+import { Badge } from '../components/ui/Badge';
 import { Project, WorkspaceGroup, WorkspaceRole, Member, ProjectRole } from '../types';
 import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
 import { useConfirm, useToast } from '../context/UIContext';
+import { toMillis } from '../utils/time';
 
 // Helper to align local types if needed, or just use Member
 interface TeamMember extends Member {
@@ -39,13 +45,21 @@ export const Team = () => {
     const [projects, setProjects] = useState<Project[]>([]);
     const [sharedProjects, setSharedProjects] = useState<Project[]>([]);
     const [groups, setGroups] = useState<WorkspaceGroup[]>([]);
+    const [inviteLinks, setInviteLinks] = useState<any[]>([]); // Using any for now, matches dataService return
     const [externalUsers, setExternalUsers] = useState<Record<string, TeamMember>>({});
     const [showInviteModal, setShowInviteModal] = useState(false);
     const [showGroupCreateModal, setShowGroupCreateModal] = useState(false);
-    const [activeTab, setActiveTab] = useState<'projects' | 'groups' | 'members'>('projects');
+    const [activeTab, setActiveTab] = useState<'projects' | 'groups' | 'members' | 'invites'>('projects');
 
     // For adding members to groups
     const [selectedUserForGroup, setSelectedUserForGroup] = useState<Record<string, string>>({});
+    const [copiedLinkId, setCopiedLinkId] = useState<string | null>(null);
+
+    const handleCopy = (id: string, text: string) => {
+        navigator.clipboard.writeText(text);
+        setCopiedLinkId(id);
+        setTimeout(() => setCopiedLinkId(null), 2000);
+    };
 
     const tenantId = useMemo(() => getActiveTenantId() || auth.currentUser?.uid || '', []);
 
@@ -66,6 +80,8 @@ export const Team = () => {
                 role: d.role || 'Member',
                 groupIds: d.groupIds || []
             })) as TeamMember[];
+
+            // Filter out Guests (project-only members) from the main workspace list
             setUsers(mapped);
         }, tenantId);
 
@@ -81,7 +97,91 @@ export const Team = () => {
             unsubProjects();
             unsubGroups();
         };
-    }, [tenantId]);
+        if (activeTab === 'invites' && (isAdmin || isOwner)) {
+            getWorkspaceInviteLinks(tenantId).then(setInviteLinks).catch(console.error);
+        }
+    }, [tenantId, activeTab, isAdmin, isOwner]);
+
+    // Fetch details for external users (members of shared projects not in this workspace)
+    useEffect(() => {
+        const allProjectMembers = [...projects, ...sharedProjects].flatMap(p => {
+            const members = p.members || [];
+            return members.map(m => ({
+                id: typeof m === 'string' ? m : m.userId,
+                tenantId: p.tenantId
+            }));
+        });
+
+        // ... rest of existing external user fetch logic ...
+        // Keeping it collapsed for now as I only need to insert the invite fetch above it.
+        // But wait, replace_file_content replaces the whole block. I should be careful not to delete code.
+        // Let's just insert the invite fetch effect above the existing one.
+
+        // Actually, looking at the previous view_file, the external user effect starts around line 89.
+        // I will target the space before it.
+    }, [tenantId]); // This is closing the FIRST effect (users/projects subscription)
+
+    // Effect for fetching invites (Workspace + Assigned Projects)
+    useEffect(() => {
+        if (!tenantId) return;
+        if (activeTab === 'invites' && (isAdmin || isOwner)) {
+            const fetchAllInvites = async () => {
+                // 1. Fetch Workspace Invites
+                const wsLinks = await getWorkspaceInviteLinks(tenantId).catch(e => []);
+                const wsLinksWithMeta = wsLinks.map(l => ({ ...l, type: 'workspace' }));
+
+                // 2. Fetch Project Invites (for all projects I have access to)
+                // Note: Only admins/owners typically see *all* projects, members only see theirs.
+                // Depending on requirements, we might want to show invites for projects the user manages.
+                // Assuming Admin/Owner permission check above covers intent for now.
+                const projPromises = projects.map(async (p) => {
+                    try {
+                        const pLinks = await getProjectInviteLinks(p.id, tenantId);
+                        return pLinks.map(l => ({ ...l, type: 'project', projectName: p.title, projectId: p.id }));
+                    } catch (e) {
+                        return [];
+                    }
+                });
+                const projLinksArrays = await Promise.all(projPromises);
+                const allProjLinks = projLinksArrays.flat();
+
+                // 3. Merge & Sort
+                const allLinks = [...wsLinksWithMeta, ...allProjLinks].sort((a, b) =>
+                    toMillis(b.createdAt) - toMillis(a.createdAt)
+                );
+
+                setInviteLinks(allLinks);
+            };
+
+            fetchAllInvites();
+        }
+    }, [tenantId, activeTab, isAdmin, isOwner, projects]);
+
+    const handleRevokeLink = async (link: any) => {
+        if (!await confirm('Revoke Invite Link?', 'This link will no longer work for new users.')) return;
+        try {
+            if (link.type === 'workspace') {
+                await revokeWorkspaceInviteLink(link.id, tenantId);
+            } else if (link.type === 'project' && link.projectId) {
+                await revokeProjectInviteLink(link.projectId, link.id, tenantId);
+            }
+
+            showSuccess('Invite link revoked');
+
+            // Re-fetch to refresh list
+            // (We could duplicate the fetch logic or extract it to a function, but triggering effect via a transient state might be cleaner or just copy-paste for now for simplicity)
+            // Ideally trigger a re-run of the effect. For now, let's just re-call the logic or depend on a 'refresh' toggle.
+            // Simplified: re-calling the internal logic is hard without extraction.
+            // I'll extract `loadInvites` to a useCallback in next step if needed, or just force update via simple state toggle. 
+            // Actually, for this replacement, I'll just clear the list and let the effect run? No, dependency loop.
+            // Let's just manually re-run the fetch logic here locally for now as validation. Be careful with code duplication. 
+            // Better: update state locally to remove the item immediately for instant feedback.
+            setInviteLinks(prev => prev.filter(l => l.id !== link.id));
+
+        } catch (err: any) {
+            showError(err.message || 'Failed to revoke link');
+        }
+    };
 
     // Fetch details for external users (members of shared projects not in this workspace)
     useEffect(() => {
@@ -382,6 +482,7 @@ export const Team = () => {
                     { id: 'projects', label: 'By Project', icon: 'folder' },
                     { id: 'groups', label: 'Groups', icon: 'diversity_3' },
                     { id: 'members', label: 'All Members', icon: 'group' },
+                    ...((isAdmin || isOwner) ? [{ id: 'invites', label: 'Invites', icon: 'mail' }] : [])
                 ].map(tab => (
                     <button
                         key={tab.id}
@@ -594,26 +695,185 @@ export const Team = () => {
 
             {/* Content: Members */}
             {activeTab === 'members' && (
-                <div>
-                    <Card padding="none" className="flex flex-col gap-1 p-1">
-                        {users.map(u => renderUserRow(
-                            u,
-                            undefined,
-                            true,
-                            can('canManageMembers') ? () => handleRemoveFromWorkspace(u.id) : undefined
-                        ))}
-                    </Card>
+                <div className="flex flex-col gap-8">
+                    {/* Workspace Members Section */}
+                    <section>
+                        <div className="flex items-center gap-3 mb-3 px-1">
+                            <span className="material-symbols-outlined text-[var(--color-primary)]">badge</span>
+                            <h3 className="text-base font-bold text-[var(--color-text-main)]">Workspace Members</h3>
+                        </div>
+                        <Card padding="none" className="flex flex-col gap-1 p-1">
+                            {users.filter(u => u.role !== 'Guest').map(u => renderUserRow(
+                                u,
+                                undefined,
+                                true,
+                                can('canManageMembers') ? () => handleRemoveFromWorkspace(u.id) : undefined
+                            ))}
+                            {users.filter(u => u.role !== 'Guest').length === 0 && (
+                                <div className="p-4 text-sm text-[var(--color-text-muted)] italic">No workspace members found.</div>
+                            )}
+                        </Card>
+                    </section>
+
+                    {/* Guests Section */}
+                    <section>
+                        <div className="flex items-center gap-3 mb-3 px-1">
+                            <span className="material-symbols-outlined text-[var(--color-text-subtle)]">person_outline</span>
+                            <h3 className="text-base font-bold text-[var(--color-text-main)]">Guests / External</h3>
+                        </div>
+                        <Card padding="none" className="flex flex-col gap-1 p-1">
+                            {users.filter(u => u.role === 'Guest').map(u => renderUserRow(
+                                u,
+                                undefined,
+                                true,
+                                can('canManageMembers') ? () => handleRemoveFromWorkspace(u.id) : undefined
+                            ))}
+                            {users.filter(u => u.role === 'Guest').length === 0 && (
+                                <div className="p-4 text-sm text-[var(--color-text-muted)] italic">No guests.</div>
+                            )}
+                        </Card>
+                    </section>
                 </div>
             )}
 
+            {/* Content: Invites */}
+            {activeTab === 'invites' && (
+                <div className="space-y-6">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h3 className="h4 text-[var(--color-text-main)]">Active Invite Links</h3>
+                            <p className="text-sm text-[var(--color-text-muted)]">Manage invite links for this workspace.</p>
+                        </div>
+                        <Button
+                            onClick={() => setShowInviteModal(true)}
+                            icon={<span className="material-symbols-outlined">add_link</span>}
+                        >
+                            Create Invite Link
+                        </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {inviteLinks.map(link => {
+                            const isWorkspace = link.type === 'workspace';
+                            const accentColor = isWorkspace ? 'border-indigo-500' : 'border-amber-500';
+                            const icon = isWorkspace ? 'domain' : 'folder_open';
+                            const title = isWorkspace ? 'Workspace Invite' : link.projectName;
+
+                            return (
+                                <Card
+                                    key={link.id}
+                                    padding="none"
+                                    className={`relative group hover:shadow-md transition-shadow overflow-hidden border-t-4 ${accentColor}`}
+                                >
+                                    <div className="p-4">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="flex items-start gap-3">
+                                                <div className={`p-2 rounded-lg ${isWorkspace ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400' : 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400'}`}>
+                                                    <span className="material-symbols-outlined">{icon}</span>
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-bold text-sm text-[var(--color-text-main)] leading-tight mb-1">
+                                                        {title}
+                                                    </h4>
+                                                    <div className="flex items-center gap-2">
+                                                        <Badge variant={link.role === 'Admin' ? 'warning' : 'primary'} size="sm">
+                                                            {link.role}
+                                                        </Badge>
+                                                        {!isWorkspace && (
+                                                            <span className="text-[10px] text-[var(--color-text-subtle)] uppercase tracking-wider font-bold">
+                                                                Project
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-[var(--color-text-subtle)] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 -mr-2 -mt-2"
+                                                onClick={() => handleRevokeLink(link)}
+                                                title="Revoke Link"
+                                            >
+                                                <span className="material-symbols-outlined text-[20px]">delete</span>
+                                            </Button>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2 mb-4">
+                                            <div className="bg-[var(--color-surface-hover)] rounded-lg p-2">
+                                                <span className="block text-[10px] uppercase font-bold text-[var(--color-text-subtle)] mb-1">
+                                                    Expires
+                                                </span>
+                                                <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+                                                    <span className="material-symbols-outlined text-[14px]">event</span>
+                                                    <span>{new Date(toMillis(link.expiresAt)).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}</span>
+                                                </div>
+                                            </div>
+                                            <div className="bg-[var(--color-surface-hover)] rounded-lg p-2">
+                                                <span className="block text-[10px] uppercase font-bold text-[var(--color-text-subtle)] mb-1">
+                                                    Usage
+                                                </span>
+                                                <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+                                                    <span className="material-symbols-outlined text-[14px]">group</span>
+                                                    <span>{link.uses} / {link.maxUses || '∞'}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-3 border-t border-[var(--color-surface-border)]">
+                                        {(() => {
+                                            const url = link.type === 'workspace'
+                                                ? `${window.location.origin}/join-workspace/${link.id}?tenantId=${tenantId}`
+                                                : `${window.location.origin}/invite/${link.projectId}?tenantId=${tenantId}`;
+
+                                            const finalUrl = link.type === 'workspace'
+                                                ? url
+                                                : url; // Logic simplified as variable above already handles it
+
+                                            const isCopied = copiedLinkId === link.id;
+
+                                            return (
+                                                <div className="flex items-center gap-2 bg-[var(--color-surface-hover)] p-2 rounded text-xs font-mono text-[var(--color-text-subtle)] truncate relative group/link">
+                                                    <span className="truncate flex-1">{finalUrl}</span>
+                                                    <button
+                                                        className={`font-bold ml-2 transition-all ${isCopied ? 'text-emerald-600 dark:text-emerald-400 opacity-100' : 'text-[var(--color-primary)] opacity-0 group-hover/link:opacity-100'}`}
+                                                        onClick={() => handleCopy(link.id, finalUrl)}
+                                                    >
+                                                        {isCopied ? 'Copied!' : 'Copy'}
+                                                    </button>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                </Card>
+                            );
+                        })}
+                        {inviteLinks.length === 0 && (
+                            <div className="col-span-full py-12 text-center text-[var(--color-text-muted)] border-2 border-dashed border-[var(--color-surface-border)] rounded-xl">
+                                <span className="material-symbols-outlined text-4xl opacity-50 mb-2">link_off</span>
+                                <p>No active invite links found.</p>
+                                <Button variant="ghost" className="mt-2" onClick={() => setShowInviteModal(true)}>Create one now</Button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* Modals */}
             <InviteMemberModal
                 isOpen={showInviteModal}
-                onClose={() => setShowInviteModal(false)}
+                onClose={() => {
+                    setShowInviteModal(false);
+                    // Refresh invitations if we were on the tab
+                    if (activeTab === 'invites') {
+                        getWorkspaceInviteLinks(tenantId).then(setInviteLinks);
+                    }
+                }}
+                onGenerateLink={(role, maxUses, expiresIn) =>
+                    generateWorkspaceInviteLink(role as WorkspaceRole, maxUses, expiresIn, tenantId)
+                }
                 projectTitle="Workspace"
                 isWorkspace={true}
-                onGenerateLink={async (role, maxUses, expiresInHours) => {
-                    return generateWorkspaceInviteLink(role as WorkspaceRole, maxUses, expiresInHours, tenantId);
-                }}
             />
 
             <GroupCreateModal

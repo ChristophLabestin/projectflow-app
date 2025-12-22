@@ -302,6 +302,12 @@ export const ProjectTasks = () => {
                                             <span>{new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
                                         </div>
                                     )}
+                                    {task.scheduledDate && (
+                                        <div className="flex items-center gap-1 text-[11px] font-medium text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-2 py-0.5 rounded-md">
+                                            <span className="material-symbols-outlined text-[14px]">event_available</span>
+                                            <span>Scheduled {new Date(task.scheduledDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                        </div>
+                                    )}
                                     {subtaskStats[task.id]?.total > 0 && (
                                         <div className="flex items-center gap-1">
                                             <span className="material-symbols-outlined text-[14px]">checklist</span>

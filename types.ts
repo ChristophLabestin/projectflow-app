@@ -118,7 +118,7 @@ export interface Comment {
     createdAt: any;
 }
 
-export type ProjectModule = 'tasks' | 'ideas' | 'mindmap' | 'activity' | 'issues';
+export type ProjectModule = 'tasks' | 'ideas' | 'mindmap' | 'activity' | 'issues' | 'milestones';
 
 export interface Task {
     id: string;
@@ -251,6 +251,18 @@ export interface ProjectBlueprint {
     initialTasks: { title: string; priority: 'Low' | 'Medium' | 'High' }[];
     suggestedTechStack?: string[];
     createdAt: any;
+}
+
+export interface Milestone {
+    id: string;
+    projectId: string;
+    title: string;
+    description?: string;
+    dueDate?: string;
+    status: 'Pending' | 'Achieved' | 'Missed';
+    createdAt: any;
+    createdBy: string;
+    tenantId: string;
 }
 
 export interface ProjectRisk {

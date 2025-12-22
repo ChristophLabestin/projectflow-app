@@ -172,6 +172,13 @@ export const getUserProfile = async (userId: string, tenantId?: string) => {
     return snap.exists() ? snap.data() : null;
 };
 
+export const getWorkspaceMembers = async (tenantId?: string): Promise<any[]> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const usersCollection = tenantUsersCollection(resolvedTenant);
+    const snapshot = await getDocs(usersCollection);
+    return snapshot.docs.map(doc => doc.data());
+};
+
 export const updateUserData = async (userId: string, data: Partial<any>, tenantId?: string) => {
     const resolvedTenant = resolveTenantId(tenantId);
     await setDoc(doc(tenantUsersCollection(resolvedTenant), userId), data, { merge: true });
@@ -365,7 +372,7 @@ export const joinTenant = async (tenantId: string, role: WorkspaceRole = 'Member
     await ensureTenantAndUser(tenantId, role);
 };
 
-export const bootstrapTenantForCurrentUser = async (inviteTenantId?: string) => {
+export const bootstrapTenantForCurrentUser = async (inviteTenantId?: string, ignoreCache = false) => {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
 
@@ -373,8 +380,10 @@ export const bootstrapTenantForCurrentUser = async (inviteTenantId?: string) => 
     await ensureTenantAndUser(user.uid);
 
     // 2. Determine target tenant
-    // If invited, use that. Else cache. Else personal.
-    const targetTenant = inviteTenantId || getCachedTenantId() || user.uid;
+    // If invited, use that.
+    // If ignoreCache is TRUE, we skip getCachedTenantId() (critical for fresh registrations).
+    // Otherwise, we check cache, then fallback to user.uid.
+    const targetTenant = inviteTenantId || (!ignoreCache && getCachedTenantId()) || user.uid;
 
     // 3. If target is different (e.g. joined via invite), ensure we are added to that tenant too
     if (targetTenant !== user.uid) {
@@ -391,6 +400,7 @@ export const createProject = async (
     coverFile?: File,
     squareIconFile?: File,
     screenshotFiles?: File[],
+    initialMemberIds: string[] = [],
     tenantId?: string
 ): Promise<string> => {
     const user = auth.currentUser;
@@ -444,8 +454,8 @@ export const createProject = async (
         squareIcon: squareIconUrl,
         screenshots: screenshotUrls,
         progress: 0,
-        members: [user.uid],
-        memberIds: [user.uid],
+        members: Array.from(new Set([user.uid, ...initialMemberIds])),
+        memberIds: Array.from(new Set([user.uid, ...initialMemberIds])),
         createdAt: serverTimestamp()
     });
 
@@ -474,6 +484,77 @@ export const updateProjectFields = async (
             resolvedTenant
         );
     }
+};
+
+// --- Milestones ---
+
+export const MILESTONES = "milestones";
+
+export const createMilestone = async (
+    projectId: string,
+    milestoneData: Omit<Milestone, "id" | "createdAt" | "createdBy" | "tenantId" | "projectId">,
+    tenantId?: string
+) => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+    const resolvedTenant = resolveTenantId(tenantId);
+
+    const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, MILESTONES), {
+        ...milestoneData,
+        projectId,
+        tenantId: resolvedTenant,
+        createdBy: user.uid,
+        createdAt: serverTimestamp()
+    });
+
+    await logActivity(
+        projectId,
+        { action: `Created milestone "${milestoneData.title}"`, target: "Milestone", type: "status" },
+        resolvedTenant
+    );
+
+    return docRef.id;
+};
+
+export const updateMilestone = async (
+    projectId: string,
+    milestoneId: string,
+    updates: Partial<Milestone>,
+    tenantId?: string
+) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const ref = doc(projectSubCollection(resolvedTenant, projectId, MILESTONES), milestoneId);
+    await updateDoc(ref, updates);
+};
+
+export const deleteMilestone = async (
+    projectId: string,
+    milestoneId: string,
+    tenantId?: string
+) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const ref = doc(projectSubCollection(resolvedTenant, projectId, MILESTONES), milestoneId);
+    await deleteDoc(ref);
+};
+
+export const subscribeProjectMilestones = (
+    projectId: string,
+    onUpdate: (milestones: Milestone[]) => void,
+    tenantId?: string
+): Unsubscribe => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const q = query(
+        projectSubCollection(resolvedTenant, projectId, MILESTONES),
+        orderBy("dueDate", "asc")
+    );
+
+    return onSnapshot(q, (snapshot) => {
+        const milestones = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as Milestone));
+        onUpdate(milestones);
+    });
 };
 
 // --- Gemini Reports ---
@@ -642,16 +723,27 @@ export const joinProject = async (projectId: string, tenantId: string, role: Pro
             memberIds: arrayUnion(user.uid)
         });
 
+        // Check if user already exists in tenant to preserve role
+        const tenantUserRef = doc(tenantUsersCollection(tenantId), user.uid);
+        const tenantUserSnap = await getDoc(tenantUserRef);
+
+        let targetRole: WorkspaceRole = 'Guest'; // Default for new project-only joins
+
+        if (tenantUserSnap.exists()) {
+            const existing = tenantUserSnap.data();
+            targetRole = existing.role || 'Guest';
+        }
+
         // Also add user profile to tenant's users collection for lookup
         await setDoc(
-            doc(tenantUsersCollection(tenantId), user.uid),
+            tenantUserRef,
             {
                 uid: user.uid,
                 email: user.email || "",
                 displayName: user.displayName || "User",
                 photoURL: user.photoURL || "",
-                role: 'Member',
-                joinedAt: serverTimestamp(),
+                role: targetRole,
+                joinedAt: tenantUserSnap.exists() ? (tenantUserSnap.data().joinedAt || serverTimestamp()) : serverTimestamp(),
                 updatedAt: serverTimestamp(),
             },
             { merge: true }
@@ -676,14 +768,16 @@ export const getProjectMembers = async (projectId: string, tenantId?: string): P
     if (!project || !project.members) return [];
 
     // Handle mixed format: some elements might be strings, others might be ProjectMember objects
-    return project.members.map((member: string | ProjectMember) => {
-        if (typeof member === 'string') {
-            // Legacy format: plain UID string
-            return member;
-        }
-        // New format: ProjectMember object
-        return member.userId;
-    });
+    return project.members
+        .filter((m: any) => m !== null && m !== undefined)
+        .map((member: string | ProjectMember) => {
+            if (typeof member === 'string') {
+                // Legacy format: plain UID string
+                return member;
+            }
+            // New format: ProjectMember object
+            return member.userId;
+        });
 };
 
 /**
@@ -1045,6 +1139,40 @@ export const joinWorkspaceViaLink = async (
     await updateDoc(inviteLinkRef, {
         uses: increment(1)
     });
+};
+
+export const getWorkspaceInviteLinks = async (tenantId?: string): Promise<any[]> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const inviteLinksRef = collection(db, `tenants/${resolvedTenant}/inviteLinks`);
+
+    // Fetch active links - Sorting client side to avoid index requirement
+    const q = query(inviteLinksRef, where('isActive', '==', true));
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+export const revokeWorkspaceInviteLink = async (inviteLinkId: string, tenantId?: string) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const inviteLinkRef = doc(db, `tenants/${resolvedTenant}/inviteLinks`, inviteLinkId);
+    await updateDoc(inviteLinkRef, { isActive: false });
+};
+
+export const getProjectInviteLinks = async (projectId: string, tenantId?: string): Promise<any[]> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const inviteLinksRef = collection(db, `tenants/${resolvedTenant}/projects/${projectId}/inviteLinks`);
+
+    // Fetch active links - Sorting client side to avoid index requirement
+    const q = query(inviteLinksRef, where('isActive', '==', true));
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+export const revokeProjectInviteLink = async (projectId: string, inviteLinkId: string, tenantId?: string) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const inviteLinkRef = doc(db, `tenants/${resolvedTenant}/projects/${projectId}/inviteLinks`, inviteLinkId);
+    await updateDoc(inviteLinkRef, { isActive: false });
 };
 
 export const getUserProjects = async (tenantId?: string): Promise<Project[]> => {

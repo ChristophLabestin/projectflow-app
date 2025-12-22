@@ -18,6 +18,7 @@ import { ImageCropper } from '../components/ui/ImageCropper';
 import { DonutChart } from '../components/charts/DonutChart';
 import { TeamCard } from '../components/TeamCard';
 import { InviteMemberModal } from '../components/InviteMemberModal';
+import { MilestoneCard } from '../components/Milestones/MilestoneCard';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
 import { Checkbox } from '../components/ui/Checkbox';
 import { fetchLastCommits, fetchUserRepositories, GithubCommit, GithubRepo } from '../services/githubService';
@@ -72,6 +73,7 @@ export const ProjectOverview = () => {
     const [reportLoading, setReportLoading] = useState(false);
     const [pinnedReport, setPinnedReport] = useState<GeminiReport | null>(null);
     const [showInsight, setShowInsight] = useState<boolean>(true);
+    const [reportExpanded, setReportExpanded] = useState(false);
 
     // Modals
     const [showEditModal, setShowEditModal] = useState(false);
@@ -437,10 +439,35 @@ export const ProjectOverview = () => {
     const progress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
     const openTasks = tasks.length - completedTasks;
     const urgentCount = tasks.filter(t => t.priority === 'Urgent').length;
-    const recentTasks = [...tasks].sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt)).slice(0, 5);
+
+    const priorityMap: Record<string, number> = { Urgent: 4, High: 3, Medium: 2, Low: 1 };
+
+    const recentTasks = tasks
+        .filter(t => !t.isCompleted && t.status !== 'Done')
+        .sort((a, b) => {
+            const pA = priorityMap[a.priority || 'Medium'] || 0;
+            const pB = priorityMap[b.priority || 'Medium'] || 0;
+            if (pA !== pB) return pB - pA; // Descending Priority
+            const dateA = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+            const dateB = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+            return dateA - dateB; // Ascending Due Date
+        })
+        .slice(0, 5);
+
+    const recentIssues = issues
+        .filter(i => !['Resolved', 'Closed'].includes(i.status))
+        .sort((a, b) => {
+            const pA = priorityMap[a.priority || 'Medium'] || 0;
+            const pB = priorityMap[b.priority || 'Medium'] || 0;
+            if (pA !== pB) return pB - pA;
+            const dateA = a.scheduledDate ? new Date(a.scheduledDate).getTime() : Number.MAX_SAFE_INTEGER;
+            const dateB = b.scheduledDate ? new Date(b.scheduledDate).getTime() : Number.MAX_SAFE_INTEGER;
+            return dateA - dateB;
+        })
+        .slice(0, 5);
 
     return (
-        <div className="flex flex-col gap-6 fade-in">
+        <div className="flex flex-col gap-6 fade-in pb-10">
             <ImageCropper
                 isOpen={!!cropImageSrc}
                 imageSrc={cropImageSrc}
@@ -523,6 +550,7 @@ export const ProjectOverview = () => {
                                     ]}
                                     size={64}
                                     thickness={8}
+                                    showEmptyLabel={false}
                                 />
                                 <div className="absolute inset-0 flex items-center justify-center text-xs font-bold">{progress}%</div>
                             </div>
@@ -566,8 +594,11 @@ export const ProjectOverview = () => {
 
                     {/* Latest Project Report */}
                     {pinnedReport && (
-                        <div className="rounded-xl p-6 bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-sm">
-                            <div className="flex items-center justify-between mb-4">
+                        <div className="rounded-xl bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-sm overflow-hidden transition-all duration-300">
+                            <div
+                                className="p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--color-surface-hover)] transition-colors"
+                                onClick={() => setReportExpanded(!reportExpanded)}
+                            >
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 bg-purple-100 dark:bg-purple-500/10 rounded-lg">
                                         <span className="material-symbols-outlined text-purple-600 dark:text-purple-400">text_snippet</span>
@@ -579,18 +610,31 @@ export const ProjectOverview = () => {
                                         </p>
                                     </div>
                                 </div>
-                                <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={handleGenerateReport}
-                                    isLoading={reportLoading}
-                                    icon={<span className="material-symbols-outlined">refresh</span>}
-                                >
-                                    Regenerate
-                                </Button>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={(e) => { e.stopPropagation(); handleGenerateReport(); }}
+                                        isLoading={reportLoading}
+                                        icon={<span className="material-symbols-outlined">refresh</span>}
+                                    >
+                                        Regenerate
+                                    </Button>
+                                    <span className={`material-symbols-outlined text-[var(--color-text-muted)] transition-transform duration-300 ${reportExpanded ? 'rotate-180' : ''}`}>
+                                        expand_more
+                                    </span>
+                                </div>
                             </div>
-                            <div className="text-sm text-[var(--color-text-main)] leading-relaxed whitespace-pre-wrap prose prose-sm dark:prose-invert max-w-none">
-                                {cleanText(pinnedReport.content)}
+
+                            {/* Expandable Content */}
+                            <div className={`
+                                border-t border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]/30
+                                transition-all duration-300 ease-in-out
+                                ${reportExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}
+                            `}>
+                                <div className="p-6 text-sm text-[var(--color-text-main)] leading-relaxed whitespace-pre-wrap prose prose-sm dark:prose-invert max-w-none">
+                                    {cleanText(pinnedReport.content)}
+                                </div>
                             </div>
                         </div>
                     )}
@@ -601,23 +645,55 @@ export const ProjectOverview = () => {
                             <h3 className="h4">Recent Tasks</h3>
                             <Link to={`/project/${id}/tasks`} className="text-sm font-semibold text-[var(--color-primary)] hover:underline">View All</Link>
                         </div>
-                        <div className="divide-y divide-[var(--color-surface-border)]">
+                        <div className="flex flex-col gap-2">
                             {recentTasks.length === 0 ? (
-                                <p className="text-center py-6 text-[var(--color-text-muted)]">No tasks yet.</p>
+                                <p className="text-center py-6 text-[var(--color-text-muted)]">No active tasks.</p>
                             ) : recentTasks.map(task => (
-                                <div key={task.id} className="py-3 flex items-start gap-3 hover:bg-[var(--color-surface-hover)] -mx-4 px-4 transition-colors">
-                                    <Checkbox
-                                        checked={task.isCompleted}
-                                        onChange={() => handleToggleTask(task.id, task.isCompleted)}
-                                        className="mt-1"
-                                    />
+                                <div
+                                    key={task.id}
+                                    onClick={() => navigate(`/project/${id}/tasks/${task.id}`)}
+                                    className="group flex items-center gap-3 p-3 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] hover:bg-[var(--color-surface-paper)] hover:border-[var(--color-primary)]/30 hover:shadow-sm transition-all cursor-pointer"
+                                >
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleToggleTask(task.id, task.isCompleted); }}
+                                        className={`
+                                            flex-shrink-0 size-5 rounded-[6px] border flex items-center justify-center transition-all duration-200
+                                            ${task.isCompleted
+                                                ? 'bg-green-500 border-green-500 text-white shadow-sm shadow-green-500/20'
+                                                : 'border-[var(--color-surface-border)] hover:border-green-500 text-transparent bg-[var(--color-surface-paper)]'}
+                                        `}
+                                    >
+                                        <span className="material-symbols-outlined text-[14px] font-bold">check</span>
+                                    </button>
+
                                     <div className="flex-1 min-w-0">
-                                        <Link to={`/project/${id}/tasks/${task.id}`} className={`text-sm font-medium truncate block ${task.isCompleted ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)]'}`}>
-                                            {task.title}
-                                        </Link>
-                                        <div className="flex gap-2 mt-1">
-                                            {task.priority && <Badge size="sm" variant="outline">{task.priority}</Badge>}
-                                            {task.dueDate && <span className="text-xs text-[var(--color-text-subtle)] flex items-center gap-1"><span className="material-symbols-outlined text-[10px]">event</span> {new Date(task.dueDate).toLocaleDateString()}</span>}
+                                        <div className="flex items-center justify-between gap-2">
+                                            <span className={`text-sm font-semibold truncate hover:text-[var(--color-primary)] transition-colors ${task.isCompleted ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)]'}`}>
+                                                {task.title}
+                                            </span>
+                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <span className="material-symbols-outlined text-[var(--color-text-muted)] text-[16px]">arrow_forward</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-3 mt-1 text-xs">
+                                            {task.priority && (
+                                                <Badge size="sm" variant={task.priority === 'Urgent' ? 'danger' : task.priority === 'High' ? 'warning' : 'secondary'}>
+                                                    {task.priority}
+                                                </Badge>
+                                            )}
+                                            {task.dueDate && (
+                                                <div className={`flex items-center gap-1 ${new Date(task.dueDate) < new Date() && !task.isCompleted ? 'text-rose-500 font-bold' : 'text-[var(--color-text-subtle)]'}`}>
+                                                    <span className="material-symbols-outlined text-[12px]">event</span>
+                                                    <span>{new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                                </div>
+                                            )}
+                                            {task.scheduledDate && (
+                                                <div className="flex items-center gap-1 text-[11px] font-medium text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-2 py-0.5 rounded-md">
+                                                    <span className="material-symbols-outlined text-[14px]">event_available</span>
+                                                    <span>Scheduled {new Date(task.scheduledDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -632,19 +708,47 @@ export const ProjectOverview = () => {
                                 <h3 className="h4">Recent Issues</h3>
                                 <Link to={`/project/${id}/issues`} className="text-sm font-semibold text-[var(--color-primary)] hover:underline">View All</Link>
                             </div>
-                            <div className="divide-y divide-[var(--color-surface-border)]">
-                                {issues.length === 0 ? (
-                                    <p className="text-center py-6 text-[var(--color-text-muted)]">No open issues.</p>
-                                ) : issues.slice(0, 5).map(issue => (
-                                    <div key={issue.id} className="py-3 flex items-start gap-3 hover:bg-[var(--color-surface-hover)] -mx-4 px-4 transition-colors">
-                                        <div className={`mt-1 size-2 rounded-full shrink-0 ${issue.status === 'Open' ? 'bg-blue-500' : issue.status === 'In Progress' ? 'bg-amber-500' : 'bg-green-500'}`} />
+                            <div className="flex flex-col gap-2">
+                                {recentIssues.length === 0 ? (
+                                    <p className="text-center py-6 text-[var(--color-text-muted)]">No active issues.</p>
+                                ) : recentIssues.map(issue => (
+                                    <div key={issue.id} className="group flex items-center gap-3 p-3 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] hover:bg-[var(--color-surface-paper)] hover:border-[var(--color-primary)]/30 hover:shadow-sm transition-all">
+                                        <div className={`
+                                            flex-shrink-0 size-8 rounded-lg flex items-center justify-center
+                                            ${issue.status === 'Open' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' :
+                                                issue.status === 'In Progress' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400' :
+                                                    'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'}
+                                        `}>
+                                            <span className="material-symbols-outlined text-[18px]">bug_report</span>
+                                        </div>
+
                                         <div className="flex-1 min-w-0">
-                                            <Link to={`/project/${id}/issues`} className="text-sm font-medium truncate block text-[var(--color-text-main)] hover:text-[var(--color-primary)]">
-                                                {issue.title}
-                                            </Link>
-                                            <div className="flex gap-2 mt-1">
-                                                <Badge size="sm" variant={issue.priority === 'Urgent' ? 'error' : 'secondary'}>{issue.priority}</Badge>
-                                                <span className="text-xs text-[var(--color-text-subtle)]">{issue.status}</span>
+                                            <div className="flex items-center justify-between gap-2">
+                                                <Link to={`/project/${id}/issues/${issue.id}`} className="text-sm font-semibold truncate hover:text-[var(--color-primary)] transition-colors text-[var(--color-text-main)]">
+                                                    {issue.title}
+                                                </Link>
+                                                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <span className="material-symbols-outlined text-[var(--color-text-muted)] text-[16px]">arrow_forward</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-3 mt-1 text-xs">
+                                                <Badge size="sm" variant={issue.priority === 'Urgent' ? 'danger' : issue.priority === 'High' ? 'warning' : 'secondary'}>
+                                                    {issue.priority}
+                                                </Badge>
+                                                <span className={`flex items-center gap-1.5 font-medium ${issue.status === 'Open' ? 'text-blue-600 dark:text-blue-400' :
+                                                    issue.status === 'In Progress' ? 'text-amber-600 dark:text-amber-400' :
+                                                        'text-emerald-600 dark:text-emerald-400'
+                                                    }`}>
+                                                    <span className="size-1.5 rounded-full bg-current"></span>
+                                                    {issue.status}
+                                                </span>
+                                                {issue.scheduledDate && (
+                                                    <div className="flex items-center gap-1 text-[11px] font-medium text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-2 py-0.5 rounded-md">
+                                                        <span className="material-symbols-outlined text-[14px]">event_available</span>
+                                                        <span>Scheduled {new Date(issue.scheduledDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -716,6 +820,13 @@ export const ProjectOverview = () => {
                             {activity.length === 0 && <p className="text-sm text-[var(--color-text-muted)]">No recent activity.</p>}
                         </div>
                     </Card>
+
+                    {/* Milestones (Right Col) */}
+                    {(!project.modules || project.modules.includes('milestones')) && (
+                        <div className="h-48 md:h-56">
+                            <MilestoneCard projectId={project.id} />
+                        </div>
+                    )}
 
                     {/* GitHub Commits */}
                     {project.githubRepo && (
@@ -961,7 +1072,7 @@ export const ProjectOverview = () => {
                     <div className="space-y-3">
                         <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Enabled Modules</label>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                            {['tasks', 'ideas', 'mindmap', 'activity', 'issues'].map(mod => (
+                            {['tasks', 'ideas', 'milestones', 'mindmap', 'activity', 'issues'].map(mod => (
                                 <label key={mod} className={`
                                     flex flex-col items-center justify-center gap-2 cursor-pointer p-3 rounded-xl border transition-all text-center
                                     ${editModules?.includes(mod as any)
@@ -989,8 +1100,9 @@ export const ProjectOverview = () => {
                                         <span className="material-symbols-outlined text-[18px]">
                                             {mod === 'tasks' ? 'check_circle' :
                                                 mod === 'ideas' ? 'lightbulb' :
-                                                    mod === 'mindmap' ? 'hub' :
-                                                        mod === 'activity' ? 'history' : 'bug_report'}
+                                                    mod === 'milestones' ? 'flag' :
+                                                        mod === 'mindmap' ? 'hub' :
+                                                            mod === 'activity' ? 'history' : 'bug_report'}
                                         </span>
                                     </div>
                                     <span className="text-xs font-semibold capitalize">{mod}</span>
@@ -1162,29 +1274,33 @@ export const ProjectOverview = () => {
                 </p>
             </Modal >
 
-            {showTaskModal && can('canManageTasks') && (
-                <TaskCreateModal
-                    projectId={id!}
-                    tenantId={project?.tenantId}
-                    onClose={() => setShowTaskModal(false)}
-                    onCreated={() => {
-                        // Task subscription will handle update
-                        setShowTaskModal(false);
-                    }}
-                />
-            )}
+            {
+                showTaskModal && can('canManageTasks') && (
+                    <TaskCreateModal
+                        projectId={id!}
+                        tenantId={project?.tenantId}
+                        onClose={() => setShowTaskModal(false)}
+                        onCreated={() => {
+                            // Task subscription will handle update
+                            setShowTaskModal(false);
+                        }}
+                    />
+                )
+            }
 
-            {showInviteModal && project && can('canInvite') && (
-                <InviteMemberModal
-                    isOpen={showInviteModal}
-                    onClose={() => setShowInviteModal(false)}
-                    projectTitle={project.title}
-                    onGenerateLink={async (role: ProjectRole, maxUses?: number, expiresInHours?: number) => {
-                        const { generateInviteLink } = await import('../services/dataService');
-                        return await generateInviteLink(id || '', role, maxUses, expiresInHours, project.tenantId);
-                    }}
-                />
-            )}
+            {
+                showInviteModal && project && can('canInvite') && (
+                    <InviteMemberModal
+                        isOpen={showInviteModal}
+                        onClose={() => setShowInviteModal(false)}
+                        projectTitle={project.title}
+                        onGenerateLink={async (role: ProjectRole, maxUses?: number, expiresInHours?: number) => {
+                            const { generateInviteLink } = await import('../services/dataService');
+                            return await generateInviteLink(id || '', role, maxUses, expiresInHours, project.tenantId);
+                        }}
+                    />
+                )
+            }
         </div >
     );
 };

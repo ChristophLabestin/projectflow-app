@@ -262,7 +262,13 @@ export const NotificationDropdown = () => {
                     {/* Footer */}
                     {notifications.length > 0 && (
                         <div className="px-4 py-2 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]">
-                            <button className="text-xs text-blue-500 hover:text-blue-600 transition-colors w-full text-center">
+                            <button
+                                onClick={() => {
+                                    setIsOpen(false);
+                                    navigate('/notifications');
+                                }}
+                                className="text-xs text-blue-500 hover:text-blue-600 transition-colors w-full text-center"
+                            >
                                 View all notifications
                             </button>
                         </div>

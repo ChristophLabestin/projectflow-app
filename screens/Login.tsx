@@ -59,7 +59,12 @@ export const Login = () => {
             if (isRegister) {
                 const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                 if (name) await updateProfile(userCredential.user, { displayName: name });
-                await bootstrapTenantForCurrentUser(getActiveTenantId() || undefined);
+                // CRITICAL FIX: Do NOT use getActiveTenantId() for new registrations
+                // unless it is explicitly an invite (handled by location state usually).
+                // Previously, this would grab a stale ID from localStorage (e.g. from a previous user)
+                // and add the NEW user to the OLD user's workspace.
+                const inviteTenant = (location.state as any)?.inviteTenantId;
+                await bootstrapTenantForCurrentUser(inviteTenant || undefined, true);
             } else {
                 await signInWithEmailAndPassword(auth, email, password);
                 await bootstrapTenantForCurrentUser();

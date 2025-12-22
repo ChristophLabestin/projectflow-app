@@ -12,6 +12,24 @@ export const toMillis = (value: any): number => {
     return 0;
 };
 
+export const toDate = (value: any): Date | null => {
+    if (!value) return null;
+    if (value instanceof Date) return value;
+    if (typeof value === 'number' || typeof value === 'string') {
+        const parsed = new Date(value);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    }
+    if (typeof value.toDate === 'function') {
+        const parsed = value.toDate();
+        return parsed instanceof Date ? parsed : null;
+    }
+    // Handle serialized Timestamp {seconds, nanoseconds}
+    if (value && typeof value.seconds === 'number') {
+        return new Date(value.seconds * 1000);
+    }
+    return null;
+};
+
 export const timeAgo = (timestamp?: any) => {
     if (!timestamp) return '';
     const diff = Math.abs(Date.now() - toMillis(timestamp));

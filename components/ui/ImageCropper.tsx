@@ -61,7 +61,7 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
             footer={
                 <>
                     <Button variant="ghost" onClick={onCancel}>Cancel</Button>
-                    <Button onClick={handleSave} loading={isProcessing}>Apply Crop</Button>
+                    <Button onClick={handleSave} isLoading={isProcessing}>Apply Crop</Button>
                 </>
             }
         >

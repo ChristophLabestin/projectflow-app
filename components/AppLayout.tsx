@@ -238,11 +238,14 @@ export const AppLayout = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center shrink-0">
                         {/* AI-Powered Search (Mobile/Desktop) */}
-                        <div className="hidden sm:block">
+                        <div className="hidden sm:block relative w-80 h-[42px] shrink-0">
                             <AISearchBar />
                         </div>
+
+                        {/* Spacer for Safari safe zone */}
+                        <div className="w-6 shrink-0" aria-hidden="true" />
 
                         {/* Notification Dropdown */}
                         <NotificationDropdown />
@@ -250,8 +253,8 @@ export const AppLayout = () => {
                 </header>
 
                 {/* Main Scroll Area */}
-                <main className="flex-1 overflow-y-auto w-full p-4 sm:p-6 lg:p-8">
-                    <div className="max-w-7xl mx-auto h-full">
+                <main className={`flex-1 overflow-y-auto w-full ${location.pathname === '/create' ? 'p-0 overflow-hidden' : 'p-4 sm:p-6 lg:p-8'}`}>
+                    <div className={`${location.pathname === '/create' ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}`}>
                         <Outlet context={{ setTaskTitle }} />
                     </div>
                 </main>

@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SearchResult } from '../types';
 import { searchProjectsAndTasks, answerQuestionWithContext, isQuestionQuery } from '../services/aiSearchService';
+import { useIsSafari } from '../hooks/useIsSafari';
 
 export const AISearchBar = () => {
+    const isSafari = useIsSafari();
     const [query, setQuery] = useState('');
     const [isOpen, setIsOpen] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
@@ -193,24 +195,54 @@ export const AISearchBar = () => {
     return (
         // Root container: Acts as an anchor with fixed width.
         // It reserves space in the layout but doesn't change size.
-        <div ref={searchRef} className="relative z-50 h-[42px] w-full sm:w-64">
+        <div ref={searchRef} className="relative z-50 h-[42px] w-full">
 
             {/* Search Input Container - Absolute Positioned */}
             {/* Anchored to the RIGHT. Expands to the LEFT. */}
             <div
                 onClick={() => inputRef.current?.focus()}
                 className={`
-                    absolute top-0 right-0
                     group flex items-center gap-3 rounded-full px-4 py-2.5 
                     transition-all duration-300 ease-out
                     bg-[var(--color-surface-bg)] 
                     border border-[var(--color-surface-border)]
-                    ${isFocused || isOpen
-                        ? 'w-full sm:w-96 ring-2 ring-indigo-500/20 border-indigo-500/50 shadow-lg shadow-indigo-500/10'
-                        : 'w-full sm:w-64'
+                    ${isSafari
+                        ? 'relative w-full'
+                        : `absolute top-0 right-0 h-full ${isFocused || isOpen ? 'w-96 shadow-lg shadow-indigo-500/10' : 'w-80 hover:border-indigo-500/30'}`
                     }
+                    ${(isFocused || isOpen) && isSafari ? 'border-transparent' : ''} 
+                    ${(isFocused || isOpen) && !isSafari ? 'border-transparent' : ''}
                 `}
             >
+                {/* SVG Animated Border */}
+                <svg
+                    className={`absolute inset-0 w-full h-full pointer-events-none rounded-full overflow-visible transition-opacity duration-500 ${isFocused || isOpen ? 'opacity-100' : 'opacity-0'}`}
+                >
+                    <defs>
+                        <linearGradient id="borderGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#6366f1" /> {/* Indigo-500 */}
+                            <stop offset="50%" stopColor="#a855f7" /> {/* Purple-500 */}
+                            <stop offset="100%" stopColor="#ec4899" /> {/* Pink-500 */}
+                        </linearGradient>
+                    </defs>
+                    <rect
+                        x="1" y="1"
+                        rx="20" ry="20"
+                        width="calc(100% - 2px)" height="calc(100% - 2px)"
+                        pathLength="1"
+                        fill="none"
+                        stroke="url(#borderGradient)"
+                        strokeWidth="2"
+                        strokeDasharray="1"
+                        strokeDashoffset={isFocused || isOpen ? '0' : '1'}
+                        className="transition-[stroke-dashoffset]"
+                        style={{
+                            strokeLinecap: 'round',
+                            transitionDuration: '1000ms',
+                            transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)'
+                        }}
+                    />
+                </svg>
                 {/* Search Icon */}
                 <span className={`
                     material-symbols-outlined text-[20px] transition-colors duration-300
@@ -262,179 +294,181 @@ export const AISearchBar = () => {
             </div>
 
             {/* Results Dropdown */}
-            {isOpen && (
-                <div
-                    className="absolute top-12 mt-1 right-0 w-full sm:w-[500px] max-h-[70vh] overflow-y-auto rounded-2xl shadow-2xl ring-1 ring-black/5 dark:ring-white/10 bg-[var(--color-surface-card)] animate-in fade-in slide-in-from-top-2 duration-200"
-                >
-                    {/* Ask AI Action Hint */}
-                    {query.trim() && !aiAnswer && !isAiLoading && (
-                        <div
-                            onClick={handleAiSearch}
-                            className={`
+            {
+                isOpen && (
+                    <div
+                        className="absolute top-12 mt-1 right-0 w-full sm:w-[500px] max-h-[70vh] overflow-y-auto rounded-2xl shadow-2xl ring-1 ring-black/5 dark:ring-white/10 bg-[var(--color-surface-card)] animate-in fade-in slide-in-from-top-2 duration-200"
+                    >
+                        {/* Ask AI Action Hint */}
+                        {query.trim() && !aiAnswer && !isAiLoading && (
+                            <div
+                                onClick={handleAiSearch}
+                                className={`
                                 mx-2 mt-2 px-3 py-3 rounded-xl cursor-pointer group transition-colors
                                 ${selectedIndex === -1 ? 'bg-indigo-50 dark:bg-indigo-500/10' : 'hover:bg-[var(--color-surface-hover)]'}
                             `}
-                        >
-                            <div className="flex items-center gap-3">
-                                <div className={`
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className={`
                                     p-2 rounded-lg bg-white dark:bg-indigo-500/20 shadow-sm transition-transform group-hover:scale-110
                                     ${isQuestion ? 'text-indigo-600 dark:text-indigo-400' : 'text-[var(--color-text-muted)]'}
                                 `}>
-                                    <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
+                                        <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
+                                    </div>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium text-[var(--color-text-main)]">
+                                            Ask AI: <span className="text-[var(--color-text-muted)] font-normal">"{query}"</span>
+                                        </p>
+                                        <p className="text-xs text-[var(--color-text-subtle)] mt-0.5">
+                                            Press <kbd className="font-sans font-semibold text-[var(--color-text-main)]">Enter</kbd> to generate answer
+                                        </p>
+                                    </div>
+                                    <span className="material-symbols-outlined text-[var(--color-text-subtle)] group-hover:text-indigo-500 transition-colors">
+                                        arrow_forward
+                                    </span>
                                 </div>
-                                <div className="flex-1">
-                                    <p className="text-sm font-medium text-[var(--color-text-main)]">
-                                        Ask AI: <span className="text-[var(--color-text-muted)] font-normal">"{query}"</span>
-                                    </p>
-                                    <p className="text-xs text-[var(--color-text-subtle)] mt-0.5">
-                                        Press <kbd className="font-sans font-semibold text-[var(--color-text-main)]">Enter</kbd> to generate answer
-                                    </p>
-                                </div>
-                                <span className="material-symbols-outlined text-[var(--color-text-subtle)] group-hover:text-indigo-500 transition-colors">
-                                    arrow_forward
-                                </span>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* AI Loading State */}
-                    {isAiLoading && (
-                        <div className="p-6 text-center border-b border-[var(--color-surface-border)]">
-                            <div className="inline-flex items-center gap-2 mb-2">
-                                <span className="material-symbols-outlined text-xl animate-spin text-indigo-500">spark mode</span>
-                                <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Thinking...</span>
-                            </div>
-                            <p className="text-xs text-[var(--color-text-subtle)]">Analyzing project data to answer your question</p>
-                        </div>
-                    )}
-
-                    {/* AI Error */}
-                    {error && (
-                        <div className="p-4 mx-2 mt-2 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-xl">
-                            <div className="flex items-start gap-3">
-                                <span className="material-symbols-outlined text-red-500 text-[20px]">error</span>
-                                <div className="flex-1">
-                                    <p className="text-sm font-medium text-red-700 dark:text-red-400">Couldn't generate answer</p>
-                                    <p className="text-xs text-red-600 dark:text-red-400/80 mt-1">{error}</p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* AI Answer Result */}
-                    {aiAnswer && (
-                        <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/10 border-b border-[var(--color-surface-border)]">
-                            <div className="flex items-center gap-2 mb-3">
-                                <span className="material-symbols-outlined text-[18px] text-indigo-500">auto_awesome</span>
-                                <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">AI Insight</span>
-                            </div>
-                            <div className="prose prose-sm dark:prose-invert max-w-none">
-                                <p className="text-sm text-[var(--color-text-main)] leading-relaxed whitespace-pre-wrap">{aiAnswer}</p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Results Sections */}
-                    <div className="py-2">
-                        {/* Empty Local Results State */}
-                        {!isLoading && results.length === 0 && query.trim() && !aiAnswer && !isAiLoading && (
-                            <div className="px-4 py-8 text-center text-[var(--color-text-muted)]">
-                                <span className="material-symbols-outlined text-4xl mb-2 opacity-50">search_off</span>
-                                <p className="text-sm">No tasks or projects found matching "{query}"</p>
                             </div>
                         )}
 
-                        {/* Projects */}
-                        {projectResults.length > 0 && (
-                            <div className="mb-2">
-                                <div className="px-4 py-1.5">
-                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Projects</span>
+                        {/* AI Loading State */}
+                        {isAiLoading && (
+                            <div className="p-6 text-center border-b border-[var(--color-surface-border)]">
+                                <div className="inline-flex items-center gap-2 mb-2">
+                                    <span className="material-symbols-outlined text-xl animate-spin text-indigo-500">spark mode</span>
+                                    <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Thinking...</span>
                                 </div>
-                                {projectResults.map((result, index) => {
-                                    const isSelected = index === selectedIndex && results[index].type === 'project';
-                                    // Note: selectedIndex indexes into the unified `results` array, not just projectResults.
-                                    // We need to find the actual index in `results`.
-                                    const actualIndex = results.indexOf(result);
+                                <p className="text-xs text-[var(--color-text-subtle)]">Analyzing project data to answer your question</p>
+                            </div>
+                        )}
 
-                                    return (
-                                        <button
-                                            key={result.id}
-                                            onClick={() => handleSelectResult(result)}
-                                            onMouseEnter={() => setSelectedIndex(actualIndex)}
-                                            className={`
+                        {/* AI Error */}
+                        {error && (
+                            <div className="p-4 mx-2 mt-2 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-xl">
+                                <div className="flex items-start gap-3">
+                                    <span className="material-symbols-outlined text-red-500 text-[20px]">error</span>
+                                    <div className="flex-1">
+                                        <p className="text-sm font-medium text-red-700 dark:text-red-400">Couldn't generate answer</p>
+                                        <p className="text-xs text-red-600 dark:text-red-400/80 mt-1">{error}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* AI Answer Result */}
+                        {aiAnswer && (
+                            <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/10 border-b border-[var(--color-surface-border)]">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <span className="material-symbols-outlined text-[18px] text-indigo-500">auto_awesome</span>
+                                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">AI Insight</span>
+                                </div>
+                                <div className="prose prose-sm dark:prose-invert max-w-none">
+                                    <p className="text-sm text-[var(--color-text-main)] leading-relaxed whitespace-pre-wrap">{aiAnswer}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Results Sections */}
+                        <div className="py-2">
+                            {/* Empty Local Results State */}
+                            {!isLoading && results.length === 0 && query.trim() && !aiAnswer && !isAiLoading && (
+                                <div className="px-4 py-8 text-center text-[var(--color-text-muted)]">
+                                    <span className="material-symbols-outlined text-4xl mb-2 opacity-50">search_off</span>
+                                    <p className="text-sm">No tasks or projects found matching "{query}"</p>
+                                </div>
+                            )}
+
+                            {/* Projects */}
+                            {projectResults.length > 0 && (
+                                <div className="mb-2">
+                                    <div className="px-4 py-1.5">
+                                        <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Projects</span>
+                                    </div>
+                                    {projectResults.map((result, index) => {
+                                        const isSelected = index === selectedIndex && results[index].type === 'project';
+                                        // Note: selectedIndex indexes into the unified `results` array, not just projectResults.
+                                        // We need to find the actual index in `results`.
+                                        const actualIndex = results.indexOf(result);
+
+                                        return (
+                                            <button
+                                                key={result.id}
+                                                onClick={() => handleSelectResult(result)}
+                                                onMouseEnter={() => setSelectedIndex(actualIndex)}
+                                                className={`
                                                 w-full text-left px-4 py-2 flex items-center gap-3 transition-colors
                                                 ${selectedIndex === actualIndex ? 'bg-[var(--color-surface-hover)] border-l-2 border-indigo-500' : 'border-l-2 border-transparent'}
                                             `}
-                                        >
-                                            <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 shrink-0">
-                                                <span className="material-symbols-outlined text-[18px]">folder</span>
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-[var(--color-text-main)] truncate">{result.title}</p>
-                                                {result.description && (
-                                                    <p className="text-xs text-[var(--color-text-muted)] truncate">{result.description}</p>
-                                                )}
-                                            </div>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-
-                        {/* Tasks */}
-                        {taskResults.length > 0 && (
-                            <div>
-                                <div className="px-4 py-1.5 border-t border-[var(--color-surface-border)] mt-1 pt-3">
-                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Tasks</span>
+                                            >
+                                                <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 shrink-0">
+                                                    <span className="material-symbols-outlined text-[18px]">folder</span>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium text-[var(--color-text-main)] truncate">{result.title}</p>
+                                                    {result.description && (
+                                                        <p className="text-xs text-[var(--color-text-muted)] truncate">{result.description}</p>
+                                                    )}
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
-                                {taskResults.map((result, index) => {
-                                    const actualIndex = results.indexOf(result);
+                            )}
 
-                                    return (
-                                        <button
-                                            key={result.id}
-                                            onClick={() => handleSelectResult(result)}
-                                            onMouseEnter={() => setSelectedIndex(actualIndex)}
-                                            className={`
+                            {/* Tasks */}
+                            {taskResults.length > 0 && (
+                                <div>
+                                    <div className="px-4 py-1.5 border-t border-[var(--color-surface-border)] mt-1 pt-3">
+                                        <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Tasks</span>
+                                    </div>
+                                    {taskResults.map((result, index) => {
+                                        const actualIndex = results.indexOf(result);
+
+                                        return (
+                                            <button
+                                                key={result.id}
+                                                onClick={() => handleSelectResult(result)}
+                                                onMouseEnter={() => setSelectedIndex(actualIndex)}
+                                                className={`
                                                 w-full text-left px-4 py-2 flex items-center gap-3 transition-colors
                                                 ${selectedIndex === actualIndex ? 'bg-[var(--color-surface-hover)] border-l-2 border-emerald-500' : 'border-l-2 border-transparent'}
                                             `}
-                                        >
-                                            <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0">
-                                                <span className="material-symbols-outlined text-[18px]">task_alt</span>
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-[var(--color-text-main)] truncate">{result.title}</p>
-                                                <p className="text-xs text-[var(--color-text-muted)] truncate">
-                                                    in <span className="text-[var(--color-text-main)]">{result.projectTitle}</span>
-                                                </p>
-                                            </div>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </div>
+                                            >
+                                                <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0">
+                                                    <span className="material-symbols-outlined text-[18px]">task_alt</span>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium text-[var(--color-text-main)] truncate">{result.title}</p>
+                                                    <p className="text-xs text-[var(--color-text-muted)] truncate">
+                                                        in <span className="text-[var(--color-text-main)]">{result.projectTitle}</span>
+                                                    </p>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
 
-                    {/* Footer Actions */}
-                    <div className="px-3 py-2 bg-[var(--color-surface-bg-offset)] border-t border-[var(--color-surface-border)] flex items-center justify-between">
-                        <div className="flex gap-3">
-                            <div className="flex items-center gap-1.5">
-                                <kbd className="h-5 px-1.5 rounded bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] text-[10px] text-[var(--color-text-muted)] font-sans">↑↓</kbd>
-                                <span className="text-[10px] text-[var(--color-text-muted)]">Navigate</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <kbd className="h-5 px-1.5 rounded bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] text-[10px] text-[var(--color-text-muted)] font-sans">Enter</kbd>
-                                <span className="text-[10px] text-[var(--color-text-muted)]">Select / Ask AI</span>
-                            </div>
-                            <div className="flex items-center gap-1.5">
-                                <kbd className="h-5 px-1.5 rounded bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] text-[10px] text-[var(--color-text-muted)] font-sans">Esc</kbd>
-                                <span className="text-[10px] text-[var(--color-text-muted)]">Close</span>
+                        {/* Footer Actions */}
+                        <div className="px-3 py-2 bg-[var(--color-surface-bg-offset)] border-t border-[var(--color-surface-border)] flex items-center justify-between">
+                            <div className="flex gap-3">
+                                <div className="flex items-center gap-1.5">
+                                    <kbd className="h-5 px-1.5 rounded bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] text-[10px] text-[var(--color-text-muted)] font-sans">↑↓</kbd>
+                                    <span className="text-[10px] text-[var(--color-text-muted)]">Navigate</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <kbd className="h-5 px-1.5 rounded bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] text-[10px] text-[var(--color-text-muted)] font-sans">Enter</kbd>
+                                    <span className="text-[10px] text-[var(--color-text-muted)]">Select / Ask AI</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <kbd className="h-5 px-1.5 rounded bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] text-[10px] text-[var(--color-text-muted)] font-sans">Esc</kbd>
+                                    <span className="text-[10px] text-[var(--color-text-muted)]">Close</span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     );
 };

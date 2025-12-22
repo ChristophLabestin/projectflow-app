@@ -47,7 +47,9 @@ export const useWorkspacePermissions = () => {
         return WORKSPACE_CAPABILITIES[role];
     }, [role]);
 
-    const can = (capability: keyof WorkspacePermissions) => capabilities[capability];
+    const can = (capability: keyof WorkspacePermissions) => {
+        return capabilities ? capabilities[capability] : false;
+    };
 
     const isOwner = role === 'Owner';
     const isAdmin = role === 'Admin';

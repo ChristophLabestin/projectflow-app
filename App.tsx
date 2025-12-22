@@ -9,8 +9,7 @@ import { Dashboard } from './screens/Dashboard';
 import { ProjectsList } from './screens/ProjectsList';
 import { Tasks } from './screens/Tasks';
 import { Brainstorming } from './screens/Brainstorming';
-import { CreateProjectSelect } from './screens/CreateProjectSelect';
-import { CreateProjectForm } from './screens/CreateProjectForm';
+import { CreateProjectWizard } from './screens/CreateProjectWizard';
 import { ProjectOverview } from './screens/ProjectOverview';
 import { ProjectTasks } from './screens/ProjectTasks';
 import { ProjectDetails } from './screens/ProjectDetails';
@@ -20,6 +19,7 @@ import { ProjectActivity } from './screens/ProjectActivity';
 import { ProjectIdeas } from './screens/ProjectIdeas';
 import { ProjectIssues } from './screens/ProjectIssues';
 import { ProjectMindmap } from './screens/ProjectMindmap';
+import { ProjectMilestones } from './screens/ProjectMilestones';
 import { Login } from './screens/Login';
 import { Calendar } from './screens/Calendar';
 import { Team } from './screens/Team';
@@ -29,6 +29,7 @@ import { JoinProjectViaLink } from './screens/JoinProjectViaLink';
 import { JoinWorkspaceViaLink } from './screens/JoinWorkspaceViaLink';
 import { Profile } from './screens/Profile';
 import { Settings } from './screens/Settings';
+import { Notifications } from './screens/Notifications';
 import { auth } from './services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -111,12 +112,13 @@ const App = () => {
                         <Route element={user ? <RequireAuth><AppLayout /></RequireAuth> : <Navigate to="/login" replace />}>
                             {/* Global Routes */}
                             <Route path="/" element={<Dashboard />} />
+                            <Route path="/notifications" element={<Notifications />} />
                             <Route path="/projects" element={<ProjectsList />} />
                             <Route path="/tasks" element={<Tasks />} />
                             <Route path="/calendar" element={<Calendar />} />
                             <Route path="/brainstorm" element={<Brainstorming />} />
-                            <Route path="/create" element={<CreateProjectSelect />} />
-                            <Route path="/create/form" element={<CreateProjectForm />} />
+                            <Route path="/create" element={<CreateProjectWizard />} />
+                            {/* <Route path="/create/form" element={<CreateProjectForm />} /> Deprecated */}
                             <Route path="/team" element={<Team />} />
                             <Route path="/profile" element={<Profile />} />
                             <Route path="/settings" element={<Settings />} />
@@ -132,6 +134,7 @@ const App = () => {
                                 <Route path="issues" element={<ProjectIssues />} />
                                 <Route path="issues/:issueId" element={<ProjectIssueDetail />} />
                                 <Route path="mindmap" element={<ProjectMindmap />} />
+                                <Route path="milestones" element={<ProjectMilestones />} />
                             </Route>
                         </Route>
 

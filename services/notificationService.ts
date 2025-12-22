@@ -9,7 +9,9 @@ import {
     doc,
     serverTimestamp,
     writeBatch,
-    getDocs
+    writeBatch,
+    getDocs,
+    deleteDoc
 } from 'firebase/firestore';
 import { db, auth } from './firebase';
 import { Notification, NotificationType } from '../types';
@@ -110,6 +112,42 @@ export const markAllNotificationsAsRead = async (userId: string): Promise<void> 
         await batch.commit();
     } catch (error) {
         console.error('Failed to mark all notifications as read:', error);
+    }
+};
+
+/**
+ * Delete a single notification
+ */
+export const deleteNotification = async (notificationId: string): Promise<void> => {
+    try {
+        await deleteDoc(doc(db, NOTIFICATIONS, notificationId));
+    } catch (error) {
+        console.error('Failed to delete notification:', error);
+        throw error;
+    }
+};
+
+/**
+ * Delete all notifications for a user
+ */
+export const deleteAllNotifications = async (userId: string): Promise<void> => {
+    try {
+        const q = query(
+            collection(db, NOTIFICATIONS),
+            where('userId', '==', userId)
+        );
+
+        const snapshot = await getDocs(q);
+        const batch = writeBatch(db);
+
+        snapshot.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+    } catch (error) {
+        console.error('Failed to delete all notifications:', error);
+        throw error;
     }
 };
 

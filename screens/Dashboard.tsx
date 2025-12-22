@@ -3,26 +3,14 @@ import { Link } from 'react-router-dom';
 import { auth } from '../services/firebase';
 import { getUserProjects, getSharedProjects, getUserTasks, getUserIdeas, getUserIssues, saveIdea, getUserGlobalActivities, getUserProfile, updateUserData, getProjectMembers } from '../services/dataService';
 import { Project, Task, Idea, Issue, Activity, Member } from '../types';
-import { toMillis } from '../utils/time';
+import { toMillis, toDate } from '../utils/time';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Sparkline } from '../components/charts/Sparkline';
 import { DonutChart } from '../components/charts/DonutChart';
+import { ScheduledTasksCard } from '../components/dashboard/ScheduledTasksCard';
 
-const toDate = (value: any): Date | null => {
-    if (!value) return null;
-    if (value instanceof Date) return value;
-    if (typeof value === 'number' || typeof value === 'string') {
-        const parsed = new Date(value);
-        return Number.isNaN(parsed.getTime()) ? null : parsed;
-    }
-    if (typeof value.toDate === 'function') {
-        const parsed = value.toDate();
-        return parsed instanceof Date ? parsed : null;
-    }
-    return null;
-};
 
 const formatShortDate = (date: any) => {
     const d = toDate(date);
@@ -36,8 +24,10 @@ const MemberAvatars: React.FC<{ projectId: string }> = ({ projectId }) => {
     useEffect(() => {
         const fetchMembers = async () => {
             try {
-                const projectMembers = await getProjectMembers(projectId);
-                setMembers(projectMembers);
+                const memberIds = await getProjectMembers(projectId);
+                const memberPromises = memberIds.map(id => getUserProfile(id));
+                const memberProfiles = await Promise.all(memberPromises);
+                setMembers(memberProfiles.filter((m): m is Member => !!m));
             } catch (err) {
                 console.error("Failed to fetch project members", err);
             }
@@ -51,7 +41,7 @@ const MemberAvatars: React.FC<{ projectId: string }> = ({ projectId }) => {
         <div className="flex items-center -space-x-2">
             {members.slice(0, 3).map((member, i) => (
                 <div
-                    key={member.id}
+                    key={member.uid || i}
                     className="size-7 rounded-full border-2 border-[var(--color-surface-paper)] overflow-hidden bg-[var(--color-surface-hover)] shadow-sm"
                     title={member.displayName || 'Member'}
                 >
@@ -953,8 +943,8 @@ export const Dashboard = () => {
                         </div>
 
                         <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map(d => (
-                                <div key={d} className="text-[10px] font-semibold text-[var(--color-text-subtle)] uppercase">{d}</div>
+                            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
+                                <div key={`${d}-${i}`} className="text-[10px] font-semibold text-[var(--color-text-subtle)] uppercase">{d}</div>
                             ))}
                         </div>
                         <div className="grid grid-cols-7 gap-1 text-center">
@@ -1020,6 +1010,8 @@ export const Dashboard = () => {
                             </button>
                         </div>
                     </Card>
+
+                    <ScheduledTasksCard tasks={tasks} issues={issues} />
 
                     {/* 2. Enhanced Live Activity (Hybrid Data) */}
                     <Card padding="none" className="max-h-[400px] flex flex-col">

@@ -10,7 +10,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
-import { getProjectMembers, subscribeProjectTasks } from '../services/dataService';
+import { getProjectMembers, subscribeProjectTasks, getUserProfile } from '../services/dataService';
 
 const MemberAvatars: React.FC<{ projectId: string }> = ({ projectId }) => {
     const [members, setMembers] = useState<Member[]>([]);
@@ -18,8 +18,10 @@ const MemberAvatars: React.FC<{ projectId: string }> = ({ projectId }) => {
     useEffect(() => {
         const fetchMembers = async () => {
             try {
-                const projectMembers = await getProjectMembers(projectId);
-                setMembers(projectMembers);
+                const memberIds = await getProjectMembers(projectId);
+                const memberPromises = memberIds.map(id => getUserProfile(id));
+                const memberProfiles = await Promise.all(memberPromises);
+                setMembers(memberProfiles.filter((m): m is Member => !!m));
             } catch (err) {
                 console.error("Failed to fetch project members", err);
             }
@@ -33,7 +35,7 @@ const MemberAvatars: React.FC<{ projectId: string }> = ({ projectId }) => {
         <div className="flex items-center -space-x-2">
             {members.slice(0, 3).map((member, i) => (
                 <div
-                    key={member.id}
+                    key={member.uid || i}
                     className="size-7 rounded-full border-2 border-[var(--color-surface-paper)] overflow-hidden bg-[var(--color-surface-hover)] shadow-sm"
                     title={member.displayName || 'Member'}
                 >

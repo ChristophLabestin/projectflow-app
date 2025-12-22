@@ -347,10 +347,10 @@ export const ProjectTaskDetail = () => {
                                 )}
 
                                 {task.scheduledDate && (
-                                    <div className="flex items-center gap-2.5 px-4 py-2 bg-[var(--color-primary)]/5 rounded-xl border border-[var(--color-primary)]/10">
-                                        <span className="material-symbols-outlined text-[20px] text-[var(--color-primary)]">event_available</span>
+                                    <div className="flex items-center gap-2.5 px-4 py-2 bg-[var(--color-surface-hover)] rounded-xl border border-[var(--color-surface-border)]">
+                                        <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">event_available</span>
                                         <div className="flex flex-col">
-                                            <span className="text-[10px] leading-none uppercase font-bold text-[var(--color-primary)] mb-0.5">Smart Scheduled</span>
+                                            <span className="text-[10px] leading-none uppercase font-bold text-[var(--color-text-subtle)] mb-0.5">Smart Scheduled</span>
                                             <span className="text-[var(--color-text-main)] font-semibold">
                                                 {new Date(task.scheduledDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                                             </span>

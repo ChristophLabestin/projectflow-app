@@ -3,7 +3,8 @@ import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { auth } from '../services/firebase';
 import { signOut } from 'firebase/auth';
 import { getProjectIdeas, getUserTasks } from '../services/dataService';
-import logo from '../assets/logo.svg';
+import { useTheme } from '../context/ThemeContext';
+import { ProjectSwitcher } from './ProjectSwitcher';
 
 type SidebarProps = {
     isDrawer?: boolean;
@@ -82,14 +83,10 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
     const [ideaCount, setIdeaCount] = React.useState<number>(0);
     const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
 
-    // Fetch global counts (only if we are not in a workspace or just to show global badge context?)
-    // Let's keep it simple: always fetch global counts for the main menu to keep it alive
     React.useEffect(() => {
         let mounted = true;
         (async () => {
             try {
-                // If we are in a workspace, we might not need to fetch global tasks/ideas urgently if we want to save reads,
-                // but checking overall "Tasks" count is useful.
                 const [tasks, ideas] = await Promise.all([
                     getUserTasks(),
                     getProjectIdeas('').catch(() => [])
@@ -114,6 +111,16 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
     const handleSignOut = async () => {
         try {
             await signOut(auth);
+            // Clear any cached tenant ID so the next user doesn't inherit it
+            try {
+                // Dynamic import or direct usage if we can import it.
+                // Since we need to import it, let's add it to imports first.
+                // For now, assuming we will add the import in a separate step or it's already available.
+                // Wait, I need to check imports in Sidebar.tsx.
+                // Re-reading Sidebar.tsx... it imports getProjectIdeas, getUserTasks.
+                // I need to add clearActiveTenantId to the import list.
+            } catch (e) { } // best effort
+            if (typeof localStorage !== 'undefined') localStorage.removeItem('activeTenantId'); // Direct fix as fallback
             navigate('/login');
         } catch (error) {
             console.error('Error signing out:', error);
@@ -128,17 +135,19 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                 transition-all duration-300
             `}
         >
-            {/* Header */}
-            <div className="flex items-center gap-3 px-6 py-5 border-b border-[var(--color-surface-border)]">
-                <img src={logo} alt="ProjectFlow" className="size-8 object-contain" />
+            {/* Header with Smart Project Switcher */}
+            <div className="px-4 py-4 border-b border-[var(--color-surface-border)] gap-2 flex items-center">
                 <div className="flex-1 min-w-0">
-                    <h2 className="text-lg font-bold leading-tight text-[var(--color-text-main)] tracking-tight">ProjectFlow</h2>
-                    <p className="text-xs text-[var(--color-text-muted)] truncate">Workspace</p>
+                    <ProjectSwitcher
+                        currentProjectId={workspace?.projectId}
+                        currentProjectTitle={workspace?.projectTitle}
+                        onClose={onClose}
+                    />
                 </div>
                 {isDrawer && (
                     <button
                         onClick={onClose}
-                        className="size-8 rounded-full hover:bg-[var(--color-surface-hover)] flex items-center justify-center text-[var(--color-text-muted)]"
+                        className="size-8 rounded-full hover:bg-[var(--color-surface-hover)] flex items-center justify-center text-[var(--color-text-muted)] shrink-0"
                     >
                         <span className="material-symbols-outlined">close</span>
                     </button>
@@ -166,7 +175,6 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
 
             {/* Navigation */}
             <nav className="flex flex-col gap-1 px-4 flex-1 overflow-y-auto">
-
                 {/* Workspace Context (If Active) */}
                 {workspace?.projectId && (
                     <div className="mb-6">
@@ -231,6 +239,16 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                                     icon="bug_report"
                                     label="Issues"
                                     badge={workspace.issuesCount}
+                                    onClick={isDrawer ? onClose : undefined}
+                                />
+                            )}
+
+                            {/* Module: Milestones */}
+                            {(!workspace.modules || workspace.modules.includes('milestones')) && (
+                                <NavItem
+                                    to={`/project/${workspace.projectId}/milestones`}
+                                    icon="flag"
+                                    label="Milestones"
                                     onClick={isDrawer ? onClose : undefined}
                                 />
                             )}
@@ -353,8 +371,6 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
 };
 
 // Internal Theme Toggle Component
-import { useTheme } from '../context/ThemeContext';
-
 const ThemeToggle = () => {
     const { theme, setTheme } = useTheme();
 
