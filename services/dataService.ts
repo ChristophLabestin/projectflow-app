@@ -26,7 +26,7 @@ import {
 import { updateProfile, linkWithPopup } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, auth, GithubAuthProvider, FacebookAuthProvider } from "./firebase";
-import type { Task, Idea, Activity, Project, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration } from '../types';
+import type { Task, Idea, Activity, Project, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, EmailComponent, GeminiReport, Milestone, AIUsage, Member, MarketingCampaign, AdCampaign, EmailCampaign } from '../types';
 import { toMillis } from "../utils/time";
 import {
     notifyTaskAssignment,
@@ -596,6 +596,94 @@ export const getLatestGeminiReport = async (projectId: string, tenantId?: string
         id: snap.docs[0].id,
         ...data
     } as GeminiReport;
+};
+
+// --- Email Components (Reusable Blocks) ---
+
+export const EMAIL_COMPONENTS = "email_components";
+
+export const saveEmailComponent = async (projectId: string, name: string, block: EmailBlock, tenantId?: string) => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+    const resolvedTenant = resolveTenantId(tenantId);
+
+    // Clean block ID to ensure uniqueness on drag-out? No, we store the template structure.
+    // When using it, we should regenerate IDs.
+
+    await addDoc(projectSubCollection(resolvedTenant, projectId, EMAIL_COMPONENTS), {
+        projectId,
+        name,
+        block, // Stores the entire JSON structure of the block (and children if recursive)
+        createdBy: user.uid,
+        createdAt: serverTimestamp()
+    });
+};
+
+export const getEmailComponents = async (projectId: string, tenantId?: string): Promise<EmailComponent[]> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const q = query(
+        projectSubCollection(resolvedTenant, projectId, EMAIL_COMPONENTS),
+        orderBy("createdAt", "desc")
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+    } as EmailComponent));
+};
+
+export const deleteEmailComponent = async (projectId: string, componentId: string, tenantId?: string) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    await deleteDoc(doc(projectSubCollection(resolvedTenant, projectId, EMAIL_COMPONENTS), componentId));
+};
+
+
+// --- Email Templates (Main Drafts/Templates) ---
+
+export const EMAIL_TEMPLATES = "email_templates";
+
+export const saveEmailTemplateDraft = async (projectId: string, blocks: EmailBlock[], variables: TemplateVariable[], tenantId?: string, name?: string) => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+    const resolvedTenant = resolveTenantId(tenantId);
+
+    // We store only one "latest draft" for now per project/user context
+    // or we can store a list and pick the latest.
+    // The user asked to "load the last opened template".
+
+    await addDoc(projectSubCollection(resolvedTenant, projectId, EMAIL_TEMPLATES), {
+        projectId,
+        name: name || 'Unnamed Template',
+        blocks,
+        variables,
+        status: 'draft',
+        createdBy: user.uid,
+        updatedAt: serverTimestamp(),
+        createdAt: serverTimestamp()
+    });
+};
+
+export const getLatestEmailTemplateDraft = async (projectId: string, tenantId?: string): Promise<EmailTemplate | null> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const q = query(
+        projectSubCollection(resolvedTenant, projectId, EMAIL_TEMPLATES),
+        orderBy("updatedAt", "desc"),
+        limit(1)
+    );
+    const snap = await getDocs(q);
+    if (snap.empty) return null;
+    return { id: snap.docs[0].id, ...snap.docs[0].data() } as EmailTemplate;
+};
+
+export const getEmailTemplateDrafts = async (projectId: string, tenantId?: string): Promise<EmailTemplate[]> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const q = query(
+        projectSubCollection(resolvedTenant, projectId, EMAIL_TEMPLATES),
+        orderBy("updatedAt", "desc"),
+        limit(25)
+    );
+    const snap = await getDocs(q);
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as EmailTemplate));
 };
 
 // Helper to extract tenant ID from a Document Reference path

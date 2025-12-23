@@ -38,6 +38,11 @@ import { SocialCalendar } from './screens/social/SocialCalendar';
 import { SocialSettings } from './screens/social/SocialSettings';
 import { SocialAssets } from './screens/social/SocialAssets';
 import { CreateSocialPost } from './screens/social/CreateSocialPost';
+import { MarketingLayout } from './screens/marketing/MarketingLayout';
+import { MarketingDashboard } from './screens/marketing/MarketingDashboard';
+import { PaidAdsList } from './screens/marketing/PaidAdsList';
+import { EmailMarketingList } from './screens/marketing/EmailMarketingList';
+import { EmailBuilderPage } from './screens/marketing/EmailBuilderPage';
 import { auth } from './services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
@@ -153,6 +158,14 @@ const App = () => {
                                 </Route>
                                 <Route path="social/create" element={<CreateSocialPost />} />
                                 <Route path="social/edit/:postId" element={<CreateSocialPost />} />
+
+                                {/* Marketing Module */}
+                                <Route path="marketing" element={<MarketingLayout />}>
+                                    <Route index element={<MarketingDashboard />} />
+                                    <Route path="ads" element={<PaidAdsList />} />
+                                    <Route path="email" element={<EmailMarketingList />} />
+                                    <Route path="email/builder" element={<EmailBuilderPage />} />
+                                </Route>
                             </Route>
                         </Route>
 

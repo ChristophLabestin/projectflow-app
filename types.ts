@@ -118,7 +118,7 @@ export interface Comment {
     createdAt: any;
 }
 
-export type ProjectModule = 'tasks' | 'ideas' | 'mindmap' | 'activity' | 'issues' | 'milestones' | 'social';
+export type ProjectModule = 'tasks' | 'ideas' | 'mindmap' | 'activity' | 'issues' | 'milestones' | 'social' | 'marketing';
 
 export interface Task {
     id: string;
@@ -423,4 +423,185 @@ export interface SocialPost {
     // Publishing Metadata
     externalId?: string; // ID from the platform (e.g. IG Media ID)
     error?: string; // Last error message if failed
+}
+
+// --- Online Marketing Module Types ---
+
+export type MarketingStrategyStatus = 'Planning' | 'Active' | 'Completed' | 'Paused';
+export type MarketingChannel = 'Google Ads' | 'Meta Ads' | 'LinkedIn Ads' | 'Email' | 'SEO' | 'Content';
+
+export interface MarketingCampaign {
+    id: string;
+    projectId: string;
+    name: string;
+    description?: string;
+    status: MarketingStrategyStatus;
+    startDate?: string;
+    endDate?: string;
+    budgetTotal?: number;
+    budgetSpent?: number;
+    channels: MarketingChannel[];
+    ownerId: string;
+    createdAt: any;
+}
+
+// Paid Ads
+export interface AdCampaign {
+    id: string;
+    projectId: string;
+    marketingCampaignId?: string;
+    platform: 'Google' | 'Meta' | 'LinkedIn' | 'Other';
+    name: string;
+    status: 'Enabled' | 'Paused' | 'Ended';
+    budgetDaily?: number;
+    budgetTotal?: number;
+    spend: number;
+    objective: 'Traffic' | 'Leads' | 'Sales' | 'Brand Awareness';
+    metrics: {
+        impressions: number;
+        clicks: number;
+        ctr: number;
+        cpc: number;
+        conversions: number;
+        costPerConversion: number;
+        roas: number;
+    };
+    startDate: string;
+    endDate?: string;
+}
+
+export interface AdGroup {
+    id: string;
+    adCampaignId: string;
+    name: string;
+    status: 'Enabled' | 'Paused';
+    keywords?: string[];
+    targeting?: string;
+}
+
+export interface AdCreative {
+    id: string;
+    adGroupId: string;
+    headline: string;
+    description: string;
+    assetUrl?: string;
+    previewUrl?: string;
+    format: 'Text' | 'Image' | 'Video' | 'Carousel';
+    status: 'Active' | 'Disapproved' | 'Paused';
+}
+
+// Email Marketing
+export interface EmailCampaign {
+    id: string;
+    projectId: string;
+    marketingCampaignId?: string;
+    name: string;
+    subject: string;
+    preheader?: string;
+    senderName: string;
+    contentHtml?: string;
+    audienceId?: string;
+    status: 'Draft' | 'Scheduled' | 'Sent';
+    scheduledAt?: string;
+    sentAt?: string;
+    stats: {
+        sent: number;
+        opened: number;
+        clicked: number;
+        bounced: number;
+        unsubscribed: number;
+    };
+}
+
+export interface MarketingAudience {
+    id: string;
+    projectId: string;
+    name: string;
+    count: number;
+    filters?: string;
+    source: 'Import' | 'Signups' | 'CRM';
+}
+
+// Strategy
+export interface MarketingFunnelMetric {
+    stage: 'Awareness' | 'Interest' | 'Consideration' | 'Conversion' | 'Retention';
+    value: number;
+// --- Email Builder Types ---
+
+// --- Email Builder Types ---
+
+export type EmailBlockType = 'text' | 'image' | 'button' | 'spacer' | 'divider' | 'social' | 'video' | 'columns' | 'header' | 'list' | 'quote' | 'html' | 'menu' | 'flex' | 'solid' | 'div';
+
+export interface EmailBlockStyle {
+    paddingTop?: number;
+    paddingBottom?: number;
+    paddingLeft?: number;
+    paddingRight?: number;
+    backgroundColor?: string;
+    color?: string;
+    fontSize?: number;
+    fontWeight?: string;
+    textAlign?: 'left' | 'center' | 'right';
+    borderRadius?: number;
+    borderWidth?: number;
+    borderColor?: string;
+    borderStyle?: 'none' | 'solid' | 'dashed' | 'dotted';
+    gap?: number; // For columns gap
+    width?: string; // e.g. '100%' or 'auto'
+    height?: number;
+    fontFamily?: string;
+    // Flex Container Styles
+    flexDirection?: 'row' | 'column' | 'row-reverse' | 'column-reverse';
+    flexWrap?: 'nowrap' | 'wrap' | 'wrap-reverse';
+    justifyContent?: 'flex-start' | 'flex-end' | 'center' | 'space-between' | 'space-around' | 'space-evenly';
+    alignItems?: 'flex-start' | 'flex-end' | 'center' | 'stretch' | 'baseline';
+    gridSpan?: number;
+}
+
+export interface EmailBlock {
+    id: string;
+    type: EmailBlockType;
+    name?: string; // Custom user-defined name
+    content: {
+        text?: string; // For text/button
+        src?: string; // For image/video thumbnail
+        alt?: string; // For image
+        url?: string; // For button/image/video link
+        width?: string; // specialized width
+        columns?: EmailBlock[][]; // For 'columns' type: Array of arrays of blocks
+        socialLinks?: { platform: 'twitter' | 'facebook' | 'linkedin' | 'instagram'; url: string }[]; // For 'social' type
+        menuLinks?: { label: string; url: string }[]; // For 'menu' type
+        videoUrl?: string; // For 'video' type: YouTube/Vimeo URL
+        children?: EmailBlock[]; // For 'flex' type: Flat list of children
+    };
+    styles: EmailBlockStyle;
+}
+export interface TemplateVariable {
+    id: string;
+    name: string;
+    label: string;
+    defaultValue?: string;
+    type: 'text' | 'date' | 'number' | 'url';
+}
+
+export interface EmailTemplate {
+    id: string;
+    projectId: string;
+    name: string;
+    blocks: EmailBlock[];
+    status: 'draft' | 'published';
+    thumbnail?: string;
+    createdAt: any;
+    updatedAt: any;
+    lastAutoSaved?: any;
+    variables?: TemplateVariable[];
+}
+
+export interface EmailComponent {
+    id: string;
+    projectId: string;
+    name: string;
+    block: EmailBlock;
+    createdAt: any;
+    createdBy: string;
 }

@@ -159,6 +159,16 @@ html.dark .dotted-bg {
 }
 
 /* --- Global Reset for Inputs --- */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
+
 input:focus,
 input:focus-visible,
 select:focus,

@@ -396,6 +396,7 @@ export const CreateProjectWizard = () => {
                                         { id: 'ideas', label: 'Ideas', desc: 'Brainstorming', icon: 'lightbulb' },
                                         { id: 'milestones', label: 'Milestones', desc: 'Key deadlines', icon: 'flag' },
                                         { id: 'social', label: 'Social', desc: 'Campaign Manager', icon: 'campaign' },
+                                        { id: 'marketing', label: 'Marketing', desc: 'Ads & Email', icon: 'ads_click' },
                                         { id: 'mindmap', label: 'Mind Map', desc: 'Visual structures', icon: 'account_tree' },
                                         { id: 'activity', label: 'Activity', desc: 'Change log', icon: 'history' },
                                     ].map(m => {

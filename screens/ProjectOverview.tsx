@@ -52,6 +52,7 @@ const getModuleIcon = (name: string) => {
     if (name === 'mindmap') return { icon: 'hub', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-500/10' };
     if (name === 'issues') return { icon: 'bug_report', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10' };
     if (name === 'social') return { icon: 'campaign', color: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-50 dark:bg-pink-500/10' };
+    if (name === 'marketing') return { icon: 'ads_click', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-500/10' };
     if (name === 'activity') return { icon: 'history', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' };
     return { icon: 'more_horiz', color: 'text-slate-600 dark:text-slate-400', bg: 'bg-[var(--color-surface-hover)]' };
 };
@@ -1074,7 +1075,7 @@ export const ProjectOverview = () => {
                     <div className="space-y-3">
                         <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Enabled Modules</label>
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                            {['tasks', 'ideas', 'milestones', 'mindmap', 'activity', 'issues', 'social'].map(mod => (
+                            {['tasks', 'ideas', 'milestones', 'mindmap', 'activity', 'issues', 'social', 'marketing'].map(mod => (
                                 <label key={mod} className={`
                                     flex flex-col items-center justify-center gap-2 cursor-pointer p-3 rounded-xl border transition-all text-center
                                     ${editModules?.includes(mod as any)
@@ -1084,7 +1085,7 @@ export const ProjectOverview = () => {
                                     <Checkbox
                                         checked={editModules ? editModules.includes(mod as any) : true}
                                         onChange={(e) => {
-                                            const current = editModules || ['tasks', 'ideas', 'mindmap', 'activity', 'issues', 'social'];
+                                            const current = editModules || ['tasks', 'ideas', 'mindmap', 'activity', 'issues', 'social', 'marketing'];
                                             let next = [...current];
                                             if (e.target.checked) {
                                                 if (!next.includes(mod as any)) next.push(mod as any);
@@ -1105,7 +1106,8 @@ export const ProjectOverview = () => {
                                                     mod === 'milestones' ? 'flag' :
                                                         mod === 'mindmap' ? 'hub' :
                                                             mod === 'social' ? 'campaign' :
-                                                                mod === 'activity' ? 'history' : 'bug_report'}
+                                                                mod === 'marketing' ? 'ads_click' :
+                                                                    mod === 'activity' ? 'history' : 'bug_report'}
                                         </span>
                                     </div>
                                     <span className="text-xs font-semibold capitalize">{mod}</span>
