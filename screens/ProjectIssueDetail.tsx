@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Link, useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { getProjectById, subscribeProjectIssues, updateIssue, deleteIssue, addTask, getIssueById, getUserProfile, subscribeTenantUsers } from '../services/dataService';
 import { Issue, Project } from '../types';
+import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
 import { Badge } from '../components/ui/Badge';
@@ -202,6 +203,8 @@ export const ProjectIssueDetail = () => {
         }
     };
 
+    const { pinItem, unpinItem, isPinned } = usePinnedTasks();
+
     if (loading) {
         return (
             <div className="flex justify-center items-center min-h-[50vh]">
@@ -288,63 +291,61 @@ export const ProjectIssueDetail = () => {
                             <div className="flex items-center gap-3 mb-4 flex-wrap">
                                 {/* Project Context */}
                                 {project && (
-                                    <Link to={`/project/${project.id}`} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] transition-all group">
+                                    <Link to={`/project/${project.id}`} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] rounded-full transition-all group">
                                         <div className="size-2 rounded-full bg-[var(--color-primary)]" />
                                         <span className="text-xs font-bold text-[var(--color-text-subtle)] group-hover:text-[var(--color-primary)] uppercase tracking-wide">{project.title}</span>
                                         <span className="material-symbols-outlined text-[14px] text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]">arrow_forward</span>
                                     </Link>
                                 )}
-                                <div className="flex items-center gap-3">
-                                    <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border ${issue.status === 'Resolved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                        issue.status === 'Open' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                            'bg-slate-500/10 text-slate-500 border-slate-500/20'
-                                        }`}>
-                                        <span className="material-symbols-outlined text-[14px] leading-none">
-                                            {issue.status === 'Resolved' ? 'check_circle' :
-                                                issue.status === 'Closed' ? 'cancel' :
-                                                    'error'}
-                                        </span>
-                                        {issue.status || 'Open'}
+                                <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border ${issue.status === 'Resolved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+                                    issue.status === 'Open' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                        'bg-slate-500/10 text-slate-500 border-slate-500/20'
+                                    }`}>
+                                    <span className="material-symbols-outlined text-[14px] leading-none">
+                                        {issue.status === 'Resolved' ? 'check_circle' :
+                                            issue.status === 'Closed' ? 'cancel' :
+                                                'error'}
                                     </span>
-                                    <PriorityBadge priority={issue.priority} />
+                                    {issue.status || 'Open'}
+                                </span>
+                                <PriorityBadge priority={issue.priority} />
+                            </div>
+
+                            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-[var(--color-text-main)] leading-[1.1] tracking-tight mb-8">
+                                {issue.title}
+                            </h1>
+
+                            <div className="flex flex-wrap items-center gap-6 text-sm">
+                                <div className="flex items-center gap-2.5 px-4 py-2 bg-[var(--color-surface-hover)] rounded-xl border border-[var(--color-surface-border)]">
+                                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">calendar_today</span>
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] leading-none uppercase font-bold text-[var(--color-text-subtle)] mb-0.5">Reported</span>
+                                        <span className="text-[var(--color-text-main)] font-semibold whitespace-nowrap">
+                                            {issue.createdAt ? new Date(toMillis(issue.createdAt)).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                                        </span>
+                                    </div>
                                 </div>
 
-                                <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-[var(--color-text-main)] leading-[1.1] tracking-tight mb-8">
-                                    {issue.title}
-                                </h1>
-
-                                <div className="flex flex-wrap items-center gap-6 text-sm">
-                                    <div className="flex items-center gap-2.5 px-4 py-2 bg-[var(--color-surface-hover)] rounded-xl border border-[var(--color-surface-border)]">
-                                        <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">calendar_today</span>
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] leading-none uppercase font-bold text-[var(--color-text-subtle)] mb-0.5">Reported</span>
-                                            <span className="text-[var(--color-text-main)] font-semibold whitespace-nowrap">
-                                                {issue.createdAt ? new Date(toMillis(issue.createdAt)).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
-                                            </span>
-                                        </div>
-                                    </div>
-
-                                    <div className="hidden md:flex items-center gap-3 ml-2">
-                                        <div className="h-8 w-[1px] bg-[var(--color-surface-border)]" />
-                                        <div className="flex -space-x-2">
-                                            {(issue.assigneeIds || (issue.assigneeId ? [issue.assigneeId] : [])).filter(id => id).map((uid, i) => {
-                                                const user = allUsers.find(u => (u as any).id === uid || u.uid === uid);
-                                                return (
-                                                    <img
-                                                        key={uid + i}
-                                                        src={user?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'}
-                                                        alt=""
-                                                        className="size-8 rounded-full border-2 border-[var(--color-surface-card)] shadow-sm"
-                                                        title={user?.displayName || 'Assignee'}
-                                                    />
-                                                );
-                                            })}
-                                            {((!issue.assigneeIds || issue.assigneeIds.length === 0) && !issue.assigneeId) && (
-                                                <div className="size-8 rounded-full border-2 border-dashed border-[var(--color-surface-border)] flex items-center justify-center text-[var(--color-text-subtle)]">
-                                                    <span className="material-symbols-outlined text-[16px]">person</span>
-                                                </div>
-                                            )}
-                                        </div>
+                                <div className="hidden md:flex items-center gap-3 ml-2">
+                                    <div className="h-8 w-[1px] bg-[var(--color-surface-border)]" />
+                                    <div className="flex -space-x-2">
+                                        {(issue.assigneeIds || (issue.assigneeId ? [issue.assigneeId] : [])).filter(id => id).map((uid, i) => {
+                                            const user = allUsers.find(u => (u as any).id === uid || u.uid === uid);
+                                            return (
+                                                <img
+                                                    key={uid + i}
+                                                    src={user?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'}
+                                                    alt=""
+                                                    className="size-8 rounded-full border-2 border-[var(--color-surface-card)] shadow-sm"
+                                                    title={user?.displayName || 'Assignee'}
+                                                />
+                                            );
+                                        })}
+                                        {((!issue.assigneeIds || issue.assigneeIds.length === 0) && !issue.assigneeId) && (
+                                            <div className="size-8 rounded-full border-2 border-dashed border-[var(--color-surface-border)] flex items-center justify-center text-[var(--color-text-subtle)]">
+                                                <span className="material-symbols-outlined text-[16px]">person</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -352,6 +353,28 @@ export const ProjectIssueDetail = () => {
 
                         <div className="flex flex-col items-stretch lg:items-end gap-3 lg:mb-1">
                             <div className="flex items-center gap-2 bg-[var(--color-surface-hover)] p-1 rounded-xl border border-[var(--color-surface-border)] w-full lg:w-fit">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        if (isPinned(issue.id)) {
+                                            unpinItem(issue.id);
+                                        } else {
+                                            pinItem({
+                                                id: issue.id,
+                                                type: 'issue',
+                                                title: issue.title,
+                                                projectId: id!,
+                                                priority: issue.priority,
+                                            });
+                                        }
+                                    }}
+                                    className={`flex-1 lg:flex-none ${isPinned(issue.id) ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'hover:bg-[var(--color-surface-card)]'}`}
+                                    icon={<span className="material-symbols-outlined text-[20px]">push_pin</span>}
+                                >
+                                    {isPinned(issue.id) ? 'Pinned' : 'Pin'}
+                                </Button>
+                                <div className="w-[1px] h-4 bg-[var(--color-surface-border)]" />
                                 <Button
                                     variant="ghost"
                                     size="sm"

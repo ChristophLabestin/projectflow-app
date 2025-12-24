@@ -1,10 +1,12 @@
-import React, { useState, useCallback } from 'react';
-import Cropper from 'react-easy-crop';
-import { Point, Area } from 'react-easy-crop/types';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
+import ReactCrop, { Crop, PixelCrop, centerCrop, makeAspectCrop } from 'react-image-crop';
+import 'react-image-crop/dist/ReactCrop.css';
 
 interface ImageEditorProps {
     src: string;
-    onSave: (newSrc: string) => void;
+    onSave: (dataUrl: string) => void;
+    onSaveReplace?: (dataUrl: string) => void;
     onCancel: () => void;
 }
 
@@ -24,79 +26,101 @@ const DEFAULT_FILTERS: FilterState = {
     sepia: 0,
 };
 
-export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel }) => {
-    const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
+function centerAspectCrop(
+    mediaWidth: number,
+    mediaHeight: number,
+    aspect: number | undefined,
+) {
+    const effectiveAspect = aspect || 4 / 3;
+    return centerCrop(
+        makeAspectCrop(
+            {
+                unit: '%',
+                width: 90,
+            },
+            effectiveAspect,
+            mediaWidth,
+            mediaHeight,
+        ),
+        mediaWidth,
+        mediaHeight,
+    );
+}
+
+export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel, onSaveReplace }) => {
+    const imgRef = useRef<HTMLImageElement>(null);
+    const [crop, setCrop] = useState<Crop>();
+    const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
     const [zoom, setZoom] = useState(1);
     const [rotation, setRotation] = useState(0);
-    const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
     const [activeTab, setActiveTab] = useState<'crop' | 'filters'>('crop');
     const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [aspect, setAspect] = useState<number | undefined>(4 / 3);
 
-    const onCropComplete = useCallback((croppedArea: Area, croppedAreaPixels: Area) => {
-        setCroppedAreaPixels(croppedAreaPixels);
-    }, []);
+    const ASPECT_RATIOS = [
+        { label: 'Free', value: undefined },
+        { label: '1:1', value: 1 / 1 },
+        { label: '4:3', value: 4 / 3 },
+        { label: '16:9', value: 16 / 9 },
+        { label: '3:2', value: 3 / 2 },
+        { label: '2:3', value: 2 / 3 },
+        { label: '3:4', value: 3 / 4 },
+        { label: '9:16', value: 9 / 16 },
+    ];
 
-    const createImage = (url: string): Promise<HTMLImageElement> =>
-        new Promise((resolve, reject) => {
-            const image = new Image();
-            image.addEventListener('load', () => resolve(image));
-            image.addEventListener('error', (error) => reject(error));
-            image.setAttribute('crossOrigin', 'anonymous'); // needed to avoid cross-origin issues on CodeSandbox
-            image.src = url;
-        });
+    function onImageLoad(e: React.SyntheticEvent<HTMLImageElement>) {
+        const { width, height } = e.currentTarget;
+        setCrop(centerAspectCrop(width, height, aspect));
+    }
 
-    const getRadianAngle = (degreeValue: number) => {
-        return (degreeValue * Math.PI) / 180;
-    };
+    useEffect(() => {
+        if (imgRef.current) {
+            const { width, height } = imgRef.current;
+            setCrop(centerAspectCrop(width, height, aspect));
+        }
+    }, [aspect]);
 
-    const handleSave = async () => {
+    const handleSave = async (mode: 'new' | 'replace') => {
+        if (!imgRef.current || !completedCrop) return;
         setIsProcessing(true);
+
         try {
-            const image = await createImage(src);
+            const image = imgRef.current;
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
 
-            if (!ctx || !croppedAreaPixels) return;
+            if (!ctx) return;
 
-            const safeArea = Math.max(image.width, image.height) * 2;
+            const scaleX = image.naturalWidth / image.width;
+            const scaleY = image.naturalHeight / image.height;
 
-            // set each dimensions to double largest dimension to allow for a safe area for the
-            // image to rotate in without being clipped by canvas context
-            canvas.width = safeArea;
-            canvas.height = safeArea;
-
-            // translate canvas context to a central location on image to allow rotating around the center.
-            ctx.translate(safeArea / 2, safeArea / 2);
-            ctx.rotate(getRadianAngle(rotation));
-            ctx.translate(-safeArea / 2, -safeArea / 2);
+            canvas.width = completedCrop.width * scaleX;
+            canvas.height = completedCrop.height * scaleY;
 
             // Apply filters
             ctx.filter = `brightness(${filters.brightness}%) contrast(${filters.contrast}%) saturate(${filters.saturate}%) grayscale(${filters.grayscale}%) sepia(${filters.sepia}%)`;
 
-            // draw rotated image and store data.
+            // Draw image
             ctx.drawImage(
                 image,
-                safeArea / 2 - image.width * 0.5,
-                safeArea / 2 - image.height * 0.5
-            );
-
-            const data = ctx.getImageData(0, 0, safeArea, safeArea);
-
-            // set canvas width to final desired crop size - this will clear existing context
-            canvas.width = croppedAreaPixels.width;
-            canvas.height = croppedAreaPixels.height;
-
-            // paste generated rotate image with correct offsets for x,y crop values.
-            ctx.putImageData(
-                data,
-                Math.round(0 - safeArea / 2 + image.width * 0.5 - croppedAreaPixels.x),
-                Math.round(0 - safeArea / 2 + image.height * 0.5 - croppedAreaPixels.y)
+                completedCrop.x * scaleX,
+                completedCrop.y * scaleY,
+                completedCrop.width * scaleX,
+                completedCrop.height * scaleY,
+                0,
+                0,
+                completedCrop.width * scaleX,
+                completedCrop.height * scaleY
             );
 
             // As Base64 string
-            const base64Image = canvas.toDataURL('image/jpeg', 0.9);
-            onSave(base64Image);
+            const dataUrl = canvas.toDataURL('image/png');
+            if (mode === 'replace' && onSaveReplace) {
+                onSaveReplace(dataUrl);
+            } else {
+                onSave(dataUrl);
+            }
         } catch (e) {
             console.error(e);
         } finally {
@@ -104,25 +128,34 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel 
         }
     };
 
-    return (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 backdrop-blur-sm">
-            <div className="w-[1000px] h-[700px] max-w-[95vw] max-h-[90vh] bg-[var(--color-surface-card)] rounded-xl flex overflow-hidden shadow-2xl">
+    return createPortal(
+        <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/90 backdrop-blur-sm">
+            <div className="w-[1100px] h-[800px] max-w-[95vw] max-h-[90vh] bg-[var(--color-surface-card)] rounded-xl flex overflow-hidden shadow-2xl">
                 {/* Canvas Area */}
-                <div className="flex-1 relative bg-black">
-                    <Cropper
-                        image={src}
-                        crop={crop}
-                        zoom={zoom}
-                        rotation={rotation}
-                        aspect={undefined} // Free crop
-                        onCropChange={setCrop}
-                        onCropComplete={onCropComplete}
-                        onZoomChange={setZoom}
-                        onRotationChange={setRotation}
-                        style={{
-                            containerStyle: { filter: `brightness(${filters.brightness}%) contrast(${filters.contrast}%) saturate(${filters.saturate}%) grayscale(${filters.grayscale}%) sepia(${filters.sepia}%)` }
-                        }}
-                    />
+                <div className="flex-1 relative bg-black flex items-center justify-center p-8 overflow-hidden">
+                    <div className="relative max-h-full max-w-full">
+                        <ReactCrop
+                            crop={crop}
+                            onChange={(c) => setCrop(c)}
+                            onComplete={(c) => setCompletedCrop(c)}
+                            aspect={aspect}
+                            className="max-h-full max-w-full"
+                        >
+                            <img
+                                ref={imgRef}
+                                alt="Crop me"
+                                src={src}
+                                style={{
+                                    transform: `rotate(${rotation}deg) scale(${zoom})`,
+                                    filter: `brightness(${filters.brightness}%) contrast(${filters.contrast}%) saturate(${filters.saturate}%) grayscale(${filters.grayscale}%) sepia(${filters.sepia}%)`,
+                                    maxHeight: '70vh',
+                                    maxWidth: '100%',
+                                }}
+                                onLoad={onImageLoad}
+                                crossOrigin="anonymous"
+                            />
+                        </ReactCrop>
+                    </div>
                 </div>
 
                 {/* Controls Sidebar */}
@@ -167,7 +200,25 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel 
                     <div className="flex-1 overflow-y-auto p-6 space-y-6">
                         {activeTab === 'crop' && (
                             <div className="space-y-6">
-                                <div className="space-y-2">
+                                <div className="space-y-3">
+                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Aspect Ratio</label>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {ASPECT_RATIOS.map((ratio) => (
+                                            <button
+                                                key={ratio.label}
+                                                onClick={() => setAspect(ratio.value)}
+                                                className={`py-2 text-[10px] font-bold border rounded-lg transition-all ${aspect === ratio.value
+                                                    ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-[var(--color-primary-text)]'
+                                                    : 'bg-white text-zinc-600 border-zinc-200 hover:border-[var(--color-primary)]/50'
+                                                    }`}
+                                            >
+                                                {ratio.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2 pt-4 border-t border-zinc-100 dark:border-zinc-800">
                                     <div className="flex justify-between">
                                         <label className="text-xs font-bold text-zinc-500">Zoom</label>
                                         <span className="text-xs text-zinc-400">{zoom.toFixed(1)}x</span>
@@ -179,10 +230,11 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel 
                                         step={0.1}
                                         value={zoom}
                                         onChange={(e) => setZoom(Number(e.target.value))}
-                                        className="w-full accent-[var(--color-primary)]"
+                                        className="w-full accent-[var(--color-primary)] mb-4"
                                     />
                                 </div>
-                                <div className="space-y-2">
+
+                                <div className="space-y-2 pt-4 border-t border-zinc-100 dark:border-zinc-800">
                                     <div className="flex justify-between">
                                         <label className="text-xs font-bold text-zinc-500">Rotation</label>
                                         <span className="text-xs text-zinc-400">{rotation}°</span>
@@ -207,6 +259,20 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel 
                                         ))}
                                     </div>
                                 </div>
+                                <button
+                                    onClick={() => {
+                                        if (imgRef.current) {
+                                            setCrop(centerAspectCrop(imgRef.current.width, imgRef.current.height, undefined));
+                                        }
+                                        setZoom(1);
+                                        setRotation(0);
+                                        setAspect(undefined);
+                                    }}
+                                    className="w-full py-2 text-xs font-medium text-[var(--color-text-muted)] border border-zinc-200 dark:border-zinc-700 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <span className="material-symbols-outlined text-[16px]">restart_alt</span>
+                                    Reset Crop & Orientation
+                                </button>
                             </div>
                         )}
 
@@ -250,8 +316,8 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel 
                     <div className="p-4 border-t border-[var(--color-surface-border)] flex gap-2">
                         <button
                             onClick={handleSave}
-                            disabled={isProcessing}
-                            className="flex-1 py-2.5 bg-[var(--color-primary)] text-white rounded-lg font-medium hover:brightness-110 flex items-center justify-center gap-2"
+                            disabled={isProcessing || !completedCrop}
+                            className="flex-1 py-2.5 bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded-lg font-medium hover:brightness-110 flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             {isProcessing && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
                             Save Changes
@@ -259,6 +325,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel 
                     </div>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 };

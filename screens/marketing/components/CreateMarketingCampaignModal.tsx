@@ -61,7 +61,7 @@ export const CreateMarketingCampaignModal: React.FC<CreateMarketingCampaignModal
                     name,
                     subject,
                     senderName,
-                    status: 'Draft',
+                    status: 'draft',
                     stats: { sent: 0, opened: 0, clicked: 0, bounced: 0, unsubscribed: 0 }
                 });
             }
@@ -178,7 +178,7 @@ export const CreateMarketingCampaignModal: React.FC<CreateMarketingCampaignModal
                         </button>
                         <button
                             type="submit"
-                            className="px-4 py-2 text-sm font-bold bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 disabled:opacity-50"
+                            className="px-4 py-2 text-sm font-bold bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded-lg hover:opacity-90 disabled:opacity-50"
                             disabled={loading}
                         >
                             {loading ? 'Creating...' : 'Create Campaign'}

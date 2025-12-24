@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { usePinnedProject } from '../context/PinnedProjectContext';
 import { getProjectById, toggleTaskStatus, updateProjectFields, addActivityEntry, deleteProjectById, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues, getActiveTenantId, generateInviteLink, getLatestGeminiReport, saveGeminiReport } from '../services/dataService';
 import { TaskCreateModal } from '../components/TaskCreateModal';
 import { generateProjectReport, getGeminiInsight } from '../services/geminiService';
 import { Activity, Idea, Project, Task, Issue, ProjectRole, GeminiReport } from '../types';
+import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
 import { toMillis, timeAgo } from '../utils/time';
 import { auth, storage } from '../services/firebase';
-import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { getDownloadURL, ref, uploadBytes, listAll } from 'firebase/storage';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -22,7 +24,10 @@ import { MilestoneCard } from '../components/Milestones/MilestoneCard';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
 import { Checkbox } from '../components/ui/Checkbox';
 import { fetchLastCommits, fetchUserRepositories, GithubCommit, GithubRepo } from '../services/githubService';
-import { getUserProfile, linkWithGithub, updateUserData } from '../services/dataService';
+import { getUserProfile, linkWithGithub, updateUserData, subscribeProjectMilestones } from '../services/dataService';
+import { calculateProjectHealth, ProjectHealth } from '../services/healthService';
+import { HealthIndicator } from '../components/project/HealthIndicator';
+import { Milestone } from '../types';
 
 const cleanText = (value?: string | null) => (value || '').replace(/\*\*/g, '');
 
@@ -62,6 +67,7 @@ import { updatePresence } from '../services/dataService';
 export const ProjectOverview = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { pinProject, unpinProject, pinnedProjectId } = usePinnedProject();
     const [project, setProject] = useState<Project | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(true);
@@ -69,6 +75,7 @@ export const ProjectOverview = () => {
     const [activity, setActivity] = useState<Activity[]>([]);
     const [ideas, setIdeas] = useState<Idea[]>([]);
     const [issues, setIssues] = useState<Issue[]>([]);
+    const [milestones, setMilestones] = useState<Milestone[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [unauthorized, setUnauthorized] = useState(false);
     const [report, setReport] = useState<string | null>(null);
@@ -100,8 +107,19 @@ export const ProjectOverview = () => {
     const [editIconFile, setEditIconFile] = useState<File | null>(null);
     const [editGalleryFiles, setEditGalleryFiles] = useState<File[]>([]);
     const [editKeptGalleryUrls, setEditKeptGalleryUrls] = useState<string[]>([]);
+    const [editCoverUrl, setEditCoverUrl] = useState<string | null>(null);
+    const [editIconUrl, setEditIconUrl] = useState<string | null>(null);
+    const [mediaPickerTarget, setMediaPickerTarget] = useState<'gallery' | 'cover' | 'icon'>('gallery');
+
     const [showGalleryModal, setShowGalleryModal] = useState(false);
+    const [showMediaLibrary, setShowMediaLibrary] = useState(false);
+    const [projectAssets, setProjectAssets] = useState<string[]>([]);
+    const [loadingAssets, setLoadingAssets] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+    // Legacy File states (kept for now just in case, but unused for main flow)
+    // Removed duplicate state declarations
+
     const [coverRemoved, setCoverRemoved] = useState(false);
     const [iconRemoved, setIconRemoved] = useState(false);
     const [savingEdit, setSavingEdit] = useState(false);
@@ -173,8 +191,57 @@ export const ProjectOverview = () => {
         };
     }, [id]);
 
+    const fetchProjectAssets = async () => {
+        if (!id || !project?.tenantId) return;
+        setLoadingAssets(true);
+        try {
+            // 1. Check Root Folder (Legacy/Uncategorized with project ID in name)
+            const rootRef = ref(storage, `tenants/${project.tenantId}/projects`);
+            let rootUrls: string[] = [];
+            try {
+                const rootResult = await listAll(rootRef);
+                // Filter for files that belong to this project ID
+                // Name format: {timestamp}_media_{projectId}_{filename}
+                rootUrls = await Promise.all(
+                    rootResult.items
+                        .filter(i => i.name.includes(`_media_${id}`))
+                        .map(i => getDownloadURL(i))
+                );
+            } catch (e) {
+                console.log("No root assets found or error", e);
+            }
+
+            // 2. Check Project Subfolder
+            const folderRef = ref(storage, `tenants/${project.tenantId}/projects/${id}`);
+            let folderUrls: string[] = [];
+            try {
+                const result = await listAll(folderRef);
+                folderUrls = await Promise.all(
+                    result.items
+                        .filter(i => i.name.includes('_media_'))
+                        .map(i => getDownloadURL(i))
+                );
+            } catch (e) {
+                // Folder might not exist
+            }
+
+            // Combine and unique
+            const allUrls = Array.from(new Set([...rootUrls, ...folderUrls]));
+            setProjectAssets(allUrls);
+        } catch (e) {
+            console.error("Failed to fetch assets", e);
+        } finally {
+            setLoadingAssets(false);
+        }
+    };
+
     useEffect(() => {
-        if (!id) return;
+        if (project?.id) {
+            fetchProjectAssets();
+        }
+    }, [project?.id]);
+
+    useEffect(() => {
         const fetchData = async () => {
             setError(null);
             try {
@@ -198,6 +265,8 @@ export const ProjectOverview = () => {
                 setEditExternalResources(projData.externalResources || []);
                 setEditKeptGalleryUrls(projData.screenshots || []);
                 setEditGalleryFiles([]);
+                setEditCoverUrl(projData.coverImage || null);
+                setEditIconUrl(projData.squareIcon || null);
                 setCoverRemoved(false);
                 setIconRemoved(false);
                 setEditCoverFile(null);
@@ -257,12 +326,14 @@ export const ProjectOverview = () => {
                 const unsubActivity = subscribeProjectActivity(id, setActivity, projData.tenantId);
                 const unsubIdeas = subscribeProjectIdeas(id, setIdeas, projData.tenantId);
                 const unsubIssues = subscribeProjectIssues(id, setIssues, projData.tenantId);
+                const unsubMilestones = subscribeProjectMilestones(id, setMilestones, projData.tenantId);
 
                 return () => {
                     unsubTasks();
                     unsubActivity();
                     unsubIdeas();
                     unsubIssues();
+                    unsubMilestones();
                 };
             } catch (error) {
                 console.error(error);
@@ -327,15 +398,22 @@ export const ProjectOverview = () => {
     };
 
     const uploadProjectAsset = async (file: File, kind: 'cover' | 'icon' | 'gallery') => {
-        const tenant = getActiveTenantId() || project?.ownerId || auth?.currentUser?.uid || 'public';
-        const path = `tenants/${tenant}/projects/${Date.now()}_${kind}_${file.name}`;
+        const tenant = project?.tenantId || getActiveTenantId() || project?.ownerId || auth?.currentUser?.uid || 'public';
+        const projectId = project?.id || id || 'unknown';
+
+        // Use the same pattern as createProject for consistency and library discovery
+        // Path: tenants/{tid}/projects/{pid}/{timestamp}_media_{pid}_{kind}_{filename}
+        const timestamp = Date.now();
+        const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
+        const path = `tenants/${tenant}/projects/${projectId}/${timestamp}_media_${projectId}_${kind}_${cleanFileName}`;
+
         const storageRef = ref(storage, path);
         await uploadBytes(storageRef, file);
         return getDownloadURL(storageRef);
     };
 
     const handleSaveEdit = async () => {
-        if (!project) return;
+        if (!project || !auth.currentUser) return;
         setSavingEdit(true);
         try {
             const updates: Partial<Project> = {
@@ -349,20 +427,10 @@ export const ProjectOverview = () => {
                 links: editLinks,
                 externalResources: editExternalResources,
                 githubRepo: editGithubRepo,
-                githubIssueSync: editGithubIssueSync
+                githubIssueSync: editGithubIssueSync,
+                coverImage: editCoverUrl || (coverRemoved ? null : project.coverImage),
+                squareIcon: editIconUrl || (iconRemoved ? null : project.squareIcon)
             };
-
-            if (editCoverFile) {
-                updates.coverImage = await uploadProjectAsset(editCoverFile, 'cover');
-            } else if (coverRemoved) {
-                updates.coverImage = null;
-            }
-
-            if (editIconFile) {
-                updates.squareIcon = await uploadProjectAsset(editIconFile, 'icon');
-            } else if (iconRemoved) {
-                updates.squareIcon = null;
-            }
 
             // Handle Gallery
             const newGalleryUrls = await Promise.all(editGalleryFiles.map(f => uploadProjectAsset(f, 'gallery')));
@@ -437,6 +505,8 @@ export const ProjectOverview = () => {
 
     if (!project) return <div className="p-8">Project not found</div>;
 
+    const health = calculateProjectHealth(project, tasks, milestones, issues, activity);
+
     const completedTasks = tasks.filter(t => t.isCompleted).length;
     const progress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
     const openTasks = tasks.length - completedTasks;
@@ -510,16 +580,17 @@ export const ProjectOverview = () => {
                         </div>
                     </div>
 
-                    {/* Title & Desc */}
-                    <div className="flex-1 space-y-2">
-                        <div className="flex items-center gap-3 flex-wrap">
-                            <h1 className="text-3xl font-bold text-[var(--color-text-main)]">{project.title}</h1>
-                            <Badge variant={project.status === 'Active' ? 'success' : 'primary'}>{project.status}</Badge>
-                            <Badge variant="secondary">{project.priority} Priority</Badge>
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <h1 className="text-3xl font-bold text-[var(--color-text-main)]">{project.title}</h1>
+                                <Badge variant={project.status === 'Active' ? 'success' : 'primary'}>{project.status}</Badge>
+                                <Badge variant="secondary">{project.priority} Priority</Badge>
+                            </div>
+                            <p className="text-[var(--color-text-muted)] text-lg leading-relaxed max-w-3xl">
+                                {project.description || 'No description provided.'}
+                            </p>
                         </div>
-                        <p className="text-[var(--color-text-muted)] text-lg leading-relaxed max-w-3xl">
-                            {project.description || 'No description provided.'}
-                        </p>
                     </div>
 
                     {/* Actions */}
@@ -572,6 +643,12 @@ export const ProjectOverview = () => {
                                 <span className="text-xs text-[var(--color-text-muted)] uppercase font-semibold">{stat.label}</span>
                             </Card>
                         ))}
+
+                        {/* Project Health Card */}
+                        <Card padding="sm" className="flex flex-col items-center justify-center text-center py-4">
+                            <HealthIndicator health={health} size="sm" />
+                            <span className="text-xs text-[var(--color-text-muted)] uppercase font-semibold mt-1">Health</span>
+                        </Card>
                     </div>
 
                     {/* AI Insight / Generator */}
@@ -894,27 +971,59 @@ export const ProjectOverview = () => {
                         )}
                     </Card>
 
-                    {/* Screenshots */}
+                    {/* Gallery (Compact Media Library Style) */}
                     <Card>
                         <div className="flex items-center justify-between mb-3">
-                            <h3 className="h4">Gallery</h3>
-                            <Button size="sm" variant="ghost" onClick={() => { setSelectedImageIndex(0); setShowGalleryModal(true); }}>View All</Button>
+                            <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-[var(--color-primary)]">photo_library</span>
+                                <h3 className="h4">Gallery</h3>
+                            </div>
+                            <Button size="sm" variant="ghost" onClick={() => setShowMediaLibrary(true)}>
+                                Manage
+                            </Button>
                         </div>
-                        {project?.screenshots?.length ? (
-                            <div className="grid grid-cols-2 gap-2">
-                                {project.screenshots.slice(0, 4).map((shot, i) => (
+                        {projectAssets.length > 0 ? (
+                            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-[var(--color-surface-border)] scrollbar-track-transparent">
+                                {projectAssets.map((shot, i) => (
                                     <div
                                         key={i}
-                                        className="aspect-video rounded-lg bg-[var(--color-surface-hover)] overflow-hidden border border-[var(--color-surface-border)] cursor-pointer hover:opacity-90 transition-opacity"
+                                        className="group relative shrink-0 w-32 aspect-square rounded-xl overflow-hidden border border-[var(--color-surface-border)] hover:border-[var(--color-primary)] transition-all bg-[var(--color-surface-paper)] cursor-pointer"
                                         onClick={() => { setSelectedImageIndex(i); setShowGalleryModal(true); }}
                                     >
-                                        <img src={shot} alt="" className="w-full h-full object-cover" />
+                                        <img src={shot} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+
+                                        {/* Overlay */}
+                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
+                                            <div className="size-8 rounded-full bg-white/90 text-[var(--color-primary)] flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
+                                                <span className="material-symbols-outlined text-[18px]">visibility</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Gradient Bottom */}
+                                        <div className="absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                                     </div>
                                 ))}
+                                {/* Add Button */}
+                                <button
+                                    onClick={() => setShowMediaLibrary(true)}
+                                    className="shrink-0 w-32 aspect-square rounded-xl border-2 border-dashed border-[var(--color-surface-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] transition-all flex flex-col items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-primary)] gap-2 group"
+                                >
+                                    <div className="size-8 rounded-full bg-[var(--color-surface-bg)] group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center transition-colors">
+                                        <span className="material-symbols-outlined text-[20px]">add</span>
+                                    </div>
+                                    <span className="text-xs font-semibold">Add Media</span>
+                                </button>
                             </div>
                         ) : (
-                            <div className="py-6 text-center border-2 border-dashed border-[var(--color-surface-border)] rounded-lg">
-                                <p className="text-xs text-[var(--color-text-muted)]">No screenshots uploaded.</p>
+                            <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-[var(--color-surface-border)] rounded-xl bg-[var(--color-surface-hover)]/30">
+                                <div className="size-12 rounded-full bg-[var(--color-surface-bg)] flex items-center justify-center mb-3">
+                                    <span className="material-symbols-outlined text-zinc-400">landscape</span>
+                                </div>
+                                <p className="text-sm font-medium text-[var(--color-text-main)]">No media yet</p>
+                                <p className="text-xs text-[var(--color-text-muted)] mb-3">Upload images to showcase your work</p>
+                                <Button size="sm" variant="outline" onClick={() => setShowMediaLibrary(true)}>
+                                    Open Library
+                                </Button>
                             </div>
                         )}
                     </Card>
@@ -925,9 +1034,9 @@ export const ProjectOverview = () => {
             < Modal isOpen={showGalleryModal} onClose={() => setShowGalleryModal(false)} title="Project Gallery" size="xl" >
                 <div className="space-y-4">
                     <div className="aspect-video w-full bg-black rounded-xl overflow-hidden flex items-center justify-center relative group">
-                        {project?.screenshots?.[selectedImageIndex] ? (
+                        {projectAssets[selectedImageIndex] ? (
                             <>
-                                <img src={project.screenshots[selectedImageIndex]} alt="Gallery" className="max-w-full max-h-[70vh] object-contain" />
+                                <img src={projectAssets[selectedImageIndex]} alt="Gallery" className="max-w-full max-h-[70vh] object-contain" />
                                 {selectedImageIndex > 0 && (
                                     <button
                                         className="absolute left-4 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100"
@@ -936,7 +1045,7 @@ export const ProjectOverview = () => {
                                         <span className="material-symbols-outlined">chevron_left</span>
                                     </button>
                                 )}
-                                {project.screenshots && selectedImageIndex < project.screenshots.length - 1 && (
+                                {selectedImageIndex < projectAssets.length - 1 && (
                                     <button
                                         className="absolute right-4 p-2 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors opacity-0 group-hover:opacity-100"
                                         onClick={(e) => { e.stopPropagation(); setSelectedImageIndex(selectedImageIndex + 1); }}
@@ -950,7 +1059,7 @@ export const ProjectOverview = () => {
                         )}
                     </div>
                     <div className="flex gap-2 overflow-x-auto py-2">
-                        {project?.screenshots?.map((shot, idx) => (
+                        {projectAssets.map((shot, idx) => (
                             <button
                                 key={idx}
                                 onClick={() => setSelectedImageIndex(idx)}
@@ -962,6 +1071,35 @@ export const ProjectOverview = () => {
                     </div>
                 </div>
             </Modal >
+
+            {/* Media Library Modal */}
+            {project && (
+                <MediaLibrary
+                    isOpen={showMediaLibrary}
+                    onClose={() => {
+                        setShowMediaLibrary(false);
+                        if (mediaPickerTarget === 'gallery') {
+                            fetchProjectAssets(); // Refresh assets if managing gallery
+                        }
+                        setMediaPickerTarget('gallery'); // Reset target
+                    }}
+                    projectId={project.id}
+                    tenantId={project.tenantId}
+                    onSelect={(asset) => {
+                        if (mediaPickerTarget === 'cover') {
+                            setEditCoverUrl(asset.url);
+                            setCoverRemoved(false);
+                            setShowMediaLibrary(false);
+                            setMediaPickerTarget('gallery');
+                        } else if (mediaPickerTarget === 'icon') {
+                            setEditIconUrl(asset.url);
+                            setIconRemoved(false);
+                            setShowMediaLibrary(false);
+                            setMediaPickerTarget('gallery');
+                        }
+                    }}
+                />
+            )}
 
             {/* Edit Modal */}
             < Modal
@@ -1020,50 +1158,65 @@ export const ProjectOverview = () => {
                                 <option>Urgent</option>
                             </Select>
 
-                            {/* Restored Image Uploads */}
+                            {/* Restored Image Uploads - Now linked to Media Library */}
                             <div className="space-y-2 pt-2 border-t border-[var(--color-surface-border)]">
                                 <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Assets</label>
                                 <div className="grid grid-cols-2 gap-2">
-                                    <label className="cursor-pointer group relative flex flex-col items-center justify-center h-20 rounded-xl border border-dashed border-[var(--color-surface-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] dark:bg-[var(--color-surface-hover)]/30 transition-all overflow-hidden bg-cover bg-center" style={{ backgroundImage: !coverRemoved && (editCoverFile || project.coverImage) ? `url(${editCoverFile ? URL.createObjectURL(editCoverFile) : project.coverImage})` : 'none' }}>
-                                        <input type="file" className="absolute inset-0 opacity-0 cursor-pointer z-10" accept="image/*" onChange={(e) => handleFileSelect(e, 'cover')} />
-                                        {!coverRemoved && (editCoverFile || project.coverImage) ? (
+                                    {/* Cover Picker */}
+                                    <div
+                                        className="group relative flex flex-col items-center justify-center h-20 rounded-xl border border-dashed border-[var(--color-surface-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] dark:bg-[var(--color-surface-hover)]/30 transition-all overflow-hidden bg-cover bg-center cursor-pointer"
+                                        style={{ backgroundImage: !coverRemoved && editCoverUrl ? `url(${editCoverUrl})` : 'none' }}
+                                        onClick={() => {
+                                            setMediaPickerTarget('cover');
+                                            setShowMediaLibrary(true);
+                                        }}
+                                    >
+                                        {!coverRemoved && editCoverUrl ? (
                                             <div className="absolute top-1 right-1 z-20">
                                                 <Button size="icon" variant="danger" className="size-6" onClick={(e) => {
                                                     e.preventDefault();
                                                     e.stopPropagation();
-                                                    setEditCoverFile(null);
+                                                    setEditCoverUrl(null);
                                                     setCoverRemoved(true);
                                                 }}>
                                                     <span className="material-symbols-outlined text-[14px]">delete</span>
                                                 </Button>
                                             </div>
                                         ) : (
-                                            <div className={`absolute inset-0 flex flex-col items-center justify-center transition-colors ${!coverRemoved && (editCoverFile || project.coverImage) ? 'bg-black/50 text-white opacity-0 group-hover:opacity-100' : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]'}`}>
+                                            <div className={`absolute inset-0 flex flex-col items-center justify-center transition-colors ${!coverRemoved && editCoverUrl ? 'bg-black/50 text-white opacity-0 group-hover:opacity-100' : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]'}`}>
                                                 <span className="material-symbols-outlined text-[20px]">image</span>
                                                 <span className="text-[10px] font-medium mt-1">Change Cover</span>
                                             </div>
                                         )}
-                                    </label>
-                                    <label className="cursor-pointer group relative flex flex-col items-center justify-center h-20 rounded-xl border border-dashed border-[var(--color-surface-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] dark:bg-[var(--color-surface-hover)]/30 transition-all overflow-hidden bg-cover bg-center" style={{ backgroundImage: !iconRemoved && (editIconFile || project.squareIcon) ? `url(${editIconFile ? URL.createObjectURL(editIconFile) : project.squareIcon})` : 'none' }}>
-                                        <input type="file" className="absolute inset-0 opacity-0 cursor-pointer z-10" accept="image/*" onChange={(e) => handleFileSelect(e, 'icon')} />
-                                        {!iconRemoved && (editIconFile || project.squareIcon) ? (
+                                    </div>
+
+                                    {/* Icon Picker */}
+                                    <div
+                                        className="group relative flex flex-col items-center justify-center h-20 rounded-xl border border-dashed border-[var(--color-surface-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] dark:bg-[var(--color-surface-hover)]/30 transition-all overflow-hidden bg-cover bg-center cursor-pointer"
+                                        style={{ backgroundImage: !iconRemoved && editIconUrl ? `url(${editIconUrl})` : 'none' }}
+                                        onClick={() => {
+                                            setMediaPickerTarget('icon');
+                                            setShowMediaLibrary(true);
+                                        }}
+                                    >
+                                        {!iconRemoved && editIconUrl ? (
                                             <div className="absolute top-1 right-1 z-20">
                                                 <Button size="icon" variant="danger" className="size-6" onClick={(e) => {
                                                     e.preventDefault();
                                                     e.stopPropagation();
-                                                    setEditIconFile(null);
+                                                    setEditIconUrl(null);
                                                     setIconRemoved(true);
                                                 }}>
                                                     <span className="material-symbols-outlined text-[14px]">delete</span>
                                                 </Button>
                                             </div>
                                         ) : (
-                                            <div className={`absolute inset-0 flex flex-col items-center justify-center transition-colors ${!iconRemoved && (editIconFile || project.squareIcon) ? 'bg-black/50 text-white opacity-0 group-hover:opacity-100' : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]'}`}>
+                                            <div className={`absolute inset-0 flex flex-col items-center justify-center transition-colors ${!iconRemoved && editIconUrl ? 'bg-black/50 text-white opacity-0 group-hover:opacity-100' : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]'}`}>
                                                 <span className="material-symbols-outlined text-[20px]">apps</span>
                                                 <span className="text-[10px] font-medium mt-1">Change Icon</span>
                                             </div>
                                         )}
-                                    </label>
+                                    </div>
                                 </div>
                             </div>
                         </div>

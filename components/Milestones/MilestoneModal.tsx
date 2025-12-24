@@ -151,7 +151,7 @@ export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: Milest
                         <button
                             type="submit"
                             disabled={loading}
-                            className="px-4 py-2 bg-[var(--color-primary)] text-white dark:text-black rounded-lg text-sm font-bold shadow-md hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
+                            className="px-4 py-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded-lg text-sm font-bold shadow-md hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
                         >
                             {loading && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
                             {milestone ? 'Update' : 'Create'}

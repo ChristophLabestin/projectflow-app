@@ -31,7 +31,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                             rounded-xl 
                             py-2.5 
                             ${icon ? 'pl-10' : 'pl-3'} 
-                            pr-8 
+                            pr-10 
                             text-sm 
                             placeholder-[var(--color-text-subtle)] 
                             transition-all 
@@ -39,6 +39,8 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                             focus:ring-0
                             focus:ring-offset-0
                             appearance-none
+                            [&::-webkit-calendar-picker-indicator]:hidden
+                            [&::-ms-expand]:hidden
                             ${error ? 'border-[var(--color-error)]' : 'border-[var(--color-surface-border)]'}
                             ${className}
                         `}
@@ -47,10 +49,6 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                     >
                         {children}
                     </select>
-                    {/* Custom Arrow */}
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--color-text-subtle)]">
-                        <span className="material-symbols-outlined text-[20px]">expand_more</span>
-                    </div>
                 </div>
                 {error && (
                     <span className="text-xs text-[var(--color-error)] ml-1">{error}</span>

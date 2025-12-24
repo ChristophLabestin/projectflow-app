@@ -71,6 +71,10 @@ html.dark {
   --color-primary-text: #ffffff;
 }
 
+
+
+
+
 * {
   box-sizing: border-box;
 }
@@ -254,6 +258,11 @@ button:focus-visible {
 
 .overflow-y-auto {
   overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
+.overflow-auto {
+  scrollbar-gutter: stable;
 }
 
 .relative {
@@ -408,6 +417,59 @@ button:focus-visible {
   box-shadow: var(--shadow-md);
 }
 
+/* --- Switch Component --- */
+/* --- Switch Component --- */
+.switch-track {
+  width: 48px;
+  /* w-12 */
+  height: 24px;
+  /* h-6 */
+  border-radius: 9999px;
+  /* rounded-full */
+  padding: 2px;
+  /* Reduced padding to accommodate flex centering/border */
+  cursor: pointer;
+  transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+  background-color: #e4e4e7;
+  /* zinc-200 */
+  border: 1px solid transparent;
+  display: flex;
+  /* Flexbox for perfect centering */
+  align-items: center;
+}
+
+html.dark .switch-track {
+  background-color: #3f3f46;
+  /* zinc-700 */
+  border-color: #52525b;
+  /* zinc-600 */
+}
+
+/* Ensure active state wins over dark mode selector by increasing specificity */
+.switch-track.active,
+html.dark .switch-track.active {
+  background-color: var(--color-success);
+  border-color: var(--color-success);
+}
+
+.switch-handle {
+  width: 16px;
+  /* size-4 */
+  height: 16px;
+  background-color: white;
+  border-radius: 9999px;
+  transition: transform 0.15s ease-in-out;
+  /* Box shadow for depth */
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.switch-track.active .switch-handle {
+  transform: translateX(26px);
+}
+
+/* translate-x-6 */
+
+
 /* --- Scrollbar --- */
 ::-webkit-scrollbar {
   width: 6px;
@@ -478,4 +540,178 @@ button:focus-visible {
 .animate-gradient-xy {
   background-size: 400% 400%;
   animation: gradient-xy 15s ease infinite;
+}
+
+/* Inline edit border animation - scales from center */
+@keyframes border-in {
+  from {
+    border-bottom-color: transparent;
+  }
+
+  to {
+    border-bottom-color: var(--color-text-main);
+  }
+}
+
+.animate-border-in {
+  animation: border-in 0.2s ease-out forwards;
+}
+
+/* --- Tiptap / Prose Styles --- */
+.prose ul {
+  list-style-type: disc;
+  margin-top: 1em;
+  margin-bottom: 1em;
+  padding-left: 1.5em;
+}
+
+.prose ol {
+  list-style-type: decimal;
+  margin-top: 1em;
+  margin-bottom: 1em;
+  padding-left: 1.5em;
+}
+
+.prose li {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+}
+
+.prose p {
+  margin: 0;
+}
+
+.prose a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.prose h1 {
+  font-size: 1.5em;
+  font-weight: 700;
+  margin-top: 1.5em;
+  margin-bottom: 0.5em;
+}
+
+.prose h2 {
+  font-size: 1.25em;
+  font-weight: 600;
+  margin-top: 1.25em;
+  margin-bottom: 0.5em;
+}
+
+/* --- Project Card Overhaul (Phase 2) Utilities --- */
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+html.dark .glass-card {
+  background: rgba(21, 25, 32, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.rotate-x-1 {
+  transform: rotateX(2deg);
+}
+
+/* Floating Health Ring */
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: scale(1.05);
+    opacity: 0.4;
+  }
+
+  100% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+}
+
+.health-ring-critical {
+  box-shadow: 0 0 20px rgba(244, 63, 94, 0.4);
+  border-color: rgba(244, 63, 94, 0.6);
+}
+
+.health-ring-warning {
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+  border-color: rgba(245, 158, 11, 0.6);
+}
+
+.health-ring-success {
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+  border-color: rgba(16, 185, 129, 0.6);
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Sweep Effect */
+.sweep-effect::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -100%;
+  width: 50%;
+  height: 200%;
+  background: linear-gradient(to right,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.2) 50%,
+      rgba(255, 255, 255, 0) 100%);
+  transform: rotate(30deg);
+  transition: all 0.6s ease;
+  pointer-events: none;
+}
+
+.group:hover .sweep-effect::after {
+  left: 150%;
+}
+
+/* Segmented Progress */
+.segmented-progress {
+  display: flex;
+  gap: 2px;
+  height: 6px;
+  width: 100%;
+}
+
+.progress-segment {
+  flex: 1;
+  border-radius: 1px;
+  background-color: var(--color-surface-border);
+  transition: all 0.3s ease;
+}
+
+.progress-segment.active-indigo {
+  background-color: #6366f1;
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
+}
+
+.progress-segment.active-amber {
+  background-color: #f59e0b;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
+}
+
+.progress-segment.active-emerald {
+  background-color: #10b981;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+}
+
+.progress-segment.active-rose {
+  background-color: #f43f5e;
+  box-shadow: 0 0 8px rgba(244, 63, 94, 0.5);
 }

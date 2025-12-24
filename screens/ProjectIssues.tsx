@@ -12,6 +12,7 @@ import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { toMillis } from '../utils/time';
 import { MultiAssigneeSelector } from '../components/MultiAssigneeSelector';
+import { usePinnedTasks } from '../context/PinnedTasksContext';
 
 export const ProjectIssues = () => {
     const { id } = useParams<{ id: string }>();
@@ -22,6 +23,7 @@ export const ProjectIssues = () => {
     const [search, setSearch] = useState('');
     const [project, setProject] = useState<Project | null>(null);
     const [allUsers, setAllUsers] = useState<Member[]>([]);
+    const { pinItem, unpinItem, isPinned } = usePinnedTasks();
 
     // Modal State
     const [showNewIssueModal, setShowNewIssueModal] = useState(false);
@@ -265,7 +267,31 @@ export const ProjectIssues = () => {
                                     </div>
                                 </div>
 
-                                <div className="opacity-0 group-hover:opacity-100 transition-opacity self-center">
+                                <div className={`flex items-center gap-2 self-center ${isPinned(issue.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (isPinned(issue.id)) {
+                                                unpinItem(issue.id);
+                                            } else {
+                                                pinItem({
+                                                    id: issue.id,
+                                                    type: 'issue',
+                                                    title: issue.title,
+                                                    projectId: id!,
+                                                });
+                                            }
+                                        }}
+                                        className={`
+                                            p-1 rounded-full transition-all duration-200
+                                            ${isPinned(issue.id)
+                                                ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10'
+                                                : 'text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}
+                                        `}
+                                        title={isPinned(issue.id) ? "Unpin" : "Pin Issue"}
+                                    >
+                                        <span className="material-symbols-outlined text-[20px]">{isPinned(issue.id) ? 'push_pin' : 'push_pin'}</span>
+                                    </button>
                                     <span className="material-symbols-outlined text-[var(--color-text-subtle)]">chevron_right</span>
                                 </div>
                             </div>

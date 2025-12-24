@@ -1,0 +1,1060 @@
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { usePinnedTasks, PinnedItem } from '../context/PinnedTasksContext';
+import { Task, SubTask, Project, Member, PersonalTask } from '../types';
+import { getProjectById, getSubTasks, toggleTaskStatus, updateTaskFields, createSubTask, toggleSubTaskStatus, deleteSubTask, getUserProfile, updateSubtaskFields, deleteTask, addPersonalTask, deletePersonalTask, movePersonalTaskToProject, getUserProjects } from '../services/dataService';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { db, auth } from '../services/firebase';
+import { Button } from './ui/Button';
+import { Badge } from './ui/Badge';
+import { Input } from './ui/Input';
+import { useConfirm } from '../context/UIContext';
+import { CommentSection } from './CommentSection';
+import { fetchCommitsReferencingIssue, GithubCommit } from '../services/githubService';
+import { timeAgo, toMillis } from '../utils/time';
+
+
+
+const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClose?: () => void; onComplete?: (id: string) => void }) => {
+    const [item, setItem] = useState<Task | any | null>(null);
+    const [itemType, setItemType] = useState<'task' | 'issue'>('task');
+    const [subtasks, setSubtasks] = useState<SubTask[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+    const [project, setProject] = useState<Project | null>(null);
+    const [relatedCommits, setRelatedCommits] = useState<GithubCommit[]>([]);
+    const [loadingCommits, setLoadingCommits] = useState(false);
+    const [commentCount, setCommentCount] = useState(0);
+    const [isDescExpanded, setIsDescExpanded] = useState(() => {
+        const saved = localStorage.getItem(`pinned_desc_expanded_${itemId}`);
+        return saved === 'true';
+    });
+    const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
+    const [isEditingDesc, setIsEditingDesc] = useState(false);
+    const [descValue, setDescValue] = useState("");
+
+    const { pinnedItems } = usePinnedTasks();
+    const confirm = useConfirm();
+
+    useEffect(() => {
+        localStorage.setItem(`pinned_desc_expanded_${itemId}`, isDescExpanded.toString());
+    }, [isDescExpanded, itemId]);
+
+
+    useEffect(() => {
+        let mounted = true;
+        const load = async () => {
+            try {
+                // Get pinned item from context (not localStorage)
+                const current = pinnedItems.find(i => i.id === itemId);
+
+                if (!current) {
+                    setLoading(false);
+                    return;
+                }
+                setItemType(current.type);
+
+                // Fetch Task
+                // We construct the path manually if we know tenant/project, but simpler to use a helper if available.
+                // Since I don't have a direct 'getTask(id)' exported that handles everything perfect, I'll assume standard path if I can.
+                // But I'll use the findTaskDoc logic I saw earlier if I could, but I can't import internal functions.
+                // So I will rely on the fact that I stored projectId and try to fetch from there.
+
+                // Note: I need the tenantId to construct the path correctly if strictly following `dataService`.
+                // However, `PinnedItem` might not have `tenantId` if it was added before I added that field.
+                // But generally dataService functions handle resolution. 
+                // Wait, `getProjectTasks` is exported. `getProjectById` is exported.
+
+                // Let's first get project to get tenantId, then get task.
+                if (current.projectId) {
+                    const projectData = await getProjectById(current.projectId);
+                    if (projectData) {
+                        setProject(projectData);
+                        const collectionName = current.type === 'issue' ? 'issues' : 'tasks';
+                        const itemRef = doc(db, `tenants/${projectData.tenantId}/projects/${projectData.id}/${collectionName}/${itemId}`);
+                        const snap = await getDoc(itemRef);
+                        if (snap.exists() && mounted) {
+                            setItem({ id: snap.id, ...snap.data() });
+                        }
+                    }
+                }
+
+                // Fetch Subtasks (only for tasks)
+                if (current.type === 'task') {
+                    const subs = await getSubTasks(itemId);
+                    if (mounted) setSubtasks(subs);
+                }
+
+                // Set description initial value
+                setDescValue(current.description || "");
+
+                // Check completion on load for auto-unpin
+                if (current.type === 'task' && (current as any).isCompleted && onComplete) {
+                    // If it's already completed, we might want to unpin it immediately without animation or with?
+                    // Let's allow valid viewing if user specifically navigated here?
+                    // No, user said "a task that has been completed should not appear".
+                    // So we should trigger removal. 
+                    // But let's verify if we have full data. 
+                    // Note: current context data might be stale. We should check the fetched 'snap' data.
+                    // The logic above sets 'item' from snap.data().
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        };
+        load();
+        return () => { mounted = false; };
+    }, [itemId]);
+
+    // Effect to check verified completion status after load
+    useEffect(() => {
+        if (!loading && item && onComplete) {
+            if (itemType === 'task' && (item as Task).isCompleted) {
+                onComplete(item.id);
+            }
+            if (itemType === 'issue' && ((item as any).status === 'Resolved' || (item as any).status === 'Closed')) {
+                onComplete(item.id);
+            }
+        }
+    }, [loading, item, itemType, onComplete]);
+
+    useEffect(() => {
+        if (itemType === 'issue' && item?.githubIssueNumber && project?.githubRepo) {
+            const fetchCommits = async () => {
+                setLoadingCommits(true);
+                try {
+                    const user = auth.currentUser;
+                    let token = project.githubToken;
+                    if (!token && user?.uid) {
+                        const profile = await getUserProfile(user.uid, project.tenantId);
+                        token = profile?.githubToken;
+                    }
+
+                    const commits = await fetchCommitsReferencingIssue(
+                        project.githubRepo!,
+                        token,
+                        item.githubIssueNumber!
+                    );
+                    setRelatedCommits(commits);
+                } catch (err) {
+                    console.error("Failed to fetch related commits", err);
+                } finally {
+                    setLoadingCommits(false);
+                }
+            };
+            fetchCommits();
+        }
+    }, [itemType, item?.githubIssueNumber, project?.githubRepo]);
+
+
+    const handleToggleCompletion = async () => {
+        if (!item) return;
+
+        if (itemType === 'task') {
+            const t = item as Task;
+            const newStatus = !t.isCompleted;
+            setItem(prev => prev ? { ...prev, isCompleted: newStatus } : null);
+            await toggleTaskStatus(t.id, newStatus, t.projectId);
+            if (newStatus && onComplete) {
+                onComplete(t.id);
+            }
+        } else {
+            const i = item as any; // Issue
+            const isResolved = i.status === 'Resolved' || i.status === 'Closed';
+            const newStatus = isResolved ? 'Open' : 'Resolved';
+            setItem(prev => prev ? { ...prev, status: newStatus } : null);
+            // Direct update for issue since dataService might not expose explicit toggle for issues
+            // We need ref. But we don't have it easily here without fetching again or storing tenant/project.
+            // Simplified: we rely on identifying it correctly.
+            // I'll grab project info again or store it in state? 
+            // Better: use updateDoc with known path? I don't have the path here easily.
+            // I will implement a quick helper inline or just assume I can find it.
+            // Actually, in the useEffect I had the ref. I should store specific update function or path?
+            // Let's just fetch project again or store more info. 
+            // Optimized: We know projectId.
+            const project = await getProjectById(item.projectId);
+            if (project) {
+                const ref = doc(db, `tenants/${project.tenantId}/projects/${project.id}/issues/${item.id}`);
+                await updateDoc(ref, { status: newStatus });
+            }
+            if ((newStatus === 'Resolved' || newStatus === 'Closed') && onComplete) {
+                onComplete(item.id);
+            }
+        }
+    };
+
+    const handleToggleSubtask = async (subId: string, current: boolean) => {
+        setSubtasks(prev => prev.map(s => s.id === subId ? { ...s, isCompleted: !current } : s));
+        // Fix: toggleSubTaskStatus(subTaskId, currentStatus, taskId, projectId, tenantId)
+        // Ensure we pass the correct arguments. The service expects (subTaskId, currentStatus, taskId) at minimum.
+        await toggleSubTaskStatus(subId, current, item?.id);
+    };
+
+    const handleSaveSubtaskTitle = async (subId: string, newTitle: string) => {
+        if (!newTitle.trim()) return;
+        setSubtasks(prev => prev.map(s => s.id === subId ? { ...s, title: newTitle } : s));
+        setEditingSubtaskId(null);
+        await updateSubtaskFields(subId, { title: newTitle }, item.id, item.projectId);
+    };
+
+    const handleAddSubtask = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newSubtaskTitle.trim() || !item) return;
+        try {
+            // Optimistic update?
+            const tempId = 'temp_' + Date.now();
+            const newSub: SubTask = {
+                id: tempId,
+                taskId: item.id,
+                title: newSubtaskTitle,
+                isCompleted: false,
+                ownerId: item.ownerId, // approximate
+                projectId: item.projectId
+            };
+            setSubtasks(prev => [...prev, newSub]);
+            setNewSubtaskTitle('');
+
+            const realId = await createSubTask(item.projectId, item.id, newSubtaskTitle);
+            setSubtasks(prev => prev.map(s => s.id === tempId ? { ...s, id: realId } : s));
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    const handleSaveDescription = async () => {
+        if (!item) return;
+
+        try {
+            if (itemType === 'task') {
+                await updateTaskFields(item.id, { description: descValue });
+            } else {
+                await updateIssue(item.projectId, item.id, { description: descValue });
+            }
+            setItem(prev => prev ? { ...prev, description: descValue } : null);
+            setIsEditingDesc(false);
+        } catch (e) {
+            console.error("Failed to save description", e);
+        }
+    };
+
+    const isCompleted = itemType === 'task' ? (item as Task)?.isCompleted : (item as any)?.status === 'Resolved' || (item as any)?.status === 'Closed';
+
+    if (loading) return <div className="p-8 text-center text-[var(--color-text-subtle)]">Loading...</div>;
+    if (!item) return <div className="p-8 text-center text-[var(--color-text-subtle)]">Item not found</div>;
+
+    return (
+        <div className="flex flex-col h-full animate-fade-in">
+            {/* Header (Title Only - Actions moved to Parent) */}
+            <div className="flex items-start gap-3 mb-6">
+                <button
+                    onClick={handleToggleCompletion}
+                    className={`
+                        size-6 rounded-lg border-2 flex items-center justify-center transition-all mt-1
+                        ${isCompleted
+                            ? `${itemType === 'task' ? 'bg-green-500 border-green-500' : 'bg-emerald-500 border-emerald-500'} text-white`
+                            : `border-[var(--color-text-muted)] hover:${itemType === 'task' ? 'border-green-500' : 'border-emerald-500'} text-transparent`
+                        }
+                    `}
+                    title={itemType === 'task' ? "Mark Complete" : "Mark Resolved"}
+                >
+                    <span className="material-symbols-outlined text-[16px] font-bold">check</span>
+                </button>
+                <div className="flex-1">
+                    <h3 className={`text-xl font-bold leading-tight ${isCompleted ? 'line-through opacity-50' : ''}`}>
+                        {item.title}
+                    </h3>
+                    {item.priority && (
+                        <Badge size="sm" variant={item.priority === 'Urgent' ? 'danger' : item.priority === 'High' ? 'warning' : 'secondary'} className="mt-2">
+                            {item.priority}
+                        </Badge>
+                    )}
+                </div>
+            </div>
+
+            {/* Description Section */}
+            {/* Description Section */}
+            {(item.description || itemType === 'task' || isEditingDesc) && (
+                <div className="mb-6">
+                    <div className="flex items-center justify-between mb-2">
+                        <button
+                            onClick={() => setIsDescExpanded(!isDescExpanded)}
+                            className="flex items-center gap-2 text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider hover:text-[var(--color-text-main)] transition-colors"
+                        >
+                            <span className="material-symbols-outlined text-[16px]">description</span>
+                            Description
+                            <span className="material-symbols-outlined text-[14px]">
+                                {isDescExpanded ? 'expand_less' : 'expand_more'}
+                            </span>
+                        </button>
+                        {!isEditingDesc && (
+                            <button
+                                onClick={() => { setIsEditingDesc(true); setIsDescExpanded(true); }}
+                                className="text-[10px] text-[var(--color-primary)] hover:underline font-medium"
+                            >
+                                Edit
+                            </button>
+                        )}
+                    </div>
+
+                    {isDescExpanded && (
+                        isEditingDesc ? (
+                            <div className="space-y-2">
+                                <textarea
+                                    value={descValue}
+                                    onChange={(e) => setDescValue(e.target.value)}
+                                    className="w-full h-24 p-3 text-sm bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl focus:ring-2 focus:ring-[var(--color-primary)]/20 outline-none resize-none"
+                                    placeholder="Add a description..."
+                                    autoFocus
+                                />
+                                <div className="flex justify-end gap-2">
+                                    <button
+                                        onClick={() => {
+                                            setIsEditingDesc(false);
+                                            setDescValue(item.description || "");
+                                        }}
+                                        className="px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleSaveDescription}
+                                        className="px-3 py-1.5 text-xs font-medium bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors"
+                                    >
+                                        Save
+                                    </button>
+                                </div>
+                            </div>
+                        ) : (
+                            <div
+                                className="bg-[var(--color-surface-hover)]/50 p-3 rounded-xl border border-[var(--color-surface-border)] text-sm whitespace-pre-wrap text-[var(--color-text-main)] leading-relaxed group relative cursor-pointer hover:border-[var(--color-primary)]/30 transition-all"
+                                onClick={() => setIsEditingDesc(true)}
+                                title="Click to edit"
+                            >
+                                {item.description || <span className="italic opacity-50">No description provided. Click to add one.</span>}
+                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <span className="material-symbols-outlined text-[14px] text-[var(--color-text-muted)]">edit</span>
+                                </div>
+                            </div>
+                        )
+                    )}
+                </div>
+            )}
+
+            <div className="flex-1 overflow-y-auto pr-2 space-y-6 custom-scrollbar">
+                {/* Subtasks (Only for Tasks) */}
+                {itemType === 'task' ? (
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-semibold text-[var(--color-text-subtle)] uppercase tracking-wider">Subtasks</h4>
+                            <span className="text-xs font-medium bg-[var(--color-surface-hover)] px-2 py-0.5 rounded-full text-[var(--color-text-muted)]">
+                                {subtasks.filter(s => s.isCompleted).length}/{subtasks.length}
+                            </span>
+                        </div>
+
+                        <div className="space-y-1">
+                            {subtasks.map(sub => (
+                                <div key={sub.id} className="group flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors">
+                                    <button
+                                        onClick={() => handleToggleSubtask(sub.id, sub.isCompleted)}
+                                        className={`
+                                            size-4 rounded border flex items-center justify-center transition-all shrink-0
+                                            ${sub.isCompleted
+                                                ? 'bg-indigo-500 border-indigo-500 text-white'
+                                                : 'border-[var(--color-text-muted)] hover:border-indigo-500 text-transparent'
+                                            }
+                                        `}
+                                    >
+                                        <span className="material-symbols-outlined text-[12px] font-bold">check</span>
+                                    </button>
+
+                                    <div className="flex-1 min-w-0">
+                                        {editingSubtaskId === sub.id ? (
+                                            <input
+                                                autoFocus
+                                                type="text"
+                                                defaultValue={sub.title}
+                                                className="w-full bg-transparent p-0 pb-[3px] m-0 text-sm text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] leading-5 border-0 border-b focus:ring-0 focus:outline-none rounded-none animate-border-in"
+                                                onBlur={(e) => handleSaveSubtaskTitle(sub.id, e.target.value)}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') handleSaveSubtaskTitle(sub.id, e.currentTarget.value);
+                                                    if (e.key === 'Escape') setEditingSubtaskId(null);
+                                                }}
+                                            />
+                                        ) : (
+                                            <span
+                                                onClick={() => setEditingSubtaskId(sub.id)}
+                                                className={`text-sm block cursor-text hover:text-[var(--color-primary)] transition-colors border-b border-transparent leading-5 ${sub.isCompleted ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)]'}`}
+                                            >
+                                                {sub.title}
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <button
+                                        onClick={async () => {
+                                            if (await confirm('Delete subtask?', 'Are you sure you want to delete this subtask?')) {
+                                                setSubtasks(prev => prev.filter(s => s.id !== sub.id));
+                                                await deleteSubTask(sub.id, item.id, item.projectId);
+                                            }
+                                        }}
+                                        className="opacity-0 group-hover:opacity-100 p-1 text-[var(--color-text-muted)] hover:text-rose-500 transition-all"
+                                    >
+                                        <span className="material-symbols-outlined text-[16px]">delete</span>
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+
+                        <form onSubmit={handleAddSubtask} className="mt-2 flex items-center gap-2 group">
+                            <span className="material-symbols-outlined text-[var(--color-text-muted)] group-focus-within:text-[var(--color-primary)]">add</span>
+                            <input
+                                type="text"
+                                value={newSubtaskTitle}
+                                onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                                placeholder="Add subtask..."
+                                className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-sm placeholder-[var(--color-text-subtle)]"
+                            />
+                        </form>
+                    </div>
+                ) : (
+                    <div className="space-y-6">
+                        {/* Discussion / Comments for Issues */}
+                        <div>
+                            <h4 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-3 flex items-center gap-2 tracking-wider">
+                                <span className="material-symbols-outlined text-[16px]">chat</span>
+                                Discussion ({commentCount})
+                            </h4>
+                            <div className="scale-95 origin-top">
+                                <CommentSection
+                                    projectId={project?.id || ''}
+                                    targetId={itemId}
+                                    targetType="issue"
+                                    tenantId={project?.tenantId}
+                                    isProjectOwner={project?.ownerId === auth.currentUser?.uid}
+                                    hideHeader={true}
+                                    onCountChange={setCommentCount}
+                                />
+                            </div>
+                        </div>
+
+                        {/* GitHub reference for Issues */}
+                        {item.githubIssueNumber && (
+                            <div className="pt-4 border-t border-[var(--color-surface-border)]">
+                                <h4 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-3 flex items-center gap-2 tracking-wider">
+                                    <span className="material-symbols-outlined text-[16px] text-indigo-500">terminal</span>
+                                    GitHub Reference
+                                </h4>
+                                <a
+                                    href={item.githubIssueUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] hover:border-indigo-500/50 transition-all group mb-3"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]">open_in_new</span>
+                                        <span className="text-xs font-bold text-[var(--color-text-main)]">Issue #{item.githubIssueNumber}</span>
+                                    </div>
+                                    <span className="text-[10px] text-[var(--color-text-muted)]">View on GitHub</span>
+                                </a>
+
+                                {loadingCommits ? (
+                                    <div className="flex items-center gap-2 py-2">
+                                        <span className="material-symbols-outlined animate-spin text-[14px] text-[var(--color-primary)]">progress_activity</span>
+                                        <span className="text-[10px] text-[var(--color-text-muted)]">Searching commits...</span>
+                                    </div>
+                                ) : relatedCommits.length > 0 && (
+                                    <div className="space-y-1.5 max-h-[150px] overflow-y-auto pr-1">
+                                        {relatedCommits.map(commit => (
+                                            <a
+                                                key={commit.sha}
+                                                href={commit.html_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="block p-2 rounded-lg border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] transition-all"
+                                            >
+                                                <p className="text-[10px] font-medium text-[var(--color-text-main)] line-clamp-1">
+                                                    {commit.commit.message}
+                                                </p>
+                                                <div className="flex items-center justify-between mt-1">
+                                                    <span className="text-[9px] text-[var(--color-text-muted)]">@{commit.author?.login}</span>
+                                                    <span className="text-[9px] font-mono text-[var(--color-text-subtle)]">{commit.sha.slice(0, 7)}</span>
+                                                </div>
+                                            </a>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
+
+        </div>
+    );
+};
+
+export const PinnedTasksModal = () => {
+    const { isModalOpen, toggleModal, pinnedItems, focusItemId, unpinItem, setFocusItem, pinItem } = usePinnedTasks();
+    const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+    const [isCompactMode, setIsCompactMode] = useState(false);
+    const [completingItems, setCompletingItems] = useState<string[]>([]);
+    const [addingItems, setAddingItems] = useState<string[]>([]);
+    const [newTaskTitle, setNewTaskTitle] = useState("");
+    const [isCreatingTask, setIsCreatingTask] = useState(false);
+    const navigate = useNavigate();
+    const confirm = useConfirm();
+
+    // Draggable position and size state for compact mode
+    const [position, setPosition] = useState({ x: 0, y: 0 });
+    const [size, setSize] = useState({ width: 400, height: 400 });
+    const [isDragging, setIsDragging] = useState(false);
+    const [isResizing, setIsResizing] = useState(false);
+    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+
+    // Reset position when entering compact mode
+    useEffect(() => {
+        if (isCompactMode) {
+            setPosition({
+                x: window.innerWidth - 424,
+                y: window.innerHeight - 424
+            });
+            setSize({ width: 400, height: 400 });
+        }
+    }, [isCompactMode]);
+
+    // Default selection: Focus item if exists, else first pinned item
+    useEffect(() => {
+        if (isModalOpen) {
+            if (focusItemId && pinnedItems.some(i => i.id === focusItemId)) {
+                setSelectedItemId(focusItemId);
+            } else if (pinnedItems.length > 0) {
+                setSelectedItemId(pinnedItems[0].id);
+            } else {
+                setSelectedItemId(null);
+            }
+        }
+    }, [isModalOpen, focusItemId, pinnedItems.length]);
+
+    // Drag handlers
+    const handleDragStart = (e: React.MouseEvent) => {
+        if ((e.target as HTMLElement).closest('button')) return;
+        setIsDragging(true);
+        setDragOffset({
+            x: e.clientX - position.x,
+            y: e.clientY - position.y
+        });
+    };
+
+    // Resize handlers - direction can be 'se', 'e', 'w', 's', 'n'
+    const [resizeDirection, setResizeDirection] = useState<string | null>(null);
+
+    const handleResizeStart = (e: React.MouseEvent, direction: string) => {
+        e.stopPropagation();
+        setIsResizing(true);
+        setResizeDirection(direction);
+        setDragOffset({
+            x: e.clientX,
+            y: e.clientY
+        });
+    };
+
+    const handleItemCompletion = (itemId: string) => {
+        // Prevent duplicate trigger
+        if (completingItems.includes(itemId)) return;
+
+        setCompletingItems(prev => [...prev, itemId]);
+
+        // Wait for animation then unpin
+        setTimeout(() => {
+            unpinItem(itemId);
+            setCompletingItems(prev => prev.filter(id => id !== itemId));
+            if (selectedItemId === itemId) {
+                setSelectedItemId(null);
+            }
+        }, 500);
+    };
+
+    const handleCreatePersonalTask = async () => {
+        if (!newTaskTitle.trim()) return;
+
+        setIsCreatingTask(true);
+        try {
+            const taskId = await addPersonalTask(newTaskTitle);
+
+            // Pin the new task immediately
+            const newTaskItem: PinnedItem = {
+                id: taskId,
+                type: 'personal-task',
+                title: newTaskTitle,
+                projectId: '', // No project for personal tasks
+                priority: 'Medium'
+            };
+
+            // Trigger animation
+            setAddingItems(prev => [...prev, taskId]);
+
+            pinItem(newTaskItem);
+
+            setNewTaskTitle("");
+            // Optionally select it?
+            setSelectedItemId(taskId);
+
+            // Access to remove animation class after it plays
+            setTimeout(() => {
+                setAddingItems(prev => prev.filter(id => id !== taskId));
+            }, 500);
+        } catch (e) {
+            console.error("Failed to create personal task", e);
+        } finally {
+            setIsCreatingTask(false);
+        }
+    };
+
+    const handleDeleteTask = async (e: React.MouseEvent, item: PinnedItem) => {
+        e.stopPropagation(); // Prevent selection
+        if (await confirm('Delete Task', 'Are you sure you want to delete this task? This cannot be undone.')) {
+            try {
+                if (item.type === 'personal-task') {
+                    await deletePersonalTask(item.id);
+                } else {
+                    await deleteTask(item.id, item.projectId);
+                }
+                unpinItem(item.id);
+                if (selectedItemId === item.id) setSelectedItemId(null);
+            } catch (error) {
+                console.error("Failed to delete task", error);
+            }
+        }
+    };
+
+    useEffect(() => {
+        if (!isDragging && !isResizing) return;
+
+        // Prevent text selection while dragging/resizing
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = isDragging ? 'grabbing' :
+            resizeDirection === 'e' || resizeDirection === 'w' ? 'ew-resize' :
+                resizeDirection === 'n' || resizeDirection === 's' ? 'ns-resize' :
+                    resizeDirection === 'se' ? 'se-resize' :
+                        resizeDirection === 'sw' ? 'sw-resize' :
+                            resizeDirection === 'ne' ? 'ne-resize' :
+                                resizeDirection === 'nw' ? 'nw-resize' : 'default';
+
+        const handleMouseMove = (e: MouseEvent) => {
+            e.preventDefault(); // Prevent text selection
+
+            if (isDragging) {
+                setPosition({
+                    x: Math.max(0, Math.min(window.innerWidth - size.width, e.clientX - dragOffset.x)),
+                    y: Math.max(0, Math.min(window.innerHeight - 100, e.clientY - dragOffset.y))
+                });
+            }
+            if (isResizing && resizeDirection) {
+                const deltaX = e.clientX - dragOffset.x;
+                const deltaY = e.clientY - dragOffset.y;
+
+                let newWidth = size.width;
+                let newHeight = size.height;
+                let newX = position.x;
+                let newY = position.y;
+
+                // Horizontal resize from right
+                if (resizeDirection.includes('e')) {
+                    newWidth = Math.max(320, size.width + deltaX);
+                }
+                // Horizontal resize from left
+                if (resizeDirection.includes('w')) {
+                    const potentialWidth = size.width - deltaX;
+                    if (potentialWidth >= 320) {
+                        newWidth = potentialWidth;
+                        newX = position.x + deltaX;
+                    }
+                }
+                // Vertical resize from bottom
+                if (resizeDirection.includes('s')) {
+                    newHeight = Math.max(250, size.height + deltaY);
+                }
+                // Vertical resize from top
+                if (resizeDirection.includes('n')) {
+                    const potentialHeight = size.height - deltaY;
+                    if (potentialHeight >= 250) {
+                        newHeight = potentialHeight;
+                        newY = position.y + deltaY;
+                    }
+                }
+
+                setSize({ width: newWidth, height: newHeight });
+                setPosition({ x: newX, y: newY });
+                setDragOffset({ x: e.clientX, y: e.clientY });
+            }
+        };
+
+        const handleMouseUp = () => {
+            setIsDragging(false);
+            setIsResizing(false);
+            setResizeDirection(null);
+            // Restore text selection
+            document.body.style.userSelect = '';
+            document.body.style.cursor = '';
+        };
+
+        document.addEventListener('mousemove', handleMouseMove);
+        document.addEventListener('mouseup', handleMouseUp);
+
+        return () => {
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+            // Cleanup in case of unmount during drag
+            document.body.style.userSelect = '';
+            document.body.style.cursor = '';
+        };
+    }, [isDragging, isResizing, dragOffset, resizeDirection, size, position]);
+
+    if (!isModalOpen) return null;
+
+    // Compact floating mode - draggable and resizable
+    if (isCompactMode && selectedItemId) {
+        return (
+            <div
+                className="fixed z-50 bg-[var(--color-surface-card)] rounded-2xl shadow-2xl border border-[var(--color-surface-border)] flex flex-col overflow-hidden"
+                style={{
+                    left: position.x,
+                    top: position.y,
+                    width: size.width,
+                    height: size.height
+                }}
+            >
+                {/* Compact Header - Draggable */}
+                <div
+                    className={`flex items-center justify-between gap-2 px-4 py-3 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                    onMouseDown={handleDragStart}
+                >
+                    <div className="flex items-center gap-2 min-w-0">
+                        <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">drag_indicator</span>
+                        <span className="material-symbols-outlined text-[18px] text-amber-500">center_focus_strong</span>
+                        <span className="text-sm font-semibold text-[var(--color-text-main)] truncate">
+                            {pinnedItems.find(i => i.id === selectedItemId)?.title || 'Focus Task'}
+                        </span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                        {/* Compact Actions */}
+                        {selectedItemId && (
+                            <>
+                                <button
+                                    onClick={() => {
+                                        const item = pinnedItems.find(i => i.id === selectedItemId);
+                                        if (item && item.projectId) {
+                                            toggleModal();
+                                            navigate(`/project/${item.projectId}/${item.type === 'issue' ? 'issues' : 'tasks'}/${item.id}`);
+                                        }
+                                    }}
+                                    className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)] transition-colors"
+                                    title="Open Detail Page"
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                                </button>
+                                <button
+                                    onClick={() => setFocusItem(focusItemId === selectedItemId ? null : selectedItemId)}
+                                    className={`p-1.5 rounded-lg transition-colors ${focusItemId === selectedItemId ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'}`}
+                                    title="Toggle Focus"
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">{focusItemId === selectedItemId ? 'center_focus_strong' : 'center_focus_weak'}</span>
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        unpinItem(selectedItemId);
+                                        if (pinnedItems.length <= 1) toggleModal();
+                                    }}
+                                    className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/30 transition-colors"
+                                    title="Unpin"
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">keep_off</span>
+                                </button>
+                                <div className="w-[1px] h-4 bg-[var(--color-surface-border)] mx-1" />
+                            </>
+                        )}
+                        <button
+                            onClick={() => setIsCompactMode(false)}
+                            className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)] transition-colors"
+                            title="Expand to full view"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">open_in_full</span>
+                        </button>
+                        <button
+                            onClick={toggleModal}
+                            className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/30 transition-colors"
+                            title="Close"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">close</span>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Compact Content */}
+                <div className="flex-1 p-4 overflow-y-auto">
+                    <TaskDetailView
+                        itemId={selectedItemId}
+                        key={selectedItemId}
+                        onComplete={handleItemCompletion}
+                    />
+                </div>
+
+                {/* Edge Resize Handles */}
+                {/* Right edge */}
+                <div
+                    className="absolute top-4 right-0 bottom-4 w-2 cursor-ew-resize hover:bg-[var(--color-primary)]/20 transition-colors"
+                    onMouseDown={(e) => handleResizeStart(e, 'e')}
+                />
+                {/* Left edge */}
+                <div
+                    className="absolute top-4 left-0 bottom-4 w-2 cursor-ew-resize hover:bg-[var(--color-primary)]/20 transition-colors"
+                    onMouseDown={(e) => handleResizeStart(e, 'w')}
+                />
+                {/* Bottom edge */}
+                <div
+                    className="absolute bottom-0 left-4 right-4 h-2 cursor-ns-resize hover:bg-[var(--color-primary)]/20 transition-colors"
+                    onMouseDown={(e) => handleResizeStart(e, 's')}
+                />
+
+                {/* Corner Resize Handles */}
+                {/* Bottom Right */}
+                <div
+                    className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+                    onMouseDown={(e) => handleResizeStart(e, 'se')}
+                >
+                    <span className="material-symbols-outlined text-[12px] text-[var(--color-text-subtle)] rotate-[-45deg]">drag_handle</span>
+                </div>
+                {/* Bottom Left */}
+                <div
+                    className="absolute bottom-0 left-0 w-4 h-4 cursor-sw-resize"
+                    onMouseDown={(e) => handleResizeStart(e, 'sw')}
+                />
+                {/* Top Right */}
+                <div
+                    className="absolute top-0 right-0 w-4 h-4 cursor-ne-resize"
+                    onMouseDown={(e) => handleResizeStart(e, 'ne')}
+                />
+                {/* Top Left */}
+                <div
+                    className="absolute top-0 left-0 w-4 h-4 cursor-nw-resize"
+                    onMouseDown={(e) => handleResizeStart(e, 'nw')}
+                />
+            </div>
+        );
+    }
+
+    // Full modal mode
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={toggleModal} />
+
+            <div
+                className="relative w-full max-w-4xl bg-[var(--color-surface-card)] rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[70vh] animate-scale-up border border-[var(--color-surface-border)]"
+                style={{ resize: 'both', overflow: 'hidden', minWidth: '400px', minHeight: '300px' }}
+            >
+                {/* Header Bar with close button */}
+                <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-[var(--color-surface-card)]/80 backdrop-blur-sm p-1 rounded-xl border border-[var(--color-surface-border)] shadow-sm">
+                    {selectedItemId && (
+                        <>
+                            <button
+                                onClick={() => {
+                                    const item = pinnedItems.find(i => i.id === selectedItemId);
+                                    if (item && item.projectId) {
+                                        toggleModal();
+                                        navigate(`/project/${item.projectId}/${item.type === 'issue' ? 'issues' : 'tasks'}/${item.id}`);
+                                    }
+                                }}
+                                className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                                title="Open Detail Page"
+                            >
+                                <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                            </button>
+                            <button
+                                onClick={() => setFocusItem(focusItemId === selectedItemId ? null : selectedItemId)}
+                                className={`p-2 rounded-lg transition-colors ${focusItemId === selectedItemId ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'}`}
+                                title={focusItemId === selectedItemId ? "Unset Focus" : "Set as Focus"}
+                            >
+                                <span className="material-symbols-outlined text-[18px]">{focusItemId === selectedItemId ? 'center_focus_strong' : 'center_focus_weak'}</span>
+                            </button>
+                            <button
+                                onClick={() => {
+                                    unpinItem(selectedItemId);
+                                    // Optionally select another item if this one is removed, handled by effect
+                                }}
+                                className="p-2 rounded-lg text-[var(--color-text-muted)] hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/30 transition-colors"
+                                title="Unpin"
+                            >
+                                <span className="material-symbols-outlined text-[18px]">keep_off</span>
+                            </button>
+                            <div className="w-[1px] h-5 bg-[var(--color-surface-border)] mx-1" />
+                            <button
+                                onClick={() => setIsCompactMode(true)}
+                                className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                                title="Compact floating mode"
+                            >
+                                <span className="material-symbols-outlined text-[18px]">picture_in_picture_alt</span>
+                            </button>
+                        </>
+                    )}
+                    <button
+                        onClick={toggleModal}
+                        className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+                        title="Close (Esc)"
+                    >
+                        <span className="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                </div>
+
+                {/* Sidebar List */}
+                <div className="w-full md:w-1/3 bg-[var(--color-surface-bg)] border-r border-[var(--color-surface-border)] flex flex-col">
+                    <div className="p-4 border-b border-[var(--color-surface-border)] flex items-center justify-between">
+                        <h2 className="text-lg font-bold flex items-center gap-2">
+                            <span className="material-symbols-outlined text-[var(--color-primary)]">push_pin</span>
+                            Quick Access
+                        </h2>
+                        <span className="text-xs font-mono text-[var(--color-text-muted)] bg-[var(--color-surface-hover)] px-2 py-1 rounded">⌘+Shift+F</span>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                        {pinnedItems.length === 0 && (
+                            <div className="text-center p-8 text-[var(--color-text-muted)] text-sm">
+                                No pinned tasks yet.
+                            </div>
+                        )}
+
+                        {/* Separator for Focus Item if it's in the list? */}
+
+                        {pinnedItems.map(item => {
+                            const isFocus = item.id === focusItemId;
+                            const isSelected = item.id === selectedItemId;
+                            const isIssue = item.type === 'issue';
+                            const isCompleting = completingItems.includes(item.id);
+                            const isAdding = addingItems.includes(item.id);
+
+                            return (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setSelectedItemId(item.id)}
+                                    className={`
+                                        w-full text-left p-3 rounded-xl transition-all flex items-start gap-3 border duration-500 ease-in-out group relative
+                                        ${isCompleting ? 'opacity-0 -translate-x-full overflow-hidden h-0 p-0 m-0 border-0' : ''}
+                                        ${isAdding ? 'animate-[slideIn_0.4s_ease-out_forwards]' : ''}
+                                        ${isSelected
+                                            ? 'bg-[var(--color-surface-card)] border-[var(--color-primary)]/30 shadow-sm'
+                                            : 'border-transparent hover:bg-[var(--color-surface-hover)]'
+                                        }
+                                    `}
+                                >
+                                    <div className={`relative shrink-0 flex items-center justify-center p-2 rounded-lg border ${isFocus ? 'bg-amber-500/10 border-amber-500/30' : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)]'}`}>
+                                        <span className={`material-symbols-outlined text-[18px] ${isFocus ? 'text-amber-500' : (isIssue ? 'text-indigo-500' : 'text-emerald-500')}`}>
+                                            {isIssue ? 'bug_report' : 'task_alt'}
+                                        </span>
+                                        {isFocus && (
+                                            <span className="absolute -top-1 -right-1 size-2.5 bg-amber-500 rounded-full border-2 border-[var(--color-surface-bg)] animate-pulse shadow-sm" />
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0 py-0.5">
+                                        <p className={`text-sm font-semibold truncate ${isSelected ? 'text-[var(--color-text-main)]' : 'text-[var(--color-text-secondary)]'} ${isFocus ? 'text-amber-600 dark:text-amber-400' : ''}`}>
+                                            {item.title}
+                                        </p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${isFocus ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : (isIssue ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400')}`}>
+                                                {item.type}
+                                            </span>
+
+                                            {item.priority && (
+                                                <span className="text-[9px] font-medium text-[var(--color-text-muted)]">
+                                                    • {item.priority}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Delete Button (Hover) */}
+                                    <div
+                                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-[var(--color-text-muted)] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded z-10"
+                                        onClick={(e) => handleDeleteTask(e, item)}
+                                        title="Delete Task"
+                                    >
+                                        <span className="material-symbols-outlined text-[16px]">delete</span>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Add Personal Task Input */}
+                    <div className="p-3 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] relative overflow-hidden">
+                        {/* Loading Overlay for the whole section if needed, or just specific feedback */}
+                        {isCreatingTask && (
+                            <div className="absolute top-0 left-0 right-0 h-0.5 bg-[var(--color-surface-border)] overflow-hidden">
+                                <div className="h-full bg-[var(--color-primary)] animate-subtle-progress w-[30%]" />
+                            </div>
+                        )}
+
+                        <div className="relative group">
+                            <input
+                                type="text"
+                                value={newTaskTitle}
+                                onChange={(e) => setNewTaskTitle(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleCreatePersonalTask();
+                                }}
+                                placeholder="Add a personal task..."
+                                className="w-full bg-[var(--color-surface-hover)] border-none rounded-lg py-2 pl-9 pr-3 text-sm focus:ring-2 focus:ring-[var(--color-primary)]/20 outline-none transition-all placeholder-[var(--color-text-muted)] disabled:opacity-50"
+                                disabled={isCreatingTask}
+                            />
+                            <div className="absolute left-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center size-5">
+                                {isCreatingTask ? (
+                                    <div className="size-4 border-2 border-[var(--color-primary)]/30 border-t-[var(--color-primary)] rounded-full animate-spin" />
+                                ) : (
+                                    <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)] group-focus-within:text-[var(--color-primary)] transition-colors">
+                                        add_circle
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+                        <div className="mt-1 text-[10px] text-[var(--color-text-subtle)] px-2 flex justify-between items-center">
+                            <span>Press <kbd className="font-mono bg-[var(--color-surface-card)] px-1 rounded">Enter</kbd> to add</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Main Content (Clipboard) */}
+                <div className="flex-1 p-6 pt-14 flex flex-col min-w-0 bg-[var(--color-surface-card)]">
+                    {/* Add styles for animations */}
+                    <style>{`
+                        @keyframes slideIn {
+                            from { opacity: 0; transform: translateX(-20px); }
+                            to { opacity: 1; transform: translateX(0); }
+                        }
+                        @keyframes subtle-progress {
+                             0% { transform: translateX(-100%); }
+                             100% { transform: translateX(400%); }
+                        }
+                        .animate-subtle-progress {
+                             animation: subtle-progress 1.5s infinite linear;
+                        }
+                    `}</style>
+                    {selectedItemId && !completingItems.includes(selectedItemId) ? (
+                        <TaskDetailView
+                            itemId={selectedItemId}
+                            key={selectedItemId}
+                            onComplete={handleItemCompletion}
+                        />
+                    ) : (
+                        <div className="flex-1 flex flex-col items-center justify-center text-[var(--color-text-muted)]">
+                            <span className="material-symbols-outlined text-6xl opacity-20 mb-4">checklist</span>
+                            <p>Select a task to view details</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Close Button Mobile */}
+                {/* Removed the old mobile close button as it's replaced by the new header buttons */}
+            </div>
+        </div>
+    );
+};

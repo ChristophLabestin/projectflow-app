@@ -441,7 +441,7 @@ export const SpacingControl = ({ styles, onChange, onBulkChange }: { styles: Ema
     <BoxModelControl styles={styles} onChange={onChange} onBulkChange={onBulkChange} />
 );
 
-export const TypographyControl = ({ styles, onChange }: { styles: EmailBlockStyle, onChange: (k: string, v: any) => void }) => {
+export const TypographyControl = ({ styles, onChange, hideDivider }: { styles: EmailBlockStyle, onChange: (k: string, v: any) => void, hideDivider?: boolean }) => {
     const fontFamilyId = useId();
     return (
         <div className="space-y-5">
@@ -500,7 +500,7 @@ export const TypographyControl = ({ styles, onChange }: { styles: EmailBlockStyl
                 />
             </div>
 
-            <div className="flex flex-col gap-2 pt-2 border-t border-[var(--color-surface-border)]/30">
+            <div className={`flex gap-2 ${hideDivider ? '' : 'pt-2 border-t border-[var(--color-surface-border)]/30'}`}>
                 <SegmentedControl
                     label="Align"
                     value={styles.textAlign || 'left'}
@@ -512,19 +512,38 @@ export const TypographyControl = ({ styles, onChange }: { styles: EmailBlockStyl
                         { value: 'justify', icon: 'format_align_justify', ariaLabel: 'Justify' },
                     ]}
                 />
-                <div className="flex gap-2">
-                    <button
-                        onClick={() => onChange('textTransform', styles.textTransform === 'uppercase' ? 'none' : 'uppercase')}
-                        className={`flex-1 py-1.5 rounded border text-[9px] font-black uppercase tracking-widest transition-all ${styles.textTransform === 'uppercase' ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-primary)]/30'}`}
-                    >
-                        Uppercase
-                    </button>
-                    <button
-                        onClick={() => onChange('fontStyle', styles.fontStyle === 'italic' ? 'normal' : 'italic')}
-                        className={`flex-1 py-1.5 rounded border text-[9px] font-black uppercase tracking-widest transition-all ${styles.fontStyle === 'italic' ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-primary)]/30'}`}
-                    >
-                        Italic
-                    </button>
+                <div className="flex flex-col gap-1.5 w-full">
+                    <div className="text-[11px] text-[var(--color-text-muted)] font-medium">Decoration</div>
+                    <div className="flex gap-1">
+                        <button
+                            onClick={() => onChange('textTransform', styles.textTransform === 'uppercase' ? 'none' : 'uppercase')}
+                            title="Uppercase"
+                            className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${styles.textTransform === 'uppercase' ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-primary)]/30'}`}
+                        >
+                            <span className="material-symbols-outlined text-[16px]">abc</span>
+                        </button>
+                        <button
+                            onClick={() => onChange('fontStyle', styles.fontStyle === 'italic' ? 'normal' : 'italic')}
+                            title="Italic"
+                            className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${styles.fontStyle === 'italic' ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-primary)]/30'}`}
+                        >
+                            <span className="material-symbols-outlined text-[16px]">format_italic</span>
+                        </button>
+                        <button
+                            onClick={() => onChange('textDecoration', styles.textDecoration === 'underline' ? 'none' : 'underline')}
+                            title="Underline"
+                            className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${styles.textDecoration === 'underline' ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-primary)]/30'}`}
+                        >
+                            <span className="material-symbols-outlined text-[16px]">format_underlined</span>
+                        </button>
+                        <button
+                            onClick={() => onChange('textDecoration', styles.textDecoration === 'line-through' ? 'none' : 'line-through')}
+                            title="Strikethrough"
+                            className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${styles.textDecoration === 'line-through' ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-primary)]/30'}`}
+                        >
+                            <span className="material-symbols-outlined text-[16px]">format_strikethrough</span>
+                        </button>
+                    </div>
                 </div>
             </div>
             <ColorPicker label="Text Color" value={styles.color || '#000000'} onChange={(v) => onChange('color', v)} />
@@ -534,23 +553,43 @@ export const TypographyControl = ({ styles, onChange }: { styles: EmailBlockStyl
 
 export const SizeControl = ({ styles, onChange }: { styles: EmailBlockStyle, onChange: (k: string, v: any) => void }) => {
     return (
-        <div className="grid grid-cols-2 gap-3">
-            <ScrubbableInput
-                label="Width"
-                icon="width"
-                value={styles.width ?? '100%'}
-                onChange={(v) => onChange('width', v)}
-                placeholder="100%"
-                units={['%', 'px', 'auto']}
-            />
-            <ScrubbableInput
-                label="Height"
-                icon="height"
-                value={styles.height ?? 'auto'}
-                onChange={(v) => onChange('height', v)}
-                placeholder="auto"
-                units={['px', 'auto']}
-            />
+        <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+                <ScrubbableInput
+                    label="Width"
+                    icon="width"
+                    value={styles.width ?? '100%'}
+                    onChange={(v) => onChange('width', v)}
+                    placeholder="100%"
+                    units={['%', 'px', 'auto']}
+                />
+                <ScrubbableInput
+                    label="Height"
+                    icon="height"
+                    value={styles.height ?? 'auto'}
+                    onChange={(v) => onChange('height', v)}
+                    placeholder="auto"
+                    units={['px', 'auto']}
+                />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+                <ScrubbableInput
+                    label="Min W"
+                    icon="remove"
+                    value={styles.minWidth ?? ''}
+                    onChange={(v) => onChange('minWidth', v)}
+                    placeholder="0px"
+                    units={['px', '%', 'auto']}
+                />
+                <ScrubbableInput
+                    label="Max W"
+                    icon="add"
+                    value={styles.maxWidth ?? ''}
+                    onChange={(v) => onChange('maxWidth', v)}
+                    placeholder="none"
+                    units={['px', '%', 'auto']}
+                />
+            </div>
         </div>
     );
 };

@@ -1,33 +1,59 @@
 import React from 'react';
 import { EmailBlock } from '../../../types';
 
-export const BlockRenderer = ({ block }: { block: EmailBlock }) => {
+export const BlockRenderer = ({ block, variables, preview = false }: { block: EmailBlock, variables?: any[], preview?: boolean }) => {
     const { content, styles } = block;
 
+    const isButton = block.type === 'button';
+    const alignStyle = styles.textAlign as any || 'left';
+
     const commonStyle: React.CSSProperties = {
-        color: styles.color || 'inherit',
+        color: styles.color || '#000000', // Default to black for email client compatibility
         fontSize: styles.fontSize ? `${styles.fontSize}px` : '16px',
         fontWeight: styles.fontWeight || 'normal',
-        textAlign: styles.textAlign as any || 'left',
+        textAlign: alignStyle,
         fontFamily: styles.fontFamily || '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-        lineHeight: '1.6',
+        lineHeight: styles.lineHeight ? String(styles.lineHeight) : '1.6',
+        letterSpacing: styles.letterSpacing ? `${styles.letterSpacing}px` : undefined,
+        textTransform: styles.textTransform as any,
+        textDecoration: styles.textDecoration as any,
         padding: `${styles.paddingTop ?? 0}px ${styles.paddingRight ?? 0}px ${styles.paddingBottom ?? 0}px ${styles.paddingLeft ?? 0}px`,
         backgroundColor: styles.backgroundColor || 'transparent',
         borderRadius: styles.borderRadius ? `${styles.borderRadius}px` : undefined,
         borderWidth: styles.borderWidth ? `${styles.borderWidth}px` : undefined,
         borderColor: styles.borderColor || undefined,
         borderStyle: styles.borderStyle || undefined,
-        width: styles.width || '100%',
+        width: styles.width || (['columns', 'flex', 'divider', 'div'].includes(block.type) ? '100%' : undefined),
         height: styles.height || 'auto',
+        maxWidth: styles.maxWidth ? (typeof styles.maxWidth === 'number' ? `${styles.maxWidth}px` : styles.maxWidth) : undefined,
+        minWidth: styles.minWidth ? (typeof styles.minWidth === 'number' ? `${styles.minWidth}px` : styles.minWidth) : undefined,
     };
 
     switch (block.type) {
         case 'text':
             return (
+                <div style={{
+                    ...commonStyle,
+                    color: styles.color || '#000000',
+                    fontWeight: styles.fontWeight || 'normal',
+                    fontStyle: styles.fontStyle || 'normal',
+                    textDecoration: styles.textDecoration || 'none',
+                    textTransform: (styles.textTransform as any) || 'none',
+                    fontSize: styles.fontSize ? `${styles.fontSize}px` : '14px',
+                    lineHeight: styles.lineHeight || 1.5,
+                    letterSpacing: styles.letterSpacing ? `${styles.letterSpacing}px` : 'normal',
+                }}>
+                    {content.text || (preview ? '' : 'Enter your text here...')}
+                </div>
+            );
+
+        case 'richtext':
+            return (
                 <div style={commonStyle}>
                     <div
-                        className="prose prose-sm max-w-none text-inherit dark:prose-invert"
-                        dangerouslySetInnerHTML={{ __html: content.text || 'Start typing your content here...' }}
+                        className="prose prose-sm max-w-none"
+                        style={{ color: styles.color || '#000000' }}
+                        dangerouslySetInnerHTML={{ __html: content.text || (preview ? '' : '<p>Start typing your rich content here...</p>') }}
                     />
                 </div>
             );
@@ -39,17 +65,20 @@ export const BlockRenderer = ({ block }: { block: EmailBlock }) => {
                         margin: 0,
                         fontSize: styles.fontSize ? `${styles.fontSize}px` : '32px',
                         fontWeight: styles.fontWeight || '800',
-                        letterSpacing: '-0.025em',
-                        lineHeight: '1.2'
+                        letterSpacing: styles.letterSpacing ? `${styles.letterSpacing}px` : '-0.025em',
+                        lineHeight: styles.lineHeight ? String(styles.lineHeight) : '1.2',
+                        color: styles.color || '#000000', // Force color
+                        textTransform: styles.textTransform as any,
+                        textDecoration: styles.textDecoration as any,
                     }}>
-                        {content.text || 'Catchy Headline'}
+                        {content.text || (preview ? '' : 'Catchy Headline')}
                     </h1>
                 </div>
             );
 
         case 'list':
             return (
-                <div style={commonStyle}>
+                <div style={{ ...commonStyle, color: styles.color || '#000000' }}>
                     <ul className="list-disc space-y-2 ml-5">
                         <li>Premium feature number one</li>
                         <li>Automated workflow integration</li>
@@ -64,9 +93,10 @@ export const BlockRenderer = ({ block }: { block: EmailBlock }) => {
                     <blockquote style={{
                         borderLeft: '4px solid #3b82f6',
                         paddingLeft: '20px',
-                        fontStyle: 'italic',
-                        color: '#666666',
-                        fontSize: '1.1em'
+                        fontStyle: styles.fontStyle || 'italic',
+                        color: styles.color || '#666666',
+                        fontSize: styles.fontSize ? `${styles.fontSize}px` : '1.1em',
+                        lineHeight: styles.lineHeight ? String(styles.lineHeight) : '1.6',
                     }}>
                         {content.text || 'This tool has completely transformed how our team builds marketing assets.'}
                     </blockquote>
@@ -79,37 +109,63 @@ export const BlockRenderer = ({ block }: { block: EmailBlock }) => {
                     {content.text ? (
                         <div dangerouslySetInnerHTML={{ __html: content.text }} />
                     ) : (
-                        <div className="p-4 border border-dashed border-zinc-300 dark:border-zinc-700 rounded text-center text-xs text-zinc-400 font-mono">
-                            {'<!-- Your custom HTML goes here -->'}
-                        </div>
+                        !preview && (
+                            <div className="p-4 border border-dashed border-zinc-300 dark:border-zinc-700 rounded text-center text-xs text-zinc-400 font-mono">
+                                {'<!-- Your custom HTML goes here -->'}
+                            </div>
+                        )
                     )}
                 </div>
             );
 
         case 'button':
+            // Alignment Logic:
+            // 1. If we are inside a Flex container, the parent Flex handles cross-axis alignment via alignItems.
+            // 2. If we are block level (standard flow), the wrapper handles textAlign.
+            // 3. Margin should be handled by commonStyle layout props (handled outside or via wrapper style if we want margins).
+
+            // "Padding" in the context of a button usually means INNER padding (size of button).
+            // "Margin" would be outer spacing.
+            // Currently, `styles.paddingTop` etc are being applied to `commonStyle` which might be the wrapper.
+            // We need to apply `styles.padding...` to the BUTTON itself for sizing.
+
+            // Destructure padding from commonStyle to prevent it from being on the wrapper if we want it on the button
+            const { padding, paddingTop, paddingBottom, paddingLeft, paddingRight, ...wrapperStyle } = commonStyle;
+
             return (
-                <div style={{ textAlign: (styles.textAlign as any) || 'center', width: '100%', margin: '0 auto' }}>
+                <div style={{
+                    ...wrapperStyle, // Apply width, height, margins, etc to wrapper
+                    padding: 0, // Reset padding on wrapper so it doesn't inflate the container unexpectedly
+                    textAlign: alignStyle, // Control horizontal alignment of the inline-block button
+                    display: styles.width === '100%' ? 'block' : 'block', // Ensure wrapper takes full width to allow text-align to work
+                }}>
                     <a
                         href={content.url || '#'}
                         onClick={e => !content.url && e.preventDefault()}
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{
-                            display: 'inline-block',
-                            backgroundColor: styles.backgroundColor || styles.color || '#000000',
-                            color: styles.color && styles.backgroundColor ? styles.color : (styles.backgroundColor ? '#ffffff' : (styles.color || '#ffffff')),
-                            padding: `${styles.paddingTop ?? 14}px ${styles.paddingRight ?? 28}px ${styles.paddingBottom ?? 14}px ${styles.paddingLeft ?? 28}px`,
+                            display: styles.width === '100%' ? 'block' : 'inline-block', // Full width or natural width
+                            backgroundColor: styles.backgroundColor || '#000000',
+                            color: styles.color || '#ffffff',
+                            padding: `${styles.paddingTop ?? 14}px ${styles.paddingRight ?? 28}px ${styles.paddingBottom ?? 14}px ${styles.paddingLeft ?? 28}px`, // Apply padding to button for size
                             borderRadius: `${styles.borderRadius ?? 12}px`,
                             borderWidth: styles.borderWidth ? `${styles.borderWidth}px` : undefined,
                             borderColor: styles.borderColor || undefined,
                             borderStyle: styles.borderStyle || undefined,
                             fontSize: `${styles.fontSize || 15}px`,
                             fontWeight: styles.fontWeight || '600',
-                            textDecoration: 'none',
+                            textDecoration: styles.textDecoration || 'none',
+                            textTransform: styles.textTransform as any,
+                            fontStyle: styles.fontStyle as any,
+                            letterSpacing: styles.letterSpacing ? `${styles.letterSpacing}px` : undefined,
+                            lineHeight: styles.lineHeight ? String(styles.lineHeight) : undefined,
                             fontFamily: styles.fontFamily || 'inherit',
                             transition: 'all 0.2s ease',
+                            boxSizing: 'border-box',
+                            cursor: 'pointer',
+                            textAlign: 'center', // Center text INSIDE the button
                             width: styles.width === '100%' ? '100%' : 'auto',
-                            boxSizing: 'border-box'
                         }}
                     >
                         {content.text || 'Get Started Now'}
@@ -118,18 +174,48 @@ export const BlockRenderer = ({ block }: { block: EmailBlock }) => {
             );
 
         case 'image':
+            const hasVariable = content.src?.includes('{{');
+
             return (
                 <div style={{ ...commonStyle, textAlign: (styles.textAlign as any) || 'center' }}>
-                    <img
-                        src={content.src}
-                        alt={content.alt}
-                        style={{
-                            maxWidth: '100%',
-                            height: 'auto',
-                            display: 'inline-block',
-                            borderRadius: styles.borderRadius ? `${styles.borderRadius}px` : undefined,
-                        }}
-                    />
+                    {content.src && !hasVariable && (
+                        <img
+                            src={content.src}
+                            alt={content.alt}
+                            style={{
+                                maxWidth: '100%',
+                                height: 'auto',
+                                display: 'inline-block',
+                                borderRadius: styles.borderRadius ? `${styles.borderRadius}px` : undefined,
+                            }}
+                        />
+                    )}
+
+                    {/* Show placeholder if no src OR if it contains a variable pattern */}
+                    {(!content.src || hasVariable) && (
+                        <div className="group relative w-full aspect-video bg-zinc-100 dark:bg-zinc-800 rounded flex flex-col items-center justify-center text-zinc-400 border-2 border-dashed border-zinc-200 dark:border-zinc-700 overflow-hidden"
+                            style={{ minHeight: '200px', borderRadius: styles.borderRadius ? `${styles.borderRadius}px` : undefined }}>
+
+                            {content.src ? (
+                                <>
+                                    <div className="absolute inset-0 bg-[var(--color-primary)]/5 flex flex-col items-center justify-center">
+                                        <span className="material-symbols-outlined text-4xl mb-2 text-[var(--color-primary)] opacity-50">data_object</span>
+                                        <span className="font-mono text-sm font-bold text-[var(--color-primary)] bg-white/50 px-2 py-1 rounded border border-[var(--color-primary)]/20">
+                                            {content.src}
+                                        </span>
+                                    </div>
+                                    <p className="absolute bottom-4 text-xs text-zinc-500 font-medium">Variable Image</p>
+                                </>
+                            ) : (
+                                !preview && (
+                                    <>
+                                        <span className="material-symbols-outlined text-4xl mb-2 opacity-20">image</span>
+                                        <span className="text-sm font-medium opacity-50">Image Placeholder</span>
+                                    </>
+                                )
+                            )}
+                        </div>
+                    )}
                 </div>
             );
 
@@ -164,7 +250,11 @@ export const BlockRenderer = ({ block }: { block: EmailBlock }) => {
                                 href={link.url}
                                 onClick={e => e.preventDefault()}
                                 className="text-sm font-medium hover:underline transition-colors"
-                                style={{ color: styles.color || 'inherit' }}
+                                style={{
+                                    color: styles.color || 'inherit',
+                                    textDecoration: styles.textDecoration || undefined,
+                                    textTransform: styles.textTransform as any,
+                                }}
                             >
                                 {link.label}
                             </a>
@@ -188,9 +278,21 @@ export const BlockRenderer = ({ block }: { block: EmailBlock }) => {
                                 key={idx}
                                 href={link.url}
                                 onClick={e => e.preventDefault()}
-                                className="size-10 flex items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                                className="flex items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                                style={{
+                                    width: styles.fontSize ? `calc(${styles.fontSize}px * 2)` : '40px',
+                                    height: styles.fontSize ? `calc(${styles.fontSize}px * 2)` : '40px',
+                                    color: styles.color || 'inherit'
+                                }}
                             >
-                                <svg className="size-5" fill="currentColor" viewBox="0 0 24 24">
+                                <svg
+                                    style={{
+                                        width: styles.fontSize ? `${styles.fontSize}px` : '20px',
+                                        height: styles.fontSize ? `${styles.fontSize}px` : '20px'
+                                    }}
+                                    fill="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
                                     <path d={iconMap[link.platform] || ''} />
                                 </svg>
                             </a>
@@ -218,12 +320,29 @@ export const BlockRenderer = ({ block }: { block: EmailBlock }) => {
             );
 
         case 'div':
+            if (preview) {
+                return (
+                    <div style={{
+                        ...commonStyle,
+                        display: 'flex',
+                        flexDirection: styles.flexDirection || 'column',
+                        justifyContent: styles.justifyContent || 'flex-start',
+                        alignItems: styles.alignItems || 'stretch',
+                        gap: `${styles.gap ?? 0}px`,
+                        minHeight: styles.height
+                    }}>
+                        {content.children?.map((child) => (
+                            <BlockRenderer key={child.id} block={child} preview={true} />
+                        ))}
+                    </div>
+                );
+            }
             return (
                 <div style={{
                     ...commonStyle,
                     minHeight: styles.height || '40px',
                     border: '1px dashed #e5e5e5',
-                    padding: '8px'
+                    // padding: '8px' removed to allow user control
                 }}>
                     <div className="text-[9px] uppercase tracking-widest text-zinc-300 font-bold mb-1">Div Container</div>
                     {/* Simplified preview for DragOverlay */}
@@ -234,16 +353,35 @@ export const BlockRenderer = ({ block }: { block: EmailBlock }) => {
             );
 
         case 'flex':
+            if (preview) {
+                return (
+                    <div style={{
+                        ...commonStyle,
+                        display: 'flex',
+                        flexDirection: styles.flexDirection || 'row',
+                        flexWrap: styles.flexWrap || 'wrap',
+                        justifyContent: styles.justifyContent || 'flex-start',
+                        alignItems: styles.alignItems || 'stretch',
+                        gap: `${styles.gap ?? 10}px`,
+                    }}>
+                        {content.children?.map((child) => (
+                            <BlockRenderer key={child.id} block={child} preview={true} />
+                        ))}
+                    </div>
+                );
+            }
             return (
                 <div style={{
                     ...commonStyle,
                     display: 'flex',
                     flexDirection: styles.flexDirection || 'row',
                     flexWrap: styles.flexWrap || 'wrap',
+                    justifyContent: styles.justifyContent || 'flex-start',
+                    alignItems: styles.alignItems || 'stretch',
                     gap: `${styles.gap ?? 10}px`,
                     minHeight: '60px',
                     border: '1px dashed #e5e5e5',
-                    padding: '8px'
+                    // padding: '8px' removed to allow user control
                 }}>
                     <div className="w-full text-[9px] uppercase tracking-widest text-zinc-300 font-bold mb-1">Flex Container</div>
                     {content.children?.map((child, i) => (
@@ -253,6 +391,33 @@ export const BlockRenderer = ({ block }: { block: EmailBlock }) => {
             );
 
         case 'columns':
+            if (preview) {
+                return (
+                    <div style={{
+                        ...commonStyle,
+                        display: 'grid',
+                        gridTemplateColumns: `repeat(${content.columns?.length || 2}, 1fr)`,
+                        gap: `${styles.gap ?? 20}px`,
+                        justifyContent: styles.justifyContent || 'flex-start',
+                        alignItems: styles.alignItems || 'stretch',
+                    }}>
+                        {content.columns?.map((col, idx) => (
+                            <div key={idx} style={{
+                                minHeight: '1px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                justifyContent: styles.justifyContent || 'flex-start',
+                                alignItems: styles.alignItems || 'stretch',
+                                gap: `${styles.gap ?? 0}px`
+                            }}>
+                                {col.children?.map((child) => (
+                                    <BlockRenderer key={child.id} block={child} preview={true} />
+                                ))}
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
             return (
                 <div style={{
                     ...commonStyle,
@@ -261,7 +426,7 @@ export const BlockRenderer = ({ block }: { block: EmailBlock }) => {
                     gap: `${styles.gap ?? 20}px`,
                     minHeight: '60px',
                     border: '1px dashed #e5e5e5',
-                    padding: '8px'
+                    // padding: '8px' removed to allow user control
                 }}>
                     {content.columns?.map((col, idx) => (
                         <div key={idx} className="border border-dotted border-zinc-200 p-1 min-h-[40px]">

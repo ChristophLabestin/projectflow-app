@@ -156,7 +156,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ projectId, targe
                         className={`
                             p-2 rounded-lg flex items-center justify-center transition-colors
                             ${newComment.trim()
-                                ? 'bg-[var(--color-primary)] text-white hover:opacity-90'
+                                ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:opacity-90'
                                 : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] cursor-not-allowed'}
                         `}
                     >

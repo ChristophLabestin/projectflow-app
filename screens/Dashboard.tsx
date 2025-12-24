@@ -11,6 +11,8 @@ import { Sparkline } from '../components/charts/Sparkline';
 import { DonutChart } from '../components/charts/DonutChart';
 import { ScheduledTasksCard } from '../components/dashboard/ScheduledTasksCard';
 import { LatestMilestoneCard } from '../components/dashboard/LatestMilestoneCard';
+import { calculateProjectHealth, calculateWorkspaceHealth, ProjectHealth } from '../services/healthService';
+import { WorkspaceHealthCard } from '../components/dashboard/WorkspaceHealthCard';
 
 
 const formatShortDate = (date: any) => {
@@ -236,6 +238,34 @@ export const Dashboard = () => {
             otherPct: Math.max(0, 100 - Math.round((active / total) * 100) - Math.round((completed / total) * 100))
         };
     }, [stats, projects.length]);
+
+    // Calculate Workspace Health
+    const workspaceHealth = useMemo(() => {
+        const tasksByProject: Record<string, Task[]> = {};
+        const issuesByProject: Record<string, Issue[]> = {};
+
+        tasks.forEach(t => {
+            if (!tasksByProject[t.projectId]) tasksByProject[t.projectId] = [];
+            tasksByProject[t.projectId].push(t);
+        });
+
+        issues.forEach(i => {
+            if (!issuesByProject[i.projectId]) issuesByProject[i.projectId] = [];
+            issuesByProject[i.projectId].push(i);
+        });
+
+        const healthMap: Record<string, ProjectHealth> = {};
+        projects.forEach(p => {
+            healthMap[p.id] = calculateProjectHealth(
+                p,
+                tasksByProject[p.id] || [],
+                [], // Milestones not available in dashboard view currently
+                issuesByProject[p.id] || []
+            );
+        });
+
+        return calculateWorkspaceHealth(projects.filter(p => p.status !== 'Completed'), healthMap);
+    }, [projects, tasks, issues]);
 
     // Hybrid Activity Feed: Combine real activities with synthetic ones from tasks/ideas
     const displayActivities = useMemo(() => {
@@ -479,36 +509,48 @@ export const Dashboard = () => {
 
     return (
         <div className="space-y-6 pb-12 fade-in">
-            {/* Header */}
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 dark:from-indigo-900 dark:to-violet-900 p-8 text-white shadow-xl mb-6">
-                <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-                    <div>
-                        <div className="flex items-center gap-2 text-indigo-100 text-sm font-medium mb-2">
-                            <span className="material-symbols-outlined text-[18px]">calendar_today</span>
-                            {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
-                        </div>
-                        <h1 className="text-3xl md:text-4xl font-bold mb-3 tracking-tight">
-                            {greeting}, {userName}
-                        </h1>
-                        <p className="text-indigo-100 text-lg max-w-xl leading-relaxed">
-                            You have <strong className="text-white font-semibold">{stats.activeProjects} active projects</strong> and <strong className="text-white font-semibold">{dueSoonCount} tasks</strong> due soon.
-                        </p>
+            {/* Header - Greeting & Quick Stats */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-8 animate-fade-in">
+                <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-[var(--color-primary)] font-bold uppercase tracking-wider text-xs">
+                        <span className="material-symbols-outlined text-sm">calendar_today</span>
+                        {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
                     </div>
-                    <div className="flex gap-3 shrink-0">
-                        <Link to="/create">
-                            <Button
-                                variant="secondary"
-                                className="bg-white/10 hover:bg-white/20 text-white border-0 backdrop-blur-sm shadow-lg"
-                                icon={<span className="material-symbols-outlined">add</span>}
-                            >
-                                New Project
-                            </Button>
-                        </Link>
+                    <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-[var(--color-text-main)] tracking-tight">
+                        {greeting}, {userName}.
+                    </h1>
+                    <p className="text-[var(--color-text-muted)] font-medium">
+                        Here's what's happening in your workspace today.
+                    </p>
+                </div>
+
+                <div className="flex gap-4">
+                    <div className="flex-1 min-w-[100px] p-4 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-sm hover:shadow-md transition-shadow">
+                        <div className="text-3xl font-black text-[var(--color-text-main)]">{stats.activeProjects}</div>
+                        <div className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mt-1">Active Projects</div>
+                    </div>
+                    <div className="flex-1 min-w-[100px] p-4 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-sm hover:shadow-md transition-shadow">
+                        <div className="text-3xl font-black text-amber-500">{dueSoonCount}</div>
+                        <div className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mt-1">Due Soon</div>
+                    </div>
+                    <div className="flex-1 min-w-[100px] p-4 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-sm hover:shadow-md transition-shadow">
+                        <div className="text-3xl font-black text-emerald-500">{stats.completedProjects}</div>
+                        <div className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mt-1">Completed</div>
                     </div>
                 </div>
-                {/* Decorative Elements */}
-                <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-white/10 blur-3xl pointer-events-none"></div>
-                <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-40 h-40 rounded-full bg-black/10 blur-2xl pointer-events-none"></div>
+            </div>
+
+            {/* Quick Actions Row */}
+            <div className="flex justify-end mb-6">
+                <Link to="/create">
+                    <Button
+                        size="md"
+                        className="rounded-xl px-6 font-bold shadow-lg shadow-indigo-500/20 bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:opacity-90 border-none"
+                        icon={<span className="material-symbols-outlined">add</span>}
+                    >
+                        New Project
+                    </Button>
+                </Link>
             </div>
 
             {/* Main Dashboard Grid */}
@@ -681,29 +723,34 @@ export const Dashboard = () => {
                             </div>
                         </Card>
 
-                        {/* 2. Project Status (Span 1) */}
-                        <Card padding="md" className="flex flex-col items-center justify-center lg:col-span-1">
-                            <div className="relative flex items-center justify-center mb-6">
-                                <DonutChart data={projectStatusDistribution} size={140} thickness={12} />
-                                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                    <span className="text-2xl font-bold text-[var(--color-text-main)]">{projects.length}</span>
-                                    <span className="text-xs text-[var(--color-text-muted)] uppercase">Projects</span>
-                                </div>
-                            </div>
-                            <div className="w-full space-y-2">
-                                <h3 className="h4 text-center mb-4">Status</h3>
-                                {projectStatusDistribution.map((item) => (
-                                    <div key={item.name} className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors text-sm">
-                                        <div className="flex items-center gap-2">
-                                            <span className="size-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                                            <span className="font-medium text-[var(--color-text-main)]">{item.name}</span>
-                                        </div>
-                                        <span className="font-bold text-[var(--color-text-main)]">{item.value}</span>
+                        {/* 2. Workspace Health & Project Status (Span 1, Stacked) */}
+                        <div className="lg:col-span-1 space-y-6">
+
+                            <WorkspaceHealthCard health={workspaceHealth} projectCount={projects.length} />
+
+                            <Card padding="md" className="flex flex-col items-center justify-center">
+                                <div className="relative flex items-center justify-center mb-6">
+                                    <DonutChart data={projectStatusDistribution} size={140} thickness={12} />
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                        <span className="text-2xl font-bold text-[var(--color-text-main)]">{projects.length}</span>
+                                        <span className="text-xs text-[var(--color-text-muted)] uppercase">Projects</span>
                                     </div>
-                                ))}
-                                {projectStatusDistribution.length === 0 && <p className="text-sm text-[var(--color-text-muted)] text-center">No active projects.</p>}
-                            </div>
-                        </Card>
+                                </div>
+                                <div className="w-full space-y-2">
+                                    <h3 className="h4 text-center mb-4">Status</h3>
+                                    {projectStatusDistribution.map((item) => (
+                                        <div key={item.name} className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors text-sm">
+                                            <div className="flex items-center gap-2">
+                                                <span className="size-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                                                <span className="font-medium text-[var(--color-text-main)]">{item.name}</span>
+                                            </div>
+                                            <span className="font-bold text-[var(--color-text-main)]">{item.value}</span>
+                                        </div>
+                                    ))}
+                                    {projectStatusDistribution.length === 0 && <p className="text-sm text-[var(--color-text-muted)] text-center">No active projects.</p>}
+                                </div>
+                            </Card>
+                        </div>
 
 
 

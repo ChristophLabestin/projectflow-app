@@ -5,11 +5,13 @@ import { subscribeSocialAssets, createSocialAsset, deleteSocialAsset } from '../
 import { SocialAsset } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { auth } from '../../services/firebase';
+import { useConfirm } from '../../context/UIContext';
 
 export const SocialAssets = () => {
     const { id: projectId } = useParams<{ id: string }>();
     const [assets, setAssets] = useState<SocialAsset[]>([]);
     const [uploading, setUploading] = useState(false);
+    const confirm = useConfirm();
 
     // File Input Ref
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -60,7 +62,7 @@ export const SocialAssets = () => {
 
     const handleDelete = async (id: string) => {
         if (!projectId) return;
-        if (confirm("Are you sure you want to delete this asset?")) {
+        if (await confirm("Delete Asset", "Are you sure you want to delete this asset?")) {
             await deleteSocialAsset(projectId, id);
         }
     };

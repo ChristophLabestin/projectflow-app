@@ -66,7 +66,7 @@ export const MilestoneCard = ({ projectId }: { projectId: string }) => {
         >
             <div className="flex items-center justify-between mb-4 z-10 relative">
                 <h3 className="text-lg font-bold font-display text-[var(--color-text-main)]">Milestones</h3>
-                <div className="size-8 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center group-hover:bg-[var(--color-primary)] group-hover:text-white transition-colors">
+                <div className="size-8 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center group-hover:bg-[var(--color-primary)] group-hover:text-[var(--color-primary-text)] transition-colors">
                     <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                 </div>
             </div>

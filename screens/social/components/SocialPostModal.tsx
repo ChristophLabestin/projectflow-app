@@ -13,6 +13,7 @@ import { AssetPickerModal } from './AssetPickerModal';
 import { auth } from '../../../services/firebase';
 import { DatePicker } from '../../../components/ui/DatePicker';
 import { TimePicker } from '../../../components/ui/TimePicker';
+import { useToast } from '../../../context/UIContext';
 
 interface SocialPostModalProps {
     isOpen: boolean;
@@ -32,6 +33,7 @@ export const SocialPostModal: React.FC<SocialPostModalProps> = ({ isOpen, onClos
     const [scheduledDate, setScheduledDate] = useState('');
     const [scheduledTime, setScheduledTime] = useState('');
     const [loading, setLoading] = useState(false);
+    const { showInfo } = useToast();
 
     // Asset State
     const [assets, setAssets] = useState<SocialAsset[]>([]);
@@ -313,7 +315,7 @@ export const SocialPostModal: React.FC<SocialPostModalProps> = ({ isOpen, onClos
                             <Button size="sm" variant="secondary" onClick={() => navigator.clipboard.writeText(caption)} icon={<span className="material-symbols-outlined">content_copy</span>}>
                                 Copy Caption
                             </Button>
-                            <Button size="sm" variant="secondary" onClick={() => alert("Assets downloaded! (Mock)")} icon={<span className="material-symbols-outlined">download</span>}>
+                            <Button size="sm" variant="secondary" onClick={() => showInfo("Assets downloaded! (Mock)")} icon={<span className="material-symbols-outlined">download</span>}>
                                 Download Assets
                             </Button>
                         </div>

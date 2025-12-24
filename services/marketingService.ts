@@ -4,198 +4,183 @@ import {
     EmailCampaign,
     MarketingAudience,
     MarketingFunnelMetric,
-    AdGroup,
-    MarketingStrategyStatus
+    EmailTemplate
 } from '../types';
+import { db, auth } from './firebase';
+import {
+    collection,
+    addDoc,
+    updateDoc,
+    doc,
+    onSnapshot,
+    query,
+    where,
+    getDocs,
+    serverTimestamp,
+    orderBy,
+    getDoc
+} from 'firebase/firestore';
 
-// Mock Data Store
-let mockMarketingCampaigns: MarketingCampaign[] = [
-    {
-        id: 'mc1',
-        projectId: 'demo-project',
-        name: 'Q1 Growth Push',
-        description: 'Aggressive user acquisition for Q1',
-        status: 'Active',
-        startDate: '2024-01-01',
-        endDate: '2024-03-31',
-        budgetTotal: 50000,
-        budgetSpent: 12500,
-        channels: ['Google Ads', 'Meta Ads', 'Email'],
-        ownerId: 'user1',
-        createdAt: new Date()
-    }
-];
-
-let mockAdCampaigns: AdCampaign[] = [
-    {
-        id: 'ac1',
-        projectId: 'demo-project',
-        marketingCampaignId: 'mc1',
-        platform: 'Google',
-        name: 'Search - Brand Keywords',
-        status: 'Enabled',
-        budgetDaily: 100,
-        spend: 4500,
-        objective: 'Traffic',
-        metrics: {
-            impressions: 15000,
-            clicks: 850,
-            ctr: 5.6,
-            cpc: 2.10,
-            conversions: 120,
-            costPerConversion: 15.5,
-            roas: 4.2
-        },
-        startDate: '2024-01-05'
-    },
-    {
-        id: 'ac2',
-        projectId: 'demo-project',
-        marketingCampaignId: 'mc1',
-        platform: 'Meta',
-        name: 'Retargeting - Site Visitors',
-        status: 'Paused',
-        budgetDaily: 50,
-        spend: 1200,
-        objective: 'Conversions',
-        metrics: {
-            impressions: 8000,
-            clicks: 200,
-            ctr: 2.5,
-            cpc: 1.80,
-            conversions: 15,
-            costPerConversion: 45.0,
-            roas: 1.5
-        },
-        startDate: '2024-01-10'
-    }
-];
-
-let mockEmailCampaigns: EmailCampaign[] = [
-    {
-        id: 'ec1',
-        projectId: 'demo-project',
-        marketingCampaignId: 'mc1',
-        name: 'Feb Newsletter',
-        subject: 'Product Update: New Features!',
-        senderName: 'Team ProjectFlow',
-        status: 'Sent',
-        sentAt: '2024-02-15T10:00:00Z',
-        stats: {
-            sent: 5000,
-            opened: 2400,
-            clicked: 850,
-            bounced: 12,
-            unsubscribed: 5
-        }
-    },
-    {
-        id: 'ec2',
-        projectId: 'demo-project',
-        name: 'March Promo',
-        subject: 'Special Offer Inside',
-        senderName: 'Team ProjectFlow',
-        status: 'Draft',
-        stats: { sent: 0, opened: 0, clicked: 0, bounced: 0, unsubscribed: 0 }
-    }
-];
-
-let mockAudiences: MarketingAudience[] = [
-    { id: 'aud1', projectId: 'demo-project', name: 'All Users', count: 12500, source: 'CRM' },
-    { id: 'aud2', projectId: 'demo-project', name: 'Leads (Lat 30 Days)', count: 450, source: 'Signups' }
-];
-
-let mockFunnel: MarketingFunnelMetric[] = [
-    { stage: 'Awareness', value: 50000, change: 12 },
-    { stage: 'Interest', value: 15000, change: 8 },
-    { stage: 'Consideration', value: 5000, change: -2 },
-    { stage: 'Conversion', value: 1200, change: 15 },
-    { stage: 'Retention', value: 800, change: 5 }
-];
-
-// Mock Listeners
-type Listener<T> = (data: T) => void;
-
-function createMockSubscription<T>(
-    initialData: T,
-    selector: () => T
-) {
-    return (callback: Listener<T>) => {
-        // Initial callback
-        setTimeout(() => callback(selector()), 100);
-
-        // Return unsubscribe
-        return () => { };
-    };
-}
-
-// Services
-
-export const subscribeMarketingCampaigns = (projectId: string, onUpdate: Listener<MarketingCampaign[]>) => {
-    // In a real app, this would use onSnapshot from Firestore
-    return createMockSubscription([], () =>
-        mockMarketingCampaigns.filter(c => c.projectId === projectId || c.projectId === 'demo-project')
-    )(onUpdate);
-};
-
-export const subscribeAdCampaigns = (projectId: string, onUpdate: Listener<AdCampaign[]>) => {
-    return createMockSubscription([], () =>
-        mockAdCampaigns.filter(c => c.projectId === projectId || c.projectId === 'demo-project')
-    )(onUpdate);
-};
-
-export const subscribeEmailCampaigns = (projectId: string, onUpdate: Listener<EmailCampaign[]>) => {
-    return createMockSubscription([], () =>
-        mockEmailCampaigns.filter(c => c.projectId === projectId || c.projectId === 'demo-project')
-    )(onUpdate);
-};
-
-export const subscribeAudiences = (projectId: string, onUpdate: Listener<MarketingAudience[]>) => {
-    return createMockSubscription([], () =>
-        mockAudiences.filter(c => c.projectId === projectId || c.projectId === 'demo-project')
-    )(onUpdate);
-};
-
-export const getFunnelMetrics = async (projectId: string): Promise<MarketingFunnelMetric[]> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    return mockFunnel;
-};
-
-// CRUD Operations
+// --- Marketing Campaigns ---
 
 export const createMarketingCampaign = async (campaign: Omit<MarketingCampaign, 'id' | 'createdAt'>) => {
-    const newCampaign = {
+    const colRef = collection(db, 'marketing_campaigns');
+    const docRef = await addDoc(colRef, {
         ...campaign,
-        id: Math.random().toString(36).substr(2, 9),
-        createdAt: new Date()
-    };
-    mockMarketingCampaigns = [...mockMarketingCampaigns, newCampaign];
-    return newCampaign.id;
+        createdAt: serverTimestamp()
+    });
+    return docRef.id;
 };
+
+export const subscribeMarketingCampaigns = (projectId: string, onUpdate: (data: MarketingCampaign[]) => void) => {
+    const q = query(
+        collection(db, 'marketing_campaigns'),
+        where('projectId', '==', projectId),
+        orderBy('createdAt', 'desc')
+    );
+
+    return onSnapshot(q, (snapshot) => {
+        const campaigns = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as MarketingCampaign));
+        onUpdate(campaigns);
+    });
+};
+
+// --- Ad Campaigns ---
 
 export const createAdCampaign = async (campaign: Omit<AdCampaign, 'id'>) => {
-    const newCampaign = {
+    const colRef = collection(db, 'ad_campaigns');
+    const docRef = await addDoc(colRef, {
         ...campaign,
-        id: Math.random().toString(36).substr(2, 9)
-    };
-    mockAdCampaigns = [...mockAdCampaigns, newCampaign];
-    return newCampaign.id;
+        startDate: new Date().toISOString()
+    });
+    return docRef.id;
 };
 
-export const createEmailCampaign = async (campaign: Omit<EmailCampaign, 'id'>) => {
-    const newCampaign = {
-        ...campaign,
-        id: Math.random().toString(36).substr(2, 9)
-    };
-    mockEmailCampaigns = [...mockEmailCampaigns, newCampaign];
-    return newCampaign.id;
+export const subscribeAdCampaigns = (projectId: string, onUpdate: (data: AdCampaign[]) => void) => {
+    const q = query(
+        collection(db, 'ad_campaigns'),
+        where('projectId', '==', projectId)
+    );
+    return onSnapshot(q, (snapshot) => {
+        const campaigns = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as AdCampaign));
+        onUpdate(campaigns);
+    });
 };
 
 export const updateAdCampaignStatus = async (id: string, status: AdCampaign['status']) => {
-    mockAdCampaigns = mockAdCampaigns.map(c => c.id === id ? { ...c, status } : c);
+    const ref = doc(db, 'ad_campaigns', id);
+    await updateDoc(ref, { status });
+};
+
+// --- Email Campaigns ---
+
+export const createEmailCampaign = async (campaign: Omit<EmailCampaign, 'id'>) => {
+    const colRef = collection(db, 'email_campaigns');
+    const docRef = await addDoc(colRef, {
+        ...campaign,
+        createdAt: serverTimestamp() // Track creation
+    });
+    return docRef.id;
+};
+
+export const updateEmailCampaign = async (id: string, updates: Partial<EmailCampaign>) => {
+    const ref = doc(db, 'email_campaigns', id);
+
+    // Logic: If updating template, check if campaign is scheduled or sent
+    if (updates.templateId || updates.contentBlocks) {
+        const snap = await getDoc(ref);
+        if (snap.exists()) {
+            const data = snap.data() as EmailCampaign;
+            if (['scheduled', 'sent'].includes(data.status)) {
+                throw new Error("Cannot modify template of a scheduled or sent campaign.");
+            }
+        }
+    }
+
+    await updateDoc(ref, updates);
+};
+
+export const subscribeEmailCampaigns = (projectId: string, onUpdate: (data: EmailCampaign[]) => void) => {
+    const q = query(
+        collection(db, 'email_campaigns'),
+        where('projectId', '==', projectId)
+        // Add orderBy if needed, requires composite index
+    );
+    return onSnapshot(q, (snapshot) => {
+        const campaigns = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as EmailCampaign));
+        onUpdate(campaigns);
+    });
 };
 
 export const updateEmailCampaignStatus = async (id: string, status: EmailCampaign['status']) => {
-    mockEmailCampaigns = mockEmailCampaigns.map(c => c.id === id ? { ...c, status } : c);
+    const ref = doc(db, 'email_campaigns', id);
+    await updateDoc(ref, { status });
+};
+
+// --- Audiences ---
+
+export const subscribeAudiences = (projectId: string, onUpdate: (data: MarketingAudience[]) => void) => {
+    // For now, mock or simple collection
+    const q = query(
+        collection(db, 'marketing_audiences'),
+        where('projectId', '==', projectId)
+    );
+    return onSnapshot(q, (snapshot) => {
+        const audiences = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as MarketingAudience));
+        onUpdate(audiences);
+    });
+};
+
+// --- Analytics ---
+
+// --- Analytics ---
+
+export const getFunnelMetrics = async (projectId: string): Promise<MarketingFunnelMetric[]> => {
+    try {
+        const adQ = query(collection(db, 'ad_campaigns'), where('projectId', '==', projectId));
+        const emailQ = query(collection(db, 'email_campaigns'), where('projectId', '==', projectId));
+
+        const [adSnaps, emailSnaps] = await Promise.all([getDocs(adQ), getDocs(emailQ)]);
+
+        const ads = adSnaps.docs.map(d => d.data() as AdCampaign);
+        const emails = emailSnaps.docs.map(d => d.data() as EmailCampaign);
+
+        // Aggregation Logic
+        // Awareness: Ad Impressions + Emails Sent
+        const awareness = ads.reduce((sum, ad) => sum + (ad.metrics?.impressions || 0), 0) +
+            emails.reduce((sum, email) => sum + (email.stats?.sent || 0), 0);
+
+        // Interest: Ad Clicks + Email Opens
+        const interest = ads.reduce((sum, ad) => sum + (ad.metrics?.clicks || 0), 0) +
+            emails.reduce((sum, email) => sum + (email.stats?.opened || 0), 0);
+
+        // Consideration: Email Clicks (High intent)
+        const consideration = emails.reduce((sum, email) => sum + (email.stats?.clicked || 0), 0);
+
+        // Conversion: Ad Conversions
+        const conversion = ads.reduce((sum, ad) => sum + (ad.metrics?.conversions || 0), 0);
+
+        return [
+            { stage: 'Awareness', value: awareness, change: 0 }, // Change tracking requires historical data snapshots, skipping for now
+            { stage: 'Interest', value: interest, change: 0 },
+            { stage: 'Consideration', value: consideration, change: 0 },
+            { stage: 'Conversion', value: conversion, change: 0 },
+            { stage: 'Retention', value: 0, change: 0 } // Requires retention data
+        ];
+    } catch (error) {
+        console.error("Failed to fetch funnel metrics", error);
+        return [];
+    }
 };

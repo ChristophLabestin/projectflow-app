@@ -499,7 +499,7 @@ export const Calendar = () => {
                             <button
                                 onClick={prepareAutoSchedule}
                                 disabled={distributing}
-                                className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-white dark:text-neutral-900 rounded-xl hover:opacity-90 transition-all font-semibold disabled:opacity-50 shadow-sm"
+                                className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded-xl hover:opacity-90 transition-all font-semibold disabled:opacity-50 shadow-sm"
                             >
                                 <span className="material-symbols-outlined text-[18px]">{distributing ? 'hourglass_top' : 'auto_fix_high'}</span>
                                 <span className="hidden sm:inline">{distributing ? 'Optimizing...' : 'Smart Schedule'}</span>
@@ -546,7 +546,7 @@ export const Calendar = () => {
                                     {/* Date Header */}
                                     <div className={`p-2 flex items-center justify-between shrink-0 ${isCurrent ? 'bg-[var(--color-primary)]/5' : ''}`}>
                                         <span className="text-xs font-medium uppercase text-[var(--color-text-muted)]">{viewMode === 'week' ? displayDay : ''}</span>
-                                        <div className={`flex items-center justify-center w-7 h-7 rounded-full text-sm font-medium ${isCurrent ? 'bg-[var(--color-primary)] text-white shadow-sm' : 'text-[var(--color-text-main)]'}`}>
+                                        <div className={`flex items-center justify-center w-7 h-7 rounded-full text-sm font-medium ${isCurrent ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] shadow-sm' : 'text-[var(--color-text-main)]'}`}>
                                             {displayDate}
                                         </div>
                                     </div>
@@ -884,9 +884,9 @@ export const Calendar = () => {
                                 <button
                                     onClick={applyAutoSchedule}
                                     disabled={proposedSchedule.length === 0 || selectedChanges.size === 0}
-                                    className="px-8 py-3 rounded-xl font-bold bg-[var(--color-primary)] text-white dark:text-black hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-indigo-500/30 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed flex items-center gap-2"
+                                    className="px-8 py-3 rounded-xl font-bold bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-indigo-500/30 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed flex items-center gap-2"
                                 >
-                                    {selectedChanges.size > 0 && <span className="flex items-center justify-center bg-white/20 text-white dark:text-black w-5 h-5 rounded-full text-[10px]">{selectedChanges.size}</span>}
+                                    {selectedChanges.size > 0 && <span className="flex items-center justify-center bg-white/20 text-[var(--color-primary-text)] w-5 h-5 rounded-full text-[10px]">{selectedChanges.size}</span>}
                                     <span>Start Schedule</span>
                                 </button>
                             </div>

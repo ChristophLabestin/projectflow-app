@@ -7,6 +7,8 @@ const MarketingLayout = () => {
         { to: "", label: "Overview", end: true, icon: "dashboard" },
         { to: "ads", label: "Paid Ads", icon: "ads_click" },
         { to: "email", label: "Email Marketing", icon: "mail" },
+        { to: "recipients", label: "Recipients", icon: "group" },
+        { to: "settings", label: "Settings", icon: "settings" },
     ];
 
     return (
@@ -45,7 +47,7 @@ const MarketingLayout = () => {
 
             {/* Main Content */}
             <div className="flex-1 overflow-y-auto">
-                <div className={`${location.pathname.includes('/email/builder') ? 'w-full h-full p-4' : 'max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6'} h-full`}>
+                <div className={`${location.pathname.includes('/email/builder') || location.pathname.includes('/email/create') ? 'w-full h-full' : 'max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6'} h-full`}>
                     <Outlet />
                 </div>
             </div>

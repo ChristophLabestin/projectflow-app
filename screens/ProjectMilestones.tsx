@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useOutletContext, useParams } from 'react-router-dom';
 import { Milestone } from '../types';
-import { subscribeProjectMilestones, updateMilestone, deleteMilestone } from '../services/dataService';
 import { MilestoneModal } from '../components/Milestones/MilestoneModal';
+import { useConfirm } from '../context/UIContext';
 import { GlobalConfirmationModal } from '../components/ui/GlobalConfirmationModal';
+import { subscribeProjectMilestones, deleteMilestone, updateMilestone } from '../services/dataService';
 
 export const ProjectMilestones = () => {
     const { id: projectId } = useParams<{ id: string }>();
@@ -12,6 +13,7 @@ export const ProjectMilestones = () => {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingMilestone, setEditingMilestone] = useState<Milestone | undefined>(undefined);
+    const confirm = useConfirm();
 
     // Filter state
     const [filter, setFilter] = useState<'All' | 'Pending' | 'Achieved'>('All');
@@ -38,7 +40,7 @@ export const ProjectMilestones = () => {
 
     const handleDelete = async (milestone: Milestone) => {
         if (!projectId) return;
-        if (window.confirm(`Are you sure you want to delete "${milestone.title}"?`)) {
+        if (await confirm("Delete Milestone", `Are you sure you want to delete "${milestone.title}"?`)) {
             await deleteMilestone(projectId, milestone.id);
         }
     };
@@ -75,7 +77,7 @@ export const ProjectMilestones = () => {
                 </div>
                 <button
                     onClick={() => { setEditingMilestone(undefined); setIsModalOpen(true); }}
-                    className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-white dark:text-black rounded-xl font-bold hover:opacity-90 transition-opacity shadow-lg shadow-[var(--color-primary)]/20"
+                    className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded-xl font-bold hover:opacity-90 transition-opacity shadow-lg shadow-[var(--color-primary)]/20"
                 >
                     <span className="material-symbols-outlined">add</span>
                     New Milestone
@@ -89,8 +91,8 @@ export const ProjectMilestones = () => {
                         key={f}
                         onClick={() => setFilter(f)}
                         className={`px-4 py-1.5 rounded-full text-sm font-bold transition-all whitespace-nowrap ${filter === f
-                                ? 'bg-[var(--color-text-main)] text-[var(--color-surface-bg)]'
-                                : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'
+                            ? 'bg-[var(--color-text-main)] text-[var(--color-surface-bg)]'
+                            : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'
                             }`}
                     >
                         {f}
@@ -118,16 +120,16 @@ export const ProjectMilestones = () => {
                         <div
                             key={milestone.id}
                             className={`group flex items-start gap-4 p-4 rounded-2xl border transition-all ${milestone.status === 'Achieved'
-                                    ? 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] opacity-75'
-                                    : 'bg-[var(--color-surface-card)] border-[var(--color-surface-border)] hover:border-[var(--color-primary)]/50 hover:shadow-md'
+                                ? 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] opacity-75'
+                                : 'bg-[var(--color-surface-card)] border-[var(--color-surface-border)] hover:border-[var(--color-primary)]/50 hover:shadow-md'
                                 }`}
                         >
                             {/* Checkbox */}
                             <button
                                 onClick={() => handleStatusToggle(milestone)}
                                 className={`mt-1 size-6 rounded-full border-2 flex items-center justify-center transition-all ${milestone.status === 'Achieved'
-                                        ? 'bg-green-500 border-green-500 text-white'
-                                        : 'border-[var(--color-text-muted)] hover:border-[var(--color-primary)]'
+                                    ? 'bg-green-500 border-green-500 text-white'
+                                    : 'border-[var(--color-text-muted)] hover:border-[var(--color-primary)]'
                                     }`}
                             >
                                 {milestone.status === 'Achieved' && <span className="material-symbols-outlined text-sm">check</span>}
@@ -160,18 +162,18 @@ export const ProjectMilestones = () => {
                                 <div className="flex items-center gap-4 mt-3">
                                     {milestone.dueDate && (
                                         <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-md ${new Date(milestone.dueDate) < new Date() && milestone.status !== 'Achieved'
-                                                ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
-                                                : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'
+                                            ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                                            : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'
                                             }`}>
                                             <span className="material-symbols-outlined text-[14px]">calendar_today</span>
                                             {new Date(milestone.dueDate).toLocaleDateString()}
                                         </div>
                                     )}
                                     <span className={`text-xs font-bold px-2 py-1 rounded-md ${milestone.status === 'Achieved'
-                                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                            : milestone.status === 'Missed'
-                                                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                                        : milestone.status === 'Missed'
+                                            ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                            : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                                         }`}>
                                         {milestone.status}
                                     </span>

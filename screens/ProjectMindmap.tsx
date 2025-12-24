@@ -1555,7 +1555,7 @@ export const ProjectMindmap = () => {
                                             setActiveMindmapId(newId);
                                             setShowMapMenu(false);
                                         }}
-                                        className="flex-1 px-3 py-2 rounded-xl text-sm font-bold bg-black text-white hover:bg-slate-900"
+                                        className="flex-1 px-3 py-2 rounded-xl text-sm font-bold bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:opacity-90"
                                     >
                                         + New mindmap
                                     </button>
@@ -1752,13 +1752,13 @@ export const ProjectMindmap = () => {
                                             setCustomGroup('');
                                         }
                                     }}
-                                    className={`px-3 py-1.5 rounded-full text-xs font-bold border ${drawerMode === 'edit' ? 'border-black bg-black text-white' : 'border-slate-200 bg-white hover:border-black'}`}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-bold border ${drawerMode === 'edit' ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-primary-text)]' : 'border-slate-200 bg-white hover:border-[var(--color-primary)]'}`}
                                 >
                                     Edit / branches
                                 </button>
                                 <button
                                     onClick={() => { setDrawerMode('map'); setEditTitle(activeMindmap?.name || ''); }}
-                                    className={`px-3 py-1.5 rounded-full text-xs font-bold border ${drawerMode === 'map' ? 'border-black bg-black text-white' : 'border-slate-200 bg-white hover:border-black'}`}
+                                    className={`px-3 py-1.5 rounded-full text-xs font-bold border ${drawerMode === 'map' ? 'border-[var(--color-primary)] bg-[var(--color-primary)] text-[var(--color-primary-text)]' : 'border-slate-200 bg-white hover:border-[var(--color-primary)]'}`}
                                 >
                                     Map settings
                                 </button>
@@ -1789,7 +1789,7 @@ export const ProjectMindmap = () => {
                                                 }
                                             }}
                                             disabled={actionLoading || !editTitle.trim()}
-                                            className="w-full px-4 py-2 rounded-lg bg-black text-white text-sm font-bold disabled:opacity-50"
+                                            className="w-full px-4 py-2 rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-text)] text-sm font-bold disabled:opacity-50"
                                         >
                                             Save name
                                         </button>
@@ -1817,7 +1817,7 @@ export const ProjectMindmap = () => {
                                             <button
                                                 onClick={handleRenameGroup}
                                                 disabled={actionLoading || !renameGroupName.trim()}
-                                                className="w-full px-4 py-2 rounded-lg bg-black text-white text-sm font-bold disabled:opacity-50"
+                                                className="w-full px-4 py-2 rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-text)] text-sm font-bold disabled:opacity-50"
                                             >
                                                 Rename branch
                                             </button>
@@ -1856,7 +1856,7 @@ export const ProjectMindmap = () => {
                                                 <button
                                                     onClick={handleSaveIdea}
                                                     disabled={actionLoading}
-                                                    className="px-4 py-2 rounded-lg bg-black text-white text-sm font-bold disabled:opacity-50"
+                                                    className="px-4 py-2 rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-text)] text-sm font-bold disabled:opacity-50"
                                                 >
                                                     Save
                                                 </button>
@@ -1902,7 +1902,7 @@ export const ProjectMindmap = () => {
                                                 <button
                                                     onClick={() => handleImportIdeaToActive(idea)}
                                                     disabled={actionLoading}
-                                                    className="px-3 py-2 rounded-lg bg-black text-white text-sm font-bold disabled:opacity-50 shrink-0"
+                                                    className="px-3 py-2 rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-text)] text-sm font-bold disabled:opacity-50 shrink-0"
                                                     title={selectedIdeaId ? 'Add under the selected node' : 'Add to root'}
                                                 >
                                                     +

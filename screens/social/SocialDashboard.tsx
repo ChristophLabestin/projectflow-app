@@ -71,7 +71,7 @@ export const SocialDashboard = () => {
                 </div>
                 <Link
                     to={`/project/${projectId}/social/create`}
-                    className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary)]/90 rounded-lg text-sm font-semibold transition-colors shadow-sm"
+                    className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:bg-[var(--color-primary)]/90 rounded-lg text-sm font-semibold transition-colors shadow-sm"
                 >
                     <span className="material-symbols-outlined text-[18px]">add</span>
                     New Post

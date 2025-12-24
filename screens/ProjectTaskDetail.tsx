@@ -13,6 +13,7 @@ import { MultiAssigneeSelector } from '../components/MultiAssigneeSelector';
 import { toMillis } from '../utils/time';
 import { auth } from '../services/firebase';
 import { DatePicker } from '../components/ui/DatePicker';
+import { usePinnedTasks } from '../context/PinnedTasksContext';
 
 export const ProjectTaskDetail = () => {
     const { id, taskId } = useParams<{ id: string; taskId: string }>();
@@ -36,6 +37,7 @@ export const ProjectTaskDetail = () => {
     const [project, setProject] = useState<Project | null>(null);
     const [commentCount, setCommentCount] = useState(0);
     const [copiedId, setCopiedId] = useState(false);
+    const { pinItem, unpinItem, isPinned } = usePinnedTasks();
 
     const isProjectOwner = useMemo(() => {
         return project?.ownerId === auth.currentUser?.uid;
@@ -388,6 +390,29 @@ export const ProjectTaskDetail = () => {
                                 <Button
                                     variant="ghost"
                                     size="sm"
+                                    onClick={() => {
+                                        if (isPinned(task.id)) {
+                                            unpinItem(task.id);
+                                        } else {
+                                            pinItem({
+                                                id: task.id,
+                                                type: 'task',
+                                                title: task.title,
+                                                projectId: id!,
+                                                priority: task.priority,
+                                                isCompleted: task.isCompleted
+                                            });
+                                        }
+                                    }}
+                                    className={`flex-1 lg:flex-none ${isPinned(task.id) ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'hover:bg-[var(--color-surface-card)]'}`}
+                                    icon={<span className="material-symbols-outlined text-[20px]">push_pin</span>}
+                                >
+                                    {isPinned(task.id) ? 'Pinned' : 'Pin'}
+                                </Button>
+                                <div className="w-[1px] h-4 bg-[var(--color-surface-border)]" />
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
                                     onClick={() => setIsEditModalOpen(true)}
                                     className="flex-1 lg:flex-none hover:bg-[var(--color-surface-card)]"
                                     icon={<span className="material-symbols-outlined text-[20px]">edit</span>}
@@ -475,7 +500,7 @@ export const ProjectTaskDetail = () => {
                                         <button
                                             onClick={() => handleToggleSubTask(sub.id, sub.isCompleted)}
                                             className={`size-5 rounded border flex items-center justify-center transition-all ${sub.isCompleted
-                                                ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-white'
+                                                ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-[var(--color-primary-text)]'
                                                 : 'border-[var(--color-text-muted)] text-transparent hover:border-[var(--color-primary)]'
                                                 }`}
                                         >

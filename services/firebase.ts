@@ -2,6 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getFunctions } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -17,12 +18,14 @@ let app;
 let auth;
 let db;
 let storage;
+let functions;
 
 try {
   app = initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
   storage = getStorage(app);
+  functions = getFunctions(app, 'europe-west3');
 } catch (error) {
   console.error("Firebase initialization error:", error);
   // Throw error so it is visible in console if app fails to load
@@ -31,4 +34,4 @@ try {
 
 import { GithubAuthProvider, FacebookAuthProvider } from "firebase/auth";
 
-export { auth, db, storage, GithubAuthProvider, FacebookAuthProvider };
+export { auth, db, storage, functions, GithubAuthProvider, FacebookAuthProvider };

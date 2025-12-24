@@ -113,7 +113,7 @@ const LayerNode: React.FC<{ block: EmailBlock; selectedId: string | null; onSele
                 onClick={() => onSelect(block.id)}
             >
                 <div
-                    className="flex items-center justify-center w-4 h-4 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 rounded cursor-pointer"
+                    className="flex items-center justify-center w-4 h-4 shrink-0 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 rounded cursor-pointer"
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={showExpandToggle ? toggleExpand : undefined}
                 >
@@ -124,8 +124,22 @@ const LayerNode: React.FC<{ block: EmailBlock; selectedId: string | null; onSele
                     )}
                 </div>
 
-                <span className="material-symbols-outlined text-[16px] opacity-70">{getBlockIcon(block.type)}</span>
-                <span className="truncate">{block.type.charAt(0).toUpperCase() + block.type.slice(1)}</span>
+                <span className="material-symbols-outlined text-[16px] opacity-70 shrink-0">{getBlockIcon(block.type)}</span>
+                <span className="truncate flex-1 min-w-0">
+                    {(() => {
+                        // 1. For text-based elements, prefer text content
+                        if (['text', 'header', 'button', 'quote'].includes(block.type) && block.content.text) {
+                            // Strip HTML tags for clean display
+                            const plainText = block.content.text.replace(/<[^>]+>/g, '').trim();
+                            if (plainText) return plainText;
+                        }
+                        // 2. For others, prefer custom name (Element ID)
+                        if (block.name) return block.name;
+
+                        // 3. Fallback to Type
+                        return block.type.charAt(0).toUpperCase() + block.type.slice(1);
+                    })()}
+                </span>
             </div>
 
             {isExpanded && showExpandToggle && (

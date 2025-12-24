@@ -6,7 +6,8 @@ import { subscribeProject, subscribeProjectPresence, removeMember, getUserProfil
 import { auth } from '../services/firebase';
 import { UserHoverCard } from './ui/UserHoverCard';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
-import { Project, ProjectMember } from '../types';
+import { Project, ProjectMember, EmailTemplate } from '../types';
+import { useToast } from '../context/UIContext';
 
 interface TeamCardProps {
     projectId: string;
@@ -27,6 +28,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
     const [showLeaveModal, setShowLeaveModal] = useState(false);
 
     const { isOwner } = useProjectPermissions(project);
+    const { showError } = useToast();
     const currentUserId = auth.currentUser?.uid;
     const isMember = members.some(m => (typeof m === 'string' ? m : m.userId) === currentUserId) || project?.ownerId === currentUserId;
 
@@ -38,7 +40,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
             setJoinSent(true);
         } catch (error) {
             console.error(error);
-            alert('Failed to send join request');
+            showError('Failed to send join request');
         } finally {
             setJoinLoading(false);
         }
@@ -109,7 +111,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
             await removeMember(project.id, memberToKick, tenantId);
         } catch (error) {
             console.error(error);
-            alert('Failed to remove member');
+            showError('Failed to remove member');
         } finally {
             setRemovingMember(null);
         }
@@ -127,7 +129,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
             await removeMember(project.id, currentUserId, tenantId);
         } catch (error) {
             console.error(error);
-            alert('Failed to leave project');
+            showError('Failed to leave project');
         } finally {
             setRemovingMember(null);
         }

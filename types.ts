@@ -4,6 +4,8 @@ export interface Tenant {
     description?: string;
     website?: string;
     contactEmail?: string;
+    contactEmail?: string;
+    smtpConfig?: SMTPConfig;
     members?: Member[];
     createdAt?: any;
     updatedAt?: any;
@@ -88,10 +90,12 @@ export interface Project {
     members?: ProjectMember[]; // Team members with roles (replaces string[])
     memberIds?: string[]; // IDs of all members for collectionGroup queries
     createdAt?: any; // Firestore Timestamp
+    updatedAt?: any; // Firestore Timestamp
     tenantId?: string;
     githubRepo?: string; // owner/repo
     githubToken?: string; // Personal Access Token
     githubIssueSync?: boolean; // Toggle for issue sync
+    isPersonal?: boolean; // Hidden personal project
 }
 
 export interface Member {
@@ -104,6 +108,7 @@ export interface Member {
     joinedAt?: any;
     aiUsage?: AIUsage;
     githubToken?: string;
+    pinnedProjectId?: string;
 }
 
 export interface Comment {
@@ -149,6 +154,21 @@ export interface SubTask {
     isCompleted: boolean;
     assigneeId?: string;
     createdAt?: any;
+}
+
+export interface PersonalTask {
+    id: string;
+    ownerId: string;
+    title: string;
+    isCompleted: boolean;
+    dueDate?: string;
+    priority?: 'Low' | 'Medium' | 'High' | 'Urgent';
+    description?: string;
+    category?: IdeaGroup | IdeaGroup[];
+    status?: TaskStatus;
+    scheduledDate?: string;
+    createdAt?: any;
+    tenantId?: string;
 }
 
 export interface Idea {
@@ -497,13 +517,13 @@ export interface EmailCampaign {
     marketingCampaignId?: string;
     name: string;
     subject: string;
-    preheader?: string;
     senderName: string;
-    contentHtml?: string;
-    audienceId?: string;
-    status: 'Draft' | 'Scheduled' | 'Sent';
-    scheduledAt?: string;
+    senderName: string;
+    status: 'draft' | 'in_review' | 'ready' | 'scheduled' | 'sent';
     sentAt?: string;
+    contentBlocks?: EmailBlock[];
+    variableValues?: Record<string, string>;
+    templateId?: string;
     stats: {
         sent: number;
         opened: number;
@@ -526,11 +546,11 @@ export interface MarketingAudience {
 export interface MarketingFunnelMetric {
     stage: 'Awareness' | 'Interest' | 'Consideration' | 'Conversion' | 'Retention';
     value: number;
-// --- Email Builder Types ---
+}
 
 // --- Email Builder Types ---
 
-export type EmailBlockType = 'text' | 'image' | 'button' | 'spacer' | 'divider' | 'social' | 'video' | 'columns' | 'header' | 'list' | 'quote' | 'html' | 'menu' | 'flex' | 'solid' | 'div';
+export type EmailBlockType = 'text' | 'richtext' | 'image' | 'button' | 'spacer' | 'divider' | 'social' | 'video' | 'columns' | 'header' | 'list' | 'quote' | 'html' | 'menu' | 'flex' | 'solid' | 'div';
 
 export interface EmailBlockStyle {
     paddingTop?: number;
@@ -581,7 +601,7 @@ export interface TemplateVariable {
     name: string;
     label: string;
     defaultValue?: string;
-    type: 'text' | 'date' | 'number' | 'url';
+    type: 'text' | 'date' | 'number' | 'url' | 'image' | 'richtext';
 }
 
 export interface EmailTemplate {
@@ -605,3 +625,96 @@ export interface EmailComponent {
     createdAt: any;
     createdBy: string;
 }
+
+// --- Recipient Management Types ---
+
+export interface RecipientColumn {
+    id: string;
+    projectId: string;
+    label: string; // Display name
+    key: string; // Key in customFields or match to standard field
+    type: 'text' | 'number' | 'date' | 'boolean' | 'tag'; // Basic validation hint
+    isSystem: boolean; // true if standard (firstName, email), false if custom
+    createdAt: any;
+}
+
+export interface Recipient {
+    id: string;
+    projectId: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
+    status: 'Subscribed' | 'Unsubscribed' | 'Bounced';
+    tags?: string[];
+    groupIds?: string[]; // IDs of groups this recipient belongs to
+    customFields?: Record<string, any>; // Flexible storage for CSV extras
+    source?: 'Manual' | 'Import' | 'External' | 'Signup Form';
+    externalId?: string; // If from external DB
+    createdAt: any;
+    updatedAt: any;
+}
+
+export interface SMTPConfig {
+    host: string;
+    port: number;
+    user: string;
+    pass: string; // Should be encrypted in real app, simplistic for now
+    useCustom: boolean;
+    secure?: boolean;
+    fromEmail?: string;
+}
+
+// --- Recipient Groups ---
+
+export interface RecipientGroup {
+    id: string;
+    projectId: string;
+    name: string;
+    description?: string;
+    color?: string; // For visual distinction
+    customFields?: Record<string, any>;
+    createdAt: any;
+    updatedAt: any;
+}
+
+export interface GroupColumn {
+    id: string;
+    projectId: string;
+    label: string;
+    key: string;
+    type: 'text' | 'number' | 'date' | 'boolean' | 'tag';
+    isSystem: boolean;
+    createdAt: any;
+}
+
+// --- Marketing Settings ---
+
+export type SMTPSource = 'projectflow' | 'workspace' | 'project';
+
+export interface MarketingSettings {
+    id: string;
+    projectId: string;
+    smtpSource: SMTPSource;
+    smtpConfig?: SMTPConfig; // Project-specific SMTP (only if source is 'project')
+    smtpVerified?: boolean; // Whether project SMTP has been tested successfully
+    updatedAt: any;
+}
+
+// --- API Token Types ---
+
+export type APITokenPermission = 'newsletter:write' | 'recipients:read';
+
+export interface APIToken {
+    id: string;
+    tenantId: string;
+    name: string;              // User-friendly label
+    tokenHash: string;         // SHA-256 hash of token (plain text not stored)
+    tokenPrefix: string;       // First 8 chars for identification (e.g., "pfat_abc")
+    projectScope?: string;     // Optional: limit to specific project
+    permissions: APITokenPermission[];
+    createdAt: any;
+    lastUsedAt?: any;
+    expiresAt?: any;           // Optional expiration
+}
+

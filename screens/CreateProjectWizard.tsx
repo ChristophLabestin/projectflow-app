@@ -11,7 +11,8 @@ import { ImageCropper } from '../components/ui/ImageCropper';
 import { DatePicker } from '../components/ui/DatePicker';
 import { ProjectModule, ProjectBlueprint } from '../types';
 import { useToast } from '../context/UIContext';
-import { auth } from '../services/firebase';
+import { auth, storage } from '../services/firebase'; // Added storage for manual uploads if needed (though MediaLibrary handles it)
+import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
 
 const STEPS = [
     { id: 0, label: 'Method' },
@@ -45,6 +46,12 @@ export const CreateProjectWizard = () => {
     const [squareIconFile, setSquareIconFile] = useState<File | null>(null);
     const [links, setLinks] = useState<{ title: string; url: string }[]>([]);
     const [externalResources, setExternalResources] = useState<{ title: string; url: string; icon?: string }[]>([]);
+
+    // Media Library State
+    const [mediaPickerTarget, setMediaPickerTarget] = useState<'cover' | 'icon' | null>(null);
+    const [coverUrl, setCoverUrl] = useState<string | null>(null);
+    const [squareIconUrl, setSquareIconUrl] = useState<string | null>(null);
+    const [showMediaLibrary, setShowMediaLibrary] = useState(false);
 
     // AI State
     const [aiPrompt, setAiPrompt] = useState('');
@@ -155,14 +162,23 @@ export const CreateProjectWizard = () => {
                 setCropAspectRatio(type === 'cover' ? 16 / 9 : 1);
             };
             reader.readAsDataURL(e.target.files[0]);
+
+            // Clear URL if picking a local file
+            if (type === 'cover') setCoverUrl(null);
+            else setSquareIconUrl(null);
         }
         e.target.value = '';
     };
 
     const handleCropComplete = (blob: Blob) => {
         const file = new File([blob], cropType === 'cover' ? "cover.jpg" : "icon.jpg", { type: "image/jpeg" });
-        if (cropType === 'cover') setCoverFile(file);
-        else setSquareIconFile(file);
+        if (cropType === 'cover') {
+            setCoverFile(file);
+            setCoverUrl(null);
+        } else {
+            setSquareIconFile(file);
+            setSquareIconUrl(null);
+        }
         setCropImageSrc(null);
         setCropType(null);
     };
@@ -182,7 +198,7 @@ export const CreateProjectWizard = () => {
                 links: links.filter(l => l.title && l.url),
                 externalResources: externalResources.filter(r => r.title && r.url),
                 ...(selectedGithubRepo && { githubRepo: selectedGithubRepo, githubIssueSync: true })
-            }, coverFile || undefined, squareIconFile || undefined, undefined, selectedMemberIds);
+            }, coverUrl || coverFile || undefined, squareIconUrl || squareIconFile || undefined, undefined, selectedMemberIds);
 
             if (blueprint) {
                 for (const ms of blueprint.milestones) {
@@ -220,6 +236,33 @@ export const CreateProjectWizard = () => {
                 aspectRatio={cropAspectRatio}
                 onCropComplete={handleCropComplete}
                 onCancel={() => { setCropImageSrc(null); setCropType(null); }}
+            />
+
+            <MediaLibrary
+                isOpen={showMediaLibrary}
+                onClose={() => setShowMediaLibrary(false)}
+                projectId={""} // No project yet
+                deferredUpload={true}
+                onSelect={(asset) => {
+                    if (mediaPickerTarget === 'cover') {
+                        if (asset.source === 'local_file' && asset.file) {
+                            setCoverFile(asset.file);
+                            setCoverUrl(null);
+                        } else {
+                            setCoverUrl(asset.url);
+                            setCoverFile(null);
+                        }
+                    } else if (mediaPickerTarget === 'icon') {
+                        if (asset.source === 'local_file' && asset.file) {
+                            setSquareIconFile(asset.file);
+                            setSquareIconUrl(null);
+                        } else {
+                            setSquareIconUrl(asset.url);
+                            setSquareIconFile(null);
+                        }
+                    }
+                    setShowMediaLibrary(false);
+                }}
             />
 
             {/* Main Split Card Container - Fixed Height */}
@@ -530,56 +573,69 @@ export const CreateProjectWizard = () => {
                                 </div>
 
                                 <div className="space-y-5">
-                                    <div className="relative h-36 rounded-2xl bg-gradient-to-br from-[var(--color-surface-bg)] to-[var(--color-surface-hover)] border border-dashed border-[var(--color-surface-border)] overflow-hidden flex flex-col items-center justify-center gap-2 group cursor-pointer hover:border-zinc-400 transition-colors">
-                                        <input type="file" className="absolute inset-0 opacity-0 z-10 cursor-pointer" onChange={e => handleFileSelect(e, 'cover')} accept="image/*" />
-                                        {coverFile ? (
-                                            <>
-                                                <img src={URL.createObjectURL(coverFile)} className="absolute inset-0 size-full object-cover" />
-                                                <button
-                                                    onClick={(e) => { e.stopPropagation(); setCoverFile(null); }}
-                                                    className="absolute top-2 right-2 z-20 size-7 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors"
-                                                >
-                                                    <span className="material-symbols-outlined text-[16px]">close</span>
-                                                </button>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <span className="material-symbols-outlined text-[28px] text-[var(--color-text-muted)]">add_photo_alternate</span>
-                                                <span className="text-xs font-medium text-[var(--color-text-muted)]">Upload Cover Image</span>
-                                            </>
-                                        )}
-                                        {!coverFile && (
-                                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                <span className="bg-white text-black px-4 py-1.5 rounded-full text-[10px] font-bold shadow-xl">Change</span>
+                                    <div className="flex gap-4">
+                                        {/* Cover Selection */}
+                                        <div className="flex-1 space-y-2">
+                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Project Cover</label>
+                                            <div
+                                                onClick={() => { setMediaPickerTarget('cover'); setShowMediaLibrary(true); }}
+                                                className="relative h-32 rounded-2xl bg-gradient-to-br from-[var(--color-surface-bg)] to-[var(--color-surface-hover)] border border-dashed border-[var(--color-surface-border)] overflow-hidden flex flex-col items-center justify-center gap-2 group transition-all hover:border-[var(--color-primary)]/50 hover:bg-[var(--color-primary)]/5 cursor-pointer"
+                                            >
+                                                {coverUrl || coverFile ? (
+                                                    <>
+                                                        <img src={coverUrl || (coverFile ? URL.createObjectURL(coverFile) : '')} className="absolute inset-0 size-full object-cover" />
+                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                            <span className="text-white text-xs font-bold flex items-center gap-2">
+                                                                <span className="material-symbols-outlined text-[16px]">edit</span>
+                                                                Change
+                                                            </span>
+                                                        </div>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setCoverUrl(null); setCoverFile(null); }}
+                                                            className="absolute top-2 right-2 size-6 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors z-20"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[14px]">close</span>
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <div className="flex flex-col items-center gap-2 text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)] transition-colors">
+                                                        <span className="material-symbols-outlined text-[24px]">image</span>
+                                                        <span className="text-xs font-semibold">Select Cover</span>
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
-                                    </div>
-
-                                    <div className="flex items-center gap-5">
-                                        <div className="relative size-20 rounded-2xl bg-gradient-to-br from-[var(--color-surface-bg)] to-[var(--color-surface-hover)] border border-dashed border-[var(--color-surface-border)] overflow-hidden flex items-center justify-center group cursor-pointer shrink-0 hover:border-zinc-400 transition-colors">
-                                            <input type="file" className="absolute inset-0 opacity-0 z-10 cursor-pointer" onChange={e => handleFileSelect(e, 'icon')} accept="image/*" />
-                                            {squareIconFile ? (
-                                                <>
-                                                    <img src={URL.createObjectURL(squareIconFile)} className="absolute inset-2 size-[calc(100%-16px)] object-cover rounded-xl" />
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); setSquareIconFile(null); }}
-                                                        className="absolute top-1 right-1 z-20 size-5 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors"
-                                                    >
-                                                        <span className="material-symbols-outlined text-[12px]">close</span>
-                                                    </button>
-                                                </>
-                                            ) : (
-                                                <span className="material-symbols-outlined text-[24px] text-[var(--color-text-muted)]">grid_view</span>
-                                            )}
-                                            {!squareIconFile && (
-                                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <span className="material-symbols-outlined text-white text-sm">edit</span>
-                                                </div>
-                                            )}
                                         </div>
-                                        <div>
-                                            <div className="text-sm font-semibold text-[var(--color-text-main)]">Project Icon</div>
-                                            <p className="text-[10px] text-[var(--color-text-subtle)]">A square image for list views.</p>
+
+                                        {/* Icon Selection */}
+                                        <div className="flex-1 space-y-2">
+                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Project Icon</label>
+                                            <div
+                                                onClick={() => { setMediaPickerTarget('icon'); setShowMediaLibrary(true); }}
+                                                className="relative h-32 rounded-2xl bg-gradient-to-br from-[var(--color-surface-bg)] to-[var(--color-surface-hover)] border border-dashed border-[var(--color-surface-border)] overflow-hidden flex flex-col items-center justify-center gap-2 group transition-all hover:border-[var(--color-primary)]/50 hover:bg-[var(--color-primary)]/5 cursor-pointer"
+                                            >
+                                                {squareIconUrl || squareIconFile ? (
+                                                    <>
+                                                        <img src={squareIconUrl || (squareIconFile ? URL.createObjectURL(squareIconFile) : '')} className="absolute inset-4 size-[calc(100%-32px)] object-cover rounded-xl shadow-sm" />
+                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                            <span className="text-white text-xs font-bold flex items-center gap-2">
+                                                                <span className="material-symbols-outlined text-[16px]">edit</span>
+                                                                Change
+                                                            </span>
+                                                        </div>
+                                                        <button
+                                                            onClick={(e) => { e.stopPropagation(); setSquareIconUrl(null); setSquareIconFile(null); }}
+                                                            className="absolute top-2 right-2 size-6 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors z-20"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[14px]">close</span>
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <div className="flex flex-col items-center gap-2 text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)] transition-colors">
+                                                        <span className="material-symbols-outlined text-[24px]">smart_button</span>
+                                                        <span className="text-xs font-semibold">Select Icon</span>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
 
@@ -650,117 +706,107 @@ export const CreateProjectWizard = () => {
 
                                     {/* Links & Resources - Card Style */}
                                     <div className="space-y-4 pt-4 border-t border-[var(--color-surface-border)]">
-                                        <div className="flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">link</span>
-                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Quick Links</label>
-                                        </div>
-
-                                        <div className="space-y-4">
-                                            {/* Sidebar Resources */}
-                                            <div className="space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-[10px] text-[var(--color-text-subtle)]">Sidebar Resources</span>
-                                                    <button
-                                                        onClick={() => setExternalResources([...externalResources, { title: '', url: '', icon: 'open_in_new' }])}
-                                                        className="text-[10px] font-medium text-[var(--color-text-main)] hover:underline"
-                                                    >
-                                                        + Add
-                                                    </button>
+                                        {/* Links & Resources - Updated Card Style */}
+                                        <div className="space-y-4 pt-4 border-t border-[var(--color-surface-border)]">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">link</span>
+                                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Quick Links</label>
                                                 </div>
-                                                <div className="space-y-1.5">
-                                                    {externalResources.map((res, idx) => (
-                                                        <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-[var(--color-surface-bg)] group">
-                                                            <span className="material-symbols-outlined text-[14px] text-[var(--color-text-muted)]">open_in_new</span>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 gap-3">
+                                                {/* Combined List of all links for cleaner UI */}
+
+                                                {/* Sidebar Resources */}
+                                                {externalResources.map((res, idx) => (
+                                                    <div key={`res-${idx}`} className="flex items-center gap-3 p-3 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] group focus-within:ring-2 focus-within:ring-zinc-500/10 focus-within:border-zinc-500/50 transition-all">
+                                                        <div className="size-8 rounded-lg bg-[var(--color-surface-card)] flex items-center justify-center shrink-0 text-[var(--color-text-subtle)]">
+                                                            <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                                                        </div>
+                                                        <div className="flex-1 space-y-1">
                                                             <input
-                                                                placeholder="Label"
+                                                                placeholder="Resource Label"
                                                                 value={res.title}
                                                                 onChange={(e) => {
                                                                     const newRes = [...externalResources];
                                                                     newRes[idx].title = e.target.value;
                                                                     setExternalResources(newRes);
                                                                 }}
-                                                                className="w-32 text-xs bg-transparent text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
+                                                                className="w-full text-sm font-medium bg-transparent text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
                                                             />
                                                             <input
-                                                                placeholder="https://..."
+                                                                placeholder="https://example.com"
                                                                 value={res.url}
                                                                 onChange={(e) => {
                                                                     const newRes = [...externalResources];
                                                                     newRes[idx].url = e.target.value;
                                                                     setExternalResources(newRes);
                                                                 }}
-                                                                className="flex-1 min-w-0 text-xs bg-transparent text-[var(--color-text-subtle)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
+                                                                className="w-full text-xs bg-transparent text-[var(--color-text-subtle)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
                                                             />
-                                                            <button
-                                                                onClick={() => setExternalResources(externalResources.filter((_, i) => i !== idx))}
-                                                                className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--color-text-muted)] hover:text-red-500"
-                                                            >
-                                                                <span className="material-symbols-outlined text-[14px]">close</span>
-                                                            </button>
                                                         </div>
-                                                    ))}
-                                                    {externalResources.length === 0 && (
                                                         <button
-                                                            onClick={() => setExternalResources([{ title: '', url: '', icon: 'open_in_new' }])}
-                                                            className="w-full p-2.5 rounded-lg border border-dashed border-[var(--color-surface-border)] text-[10px] text-[var(--color-text-muted)] hover:border-zinc-400 hover:text-[var(--color-text-subtle)] transition-colors"
+                                                            onClick={() => setExternalResources(externalResources.filter((_, i) => i !== idx))}
+                                                            className="p-2 text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                                                         >
-                                                            Add sidebar resource
+                                                            <span className="material-symbols-outlined text-[18px]">delete</span>
                                                         </button>
-                                                    )}
-                                                </div>
-                                            </div>
+                                                    </div>
+                                                ))}
 
-                                            {/* Overview Links */}
-                                            <div className="space-y-2">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-[10px] text-[var(--color-text-subtle)]">Overview Links</span>
-                                                    <button
-                                                        onClick={() => setLinks([...links, { title: '', url: '' }])}
-                                                        className="text-[10px] font-medium text-[var(--color-text-main)] hover:underline"
-                                                    >
-                                                        + Add
-                                                    </button>
-                                                </div>
-                                                <div className="space-y-1.5">
-                                                    {links.map((link, idx) => (
-                                                        <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-[var(--color-surface-bg)] group">
-                                                            <span className="material-symbols-outlined text-[14px] text-[var(--color-text-muted)]">link</span>
+                                                {/* Overview Links */}
+                                                {links.map((link, idx) => (
+                                                    <div key={`link-${idx}`} className="flex items-center gap-3 p-3 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] group focus-within:ring-2 focus-within:ring-zinc-500/10 focus-within:border-zinc-500/50 transition-all">
+                                                        <div className="size-8 rounded-lg bg-[var(--color-surface-card)] flex items-center justify-center shrink-0 text-[var(--color-text-subtle)]">
+                                                            <span className="material-symbols-outlined text-[18px]">link</span>
+                                                        </div>
+                                                        <div className="flex-1 space-y-1">
                                                             <input
-                                                                placeholder="Label"
+                                                                placeholder="Link Label"
                                                                 value={link.title}
                                                                 onChange={(e) => {
                                                                     const newLinks = [...links];
                                                                     newLinks[idx].title = e.target.value;
                                                                     setLinks(newLinks);
                                                                 }}
-                                                                className="w-32 text-xs bg-transparent text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
+                                                                className="w-full text-sm font-medium bg-transparent text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
                                                             />
                                                             <input
-                                                                placeholder="https://..."
+                                                                placeholder="https://example.com"
                                                                 value={link.url}
                                                                 onChange={(e) => {
                                                                     const newLinks = [...links];
                                                                     newLinks[idx].url = e.target.value;
                                                                     setLinks(newLinks);
                                                                 }}
-                                                                className="flex-1 min-w-0 text-xs bg-transparent text-[var(--color-text-subtle)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
+                                                                className="w-full text-xs bg-transparent text-[var(--color-text-subtle)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
                                                             />
-                                                            <button
-                                                                onClick={() => setLinks(links.filter((_, i) => i !== idx))}
-                                                                className="opacity-0 group-hover:opacity-100 transition-opacity text-[var(--color-text-muted)] hover:text-red-500"
-                                                            >
-                                                                <span className="material-symbols-outlined text-[14px]">close</span>
-                                                            </button>
                                                         </div>
-                                                    ))}
-                                                    {links.length === 0 && (
                                                         <button
-                                                            onClick={() => setLinks([{ title: '', url: '' }])}
-                                                            className="w-full p-2.5 rounded-lg border border-dashed border-[var(--color-surface-border)] text-[10px] text-[var(--color-text-muted)] hover:border-zinc-400 hover:text-[var(--color-text-subtle)] transition-colors"
+                                                            onClick={() => setLinks(links.filter((_, i) => i !== idx))}
+                                                            className="p-2 text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
                                                         >
-                                                            Add overview link
+                                                            <span className="material-symbols-outlined text-[18px]">delete</span>
                                                         </button>
-                                                    )}
+                                                    </div>
+                                                ))}
+
+                                                <div className="flex gap-2 pt-2">
+                                                    <button
+                                                        onClick={() => setExternalResources([...externalResources, { title: '', url: '', icon: 'open_in_new' }])}
+                                                        className="flex-1 py-3 px-4 rounded-xl border border-dashed border-[var(--color-surface-border)] text-xs font-medium text-[var(--color-text-subtle)] hover:border-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-bg)] transition-all flex items-center justify-center gap-2"
+                                                    >
+                                                        <span className="material-symbols-outlined text-[16px]">add</span>
+                                                        Add Sidebar Resource
+                                                    </button>
+                                                    <button
+                                                        onClick={() => setLinks([...links, { title: '', url: '' }])}
+                                                        className="flex-1 py-3 px-4 rounded-xl border border-dashed border-[var(--color-surface-border)] text-xs font-medium text-[var(--color-text-subtle)] hover:border-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-bg)] transition-all flex items-center justify-center gap-2"
+                                                    >
+                                                        <span className="material-symbols-outlined text-[16px]">add</span>
+                                                        Add Overview Link
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>

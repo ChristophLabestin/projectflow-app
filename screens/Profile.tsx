@@ -7,6 +7,7 @@ import { Card } from '../components/ui/Card';
 import { Textarea } from '../components/ui/Textarea';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '../utils/cropImage';
+import { useToast } from '../context/UIContext';
 
 export const Profile = () => {
     const user = auth.currentUser;
@@ -17,6 +18,7 @@ export const Profile = () => {
     const [file, setFile] = useState<File | null>(null);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const { showSuccess, showError } = useToast();
 
     // Cropper State
     const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
@@ -85,10 +87,10 @@ export const Profile = () => {
                 file: file || undefined
             });
             if (newPhoto) setPhotoURL(newPhoto);
-            alert("Profile updated successfully!");
+            showSuccess("Profile updated successfully!");
         } catch (e: any) {
             console.error(e);
-            alert(`Failed to update profile: ${e.message}`);
+            showError(`Failed to update profile: ${e.message}`);
         } finally {
             setSaving(false);
         }
@@ -111,7 +113,7 @@ export const Profile = () => {
                                 <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-gray-300">{displayName[0]}</div>
                             )}
                         </div>
-                        <label className="absolute bottom-0 right-0 p-2 bg-[var(--color-primary)] text-white rounded-full cursor-pointer hover:bg-[var(--color-primary-dark)] shadow transition-colors">
+                        <label className="absolute bottom-0 right-0 p-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded-full cursor-pointer hover:bg-[var(--color-primary-dark)] shadow transition-colors">
                             <span className="material-symbols-outlined text-[20px]">photo_camera</span>
                             <input type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
                         </label>
@@ -151,6 +153,37 @@ export const Profile = () => {
                     </div>
                 </div>
             </Card>
+
+            {/* Developer Debug Operations */}
+            <div className="mt-12 pt-8 border-t border-[var(--color-surface-border)] opacity-20 hover:opacity-100 transition-all">
+                <div className="flex items-center gap-2 mb-4 px-2">
+                    <span className="material-symbols-outlined text-xs text-[var(--color-text-muted)]">bug_report</span>
+                    <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">Debug Controls</p>
+                </div>
+                <div className="flex flex-wrap gap-3 px-2">
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => showError("Test Error: This is a simulated error message for debugging purposes.")}
+                    >
+                        Simulate Error
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => showSuccess("Test Success: The system is responding correctly.")}
+                    >
+                        Simulate Success
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => showInfo("Test Info: System check initiated.")}
+                    >
+                        Simulate Info
+                    </Button>
+                </div>
+            </div>
 
             {/* Cropper Modal */}
             {cropImageSrc && (

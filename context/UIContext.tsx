@@ -24,6 +24,14 @@ interface UIContextType {
     closeToast: () => void;
     confirmation: ConfirmationState;
     closeConfirmation: (result: boolean) => void;
+    isReleaseModalOpen: boolean;
+    setReleaseModalOpen: (open: boolean) => void;
+
+    // Global Task Create Modal
+    isTaskCreateModalOpen: boolean;
+    taskCreateProjectId: string | null;
+    openTaskCreateModal: (projectId?: string) => void;
+    closeTaskCreateModal: () => void;
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
@@ -41,6 +49,21 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
         message: '',
         resolve: null,
     });
+
+    const [isReleaseModalOpen, setReleaseModalOpen] = useState(false);
+
+    const [isTaskCreateModalOpen, setTaskCreateModalOpen] = useState(false);
+    const [taskCreateProjectId, setTaskCreateProjectId] = useState<string | null>(null);
+
+    const openTaskCreateModal = useCallback((projectId?: string) => {
+        setTaskCreateProjectId(projectId || null);
+        setTaskCreateModalOpen(true);
+    }, []);
+
+    const closeTaskCreateModal = useCallback(() => {
+        setTaskCreateModalOpen(false);
+        setTaskCreateProjectId(null);
+    }, []);
 
     const showToast = useCallback((message: string, type: ToastType = 'info') => {
         setToast({ show: true, message, type });
@@ -84,7 +107,13 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
             toast,
             closeToast,
             confirmation,
-            closeConfirmation
+            closeConfirmation,
+            isReleaseModalOpen,
+            setReleaseModalOpen,
+            isTaskCreateModalOpen,
+            taskCreateProjectId,
+            openTaskCreateModal,
+            closeTaskCreateModal
         }}>
             {children}
         </UIContext.Provider>

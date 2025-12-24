@@ -1,0 +1,17 @@
+<!-- ProjectFlow Newsletter Signup Form -->
+<form action="http://localhost:3000/api/newsletter/subscribe" method="POST" style="max-width: 400px; font-family: system-ui, sans-serif;">
+  <input type="hidden" name="token" value="YOUR_API_TOKEN_HERE" />
+  <input type="hidden" name="projectId" value="YOUR_PROJECT_ID" />
+  <div style="margin-bottom: 12px;">
+    <input type="email" name="email" required placeholder="Your email" 
+      style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;" />
+  </div>
+  <div style="margin-bottom: 12px;">
+    <input type="text" name="firstName" placeholder="First name (optional)" 
+      style="width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;" />
+  </div>
+  <button type="submit" 
+    style="width: 100%; padding: 12px; background: #4F46E5; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer;">
+    Subscribe
+  </button>
+</form>

@@ -8,6 +8,8 @@ import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Input } from '../components/ui/Input';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
+import { usePinnedTasks } from '../context/PinnedTasksContext';
+import { useConfirm } from '../context/UIContext';
 
 export const ProjectTasks = () => {
     const { id } = useParams<{ id: string }>();
@@ -22,9 +24,11 @@ export const ProjectTasks = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [subtaskStats, setSubtaskStats] = useState<Record<string, { done: number; total: number }>>({});
     const location = useLocation();
+    const confirm = useConfirm();
 
     // Permissions
     const { can } = useProjectPermissions(project);
+    const { pinItem, unpinItem, isPinned } = usePinnedTasks();
 
     useEffect(() => {
         if (!id) return;
@@ -112,7 +116,7 @@ export const ProjectTasks = () => {
     const handleBulkDelete = async () => {
         if (!selectedIds.size) return;
         if (!can('canManageTasks')) return;
-        if (!confirm(`Delete ${selectedIds.size} tasks?`)) return;
+        if (!await confirm("Delete Tasks", `Delete ${selectedIds.size} tasks?`)) return;
         try {
             await Promise.all(Array.from(selectedIds).map((id: string) => deleteTask(id)));
             setSelectedIds(new Set());
@@ -317,10 +321,38 @@ export const ProjectTasks = () => {
                                 </div>
                             </div>
 
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                <div className="p-2 rounded-full bg-[var(--color-surface-hover)] text-[var(--color-text-main)]">
-                                    <span className="material-symbols-outlined text-lg">arrow_forward</span>
-                                </div>
+                            <div className={`flex items-center gap-2 z-10 ${isPinned(task.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (isPinned(task.id)) {
+                                            unpinItem(task.id);
+                                        } else {
+                                            pinItem({
+                                                id: task.id,
+                                                type: 'task',
+                                                title: task.title,
+                                                projectId: id!,
+                                                priority: task.priority,
+                                                isCompleted: task.isCompleted
+                                            });
+                                        }
+                                    }}
+                                    className={`
+                                        p-2 rounded-full transition-all duration-200
+                                        ${isPinned(task.id)
+                                            ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10 scale-100'
+                                            : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:scale-105'}
+                                    `}
+                                    title={isPinned(task.id) ? "Unpin" : "Pin for Quick Access"}
+                                >
+                                    <span className="material-symbols-outlined text-lg">{isPinned(task.id) ? 'push_pin' : 'push_pin'}</span>
+                                </button>
+                                {!isPinned(task.id) && (
+                                    <div className="p-2 rounded-full bg-[var(--color-surface-hover)] text-[var(--color-text-main)] hover:bg-[var(--color-surface-border)] transition-colors">
+                                        <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))

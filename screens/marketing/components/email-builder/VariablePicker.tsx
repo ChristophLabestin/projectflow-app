@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { TemplateVariable } from '../../../types';
 
 interface VariablePickerProps {
@@ -12,11 +13,11 @@ interface VariablePickerProps {
 export const VariablePicker: React.FC<VariablePickerProps> = ({ variables, onSelect, isOpen, onClose, position }) => {
     if (!isOpen) return null;
 
-    return (
+    return createPortal(
         <>
-            <div className="fixed inset-0 z-[100]" onClick={onClose} />
+            <div className="fixed inset-0 z-[2100]" onClick={onClose} />
             <div
-                className="fixed z-[101] bg-white dark:bg-zinc-900 rounded-lg shadow-xl border border-zinc-200 dark:border-zinc-800 w-64 max-h-[300px] overflow-y-auto animate-in fade-in zoom-in-95 duration-100"
+                className="fixed z-[2101] bg-white dark:bg-zinc-900 rounded-lg shadow-xl border border-zinc-200 dark:border-zinc-800 w-64 max-h-[300px] overflow-y-auto animate-in fade-in zoom-in-95 duration-100"
                 style={{
                     top: position?.top ?? '50%',
                     left: position?.left ?? '50%',
@@ -50,6 +51,7 @@ export const VariablePicker: React.FC<VariablePickerProps> = ({ variables, onSel
                     </div>
                 )}
             </div>
-        </>
+        </>,
+        document.body
     );
 };

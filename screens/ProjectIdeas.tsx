@@ -12,6 +12,7 @@ import { Select } from '../components/ui/Select';
 import { Textarea } from '../components/ui/Textarea';
 import { CommentSection } from '../components/CommentSection';
 import { auth } from '../services/firebase';
+import { useConfirm } from '../context/UIContext';
 
 export const ProjectIdeas = () => {
     const { id } = useParams<{ id: string }>();
@@ -21,6 +22,7 @@ export const ProjectIdeas = () => {
     const [project, setProject] = useState<Project | null>(null);
     const [loading, setLoading] = useState(true);
     const [generating, setGenerating] = useState(false);
+    const confirm = useConfirm();
 
     const isProjectOwner = useMemo(() => {
         return project?.ownerId === auth.currentUser?.uid;
@@ -107,7 +109,7 @@ export const ProjectIdeas = () => {
     };
 
     const handleDelete = async (ideaId: string) => {
-        if (!confirm("Are you sure?")) return;
+        if (!await confirm("Delete Idea", "Are you sure you want to delete this idea?")) return;
         try {
             await deleteIdea(ideaId, id);
             await loadData();

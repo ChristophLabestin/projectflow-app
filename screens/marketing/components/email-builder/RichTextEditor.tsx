@@ -102,26 +102,6 @@ export const RichTextEditor = ({ value, onChange, variables }: RichTextEditorPro
                     icon="format_h2"
                     title="Heading 2"
                 />
-                <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-700 mx-1 self-center" />
-                <MenuButton
-                    onClick={() => editor.chain().focus().setTextAlign('left').run()}
-                    isActive={editor.isActive({ textAlign: 'left' })}
-                    icon="format_align_left"
-                    title="Align Left"
-                />
-                <MenuButton
-                    onClick={() => editor.chain().focus().setTextAlign('center').run()}
-                    isActive={editor.isActive({ textAlign: 'center' })}
-                    icon="format_align_center"
-                    title="Align Center"
-                />
-                <MenuButton
-                    onClick={() => editor.chain().focus().setTextAlign('right').run()}
-                    isActive={editor.isActive({ textAlign: 'right' })}
-                    icon="format_align_right"
-                    title="Align Right"
-                />
-                <div className="w-px h-5 bg-zinc-200 dark:bg-zinc-700 mx-1 self-center" />
                 <MenuButton
                     onClick={() => editor.chain().focus().toggleBulletList().run()}
                     isActive={editor.isActive('bulletList')}

@@ -21,12 +21,13 @@ import {
     Unsubscribe,
     arrayUnion,
     arrayRemove,
-    runTransaction
+    runTransaction,
+    deleteField
 } from "firebase/firestore";
 import { updateProfile, linkWithPopup } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, auth, GithubAuthProvider, FacebookAuthProvider } from "./firebase";
-import type { Task, Idea, Activity, Project, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, EmailComponent, GeminiReport, Milestone, AIUsage, Member, MarketingCampaign, AdCampaign, EmailCampaign } from '../types';
+import type { Task, Idea, Activity, Project, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, EmailComponent, GeminiReport, Milestone, AIUsage, Member, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask } from '../types';
 import { toMillis } from "../utils/time";
 import {
     notifyTaskAssignment,
@@ -97,11 +98,25 @@ export const resolveTenantId = (tenantId?: string) => {
 };
 
 const tenantDocRef = (tenantId: string) => doc(db, TENANTS, tenantId);
+
+export const getTenantSecret = async (tenantId: string, secretName: string) => {
+    const ref = doc(db, TENANTS, tenantId, "secrets", secretName);
+    const snap = await getDoc(ref);
+    return snap.exists() ? snap.data() : null;
+};
+
+export const updateTenantSecret = async (tenantId: string, secretName: string, data: any) => {
+    const ref = doc(db, TENANTS, tenantId, "secrets", secretName);
+    await setDoc(ref, data, { merge: true });
+};
 const tenantUsersCollection = (tenantId: string) => collection(tenantDocRef(tenantId), USERS);
 const projectsCollection = (tenantId: string) => collection(tenantDocRef(tenantId), PROJECTS);
 const projectDocRef = (tenantId: string, projectId: string) => doc(tenantDocRef(tenantId), PROJECTS, projectId);
-export const projectSubCollection = (tenantId: string, projectId: string, sub: string) =>
-    collection(projectDocRef(tenantId, projectId), sub);
+export const projectSubCollection = (tenantId: string, projectId: string, subCollectionName: string) => {
+    return collection(db, 'tenants', tenantId, 'projects', projectId, subCollectionName);
+};
+
+
 
 export const ensureTenantAndUser = async (tenantId: string, role?: WorkspaceRole) => {
     const user = auth.currentUser;
@@ -400,9 +415,9 @@ export const bootstrapTenantForCurrentUser = async (inviteTenantId?: string, ign
 
 export const createProject = async (
     projectData: Partial<Project>,
-    coverFile?: File,
-    squareIconFile?: File,
-    screenshotFiles?: File[],
+    coverFile?: File | string,
+    squareIconFile?: File | string,
+    screenshotFiles?: (File | string)[],
     initialMemberIds: string[] = [],
     tenantId?: string
 ): Promise<string> => {
@@ -412,63 +427,83 @@ export const createProject = async (
     const resolvedTenant = resolveTenantId(tenantId);
     await ensureTenantAndUser(resolvedTenant);
 
-    let coverImageUrl = "";
-    let squareIconUrl = "";
-    const screenshotUrls: string[] = [];
-
-    try {
-        if (coverFile) {
-            const storageRef = ref(storage, `tenants/${resolvedTenant}/projects/${Date.now()}_${coverFile.name}`);
-            await uploadBytes(storageRef, coverFile);
-            coverImageUrl = await getDownloadURL(storageRef);
-        }
-    } catch (e) {
-        console.warn('Cover upload failed, proceeding without cover', e);
-    }
-
-    try {
-        if (squareIconFile) {
-            const storageRef = ref(storage, `tenants/${resolvedTenant}/projects/${Date.now()}_icon_${squareIconFile.name}`);
-            await uploadBytes(storageRef, squareIconFile);
-            squareIconUrl = await getDownloadURL(storageRef);
-        }
-    } catch (e) {
-        console.warn('Icon upload failed, proceeding without icon', e);
-    }
-
-    if (screenshotFiles && screenshotFiles.length) {
-        for (const file of screenshotFiles) {
-            try {
-                const storageRef = ref(storage, `tenants/${resolvedTenant}/projects/${Date.now()}_shot_${file.name}`);
-                await uploadBytes(storageRef, file);
-                const url = await getDownloadURL(storageRef);
-                screenshotUrls.push(url);
-            } catch (e) {
-                console.warn('Screenshot upload failed, skipping file', file?.name, e);
-            }
-        }
-    }
-
+    // 1. Create the project document first to get an ID
     const docRef = await addDoc(projectsCollection(resolvedTenant), {
         ...projectData,
         tenantId: resolvedTenant,
         ownerId: user.uid,
-        coverImage: coverImageUrl,
-        squareIcon: squareIconUrl,
-        screenshots: screenshotUrls,
+        coverImage: "",
+        squareIcon: "",
+        screenshots: [],
         progress: 0,
         members: Array.from(new Set([user.uid, ...initialMemberIds])),
         memberIds: Array.from(new Set([user.uid, ...initialMemberIds])),
         createdAt: serverTimestamp()
     });
 
+    const projectId = docRef.id;
+    let coverImageUrl = typeof coverFile === 'string' ? coverFile : "";
+    let squareIconUrl = typeof squareIconFile === 'string' ? squareIconFile : "";
+    const screenshotUrls: string[] = [];
+
+    // 2. Upload assets to project-specific folder: tenants/{tid}/projects/{pid}/
+    // We include _media_{projectId}_ in the filename for library discovery
+    const timestamp = Date.now();
+    const getStoragePath = (file: File, kind: string) =>
+        `tenants/${resolvedTenant}/projects/${projectId}/${timestamp}_media_${projectId}_${kind}_${file.name.replace(/[^a-zA-Z0-9.]/g, '_')}`;
+
+    try {
+        if (coverFile && typeof coverFile !== 'string') {
+            const storageRef = ref(storage, getStoragePath(coverFile, 'cover'));
+            await uploadBytes(storageRef, coverFile);
+            coverImageUrl = await getDownloadURL(storageRef);
+        }
+    } catch (e) {
+        console.warn('Cover upload failed', e);
+    }
+
+    try {
+        if (squareIconFile && typeof squareIconFile !== 'string') {
+            const storageRef = ref(storage, getStoragePath(squareIconFile, 'icon'));
+            await uploadBytes(storageRef, squareIconFile);
+            squareIconUrl = await getDownloadURL(storageRef);
+        }
+    } catch (e) {
+        console.warn('Icon upload failed', e);
+    }
+
+    if (screenshotFiles && screenshotFiles.length) {
+        for (const file of screenshotFiles) {
+            if (typeof file === 'string') {
+                screenshotUrls.push(file);
+                continue;
+            }
+            try {
+                const storageRef = ref(storage, getStoragePath(file, 'screenshot'));
+                await uploadBytes(storageRef, file);
+                const url = await getDownloadURL(storageRef);
+                screenshotUrls.push(url);
+            } catch (e) {
+                console.warn('Screenshot upload failed', file?.name, e);
+            }
+        }
+    }
+
+
+    // 3. Update the project document with the final URLs
+    await updateDoc(docRef, {
+        coverImage: coverImageUrl || deleteField(),
+        squareIcon: squareIconUrl || deleteField(),
+        screenshots: screenshotUrls
+    });
+
     await logActivity(
-        docRef.id,
+        projectId,
         { action: `Created project "${projectData.title || "Project"}"`, target: "Project", type: "status" },
         resolvedTenant
     );
 
-    return docRef.id;
+    return projectId;
 };
 
 export const updateProjectFields = async (
@@ -642,25 +677,77 @@ export const deleteEmailComponent = async (projectId: string, componentId: strin
 
 export const EMAIL_TEMPLATES = "email_templates";
 
-export const saveEmailTemplateDraft = async (projectId: string, blocks: EmailBlock[], variables: TemplateVariable[], tenantId?: string, name?: string) => {
+export const getProjectTemplates = async (projectId: string, tenantId?: string) => {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
     const resolvedTenant = resolveTenantId(tenantId);
 
-    // We store only one "latest draft" for now per project/user context
-    // or we can store a list and pick the latest.
-    // The user asked to "load the last opened template".
+    const q = query(
+        projectSubCollection(resolvedTenant, projectId, EMAIL_TEMPLATES),
+        orderBy("updatedAt", "desc")
+    );
 
-    await addDoc(projectSubCollection(resolvedTenant, projectId, EMAIL_TEMPLATES), {
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[]; // Cast to any or EmailTemplate
+};
+
+export const saveEmailTemplateDraft = async (projectId: string, blocks: EmailBlock[], variables: TemplateVariable[], tenantId?: string, name?: string, status: 'draft' | 'published' = 'draft', templateId?: string) => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+    const resolvedTenant = resolveTenantId(tenantId);
+
+    const docData = {
         projectId,
         name: name || 'Unnamed Template',
         blocks,
         variables,
-        status: 'draft',
+        status: status,
         createdBy: user.uid,
         updatedAt: serverTimestamp(),
-        createdAt: serverTimestamp()
-    });
+        // Only set createdAt if creating new
+        ...(templateId ? {} : { createdAt: serverTimestamp() })
+    };
+
+    let savedTemplateId = templateId;
+
+    if (templateId) {
+        const docRef = doc(projectSubCollection(resolvedTenant, projectId, EMAIL_TEMPLATES), templateId);
+        await setDoc(docRef, docData, { merge: true });
+    } else {
+        const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, EMAIL_TEMPLATES), docData);
+        savedTemplateId = docRef.id;
+    }
+
+    // Save version snapshot
+    if (savedTemplateId) {
+        try {
+            const templateRef = doc(projectSubCollection(resolvedTenant, projectId, EMAIL_TEMPLATES), savedTemplateId);
+            const versionsRef = collection(templateRef, "versions");
+            await addDoc(versionsRef, {
+                ...docData,
+                versionCreatedAt: serverTimestamp(),
+                savedBy: user.uid
+            });
+        } catch (e) {
+            console.error("Failed to save version snapshot", e);
+            // Non-blocking error for version history
+        }
+    }
+
+    return savedTemplateId;
+};
+
+export const getTemplateVersions = async (projectId: string, templateId: string, tenantId?: string): Promise<EmailTemplate[]> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const templateRef = doc(projectSubCollection(resolvedTenant, projectId, EMAIL_TEMPLATES), templateId);
+    const versionsRef = collection(templateRef, "versions");
+    const q = query(versionsRef, orderBy("versionCreatedAt", "desc"), limit(25));
+    const snap = await getDocs(q);
+    return snap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        updatedAt: doc.data().versionCreatedAt || doc.data().updatedAt // Map version timestamp to updatedAt for UI consistency
+    } as EmailTemplate));
 };
 
 export const getLatestEmailTemplateDraft = async (projectId: string, tenantId?: string): Promise<EmailTemplate | null> => {
@@ -684,6 +771,19 @@ export const getEmailTemplateDrafts = async (projectId: string, tenantId?: strin
     );
     const snap = await getDocs(q);
     return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as EmailTemplate));
+};
+
+export const deleteEmailTemplate = async (projectId: string, templateId: string, tenantId?: string) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    if (!resolvedTenant) throw new Error("Tenant ID required");
+    await deleteDoc(doc(projectSubCollection(resolvedTenant, projectId, EMAIL_TEMPLATES), templateId));
+};
+
+export const getEmailTemplateById = async (projectId: string, templateId: string, tenantId?: string): Promise<EmailTemplate | null> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const snap = await getDoc(doc(projectSubCollection(resolvedTenant, projectId, EMAIL_TEMPLATES), templateId));
+    if (!snap.exists()) return null;
+    return { id: snap.id, ...snap.data() } as EmailTemplate;
 };
 
 // Helper to extract tenant ID from a Document Reference path
@@ -1276,7 +1376,37 @@ export const getUserProjects = async (tenantId?: string): Promise<Project[]> => 
     const snapshot = await getDocs(q);
     return snapshot.docs
         .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Project))
+        .filter(p => !p.isPersonal)
         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+};
+
+export const getOrCreatePersonalProject = async (tenantId?: string): Promise<string> => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const resolvedTenant = tenantId || getCachedTenantId() || user.uid;
+    await ensureTenantAndUser(resolvedTenant);
+
+    // 1. Try to find existing personal project
+    const q = query(
+        projectsCollection(resolvedTenant),
+        where("ownerId", "==", user.uid),
+        where("isPersonal", "==", true)
+    );
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+        return snapshot.docs[0].id;
+    }
+
+    // 2. Create if not exists
+    return await createProject({
+        title: "Personal Tasks",
+        description: "Private tasks not associated with a specific project",
+        isPersonal: true,
+        isPrivate: true,
+        status: 'Active'
+    }, undefined, undefined, undefined, [], resolvedTenant);
 };
 
 /**
@@ -1410,6 +1540,46 @@ export const addTask = async (
         if (assigneeId && assigneeId !== user.uid) {
             await notifyTaskAssignment(assigneeId, title, projectId, docRef.id, resolvedTenant);
         }
+    }
+
+    return docRef.id;
+};
+
+export const createSubTask = async (
+    projectId: string,
+    taskId: string,
+    title: string,
+    assigneeId?: string,
+    tenantId?: string
+) => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const resolvedTenant = resolveTenantId(tenantId);
+
+    const taskRef = doc(projectSubCollection(resolvedTenant, projectId, TASKS), taskId);
+    const subTasksRef = collection(taskRef, SUBTASKS);
+
+    const subTaskData = {
+        taskId,
+        projectId,
+        ownerId: user.uid,
+        title,
+        isCompleted: false,
+        assigneeId: assigneeId || null,
+        createdAt: serverTimestamp()
+    };
+
+    const docRef = await addDoc(subTasksRef, subTaskData);
+
+    await logActivity(
+        projectId,
+        { action: `Added subtask "${title}"`, target: "Tasks", type: "task" },
+        resolvedTenant
+    );
+
+    if (assigneeId && assigneeId !== user.uid) {
+        await notifySubtaskAssignment(assigneeId, title, projectId, taskId, docRef.id, resolvedTenant);
     }
 
     return docRef.id;
@@ -3147,4 +3317,311 @@ export const connectIntegration = async (projectId: string, platform: SocialPlat
 export const disconnectIntegration = async (projectId: string, integrationId: string) => {
     const tenantId = resolveTenantId();
     await deleteDoc(doc(projectSubCollection(tenantId, projectId, SOCIAL_INTEGRATIONS), integrationId));
+};
+
+// --- Personal Tasks (Standalone, not tied to projects) ---
+
+const PERSONAL_TASKS = "personalTasks";
+
+const personalTasksCollection = (tenantId: string, userId: string) =>
+    collection(db, `tenants/${tenantId}/users/${userId}/${PERSONAL_TASKS}`);
+
+const personalTaskDocRef = (tenantId: string, userId: string, taskId: string) =>
+    doc(db, `tenants/${tenantId}/users/${userId}/${PERSONAL_TASKS}`, taskId);
+
+export const addPersonalTask = async (
+    title: string,
+    dueDate?: string,
+    priority: PersonalTask['priority'] = 'Medium',
+    extra?: Partial<Pick<PersonalTask, 'description' | 'scheduledDate'>>,
+    tenantId?: string
+): Promise<string> => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const resolvedTenant = resolveTenantId(tenantId);
+    await ensureTenantAndUser(resolvedTenant);
+
+    // Build task data without undefined values (Firestore rejects undefined)
+    const taskData: Record<string, any> = {
+        ownerId: user.uid,
+        title,
+        isCompleted: false,
+        priority,
+        description: extra?.description || "",
+        createdAt: serverTimestamp(),
+        tenantId: resolvedTenant
+    };
+
+    // Only add optional fields if they have values
+    if (dueDate) taskData.dueDate = dueDate;
+    if (extra?.scheduledDate) taskData.scheduledDate = extra.scheduledDate;
+
+    const docRef = await addDoc(personalTasksCollection(resolvedTenant, user.uid), taskData);
+    return docRef.id;
+};
+
+export const getPersonalTasks = async (tenantId?: string): Promise<PersonalTask[]> => {
+    const user = auth.currentUser;
+    if (!user) return [];
+
+    const resolvedTenant = resolveTenantId(tenantId);
+    await ensureTenantAndUser(resolvedTenant);
+
+    const snapshot = await getDocs(personalTasksCollection(resolvedTenant, user.uid));
+    return snapshot.docs
+        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as PersonalTask))
+        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+};
+
+export const updatePersonalTask = async (
+    taskId: string,
+    updates: Partial<PersonalTask>,
+    tenantId?: string
+): Promise<void> => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const resolvedTenant = resolveTenantId(tenantId);
+    const taskRef = personalTaskDocRef(resolvedTenant, user.uid, taskId);
+    await updateDoc(taskRef, updates);
+};
+
+export const deletePersonalTask = async (taskId: string, tenantId?: string): Promise<void> => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const resolvedTenant = resolveTenantId(tenantId);
+    const taskRef = personalTaskDocRef(resolvedTenant, user.uid, taskId);
+    await deleteDoc(taskRef);
+};
+
+export const togglePersonalTaskStatus = async (
+    taskId: string,
+    currentStatus: boolean,
+    tenantId?: string
+): Promise<void> => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const resolvedTenant = resolveTenantId(tenantId);
+    const taskRef = personalTaskDocRef(resolvedTenant, user.uid, taskId);
+    await updateDoc(taskRef, { isCompleted: !currentStatus });
+};
+
+/**
+ * Move a personal task to a project (converts it to a regular task)
+ */
+export const movePersonalTaskToProject = async (
+    personalTaskId: string,
+    targetProjectId: string,
+    tenantId?: string
+): Promise<string> => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const resolvedTenant = resolveTenantId(tenantId);
+
+    // 1. Get the personal task data
+    const personalTaskRef = personalTaskDocRef(resolvedTenant, user.uid, personalTaskId);
+    const personalTaskSnap = await getDoc(personalTaskRef);
+
+    if (!personalTaskSnap.exists()) {
+        throw new Error("Personal task not found");
+    }
+
+    const personalTaskData = personalTaskSnap.data() as PersonalTask;
+
+    // 2. Create a new task in the target project
+    const newTaskId = await addTask(
+        targetProjectId,
+        personalTaskData.title,
+        personalTaskData.dueDate,
+        undefined, // assignee
+        personalTaskData.priority || 'Medium',
+        {
+            description: personalTaskData.description,
+            category: personalTaskData.category,
+            status: personalTaskData.status || 'Open'
+        },
+        resolvedTenant
+    );
+
+    // 3. If the personal task was completed, mark the new task as completed
+    if (personalTaskData.isCompleted) {
+        await toggleTaskStatus(newTaskId, false, targetProjectId, resolvedTenant);
+    }
+
+    // 4. Delete the personal task
+    await deleteDoc(personalTaskRef);
+
+    return newTaskId;
+};
+
+/**
+ * Get a single personal task by ID
+ */
+export const getPersonalTaskById = async (
+    taskId: string,
+    tenantId?: string
+): Promise<PersonalTask | null> => {
+    const user = auth.currentUser;
+    if (!user) return null;
+
+    const resolvedTenant = resolveTenantId(tenantId);
+    const taskRef = personalTaskDocRef(resolvedTenant, user.uid, taskId);
+    const taskSnap = await getDoc(taskRef);
+
+    if (!taskSnap.exists()) return null;
+
+    return { id: taskSnap.id, ...taskSnap.data() } as PersonalTask;
+};
+
+// --- API Tokens ---
+
+const API_TOKENS = "api_tokens";
+
+/**
+ * Generate a cryptographically secure token
+ */
+const generateSecureToken = (): string => {
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    const base64 = btoa(String.fromCharCode(...array))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '');
+    return `pfat_${base64}`;
+};
+
+/**
+ * Hash a token using SHA-256
+ */
+const hashToken = async (token: string): Promise<string> => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(token);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
+/**
+ * Create a new API token. Returns the plain-text token (only shown once).
+ */
+export const createAPIToken = async (
+    name: string,
+    permissions: ('newsletter:write' | 'recipients:read')[],
+    projectScope?: string,
+    expiresAt?: Date,
+    tenantId?: string
+): Promise<{ token: string; id: string }> => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    const resolvedTenant = resolveTenantId(tenantId);
+    const plainToken = generateSecureToken();
+    const tokenHash = await hashToken(plainToken);
+    const tokenPrefix = plainToken.substring(0, 12); // "pfat_xxxxxxx" first 12 chars
+
+    const tokenData = {
+        tenantId: resolvedTenant,
+        name,
+        tokenHash,
+        tokenPrefix,
+        projectScope: projectScope || null,
+        permissions,
+        createdAt: serverTimestamp(),
+        lastUsedAt: null,
+        expiresAt: expiresAt ? Timestamp.fromDate(expiresAt) : null,
+        createdBy: user.uid
+    };
+
+    // Store in tenant's secrets subcollection for API tokens
+    const tokensRef = collection(db, TENANTS, resolvedTenant, API_TOKENS);
+    const docRef = await addDoc(tokensRef, tokenData);
+
+    return { token: plainToken, id: docRef.id };
+};
+
+/**
+ * Get all API tokens for the current tenant (without exposing hashes)
+ */
+export const getAPITokens = async (tenantId?: string): Promise<{
+    id: string;
+    name: string;
+    tokenPrefix: string;
+    permissions: string[];
+    projectScope?: string;
+    createdAt: any;
+    lastUsedAt?: any;
+    expiresAt?: any;
+}[]> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const tokensRef = collection(db, TENANTS, resolvedTenant, API_TOKENS);
+    const q = query(tokensRef, orderBy("createdAt", "desc"));
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            id: doc.id,
+            name: data.name,
+            tokenPrefix: data.tokenPrefix,
+            permissions: data.permissions,
+            projectScope: data.projectScope,
+            createdAt: data.createdAt,
+            lastUsedAt: data.lastUsedAt,
+            expiresAt: data.expiresAt
+        };
+    });
+};
+
+/**
+ * Delete an API token
+ */
+export const deleteAPIToken = async (tokenId: string, tenantId?: string): Promise<void> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const tokenRef = doc(db, TENANTS, resolvedTenant, API_TOKENS, tokenId);
+    await deleteDoc(tokenRef);
+};
+
+/**
+ * Validate an API token (used by Cloud Functions)
+ * This is a client-side version for testing - the real validation happens in Cloud Functions
+ */
+export const validateAPITokenLocally = async (
+    plainToken: string,
+    requiredPermission: 'newsletter:write' | 'recipients:read',
+    tenantId: string
+): Promise<{ valid: boolean; tokenData?: any; error?: string }> => {
+    try {
+        const tokenHash = await hashToken(plainToken);
+        const tokensRef = collection(db, TENANTS, tenantId, API_TOKENS);
+        const q = query(tokensRef, where("tokenHash", "==", tokenHash));
+        const snapshot = await getDocs(q);
+
+        if (snapshot.empty) {
+            return { valid: false, error: "Invalid token" };
+        }
+
+        const tokenDoc = snapshot.docs[0];
+        const tokenData = tokenDoc.data();
+
+        // Check expiration
+        if (tokenData.expiresAt) {
+            const expiresAt = tokenData.expiresAt.toDate();
+            if (new Date() > expiresAt) {
+                return { valid: false, error: "Token expired" };
+            }
+        }
+
+        // Check permissions
+        if (!tokenData.permissions.includes(requiredPermission)) {
+            return { valid: false, error: "Insufficient permissions" };
+        }
+
+        return { valid: true, tokenData };
+    } catch (error: any) {
+        return { valid: false, error: error.message };
+    }
 };

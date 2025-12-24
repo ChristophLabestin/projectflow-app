@@ -3,12 +3,96 @@ import { Outlet, useLocation, useParams, useNavigate, Link } from 'react-router-
 import { Sidebar } from './Sidebar';
 import { Breadcrumbs } from './ui/Breadcrumbs';
 import { AISearchBar } from './AISearchBar';
+import { PinnedProjectPill } from './PinnedProjectPill';
+import { TaskCreateModal } from './TaskCreateModal';
+import { useUIState } from '../context/UIContext';
+import { useTheme } from '../context/ThemeContext';
 import { auth } from '../services/firebase';
 import { getProjectById, getProjectIdeas, getProjectTasks, getUserProjects, subscribeProject, getProjectIssues, subscribeProjectTasks, subscribeProjectIssues, subscribeProjectIdeas } from '../services/dataService';
 import { Project } from '../types';
+import { usePinnedTasks } from '../context/PinnedTasksContext';
+import { getSubTasks } from '../services/dataService';
+import { SubTask } from '../types';
+
+
+const PinnedTasksToggle = () => {
+    const { toggleModal, pinnedItems, focusItemId } = usePinnedTasks();
+    const hasItems = pinnedItems.length > 0;
+
+    // Get the focused item details
+    const focusItem = focusItemId ? pinnedItems.find(i => i.id === focusItemId) : null;
+
+    // Fetch subtask counts for focus item
+    const [subtaskStats, setSubtaskStats] = useState<{ done: number; total: number } | null>(null);
+
+    useEffect(() => {
+        if (!focusItemId || !focusItem || focusItem.type !== 'task') {
+            setSubtaskStats(null);
+            return;
+        }
+
+        let mounted = true;
+        getSubTasks(focusItemId).then(subs => {
+            if (mounted) {
+                setSubtaskStats({
+                    done: subs.filter(s => s.isCompleted).length,
+                    total: subs.length
+                });
+            }
+        }).catch(() => {
+            if (mounted) setSubtaskStats(null);
+        });
+
+        return () => { mounted = false; };
+    }, [focusItemId, focusItem?.type]);
+
+    // Compact view when no focus
+    if (!focusItem) {
+        return (
+            <button
+                onClick={toggleModal}
+                className={`
+                    relative flex items-center justify-center h-[42px] w-[42px] rounded-full transition-all
+                    ${hasItems ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'}
+                `}
+                title="Pinned Tasks (Cmd+Shift+F)"
+            >
+                <span className="material-symbols-outlined text-[20px]">push_pin</span>
+            </button>
+        );
+    }
+
+    // Extended view with focus task info
+    return (
+        <button
+            onClick={toggleModal}
+            className="flex items-center gap-2.5 h-[42px] pl-3 pr-4 rounded-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-all group"
+            title="Focus Task (Cmd+Shift+F)"
+        >
+            <div className="relative shrink-0 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[18px] text-amber-600 dark:text-amber-400">center_focus_strong</span>
+                <span className="absolute -top-0.5 -right-0.5 size-1.5 bg-amber-500 rounded-full animate-pulse" />
+            </div>
+            <div className="flex flex-col items-start min-w-0 leading-none">
+                <span className="text-[11px] font-semibold text-[var(--color-text-main)] truncate max-w-[160px]">
+                    {focusItem.title}
+                </span>
+                <span className="text-[9px] text-amber-600 dark:text-amber-400 font-medium">
+                    {subtaskStats && subtaskStats.total > 0
+                        ? `${subtaskStats.done}/${subtaskStats.total} done`
+                        : 'Focus'
+                    }
+                </span>
+            </div>
+            <span className="material-symbols-outlined text-[14px] text-amber-600 dark:text-amber-400">expand_more</span>
+        </button>
+    );
+};
 
 export const AppLayout = () => {
     const { id: paramProjectId } = useParams<{ id: string }>();
+    const { theme } = useTheme();
+    const { isTaskCreateModalOpen, closeTaskCreateModal, taskCreateProjectId } = useUIState();
     const location = useLocation();
 
     // Derived project ID from URL if not in params (e.g. nested routes)
@@ -239,7 +323,11 @@ export const AppLayout = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-center shrink-0">
+                    <div className="flex items-center gap-2 shrink-0">
+                        {/* Pinned Tasks Toggle */}
+                        <PinnedProjectPill />
+                        <PinnedTasksToggle />
+
                         {/* AI-Powered Search (Mobile/Desktop) */}
                         <div className="hidden sm:block relative w-80 h-[42px] shrink-0">
                             <AISearchBar />
@@ -248,13 +336,21 @@ export const AppLayout = () => {
                 </header>
 
                 {/* Main Scroll Area */}
-                <main className={`flex-1 overflow-y-auto w-full dotted-bg ${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') ? 'p-0 overflow-hidden' : 'p-4 sm:p-6 lg:p-8'}`}>
+                <main className={`flex-1 w-full dotted-bg ${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') ? 'p-0 overflow-hidden' : 'overflow-y-auto p-4 sm:p-6 lg:p-8'}`}>
                     <div className={`${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}`}>
                         <Outlet context={{ setTaskTitle }} />
                     </div>
                 </main>
 
             </div>
+            {/* Global Task Create Modal */}
+            {isTaskCreateModalOpen && (
+                <TaskCreateModal
+                    isOpen={isTaskCreateModalOpen}
+                    onClose={closeTaskCreateModal}
+                    projectId={taskCreateProjectId || undefined}
+                />
+            )}
         </div>
     );
 };

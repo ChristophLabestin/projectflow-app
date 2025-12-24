@@ -124,7 +124,7 @@ export const JoinProjectViaLink = () => {
                         <div className="flex gap-3 justify-center">
                             <button
                                 onClick={() => navigate('/projects')}
-                                className="px-6 py-2 rounded-lg bg-[var(--color-primary)] text-white font-semibold hover:opacity-90 transition-opacity"
+                                className="px-6 py-2 rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-text)] font-semibold hover:opacity-90 transition-opacity"
                             >
                                 Go to Projects
                             </button>

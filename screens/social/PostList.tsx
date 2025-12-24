@@ -23,7 +23,7 @@ export const PostList = () => {
                 </div>
                 <Link
                     to={`/project/${projectId}/social/create`}
-                    className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-white dark:text-black font-bold rounded-lg hover:opacity-90 transition-opacity"
+                    className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] font-bold rounded-lg hover:opacity-90 transition-opacity"
                 >
                     <span className="material-symbols-outlined">add</span>
                     <span>New Post</span>

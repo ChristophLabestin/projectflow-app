@@ -1,6 +1,10 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { ThemeProvider } from './context/ThemeContext';
+import { UIProvider } from './context/UIContext';
+import { PinnedTasksProvider } from './context/PinnedTasksContext';
+import { PinnedProjectProvider } from './context/PinnedProjectContext';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -10,6 +14,14 @@ if (!rootElement) {
 const root = createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
+      <UIProvider>
+        <PinnedTasksProvider>
+          <PinnedProjectProvider>
+            <App />
+          </PinnedProjectProvider>
+        </PinnedTasksProvider>
+      </UIProvider>
+    </ThemeProvider>
   </React.StrictMode>
 );

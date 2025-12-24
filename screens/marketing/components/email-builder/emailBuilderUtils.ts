@@ -105,14 +105,18 @@ export function createBlock(type: EmailBlockType): EmailBlock {
     if (type === 'columns') return {
         ...base,
         content: { columns: [[], []] }, // Start with 2 empty columns
-        styles: { ...layoutStyles, width: '100%' }
+        styles: { ...layoutStyles, width: '100%', paddingTop: 30, paddingBottom: 30 }
     };
-    if (type === 'spacer') return { ...base, content: {}, styles: { ...layoutStyles, height: 48 } };
+    if (type === 'spacer') return { ...base, content: {}, styles: { ...layoutStyles, height: 48, width: '100%' } };
     if (type === 'divider') return { ...base, content: {}, styles: { ...layoutStyles, paddingTop: 10, paddingBottom: 10 } };
-    if (type === 'text') return { ...base, content: { text: 'New Text Block' } };
-    if (type === 'text') return { ...base, content: { text: 'New Text Block' } };
+    if (type === 'text') return { ...base, content: { text: 'Enter your text here...' } };
+    if (type === 'richtext') return {
+        ...base,
+        content: {
+            text: '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>'
+        }
+    };
     // Header init moved down
-    if (type === 'list') return { ...base, content: {} };
     if (type === 'list') return { ...base, content: {} };
     if (type === 'image') return { ...base, content: { src: 'https://placehold.co/600x300', alt: 'Image' } };
     if (type === 'menu') return {
@@ -182,7 +186,9 @@ export function createBlock(type: EmailBlockType): EmailBlock {
             gap: 10,
             justifyContent: 'flex-start',
             alignItems: 'stretch',
-            width: '100%'
+            width: '100%',
+            paddingTop: 30,
+            paddingBottom: 30
         }
     };
     if (type === 'div') return {
@@ -191,10 +197,10 @@ export function createBlock(type: EmailBlockType): EmailBlock {
         styles: {
             ...layoutStyles,
             width: '100%',
-            paddingTop: 10,
-            paddingBottom: 10,
-            paddingLeft: 10,
-            paddingRight: 10
+            paddingTop: 30,
+            paddingBottom: 30,
+            paddingLeft: 0,
+            paddingRight: 0
         }
     };
     return { ...base, content: {} };
@@ -216,4 +222,34 @@ export function deepCloneBlock(block: EmailBlock): EmailBlock {
         };
     }
     return cloned;
+}
+export function insertBlockAfter(blocks: EmailBlock[], targetId: string, newBlock: EmailBlock): EmailBlock[] {
+    const index = blocks.findIndex(b => b.id === targetId);
+    if (index !== -1) {
+        const nextBlocks = [...blocks];
+        nextBlocks.splice(index + 1, 0, newBlock);
+        return nextBlocks;
+    }
+
+    return blocks.map(block => {
+        if (block.type === 'columns' && block.content.columns) {
+            return {
+                ...block,
+                content: {
+                    ...block.content,
+                    columns: block.content.columns.map(col => insertBlockAfter(col, targetId, newBlock))
+                }
+            };
+        }
+        if ((block.type === 'flex' || block.type === 'div') && block.content.children) {
+            return {
+                ...block,
+                content: {
+                    ...block.content,
+                    children: insertBlockAfter(block.content.children, targetId, newBlock)
+                }
+            };
+        }
+        return block;
+    });
 }

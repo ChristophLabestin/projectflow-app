@@ -172,7 +172,7 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                 className={`
                     size-9 rounded-xl flex items-center justify-center transition-all duration-300 relative
                     ${isOpen
-                        ? 'bg-[var(--color-primary)] text-white dark:text-black shadow-lg scale-95'
+                        ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] shadow-lg scale-95'
                         : 'hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}
                 `}
             >

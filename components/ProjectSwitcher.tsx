@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Project } from '../types';
 import { getUserProjects, getSharedProjects } from '../services/dataService';
+import { usePinnedProject } from '../context/PinnedProjectContext';
 import logo from '../assets/logo.svg';
 
 interface ProjectSwitcherProps {
@@ -17,6 +18,7 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const { pinProject, unpinProject, pinnedProjectId } = usePinnedProject();
 
     // Fetch projects on mount to ensure we have icons for the active state
     useEffect(() => {
@@ -165,11 +167,18 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                                 </div>
                             ) : filteredProjects.length > 0 ? (
                                 filteredProjects.map(p => (
-                                    <button
+                                    <div
                                         key={p.id}
+                                        role="button"
+                                        tabIndex={0}
                                         onClick={() => handleSwitch(p.id)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter' || e.key === ' ') {
+                                                handleSwitch(p.id);
+                                            }
+                                        }}
                                         className={`
-                                            w-full flex items-center gap-3 px-3 py-2 text-left transition-colors
+                                            w-full flex items-center gap-3 px-3 py-2 text-left transition-colors cursor-pointer group outline-none
                                             ${currentProjectId === p.id ? 'bg-[var(--color-surface-hover)]' : 'hover:bg-[var(--color-surface-hover)]'}
                                         `}
                                     >
@@ -189,10 +198,31 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                                                 {p.ownerId === p.id ? 'Owner' : 'Member'}
                                             </div>
                                         </div>
+
                                         {currentProjectId === p.id && (
                                             <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>
                                         )}
-                                    </button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (pinnedProjectId === p.id) {
+                                                    unpinProject();
+                                                } else {
+                                                    pinProject(p.id);
+                                                }
+                                            }}
+                                            className={`
+                                                w-6 h-6 flex items-center justify-center rounded-full transition-all shrink-0 ml-1
+                                                ${pinnedProjectId === p.id
+                                                    ? 'text-amber-500 bg-amber-500/10 hover:bg-amber-500/20'
+                                                    : 'text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-card)]'
+                                                }
+                                            `}
+                                            title={pinnedProjectId === p.id ? "Unpin Project" : "Pin Project"}
+                                        >
+                                            <span className="material-symbols-outlined text-[16px]">{pinnedProjectId === p.id ? 'push_pin' : 'keep'}</span>
+                                        </button>
+                                    </div>
                                 ))
                             ) : (
                                 <div className="px-3 py-4 text-center text-sm text-[var(--color-text-muted)]">
@@ -215,8 +245,8 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                             </button>
                         </div>
                     </div>
-                </div>
+                </div >
             )}
-        </div>
+        </div >
     );
 };

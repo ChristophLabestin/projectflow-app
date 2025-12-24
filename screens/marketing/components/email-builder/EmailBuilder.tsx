@@ -22,16 +22,17 @@ import {
     verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 
-import { EmailBlock, EmailBlockType, EmailComponent, TemplateVariable } from '../../../types';
+import { EmailBlock, EmailBlockType, EmailComponent, TemplateVariable, EmailTemplate } from '../../../types';
 import { saveEmailComponent, getEmailComponents, deleteEmailComponent } from '../../../../services/dataService';
+import { useToast, useConfirm } from '../../../../context/UIContext';
 
 // Imported Components
 import { BlockRenderer } from './BlockRenderer';
 import { PropertiesPanel } from './PropertiesPanel';
-import { NestedBlock } from './NestedBlock';
+import { NestedBlock, HoverProvider } from './NestedBlock';
 import { LayerTree } from './LayerTree';
 import { GlobalSettingsPanel } from './GlobalSettingsPanel';
-import { createBlock, deepCloneBlock, findContainer, useHistory } from './emailBuilderUtils';
+import { createBlock, deepCloneBlock, findContainer, useHistory, insertBlockAfter } from './emailBuilderUtils';
 import { VariableManager } from './VariableManager';
 
 interface GlobalSettings {
@@ -58,6 +59,9 @@ interface EmailBuilderProps {
     saving?: boolean;
     projectId: string; // Required for saved components
     initialName?: string;
+    initialName?: string;
+    readOnly?: boolean;
+    tenantId?: string;
 }
 
 // --- Local Components ---
@@ -65,6 +69,7 @@ interface EmailBuilderProps {
 const getBlockIcon = (type: string) => {
     switch (type) {
         case 'text': return 'title';
+        case 'richtext': return 'article';
         case 'image': return 'image';
         case 'button': return 'smart_button';
         case 'columns': return 'view_column';
@@ -148,19 +153,19 @@ const DroppableCanvas = ({ id, children, viewMode, canvasWidth = 640 }: { id: st
             style={{
                 ...(viewMode !== 'mobile' ? { width: `${canvasWidth}px` } : {}),
                 colorScheme: 'light', // Force light mode for emails
-                minHeight: '850px' // Ensure visible height
             }}
-            className={`bg-white text-black shadow-xl rounded-sm transition-all duration-300 min-h-[850px] relative ${isOver ? 'ring-4 ring-[var(--color-primary)]/20' : ''
+            className={`bg-white text-black shadow-xl rounded-sm transition-all duration-300 relative ${isOver ? 'ring-4 ring-[var(--color-primary)]/20' : ''
                 } ${width}`}
         >
-            <div className="space-y-0 h-full">
+            <div className="min-h-[600px]">
                 {children}
             </div>
         </div>
     );
 };
 
-export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], initialVariables = [], onSave, onSaveDraft, onFetchDrafts, onCancel, saving, projectId, initialName = 'Unnamed Template' }) => {
+
+export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], initialVariables = [], onSave, onSaveDraft, onFetchDrafts, onCancel, saving, projectId, tenantId, initialName = 'Unnamed Template', readOnly = false }) => {
     const { state: blocks, setState: setBlocks, undo, redo, canUndo, canRedo } = useHistory(initialBlocks);
     const [variables, setVariables] = useState<TemplateVariable[]>(initialVariables);
     const [templateName, setTemplateName] = useState<string>(initialName);
@@ -190,6 +195,8 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
     const [lastSaved, setLastSaved] = useState<Date | null>(null);
     const [isSavingDraft, setIsSavingDraft] = useState(false);
     const autoSaveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+    const { showError } = useToast();
+    const confirm = useConfirm();
 
     const loadDraft = (draft: EmailTemplate) => {
         setBlocks(draft.blocks || []);
@@ -213,6 +220,25 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
         }
         setIsHistoryOpen(!isHistoryOpen);
     };
+
+    // Keyboard shortcuts: Cmd+Z = undo, Cmd+Shift+Z = redo
+    React.useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Check for Cmd (Mac) or Ctrl (Windows)
+            if (e.metaKey || e.ctrlKey) {
+                if (e.key === 'z' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (canUndo) undo();
+                } else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') {
+                    e.preventDefault();
+                    if (canRedo) redo();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [canUndo, canRedo, undo, redo]);
 
     // Autosave effect - debounced, saves 3 seconds after last change
     React.useEffect(() => {
@@ -260,6 +286,49 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
         fetchComponents();
     }, [projectId]);
 
+    // ReadOnly Banner
+    if (readOnly) {
+        return (
+            <div className="flex flex-col h-full bg-zinc-50 dark:bg-zinc-950 overflow-hidden">
+                <div className="bg-yellow-100 dark:bg-yellow-900/30 border-b border-yellow-200 dark:border-yellow-800 p-3 text-center text-sm text-yellow-800 dark:text-yellow-200 flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined text-[18px]">lock</span>
+                    <span>This template is currently used in a scheduled or sent campaign and cannot be edited.</span>
+                    <button
+                        onClick={() => onSave(blocks, variables, `${templateName} (Copy)`)}
+                        className="underline font-bold hover:text-yellow-900 ml-2"
+                    >
+                        Duplicate to Edit
+                    </button>
+                    <button onClick={onCancel} className="ml-4 hover:underline">Close</button>
+                </div>
+
+                <div className="flex-1 flex overflow-hidden pointer-events-none opacity-75">
+                    {/* Render simplified read-only canvas */}
+                    <div className="flex-1 overflow-y-auto p-8 flex justify-center bg-gray-100/50">
+                        <DroppableCanvas id="root" viewMode={viewMode} canvasWidth={globalSettings.canvasWidth}>
+                            <div className="flex flex-col min-h-[600px] h-full" style={{ backgroundColor: globalSettings.backgroundColor, fontFamily: globalSettings.fontFamily }}>
+                                <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                                    {blocks.map((block) => (
+                                        <BlockRenderer
+                                            key={block.id}
+                                            block={block}
+                                            isSelected={false}
+                                            onClick={(e) => { }}
+                                            onUpdate={(id, updates) => { }}
+                                            onDelete={(id) => { }}
+                                            viewMode={viewMode}
+                                            variables={variables}
+                                        />
+                                    ))}
+                                </SortableContext>
+                            </div>
+                        </DroppableCanvas>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
     const handleSaveComponent = async (block: EmailBlock, name: string) => {
         try {
             await saveEmailComponent(projectId, name, block);
@@ -268,12 +337,12 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
             setSavedComponents(comps);
         } catch (e) {
             console.error("Failed to save component", e);
-            alert("Failed to save component");
+            showError("Failed to save component");
         }
     };
 
     const handleDeleteComponent = async (componentId: string) => {
-        if (confirm("Delete this saved component?")) {
+        if (await confirm("Delete Component", "Are you sure you want to delete this saved component?")) {
             await deleteEmailComponent(projectId, componentId);
             const comps = await getEmailComponents(projectId);
             setSavedComponents(comps);
@@ -281,8 +350,16 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
     };
 
     const sensors = useSensors(
-        useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), // Prevent accidental drags
-        useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+        useSensor(PointerSensor, {
+            activationConstraint: { distance: 5 },
+            disabled: readOnly
+        }),
+        useSensor(KeyboardSensor, {
+            coordinateGetter: sortableKeyboardCoordinates,
+            keyboardCodes: {
+                start: [], cancel: [], end: [] // Disable keyboard sort if readOnly
+            }
+        })
     );
 
     // --- Actions ---
@@ -314,6 +391,7 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
     };
 
     const deleteBlock = (id: string) => {
+        if (readOnly) return;
         setBlocks(prev => deleteBlockRecursive(prev, id));
         if (selectedBlockId === id) setSelectedBlockId(null);
     };
@@ -535,7 +613,34 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
         if (active.data.current?.isSidebar) {
             const type = active.data.current.type as EmailBlockType;
             const savedBlock = active.data.current.savedBlock as EmailBlock | undefined;
-            const newBlock = savedBlock ? deepCloneBlock(savedBlock) : createBlock(type);
+            let newBlock = savedBlock ? deepCloneBlock(savedBlock) : createBlock(type);
+
+            // Apply default styles if available
+            if (!savedBlock && blockTypeDefaults[type]) {
+                const defaults = blockTypeDefaults[type];
+                // Exclude padding from defaults for structural blocks to prevent overwriting the 30px default
+                const isStructural = ['columns', 'flex', 'div'].includes(type);
+
+                let mergedStyles = { ...newBlock.styles, ...defaults.styles };
+
+                if (isStructural) {
+                    // Restore original TOP/BOTTOM padding from createBlock (30px)
+                    // But allow Left/Right padding to be inherited from previous settings
+                    mergedStyles = {
+                        ...mergedStyles,
+                        paddingTop: 30, // Force 30px default
+                        paddingBottom: 30, // Force 30px default
+                        // explicitly remove shorthand padding to ensure specific values take precedence
+                        padding: undefined
+                    };
+                }
+
+                newBlock = {
+                    ...newBlock,
+                    styles: mergedStyles,
+                    content: { ...newBlock.content, ...defaults.content }
+                };
+            }
 
             // 1. Drop onto root canvas background
             if (overId === 'root') {
@@ -772,6 +877,12 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                 setSelectedBlockId(newBlock.id);
                 return;
             }
+
+            // DEFAULT INSERTION BEHAVIOR (Improved):
+            // If any other block is selected, insert the new block right below it on the same level
+            setBlocks(prev => insertBlockAfter(prev, selectedBlock.id, newBlock));
+            setSelectedBlockId(newBlock.id);
+            return;
         }
 
         setBlocks(prev => {
@@ -859,6 +970,7 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                         <div className="p-4 space-y-6">
                             <BlockCategory title="Typography">
                                 <DraggableSidebarItem type="text" icon="title" label="Text" onClick={() => addBlock('text')} />
+                                <DraggableSidebarItem type="richtext" icon="article" label="Rich Text" onClick={() => addBlock('richtext')} />
                                 <DraggableSidebarItem type="header" icon="format_h1" label="Header" onClick={() => addBlock('header')} />
                                 <DraggableSidebarItem type="list" icon="format_list_bulleted" label="List" onClick={() => addBlock('list')} />
                                 <DraggableSidebarItem type="quote" icon="format_quote" label="Quote" onClick={() => addBlock('quote')} />
@@ -1060,7 +1172,7 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                                         }
                                     }}
                                     disabled={isSavingDraft}
-                                    className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider border border-[var(--color-surface-border)] dark:border-zinc-700 text-[var(--color-text-main)] dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:!text-zinc-100 rounded-lg transition-all flex items-center gap-2"
+                                    className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider border border-[var(--color-surface-border)] dark:border-zinc-700 text-[var(--color-text-main)] dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:!text-zinc-100 rounded-lg transition-all flex items-center gap-2 whitespace-nowrap"
                                 >
                                     {isSavingDraft ? <span className="material-symbols-outlined animate-spin text-[14px]">sync</span> : null}
                                     Save Draft
@@ -1068,7 +1180,7 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                             )}
                             <button
                                 onClick={() => onSave(blocks, variables, templateName)}
-                                className={`flex items-center gap-2 px-5 py-2 bg-[var(--color-primary)] dark:bg-blue-600 hover:bg-[var(--color-primary)]/90 dark:hover:bg-blue-500 !text-white rounded-lg text-[11px] font-black uppercase tracking-widest shadow-lg shadow-[var(--color-primary)]/20 transition-all ${saving ? 'opacity-70 cursor-not-allowed' : 'hover:scale-[1.02] active:scale-[0.98]'}`}
+                                className={`flex items-center gap-2 px-5 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 text-[var(--color-primary-text)] rounded-lg text-[11px] font-black uppercase tracking-widest shadow-lg shadow-[var(--color-primary)]/20 transition-all ${saving ? 'opacity-70 cursor-not-allowed' : 'hover:scale-[1.02] active:scale-[0.98]'}`}
                             >
                                 {saving ? <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> : <span className="material-symbols-outlined text-[18px]">rocket_launch</span>}
                                 Publish
@@ -1079,33 +1191,36 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
 
                 {/* Canvas */}
                 <div className="flex-1 overflow-y-auto flex flex-col items-center bg-dot-pattern py-12" onClick={() => setSelectedBlockId(null)}>
-                    <DroppableCanvas id="root" viewMode={viewMode} canvasWidth={globalSettings.canvasWidth}>
-                        <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
-                            {blocks.map(block => (
-                                <NestedBlock
-                                    key={block.id}
-                                    block={block}
-                                    selectedId={selectedBlockId}
-                                    onSelect={setSelectedBlockId}
-                                    onDelete={deleteBlock}
-                                    depth={0}
-                                    onDuplicate={() => addBlock(block.type)}
-                                />
-                            ))}
-                        </SortableContext>
-                        {blocks.length === 0 && (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-300 pointer-events-none">
-                                <span className="material-symbols-outlined text-4xl mb-2">drag_indicator</span>
-                                <p className="text-sm font-medium">Drag blocks here</p>
-                            </div>
-                        )}
-                    </DroppableCanvas>
+                    <HoverProvider>
+                        <DroppableCanvas id="root" viewMode={viewMode} canvasWidth={globalSettings.canvasWidth}>
+                            <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                                {blocks.map(block => (
+                                    <NestedBlock
+                                        key={block.id}
+                                        block={block}
+                                        selectedId={selectedBlockId}
+                                        onSelect={setSelectedBlockId}
+                                        onDelete={deleteBlock}
+                                        depth={0}
+                                        onDuplicate={() => addBlock(block.type)}
+                                        variables={variables}
+                                    />
+                                ))}
+                            </SortableContext>
+                            {blocks.length === 0 && (
+                                <div className="absolute inset-0 flex flex-col items-center justify-center text-zinc-300 pointer-events-none">
+                                    <span className="material-symbols-outlined text-4xl mb-2">drag_indicator</span>
+                                    <p className="text-sm font-medium">Drag blocks here</p>
+                                </div>
+                            )}
+                        </DroppableCanvas>
+                    </HoverProvider>
                     <DragOverlay>
                         {activeDragItem ? (
                             (activeDragItem as any)._dragSource === 'layer' ? (
                                 <LayerDragPreview block={activeDragItem} />
                             ) : (
-                                <div className="p-4 bg-white/90 shadow-xl rounded ring-2 ring-[var(--color-primary)]"><BlockRenderer block={activeDragItem} /></div>
+                                <div className="p-4 bg-white/90 shadow-xl rounded ring-2 ring-[var(--color-primary)]"><BlockRenderer block={activeDragItem} variables={variables} /></div>
                             )
                         ) : null}
                     </DragOverlay>
@@ -1149,7 +1264,7 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                                         setIsNamingModalOpen(false);
                                         onSaveDraft?.(blocks, variables, templateName);
                                     }}
-                                    className="px-6 py-2 bg-[var(--color-primary)] text-white text-[11px] font-black uppercase tracking-widest rounded-lg shadow-lg hover:shadow-[var(--color-primary)]/40 transition-all disabled:opacity-50 disabled:grayscale dark:bg-blue-600 dark:hover:bg-blue-500"
+                                    className="px-6 py-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] text-[11px] font-black uppercase tracking-widest rounded-lg shadow-lg hover:shadow-[var(--color-primary)]/40 transition-all disabled:opacity-50 disabled:grayscale"
                                 >
                                     Save
                                 </button>
@@ -1170,6 +1285,7 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                         onChange={(updates) => updateBlock(selectedBlock.id, updates)}
                         onSaveAsComponent={(name) => handleSaveComponent(selectedBlock, name)}
                         projectId={projectId}
+                        tenantId={tenantId}
                     />
                 ) : (
                     <GlobalSettingsPanel

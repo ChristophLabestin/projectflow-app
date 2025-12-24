@@ -6,6 +6,7 @@ import { getProjectIdeas, getUserTasks } from '../services/dataService';
 import { useTheme } from '../context/ThemeContext';
 import { ProjectSwitcher } from './ProjectSwitcher';
 import { NotificationDropdown } from './NotificationDropdown';
+import { useUIState } from '../context/UIContext';
 
 type SidebarProps = {
     isDrawer?: boolean;
@@ -86,7 +87,7 @@ const NavItem = ({
                 <div className={`
                     flex items-center justify-center min-w-[20px] h-5 rounded-full px-1 transition-all duration-300
                     ${isActive
-                        ? 'bg-[var(--color-primary)] text-white dark:text-black scale-100 shadow-lg shadow-[var(--color-primary)]/20'
+                        ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] scale-100 shadow-lg shadow-[var(--color-primary)]/20'
                         : 'bg-[var(--color-surface-border)] text-[var(--color-text-muted)]'}
                 `}>
                     <span className={`text-[10px] font-black leading-none ${isActive ? 'scale-90' : ''}`}>{badge}</span>
@@ -104,6 +105,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
     const navigate = useNavigate();
     const user = auth.currentUser;
     const { theme } = useTheme();
+    const { setReleaseModalOpen } = useUIState();
 
     // Data Loaders for badges
     const [taskCount, setTaskCount] = React.useState<number>(0);
@@ -182,7 +184,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                     onClick={isDrawer ? onClose : undefined}
                     className="
                         group relative w-full flex items-center justify-center gap-3 px-4 py-2.5 
-                        bg-[var(--color-primary)] text-white dark:text-black font-bold text-[13px]
+                        bg-[var(--color-primary)] text-[var(--color-primary-text)] font-bold text-[13px]
                         rounded-xl shadow-xl shadow-[var(--color-primary)]/15
                         hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden
                     "
@@ -341,6 +343,19 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
             {/* 3. Footer / User Profile */}
             <div className="p-4 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-card)]">
 
+                {/* Local-only Release To-Dos Link */}
+                {window.location.hostname === 'localhost' && (
+                    <div className="mb-4">
+                        <button
+                            onClick={() => setReleaseModalOpen(true)}
+                            className="w-full flex items-center gap-2.5 px-3 py-2 text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors text-[12px] font-bold uppercase tracking-wider"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">list_alt</span>
+                            <span>Release To-Dos</span>
+                        </button>
+                    </div>
+                )}
+
                 {/* Theme Toggle + Notification Bell Row */}
                 <div className="flex items-center justify-between mb-4">
                     <ThemeToggle />
@@ -368,6 +383,22 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                                 >
                                     <span className="material-symbols-outlined text-[20px]">settings</span>
                                     <span className="text-sm font-medium">Settings</span>
+                                </Link>
+                                <Link
+                                    to="/media"
+                                    onClick={() => { setIsUserMenuOpen(false); if (isDrawer && onClose) onClose(); }}
+                                    className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)] transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">perm_media</span>
+                                    <span className="text-sm font-medium">Media Library</span>
+                                </Link>
+                                <Link
+                                    to="/personal-tasks"
+                                    onClick={() => { setIsUserMenuOpen(false); if (isDrawer && onClose) onClose(); }}
+                                    className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)] transition-colors"
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">task_alt</span>
+                                    <span className="text-sm font-medium">Personal Tasks</span>
                                 </Link>
                                 <div className="h-px bg-[var(--color-surface-border)] mx-2 my-1"></div>
                                 <button
