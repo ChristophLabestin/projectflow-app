@@ -8,11 +8,13 @@ import { TaskCreateModal } from './TaskCreateModal';
 import { useUIState } from '../context/UIContext';
 import { useTheme } from '../context/ThemeContext';
 import { auth } from '../services/firebase';
-import { getProjectById, getProjectIdeas, getProjectTasks, getUserProjects, subscribeProject, getProjectIssues, subscribeProjectTasks, subscribeProjectIssues, subscribeProjectIdeas } from '../services/dataService';
+import { getProjectById, getProjectIdeas, getProjectTasks, getUserProjects, subscribeProject, getProjectIssues, subscribeProjectTasks, subscribeProjectIssues, subscribeProjectIdeas, getUserProjectNavPrefs, subscribeUserProjectNavPrefs, subscribeUserStatusPreference } from '../services/dataService';
 import { Project } from '../types';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { getSubTasks } from '../services/dataService';
+import { useWorkspacePresence } from '../hooks/usePresence';
 import { SubTask } from '../types';
+import { UserProfileDropdown } from './UserProfileDropdown';
 
 
 const PinnedTasksToggle = () => {
@@ -108,6 +110,8 @@ export const AppLayout = () => {
     const [tasksCount, setTasksCount] = useState(0);
     const [ideasCount, setIdeasCount] = useState(0);
     const [issuesCount, setIssuesCount] = useState(0);
+    const [navPrefs, setNavPrefs] = useState<{ order: string[]; hidden: string[] } | undefined>(undefined);
+    const [statusPreference, setStatusPreference] = useState<'online' | 'busy' | 'idle' | 'offline'>('online');
     const [projectMenuOpen, setProjectMenuOpen] = useState(false);
     const [projectOptions, setProjectOptions] = useState<Project[]>([]);
     const [taskTitle, setTaskTitle] = useState<string | null>(null);
@@ -134,6 +138,7 @@ export const AppLayout = () => {
         let unsubTasks: (() => void) | undefined;
         let unsubIdeas: (() => void) | undefined;
         let unsubIssues: (() => void) | undefined;
+        let unsubNav: (() => void) | undefined;
 
         // First, find the project to get its tenant
         getProjectById(projectId).then(async (foundProject) => {
@@ -172,6 +177,15 @@ export const AppLayout = () => {
                 }
             }, projectTenantId);
 
+            // Subscribe to user's nav preferences for this project
+            if (user) {
+                unsubNav = subscribeUserProjectNavPrefs(user.uid, projectId, (prefs) => {
+                    if (mounted) {
+                        setNavPrefs(prefs || undefined);
+                    }
+                }, projectTenantId);
+            }
+
         }).catch(err => {
             console.warn("Failed to load project data", err);
         });
@@ -182,8 +196,24 @@ export const AppLayout = () => {
             if (unsubTasks) unsubTasks();
             if (unsubIdeas) unsubIdeas();
             if (unsubIssues) unsubIssues();
+            if (unsubNav) unsubNav();
         };
-    }, [projectId]);
+    }, [projectId, user?.uid]);
+
+    // Subscribe to global status preference
+    useEffect(() => {
+        if (!user) return;
+        const unsub = subscribeUserStatusPreference(user.uid, (status) => {
+            setStatusPreference(status);
+        });
+        return () => unsub();
+    }, [user?.uid]);
+
+    // Global Workspace Presence Heartbeat
+    useWorkspacePresence({
+        enabled: !!user,
+        manualStatus: statusPreference
+    });
 
     // Global Breadcrumb Logic
     const breadcrumbs = useMemo(() => {
@@ -273,7 +303,8 @@ export const AppLayout = () => {
                         issuesCount,
                         modules: project?.modules,
                         externalResources: project?.externalResources,
-                        isLoaded: Boolean(project)
+                        isLoaded: Boolean(project),
+                        navPrefs: navPrefs
                     } : undefined}
                 />
             </div>
@@ -297,7 +328,8 @@ export const AppLayout = () => {
                                 issuesCount,
                                 modules: project?.modules,
                                 externalResources: project?.externalResources,
-                                isLoaded: Boolean(project)
+                                isLoaded: Boolean(project),
+                                navPrefs: navPrefs
                             } : undefined}
                         />
                     </div>
@@ -332,13 +364,16 @@ export const AppLayout = () => {
                         <div className="hidden sm:block relative w-80 h-[42px] shrink-0">
                             <AISearchBar />
                         </div>
+
+                        {/* User Profile Dropdown */}
+                        <UserProfileDropdown />
                     </div>
                 </header>
 
                 {/* Main Scroll Area */}
                 <main className={`flex-1 w-full dotted-bg ${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') ? 'p-0 overflow-hidden' : 'overflow-y-auto p-4 sm:p-6 lg:p-8'}`}>
                     <div className={`${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}`}>
-                        <Outlet context={{ setTaskTitle }} />
+                        <Outlet context={{ setTaskTitle, statusPreference }} />
                     </div>
                 </main>
 

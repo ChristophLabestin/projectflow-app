@@ -5,9 +5,11 @@ interface HealthIndicatorProps {
     health: ProjectHealth;
     size?: 'sm' | 'md' | 'lg';
     showLabel?: boolean;
+    onOpenDetail?: () => void;
 }
 
-export const HealthIndicator: React.FC<HealthIndicatorProps> = ({ health, size = 'md', showLabel = true }) => {
+export const HealthIndicator: React.FC<HealthIndicatorProps> = ({ health, size = 'md', showLabel = true, onOpenDetail }) => {
+
     const [showTooltip, setShowTooltip] = useState(false);
 
     const getStatusColor = (status: HealthStatus) => {
@@ -48,11 +50,13 @@ export const HealthIndicator: React.FC<HealthIndicatorProps> = ({ health, size =
     return (
         <div className="relative inline-flex items-center gap-3">
             <div
-                className={`relative flex items-center justify-center cursor-help group`}
+                className={`relative flex items-center justify-center group ${onOpenDetail ? 'cursor-pointer hover:scale-105 transition-transform' : 'cursor-help'}`}
                 onMouseEnter={() => setShowTooltip(true)}
                 onMouseLeave={() => setShowTooltip(false)}
+                onClick={onOpenDetail}
             >
                 {/* SVG Gauge */}
+
                 <svg className={`${dimensions[size]} -rotate-90`} viewBox="0 0 100 100">
                     {/* Background Ring */}
                     <circle
@@ -86,9 +90,10 @@ export const HealthIndicator: React.FC<HealthIndicatorProps> = ({ health, size =
 
                 {/* Detailed Tooltip */}
                 {showTooltip && (
-                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-72 z-[100] animate-in fade-in zoom-in duration-200">
+                    <div className="absolute top-full left-0 mt-3 w-72 z-[100] animate-in fade-in zoom-in duration-200">
                         <div className="glass-card bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl p-4 shadow-2xl border border-white/20 rounded-2xl ring-1 ring-black/5">
                             <div className="flex items-center justify-between mb-3">
+
                                 <div>
                                     <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-tight">
                                         Project Health
@@ -137,6 +142,15 @@ export const HealthIndicator: React.FC<HealthIndicatorProps> = ({ health, size =
                                     <p className="text-[10px] font-bold text-[var(--color-primary)] leading-tight italic">
                                         "{health.recommendations[0]}"
                                     </p>
+                                </div>
+                            )}
+
+                            {onOpenDetail && (
+                                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/5 text-center">
+                                    <span className="text-[10px] font-bold text-[var(--color-primary)] flex items-center justify-center gap-1">
+                                        <span className="material-symbols-outlined text-[12px]">open_in_new</span>
+                                        Click for full details
+                                    </span>
                                 </div>
                             )}
                         </div>

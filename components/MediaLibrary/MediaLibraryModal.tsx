@@ -20,8 +20,10 @@ interface MediaLibraryProps {
     isOpen: boolean;
     onClose: () => void;
     onSelect?: (asset: MediaAsset) => void;
-    projectId: string;
+    projectId: string; // Used for project assets, or 'uncategorized'
     tenantId?: string;
+    collectionType?: 'project' | 'user'; // Defaults to 'project'
+    userId?: string; // Required if collectionType is 'user'
     existingAssets?: MediaAsset[];
     deferredUpload?: boolean;
 }
@@ -45,6 +47,8 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
     onSelect,
     projectId,
     tenantId,
+    collectionType = 'project',
+    userId,
     existingAssets = [],
     deferredUpload = false,
 }) => {
@@ -73,25 +77,41 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
         const fetchExistingAssets = async () => {
             setIsLoading(true);
             const resolvedTenantId = tenantId || auth.currentUser?.uid;
+            const resolvedUserId = userId || auth.currentUser?.uid;
+
             if (!resolvedTenantId || deferredUpload) return;
 
             try {
-                // 1. Fetch from Root (legacy/uncategorized)
-                const rootRef = ref(storage, `tenants/${tenantId}/projects`);
-                const rootResult = await listAll(rootRef);
-                const rootItems = rootResult.items.filter(item => item.name.includes('_media_'));
+                let allItems: any[] = [];
 
-                // 2. Fetch from Project Subfolder
-                let projectItems: any[] = [];
-                try {
-                    const projectRef = ref(storage, `tenants/${tenantId}/projects/${projectId}`);
-                    const projectResult = await listAll(projectRef);
-                    projectItems = projectResult.items.filter(item => item.name.includes('_media_'));
-                } catch (e) {
-                    // Folder might not exist yet for new projects, that's fine
+                if (collectionType === 'user') {
+                    // Fetch from user-specific folder
+                    if (!resolvedUserId) return;
+                    try {
+                        const userRef = ref(storage, `tenants/${resolvedTenantId}/users/${resolvedUserId}`);
+                        const userResult = await listAll(userRef);
+                        allItems = userResult.items.filter(item => item.name.includes('_media_'));
+                    } catch (e) {
+                        console.log("User media folder doesn't exist yet");
+                    }
+                } else {
+                    // 1. Fetch from Project Root (legacy/uncategorized)
+                    const rootRef = ref(storage, `tenants/${resolvedTenantId}/projects`);
+                    const rootResult = await listAll(rootRef);
+                    const rootItems = rootResult.items.filter(item => item.name.includes('_media_'));
+
+                    // 2. Fetch from Project Subfolder
+                    let projectItems: any[] = [];
+                    try {
+                        const projectRef = ref(storage, `tenants/${resolvedTenantId}/projects/${projectId}`);
+                        const projectResult = await listAll(projectRef);
+                        projectItems = projectResult.items.filter(item => item.name.includes('_media_'));
+                    } catch (e) {
+                        // Folder might not exist yet for new projects, that's fine
+                    }
+
+                    allItems = [...rootItems, ...projectItems];
                 }
-
-                const allItems = [...rootItems, ...projectItems];
 
                 const assetPromises = allItems.map(async (item) => {
                     const url = await getDownloadURL(item);
@@ -126,7 +146,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
     // Combine existing assets with newly uploaded ones, filtered by current project or uncategorized
     // For deferred upload, show all local uploaded files regardless of project ID filtering (since they are fresh)
-    const allAssets = deferredUpload
+    const allAssets = deferredUpload || collectionType === 'user'
         ? uploadedFiles
         : [...existingAssets, ...uploadedFiles].filter(asset =>
             asset.projectId === projectId || !asset.projectId || asset.projectId === 'uncategorized'
@@ -158,6 +178,8 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
         // Resolve tenant ID - use provided, or fall back to current user
         const resolvedTenantId = tenantId || auth.currentUser?.uid;
+        const resolvedUserId = userId || auth.currentUser?.uid;
+
         if (!resolvedTenantId && !deferredUpload) {
             showError('Authentication required');
             setIsUploading(false);
@@ -195,10 +217,18 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             const uploadPromises = files.map(async (file) => {
                 const timestamp = Date.now();
                 const cleanFileName = file.name.replace(/[^a-zA-Z0-9.]/g, '_');
-                // New Pattern: {timestamp}_media_{projectId}_{filename}
-                const uniqueFileName = `${timestamp}_media_${projectId}_${cleanFileName}`;
-                const folderPath = projectId && projectId !== 'uncategorized' ? `${projectId}/` : '';
-                const path = `tenants/${resolvedTenantId}/projects/${folderPath}${uniqueFileName}`;
+                // New Pattern: {timestamp}_media_{projectId/userId}_{filename}
+                const contextId = collectionType === 'user' ? (resolvedUserId || 'user') : projectId;
+                const uniqueFileName = `${timestamp}_media_${contextId}_${cleanFileName}`;
+
+                let path = '';
+                if (collectionType === 'user' && resolvedUserId) {
+                    path = `tenants/${resolvedTenantId}/users/${resolvedUserId}/${uniqueFileName}`;
+                } else {
+                    const folderPath = projectId && projectId !== 'uncategorized' ? `${projectId}/` : '';
+                    path = `tenants/${resolvedTenantId}/projects/${folderPath}${uniqueFileName}`;
+                }
+
                 const storageRef = ref(storage, path);
 
                 // Upload file
@@ -261,16 +291,21 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
         if (!editingImage) return;
         setIsUploading(true);
         try {
-            // Search for the asset in both root and project subfolder
-            // Since we don't store the full path in the DB/State (just id as filename),
-            // we check both common locations.
-            let storageRef = ref(storage, `tenants/${resolvedTenantId}/projects/${editingImage.id}`);
+            // Search for the asset in its respective location
+            let storageRef;
+            const resolvedUserId = userId || auth.currentUser?.uid;
 
-            if (projectId && projectId !== 'uncategorized') {
-                const projectScopedRef = ref(storage, `tenants/${resolvedTenantId}/projects/${projectId}/${editingImage.id}`);
-                // Simple heuristic: if the asset belongs to this project, it's likely in the subfolder
-                if (editingImage.projectId === projectId) {
-                    storageRef = projectScopedRef;
+            if (collectionType === 'user' && resolvedUserId) {
+                storageRef = ref(storage, `tenants/${resolvedTenantId}/users/${resolvedUserId}/${editingImage.id}`);
+            } else {
+                storageRef = ref(storage, `tenants/${resolvedTenantId}/projects/${editingImage.id}`);
+
+                if (projectId && projectId !== 'uncategorized') {
+                    const projectScopedRef = ref(storage, `tenants/${resolvedTenantId}/projects/${projectId}/${editingImage.id}`);
+                    // Simple heuristic: if the asset belongs to this project, it's likely in the subfolder
+                    if (editingImage.projectId === projectId) {
+                        storageRef = projectScopedRef;
+                    }
                 }
             }
 
@@ -348,7 +383,18 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
         try {
             // Delete from Storage
-            const storageRef = ref(storage, `tenants/${resolvedTenantId}/projects/${asset.id}`);
+            const resolvedUserId = userId || auth.currentUser?.uid;
+            let path = '';
+
+            if (collectionType === 'user' && resolvedUserId) {
+                path = `tenants/${resolvedTenantId}/users/${resolvedUserId}/${asset.id}`;
+            } else {
+                // Heuristic for project assets (check subfolder if projectId matches)
+                const folderPath = asset.projectId && asset.projectId !== 'uncategorized' ? `${asset.projectId}/` : '';
+                path = `tenants/${resolvedTenantId}/projects/${folderPath}${asset.id}`;
+            }
+
+            const storageRef = ref(storage, path);
             await deleteObject(storageRef);
 
             // Update UI
@@ -383,7 +429,9 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                         </div>
                         <div>
                             <h2 className="text-lg font-bold text-[var(--color-text-main)]">Media Library</h2>
-                            <p className="text-xs text-[var(--color-text-muted)]">Select or upload images for your email</p>
+                            <p className="text-xs text-[var(--color-text-muted)]">
+                                {collectionType === 'user' ? 'Select or upload personal images' : 'Select or upload images for your project'}
+                            </p>
                         </div>
                     </div>
                     <button
@@ -397,7 +445,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                 {/* Tabs */}
                 <div className="flex border-b border-[var(--color-surface-border)] px-5">
                     {[
-                        { id: 'gallery', label: 'Project Images', icon: 'photo_library' },
+                        { id: 'gallery', label: collectionType === 'user' ? 'Personal Images' : 'Project Images', icon: 'photo_library' },
                         { id: 'upload', label: 'Upload', icon: 'cloud_upload' },
                         { id: 'ai', label: 'Nano Banana', icon: 'auto_awesome', color: 'text-amber-500' },
                         { id: 'stock', label: 'Stock Photos', icon: 'image_search' },

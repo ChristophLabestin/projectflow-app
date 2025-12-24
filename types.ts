@@ -111,6 +111,11 @@ export interface Member {
     pinnedProjectId?: string;
 }
 
+export interface ProjectNavPrefs {
+    order: string[]; // Nav item IDs in order
+    hidden: string[]; // Nav item IDs that are hidden
+}
+
 export interface Comment {
     id: string;
     projectId: string;

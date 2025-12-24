@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useOutletContext } from 'react-router-dom';
 import { usePinnedProject } from '../context/PinnedProjectContext';
-import { getProjectById, toggleTaskStatus, updateProjectFields, addActivityEntry, deleteProjectById, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues, getActiveTenantId, generateInviteLink, getLatestGeminiReport, saveGeminiReport } from '../services/dataService';
+import { getProjectById, toggleTaskStatus, updateProjectFields, addActivityEntry, deleteProjectById, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues, getActiveTenantId, generateInviteLink, getLatestGeminiReport, saveGeminiReport, getProjectMembers } from '../services/dataService';
 import { TaskCreateModal } from '../components/TaskCreateModal';
 import { generateProjectReport, getGeminiInsight } from '../services/geminiService';
 import { Activity, Idea, Project, Task, Issue, ProjectRole, GeminiReport } from '../types';
@@ -15,6 +15,7 @@ import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
+import { DatePicker } from '../components/ui/DatePicker';
 import { Textarea } from '../components/ui/Textarea';
 import { ImageCropper } from '../components/ui/ImageCropper';
 import { DonutChart } from '../components/charts/DonutChart';
@@ -22,11 +23,13 @@ import { TeamCard } from '../components/TeamCard';
 import { InviteMemberModal } from '../components/InviteMemberModal';
 import { MilestoneCard } from '../components/Milestones/MilestoneCard';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
-import { Checkbox } from '../components/ui/Checkbox';
-import { fetchLastCommits, fetchUserRepositories, GithubCommit, GithubRepo } from '../services/githubService';
-import { getUserProfile, linkWithGithub, updateUserData, subscribeProjectMilestones } from '../services/dataService';
+// import { Checkbox } from '../components/ui/Checkbox'; // Removed
+import { fetchLastCommits, GithubCommit } from '../services/githubService';
+import { getUserProfile, linkWithGithub, updateUserData, subscribeProjectMilestones, updateMilestone } from '../services/dataService';
 import { calculateProjectHealth, ProjectHealth } from '../services/healthService';
 import { HealthIndicator } from '../components/project/HealthIndicator';
+import { HealthDetailModal } from '../components/project/HealthDetailModal';
+import { ProjectEditModal } from '../components/project/ProjectEditModal';
 import { Milestone } from '../types';
 
 const cleanText = (value?: string | null) => (value || '').replace(/\*\*/g, '');
@@ -62,11 +65,12 @@ const getModuleIcon = (name: string) => {
     return { icon: 'more_horiz', color: 'text-slate-600 dark:text-slate-400', bg: 'bg-[var(--color-surface-hover)]' };
 };
 
-import { updatePresence } from '../services/dataService';
+import { usePresence, useProjectPresence } from '../hooks/usePresence';
 
 export const ProjectOverview = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { statusPreference } = useOutletContext<{ statusPreference: 'online' | 'busy' | 'idle' | 'offline' }>();
     const { pinProject, unpinProject, pinnedProjectId } = usePinnedProject();
     const [project, setProject] = useState<Project | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -76,6 +80,7 @@ export const ProjectOverview = () => {
     const [ideas, setIdeas] = useState<Idea[]>([]);
     const [issues, setIssues] = useState<Issue[]>([]);
     const [milestones, setMilestones] = useState<Milestone[]>([]);
+    const [teamMemberProfiles, setTeamMemberProfiles] = useState<Array<{ id: string; displayName: string; photoURL?: string; role: string }>>([]);
     const [error, setError] = useState<string | null>(null);
     const [unauthorized, setUnauthorized] = useState(false);
     const [report, setReport] = useState<string | null>(null);
@@ -89,27 +94,10 @@ export const ProjectOverview = () => {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showTaskModal, setShowTaskModal] = useState(false);
     const [showInviteModal, setShowInviteModal] = useState(false);
+    const [showHealthModal, setShowHealthModal] = useState(false);
 
     // Permission system
     const { can, isOwner } = useProjectPermissions(project);
-
-    // Edit Form State
-    const [editTitle, setEditTitle] = useState('');
-    const [editDescription, setEditDescription] = useState('');
-    const [editStatus, setEditStatus] = useState<Project['status']>('Active');
-    const [editPriority, setEditPriority] = useState<Project['priority'] | 'High' | 'Medium' | 'Low' | 'Urgent'>('Medium');
-    const [editStartDate, setEditStartDate] = useState('');
-    const [editDueDate, setEditDueDate] = useState('');
-    const [editModules, setEditModules] = useState<Project['modules']>([]);
-    const [editLinks, setEditLinks] = useState<{ title: string; url: string }[]>([]);
-    const [editExternalResources, setEditExternalResources] = useState<{ title: string; url: string; icon?: string }[]>([]);
-    const [editCoverFile, setEditCoverFile] = useState<File | null>(null);
-    const [editIconFile, setEditIconFile] = useState<File | null>(null);
-    const [editGalleryFiles, setEditGalleryFiles] = useState<File[]>([]);
-    const [editKeptGalleryUrls, setEditKeptGalleryUrls] = useState<string[]>([]);
-    const [editCoverUrl, setEditCoverUrl] = useState<string | null>(null);
-    const [editIconUrl, setEditIconUrl] = useState<string | null>(null);
-    const [mediaPickerTarget, setMediaPickerTarget] = useState<'gallery' | 'cover' | 'icon'>('gallery');
 
     const [showGalleryModal, setShowGalleryModal] = useState(false);
     const [showMediaLibrary, setShowMediaLibrary] = useState(false);
@@ -125,71 +113,29 @@ export const ProjectOverview = () => {
     const [savingEdit, setSavingEdit] = useState(false);
     const [deletingProject, setDeletingProject] = useState(false);
     const [connectingGithub, setConnectingGithub] = useState(false);
-
-    // GitHub Integration State
     const [githubCommits, setGithubCommits] = useState<GithubCommit[]>([]);
-    const [githubLoading, setGithubLoading] = useState(false);
-    const [githubError, setGithubError] = useState<string | null>(null);
+    const [commitsLoading, setCommitsLoading] = useState(false);
+    const [commitsError, setCommitsError] = useState<string | null>(null);
 
-    const [editGithubRepo, setEditGithubRepo] = useState('');
-    const [editGithubIssueSync, setEditGithubIssueSync] = useState(false);
-    const [userGithubRepos, setUserGithubRepos] = useState<GithubRepo[]>([]);
-    const [fetchingRepos, setFetchingRepos] = useState(false);
 
-    // Cropper State
-    const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
-    const [cropAspectRatio, setCropAspectRatio] = useState(1);
-    const [cropType, setCropType] = useState<'cover' | 'icon' | null>(null);
 
-    const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: 'cover' | 'icon') => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = () => {
-                setCropImageSrc(reader.result as string);
-                setCropType(type);
-                setCropAspectRatio(type === 'cover' ? 16 / 9 : 1);
-            };
-            reader.readAsDataURL(file);
-        }
-        e.target.value = '';
-    };
+    // GitHub Integration State (Legacy - kept for Activity logs if needed, but unused for Display)
+    // Removed unused state variables
 
-    const handleCropComplete = (croppedBlob: Blob) => {
-        if (cropType === 'cover') {
-            const file = new File([croppedBlob], "cover.jpg", { type: "image/jpeg" });
-            setEditCoverFile(file);
-            setCoverRemoved(false);
-        } else if (cropType === 'icon') {
-            const file = new File([croppedBlob], "icon.jpg", { type: "image/jpeg" });
-            setEditIconFile(file);
-            setIconRemoved(false);
-        }
-        closeCropper();
-    };
 
-    const closeCropper = () => {
-        setCropImageSrc(null);
-        setCropType(null);
-    };
 
-    // Presence
-    useEffect(() => {
-        if (!id) return;
-        updatePresence(id, 'online');
-        const interval = setInterval(() => updatePresence(id, 'online'), 60000); // Heartbeat
+    // Enhanced Presence Hook - tracks online/idle/offline states with activity detection
+    usePresence({
+        projectId: id || '',
+        tenantId: project?.tenantId,
+        enabled: !!id && !!project,
+        heartbeatInterval: 30000, // 30 seconds
+        idleTimeout: 600000, // 10 minutes of inactivity
+        manualStatus: statusPreference
+    });
 
-        const handleUnload = () => {
-            updatePresence(id, 'offline');
-        };
-        window.addEventListener('beforeunload', handleUnload);
-
-        return () => {
-            clearInterval(interval);
-            updatePresence(id, 'offline');
-            window.removeEventListener('beforeunload', handleUnload);
-        };
-    }, [id]);
+    // Subscribe to other users' presence
+    const activeProjectUsers = useProjectPresence(id || '', project?.tenantId);
 
     const fetchProjectAssets = async () => {
         if (!id || !project?.tenantId) return;
@@ -253,28 +199,11 @@ export const ProjectOverview = () => {
                     return;
                 }
                 setProject(projData);
-                // Initialize form
-                setEditTitle(projData.title || '');
-                setEditDescription(projData.description || '');
-                setEditStatus(projData.status || 'Active');
-                setEditPriority(projData.priority || 'Medium');
-                setEditStartDate(projData.startDate || '');
-                setEditDueDate(projData.dueDate || '');
-                setEditModules(projData.modules || ['tasks', 'ideas', 'mindmap', 'activity']);
-                setEditLinks(projData.links || []);
-                setEditExternalResources(projData.externalResources || []);
-                setEditKeptGalleryUrls(projData.screenshots || []);
-                setEditGalleryFiles([]);
-                setEditCoverUrl(projData.coverImage || null);
-                setEditIconUrl(projData.squareIcon || null);
-                setCoverRemoved(false);
-                setIconRemoved(false);
-                setEditCoverFile(null);
-                setEditIconFile(null);
+                // Initialize
+                if (project) {
+                    // These would be handled inside the ProjectEditModal now
+                }
 
-                // Initialize GitHub form
-                setEditGithubRepo(projData.githubRepo || '');
-                setEditGithubIssueSync(projData.githubIssueSync || false);
 
                 // Fetch User's Repositories & Token if they have a linked account
                 if (auth.currentUser) {
@@ -282,8 +211,11 @@ export const ProjectOverview = () => {
                     // 1. Check if user is in the tenant
                     const tenantProfile = await getUserProfile(auth.currentUser.uid, projData.tenantId);
 
-                    // 2. Check if user is a member of the project
-                    const isProjectMember = projData.members?.some(m => m.userId === auth.currentUser?.uid) || projData.ownerId === auth.currentUser.uid;
+                    // 2. Check if user is a member of the project (Support both new ProjectMember and legacy string format)
+                    const projectMembers = projData.members || [];
+                    const isProjectMember = projectMembers.some(m =>
+                        (typeof m === 'string' ? m : m.userId) === auth.currentUser?.uid
+                    ) || projData.ownerId === auth.currentUser?.uid;
 
                     // If not in tenant AND not invited to project -> Unauthorized
                     if (!tenantProfile && !isProjectMember) {
@@ -294,24 +226,7 @@ export const ProjectOverview = () => {
 
                     const userProfile = tenantProfile || await getUserProfile(auth.currentUser.uid); // Fallback to default if cross-tenant?
 
-                    // Fetch GitHub commits if repository is set
-                    if (projData.githubRepo) {
-                        setGithubLoading(true);
-                        setGithubError(null);
-                        const token = projData.githubToken || userProfile?.githubToken;
-                        fetchLastCommits(projData.githubRepo, token)
-                            .then(setGithubCommits)
-                            .catch(err => setGithubError(err.message))
-                            .finally(() => setGithubLoading(false));
-                    }
-
-                    if (userProfile?.githubToken) {
-                        setFetchingRepos(true);
-                        fetchUserRepositories(userProfile.githubToken)
-                            .then(setUserGithubRepos)
-                            .catch(e => console.error("Failed to fetch user repos", e))
-                            .finally(() => setFetchingRepos(false));
-                    }
+                    // GitHub fetching removed
                 }
 
                 const ai = await getGeminiInsight();
@@ -345,23 +260,92 @@ export const ProjectOverview = () => {
         fetchData();
     }, [id]);
 
-    const handleConnectGithub = async () => {
-        if (!auth.currentUser) return;
-        setConnectingGithub(true);
-        try {
-            const token = await linkWithGithub();
-            await updateUserData(auth.currentUser.uid, { githubToken: token });
-            // Fetch repos immediately
-            setFetchingRepos(true);
-            const repos = await fetchUserRepositories(token);
-            setUserGithubRepos(repos);
-        } catch (error: any) {
-            console.error("Failed to link GitHub", error);
-        } finally {
-            setConnectingGithub(false);
-            setFetchingRepos(false);
-        }
-    };
+    useEffect(() => {
+        let mounted = true;
+
+        const loadCommits = async () => {
+            if (!project?.modules?.includes('issues')) {
+                setGithubCommits([]);
+                setCommitsError(null);
+                setCommitsLoading(false);
+                return;
+            }
+            if (!project.githubRepo) {
+                setGithubCommits([]);
+                setCommitsError(null);
+                setCommitsLoading(false);
+                return;
+            }
+
+            setCommitsLoading(true);
+            setCommitsError(null);
+
+            try {
+                const user = auth.currentUser;
+                let token = project.githubToken;
+                if (!token && user?.uid) {
+                    const profile = await getUserProfile(user.uid, project.tenantId);
+                    token = profile?.githubToken;
+                }
+
+                const commits = await fetchLastCommits(project.githubRepo, token);
+                if (mounted) {
+                    setGithubCommits(commits);
+                }
+            } catch (err) {
+                console.error("Failed to fetch GitHub commits", err);
+                if (mounted) {
+                    setGithubCommits([]);
+                    setCommitsError('Unable to load commits right now.');
+                }
+            } finally {
+                if (mounted) {
+                    setCommitsLoading(false);
+                }
+            }
+        };
+
+        loadCommits();
+
+        return () => {
+            mounted = false;
+        };
+    }, [project?.githubRepo, project?.githubToken, project?.tenantId, project?.modules]);
+
+    // Fetch team member profiles
+    useEffect(() => {
+        const fetchTeamMembers = async () => {
+            if (!project?.id || !project?.tenantId) return;
+
+            try {
+                const memberIds = await getProjectMembers(project.id, project.tenantId);
+                const profilePromises = memberIds.map(async (memberId) => {
+                    const profile = await getUserProfile(memberId, project.tenantId);
+                    // Find the role from project.members
+                    const memberEntry = (project.members || []).find(m =>
+                        (typeof m === 'string' ? m : m.userId) === memberId
+                    );
+                    const role = typeof memberEntry === 'object' && memberEntry?.role
+                        ? memberEntry.role
+                        : (memberId === project.ownerId ? 'Owner' : 'Member');
+
+                    return {
+                        id: memberId,
+                        displayName: profile?.displayName || 'Team Member',
+                        photoURL: profile?.photoURL,
+                        role: role
+                    };
+                });
+
+                const profiles = await Promise.all(profilePromises);
+                setTeamMemberProfiles(profiles.filter(p => p !== null));
+            } catch (err) {
+                console.error("Failed to fetch team member profiles", err);
+            }
+        };
+
+        fetchTeamMembers();
+    }, [project?.id, project?.tenantId, project?.members, project?.ownerId]);
 
     useEffect(() => {
         if (pinnedReport?.createdAt) {
@@ -377,6 +361,14 @@ export const ProjectOverview = () => {
         if (!project) return;
         setTasks(tasks.map(t => t.id === taskId ? { ...t, isCompleted: !currentStatus } : t));
         await toggleTaskStatus(taskId, currentStatus, project.id);
+    };
+
+    const handleToggleMilestone = async (milestone: Milestone) => {
+        if (!project) return;
+        const newStatus = milestone.status === 'Achieved' ? 'Pending' : 'Achieved';
+        // Optimistic update
+        setMilestones(prev => prev.map(m => m.id === milestone.id ? { ...m, status: newStatus } : m));
+        await updateMilestone(project.id, milestone.id, { status: newStatus });
     };
 
     const handleGenerateReport = async () => {
@@ -412,52 +404,35 @@ export const ProjectOverview = () => {
         return getDownloadURL(storageRef);
     };
 
-    const handleSaveEdit = async () => {
-        if (!project || !auth.currentUser) return;
-        setSavingEdit(true);
+    const handleSaveEdit = async (updatedFields: Partial<Project>) => {
+        if (!project || !id) return;
+
         try {
-            const updates: Partial<Project> = {
-                title: editTitle,
-                description: editDescription,
-                status: editStatus,
-                priority: editPriority,
-                startDate: editStartDate || null,
-                dueDate: editDueDate || null,
-                modules: editModules,
-                links: editLinks,
-                externalResources: editExternalResources,
-                githubRepo: editGithubRepo,
-                githubIssueSync: editGithubIssueSync,
-                coverImage: editCoverUrl || (coverRemoved ? null : project.coverImage),
-                squareIcon: editIconUrl || (iconRemoved ? null : project.squareIcon)
-            };
+            await updateProjectFields(id, updatedFields);
 
-            // Handle Gallery
-            const newGalleryUrls = await Promise.all(editGalleryFiles.map(f => uploadProjectAsset(f, 'gallery')));
-            updates.screenshots = [...editKeptGalleryUrls, ...newGalleryUrls];
+            // Log activity
+            await addActivityEntry(id, {
+                type: 'status',
+                user: (auth.currentUser?.displayName || 'Unknown'),
+                action: 'updated project settings',
+                targetId: id,
+                targetName: project.title,
+                metadata: {
+                    changes: Object.keys(updatedFields)
+                }
+            });
 
-            await updateProjectFields(project.id, updates, { action: 'Updated project details', target: project.title, type: 'status' });
-
-            // Optimistic update or refetch
-            const refreshed = await getProjectById(project.id);
-            if (refreshed) setProject(refreshed);
-
+            // Update local state
+            setProject(prev => prev ? { ...prev, ...updatedFields } : null);
             setShowEditModal(false);
-        } catch (err) {
-            console.error(err);
-            setError('Failed to update project.');
-        } finally {
-            setSavingEdit(false);
+        } catch (error) {
+            console.error("Error updating project:", error);
+            setError("Failed to update project settings");
         }
     };
 
-    const handleGallerySelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            const files = Array.from(e.target.files);
-            setEditGalleryFiles(prev => [...prev, ...files]);
-        }
-        e.target.value = '';
-    };
+
+
 
     const handleDeleteProject = async () => {
         if (!project) return;
@@ -507,10 +482,12 @@ export const ProjectOverview = () => {
 
     const health = calculateProjectHealth(project, tasks, milestones, issues, activity);
 
+    // Stats Calculations
     const completedTasks = tasks.filter(t => t.isCompleted).length;
     const progress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
     const openTasks = tasks.length - completedTasks;
     const urgentCount = tasks.filter(t => t.priority === 'Urgent').length;
+    const upcomingDeadlines = tasks.filter(t => t.dueDate && new Date(t.dueDate) > new Date() && !t.isCompleted).sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()).slice(0, 3);
 
     const priorityMap: Record<string, number> = { Urgent: 4, High: 3, Medium: 2, Low: 1 };
 
@@ -539,496 +516,855 @@ export const ProjectOverview = () => {
         .slice(0, 5);
 
     return (
-        <div className="flex flex-col gap-6 fade-in pb-10">
-            <ImageCropper
-                isOpen={!!cropImageSrc}
-                imageSrc={cropImageSrc}
-                aspectRatio={cropAspectRatio}
-                onCropComplete={handleCropComplete}
-                onCancel={closeCropper}
-            />
-            {/* Header Section */}
-            <div className="flex flex-col gap-6">
-                {/* Cover Image */}
-                <div className="relative w-full h-48 md:h-64 rounded-xl overflow-hidden bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)]">
-                    {project.coverImage ? (
-                        <img src={project.coverImage} alt="Cover" className="w-full h-full object-cover" />
-                    ) : (
-                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/30 dark:to-blue-950/30 opacity-50" />
+        <div className="flex flex-col gap-8 fade-in pb-20 max-w-[1600px] mx-auto w-full">
+
+
+            {/* PROFILE BANNER LAYOUT */}
+            <div className="flex flex-col w-full bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl shadow-sm relative group/header">
+
+                {/* 1. Cover Image Banner */}
+                <div
+                    className="h-48 md:h-64 bg-cover bg-center bg-no-repeat w-full relative group/cover rounded-t-2xl overflow-hidden"
+                    style={{
+                        backgroundImage: !coverRemoved && project.coverImage ? `url(${project.coverImage})` : undefined,
+                        backgroundColor: !project.coverImage ? 'var(--color-surface-hover)' : undefined
+                    }}
+                >
+                    {!project.coverImage && (
+                        <div className="absolute inset-0 flex items-center justify-center text-[var(--color-text-muted)] opacity-20">
+                            <span className="material-symbols-outlined text-6xl">image</span>
+                        </div>
                     )}
-                    <div className="absolute top-4 right-4 flex gap-2">
-                        {isOwner && (
-                            <>
-                                <Button variant="secondary" size="sm" onClick={() => setShowEditModal(true)} icon={<span className="material-symbols-outlined">edit</span>}>
-                                    Edit
-                                </Button>
-                                <Button variant="secondary" size="sm" onClick={() => setShowDeleteModal(true)} icon={<span className="material-symbols-outlined text-rose-500">delete</span>} />
-                            </>
-                        )}
-                    </div>
+
+                    {/* Action Overlay (Cover) */}
+                    {isOwner && (
+                        <div className="absolute top-4 right-4 opacity-0 group-hover/cover:opacity-100 transition-opacity">
+                            <Button
+                                size="sm"
+                                className="bg-white/80 backdrop-blur text-black hover:bg-white shadow-sm border-none"
+                                icon={<span className="material-symbols-outlined text-[18px]">photo_camera</span>}
+                                onClick={() => { setMediaPickerTarget('cover'); setShowMediaLibrary(true); }}
+                            >
+                                Edit Cover
+                            </Button>
+                        </div>
+                    )}
                 </div>
 
-                <div className="flex flex-col md:flex-row gap-6 md:items-start px-2">
-                    {/* Project Icon */}
-                    <div className="relative -mt-16 md:-mt-20 shrink-0">
-                        <div className="size-24 md:size-32 rounded-2xl border-4 border-[var(--color-surface-paper)] bg-white shadow-md overflow-hidden flex items-center justify-center">
-                            {project.squareIcon ? (
-                                <img src={project.squareIcon} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                                <span className="text-4xl font-bold text-indigo-500">{project.title.charAt(0)}</span>
+                {/* 2. Identity Bar */}
+                <div className="px-6 pb-6 pt-16 md:pt-4 relative min-h-[100px] flex flex-col md:flex-row md:items-end justify-between gap-4">
+
+                    {/* Overlapping Icon */}
+                    <div className="absolute -top-12 left-6 md:-top-16 md:left-8">
+                        <div className="relative group/icon">
+                            <div className="size-24 md:size-32 rounded-3xl bg-white dark:bg-[var(--color-surface-card)] p-1.5 shadow-md">
+                                <div className="w-full h-full rounded-2xl overflow-hidden bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-[var(--color-surface-border)] flex items-center justify-center cursor-pointer" onClick={() => { if (isOwner) { setMediaPickerTarget('icon'); setShowMediaLibrary(true); } }}>
+                                    {project.squareIcon ? (
+                                        <img src={project.squareIcon} alt="" className="w-full h-full object-cover" />
+                                    ) : (
+                                        <span className="text-4xl md:text-5xl font-bold bg-gradient-to-br from-indigo-500 to-purple-600 bg-clip-text text-transparent">{project.title.charAt(0)}</span>
+                                    )}
+                                </div>
+                            </div>
+                            {isOwner && (
+                                <div className="absolute inset-1.5 bg-black/50 rounded-2xl flex items-center justify-center opacity-0 group-hover/icon:opacity-100 transition-opacity pointer-events-none z-10">
+                                    <span className="material-symbols-outlined text-white">edit</span>
+                                </div>
                             )}
                         </div>
                     </div>
 
-                    <div className="flex items-center justify-between gap-4">
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-3 flex-wrap">
-                                <h1 className="text-3xl font-bold text-[var(--color-text-main)]">{project.title}</h1>
+                    {/* Left: Text Info */}
+                    <div className="md:ml-36 flex-1 min-w-0 pt-2 md:pt-0 space-y-3">
+                        <div>
+                            <div className="flex items-center gap-3 mb-1">
+                                <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-main)] truncate">{project.title}</h1>
                                 <Badge variant={project.status === 'Active' ? 'success' : 'primary'}>{project.status}</Badge>
-                                <Badge variant="secondary">{project.priority} Priority</Badge>
                             </div>
-                            <p className="text-[var(--color-text-muted)] text-lg leading-relaxed max-w-3xl">
-                                {project.description || 'No description provided.'}
-                            </p>
+                            <div className="relative group/desc max-w-2xl">
+                                <p className="text-[var(--color-text-muted)] line-clamp-2">{project.description || 'No description provided.'}</p>
+
+                                {/* Hover Expand Box */}
+                                {project.description && (
+                                    <div className="absolute -top-[13px] -left-[13px] w-[calc(100%+26px)] z-50 hidden group-hover/desc:block">
+                                        <p className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-lg p-3 shadow-xl text-[var(--color-text-muted)]">
+                                            {project.description}
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-3 pt-2">
+                    {/* Right: Actions */}
+                    <div className="flex items-center gap-2 shrink-0 self-start md:self-end">
                         {can('canManageTasks') && (
-                            <Button onClick={() => setShowTaskModal(true)} icon={<span className="material-symbols-outlined">add_task</span>}>New Task</Button>
+                            <Button variant="primary" onClick={() => setShowTaskModal(true)} icon={<span className="material-symbols-outlined">add_task</span>}>
+                                New Task
+                            </Button>
                         )}
-                        {project.modules?.includes('ideas') && (
-                            <Link to={`/project/${id}/ideas`}>
-                                <Button variant="secondary" icon={<span className="material-symbols-outlined">lightbulb</span>}>Ideas</Button>
-                            </Link>
+                        {can('canInvite') && (
+                            <Button variant="secondary" onClick={handleInvite} icon={<span className="material-symbols-outlined">person_add</span>}>
+                                Invite
+                            </Button>
                         )}
+                        {isOwner && (
+                            <Button size="icon" variant="ghost" onClick={() => setShowEditModal(true)}>
+                                <span className="material-symbols-outlined">settings</span>
+                            </Button>
+                        )}
+                    </div>
+                </div>
+
+                {/* Banner Metrics Footer (Chronicle split up) */}
+                <div className={`grid grid-cols-2 ${project.modules?.includes('issues') ? 'md:grid-cols-5' : 'md:grid-cols-4'} border-t border-[var(--color-surface-border)] bg-[var(--color-surface-hover)]/30 divide-x divide-[var(--color-surface-border)]`}>
+                    {/* 1. Progress */}
+                    <div className="py-3 px-6 flex items-center gap-4">
+                        <span className="material-symbols-outlined text-[var(--color-primary)] text-[20px] shrink-0">speed</span>
+                        <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-tight">Completion</span>
+                                <span className="text-[10px] font-bold text-[var(--color-primary)]">{progress}%</span>
+                            </div>
+                            <div className="w-full h-1.5 bg-[var(--color-surface-border)] rounded-full overflow-hidden">
+                                <div
+                                    className="h-full bg-[var(--color-primary)] rounded-full transition-all duration-1000"
+                                    style={{ width: `${progress}%` }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 2. Tasks Stat */}
+                    <div className="py-3 px-6 flex items-center gap-4">
+                        <span className="material-symbols-outlined text-green-500 text-[20px] shrink-0">task_alt</span>
+                        <div className="text-left min-w-0">
+                            <div className="text-sm font-bold text-[var(--color-text-main)] leading-none mb-1">
+                                {completedTasks} / {tasks.length}
+                            </div>
+                            <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-tight truncate block">Tasks Done</span>
+                        </div>
+                    </div>
+
+                    {/* 3. Priority */}
+                    <div className="py-3 px-6 flex items-center gap-4">
+                        <span className={`material-symbols-outlined text-[20px] shrink-0 ${project.priority === 'High' ? 'text-rose-500' :
+                            project.priority === 'Medium' ? 'text-amber-500' : 'text-blue-500'
+                            }`}>flag</span>
+                        <div className="text-left min-w-0">
+                            <div className={`text-sm font-bold leading-none mb-1 ${project.priority === 'High' ? 'text-rose-600 dark:text-rose-400' :
+                                project.priority === 'Medium' ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'
+                                }`}>
+                                {project.priority || 'Medium'}
+                            </div>
+                            <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-tight truncate block">Priority</span>
+                        </div>
+                    </div>
+
+                    {/* 4. Open Issues (only if module enabled) */}
+                    {project.modules?.includes('issues') && (
+                        <div className="py-3 px-6 flex items-center gap-4">
+                            <span className="material-symbols-outlined text-rose-500 text-[20px] shrink-0">bug_report</span>
+                            <div className="text-left min-w-0">
+                                {(() => {
+                                    const openCount = issues.filter(i => !['Resolved', 'Closed'].includes(i.status)).length;
+                                    return (
+                                        <>
+                                            <div className="text-sm font-bold text-[var(--color-text-main)] leading-none mb-1">
+                                                {openCount}
+                                            </div>
+                                            <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-tight truncate block">
+                                                Open {openCount === 1 ? 'Issue' : 'Issues'}
+                                            </span>
+                                        </>
+                                    );
+                                })()}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 5. Next Deadline (always shown) */}
+                    <div className="py-3 px-6 flex items-center gap-4">
+                        <span className="material-symbols-outlined text-indigo-500 text-[20px] shrink-0">event_upcoming</span>
+                        <div className="text-left min-w-0">
+                            <div className="text-sm font-bold text-[var(--color-text-main)] leading-none mb-1">
+                                {upcomingDeadlines[0]
+                                    ? new Date(upcomingDeadlines[0].dueDate!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+                                    : 'None'}
+                            </div>
+                            <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-tight truncate block">Next Deadline</span>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                {/* Left Col */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                        <Card padding="sm" className="flex items-center gap-4 p-4 col-span-1 sm:col-span-2 md:col-span-2">
-                            <div className="relative size-16 shrink-0">
-                                <DonutChart
-                                    data={[
-                                        { name: 'Completed', value: completedTasks, color: 'var(--color-success)' },
-                                        { name: 'Open', value: openTasks, color: 'var(--color-surface-border)' }
-                                    ]}
-                                    size={64}
-                                    thickness={8}
-                                    showEmptyLabel={false}
-                                />
-                                <div className="absolute inset-0 flex items-center justify-center text-xs font-bold">{progress}%</div>
+            {/* MAIN CONTENT GRID */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+
+                {/* LEFT: MAIN WORKSPACE (2 Columns) */}
+                <div className="xl:col-span-2 space-y-8">
+
+
+
+                    {/* Top Row: KPI Cards (Health, Ideas) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        {/* Health Card */}
+                        <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm relative group/card hover:shadow-md transition-shadow">
+                            <div className={`absolute top-0 right-0 w-32 h-32 rounded-bl-full opacity-5 pointer-events-none ${health.status === 'excellent' || health.status === 'healthy' ? 'bg-green-500' :
+                                health.status === 'warning' ? 'bg-amber-500' : 'bg-rose-500'
+                                }`} />
+
+                            <div className="relative z-10 flex flex-col h-full">
+                                <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2 mb-4 shrink-0">
+                                    <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)]">query_stats</span>
+                                    Health
+                                </h3>
+
+                                <div className="flex-1 flex items-center gap-6">
+                                    {/* Left: Score */}
+                                    <div className="shrink-0 flex items-center gap-3">
+                                        <HealthIndicator health={health} size="md" showLabel={false} onOpenDetail={() => setShowHealthModal(true)} />
+                                        <div>
+                                            <div className="text-2xl font-bold text-[var(--color-text-main)] leading-none">{health.score}</div>
+                                            <div className={`text-[10px] font-bold uppercase tracking-wider mt-1.5 ${health.status === 'excellent' || health.status === 'healthy' ? 'text-green-600' : health.status === 'warning' ? 'text-amber-600' : 'text-rose-600'}`}>{health.status}</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Right: Factors (Compact) */}
+                                    <div className="flex-1 min-w-0 border-l border-[var(--color-surface-border)] pl-6 space-y-2">
+                                        <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Top Risks</p>
+                                        {health.factors.filter(f => f.type === 'negative').length > 0 ? (
+                                            <ul className="space-y-1.5">
+                                                {health.factors.filter(f => f.type === 'negative').slice(0, 2).map((factor, i) => (
+                                                    <li key={i} className="text-[11px] text-[var(--color-text-main)] leading-tight flex items-start gap-1.5" title={factor.description}>
+                                                        <span className="text-rose-500 mt-1 text-[8px] shrink-0">●</span>
+                                                        <span className="line-clamp-1">{factor.label}</span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        ) : (
+                                            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+                                                <span className="material-symbols-outlined text-sm">check_circle</span>
+                                                No risks detected
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
-                            <div>
-                                <h4 className="text-sm font-bold text-[var(--color-text-main)]">Task Progress</h4>
-                                <p className="text-xs text-[var(--color-text-muted)]">{completedTasks} of {tasks.length} tasks completed</p>
+                        </div>
+
+                        {/* Activity Summary Card */}
+                        <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm group/card hover:shadow-md transition-shadow flex flex-col justify-between h-full">
+                            <div className="flex items-center gap-4">
+                                <div className="size-11 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                                    <span className="material-symbols-outlined text-2xl">insights</span>
+                                </div>
+                                <div className="min-w-0">
+                                    <h3 className="font-bold text-[var(--color-text-main)] truncate">Activity</h3>
+                                    <p className="text-[10px] text-[var(--color-text-muted)] font-medium uppercase tracking-tight line-clamp-1">RECENT UPDATES</p>
+                                </div>
                             </div>
-                        </Card>
 
-                        {[
-                            { label: 'Open Tasks', value: openTasks, icon: 'list' },
-                            { label: 'Urgent', value: urgentCount, icon: 'warning', color: urgentCount > 0 ? 'text-rose-500' : undefined },
-                        ].map((stat, i) => (
-                            <Card key={i} padding="sm" className="flex flex-col items-center justify-center text-center py-4">
-                                <span className={`material-symbols-outlined text-2xl mb-1 ${stat.color || 'text-[var(--color-text-subtle)]'}`}>{stat.icon}</span>
-                                <span className="text-xl font-bold text-[var(--color-text-main)]">{stat.value}</span>
-                                <span className="text-xs text-[var(--color-text-muted)] uppercase font-semibold">{stat.label}</span>
-                            </Card>
-                        ))}
-
-                        {/* Project Health Card */}
-                        <Card padding="sm" className="flex flex-col items-center justify-center text-center py-4">
-                            <HealthIndicator health={health} size="sm" />
-                            <span className="text-xs text-[var(--color-text-muted)] uppercase font-semibold mt-1">Health</span>
-                        </Card>
+                            <div className="mt-6 flex items-end justify-between">
+                                <div className="flex items-center gap-6">
+                                    <div className="space-y-0.5">
+                                        <p className="text-xl font-bold text-[var(--color-text-main)] italic leading-none">{activity.length}</p>
+                                        <p className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Events</p>
+                                    </div>
+                                    <div className="space-y-0.5">
+                                        <p className="text-xl font-bold text-indigo-600 italic leading-none">{activity.filter(a => a.type === 'comment').length}</p>
+                                        <p className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Comments</p>
+                                    </div>
+                                </div>
+                                <Link to={`/project/${id}/activity`} className="size-9 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center hover:bg-[var(--color-primary)] hover:text-white transition-all hover:scale-105">
+                                    <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+                                </Link>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* AI Insight / Generator */}
-                    {showInsight && (
-                        <div className="rounded-xl p-5 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/20 dark:to-blue-950/20 border border-indigo-100 dark:border-indigo-900/50">
-                            <div className="flex items-start gap-4">
-                                <span className="material-symbols-outlined text-indigo-500 text-3xl">auto_awesome</span>
-                                <div className="space-y-2 flex-1">
-                                    <h3 className="font-bold text-indigo-900 dark:text-indigo-100">AI Assistant</h3>
-                                    <p className="text-sm text-indigo-800 dark:text-indigo-200 leading-relaxed">
-                                        {cleanText(insight) || "Generate a report to get tailored guidance."}
-                                    </p>
-                                    <div className="flex gap-3 pt-2">
-                                        <Button size="sm" variant="primary" onClick={handleGenerateReport} isLoading={reportLoading}>
-                                            {pinnedReport ? 'Update Report' : 'Generate Report'}
-                                        </Button>
+
+                    {/* Main Content Sections: Reordered (Tasks first, then Ideas/Issues) */}
+                    <div className="space-y-8">
+                        {/* Tasks List (Moved to Top) */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-[var(--color-primary)]">check_circle</span>
+                                    Active Tasks
+                                </h3>
+                                <Link to={`/project/${id}/tasks`} className="text-sm font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1">
+                                    View All <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                                </Link>
+                            </div>
+
+                            <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl shadow-sm overflow-hidden flex flex-col divide-y divide-[var(--color-surface-border)]">
+                                {recentTasks.length === 0 ? (
+                                    <div className="p-8 text-center text-[var(--color-text-muted)]">
+                                        <div className="inline-block p-4 rounded-full bg-[var(--color-surface-hover)] mb-3">
+                                            <span className="material-symbols-outlined text-2xl">task_alt</span>
+                                        </div>
+                                        <p>No active tasks. Good job!</p>
+                                    </div>
+                                ) : recentTasks.map(task => (
+                                    <div
+                                        key={task.id}
+                                        onClick={() => navigate(`/project/${id}/tasks/${task.id}`)}
+                                        className="group p-4 flex items-center gap-4 hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
+                                    >
+                                        <button
+                                            onClick={(e) => handleToggleTask(task.id, task.isCompleted, e)}
+                                            className={`
+                                                size-5 rounded-md border flex items-center justify-center transition-all duration-200 shrink-0
+                                                ${task.isCompleted
+                                                    ? 'bg-green-500 border-green-500 text-white scale-100'
+                                                    : 'border-[var(--color-surface-border)] hover:border-green-500 text-transparent bg-transparent hover:scale-110'}
+                                            `}
+                                        >
+                                            <span className="material-symbols-outlined text-[16px] font-bold">check</span>
+                                        </button>
+
+                                        <div className="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+                                            <span className={`font-medium truncate flex-1 ${task.isCompleted ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)]'}`}>
+                                                {task.title}
+                                            </span>
+
+                                            <div className="flex items-center gap-3 shrink-0">
+                                                {task.priority && (
+                                                    <Badge size="sm" variant={task.priority === 'Urgent' ? 'error' : task.priority === 'High' ? 'warning' : 'secondary'}>
+                                                        {task.priority}
+                                                    </Badge>
+                                                )}
+
+                                                {task.dueDate && (
+                                                    <div className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-md ${new Date(task.dueDate) < new Date() && !task.isCompleted ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30' : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'}`}>
+                                                        <span className="material-symbols-outlined text-[14px]">event</span>
+                                                        <span>{new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity -ml-2">
+                                            <span className="material-symbols-outlined text-[var(--color-text-muted)]">chevron_right</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Open Issues Card (only if module enabled) */}
+                        {project.modules?.includes('issues') && (
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-lg font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-[var(--color-primary)]">bug_report</span>
+                                        Open Issues
+                                    </h3>
+                                    <Link to={`/project/${id}/issues`} className="text-sm font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1">
+                                        View All <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                                    </Link>
+                                </div>
+
+                                <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-6 shadow-sm group/card hover:shadow-md transition-shadow">
+                                    <div className="space-y-4">
+                                        {recentIssues.length === 0 ? (
+                                            <div className="p-4 text-center text-[var(--color-text-muted)]">
+                                                <p className="italic text-sm">No open issues found.</p>
+                                            </div>
+                                        ) : (
+                                            recentIssues.map(issue => (
+                                                <div key={issue.id} className="group/issue flex items-start gap-4 p-3 rounded-xl hover:bg-[var(--color-surface-hover)] transition-all cursor-pointer border border-transparent hover:border-[var(--color-surface-border)]" onClick={() => navigate(`/project/${id}/issues/${issue.id}`)}>
+                                                    <div className={`mt-1 size-2 rounded-full shrink-0 ${issue.priority === 'High' || issue.priority === 'Urgent' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]' :
+                                                        issue.priority === 'Medium' ? 'bg-amber-500' : 'bg-blue-500'
+                                                        }`} />
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center justify-between gap-4">
+                                                            <h4 className="text-sm font-bold text-[var(--color-text-main)] group-hover/issue:text-[var(--color-primary)] transition-colors truncate">{issue.title}</h4>
+                                                            <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest whitespace-nowrap">{issue.status}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 mt-1">
+                                                            <span className="text-xs text-[var(--color-text-muted)] font-medium">#{issue.id.slice(0, 4)}</span>
+                                                            <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase px-1.5 py-0.5 rounded bg-[var(--color-surface-hover)]">{issue.priority}</span>
+                                                        </div>
+                                                    </div>
+                                                    <span className="material-symbols-outlined text-[var(--color-text-muted)] opacity-0 group-hover/issue:opacity-100 transition-all -translate-x-2 group-hover/issue:translate-x-0">chevron_right</span>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+
+
+
+
+
+
+                </div>
+
+                {/* RIGHT: SIDEBAR (1 Column) */}
+                <div className="space-y-8">
+
+                    {/* Ideas & Feedback Card (only if module enabled) */}
+                    {project.modules?.includes('ideas') && (
+                        <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm group/card hover:shadow-md transition-shadow">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="size-10 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                                        <span className="material-symbols-outlined text-xl">lightbulb</span>
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-[var(--color-text-main)]">Ideas & Feedback</h3>
+                                        <p className="text-[10px] text-[var(--color-text-muted)] font-medium uppercase tracking-tight">Brainstorming</p>
+                                    </div>
+                                </div>
+                                <Link to={`/project/${id}/ideas`} className="text-xs font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1">
+                                    View All <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                                </Link>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-3 rounded-xl bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)]">
+                                    <p className="text-2xl font-bold text-[var(--color-text-main)]">{ideas.length}</p>
+                                    <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Total Ideas</p>
+                                </div>
+                                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800">
+                                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{ideas.filter(i => i.status === 'Approved').length}</p>
+                                    <p className="text-[10px] font-bold text-emerald-600/70 dark:text-emerald-400/70 uppercase tracking-wider">Approved</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Team Card (Relocated from Main) */}
+                    <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm group/card hover:shadow-md transition-shadow">
+                        <div className="flex items-center justify-between pointer-events-auto mb-4">
+                            <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                <span className="material-symbols-outlined text-slate-500">group</span>
+                                Team
+                                <span className="text-xs font-medium text-[var(--color-text-muted)] bg-[var(--color-surface-hover)] px-2 py-0.5 rounded-full">
+                                    {teamMemberProfiles.length}
+                                </span>
+                                {/* Online count indicator */}
+                                {activeProjectUsers.length > 0 && (
+                                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                        <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                        {activeProjectUsers.filter(u => u.isOnline || u.isBusy).length} active
+                                    </span>
+                                )}
+                            </h3>
+                            <Link to={`/project/${id}/team`} className="text-xs font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1">
+                                <span className="material-symbols-outlined text-sm">settings</span>
+                                Manage
+                            </Link>
+                        </div>
+
+                        {teamMemberProfiles.length === 0 ? (
+                            <div className="py-4 text-center text-[var(--color-text-muted)]">
+                                <span className="material-symbols-outlined text-3xl opacity-30 mb-2 block">person_add</span>
+                                <p className="text-sm">No team members yet</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3">
+                                {teamMemberProfiles.slice(0, 5).map(member => {
+                                    // Check if this member is in the active users list
+                                    const presenceData = activeProjectUsers.find(u => u.uid === member.id);
+                                    const isOnline = presenceData?.isOnline || false;
+                                    const isIdle = presenceData?.isIdle || false;
+                                    const isBusy = presenceData?.isBusy || false;
+
+                                    return (
+                                        <div key={member.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors group/member">
+                                            {/* Avatar */}
+                                            <div className="relative shrink-0">
+                                                {member.photoURL ? (
+                                                    <img
+                                                        src={member.photoURL}
+                                                        alt={member.displayName}
+                                                        className={`size-10 rounded-full border-2 object-cover shadow-sm transition-all ${isOnline ? 'border-emerald-500' : isIdle ? 'border-amber-400' : isBusy ? 'border-rose-500' : 'border-[var(--color-surface-border)]'
+                                                            }`}
+                                                    />
+                                                ) : (
+                                                    <div className={`size-10 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 border-2 flex items-center justify-center text-sm font-bold text-indigo-600 dark:text-indigo-400 shadow-sm transition-all ${isOnline ? 'border-emerald-500' : isIdle ? 'border-amber-400' : isBusy ? 'border-rose-500' : 'border-[var(--color-surface-border)]'
+                                                        }`}>
+                                                        {member.displayName?.charAt(0)?.toUpperCase() || '?'}
+                                                    </div>
+                                                )}
+                                                {/* Online/Idle/Owner Indicator */}
+                                                {isOnline ? (
+                                                    <div className="absolute -bottom-0.5 -right-0.5 size-3.5 bg-emerald-500 rounded-full border-2 border-white dark:border-[var(--color-surface-card)] shadow-sm" title="Online now" />
+                                                ) : isIdle ? (
+                                                    <div className="absolute -bottom-0.5 -right-0.5 size-3.5 bg-amber-400 rounded-full border-2 border-white dark:border-[var(--color-surface-card)] shadow-sm flex items-center justify-center" title="Away">
+                                                        <span className="material-symbols-outlined text-[6px] text-amber-900">schedule</span>
+                                                    </div>
+                                                ) : isBusy ? (
+                                                    <div className="absolute -bottom-0.5 -right-0.5 size-3.5 bg-rose-500 rounded-full border-2 border-white dark:border-[var(--color-surface-card)] shadow-sm flex items-center justify-center" title="Busy">
+                                                        <span className="material-symbols-outlined text-[6px] text-white">do_not_disturb_on</span>
+                                                    </div>
+                                                ) : member.id === project?.ownerId ? (
+                                                    <div className="absolute -bottom-0.5 -right-0.5 size-3.5 bg-amber-400 rounded-full border-2 border-white dark:border-[var(--color-surface-card)] flex items-center justify-center">
+                                                        <span className="material-symbols-outlined text-[12px] text-amber-900">star</span>
+                                                    </div>
+                                                ) : null}
+                                            </div>
+
+                                            {/* Info */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="font-semibold text-sm text-[var(--color-text-main)] truncate">
+                                                        {member.displayName}
+                                                    </span>
+                                                    {member.id === auth.currentUser?.uid && (
+                                                        <span className="text-[9px] font-bold text-[var(--color-text-muted)] bg-[var(--color-surface-hover)] px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                                            You
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`text-[10px] font-bold uppercase tracking-wider ${member.role === 'Owner'
+                                                        ? 'text-amber-600 dark:text-amber-400'
+                                                        : member.role === 'Editor'
+                                                            ? 'text-indigo-600 dark:text-indigo-400'
+                                                            : 'text-[var(--color-text-muted)]'
+                                                        }`}>
+                                                        {member.role}
+                                                    </span>
+                                                    {/* Status text */}
+                                                    {isOnline && (
+                                                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">• Online</span>
+                                                    )}
+                                                    {isIdle && (
+                                                        <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium">• Away</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+
+                                {/* Show more indicator */}
+                                {teamMemberProfiles.length > 5 && (
+                                    <Link
+                                        to={`/project/${id}/team`}
+                                        className="flex items-center justify-center gap-2 py-2 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors"
+                                    >
+                                        <span>+{teamMemberProfiles.length - 5} more members</span>
+                                        <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                                    </Link>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Invite Button */}
+                        {can('canInvite') && (
+                            <button
+                                onClick={handleInvite}
+                                className="w-full mt-4 py-2.5 rounded-xl border border-dashed border-[var(--color-surface-border)] flex items-center justify-center gap-2 text-sm font-semibold text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-all"
+                            >
+                                <span className="material-symbols-outlined text-[18px]">person_add</span>
+                                Invite Team Member
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Project Controls Card */}
+
+                    {isOwner && (
+                        <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm space-y-4">
+                            <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                <span className="material-symbols-outlined text-[var(--color-text-subtle)]">tune</span>
+                                Project Controls
+                            </h3>
+                            <div className="grid grid-cols-1 gap-3">
+                                {/* Status + Priority */}
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Select
+                                        label="Status"
+                                        value={project.status}
+                                        onChange={(e) => handleUpdateField('status', e.target.value)}
+                                        className="!py-2 !text-sm"
+                                    >
+                                        <option value="Active">Active</option>
+                                        <option value="Planning">Planning</option>
+                                        <option value="On Hold">On Hold</option>
+                                        <option value="Completed">Completed</option>
+                                        <option value="Brainstorming">Brainstorming</option>
+                                        <option value="Review">Review</option>
+                                    </Select>
+
+                                    <Select
+                                        label="Priority"
+                                        value={project.priority || 'Medium'}
+                                        onChange={(e) => handleUpdateField('priority', e.target.value)}
+                                        className="!py-2 !text-sm"
+                                    >
+                                        <option value="Low">Low Priority</option>
+                                        <option value="Medium">Medium Priority</option>
+                                        <option value="High">High Priority</option>
+                                        <option value="Urgent">Urgent</option>
+                                    </Select>
+                                </div>
+
+                                {/* Dates - Row */}
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Start</label>
+                                        <DatePicker
+                                            value={project.startDate}
+                                            onChange={(date) => handleUpdateField('startDate', date)}
+                                            placeholder="Start Date"
+                                            className="!py-2 !text-sm w-full"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Due</label>
+                                        <DatePicker
+                                            value={project.dueDate}
+                                            onChange={(date) => handleUpdateField('dueDate', date)}
+                                            placeholder="Due Date"
+                                            className="!py-2 !text-sm w-full"
+                                        />
                                     </div>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Latest Project Report */}
-                    {pinnedReport && (
-                        <div className="rounded-xl bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-sm overflow-hidden transition-all duration-300">
-                            <div
-                                className="p-4 flex items-center justify-between cursor-pointer hover:bg-[var(--color-surface-hover)] transition-colors"
-                                onClick={() => setReportExpanded(!reportExpanded)}
-                            >
+                    {/* AI Insight (Sidebar Version) */}
+                    {showInsight && (
+                        <div className="relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br from-indigo-600 to-violet-600 shadow-md text-white">
+                            <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                                <span className="material-symbols-outlined text-8xl">auto_awesome</span>
+                            </div>
+                            <div className="relative z-10 space-y-3">
                                 <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-purple-100 dark:bg-purple-500/10 rounded-lg">
-                                        <span className="material-symbols-outlined text-purple-600 dark:text-purple-400">text_snippet</span>
+                                    <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
+                                        <span className="material-symbols-outlined text-xl text-white">psychology</span>
                                     </div>
-                                    <div>
-                                        <h3 className="font-bold text-[var(--color-text-main)]">Latest AI Report</h3>
-                                        <p className="text-[10px] text-[var(--color-text-muted)] font-medium uppercase tracking-wider">
-                                            Generated {timeAgo(pinnedReport.createdAt)} • By {pinnedReport.userName}
+                                    <h3 className="font-bold">Project Insight</h3>
+                                </div>
+                                <p className="text-indigo-100 leading-relaxed text-sm selection:bg-white/30">
+                                    {cleanText(insight) || "Generate a report to get tailored guidance and discover potential risks early."}
+                                </p>
+                                <div className="flex gap-2 pt-1">
+                                    <Button size="sm" className="bg-white text-indigo-600 hover:bg-indigo-50 border-none shadow-sm w-full justify-center" onClick={handleGenerateReport} isLoading={reportLoading}>
+                                        {pinnedReport ? 'Refresh' : 'Analyze'}
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+
+
+
+                    {/* Milestones (Relocated to Sidebar) */}
+                    {milestones.length > 0 && milestones.some(m => m.status !== 'Achieved') && (
+                        <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm space-y-4">
+                            <div className="flex items-center justify-between">
+                                <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-[var(--color-primary)]">flag</span>
+                                    Milestones
+                                </h3>
+                            </div>
+                            <div className="space-y-4">
+                                {milestones
+                                    .filter(m => m.status !== 'Achieved')
+                                    .sort((a, b) => new Date(a.dueDate || '9999').getTime() - new Date(b.dueDate || '9999').getTime())
+                                    .slice(0, 3)
+                                    .map(milestone => (
+                                        <div key={milestone.id} className="flex items-center gap-3 pb-3 border-b border-[var(--color-surface-border)] last:border-0 last:pb-0">
+                                            <div className={`size-9 rounded-lg flex items-center justify-center shrink-0 ${new Date(milestone.dueDate || '') < new Date() ? 'bg-rose-50 text-rose-500' : 'bg-indigo-50 text-indigo-500 dark:bg-indigo-900/20'}`}>
+                                                <span className="material-symbols-outlined text-[18px]">{new Date(milestone.dueDate || '') < new Date() ? 'warning' : 'flag'}</span>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="text-xs font-bold text-[var(--color-text-main)] truncate">{milestone.title}</h4>
+                                                <p className="text-[10px] text-[var(--color-text-muted)]">
+                                                    {new Date(milestone.dueDate || '').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                </p>
+                                            </div>
+                                            <button onClick={() => handleToggleMilestone(milestone)} className="size-8 rounded-full hover:bg-[var(--color-surface-hover)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-green-500 transition-colors">
+                                                <span className="material-symbols-outlined text-[18px]">check</span>
+                                            </button>
+                                        </div>
+                                    ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Latest Activity (Moved) */}
+
+                    <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                <span className="material-symbols-outlined text-slate-500">history</span>
+                                Latest Activity
+                            </h3>
+                            <Link to={`/project/${id}/activity`} className="text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-primary)]">History</Link>
+                        </div>
+
+                        <div className="relative pl-0 space-y-5 before:absolute before:inset-y-2 before:left-[15px] before:w-px before:bg-[var(--color-surface-border)]">
+                            {activity.slice(0, 6).map((item) => {
+                                const { icon, color, bg } = activityIcon(item.type, item.action);
+                                return (
+                                    <div key={item.id} className="relative flex gap-3 pl-10">
+                                        <div className={`absolute left-0 top-0 size-8 rounded-full border-2 border-white dark:border-[var(--color-surface-card)] ${bg} z-10 flex items-center justify-center`}>
+                                            <span className={`material-symbols-outlined text-[16px] ${color}`}>{icon}</span>
+                                        </div>
+                                        <div className="space-y-0.5 pt-0.5">
+                                            <p className="text-xs text-[var(--color-text-main)] leading-snug">
+                                                <span className="font-semibold">{item.user}</span> {item.action}
+                                            </p>
+                                            <p className="text-[10px] text-[var(--color-text-muted)]">{timeAgo(item.createdAt)}</p>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                            {activity.length === 0 && <p className="text-xs text-[var(--color-text-muted)] pl-2">No recent activity.</p>}
+                        </div>
+                    </div>
+
+                    {/* GitHub Commits Card (only if Issues module enabled) */}
+                    {project.modules?.includes('issues') && (
+                        <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm group/card hover:shadow-md transition-shadow">
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-3 min-w-0">
+                                    <div className="size-10 rounded-xl bg-slate-100 dark:bg-slate-900/30 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+                                        <span className="material-symbols-outlined text-xl">terminal</span>
+                                    </div>
+                                    <div className="min-w-0">
+                                        <h3 className="font-bold text-[var(--color-text-main)] truncate">GitHub Commits</h3>
+                                        <p className="text-[10px] text-[var(--color-text-muted)] font-medium uppercase tracking-tight line-clamp-1">
+                                            {project.githubRepo || 'No repository linked'}
                                         </p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={(e) => { e.stopPropagation(); handleGenerateReport(); }}
-                                        isLoading={reportLoading}
-                                        icon={<span className="material-symbols-outlined">refresh</span>}
+                                {project.githubRepo && (
+                                    <a
+                                        href={`https://github.com/${project.githubRepo}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-xs font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1 shrink-0"
                                     >
-                                        Regenerate
-                                    </Button>
-                                    <span className={`material-symbols-outlined text-[var(--color-text-muted)] transition-transform duration-300 ${reportExpanded ? 'rotate-180' : ''}`}>
-                                        expand_more
-                                    </span>
-                                </div>
+                                        Repo <span className="material-symbols-outlined text-sm">open_in_new</span>
+                                    </a>
+                                )}
                             </div>
 
-                            {/* Expandable Content */}
-                            <div className={`
-                                border-t border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]/30
-                                transition-all duration-300 ease-in-out
-                                ${reportExpanded ? 'max-h-[800px] opacity-100' : 'max-h-0 opacity-0 overflow-hidden'}
-                            `}>
-                                <div className="p-6 text-sm text-[var(--color-text-main)] leading-relaxed whitespace-pre-wrap prose prose-sm dark:prose-invert max-w-none">
-                                    {cleanText(pinnedReport.content)}
+                            {!project.githubRepo ? (
+                                <div className="text-xs text-[var(--color-text-muted)] space-y-3">
+                                    <p>Link a repository in project settings to show recent commits.</p>
+                                    {isOwner && (
+                                        <button
+                                            onClick={() => setShowEditModal(true)}
+                                            className="inline-flex items-center gap-1 text-[var(--color-primary)] font-semibold hover:underline"
+                                        >
+                                            Open settings <span className="material-symbols-outlined text-sm">settings</span>
+                                        </button>
+                                    )}
                                 </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Recent Tasks */}
-                    <Card>
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="h4">Recent Tasks</h3>
-                            <Link to={`/project/${id}/tasks`} className="text-sm font-semibold text-[var(--color-primary)] hover:underline">View All</Link>
-                        </div>
-                        <div className="flex flex-col gap-2">
-                            {recentTasks.length === 0 ? (
-                                <p className="text-center py-6 text-[var(--color-text-muted)]">No active tasks.</p>
-                            ) : recentTasks.map(task => (
-                                <div
-                                    key={task.id}
-                                    onClick={() => navigate(`/project/${id}/tasks/${task.id}`)}
-                                    className="group flex items-center gap-3 p-3 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] hover:bg-[var(--color-surface-paper)] hover:border-[var(--color-primary)]/30 hover:shadow-sm transition-all cursor-pointer"
-                                >
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); handleToggleTask(task.id, task.isCompleted); }}
-                                        className={`
-                                            flex-shrink-0 size-5 rounded-[6px] border flex items-center justify-center transition-all duration-200
-                                            ${task.isCompleted
-                                                ? 'bg-green-500 border-green-500 text-white shadow-sm shadow-green-500/20'
-                                                : 'border-[var(--color-surface-border)] hover:border-green-500 text-transparent bg-[var(--color-surface-paper)]'}
-                                        `}
-                                    >
-                                        <span className="material-symbols-outlined text-[14px] font-bold">check</span>
-                                    </button>
-
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center justify-between gap-2">
-                                            <span className={`text-sm font-semibold truncate hover:text-[var(--color-primary)] transition-colors ${task.isCompleted ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)]'}`}>
-                                                {task.title}
-                                            </span>
-                                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <span className="material-symbols-outlined text-[var(--color-text-muted)] text-[16px]">arrow_forward</span>
-                                            </div>
-                                        </div>
-
-                                        <div className="flex items-center gap-3 mt-1 text-xs">
-                                            {task.priority && (
-                                                <Badge size="sm" variant={task.priority === 'Urgent' ? 'danger' : task.priority === 'High' ? 'warning' : 'secondary'}>
-                                                    {task.priority}
-                                                </Badge>
-                                            )}
-                                            {task.dueDate && (
-                                                <div className={`flex items-center gap-1 ${new Date(task.dueDate) < new Date() && !task.isCompleted ? 'text-rose-500 font-bold' : 'text-[var(--color-text-subtle)]'}`}>
-                                                    <span className="material-symbols-outlined text-[12px]">event</span>
-                                                    <span>{new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                                                </div>
-                                            )}
-                                            {task.scheduledDate && (
-                                                <div className="flex items-center gap-1 text-[11px] font-medium text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-2 py-0.5 rounded-md">
-                                                    <span className="material-symbols-outlined text-[14px]">event_available</span>
-                                                    <span>Scheduled {new Date(task.scheduledDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
+                            ) : commitsLoading ? (
+                                <div className="flex items-center gap-2 text-[10px] text-[var(--color-text-muted)]">
+                                    <span className="material-symbols-outlined animate-spin text-[14px] text-[var(--color-primary)]">progress_activity</span>
+                                    Loading recent commits...
                                 </div>
-                            ))}
-                        </div>
-                    </Card>
-
-                    {/* Recent Issues */}
-                    {project.modules?.includes('issues') && (
-                        <Card>
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="h4">Recent Issues</h3>
-                                <Link to={`/project/${id}/issues`} className="text-sm font-semibold text-[var(--color-primary)] hover:underline">View All</Link>
-                            </div>
-                            <div className="flex flex-col gap-2">
-                                {recentIssues.length === 0 ? (
-                                    <p className="text-center py-6 text-[var(--color-text-muted)]">No active issues.</p>
-                                ) : recentIssues.map(issue => (
-                                    <div key={issue.id} className="group flex items-center gap-3 p-3 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] hover:bg-[var(--color-surface-paper)] hover:border-[var(--color-primary)]/30 hover:shadow-sm transition-all">
-                                        <div className={`
-                                            flex-shrink-0 size-8 rounded-lg flex items-center justify-center
-                                            ${issue.status === 'Open' ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' :
-                                                issue.status === 'In Progress' ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400' :
-                                                    'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'}
-                                        `}>
-                                            <span className="material-symbols-outlined text-[18px]">bug_report</span>
-                                        </div>
-
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center justify-between gap-2">
-                                                <Link to={`/project/${id}/issues/${issue.id}`} className="text-sm font-semibold truncate hover:text-[var(--color-primary)] transition-colors text-[var(--color-text-main)]">
-                                                    {issue.title}
-                                                </Link>
-                                                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <span className="material-symbols-outlined text-[var(--color-text-muted)] text-[16px]">arrow_forward</span>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-3 mt-1 text-xs">
-                                                <Badge size="sm" variant={issue.priority === 'Urgent' ? 'danger' : issue.priority === 'High' ? 'warning' : 'secondary'}>
-                                                    {issue.priority}
-                                                </Badge>
-                                                <span className={`flex items-center gap-1.5 font-medium ${issue.status === 'Open' ? 'text-blue-600 dark:text-blue-400' :
-                                                    issue.status === 'In Progress' ? 'text-amber-600 dark:text-amber-400' :
-                                                        'text-emerald-600 dark:text-emerald-400'
-                                                    }`}>
-                                                    <span className="size-1.5 rounded-full bg-current"></span>
-                                                    {issue.status}
-                                                </span>
-                                                {issue.scheduledDate && (
-                                                    <div className="flex items-center gap-1 text-[11px] font-medium text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-2 py-0.5 rounded-md">
-                                                        <span className="material-symbols-outlined text-[14px]">event_available</span>
-                                                        <span>Scheduled {new Date(issue.scheduledDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </Card>
-                    )}
-                </div>
-
-                {/* Right Col */}
-                <div className="space-y-6">
-                    {/* Team Card */}
-                    <TeamCard projectId={id || ''} tenantId={project?.tenantId} onInvite={can('canInvite') ? handleInvite : undefined} />
-
-                    {/* Activity Stream */}
-                    <Card>
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="h4">Activity</h3>
-                            <Link to={`/project/${id}/activity`} className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-primary)]">View History</Link>
-                        </div>
-                        <div className="space-y-6">
-                            {activity.slice(0, 5).map((item, idx) => {
-                                const { icon, color, bg } = activityIcon(item.type, item.action);
-                                return (
-                                    <div key={item.id} className="flex gap-3 relative">
-                                        {idx !== 4 && <div className="absolute left-3.5 top-8 bottom-[-16px] w-px bg-[var(--color-surface-border)]" />}
-                                        <div className={`size-7 rounded-full shrink-0 flex items-center justify-center ${bg} ${color}`}>
-                                            <span className="material-symbols-outlined text-[16px]">{icon}</span>
-                                        </div>
-                                        <div className="space-y-1 pb-1">
-                                            <p className="text-sm text-[var(--color-text-main)] leading-snug">
-                                                <span className="font-semibold">{item.user}</span> {item.action}
-                                            </p>
-                                            <p className="text-xs text-[var(--color-text-muted)]">{timeAgo(item.createdAt)}</p>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                            {activity.length === 0 && <p className="text-sm text-[var(--color-text-muted)]">No recent activity.</p>}
-                        </div>
-                    </Card>
-
-                    {/* Milestones (Right Col) */}
-                    {(!project.modules || project.modules.includes('milestones')) && (
-                        <div className="h-48 md:h-56">
-                            <MilestoneCard projectId={project.id} />
-                        </div>
-                    )}
-
-                    {/* GitHub Commits */}
-                    {project.githubRepo && (
-                        <Card>
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-indigo-500">terminal</span>
-                                    <h3 className="h4">Latest Commits</h3>
-                                </div>
-                                <a
-                                    href={`https://github.com/${project.githubRepo}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-primary)] flex items-center gap-1"
-                                >
-                                    Repo <span className="material-symbols-outlined text-[14px]">open_in_new</span>
-                                </a>
-                            </div>
-
-                            {githubLoading ? (
-                                <div className="flex items-center justify-center py-8">
-                                    <span className="material-symbols-outlined animate-spin text-[var(--color-text-subtle)]">progress_activity</span>
-                                </div>
-                            ) : githubError ? (
-                                <p className="text-xs text-rose-500 py-4">{githubError}</p>
+                            ) : commitsError ? (
+                                <div className="text-xs text-rose-600 dark:text-rose-400">{commitsError}</div>
                             ) : githubCommits.length === 0 ? (
-                                <p className="text-sm text-[var(--color-text-muted)] py-4 text-center">No recent commits found.</p>
+                                <div className="text-xs text-[var(--color-text-muted)]">No recent commits found.</div>
                             ) : (
-                                <div className="space-y-4">
-                                    {githubCommits.map((commit) => (
-                                        <div key={commit.sha} className="flex gap-3 relative last:mb-0">
-                                            <div className="size-8 rounded-lg overflow-hidden shrink-0 border border-[var(--color-surface-border)] bg-[var(--color-surface-hover)]">
-                                                {commit.author?.avatar_url ? (
-                                                    <img src={commit.author.avatar_url} alt="" className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="w-full h-full flex items-center justify-center text-xs text-[var(--color-text-muted)]">
-                                                        {commit.commit.author.name.charAt(0)}
+                                <div className="space-y-2">
+                                    {githubCommits.map(commit => (
+                                        <a
+                                            key={commit.sha}
+                                            href={commit.html_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="block p-3 rounded-xl border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] transition-all"
+                                        >
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div className="flex items-start gap-2 min-w-0">
+                                                    {commit.author?.avatar_url ? (
+                                                        <img
+                                                            src={commit.author.avatar_url}
+                                                            alt={commit.author.login}
+                                                            className="size-7 rounded-full border border-[var(--color-surface-border)]"
+                                                        />
+                                                    ) : (
+                                                        <div className="size-7 rounded-full bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] flex items-center justify-center text-[10px] font-bold">
+                                                            {(commit.commit.author.name || '?').charAt(0).toUpperCase()}
+                                                        </div>
+                                                    )}
+                                                    <div className="min-w-0">
+                                                        <p className="text-xs font-semibold text-[var(--color-text-main)] line-clamp-1">
+                                                            {commit.commit.message.split('\n')[0]}
+                                                        </p>
+                                                        <div className="flex items-center gap-2 text-[10px] text-[var(--color-text-muted)]">
+                                                            <span>@{commit.author?.login || commit.commit.author.name || 'unknown'}</span>
+                                                            <span>•</span>
+                                                            <span>{timeAgo(commit.commit.author.date)}</span>
+                                                        </div>
                                                     </div>
-                                                )}
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm font-medium text-[var(--color-text-main)] truncate leading-tight">
-                                                    {commit.commit.message.split('\n')[0]}
-                                                </p>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <span className="text-[11px] text-[var(--color-text-muted)] font-semibold">{commit.author?.login || commit.commit.author.name}</span>
-                                                    <span className="text-[10px] text-[var(--color-text-subtle)]">• {timeAgo(new Date(commit.commit.author.date))}</span>
                                                 </div>
+                                                <span className="text-[10px] font-mono text-[var(--color-text-subtle)] shrink-0">
+                                                    {commit.sha.slice(0, 7)}
+                                                </span>
                                             </div>
-                                            <a
-                                                href={commit.html_url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="shrink-0 p-1 text-[var(--color-text-subtle)] hover:text-[var(--color-primary)] transition-colors"
-                                            >
-                                                <span className="material-symbols-outlined text-[18px]">arrow_outward</span>
-                                            </a>
-                                        </div>
+                                        </a>
                                     ))}
                                 </div>
                             )}
-                        </Card>
+                        </div>
                     )}
 
-                    {/* Project Links */}
-                    <Card>
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="h4">Links</h3>
-                        </div>
-                        {project?.links && project.links.length > 0 ? (
-                            <div className="space-y-2">
-                                {project.links.map((link, i) => (
-                                    <a
-                                        key={i}
-                                        href={link.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-3 p-3 rounded-lg border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] transition-colors group"
-                                    >
-                                        <div className="size-8 rounded-full bg-[var(--color-text-main)] text-[var(--color-surface-bg)] flex items-center justify-center shrink-0">
-                                            <span className="material-symbols-outlined text-[18px]">link</span>
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-semibold text-sm truncate group-hover:text-[var(--color-primary)] transition-colors">{link.title}</p>
-                                            <p className="text-xs text-[var(--color-text-muted)] truncate">{link.url}</p>
-                                        </div>
-                                        <span className="material-symbols-outlined text-[16px] text-[var(--color-text-subtle)]">open_in_new</span>
-                                    </a>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-sm text-[var(--color-text-muted)]">No important links added.</p>
-                        )}
-                    </Card>
 
-                    {/* Gallery (Compact Media Library Style) */}
-                    <Card>
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-[var(--color-primary)]">photo_library</span>
-                                <h3 className="h4">Gallery</h3>
-                            </div>
-                            <Button size="sm" variant="ghost" onClick={() => setShowMediaLibrary(true)}>
-                                Manage
-                            </Button>
-                        </div>
-                        {projectAssets.length > 0 ? (
-                            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-[var(--color-surface-border)] scrollbar-track-transparent">
-                                {projectAssets.map((shot, i) => (
-                                    <div
-                                        key={i}
-                                        className="group relative shrink-0 w-32 aspect-square rounded-xl overflow-hidden border border-[var(--color-surface-border)] hover:border-[var(--color-primary)] transition-all bg-[var(--color-surface-paper)] cursor-pointer"
-                                        onClick={() => { setSelectedImageIndex(i); setShowGalleryModal(true); }}
-                                    >
-                                        <img src={shot} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-
-                                        {/* Overlay */}
-                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                            <div className="size-8 rounded-full bg-white/90 text-[var(--color-primary)] flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-transform">
-                                                <span className="material-symbols-outlined text-[18px]">visibility</span>
-                                            </div>
-                                        </div>
-
-                                        {/* Gradient Bottom */}
-                                        <div className="absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    {/* Links & Resources */}
+                    <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm space-y-4">
+                        <h3 className="font-bold text-[var(--color-text-main)]">Quick Links</h3>
+                        <div className="space-y-2">
+                            {project.links?.map((link, i) => (
+                                <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors group">
+                                    <div className="size-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                                        <span className="material-symbols-outlined text-[18px]">link</span>
                                     </div>
-                                ))}
-                                {/* Add Button */}
-                                <button
-                                    onClick={() => setShowMediaLibrary(true)}
-                                    className="shrink-0 w-32 aspect-square rounded-xl border-2 border-dashed border-[var(--color-surface-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] transition-all flex flex-col items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-primary)] gap-2 group"
-                                >
-                                    <div className="size-8 rounded-full bg-[var(--color-surface-bg)] group-hover:bg-[var(--color-primary)]/10 flex items-center justify-center transition-colors">
-                                        <span className="material-symbols-outlined text-[20px]">add</span>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-[var(--color-text-main)] truncate group-hover:text-indigo-600 transition-colors">{link.title}</p>
+                                        <p className="text-[10px] text-[var(--color-text-muted)] truncate">{link.url.replace(/^https?:\/\//, '')}</p>
                                     </div>
-                                    <span className="text-xs font-semibold">Add Media</span>
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="flex flex-col items-center justify-center py-8 border-2 border-dashed border-[var(--color-surface-border)] rounded-xl bg-[var(--color-surface-hover)]/30">
-                                <div className="size-12 rounded-full bg-[var(--color-surface-bg)] flex items-center justify-center mb-3">
-                                    <span className="material-symbols-outlined text-zinc-400">landscape</span>
+                                    <span className="material-symbols-outlined text-[14px] text-[var(--color-text-subtle)] opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
+                                </a>
+                            ))}
+                            {(!project.links || project.links.length === 0) && <p className="text-sm text-[var(--color-text-muted)]">No links available.</p>}
+                        </div>
+                    </div>
+
+                    {/* Gallery Preview */}
+                    <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="font-bold text-[var(--color-text-main)]">Gallery</h3>
+                            <Button size="sm" variant="ghost" onClick={() => setShowMediaLibrary(true)}>Manage</Button>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-2">
+                            {projectAssets.slice(0, 6).map((asset, i) => (
+                                <div key={i} className="aspect-square rounded-lg overflow-hidden border border-[var(--color-surface-border)] cursor-pointer hover:opacity-80 transition-opacity" onClick={() => { setSelectedImageIndex(i); setShowGalleryModal(true); }}>
+                                    <img src={asset} alt="" className="w-full h-full object-cover" />
                                 </div>
-                                <p className="text-sm font-medium text-[var(--color-text-main)]">No media yet</p>
-                                <p className="text-xs text-[var(--color-text-muted)] mb-3">Upload images to showcase your work</p>
-                                <Button size="sm" variant="outline" onClick={() => setShowMediaLibrary(true)}>
-                                    Open Library
-                                </Button>
-                            </div>
-                        )}
-                    </Card>
+                            ))}
+                            {projectAssets.length < 6 && (
+                                <button onClick={() => setShowMediaLibrary(true)} className="aspect-square rounded-lg border border-dashed border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] transition-colors flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-primary)]">
+                                    <span className="material-symbols-outlined">add</span>
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </div>
-            </div >
+            </div>
 
             {/* Gallery Modal */}
             < Modal isOpen={showGalleryModal} onClose={() => setShowGalleryModal(false)} title="Project Gallery" size="xl" >
@@ -1101,322 +1437,14 @@ export const ProjectOverview = () => {
                 />
             )}
 
-            {/* Edit Modal */}
-            < Modal
-                isOpen={showEditModal}
-                onClose={() => setShowEditModal(false)}
-                title="Edit Project Details"
-                size="xl"
-                footer={
-                    <>
-                        <Button variant="ghost" onClick={() => setShowEditModal(false)}>Cancel</Button>
-                        <Button onClick={handleSaveEdit} isLoading={savingEdit}>Save Changes</Button>
-                    </>
-                }
-            >
-                <div className="space-y-6">
-                    {/* Top Row: Title & Description */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="md:col-span-2 space-y-4">
-                            <Input
-                                label="Project Title"
-                                value={editTitle}
-                                onChange={(e) => setEditTitle(e.target.value)}
-                                className="w-full"
-                            />
-                            <Textarea
-                                label="Description"
-                                value={editDescription}
-                                onChange={(e) => setEditDescription(e.target.value)}
-                                rows={4}
-                                className="w-full"
-                            />
-                        </div>
-
-                        <div className="space-y-4">
-                            <Select
-                                label="Status"
-                                value={editStatus}
-                                onChange={(e) => setEditStatus(e.target.value as any)}
-                                className="w-full"
-                            >
-                                <option>Active</option>
-                                <option>Planning</option>
-                                <option>Completed</option>
-                                <option>On Hold</option>
-                            </Select>
-
-                            <Select
-                                label="Priority"
-                                value={editPriority}
-                                onChange={(e) => setEditPriority(e.target.value as any)}
-                                className="w-full"
-                            >
-                                <option>Low</option>
-                                <option>Medium</option>
-                                <option>High</option>
-                                <option>Urgent</option>
-                            </Select>
-
-                            {/* Restored Image Uploads - Now linked to Media Library */}
-                            <div className="space-y-2 pt-2 border-t border-[var(--color-surface-border)]">
-                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Assets</label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {/* Cover Picker */}
-                                    <div
-                                        className="group relative flex flex-col items-center justify-center h-20 rounded-xl border border-dashed border-[var(--color-surface-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] dark:bg-[var(--color-surface-hover)]/30 transition-all overflow-hidden bg-cover bg-center cursor-pointer"
-                                        style={{ backgroundImage: !coverRemoved && editCoverUrl ? `url(${editCoverUrl})` : 'none' }}
-                                        onClick={() => {
-                                            setMediaPickerTarget('cover');
-                                            setShowMediaLibrary(true);
-                                        }}
-                                    >
-                                        {!coverRemoved && editCoverUrl ? (
-                                            <div className="absolute top-1 right-1 z-20">
-                                                <Button size="icon" variant="danger" className="size-6" onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    setEditCoverUrl(null);
-                                                    setCoverRemoved(true);
-                                                }}>
-                                                    <span className="material-symbols-outlined text-[14px]">delete</span>
-                                                </Button>
-                                            </div>
-                                        ) : (
-                                            <div className={`absolute inset-0 flex flex-col items-center justify-center transition-colors ${!coverRemoved && editCoverUrl ? 'bg-black/50 text-white opacity-0 group-hover:opacity-100' : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]'}`}>
-                                                <span className="material-symbols-outlined text-[20px]">image</span>
-                                                <span className="text-[10px] font-medium mt-1">Change Cover</span>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* Icon Picker */}
-                                    <div
-                                        className="group relative flex flex-col items-center justify-center h-20 rounded-xl border border-dashed border-[var(--color-surface-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] dark:bg-[var(--color-surface-hover)]/30 transition-all overflow-hidden bg-cover bg-center cursor-pointer"
-                                        style={{ backgroundImage: !iconRemoved && editIconUrl ? `url(${editIconUrl})` : 'none' }}
-                                        onClick={() => {
-                                            setMediaPickerTarget('icon');
-                                            setShowMediaLibrary(true);
-                                        }}
-                                    >
-                                        {!iconRemoved && editIconUrl ? (
-                                            <div className="absolute top-1 right-1 z-20">
-                                                <Button size="icon" variant="danger" className="size-6" onClick={(e) => {
-                                                    e.preventDefault();
-                                                    e.stopPropagation();
-                                                    setEditIconUrl(null);
-                                                    setIconRemoved(true);
-                                                }}>
-                                                    <span className="material-symbols-outlined text-[14px]">delete</span>
-                                                </Button>
-                                            </div>
-                                        ) : (
-                                            <div className={`absolute inset-0 flex flex-col items-center justify-center transition-colors ${!iconRemoved && editIconUrl ? 'bg-black/50 text-white opacity-0 group-hover:opacity-100' : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]'}`}>
-                                                <span className="material-symbols-outlined text-[20px]">apps</span>
-                                                <span className="text-[10px] font-medium mt-1">Change Icon</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="h-px bg-[var(--color-surface-border)]" />
-
-                    {/* Modules Grid */}
-                    <div className="space-y-3">
-                        <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Enabled Modules</label>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
-                            {['tasks', 'ideas', 'milestones', 'mindmap', 'activity', 'issues', 'social', 'marketing'].map(mod => (
-                                <label key={mod} className={`
-                                    flex flex-col items-center justify-center gap-2 cursor-pointer p-3 rounded-xl border transition-all text-center
-                                    ${editModules?.includes(mod as any)
-                                        ? 'border-[var(--color-primary)] bg-[var(--color-surface-hover)]'
-                                        : 'border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'}
-                                `}>
-                                    <Checkbox
-                                        checked={editModules ? editModules.includes(mod as any) : true}
-                                        onChange={(e) => {
-                                            const current = editModules || ['tasks', 'ideas', 'mindmap', 'activity', 'issues', 'social', 'marketing'];
-                                            let next = [...current];
-                                            if (e.target.checked) {
-                                                if (!next.includes(mod as any)) next.push(mod as any);
-                                            } else {
-                                                next = next.filter(m => m !== mod);
-                                            }
-                                            setEditModules(next as any);
-                                        }}
-                                        className="hidden"
-                                    />
-                                    <div className={`
-                                        size-8 rounded-full flex items-center justify-center transition-colors
-                                        ${editModules?.includes(mod as any) ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)]' : 'bg-[var(--color-surface-border)] text-[var(--color-text-muted)]'}
-                                    `}>
-                                        <span className="material-symbols-outlined text-[18px]">
-                                            {mod === 'tasks' ? 'check_circle' :
-                                                mod === 'ideas' ? 'lightbulb' :
-                                                    mod === 'milestones' ? 'flag' :
-                                                        mod === 'mindmap' ? 'hub' :
-                                                            mod === 'social' ? 'campaign' :
-                                                                mod === 'marketing' ? 'ads_click' :
-                                                                    mod === 'activity' ? 'history' : 'bug_report'}
-                                        </span>
-                                    </div>
-                                    <span className="text-xs font-semibold capitalize">{mod}</span>
-                                </label>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div className="h-px bg-[var(--color-surface-border)]" />
-
-                    {/* GitHub Integration Section */}
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">GitHub Integration</label>
-                            <Badge variant={editGithubRepo ? 'success' : 'secondary'}>{editGithubRepo ? 'Connected' : 'Disconnected'}</Badge>
-                        </div>
-                        <div className="bg-[var(--color-surface-hover)]/30 p-4 rounded-xl border border-[var(--color-surface-border)]">
-                            <div className="space-y-4">
-                                <label className="text-xs font-semibold text-[var(--color-text-muted)] ml-1">Repository Selection</label>
-                                {userGithubRepos.length > 0 ? (
-                                    <Select
-                                        value={editGithubRepo}
-                                        onChange={(e) => setEditGithubRepo(e.target.value)}
-                                        icon="terminal"
-                                    >
-                                        <option value="">Select a repository...</option>
-                                        {userGithubRepos.map(r => (
-                                            <option key={r.id} value={r.full_name}>
-                                                {r.full_name}
-                                            </option>
-                                        ))}
-                                    </Select>
-                                ) : (
-                                    <div className="flex flex-col items-center justify-center py-6 bg-[var(--color-surface-paper)] rounded-lg border border-dashed border-[var(--color-surface-border)] gap-3">
-                                        <div className="size-12 bg-zinc-900 rounded-xl flex items-center justify-center text-white">
-                                            <span className="material-symbols-outlined text-2xl">terminal</span>
-                                        </div>
-                                        <div className="text-center px-4">
-                                            <p className="text-sm font-semibold text-[var(--color-text-main)]">GitHub Connection Required</p>
-                                            <p className="text-xs text-[var(--color-text-muted)] mt-1">Connect your account to browse and sync with your repositories.</p>
-                                        </div>
-                                        <Button
-                                            size="sm"
-                                            variant="primary"
-                                            onClick={handleConnectGithub}
-                                            isLoading={connectingGithub}
-                                        >
-                                            Link GitHub Account
-                                        </Button>
-                                    </div>
-                                )}
-                                {fetchingRepos && <p className="text-[10px] text-[var(--color-primary)] animate-pulse mt-1 ml-1">Fetching your repositories...</p>}
-                            </div>
-
-                            <div className="mt-4 pt-4 border-t border-[var(--color-surface-border)]">
-                                <div className="flex items-center gap-3 bg-[var(--color-surface-paper)]/50 p-3 rounded-lg border border-[var(--color-surface-border)]">
-                                    <Checkbox
-                                        id="github-sync-toggle"
-                                        checked={editGithubIssueSync}
-                                        onChange={(e) => setEditGithubIssueSync(e.target.checked)}
-                                    />
-                                    <label htmlFor="github-sync-toggle" className="text-sm font-medium cursor-pointer text-[var(--color-text-main)]">
-                                        Enable GitHub Issue Sync
-                                        <span className="block text-[10px] text-[var(--color-text-muted)] font-normal">Automatically cross-post issues to the selected repository</span>
-                                    </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="h-px bg-[var(--color-surface-border)]" />
-
-                    {/* Resources & Links */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Sidebar Resources */}
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Sidebar Resources</label>
-                                <Button size="sm" variant="ghost" onClick={() => setEditExternalResources([...editExternalResources, { title: '', url: '', icon: 'open_in_new' }])} icon={<span className="material-symbols-outlined">add</span>}>
-                                    Add
-                                </Button>
-                            </div>
-                            <div className="space-y-3 max-h-[200px] overflow-y-auto pr-1">
-                                {editExternalResources.length === 0 && <p className="text-xs text-[var(--color-text-muted)] py-2">No sidebar resources.</p>}
-                                {editExternalResources.map((res, idx) => (
-                                    <div key={idx} className="flex gap-2 items-start group">
-                                        <div className="flex-1 space-y-1">
-                                            <Input
-                                                placeholder="Label"
-                                                value={res.title}
-                                                onChange={(e) => {
-                                                    const newRes = [...editExternalResources];
-                                                    newRes[idx].title = e.target.value;
-                                                    setEditExternalResources(newRes);
-                                                }}
-                                            />
-                                            <Input
-                                                placeholder="https://..."
-                                                value={res.url}
-                                                onChange={(e) => {
-                                                    const newRes = [...editExternalResources];
-                                                    newRes[idx].url = e.target.value;
-                                                    setEditExternalResources(newRes);
-                                                }}
-                                            />
-                                        </div>
-                                        <button onClick={() => setEditExternalResources(editExternalResources.filter((_, i) => i !== idx))} className="text-[var(--color-text-muted)] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity pt-2">
-                                            <span className="material-symbols-outlined text-[18px]">delete</span>
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Overview Links */}
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Overview Links</label>
-                                <Button size="sm" variant="ghost" onClick={() => setEditLinks([...editLinks, { title: '', url: '' }])} icon={<span className="material-symbols-outlined">add</span>}>
-                                    Add
-                                </Button>
-                            </div>
-                            <div className="space-y-3 max-h-[200px] overflow-y-auto pr-1">
-                                {editLinks.length === 0 && <p className="text-xs text-[var(--color-text-muted)] py-2">No overview links.</p>}
-                                {editLinks.map((link, idx) => (
-                                    <div key={idx} className="flex gap-2 items-start group">
-                                        <div className="flex-1 space-y-1">
-                                            <Input
-                                                placeholder="Title"
-                                                value={link.title}
-                                                onChange={(e) => {
-                                                    const newLinks = [...editLinks];
-                                                    newLinks[idx].title = e.target.value;
-                                                    setEditLinks(newLinks);
-                                                }}
-                                            />
-                                            <Input
-                                                placeholder="https://..."
-                                                value={link.url}
-                                                onChange={(e) => {
-                                                    const newLinks = [...editLinks];
-                                                    newLinks[idx].url = e.target.value;
-                                                    setEditLinks(newLinks);
-                                                }}
-                                            />
-                                        </div>
-                                        <button onClick={() => setEditLinks(editLinks.filter((_, i) => i !== idx))} className="text-[var(--color-text-muted)] hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity pt-2">
-                                            <span className="material-symbols-outlined text-[18px]">delete</span>
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </Modal >
+            {project && (
+                <ProjectEditModal
+                    isOpen={showEditModal}
+                    onClose={() => setShowEditModal(false)}
+                    project={project}
+                    onSave={handleSaveEdit}
+                />
+            )}
 
             {/* Delete Modal */}
             < Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Delete Project"
@@ -1459,6 +1487,17 @@ export const ProjectOverview = () => {
                     />
                 )
             }
+
+            {/* Health Detail Modal */}
+            <HealthDetailModal
+                isOpen={showHealthModal}
+                onClose={() => setShowHealthModal(false)}
+                health={health}
+                tasks={tasks}
+                milestones={milestones}
+                issues={issues}
+                projectTitle={project.title}
+            />
         </div >
     );
 };

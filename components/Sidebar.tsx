@@ -1,12 +1,12 @@
-import React, { useMemo } from 'react';
-import { useLocation, Link, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { useLocation, Link } from 'react-router-dom';
 import { auth } from '../services/firebase';
-import { signOut } from 'firebase/auth';
 import { getProjectIdeas, getUserTasks } from '../services/dataService';
 import { useTheme } from '../context/ThemeContext';
 import { ProjectSwitcher } from './ProjectSwitcher';
 import { NotificationDropdown } from './NotificationDropdown';
 import { useUIState } from '../context/UIContext';
+import { WorkspaceTeamIndicator } from './WorkspaceTeamIndicator';
 
 type SidebarProps = {
     isDrawer?: boolean;
@@ -20,6 +20,7 @@ type SidebarProps = {
         modules?: string[];
         externalResources?: { title: string; url: string; icon?: string }[];
         isLoaded?: boolean; // New flag to prevent flickering
+        navPrefs?: { order: string[]; hidden: string[] }; // User-specific nav preferences
     };
 };
 
@@ -102,7 +103,6 @@ const NavItem = ({
 // ----------------------------------------------------------------------
 
 export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) => {
-    const navigate = useNavigate();
     const user = auth.currentUser;
     const { theme } = useTheme();
     const { setReleaseModalOpen } = useUIState();
@@ -110,9 +110,6 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
     // Data Loaders for badges
     const [taskCount, setTaskCount] = React.useState<number>(0);
     const [ideaCount, setIdeaCount] = React.useState<number>(0);
-
-    // User Menu State
-    const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
 
     React.useEffect(() => {
         let mounted = true;
@@ -136,16 +133,6 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
         })();
         return () => { mounted = false; };
     }, [user]);
-
-    const handleSignOut = async () => {
-        try {
-            await signOut(auth);
-            if (typeof localStorage !== 'undefined') localStorage.removeItem('activeTenantId');
-            navigate('/login');
-        } catch (error) {
-            console.error('Error signing out:', error);
-        }
-    };
 
     // Derived State: Is inside a project?
     const isProjectActive = Boolean(workspace?.projectId);
@@ -228,80 +215,63 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                         </div>
 
                         <div className="grid gap-0.5">
-                            <NavItem
-                                to={`/project/${workspace.projectId}`}
-                                icon="grid_view"
-                                label="Overview"
-                                exact
-                                onClick={isDrawer ? onClose : undefined}
-                            />
-                            {(!workspace.modules || workspace.modules.includes('tasks')) && (
-                                <NavItem
-                                    to={`/project/${workspace.projectId}/tasks`}
-                                    icon="checklist"
-                                    label="Tasks"
-                                    badge={workspace.tasksCount}
-                                    onClick={isDrawer ? onClose : undefined}
-                                />
-                            )}
-                            {(!workspace.modules || workspace.modules.includes('ideas')) && (
-                                <NavItem
-                                    to={`/project/${workspace.projectId}/ideas`}
-                                    icon="emoji_objects"
-                                    label="Ideas"
-                                    badge={workspace.ideasCount}
-                                    onClick={isDrawer ? onClose : undefined}
-                                />
-                            )}
-                            {(!workspace.modules || workspace.modules.includes('issues')) && (
-                                <NavItem
-                                    to={`/project/${workspace.projectId}/issues`}
-                                    icon="medication"
-                                    label="Issues"
-                                    badge={workspace.issuesCount}
-                                    onClick={isDrawer ? onClose : undefined}
-                                />
-                            )}
-                            {(!workspace.modules || workspace.modules.includes('mindmap')) && (
-                                <NavItem
-                                    to={`/project/${workspace.projectId}/mindmap`}
-                                    icon="hub"
-                                    label="Mindmap"
-                                    onClick={isDrawer ? onClose : undefined}
-                                />
-                            )}
-                            {(!workspace.modules || workspace.modules.includes('milestones')) && (
-                                <NavItem
-                                    to={`/project/${workspace.projectId}/milestones`}
-                                    icon="outlined_flag"
-                                    label="Milestones"
-                                    onClick={isDrawer ? onClose : undefined}
-                                />
-                            )}
-                            {(!workspace.modules || workspace.modules.includes('social')) && (
-                                <NavItem
-                                    to={`/project/${workspace.projectId}/social`}
-                                    icon="campaign"
-                                    label="Social"
-                                    onClick={isDrawer ? onClose : undefined}
-                                />
-                            )}
-                            {(!workspace.modules || workspace.modules.includes('marketing')) && (
-                                <NavItem
-                                    to={`/project/${workspace.projectId}/marketing`}
-                                    icon="ads_click" // or 'campaign' or 'trending_up'
-                                    label="Marketing"
-                                    onClick={isDrawer ? onClose : undefined}
-                                />
-                            )}
-                            {(!workspace.modules || workspace.modules.includes('activity')) && (
-                                <NavItem
-                                    to={`/project/${workspace.projectId}/activity`}
-                                    icon="history"
-                                    label="Activity"
-                                    onClick={isDrawer ? onClose : undefined}
-                                />
-                            )}
+                            {(() => {
+                                // Default nav item definitions
+                                const defaultNavItems = [
+                                    { id: 'overview', path: '', icon: 'grid_view', label: 'Overview', exact: true },
+                                    { id: 'tasks', path: '/tasks', icon: 'checklist', label: 'Tasks', moduleKey: 'tasks', badge: workspace.tasksCount },
+                                    { id: 'ideas', path: '/ideas', icon: 'emoji_objects', label: 'Ideas', moduleKey: 'ideas', badge: workspace.ideasCount },
+                                    { id: 'issues', path: '/issues', icon: 'medication', label: 'Issues', moduleKey: 'issues', badge: workspace.issuesCount },
+                                    { id: 'mindmap', path: '/mindmap', icon: 'hub', label: 'Mindmap', moduleKey: 'mindmap' },
+                                    { id: 'milestones', path: '/milestones', icon: 'outlined_flag', label: 'Milestones', moduleKey: 'milestones' },
+                                    { id: 'social', path: '/social', icon: 'campaign', label: 'Social', moduleKey: 'social' },
+                                    { id: 'marketing', path: '/marketing', icon: 'ads_click', label: 'Marketing', moduleKey: 'marketing' },
+                                    { id: 'activity', path: '/activity', icon: 'history', label: 'Activity', moduleKey: 'activity' },
+                                ];
+
+                                // Get the order (custom or default)
+                                const order = workspace.navPrefs?.order?.length
+                                    ? workspace.navPrefs.order
+                                    : defaultNavItems.map(n => n.id);
+
+                                // Sort items by the order
+                                const orderedItems = order
+                                    .map(id => defaultNavItems.find(n => n.id === id))
+                                    .filter((item): item is typeof defaultNavItems[0] => !!item);
+
+                                // Add any items not in the order (fallback)
+                                defaultNavItems.forEach(item => {
+                                    if (!orderedItems.find(o => o.id === item.id)) {
+                                        orderedItems.push(item);
+                                    }
+                                });
+
+                                // Get hidden items
+                                const hiddenItems = workspace.navPrefs?.hidden || [];
+
+                                // Filter and render
+                                return orderedItems
+                                    .filter(item => {
+                                        // Check if module is enabled (or has no module requirement)
+                                        const moduleEnabled = !item.moduleKey ||
+                                            !workspace.modules ||
+                                            workspace.modules.includes(item.moduleKey);
+                                        // Check if not hidden by user
+                                        const notHidden = !hiddenItems.includes(item.id);
+                                        return moduleEnabled && notHidden;
+                                    })
+                                    .map(item => (
+                                        <NavItem
+                                            key={item.id}
+                                            to={`/project/${workspace.projectId}${item.path}`}
+                                            icon={item.icon}
+                                            label={item.label}
+                                            exact={item.exact}
+                                            badge={item.badge}
+                                            onClick={isDrawer ? onClose : undefined}
+                                        />
+                                    ));
+                            })()}
 
                             {/* Resources Section - Integrated as NavItems */}
                             {workspace.externalResources && workspace.externalResources.length > 0 && (
@@ -340,108 +310,28 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
 
             </nav>
 
-            {/* 3. Footer / User Profile */}
-            <div className="p-4 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-card)]">
+            {/* 3. Footer */}
+            <div className="p-4 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-card)] space-y-4">
 
                 {/* Local-only Release To-Dos Link */}
                 {window.location.hostname === 'localhost' && (
-                    <div className="mb-4">
-                        <button
-                            onClick={() => setReleaseModalOpen(true)}
-                            className="w-full flex items-center gap-2.5 px-3 py-2 text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors text-[12px] font-bold uppercase tracking-wider"
-                        >
-                            <span className="material-symbols-outlined text-[18px]">list_alt</span>
-                            <span>Release To-Dos</span>
-                        </button>
-                    </div>
+                    <button
+                        onClick={() => setReleaseModalOpen(true)}
+                        className="w-full flex items-center gap-2.5 px-3 py-2 text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors text-[12px] font-bold uppercase tracking-wider"
+                    >
+                        <span className="material-symbols-outlined text-[18px]">list_alt</span>
+                        <span>Release To-Dos</span>
+                    </button>
                 )}
 
                 {/* Theme Toggle + Notification Bell Row */}
-                <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between">
                     <ThemeToggle />
                     <NotificationDropdown position="sidebar" />
                 </div>
 
-                {/* User Menu Dropdown (Absolute positioned upwards) */}
-                <div className="relative">
-                    {isUserMenuOpen && (
-                        <>
-                            <div className="fixed inset-0 z-10" onClick={() => setIsUserMenuOpen(false)}></div>
-                            <div className="absolute bottom-full left-0 w-full mb-3 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] shadow-xl rounded-xl z-20 overflow-hidden ring-1 ring-black/5 dark:ring-white/10 animate-scale-up origin-bottom">
-                                <Link
-                                    to="/profile"
-                                    onClick={() => { setIsUserMenuOpen(false); if (isDrawer && onClose) onClose(); }}
-                                    className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)] transition-colors"
-                                >
-                                    <span className="material-symbols-outlined text-[20px]">badge</span>
-                                    <span className="text-sm font-medium">Profile</span>
-                                </Link>
-                                <Link
-                                    to="/settings"
-                                    onClick={() => { setIsUserMenuOpen(false); if (isDrawer && onClose) onClose(); }}
-                                    className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)] transition-colors"
-                                >
-                                    <span className="material-symbols-outlined text-[20px]">settings</span>
-                                    <span className="text-sm font-medium">Settings</span>
-                                </Link>
-                                <Link
-                                    to="/media"
-                                    onClick={() => { setIsUserMenuOpen(false); if (isDrawer && onClose) onClose(); }}
-                                    className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)] transition-colors"
-                                >
-                                    <span className="material-symbols-outlined text-[20px]">perm_media</span>
-                                    <span className="text-sm font-medium">Media Library</span>
-                                </Link>
-                                <Link
-                                    to="/personal-tasks"
-                                    onClick={() => { setIsUserMenuOpen(false); if (isDrawer && onClose) onClose(); }}
-                                    className="flex items-center gap-3 px-4 py-3 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)] transition-colors"
-                                >
-                                    <span className="material-symbols-outlined text-[20px]">task_alt</span>
-                                    <span className="text-sm font-medium">Personal Tasks</span>
-                                </Link>
-                                <div className="h-px bg-[var(--color-surface-border)] mx-2 my-1"></div>
-                                <button
-                                    onClick={handleSignOut}
-                                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 dark:hover:bg-red-900/10 text-red-600 dark:text-red-400 transition-colors text-left"
-                                >
-                                    <span className="material-symbols-outlined text-[20px]">logout</span>
-                                    <span className="text-sm font-medium">Log out</span>
-                                </button>
-                            </div>
-                        </>
-                    )}
-
-                    <div
-                        onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                        className={`
-                            group flex items-center gap-3 p-2.5 rounded-xl cursor-pointer transition-all duration-200
-                            ${isUserMenuOpen ? 'bg-[var(--color-surface-hover)]' : 'hover:bg-[var(--color-surface-hover)]'}
-                        `}
-                    >
-                        <div
-                            className="size-9 rounded-full bg-cover bg-center border border-[var(--color-surface-border)] shrink-0 shadow-sm"
-                            style={{ backgroundImage: user?.photoURL ? `url("${user.photoURL}")` : undefined }}
-                        >
-                            {!user?.photoURL && (
-                                <div className="w-full h-full flex items-center justify-center bg-indigo-500 text-white font-bold rounded-full">
-                                    {user?.displayName?.charAt(0) || 'U'}
-                                </div>
-                            )}
-                        </div>
-                        <div className="flex flex-col flex-1 min-w-0">
-                            <span className="text-sm font-semibold text-[var(--color-text-main)] truncate">
-                                {user?.displayName || 'User'}
-                            </span>
-                            <span className="text-[11px] text-[var(--color-text-muted)] truncate">
-                                {user?.email}
-                            </span>
-                        </div>
-                        <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)] group-hover:text-[var(--color-text-main)]">
-                            unfold_more
-                        </span>
-                    </div>
-                </div>
+                {/* Workspace Team Presence Indicator */}
+                <WorkspaceTeamIndicator onClose={isDrawer ? onClose : undefined} />
             </div>
         </aside>
     );

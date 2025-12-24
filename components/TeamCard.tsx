@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Card } from './ui/Card';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
-import { subscribeProject, subscribeProjectPresence, removeMember, getUserProfile, requestJoinProject } from '../services/dataService';
+import { subscribeProject, subscribeProjectPresence, removeMember, getUserProfile, requestJoinProject, joinProject } from '../services/dataService';
 import { auth } from '../services/firebase';
 import { UserHoverCard } from './ui/UserHoverCard';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
@@ -28,19 +28,25 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
     const [showLeaveModal, setShowLeaveModal] = useState(false);
 
     const { isOwner } = useProjectPermissions(project);
-    const { showError } = useToast();
+    const { showError, showSuccess } = useToast();
     const currentUserId = auth.currentUser?.uid;
-    const isMember = members.some(m => (typeof m === 'string' ? m : m.userId) === currentUserId) || project?.ownerId === currentUserId;
 
     const handleJoin = async () => {
         if (!currentUserId || !project) return;
         setJoinLoading(true);
         try {
-            await requestJoinProject(project.id, tenantId);
-            setJoinSent(true);
+            if (project.ownerId === currentUserId) {
+                // Owner joining their own project (Legacy fix)
+                await joinProject(project.id, tenantId || project.tenantId || currentUserId, 'Owner');
+                showSuccess('You have been added to the team list');
+            } else {
+                await requestJoinProject(project.id, tenantId);
+                setJoinSent(true);
+                showSuccess('Join request sent to project owner');
+            }
         } catch (error) {
             console.error(error);
-            showError('Failed to send join request');
+            showError('Failed to join project');
         } finally {
             setJoinLoading(false);
         }
@@ -156,36 +162,44 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
                         </p>
                     </div>
                     {!loading && (
-                        isMember ? (
-                            onInvite && (
-                                <div className="flex gap-2">
-                                    <Button size="sm" variant="ghost" onClick={onInvite} icon={<span className="material-symbols-outlined">person_add</span>}>
-                                        Invite
-                                    </Button>
-                                    {!isOwner && (
-                                        <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={handleLeaveProject}
-                                            className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/10"
-                                        >
-                                            Leave
+                        (() => {
+                            const isOfficiallyMember = members.some(m => (typeof m === 'string' ? m : m.userId) === currentUserId);
+                            const hasAccess = isOfficiallyMember || project?.ownerId === currentUserId;
+
+                            if (hasAccess && isOfficiallyMember) {
+                                return onInvite && (
+                                    <div className="flex gap-2">
+                                        <Button size="sm" variant="ghost" onClick={onInvite} icon={<span className="material-symbols-outlined">person_add</span>}>
+                                            Invite
                                         </Button>
-                                    )}
-                                </div>
-                            )
-                        ) : (
-                            <Button
-                                size="sm"
-                                variant="primary"
-                                onClick={handleJoin}
-                                isLoading={joinLoading}
-                                disabled={joinSent}
-                                icon={<span className="material-symbols-outlined">{joinSent ? 'check' : 'group_add'}</span>}
-                            >
-                                {joinSent ? 'Request Sent' : 'Join Project'}
-                            </Button>
-                        )
+                                        {!isOwner && (
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={handleLeaveProject}
+                                                className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/10"
+                                            >
+                                                Leave
+                                            </Button>
+                                        )}
+                                    </div>
+                                );
+                            }
+
+                            // If owner but not in members list, or guest
+                            return (
+                                <Button
+                                    size="sm"
+                                    variant="primary"
+                                    onClick={handleJoin}
+                                    isLoading={joinLoading}
+                                    disabled={joinSent}
+                                    icon={<span className="material-symbols-outlined">{joinSent ? 'check' : 'group_add'}</span>}
+                                >
+                                    {joinSent ? 'Request Sent' : (project?.ownerId === currentUserId ? 'Register as Member' : 'Join Project')}
+                                </Button>
+                            );
+                        })()
                     )}
                 </div>
 
@@ -195,10 +209,27 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
                     </div>
                 ) : (
                     <div className="space-y-2">
-                        {members.length === 0 ? (
-                            <p className="text-sm text-[var(--color-text-muted)] text-center py-4">No team members yet.</p>
-                        ) : (
-                            members.map((member, idx) => {
+                        {(() => {
+                            // Combine owner and members for display
+                            const displayMembers = [...members];
+                            const ownerId = project?.ownerId;
+                            const isOwnerInMembers = ownerId && displayMembers.some(m => (typeof m === 'string' ? m : m.userId) === ownerId);
+
+                            if (ownerId && !isOwnerInMembers) {
+                                // Add owner as a "virtual" member for display if missing from members array
+                                displayMembers.unshift({
+                                    userId: ownerId,
+                                    role: 'Owner' as ProjectRole,
+                                    joinedAt: project?.createdAt,
+                                    invitedBy: 'System'
+                                } as ProjectMember);
+                            }
+
+                            if (displayMembers.length === 0) {
+                                return <p className="text-sm text-[var(--color-text-muted)] text-center py-4">No team members yet.</p>;
+                            }
+
+                            return displayMembers.map((member, idx) => {
                                 const memberId = getMemberId(member);
                                 const memberRole = getMemberRole(member);
                                 const isCurrentUser = memberId === currentUserId;
@@ -208,6 +239,8 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
                                 const onlineData = activeUsers[memberId];
                                 const profileData = userProfiles[memberId];
                                 const isOnline = !!onlineData?.isOnline;
+                                const isIdle = !!onlineData?.isIdle;
+                                const isBusy = !!onlineData?.isBusy;
 
                                 const displayName = onlineData?.displayName || profileData?.displayName || memberId;
                                 const photoURL = onlineData?.photoURL || profileData?.photoURL;
@@ -231,18 +264,29 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
                                                     <img
                                                         src={photoURL}
                                                         alt={displayName}
-                                                        className={`size-10 rounded-full object-cover cursor-pointer border-2 ${isOnline ? 'border-emerald-500' : 'border-[var(--color-surface-border)]'}`}
+                                                        className={`size-10 rounded-full object-cover cursor-pointer border-2 transition-colors ${isOnline ? 'border-emerald-500' : isIdle ? 'border-amber-400' : isBusy ? 'border-rose-500' : 'border-[var(--color-surface-border)]'
+                                                            }`}
                                                     />
                                                 ) : (
-                                                    <div className={`size-10 rounded-full flex items-center justify-center text-white font-bold text-sm cursor-pointer border-2 ${isOnline ? 'border-emerald-500' : 'border-transparent'}`}
+                                                    <div className={`size-10 rounded-full flex items-center justify-center text-white font-bold text-sm cursor-pointer border-2 transition-colors ${isOnline ? 'border-emerald-500' : isIdle ? 'border-amber-400' : isBusy ? 'border-rose-500' : 'border-transparent'
+                                                        }`}
                                                         style={{ backgroundColor: 'var(--color-primary)' }}>
                                                         {(displayName || '?').charAt(0).toUpperCase()}
                                                     </div>
                                                 )}
                                             </UserHoverCard>
-                                            {isOnline && (
-                                                <div className="absolute bottom-0 right-0 size-3.5 rounded-full bg-emerald-500 border-2 border-[var(--color-surface-paper)]" title="Online" />
-                                            )}
+                                            {/* Status indicator */}
+                                            {isOnline ? (
+                                                <div className="absolute bottom-0 right-0 size-3.5 rounded-full bg-emerald-500 border-2 border-[var(--color-surface-paper)] shadow-sm" title="Online now" />
+                                            ) : isIdle ? (
+                                                <div className="absolute bottom-0 right-0 size-3.5 rounded-full bg-amber-400 border-2 border-[var(--color-surface-paper)] shadow-sm flex items-center justify-center" title="Away">
+                                                    <span className="material-symbols-outlined text-[6px] text-amber-900">schedule</span>
+                                                </div>
+                                            ) : isBusy ? (
+                                                <div className="absolute bottom-0 right-0 size-3.5 rounded-full bg-rose-500 border-2 border-[var(--color-surface-paper)] shadow-sm flex items-center justify-center" title="Busy">
+                                                    <span className="material-symbols-outlined text-[6px] text-white">do_not_disturb_on</span>
+                                                </div>
+                                            ) : null}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
@@ -267,7 +311,15 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
                                             </div>
                                             <p className="text-xs text-[var(--color-text-subtle)] flex items-center gap-1">
                                                 {isOnline ? (
-                                                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">Online now</span>
+                                                    <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+                                                        <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                                        Online now
+                                                    </span>
+                                                ) : isIdle ? (
+                                                    <span className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                                                        <span className="size-1.5 rounded-full bg-amber-400" />
+                                                        Away
+                                                    </span>
                                                 ) : (
                                                     <span>Offline</span>
                                                 )}
@@ -289,8 +341,8 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
                                         )}
                                     </div>
                                 );
-                            })
-                        )}
+                            });
+                        })()}
                     </div>
                 )}
             </Card>

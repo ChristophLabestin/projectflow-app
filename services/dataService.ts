@@ -27,7 +27,7 @@ import {
 import { updateProfile, linkWithPopup } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, auth, GithubAuthProvider, FacebookAuthProvider } from "./firebase";
-import type { Task, Idea, Activity, Project, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, EmailComponent, GeminiReport, Milestone, AIUsage, Member, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask } from '../types';
+import type { Task, Idea, Activity, Project, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, EmailComponent, GeminiReport, Milestone, AIUsage, Member, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs } from '../types';
 import { toMillis } from "../utils/time";
 import {
     notifyTaskAssignment,
@@ -260,6 +260,69 @@ export const incrementAIUsage = async (userId: string, tokens: number, tenantId?
     const userRef = doc(tenantUsersCollection(resolvedTenant), userId);
     await updateDoc(userRef, {
         'aiUsage.tokensUsed': increment(tokens)
+    });
+};
+
+// --- User Project Navigation Preferences ---
+
+export const getUserProjectNavPrefs = async (userId: string, projectId: string, tenantId?: string): Promise<ProjectNavPrefs | null> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const ref = doc(db, TENANTS, resolvedTenant, USERS, userId, 'projectNavPrefs', projectId);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+        return snap.data() as ProjectNavPrefs;
+    }
+    return null;
+};
+
+export const setUserProjectNavPrefs = async (userId: string, projectId: string, prefs: ProjectNavPrefs, tenantId?: string): Promise<void> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const ref = doc(db, TENANTS, resolvedTenant, USERS, userId, 'projectNavPrefs', projectId);
+    await setDoc(ref, prefs);
+};
+
+export const subscribeUserProjectNavPrefs = (
+    userId: string,
+    projectId: string,
+    onUpdate: (prefs: ProjectNavPrefs | null) => void,
+    tenantId?: string
+): Unsubscribe => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const ref = doc(db, TENANTS, resolvedTenant, USERS, userId, 'projectNavPrefs', projectId);
+
+    return onSnapshot(ref, (snapshot) => {
+        if (snapshot.exists()) {
+            onUpdate(snapshot.data() as ProjectNavPrefs);
+        } else {
+            onUpdate(null);
+        }
+    });
+};
+
+// --- User Status Preference ---
+
+/**
+ * Update the user's manual status preference (Online/Busy/Away/Auto)
+ * This is stored in tenants/{tenantId}/users/{userId}/preferences/status
+ */
+export const updateUserStatusPreference = async (userId: string, status: 'online' | 'busy' | 'idle' | 'offline', tenantId?: string) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const ref = doc(db, TENANTS, resolvedTenant, USERS, userId);
+    await setDoc(ref, { statusPreference: status }, { merge: true });
+};
+
+/**
+ * Subscribe to user's status preference
+ */
+export const subscribeUserStatusPreference = (userId: string, onUpdate: (status: 'online' | 'busy' | 'idle' | 'offline') => void, tenantId?: string) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const ref = doc(db, TENANTS, resolvedTenant, USERS, userId);
+    return onSnapshot(ref, (snap) => {
+        if (snap.exists()) {
+            onUpdate(snap.data().statusPreference || 'auto');
+        } else {
+            onUpdate('auto');
+        }
     });
 };
 
@@ -905,8 +968,8 @@ export const joinProject = async (projectId: string, tenantId: string, role: Pro
         const newMember: ProjectMember = {
             userId: user.uid,
             role,
-            joinedAt: new Date(), // Cannot use serverTimestamp() inside arrays
-            invitedBy: data.ownerId,
+            joinedAt: new Date(),
+            invitedBy: data.ownerId || 'System',
         };
 
         await updateDoc(projectRef, {
@@ -2298,7 +2361,7 @@ export const subscribeProjectTasks = (
 
 // --- Presence ---
 
-export const updatePresence = async (projectId: string, state: 'online' | 'offline', tenantId?: string) => {
+export const updatePresence = async (projectId: string, state: 'online' | 'idle' | 'offline', tenantId?: string) => {
     const user = auth.currentUser;
     if (!user) return;
     const resolvedTenant = resolveTenantId(tenantId);
@@ -2311,13 +2374,7 @@ export const updatePresence = async (projectId: string, state: 'online' | 'offli
             photoURL: user.photoURL || '',
             email: user.email || '',
             state,
-            title: (user as any).title || '', // We need to fetch this or store it in auth profile? Auth profile doesn't have title. 
-            // We will fetch from local storage or context if possible, or just let the Profile page update it.
-            // Actually, updatePresence is called often. We don't want to fetch DB every time.
-            // For now, let's trust the UI to pass it if needed or just update status. 
-            // Better strategy: The Profile page updates the "users" collection. 
-            // The "Presence" relies on what's passed or defaults. 
-            // Let's modify updatePresence to accept extra data optionally.
+            tenantId: resolvedTenant, // Add tenant ID for cross-reference
             lastChanged: serverTimestamp()
         }, { merge: true });
     } catch (e) {
@@ -2325,14 +2382,25 @@ export const updatePresence = async (projectId: string, state: 'online' | 'offli
     }
 };
 
-export const updateUserProfile = async (data: { displayName?: string, photoURL?: string, title?: string, bio?: string, file?: File }) => {
+
+export const updateUserProfile = async (data: {
+    displayName?: string,
+    photoURL?: string,
+    coverURL?: string,
+    title?: string,
+    bio?: string,
+    address?: string,
+    skills?: string[],
+    file?: File,
+    coverFile?: File
+}) => {
     const user = auth.currentUser;
     if (!user) throw new Error("No user");
 
     let photoURL = data.photoURL || user.photoURL;
+    let coverURL = data.coverURL;
 
     // Use tenant-scoped path if available to ensure we satisfy existing storage rules
-    // (Global /users path requires rule deployment, but /tenants/{id} is usually open)
     const tenantId = getCachedTenantId();
 
     if (data.file) {
@@ -2345,6 +2413,16 @@ export const updateUserProfile = async (data: { displayName?: string, photoURL?:
         photoURL = await getDownloadURL(storageRef);
     }
 
+    if (data.coverFile) {
+        const path = tenantId
+            ? `tenants/${tenantId}/users/${user.uid}/cover_${Date.now()}`
+            : `users/${user.uid}/cover_${Date.now()}`;
+
+        const storageRef = ref(storage, path);
+        await uploadBytes(storageRef, data.coverFile);
+        coverURL = await getDownloadURL(storageRef);
+    }
+
     if (data.displayName || photoURL) {
         await updateProfile(user, {
             displayName: data.displayName || user.displayName,
@@ -2352,37 +2430,148 @@ export const updateUserProfile = async (data: { displayName?: string, photoURL?:
         });
     }
 
-    // Update all tenant user records for this user (Since we don't have a specific tenant context here always, 
-    // we might default to active tenant or just the one we are in.
-    // Ideally we should update the global user reference if we had one.
-    // For now, update the current active tenant user doc.
     if (tenantId) {
         const userRef = doc(tenantUsersCollection(tenantId), user.uid);
-        await setDoc(userRef, {
+        const updateData: any = {
             displayName: data.displayName || user.displayName,
             photoURL: photoURL,
-            title: data.title || '',
-            bio: data.bio || '',
-            email: user.email
-        }, { merge: true });
+            title: data.title ?? '',
+            bio: data.bio ?? '',
+            email: user.email,
+            address: data.address ?? '',
+            skills: data.skills ?? []
+        };
+        if (coverURL) updateData.coverURL = coverURL;
+
+        await setDoc(userRef, updateData, { merge: true });
     }
 
-    return photoURL;
+    return { photoURL, coverURL };
+};
+
+export const getUserProfileStats = async (uid: string, tenantId?: string) => {
+    const tid = tenantId || getActiveTenantId();
+    if (!tid) return { projects: 0, teams: 1 }; // Default to 1 team (current one)
+
+    // Count projects where user is a member
+    const projectsSnap = await getDocs(query(projectsCollection(tid), where('members', 'array_contains', uid)));
+    // Note: This only counts projects in the current tenant. 
+    // For a truly global count, we'd need to iterate all tenants or have a global index.
+
+    // In this app, "Teams" usually corresponds to Tenants.
+    // For now, let's fetch projects from the current tenant.
+    const projectCount = projectsSnap.size;
+
+    return {
+        projects: projectCount,
+        teams: 1 // Placeholder for multi-tenant count
+    };
 };
 
 export const subscribeProjectPresence = (
     projectId: string,
-    callback: (activeUsers: { uid: string, displayName: string, photoURL?: string, email?: string, isOnline: boolean }[]) => void,
+    callback: (activeUsers: { uid: string, displayName: string, photoURL?: string, email?: string, state?: 'online' | 'idle' | 'busy' | 'offline', isOnline: boolean, isIdle?: boolean, isBusy?: boolean, lastChanged?: any }[]) => void,
     tenantId?: string
 ) => {
     const resolvedTenant = resolveTenantId(tenantId);
+    const OFFLINE_TIMEOUT = 2 * 60 * 1000; // 2 minutes - reduced from 5 minutes
+
     return onSnapshot(projectSubCollection(resolvedTenant, projectId, 'presence'), (snap) => {
+        const now = Date.now();
         const users = snap.docs
             .map(d => d.data() as any)
-            .filter(u => u.state === 'online' || (u.lastChanged && (Date.now() - toMillis(u.lastChanged)) < 5 * 60 * 1000)) // 5 min timeout fallback
-            .map(u => ({ ...u, isOnline: true })); // If they passed the filter, they are effectively online
+            .filter(u => {
+                // Include users who are online/idle/busy, or were active within timeout window
+                const lastChangedMs = u.lastChanged ? toMillis(u.lastChanged) : 0;
+                const timeSinceUpdate = now - lastChangedMs;
+                return (u.state === 'online' || u.state === 'idle' || u.state === 'busy') && timeSinceUpdate < OFFLINE_TIMEOUT;
+            })
+            .map(u => ({
+                ...u,
+                isOnline: u.state === 'online',
+                isIdle: u.state === 'idle',
+                isBusy: u.state === 'busy'
+            }));
 
         callback(users);
+    });
+};
+
+// --- Workspace Presence ---
+
+/**
+ * Update the current user's presence at the workspace level (not project-specific)
+ * This is stored in tenants/{tenantId}/presence/{userId}
+ */
+export const updateWorkspacePresence = async (state: 'online' | 'idle' | 'busy' | 'offline', tenantId?: string) => {
+    const user = auth.currentUser;
+    if (!user) return;
+    const resolvedTenant = resolveTenantId(tenantId);
+
+    const ref = doc(db, 'tenants', resolvedTenant, 'presence', user.uid);
+    try {
+        await setDoc(ref, {
+            uid: user.uid,
+            displayName: user.displayName || 'User',
+            photoURL: user.photoURL || '',
+            email: user.email || '',
+            state,
+            lastChanged: serverTimestamp()
+        }, { merge: true });
+    } catch (e) {
+        console.error("Failed to update workspace presence", e);
+    }
+};
+
+/**
+ * Subscribe to all workspace members' presence
+ * Returns only users who are online, idle, or busy within the timeout window
+ */
+export const subscribeWorkspacePresence = (
+    callback: (activeUsers: { uid: string, displayName: string, photoURL?: string, email?: string, state?: 'online' | 'idle' | 'busy' | 'offline', isOnline: boolean, isIdle?: boolean, isBusy?: boolean, lastChanged?: any }[]) => void,
+    tenantId?: string
+) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const OFFLINE_TIMEOUT = 2 * 60 * 1000; // 2 minutes
+
+    const presenceCollection = collection(db, 'tenants', resolvedTenant, 'presence');
+
+    return onSnapshot(presenceCollection, (snap) => {
+        const now = Date.now();
+        const users = snap.docs
+            .map(d => d.data() as any)
+            .filter(u => {
+                const lastChangedMs = u.lastChanged ? toMillis(u.lastChanged) : 0;
+                const timeSinceUpdate = now - lastChangedMs;
+                return (u.state === 'online' || u.state === 'idle' || u.state === 'busy') && timeSinceUpdate < OFFLINE_TIMEOUT;
+            })
+            .map(u => ({
+                ...u,
+                isOnline: u.state === 'online',
+                isIdle: u.state === 'idle',
+                isBusy: u.state === 'busy'
+            }));
+
+        callback(users);
+    });
+};
+
+/**
+ * Get all workspace members (distinct from project guests)
+ * These are users who have been added to the tenant's users collection
+ */
+export const subscribeWorkspaceMembers = (
+    callback: (members: { uid: string, displayName: string, photoURL?: string, email?: string, role?: string }[]) => void,
+    tenantId?: string
+) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+
+    return onSnapshot(tenantUsersCollection(resolvedTenant), (snap) => {
+        const members = snap.docs.map(d => ({
+            uid: d.id,
+            ...d.data()
+        } as any));
+        callback(members);
     });
 };
 
