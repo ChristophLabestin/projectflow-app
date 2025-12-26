@@ -163,7 +163,7 @@ export const EmailMarketingList = () => {
                 <div className="flex gap-3">
                     <Link to="create">
                         <button
-                        className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] font-bold rounded-lg hover:opacity-90 transition-opacity"
+                            className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] font-bold rounded-lg hover:opacity-90 transition-opacity"
                         >
                             <span className="material-symbols-outlined">add</span>
                             Create Campaign
@@ -289,6 +289,16 @@ export const EmailMarketingList = () => {
                                                     }`}>
                                                     {campaign.status}
                                                 </span>
+                                                {campaign.originIdeaId && (
+                                                    <Link
+                                                        to={`/project/${projectId}/ideas/${campaign.originIdeaId}`}
+                                                        className="ml-2 flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-100 hover:bg-purple-100 transition-colors"
+                                                        onClick={(e) => e.stopPropagation()}
+                                                    >
+                                                        <span className="material-symbols-outlined text-[12px]">lightbulb</span>
+                                                        Strategy
+                                                    </Link>
+                                                )}
                                             </div>
                                             <p className="text-sm text-[var(--color-text-muted)]">{campaign.subject}</p>
                                         </div>

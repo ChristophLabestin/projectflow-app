@@ -3,7 +3,12 @@ import { createPortal } from 'react-dom';
 import { storage, auth } from '../../services/firebase';
 import { ref, uploadBytes, getDownloadURL, listAll, deleteObject } from 'firebase/storage';
 import { useConfirm, useToast } from '../../context/UIContext';
+
 import { ImageEditor } from './ImageEditor';
+import { generateAIImage, editAIImage } from '../../services/aiSearchService';
+import { getAIUsage } from '../../services/dataService';
+import { AIUsage } from '../../types';
+import { searchStockImages, getCuratedPhotos, triggerDownload, UnsplashImage } from '../../services/unsplashService';
 
 interface MediaAsset {
     id: string;
@@ -26,20 +31,11 @@ interface MediaLibraryProps {
     userId?: string; // Required if collectionType is 'user'
     existingAssets?: MediaAsset[];
     deferredUpload?: boolean;
+    circularCrop?: boolean;
 }
 
 type TabType = 'upload' | 'gallery' | 'stock' | 'ai';
 
-const STOCK_IMAGES = [
-    { id: 'stock-1', url: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=800', name: 'Business Meeting', thumbnailUrl: 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=300' },
-    { id: 'stock-2', url: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=800', name: 'Analytics Dashboard', thumbnailUrl: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=300' },
-    { id: 'stock-3', url: 'https://images.unsplash.com/photo-1553877522-43269d4ea984?w=800', name: 'Team Collaboration', thumbnailUrl: 'https://images.unsplash.com/photo-1553877522-43269d4ea984?w=300' },
-    { id: 'stock-4', url: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=800', name: 'Modern Office', thumbnailUrl: 'https://images.unsplash.com/photo-1497215728101-856f4ea42174?w=300' },
-    { id: 'stock-5', url: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800', name: 'Creative Team', thumbnailUrl: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=300' },
-    { id: 'stock-6', url: 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=800', name: 'Technology', thumbnailUrl: 'https://images.unsplash.com/photo-1531297484001-80022131f5a1?w=300' },
-    { id: 'stock-7', url: 'https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=800', name: 'Data Visualization', thumbnailUrl: 'https://images.unsplash.com/photo-1504868584819-f8e8b4b6d7e3?w=300' },
-    { id: 'stock-8', url: 'https://images.unsplash.com/photo-1551434678-e076c223a692?w=800', name: 'Startup Office', thumbnailUrl: 'https://images.unsplash.com/photo-1551434678-e076c223a692?w=300' },
-];
 
 export const MediaLibrary: React.FC<MediaLibraryProps> = ({
     isOpen,
@@ -51,6 +47,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
     userId,
     existingAssets = [],
     deferredUpload = false,
+    circularCrop = false,
 }) => {
     const [activeTab, setActiveTab] = useState<TabType>('gallery');
     const [searchQuery, setSearchQuery] = useState('');
@@ -69,6 +66,85 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
     const [isGenerating, setIsGenerating] = useState(false);
     const [generatedImages, setGeneratedImages] = useState<string[]>([]);
     const [selectedStyle, setSelectedStyle] = useState('Photographic');
+    const [aiView, setAiView] = useState<'input' | 'loading' | 'results' | 'picking_reference'>('input');
+    const [aiUsage, setAiUsage] = useState<AIUsage | null>(null);
+    const [aiMode, setAiMode] = useState<'generate' | 'rework'>('generate');
+    const [referenceImage, setReferenceImage] = useState<MediaAsset | null>(null);
+
+    // Stock Image State
+    const [stockImages, setStockImages] = useState<UnsplashImage[]>([]);
+    const [isStockLoading, setIsStockLoading] = useState(false);
+    const [stockError, setStockError] = useState<string | null>(null);
+
+    // Initial Load for Stock Tab
+    useEffect(() => {
+        if (activeTab === 'stock' && stockImages.length === 0) {
+            loadStockImages();
+        }
+    }, [activeTab]);
+
+    const loadStockImages = async (query?: string) => {
+        setIsStockLoading(true);
+        setStockError(null);
+        try {
+            if (query) {
+                const results = await searchStockImages(query);
+                setStockImages(results.results);
+            } else {
+                const results = await getCuratedPhotos();
+                setStockImages(results);
+            }
+        } catch (error: any) {
+            console.error("Failed to load stock images", error);
+            if (error.message?.includes("Missing Unsplash API Key")) {
+                setStockError("Setup Required: Please add VITE_UNSPLASH_ACCESS_KEY to your .env file.");
+            } else {
+                setStockError("Failed to load images. Please try again later.");
+            }
+        } finally {
+            setIsStockLoading(false);
+        }
+    };
+
+    const handleSearchStock = (e: React.FormEvent) => {
+        e.preventDefault();
+        loadStockImages(searchQuery);
+    };
+
+    const handleSaveStockImage = async (image: UnsplashImage) => {
+        setIsUploading(true);
+        try {
+            // Track download as per Unsplash API guidelines
+            await triggerDownload(image.links.download_location);
+
+            // Fetch the image data
+            const response = await fetch(image.urls.regular);
+            const blob = await response.blob();
+            const file = new File([blob], `${image.id}_unsplash.jpg`, { type: 'image/jpeg' });
+
+            // Upload via existing handler
+            await handleFileUpload([file]);
+            showSuccess("Stock image saved to library");
+        } catch (error) {
+            console.error("Failed to save stock image:", error);
+            showError("Failed to save stock image");
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    // Fetch AI Usage
+    useEffect(() => {
+        if (!isOpen) return;
+        const fetchUsage = async () => {
+            const user = auth.currentUser;
+            if (user) {
+                const usage = await getAIUsage(user.uid);
+                setAiUsage(usage);
+            }
+        };
+        fetchUsage();
+    }, [isOpen, generatedImages]); // Refresh when images are generated
 
     // Fetch existing assets from Storage
     useEffect(() => {
@@ -126,7 +202,9 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                         thumbnailUrl: url,
                         name: originalName,
                         projectId: extractedProjectId,
-                        type: 'image',
+                        type: (item.name.toLowerCase().endsWith('.mp4') ||
+                            item.name.toLowerCase().endsWith('.webm') ||
+                            item.name.toLowerCase().endsWith('.mov')) ? 'video' : 'image',
                         source: 'upload',
                         createdAt: new Date()
                     } as MediaAsset;
@@ -334,23 +412,47 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
     const handleGenerateAI = async () => {
         if (!aiPrompt) return;
+        if (aiMode === 'rework' && !referenceImage) {
+            showError("Please select an image to rework.");
+            return;
+        }
         setIsGenerating(true);
+        setAiView('loading');
 
         try {
-            // Simulate AI delay
-            await new Promise(resolve => setTimeout(resolve, 2500));
+            // Enhanced prompt with style
+            const styleSuffix = selectedStyle && selectedStyle !== 'Photographic' ? `, ${selectedStyle} style` : '';
+            const finalPrompt = (aiPrompt + styleSuffix).trim();
 
-            // Mock generative results using placeholder service or similar
-            const mockResults = [
-                `https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=800&q=80&sig=${Math.random()}`,
-                `https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&q=80&sig=${Math.random()}`,
-                `https://images.unsplash.com/photo-1620121692029-d088224efc74?w=800&q=80&sig=${Math.random()}`,
-                `https://images.unsplash.com/photo-1614850523296-d8c1af93d400?w=800&q=80&sig=${Math.random()}`
-            ];
+            let images: string[];
 
-            setGeneratedImages(mockResults);
-        } catch (error) {
+            if (aiMode === 'rework' && referenceImage) {
+                // Edit mode - use the reference image
+                images = await editAIImage(
+                    finalPrompt,
+                    referenceImage.url,
+                    selectedStyle === 'Photographic' ? 'default' : 'style'
+                );
+            } else {
+                // Generate mode - text to image
+                images = await generateAIImage(finalPrompt);
+            }
+
+            setGeneratedImages(images);
+            setAiView('results');
+        } catch (error: any) {
             console.error("AI Generation failed:", error);
+            const msg = error?.message || "Failed to generate images. Please try again.";
+            // User-friendly error for API key issues
+            if (msg.includes("API key")) {
+                showError("Google API Key missing or invalid.");
+            } else if (msg.includes("limit")) {
+                showError("AI usage limit reached.");
+            } else {
+                showError(msg);
+            }
+            // Go back to input on error so they can try again
+            setAiView('input');
         } finally {
             setIsGenerating(false);
         }
@@ -364,8 +466,10 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             const file = new File([blob], `ai_gen_${Date.now()}.jpg`, { type: 'image/jpeg' });
 
             await handleFileUpload([file]);
+            showSuccess("Image saved to library");
         } catch (error) {
             console.error("Failed to save AI image:", error);
+            showError("Failed to save image");
         } finally {
             setIsUploading(false);
         }
@@ -406,10 +510,6 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
         }
     };
 
-    const filteredStockImages = STOCK_IMAGES.filter(img =>
-        img.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
     if (!isOpen) return null;
 
     return createPortal(
@@ -420,7 +520,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                 if (e.target === e.currentTarget) onClose();
             }}
         >
-            <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl w-[900px] max-w-[95vw] h-[700px] max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl w-[1200px] max-w-[95vw] h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                 {/* Header */}
                 <div className="flex items-center justify-between p-5 border-b border-[var(--color-surface-border)]">
                     <div className="flex items-center gap-3">
@@ -465,7 +565,17 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 overflow-hidden">
+                <div className="flex-1 relative overflow-hidden">
+                    {/* Global Uploading Overlay */}
+                    {isUploading && (
+                        <div className="absolute inset-0 z-50 bg-white/60 dark:bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center animate-fade-in">
+                            <div className="size-16 rounded-2xl bg-white dark:bg-zinc-800 shadow-xl flex items-center justify-center mb-4">
+                                <span className="material-symbols-outlined text-4xl text-[var(--color-primary)] animate-spin">progress_activity</span>
+                            </div>
+                            <p className="text-sm font-bold text-[var(--color-text-main)]">Uploading your files...</p>
+                        </div>
+                    )}
+
                     {/* Upload Tab */}
                     {activeTab === 'upload' && (
                         <div className="h-full p-6">
@@ -545,17 +655,34 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                             key={asset.id}
                                             className="group relative aspect-video rounded-xl overflow-hidden border-2 border-transparent hover:border-[var(--color-primary)] transition-all bg-zinc-100 dark:bg-zinc-800"
                                         >
-                                            <img
-                                                src={asset.thumbnailUrl || asset.url}
-                                                alt={asset.name}
-                                                className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                                            />
+                                            {asset.type === 'video' ? (
+                                                <video
+                                                    src={asset.url}
+                                                    className="w-full h-full object-cover"
+                                                    muted
+                                                    playsInline
+                                                    onMouseEnter={e => (e.currentTarget as HTMLVideoElement).play()}
+                                                    onMouseLeave={e => {
+                                                        const v = e.currentTarget as HTMLVideoElement;
+                                                        v.pause();
+                                                        v.currentTime = 0;
+                                                    }}
+                                                />
+                                            ) : (
+                                                <img
+                                                    src={asset.thumbnailUrl || asset.url}
+                                                    alt={asset.name}
+                                                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                                />
+                                            )}
                                             {/* Selection Overlay */}
                                             <div
                                                 className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors cursor-pointer"
                                                 onClick={() => {
-                                                    onSelect(asset);
-                                                    onClose();
+                                                    if (onSelect) {
+                                                        onSelect(asset);
+                                                        onClose();
+                                                    }
                                                 }}
                                             />
 
@@ -593,56 +720,97 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                         </div>
                     )}
 
-                    {/* Nano Banana AI Tab */}
                     {activeTab === 'ai' && (
-                        <div className="h-full flex flex-col p-6 space-y-6 overflow-y-auto">
-                            <div className="flex flex-col items-center text-center max-w-2xl mx-auto space-y-4">
-                                <div className="size-16 rounded-2xl bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center animate-bounce-slow">
-                                    <span className="material-symbols-outlined text-4xl text-amber-500">auto_awesome</span>
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-bold">Nano Banana AI</h3>
-                                    <p className="text-sm text-[var(--color-text-muted)]">Generate custom images using text prompts and presets.</p>
-                                </div>
-                            </div>
-
-                            <div className="max-w-3xl mx-auto w-full space-y-6">
-                                {/* Prompt Input */}
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Describe the image you want</label>
-                                    <div className="relative">
-                                        <textarea
-                                            value={aiPrompt}
-                                            onChange={e => setAiPrompt(e.target.value)}
-                                            placeholder="e.g. A vibrant watercolor of a project management workspace with floating task cards..."
-                                            className="w-full h-32 p-4 rounded-2xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 text-sm resize-none"
-                                        />
-                                        <button
-                                            onClick={handleGenerateAI}
-                                            disabled={!aiPrompt || isGenerating}
-                                            className="absolute bottom-4 right-4 px-6 py-2.5 bg-amber-500 text-white rounded-xl font-bold hover:brightness-110 flex items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50 disabled:shadow-none transition-all"
-                                        >
-                                            {isGenerating ? (
-                                                <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
-                                            ) : (
-                                                <span className="material-symbols-outlined text-[20px]">bolt</span>
-                                            )}
-                                            {isGenerating ? 'Generating...' : 'Generate'}
-                                        </button>
+                        <div className="h-full flex overflow-hidden">
+                            {/* LEFT SIDEBAR - CONTROLS */}
+                            <div className="w-[380px] border-r border-[var(--color-surface-border)] bg-zinc-50 dark:bg-black/20 flex flex-col p-6 overflow-y-auto shrink-0">
+                                {/* Header */}
+                                <div className="flex items-center gap-3 mb-6">
+                                    <div className="size-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/20 shrink-0">
+                                        <span className="material-symbols-outlined text-white text-xl">auto_awesome</span>
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-[var(--color-text-main)] leading-tight">Nano Banana</h3>
+                                        <p className="text-xs text-[var(--color-text-muted)]">Design Studio</p>
                                     </div>
                                 </div>
 
-                                {/* Style Presets */}
-                                <div className="space-y-4">
-                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Style Presets</label>
-                                    <div className="grid grid-cols-4 gap-3">
-                                        {['Photographic', 'Digital Art', 'Minimalist', '3D Render', 'Sketch', 'Abstract', 'Cinematic', 'Pixel Art'].map(style => (
+                                {/* Mode Switcher */}
+                                <div className="p-1 rounded-xl bg-zinc-200 dark:bg-zinc-800 flex text-sm font-medium mb-6">
+                                    <button
+                                        onClick={() => { setAiMode('generate'); setReferenceImage(null); setAiView('input'); }}
+                                        className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-2 ${aiMode === 'generate'
+                                            ? 'bg-white dark:bg-zinc-700 text-[var(--color-text-main)] shadow-sm'
+                                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                                            }`}
+                                    >
+                                        <span className="material-symbols-outlined text-[16px]">add_photo_alternate</span>
+                                        Generate
+                                    </button>
+                                    <button
+                                        onClick={() => { setAiMode('rework'); setAiView('input'); }}
+                                        className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-2 ${aiMode === 'rework'
+                                            ? 'bg-white dark:bg-zinc-700 text-[var(--color-text-main)] shadow-sm'
+                                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                                            }`}
+                                    >
+                                        <span className="material-symbols-outlined text-[16px]">auto_fix_high</span>
+                                        Rework
+                                    </button>
+                                </div>
+
+                                {/* Rework: Reference Image Selector */}
+                                {aiMode === 'rework' && (
+                                    <div className="space-y-2 mb-6 animate-in fade-in slide-in-from-top-2">
+                                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Source Image</label>
+                                        {referenceImage ? (
+                                            <div className="relative group rounded-xl overflow-hidden border border-[var(--color-surface-border)] bg-white dark:bg-zinc-800">
+                                                <div className="aspect-video w-full bg-zinc-100 dark:bg-zinc-700">
+                                                    <img src={referenceImage.thumbnailUrl || referenceImage.url} className="w-full h-full object-cover" />
+                                                </div>
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                    <button onClick={() => setReferenceImage(null)} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur text-white rounded-lg text-xs font-bold transition-colors">
+                                                        Change Image
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div
+                                                onClick={() => setAiView('picking_reference')}
+                                                className={`h-32 border-2 border-dashed rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer p-4 text-center ${aiView === 'picking_reference'
+                                                    ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/10 text-amber-600'
+                                                    : 'border-zinc-300 dark:border-zinc-700 text-zinc-400 hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/5 hover:text-amber-500'
+                                                    }`}
+                                            >
+                                                <span className="material-symbols-outlined mb-2 text-2xl">add_a_photo</span>
+                                                <span className="text-xs font-medium">Select Reference Image</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Prompt Input */}
+                                <div className="space-y-2 mb-6 flex-1">
+                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Prompt</label>
+                                    <textarea
+                                        value={aiPrompt}
+                                        onChange={e => setAiPrompt(e.target.value)}
+                                        placeholder={aiMode === 'rework' ? "Describe how to transform the image..." : "Describe the image you want to see..."}
+                                        className="w-full h-32 p-3 rounded-xl bg-white dark:bg-zinc-800 border border-[var(--color-surface-border)] focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none text-sm resize-none transition-all placeholder:text-zinc-400"
+                                    />
+                                </div>
+
+                                {/* Style Selector */}
+                                <div className="space-y-2 mb-6">
+                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Style</label>
+                                    <div className="grid grid-cols-2 gap-2">
+                                        {['Photographic', 'Digital Art', 'Cinematic', '3D Render', 'Sketch', 'Abstract'].map(style => (
                                             <button
                                                 key={style}
                                                 onClick={() => setSelectedStyle(style)}
-                                                className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all ${selectedStyle === style
-                                                    ? 'bg-amber-500/10 border-amber-500 text-amber-600'
-                                                    : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-amber-500/30'
+                                                className={`px-3 py-2 rounded-lg text-xs font-medium border text-center transition-all truncate ${selectedStyle === style
+                                                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/50'
+                                                    : 'bg-white dark:bg-zinc-800 border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:bg-zinc-50 dark:hover:bg-zinc-700'
                                                     }`}
                                             >
                                                 {style}
@@ -651,41 +819,237 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                     </div>
                                 </div>
 
-                                {/* Results */}
-                                {generatedImages.length > 0 && (
-                                    <div className="pt-6 border-t border-[var(--color-surface-border)] space-y-4">
-                                        <div className="flex justify-between items-center">
-                                            <h4 className="font-bold">Generated Results</h4>
-                                            <button
-                                                onClick={() => setGeneratedImages([])}
-                                                className="text-xs text-zinc-400 hover:text-zinc-600"
-                                            >
-                                                Clear All
+                                {/* Generate Button */}
+                                <div className="mt-auto space-y-3">
+                                    {aiUsage && (
+                                        <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] px-1">
+                                            <span>Monthly Quota</span>
+                                            <span className="font-medium text-[var(--color-text-main)]">{Math.max(0, (aiUsage.imageLimit || 50) - (aiUsage.imagesUsed || 0))} remaining</span>
+                                        </div>
+                                    )}
+                                    <button
+                                        onClick={handleGenerateAI}
+                                        disabled={!aiPrompt || (aiMode === 'rework' && !referenceImage) || isGenerating}
+                                        className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl font-bold hover:brightness-110 shadow-lg shadow-amber-500/20 disabled:opacity-50 disabled:shadow-none transition-all flex items-center justify-center gap-2"
+                                    >
+                                        {isGenerating ? (
+                                            <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+                                        ) : (
+                                            <span className="material-symbols-outlined text-[20px]">{aiMode === 'rework' ? 'auto_fix_high' : 'bolt'}</span>
+                                        )}
+                                        {isGenerating ? 'Designing...' : (aiMode === 'rework' ? 'Rework Image' : 'Generate')}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* RIGHT CANVAS - PREVIEW & RESULTS */}
+                            <div className="flex-1 bg-white/50 dark:bg-black/40 relative flex flex-col overflow-hidden">
+                                {/* Dot Pattern Background */}
+                                <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
+
+                                {/* Loading State */}
+                                {aiView === 'loading' && (
+                                    <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-white/80 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-500">
+                                        <div className="relative mx-auto size-24 mb-6">
+                                            <div className="absolute inset-0 rounded-full border-4 border-amber-100 dark:border-amber-900/30"></div>
+                                            <div className="absolute inset-0 rounded-full border-4 border-amber-500 border-t-transparent animate-spin"></div>
+                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                <span className="material-symbols-outlined text-4xl text-amber-500 animate-pulse">auto_awesome</span>
+                                            </div>
+                                        </div>
+                                        <h3 className="text-xl font-bold text-[var(--color-text-main)] animate-pulse">Creating your masterpiece...</h3>
+                                        <p className="text-sm text-[var(--color-text-muted)] mt-2">This usually takes about 10-15 seconds</p>
+                                    </div>
+                                )}
+
+                                {/* Default / Empty State */}
+                                {aiView === 'input' && (
+                                    <div className="h-full flex flex-col items-center justify-center text-center p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                                        <div className="size-24 rounded-3xl bg-amber-50 dark:bg-amber-900/10 flex items-center justify-center mb-6 shadow-sm rotate-3">
+                                            <span className="material-symbols-outlined text-6xl text-amber-500/80">auto_awesome</span>
+                                        </div>
+                                        <h2 className="text-2xl font-bold text-[var(--color-text-main)] mb-3">Ready to Create</h2>
+                                        <p className="text-[var(--color-text-muted)] max-w-sm leading-relaxed">
+                                            {aiMode === 'generate'
+                                                ? 'Describe your vision in the prompt box to generate high-quality unique assets.'
+                                                : 'Select an image and describe how you want to transform it.'}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Picking Reference State */}
+                                {aiView === 'picking_reference' && (
+                                    <div className="absolute inset-0 z-20 bg-[var(--color-surface-card)] flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
+                                        <div className="p-4 border-b border-[var(--color-surface-border)] flex items-center justify-between bg-white dark:bg-zinc-900/50">
+                                            <h3 className="font-bold text-[var(--color-text-main)]">Select Reference Image</h3>
+                                            <button onClick={() => setAiView('input')} className="text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] px-3 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                                                Cancel
                                             </button>
                                         </div>
-                                        <div className="grid grid-cols-2 gap-4">
-                                            {generatedImages.map((url, i) => (
-                                                <div key={i} className="group relative aspect-video rounded-2xl overflow-hidden border border-[var(--color-surface-border)] shadow-sm">
-                                                    <img src={url} alt="Generated" className="w-full h-full object-cover" />
-                                                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
-                                                        <button
-                                                            onClick={() => handleSaveAIImage(url)}
-                                                            className="px-4 py-2 bg-white text-black rounded-lg text-xs font-bold hover:scale-105 transition-transform flex items-center gap-1.5"
-                                                        >
-                                                            <span className="material-symbols-outlined text-[18px]">add</span>
-                                                            Save to Gallery
-                                                        </button>
-                                                        <button
-                                                            onClick={() => { onSelect({ id: `ai-${Date.now()}`, url, name: 'AI Image', type: 'image', source: 'upload' }); onClose(); }}
-                                                            className="px-4 py-2 bg-amber-500 text-white rounded-lg text-xs font-bold hover:scale-105 transition-transform flex items-center gap-1.5"
-                                                        >
-                                                            <span className="material-symbols-outlined text-[18px]">check</span>
-                                                            Use Now
-                                                        </button>
+                                        <div className="flex-1 overflow-y-auto p-4">
+                                            <div className="grid grid-cols-4 gap-4">
+                                                {allAssets.filter(a => a.type === 'image').map(asset => (
+                                                    <div
+                                                        key={asset.id}
+                                                        onClick={() => { setReferenceImage(asset); setAiView('input'); }}
+                                                        className="group relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 border-transparent hover:border-amber-500 transition-all shadow-sm"
+                                                    >
+                                                        <img src={asset.thumbnailUrl || asset.url} className="w-full h-full object-cover" />
+                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                                                     </div>
-                                                </div>
-                                            ))}
+                                                ))}
+                                                {allAssets.filter(a => a.type === 'image').length === 0 && (
+                                                    <div className="col-span-4 text-center py-12 text-[var(--color-text-muted)]">
+                                                        No images found. Switch to the Gallery tab to upload some.
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
+                                    </div>
+                                )}
+
+                                {/* Results State */}
+                                {aiView === 'results' && (
+                                    <div className="h-full flex flex-col">
+                                        <div className="p-4 border-b border-[var(--color-surface-border)] flex items-center justify-between bg-white/50 dark:bg-black/20 backdrop-blur-sm z-10">
+                                            <div className="flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-amber-500">check_circle</span>
+                                                <span className="font-bold text-[var(--color-text-main)]">Generation Complete</span>
+                                            </div>
+                                            <button
+                                                onClick={() => setAiView('input')}
+                                                className="px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors flex items-center gap-1"
+                                            >
+                                                Back to Edit
+                                            </button>
+                                        </div>
+                                        <div className="flex-1 overflow-y-auto p-8 flex items-center justify-center">
+                                            <div className="grid grid-cols-2 gap-8 w-full max-w-4xl">
+                                                {generatedImages.map((url, i) => (
+                                                    <div key={i} className="group relative aspect-square rounded-2xl overflow-hidden shadow-2xl bg-zinc-900 ring-4 ring-white dark:ring-zinc-800 animate-in zoom-in-95 duration-500" style={{ animationDelay: `${i * 100}ms` }}>
+                                                        <img src={url} alt="Generated" className="w-full h-full object-cover" />
+                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-6">
+                                                            <div className="flex gap-3">
+                                                                <button
+                                                                    onClick={() => handleSaveAIImage(url)}
+                                                                    className="flex-1 py-3 bg-white text-black font-bold rounded-xl hover:bg-zinc-200 transition-colors shadow-lg flex items-center justify-center gap-2"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-[20px]">save_alt</span>
+                                                                    Save
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => window.open(url, '_blank')}
+                                                                    className="size-12 rounded-xl bg-white/20 backdrop-blur text-white hover:bg-white/30 flex items-center justify-center transition-colors"
+                                                                    title="Open Fullscreen"
+                                                                >
+                                                                    <span className="material-symbols-outlined">open_in_new</span>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+
+                    {/* Stock Tab */}
+                    {activeTab === 'stock' && (
+                        <div className="h-full flex flex-col p-6">
+                            {/* Search Bar */}
+                            <form onSubmit={handleSearchStock} className="flex gap-3 mb-6">
+                                <div className="relative flex-1">
+                                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">search</span>
+                                    <input
+                                        type="text"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        placeholder="Search high-resolution photos from Unsplash..."
+                                        className="w-full pl-10 pr-4 py-3 bg-zinc-100 dark:bg-zinc-800 border-none rounded-xl focus:ring-2 focus:ring-[var(--color-primary)] outline-none transition-all placeholder:text-zinc-500"
+                                    />
+                                </div>
+                                <button
+                                    type="submit"
+                                    disabled={isStockLoading}
+                                    className="px-6 py-3 bg-[var(--color-primary)] text-white font-bold rounded-xl hover:brightness-110 shadow-lg shadow-[var(--color-primary)]/20 transition-all flex items-center gap-2"
+                                >
+                                    {isStockLoading ? (
+                                        <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                                    ) : (
+                                        <span className="material-symbols-outlined">search</span>
+                                    )}
+                                    Search
+                                </button>
+                            </form>
+
+                            {/* Content Area */}
+                            <div className="flex-1 overflow-y-auto min-h-0">
+                                {isStockLoading ? (
+                                    <div className="h-full flex flex-col items-center justify-center">
+                                        <span className="material-symbols-outlined text-4xl text-[var(--color-primary)] animate-spin">progress_activity</span>
+                                        <p className="text-sm text-[var(--color-text-muted)] mt-2">Connecting to Unsplash...</p>
+                                    </div>
+                                ) : stockError ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-center p-8">
+                                        <div className="size-16 rounded-2xl bg-red-50 dark:bg-red-900/10 flex items-center justify-center mb-4">
+                                            <span className="material-symbols-outlined text-3xl text-red-500">error</span>
+                                        </div>
+                                        <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-1">Could not load images</h3>
+                                        <p className="text-sm text-[var(--color-text-muted)] max-w-md">{stockError}</p>
+                                        <button
+                                            onClick={() => loadStockImages(searchQuery)}
+                                            className="mt-4 px-4 py-2 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 rounded-lg transition-colors"
+                                        >
+                                            Try Again
+                                        </button>
+                                    </div>
+                                ) : stockImages.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center text-center">
+                                        <span className="material-symbols-outlined text-4xl text-zinc-300 mb-2">image_search</span>
+                                        <p className="text-[var(--color-text-muted)]">No images found for "{searchQuery}"</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-4 gap-4 pb-4">
+                                        {stockImages.map(image => (
+                                            <div key={image.id} className="group relative aspect-video rounded-xl overflow-hidden bg-zinc-200 dark:bg-zinc-800 shadow-sm border border-transparent hover:border-[var(--color-primary)] transition-all">
+                                                <img
+                                                    src={image.urls.small}
+                                                    alt={image.alt_description || "Stock Image"}
+                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                                />
+
+                                                {/* Author Credit */}
+                                                <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <p className="text-[10px] text-white truncate">
+                                                        by <span className="font-bold">{image.user.name}</span> on Unsplash
+                                                    </p>
+                                                </div>
+
+                                                {/* Action Overlay */}
+                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center backdrop-blur-[1px]">
+                                                    <button
+                                                        onClick={() => handleSaveStockImage(image)}
+                                                        className="px-4 py-2 bg-white text-black rounded-lg text-xs font-bold shadow-lg hover:scale-105 transition-transform flex items-center gap-2"
+                                                    >
+                                                        <span className="material-symbols-outlined text-[16px]">save_alt</span>
+                                                        Save to Library
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Unsplash Attribution */}
+                                {!stockError && !isStockLoading && stockImages.length > 0 && (
+                                    <div className="py-4 text-center">
+                                        <a href="https://unsplash.com/?utm_source=projectflow&utm_medium=referral" target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors">
+                                            Photos provided by Unsplash
+                                        </a>
                                     </div>
                                 )}
                             </div>
@@ -701,9 +1065,10 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                     onSave={handleSaveEditedImage}
                     onSaveReplace={handleSaveReplace}
                     onCancel={() => setEditingImage(null)}
+                    circularCrop={circularCrop}
                 />
             )}
-        </div>,
+        </div >,
         document.body
     );
 };

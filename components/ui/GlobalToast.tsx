@@ -43,7 +43,7 @@ export const GlobalToast = () => {
     return (
         <>
             <div className={`
-                 fixed bottom-8 left-1/2 transform -translate-x-1/2 z-[100]
+                 fixed bottom-8 left-1/2 transform -translate-x-1/2 z-[2147483647]
                  flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl
                  text-white font-medium max-w-xl w-full
                  transition-all duration-300 ease-out

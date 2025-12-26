@@ -137,3 +137,6 @@ dist
 
 # Local-only screens
 components/ReleaseToDosModal.tsx
+
+# Vertex AI credentials (sensitive - do not commit!)
+vertex-ai-credentials.json

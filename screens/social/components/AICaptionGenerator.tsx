@@ -4,37 +4,34 @@ import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
+import { generateSocialCaption } from '../../../services/geminiService';
 
 interface AICaptionGeneratorProps {
     isOpen: boolean;
     onClose: () => void;
     onGenerate: (caption: string) => void;
+    platform?: string;
 }
 
-const TONES = ['Professional', 'Casual', 'Funny', 'Urgent', 'Inspirational'];
+const TONES = ['Professional', 'Casual', 'Funny', 'Urgent', 'Inspirational', 'Educational'];
 
-export const AICaptionGenerator: React.FC<AICaptionGeneratorProps> = ({ isOpen, onClose, onGenerate }) => {
+export const AICaptionGenerator: React.FC<AICaptionGeneratorProps> = ({ isOpen, onClose, onGenerate, platform = 'Instagram' }) => {
     const [topic, setTopic] = useState('');
     const [tone, setTone] = useState('Professional');
     const [loading, setLoading] = useState(false);
 
     const generate = async () => {
         setLoading(true);
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        const templates = [
-            `🚀 Excited to share our latest update on ${topic}! We've been working hard to bring this to you. #updates #news`,
-            `💡 Did you know? ${topic} is changing the game. Learn more at the link in bio!`,
-            `✨ ${topic} vibes only today. What are your thoughts? 👇`,
-            `🔥 Don't miss out on ${topic}. Limited time only!`,
-            `Here's why ${topic} matters more than ever... 🧵`
-        ];
-
-        const randomCaption = templates[Math.floor(Math.random() * templates.length)];
-        onGenerate(randomCaption);
-        setLoading(false);
-        onClose();
+        try {
+            const caption = await generateSocialCaption(topic, tone, platform);
+            onGenerate(caption);
+            onClose();
+        } catch (error) {
+            console.error("Failed to generate caption", error);
+            // Fallback or error state could be handled here
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (

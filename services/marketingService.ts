@@ -2,6 +2,7 @@ import {
     MarketingCampaign,
     AdCampaign,
     EmailCampaign,
+    SocialCampaign,
     MarketingAudience,
     MarketingFunnelMetric,
     EmailTemplate
@@ -20,6 +21,8 @@ import {
     orderBy,
     getDoc
 } from 'firebase/firestore';
+import { createSocialPost, createSocialCampaign } from './dataService';
+import { SocialPost } from '../types';
 
 // --- Marketing Campaigns ---
 
@@ -31,6 +34,7 @@ export const createMarketingCampaign = async (campaign: Omit<MarketingCampaign, 
     });
     return docRef.id;
 };
+
 
 export const subscribeMarketingCampaigns = (projectId: string, onUpdate: (data: MarketingCampaign[]) => void) => {
     const q = query(
@@ -144,6 +148,147 @@ export const subscribeAudiences = (projectId: string, onUpdate: (data: Marketing
 };
 
 // --- Analytics ---
+
+// --- Idea Conversion Utilities ---
+
+export const createEmailCampaignFromIdea = async (
+    projectId: string,
+    idea: { id: string; concept?: string; title: string },
+    user: { uid: string; displayName: string }
+) => {
+    let conceptData: any = {};
+    try {
+        if (idea.concept && idea.concept.startsWith('{')) {
+            conceptData = JSON.parse(idea.concept);
+        }
+    } catch (e) {
+        console.warn("Failed to parse idea concept for conversion", e);
+    }
+
+    const campaignData: Omit<EmailCampaign, 'id'> = {
+        projectId,
+
+        name: idea.title,
+        subject: conceptData.emailSubjectLines?.[0] || 'Draft Subject', // Take first variant
+        senderName: conceptData.emailSenderName || user.displayName,
+        status: 'draft',
+        contentBlocks: [], // Empty initially
+        variableValues: {},
+        stats: {
+            sent: 0,
+            opened: 0,
+            clicked: 0,
+            bounced: 0,
+            unsubscribed: 0
+        },
+        originIdeaId: idea.id
+    };
+
+    return await createEmailCampaign(campaignData);
+};
+
+export const createAdCampaignFromIdea = async (
+    projectId: string,
+    idea: { id: string; concept?: string; title: string }
+) => {
+    let conceptData: any = {};
+    try {
+        if (idea.concept && idea.concept.startsWith('{')) {
+            conceptData = JSON.parse(idea.concept);
+        }
+    } catch (e) {
+        console.warn("Failed to parse idea concept for conversion", e);
+    }
+
+    const campaignData: Omit<AdCampaign, 'id'> = {
+        projectId,
+        name: conceptData.adPlatform ? `${idea.title} - ${conceptData.adPlatform}` : idea.title,
+        platform: (conceptData.adPlatform?.split(' ')[0] as any) || 'Google',
+        status: 'Paused', // Default to paused
+        budgetDaily: Number(conceptData.dailyBudget) || 0,
+        budgetTotal: 0,
+        spend: 0,
+        objective: 'Traffic', // Default
+        metrics: {
+            impressions: 0,
+            clicks: 0,
+            ctr: 0,
+            cpc: 0,
+            conversions: 0,
+            costPerConversion: 0,
+            roas: 0
+        },
+        startDate: conceptData.timelineStart || new Date().toISOString(),
+        endDate: conceptData.timelineEnd,
+        originIdeaId: idea.id
+    };
+
+    return await createAdCampaign(campaignData);
+};
+
+export const createSocialPostFromIdea = async (
+    projectId: string,
+    idea: { id: string; concept?: string; title: string }
+) => {
+    let conceptData: any = {};
+    try {
+        if (idea.concept && idea.concept.startsWith('{')) {
+            conceptData = JSON.parse(idea.concept);
+        }
+    } catch (e) {
+        console.warn("Failed to parse idea concept for conversion", e);
+    }
+
+    // Map fields from SocialDraftingView/SocialIdeationView
+    // Typically: content, hashtags in conceptData
+    const postData: any = {
+        projectId,
+        platform: conceptData.platform || 'Instagram',
+        format: conceptData.postFormat || 'Image',
+        content: {
+            caption: conceptData.postCaption || idea.title + '\n\n' + (idea.concept?.slice(0, 100) || ''),
+            hashtags: conceptData.hashtags || [],
+            originIdeaId: idea.id
+        },
+        assets: [], // Would need asset mapping if we had file uploads in idea
+        status: 'Draft',
+        originIdeaId: idea.id
+    };
+
+    return await createSocialPost(projectId, postData);
+};
+
+export const createSocialCampaignFromIdea = async (
+    projectId: string,
+    idea: { id: string; concept?: string; title: string },
+    user: { uid: string }
+) => {
+    let conceptData: any = {};
+    try {
+        if (idea.concept && idea.concept.startsWith('{')) {
+            conceptData = JSON.parse(idea.concept);
+        }
+    } catch (e) {
+        console.warn("Failed to parse idea concept for conversion", e);
+    }
+
+    const campaignData: Omit<SocialCampaign, 'id' | 'createdAt' | 'updatedAt'> = {
+        projectId,
+        name: idea.title,
+        goal: conceptData.goal || 'Engagement',
+        startDate: conceptData.timelineStart || new Date().toISOString(),
+        endDate: conceptData.timelineEnd,
+        status: 'Planning',
+        ownerId: user.uid,
+        color: '#E1306C', // Default generic color
+        originIdeaId: idea.id,
+        // targetAudience and toneOfVoice are mapped if available
+        targetAudience: conceptData.targetAudience,
+        toneOfVoice: conceptData.tone
+    };
+
+    return await createSocialCampaign(projectId, campaignData);
+};
 
 // --- Analytics ---
 

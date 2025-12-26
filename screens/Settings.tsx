@@ -6,12 +6,12 @@ import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Textarea } from '../components/ui/Textarea';
 import { useToast, useConfirm } from '../context/UIContext';
-import { getActiveTenantId, getTenant, updateTenant, getAIUsage, getUserProfile, updateUserData, linkWithGithub, getTenantSecret, updateTenantSecret, createAPIToken, getAPITokens, deleteAPIToken } from '../services/dataService';
+import { getActiveTenantId, getTenant, updateTenant, getAIUsage, getTenantSecret, updateTenantSecret, createAPIToken, getAPITokens, deleteAPIToken } from '../services/dataService';
 import { auth, functions } from '../services/firebase';
 import { httpsCallable } from 'firebase/functions';
-import { Tenant, AIUsage, SMTPConfig, APITokenPermission } from '../types';
+import { Tenant, AIUsage, APITokenPermission } from '../types';
 
-type SettingsTab = 'general' | 'members' | 'integrations' | 'billing' | 'security' | 'email' | 'api';
+type SettingsTab = 'general' | 'members' | 'billing' | 'security' | 'email' | 'api';
 
 export const Settings = () => {
     const [activeTab, setActiveTab] = useState<SettingsTab>('general');
@@ -36,11 +36,6 @@ export const Settings = () => {
     const [smtpPass, setSmtpPass] = useState('');
     const [useCustomSmtp, setUseCustomSmtp] = useState(false);
     const [smtpFromEmail, setSmtpFromEmail] = useState('');
-
-    // Integration State
-    const [githubLinked, setGithubLinked] = useState(false);
-    const [githubToken, setGithubToken] = useState('');
-    const [savingIntegration, setSavingIntegration] = useState(false);
 
     // Test Connection State
     const [testingConnection, setTestingConnection] = useState(false);
@@ -186,13 +181,7 @@ export const Settings = () => {
             if (user) {
                 const usage = await getAIUsage(user.uid);
                 setAiUsage(usage);
-
-                // Load User GitHub Token
-                const profile = await getUserProfile(user.uid);
-                if (profile?.githubToken) {
-                    setGithubLinked(true);
-                    setGithubToken(profile.githubToken);
-                }
+                // GitHub token logic removed - moved to Profile Settings
             }
         };
 
@@ -297,23 +286,6 @@ export const Settings = () => {
             setSaving(false);
         }
     };
-    const handleSaveIntegration = async () => {
-        const user = auth.currentUser;
-        if (!user) return;
-        setSavingIntegration(true);
-        try {
-            const token = await linkWithGithub();
-            await updateUserData(user.uid, { githubToken: token });
-            setGithubToken(token);
-            setGithubLinked(true);
-            showSuccess("GitHub account linked successfully!");
-        } catch (error: any) {
-            console.error("Failed to link GitHub", error);
-            showError(error.message || "Failed to link GitHub account.");
-        } finally {
-            setSavingIntegration(false);
-        }
-    };
 
     if (loading) {
         return <div className="h-full flex items-center justify-center text-[var(--color-text-muted)]">Loading settings...</div>;
@@ -364,74 +336,6 @@ export const Settings = () => {
                         </Card>
                     </div>
                 );
-            case 'integrations':
-                return (
-                    <div className="space-y-6 animate-fade-in">
-                        <div>
-                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">Integrations</h2>
-                            <p className="text-[var(--color-text-muted)] text-sm">Connect your personal account with third-party tools.</p>
-                        </div>
-                        <div className="grid grid-cols-1 gap-4">
-                            <Card className="p-6">
-                                <div className="flex items-center justify-between mb-6">
-                                    <div className="flex items-center gap-4">
-                                        <div className="size-12 bg-zinc-900 rounded-xl flex items-center justify-center text-white">
-                                            <span className="material-symbols-outlined text-2xl">terminal</span>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">GitHub</h3>
-                                            <p className="text-sm text-[var(--color-text-muted)]">Link your account to browse and connect repositories.</p>
-                                        </div>
-                                    </div>
-                                    <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${githubLinked ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400' : 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800'}`}>
-                                        {githubLinked ? 'Connected' : 'Not Connected'}
-                                    </div>
-                                </div>
-
-                                <div className="space-y-4 pt-4 border-t border-[var(--color-surface-border)]">
-                                    <div className="flex gap-3">
-                                        {!githubLinked ? (
-                                            <Button onClick={handleSaveIntegration} loading={savingIntegration}>
-                                                Connect GitHub
-                                            </Button>
-                                        ) : (
-                                            <>
-                                                <Button variant="secondary" onClick={handleSaveIntegration} loading={savingIntegration}>
-                                                    Reconnect Account
-                                                </Button>
-                                                <Button variant="ghost" onClick={async () => {
-                                                    setGithubToken('');
-                                                    setGithubLinked(false);
-                                                    await updateUserData(auth.currentUser!.uid, { githubToken: '' });
-                                                }}>
-                                                    Disconnect
-                                                </Button>
-                                            </>
-                                        )}
-                                    </div>
-                                    <p className="text-[10px] text-[var(--color-text-muted)]">
-                                        We use this connection to list your repositories and create issues on your behalf.
-                                    </p>
-                                </div>
-                            </Card>
-
-                            {/* Other Placeholder Integrations */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 opacity-50">
-                                {['Slack', 'Notion', 'Google Drive', 'Figma', 'Linear'].map(app => (
-                                    <Card key={app} className="p-4 flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="size-10 bg-[var(--color-surface-hover)] rounded-lg flex items-center justify-center font-bold text-[var(--color-text-muted)]">
-                                                {app[0]}
-                                            </div>
-                                            <span className="font-semibold text-[var(--color-text-main)]">{app}</span>
-                                        </div>
-                                        <Button variant="secondary" size="sm" disabled>Connect</Button>
-                                    </Card>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                );
             case 'billing':
                 return (
                     <div className="space-y-6 animate-fade-in">
@@ -464,8 +368,29 @@ export const Settings = () => {
                                             style={{ width: `${Math.min(100, (aiUsage.tokensUsed / aiUsage.tokenLimit) * 100)}%` }}
                                         />
                                     </div>
-                                    <p className="text-[10px] text-[var(--color-text-muted)] mt-2 italic">
+                                    <p className="text-[10px] text-[var(--color-text-muted)] mt-2 italic mb-4">
                                         Token usage resets at the beginning of each calendar month.
+                                    </p>
+
+                                    {/* Image Usage */}
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2 font-semibold text-sm">
+                                            <span className="material-symbols-outlined text-[18px] text-amber-500">image</span>
+                                            Image Generations
+                                        </div>
+                                        <span className="text-xs font-mono font-bold">
+                                            {/* Default to 0/50 if undefined */}
+                                            {aiUsage.imagesUsed || 0} / {aiUsage.imageLimit || 50}
+                                        </span>
+                                    </div>
+                                    <div className="w-full h-3 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden border border-[var(--color-surface-border)]">
+                                        <div
+                                            className={`h-full rounded-full transition-all duration-500 ${((aiUsage.imagesUsed || 0) / (aiUsage.imageLimit || 50)) > 0.9 ? 'bg-rose-500' : 'bg-amber-500'}`}
+                                            style={{ width: `${Math.min(100, ((aiUsage.imagesUsed || 0) / (aiUsage.imageLimit || 50)) * 100)}%` }}
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-[var(--color-text-muted)] mt-2 italic">
+                                        Image generation limit resets monthly.
                                     </p>
                                 </div>
                             )}
@@ -714,7 +639,6 @@ export const Settings = () => {
                     <h1 className="text-2xl font-display font-bold text-[var(--color-text-main)] px-2 mb-6">Settings</h1>
                     <NavItem id="general" label="General" icon="settings" />
                     <NavItem id="members" label="Members" icon="group" />
-                    <NavItem id="integrations" label="Integrations" icon="extension" />
                     <NavItem id="billing" label="Billing" icon="credit_card" />
                     <NavItem id="email" label="Email" icon="mail" />
                     <NavItem id="api" label="API" icon="key" />

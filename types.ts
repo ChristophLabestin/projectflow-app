@@ -4,17 +4,20 @@ export interface Tenant {
     description?: string;
     website?: string;
     contactEmail?: string;
-    contactEmail?: string;
     smtpConfig?: SMTPConfig;
     members?: Member[];
     createdAt?: any;
     updatedAt?: any;
+    originIdeaId?: string;
 }
 
 export interface AIUsage {
     tokensUsed: number;
     tokenLimit: number;
+    imagesUsed: number;
+    imageLimit: number;
     lastReset: any; // Firestore Timestamp
+    originIdeaId?: string;
 }
 
 // Permission System Types
@@ -26,6 +29,7 @@ export interface ProjectMember {
     role: ProjectRole;
     joinedAt: any; // Firestore Timestamp
     invitedBy: string; // User ID of inviter
+    originIdeaId?: string;
 }
 
 export interface RoleCapabilities {
@@ -37,6 +41,7 @@ export interface RoleCapabilities {
     canManageIssues: boolean; // Create/edit/delete issues
     canComment: boolean; // Add comments
     canView: boolean; // View project
+    originIdeaId?: string;
 }
 
 export interface WorkspacePermissions {
@@ -46,6 +51,7 @@ export interface WorkspacePermissions {
     canCreateProjects: boolean;
     canDeleteProjects: boolean;
     canViewAllProjects: boolean; // View private projects? Or just existence?
+    originIdeaId?: string;
 }
 
 export interface WorkspaceGroup {
@@ -56,6 +62,19 @@ export interface WorkspaceGroup {
     memberIds: string[];
     color?: string;
     createdAt?: any;
+    originIdeaId?: string;
+}
+
+export interface ProjectGroup {
+    id: string;
+    projectId: string;
+    name: string;
+    description?: string;
+    memberIds: string[];
+    color?: string;
+    createdAt?: any;
+    updatedAt?: any;
+    originIdeaId?: string;
 }
 
 export interface ProjectInviteLink {
@@ -68,6 +87,7 @@ export interface ProjectInviteLink {
     maxUses?: number; // Max number of times link can be used (undefined = unlimited)
     uses: number; // Current number of uses
     isActive: boolean; // Can be disabled manually
+    originIdeaId?: string;
 }
 
 export interface Project {
@@ -85,8 +105,8 @@ export interface Project {
     priority?: string;
     isPrivate?: boolean;
     modules?: ProjectModule[];
-    links?: { title: string; url: string; }[]; // Links shown in Overview
-    externalResources?: { title: string; url: string; icon?: string }[]; // Links shown in Sidebar
+    links?: { title: string; url: string; originIdeaId?: string; }[]; // Links shown in Overview
+    externalResources?: { title: string; url: string; icon?: string; originIdeaId?: string; }[]; // Links shown in Sidebar
     members?: ProjectMember[]; // Team members with roles (replaces string[])
     memberIds?: string[]; // IDs of all members for collectionGroup queries
     createdAt?: any; // Firestore Timestamp
@@ -96,6 +116,7 @@ export interface Project {
     githubToken?: string; // Personal Access Token
     githubIssueSync?: boolean; // Toggle for issue sync
     isPersonal?: boolean; // Hidden personal project
+    originIdeaId?: string;
 }
 
 export interface Member {
@@ -109,11 +130,25 @@ export interface Member {
     aiUsage?: AIUsage;
     githubToken?: string;
     pinnedProjectId?: string;
+    privacySettings?: PrivacySettings;
+    originIdeaId?: string;
+}
+
+export type PrivacyScope = 'public' | 'members' | 'guests' | 'private';
+
+export interface PrivacySettings {
+    email: PrivacyScope;
+    bio: PrivacyScope;
+    skills: PrivacyScope;
+    address: PrivacyScope;
+    stats: PrivacyScope;
+    originIdeaId?: string;
 }
 
 export interface ProjectNavPrefs {
     order: string[]; // Nav item IDs in order
     hidden: string[]; // Nav item IDs that are hidden
+    originIdeaId?: string;
 }
 
 export interface Comment {
@@ -126,6 +161,7 @@ export interface Comment {
     userPhotoURL?: string;
     content: string;
     createdAt: any;
+    originIdeaId?: string;
 }
 
 export type ProjectModule = 'tasks' | 'ideas' | 'mindmap' | 'activity' | 'issues' | 'milestones' | 'social' | 'marketing';
@@ -137,10 +173,12 @@ export interface Task {
     title: string;
     isCompleted: boolean;
     dueDate?: string;
+    startDate?: string;
     priority?: 'Low' | 'Medium' | 'High' | 'Urgent';
     assignee?: string; // Legacy: Display Name or URL
     assigneeId?: string; // User UID
     assigneeIds?: string[]; // New: Multiple User UIDs
+    assignedGroupIds?: string[]; // New: Assigned Groups
     description?: string;
     category?: IdeaGroup | IdeaGroup[];
     status?: TaskStatus;
@@ -148,6 +186,11 @@ export interface Task {
     createdAt?: any;
     tenantId?: string; // For path resolution
     linkedIssueId?: string; // Linked issue (if converted from an issue)
+    convertedIdeaId?: string; // Linked idea (if converted from an idea)
+    createdBy?: string;
+    completedBy?: string; // User UID
+    completedAt?: any; // Firestore Timestamp
+    originIdeaId?: string;
 }
 
 export interface SubTask {
@@ -159,6 +202,9 @@ export interface SubTask {
     isCompleted: boolean;
     assigneeId?: string;
     createdAt?: any;
+    completedBy?: string;
+    completedAt?: any;
+    originIdeaId?: string;
 }
 
 export interface PersonalTask {
@@ -174,7 +220,22 @@ export interface PersonalTask {
     scheduledDate?: string;
     createdAt?: any;
     tenantId?: string;
+    completedAt?: any;
+    originIdeaId?: string;
 }
+
+export type IdeaStage =
+    // Generic / Feature
+    | 'Brainstorm' | 'Refining' | 'Concept' | 'Review' | 'Approved'
+    // Marketing
+    | 'Ideation' | 'Content' | 'Scheduled' | 'Live'
+    // Moonshot
+    | 'Feasibility' | 'Prototype' | 'Greenlight'
+    // Optimization
+    | 'Analysis' | 'Proposal' | 'Benchmark' | 'Implementation'
+    // Product
+    | 'Strategy' | 'Discovery' | 'Definition' | 'Development' | 'Launch'
+    | string; // Keep string fallback for safety
 
 export interface Idea {
     id: string;
@@ -183,10 +244,15 @@ export interface Idea {
     title: string;
     description: string;
     type: IdeaGroup;
+    stage: IdeaStage;
     mindmapId?: string;
     parentIdeaId?: string;
     votes: number;
+    likedBy?: string[]; // User IDs
+    dislikedBy?: string[]; // User IDs
     comments: number;
+    impact?: 'Low' | 'Medium' | 'High';
+    effort?: 'Low' | 'Medium' | 'High';
     generated?: boolean;
     tenantId?: string; // Optional: ID of the tenant where this project lives
     convertedTaskId?: string;
@@ -194,6 +260,37 @@ export interface Idea {
     createdAt?: any;
     posX?: number;
     posY?: number;
+    concept?: string; // Markdown content for the full concept
+    aiSessionId?: string; // For persistent chat sessions
+    approvedBy?: string;
+    approvedAt?: any;
+    analysis?: {
+        strengths: string[];
+        weaknesses: string[];
+        opportunities: string[];
+        threats: string[];
+        originIdeaId?: string;
+    };
+    riskWinAnalysis?: RiskWinAnalysis;
+    keywords?: string[];
+    dismissedSuggestions?: string[];
+    tags?: string[];
+    requirements?: string; // JSON string for Discovery/Definition data
+    devPlan?: string;     // JSON string for Development data
+    launchPlan?: string;  // JSON string for Launch data
+    convertedCampaignId?: string; // ID of the created marketing campaign
+    campaignType?: 'email' | 'ad' | 'marketing' | 'social'; // Type of the created campaign
+    originIdeaId?: string;
+}
+
+export interface RiskWinAnalysis {
+    successProbability: number; // 0-100
+    marketFitScore: number; // 0-10
+    technicalFeasibilityScore: number; // 0-10
+    risks: { title: string; severity: 'Low' | 'Medium' | 'High'; mitigation?: string; originIdeaId?: string; }[];
+    wins: { title: string; impact: 'Low' | 'Medium' | 'High'; originIdeaId?: string; }[];
+    recommendation: string;
+    originIdeaId?: string;
 }
 
 export interface Issue {
@@ -210,11 +307,16 @@ export interface Issue {
     assignee?: string; // User Name
     assigneeId?: string; // User UID
     assigneeIds?: string[]; // New: Multiple User UIDs
+    assignedGroupIds?: string[]; // New: Assigned Groups
     scheduledDate?: string; // Smart Schedule Date
     createdAt: any;
     linkedTaskId?: string; // Linked task (if converted to a task)
     githubIssueUrl?: string; // URL of the synced GitHub issue
     githubIssueNumber?: number; // Number of the synced GitHub issue
+    createdBy?: string;
+    completedBy?: string; // User UID
+    completedAt?: any; // Firestore Timestamp
+    originIdeaId?: string;
 }
 
 export interface Activity {
@@ -226,12 +328,15 @@ export interface Activity {
     action: string;
     target: string;
     details?: string;
-    type: 'comment' | 'task' | 'file' | 'commit' | 'status' | 'priority' | 'report' | 'member';
+    relatedId?: string;
+    type: 'comment' | 'task' | 'file' | 'commit' | 'status' | 'priority' | 'report' | 'member' | 'issue';
     createdAt?: any;
+    originIdeaId?: string;
 }
 
 export type IdeaGroup =
     | 'Feature'
+    | 'Product'
     | 'Task'
     | 'Marketing'
     | 'Admin'
@@ -247,6 +352,7 @@ export interface MindmapGrouping {
     group: string;
     reason?: string;
     ideaIds: string[];
+    originIdeaId?: string;
 }
 
 export type TaskStatus = 'Backlog' | 'Open' | 'In Progress' | 'On Hold' | 'Blocked' | 'Done';
@@ -257,7 +363,9 @@ export interface TaskCategory {
     ownerId?: string;
     name: string;
     normalized?: string;
+    color?: string; // Hex color string
     createdAt?: any;
+    originIdeaId?: string;
 }
 
 export interface Mindmap {
@@ -266,16 +374,18 @@ export interface Mindmap {
     ownerId?: string;
     name: string;
     createdAt?: any;
+    originIdeaId?: string;
 }
 export interface ProjectBlueprint {
     id: string;
     title: string;
     description: string;
     targetAudience: string;
-    milestones: { title: string; description: string }[];
-    initialTasks: { title: string; priority: 'Low' | 'Medium' | 'High' }[];
+    milestones: { title: string; description: string; originIdeaId?: string; }[];
+    initialTasks: { title: string; priority: 'Low' | 'Medium' | 'High'; originIdeaId?: string; }[];
     suggestedTechStack?: string[];
     createdAt: any;
+    originIdeaId?: string;
 }
 
 export interface Milestone {
@@ -288,6 +398,7 @@ export interface Milestone {
     createdAt: any;
     createdBy: string;
     tenantId: string;
+    originIdeaId?: string;
 }
 
 export interface ProjectRisk {
@@ -295,19 +406,22 @@ export interface ProjectRisk {
     impact: 'Low' | 'Medium' | 'High';
     probability: 'Low' | 'Medium' | 'High';
     mitigation: string;
+    originIdeaId?: string;
 }
 
 export type StudioTool = 'Architect' | 'Brainstormer' | 'RiskScout' | 'Strategist';
 
 // AI Search Types
 export interface SearchResult {
-    type: 'project' | 'task' | 'answer';
+    type: 'project' | 'task' | 'issue' | 'idea' | 'answer';
     id?: string;
     title: string;
     description?: string;
     projectId?: string;
     projectTitle?: string;
     relevance?: number;
+    status?: string;
+    originIdeaId?: string;
 }
 
 export interface AISearchAnswer {
@@ -315,6 +429,7 @@ export interface AISearchAnswer {
     relevantProjects: string[];
     relevantTasks: string[];
     confidence: 'Low' | 'Medium' | 'High';
+    originIdeaId?: string;
 }
 
 export type NotificationType =
@@ -352,6 +467,7 @@ export interface Notification {
     actorName?: string;
     actorPhotoURL?: string;
     tenantId?: string;
+    originIdeaId?: string;
 }
 
 export interface GeminiReport {
@@ -361,13 +477,14 @@ export interface GeminiReport {
     createdAt: any;
     createdBy: string;
     userName: string;
+    originIdeaId?: string;
 }
 
 // --- Social Media Module Types ---
 
-export type SocialPlatform = 'Instagram' | 'Facebook' | 'LinkedIn' | 'TikTok' | 'X';
+export type SocialPlatform = 'Instagram' | 'Facebook' | 'LinkedIn' | 'TikTok' | 'X' | 'YouTube';
 export type SocialPostStatus = 'Draft' | 'In Review' | 'Approved' | 'Scheduled' | 'Publishing' | 'Published' | 'Failed' | 'Needs Manual Publish' | 'Archived';
-export type SocialPostFormat = 'Image' | 'Video' | 'Carousel' | 'Story' | 'Reel';
+export type SocialPostFormat = 'Text' | 'Post' | 'Image' | 'Video' | 'Carousel' | 'Story' | 'Reel' | 'Short';
 
 export interface SocialCampaign {
     id: string;
@@ -378,11 +495,15 @@ export interface SocialCampaign {
     endDate?: string;   // ISO Date
     targetAudience?: string;
     toneOfVoice?: string;
-    status: 'Planning' | 'Active' | 'Completed' | 'Paused';
+    status: 'Backlog' | 'Planning' | 'Active' | 'Completed' | 'Paused' | 'Archived';
     ownerId: string;
     createdAt: any;
     updatedAt: any;
     color?: string; // For calendar visualization
+    description?: string;
+    platforms?: SocialPlatform[];
+    tags?: string[];
+    originIdeaId?: string;
 }
 
 export interface SocialAsset {
@@ -400,6 +521,7 @@ export interface SocialAsset {
     tags?: string[];
     createdAt: any;
     createdBy: string;
+    originIdeaId?: string;
 }
 
 
@@ -413,6 +535,7 @@ export interface SocialIntegration {
     accessToken?: string; // Should be kept secure/server-side in real app
     connectedAt: string;
     expiresAt?: string;
+    originIdeaId?: string;
 }
 
 export interface SocialPost {
@@ -426,6 +549,7 @@ export interface SocialPost {
         mentions?: string[];
         location?: string;
         linkInBio?: string;
+        originIdeaId?: string;
     };
     assets: SocialAsset[]; // Ordered list of assets for this post
     format: SocialPostFormat;
@@ -437,17 +561,42 @@ export interface SocialPost {
     createdAt: any;
     updatedAt: any;
 
+    // Concept / YouTube Specific
+    isConcept?: boolean;
+    videoConcept?: {
+        title: string;
+        thumbnailIdea: string;
+        scriptOutline: string;
+        thumbnailUrl?: string;
+    };
+
     // Approval Workflow
     approvals?: {
         required: boolean;
         status: 'Pending' | 'Approved' | 'Rejected';
         approvedBy?: string;
         approvedAt?: any;
+        originIdeaId?: string;
     }[];
 
     // Publishing Metadata
     externalId?: string; // ID from the platform (e.g. IG Media ID)
     error?: string; // Last error message if failed
+    originIdeaId?: string;
+}
+
+// Caption Presets for reusable social media captions
+export interface CaptionPreset {
+    id: string;
+    projectId: string;
+    name: string;
+    content: string;  // The preset caption text
+    platform: SocialPlatform | 'All';  // Platform-specific or universal
+    hashtags?: string[];  // Optional pre-filled hashtags
+    category?: string;  // User-defined category like "Promotional", "Engagement", etc.
+    createdAt: any;
+    createdBy: string;
+    updatedAt?: any;
 }
 
 // --- Online Marketing Module Types ---
@@ -468,6 +617,7 @@ export interface MarketingCampaign {
     channels: MarketingChannel[];
     ownerId: string;
     createdAt: any;
+    originIdeaId?: string;
 }
 
 // Paid Ads
@@ -490,9 +640,11 @@ export interface AdCampaign {
         conversions: number;
         costPerConversion: number;
         roas: number;
+        originIdeaId?: string;
     };
     startDate: string;
     endDate?: string;
+    originIdeaId?: string;
 }
 
 export interface AdGroup {
@@ -502,6 +654,7 @@ export interface AdGroup {
     status: 'Enabled' | 'Paused';
     keywords?: string[];
     targeting?: string;
+    originIdeaId?: string;
 }
 
 export interface AdCreative {
@@ -513,6 +666,7 @@ export interface AdCreative {
     previewUrl?: string;
     format: 'Text' | 'Image' | 'Video' | 'Carousel';
     status: 'Active' | 'Disapproved' | 'Paused';
+    originIdeaId?: string;
 }
 
 // Email Marketing
@@ -522,7 +676,6 @@ export interface EmailCampaign {
     marketingCampaignId?: string;
     name: string;
     subject: string;
-    senderName: string;
     senderName: string;
     status: 'draft' | 'in_review' | 'ready' | 'scheduled' | 'sent';
     sentAt?: string;
@@ -535,7 +688,9 @@ export interface EmailCampaign {
         clicked: number;
         bounced: number;
         unsubscribed: number;
+        originIdeaId?: string;
     };
+    originIdeaId?: string;
 }
 
 export interface MarketingAudience {
@@ -545,12 +700,15 @@ export interface MarketingAudience {
     count: number;
     filters?: string;
     source: 'Import' | 'Signups' | 'CRM';
+    originIdeaId?: string;
 }
 
 // Strategy
 export interface MarketingFunnelMetric {
     stage: 'Awareness' | 'Interest' | 'Consideration' | 'Conversion' | 'Retention';
     value: number;
+    change?: number;
+    originIdeaId?: string;
 }
 
 // --- Email Builder Types ---
@@ -581,6 +739,7 @@ export interface EmailBlockStyle {
     justifyContent?: 'flex-start' | 'flex-end' | 'center' | 'space-between' | 'space-around' | 'space-evenly';
     alignItems?: 'flex-start' | 'flex-end' | 'center' | 'stretch' | 'baseline';
     gridSpan?: number;
+    originIdeaId?: string;
 }
 
 export interface EmailBlock {
@@ -594,12 +753,14 @@ export interface EmailBlock {
         url?: string; // For button/image/video link
         width?: string; // specialized width
         columns?: EmailBlock[][]; // For 'columns' type: Array of arrays of blocks
-        socialLinks?: { platform: 'twitter' | 'facebook' | 'linkedin' | 'instagram'; url: string }[]; // For 'social' type
-        menuLinks?: { label: string; url: string }[]; // For 'menu' type
+        socialLinks?: { platform: 'twitter' | 'facebook' | 'linkedin' | 'instagram'; url: string; originIdeaId?: string; }[]; // For 'social' type
+        menuLinks?: { label: string; url: string; originIdeaId?: string; }[]; // For 'menu' type
         videoUrl?: string; // For 'video' type: YouTube/Vimeo URL
         children?: EmailBlock[]; // For 'flex' type: Flat list of children
+        originIdeaId?: string;
     };
     styles: EmailBlockStyle;
+    originIdeaId?: string;
 }
 export interface TemplateVariable {
     id: string;
@@ -607,6 +768,7 @@ export interface TemplateVariable {
     label: string;
     defaultValue?: string;
     type: 'text' | 'date' | 'number' | 'url' | 'image' | 'richtext';
+    originIdeaId?: string;
 }
 
 export interface EmailTemplate {
@@ -620,6 +782,7 @@ export interface EmailTemplate {
     updatedAt: any;
     lastAutoSaved?: any;
     variables?: TemplateVariable[];
+    originIdeaId?: string;
 }
 
 export interface EmailComponent {
@@ -629,6 +792,7 @@ export interface EmailComponent {
     block: EmailBlock;
     createdAt: any;
     createdBy: string;
+    originIdeaId?: string;
 }
 
 // --- Recipient Management Types ---
@@ -641,6 +805,7 @@ export interface RecipientColumn {
     type: 'text' | 'number' | 'date' | 'boolean' | 'tag'; // Basic validation hint
     isSystem: boolean; // true if standard (firstName, email), false if custom
     createdAt: any;
+    originIdeaId?: string;
 }
 
 export interface Recipient {
@@ -658,6 +823,7 @@ export interface Recipient {
     externalId?: string; // If from external DB
     createdAt: any;
     updatedAt: any;
+    originIdeaId?: string;
 }
 
 export interface SMTPConfig {
@@ -668,6 +834,7 @@ export interface SMTPConfig {
     useCustom: boolean;
     secure?: boolean;
     fromEmail?: string;
+    originIdeaId?: string;
 }
 
 // --- Recipient Groups ---
@@ -681,6 +848,7 @@ export interface RecipientGroup {
     customFields?: Record<string, any>;
     createdAt: any;
     updatedAt: any;
+    originIdeaId?: string;
 }
 
 export interface GroupColumn {
@@ -691,6 +859,7 @@ export interface GroupColumn {
     type: 'text' | 'number' | 'date' | 'boolean' | 'tag';
     isSystem: boolean;
     createdAt: any;
+    originIdeaId?: string;
 }
 
 // --- Marketing Settings ---
@@ -704,6 +873,7 @@ export interface MarketingSettings {
     smtpConfig?: SMTPConfig; // Project-specific SMTP (only if source is 'project')
     smtpVerified?: boolean; // Whether project SMTP has been tested successfully
     updatedAt: any;
+    originIdeaId?: string;
 }
 
 // --- API Token Types ---
@@ -721,5 +891,6 @@ export interface APIToken {
     createdAt: any;
     lastUsedAt?: any;
     expiresAt?: any;           // Optional expiration
+    originIdeaId?: string;
 }
 

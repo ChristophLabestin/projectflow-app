@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { subscribeAdCampaigns } from '../../services/marketingService';
 import { AdCampaign } from '../../types';
 import { CreateMarketingCampaignModal } from './components/CreateMarketingCampaignModal';
@@ -84,6 +84,19 @@ export const PaidAdsList = () => {
                                         </span>
                                         <span>•</span>
                                         <span>{campaign.objective}</span>
+                                        {campaign.originIdeaId && (
+                                            <>
+                                                <span>•</span>
+                                                <Link
+                                                    to={`/project/${projectId}/ideas/${campaign.originIdeaId}`}
+                                                    className="flex items-center gap-1 text-purple-600 hover:text-purple-800 transition-colors"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                >
+                                                    <span className="material-symbols-outlined text-[14px]">lightbulb</span>
+                                                    <span className="hover:underline">Strategy</span>
+                                                </Link>
+                                            </>
+                                        )}
                                     </div>
                                 </div>
                             </div>

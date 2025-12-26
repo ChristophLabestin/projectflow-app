@@ -4,6 +4,7 @@ import { Issue } from '../types';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Textarea } from './ui/Textarea';
+import { MultiAssigneeSelector } from './MultiAssigneeSelector';
 import { updateIssue } from '../services/dataService';
 
 interface EditIssueModalProps {
@@ -16,12 +17,16 @@ interface EditIssueModalProps {
 export const EditIssueModal: React.FC<EditIssueModalProps> = ({ issue, isOpen, onClose, onUpdate }) => {
     const [title, setTitle] = useState(issue.title);
     const [description, setDescription] = useState(issue.description || '');
+    const [assigneeIds, setAssigneeIds] = useState<string[]>(issue.assigneeIds || (issue.assigneeId ? [issue.assigneeId] : []));
+    const [assignedGroupIds, setAssignedGroupIds] = useState<string[]>(issue.assignedGroupIds || []);
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
         if (isOpen) {
             setTitle(issue.title);
             setDescription(issue.description || '');
+            setAssigneeIds(issue.assigneeIds || (issue.assigneeId ? [issue.assigneeId] : []));
+            setAssignedGroupIds(issue.assignedGroupIds || []);
         }
     }, [isOpen, issue]);
 
@@ -31,7 +36,9 @@ export const EditIssueModal: React.FC<EditIssueModalProps> = ({ issue, isOpen, o
         try {
             await updateIssue(issue.id, {
                 title,
-                description
+                description,
+                assigneeIds,
+                assignedGroupIds
             }, issue.projectId, issue.tenantId);
             onUpdate();
             onClose();
@@ -78,6 +85,17 @@ export const EditIssueModal: React.FC<EditIssueModalProps> = ({ issue, isOpen, o
                                 placeholder="Describe the issue..."
                                 rows={8}
                                 className="min-h-[200px]"
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] ml-1">Assignees</label>
+                            <MultiAssigneeSelector
+                                projectId={issue.projectId}
+                                assigneeIds={assigneeIds}
+                                assignedGroupIds={assignedGroupIds}
+                                onChange={setAssigneeIds}
+                                onGroupChange={setAssignedGroupIds}
                             />
                         </div>
                     </div>

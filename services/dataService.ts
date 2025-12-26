@@ -27,7 +27,7 @@ import {
 import { updateProfile, linkWithPopup } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, auth, GithubAuthProvider, FacebookAuthProvider } from "./firebase";
-import type { Task, Idea, Activity, Project, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, EmailComponent, GeminiReport, Milestone, AIUsage, Member, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs } from '../types';
+import type { Task, Idea, Activity, Project, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, EmailComponent, GeminiReport, Milestone, AIUsage, Member, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset } from '../types';
 import { toMillis } from "../utils/time";
 import {
     notifyTaskAssignment,
@@ -54,6 +54,7 @@ const GEMINI_REPORTS = "geminiReports";
 export const SOCIAL_CAMPAIGNS = "social_campaigns";
 export const SOCIAL_POSTS = "social_posts";
 export const SOCIAL_ASSETS = "social_assets";
+export const CAPTION_PRESETS = "caption_presets";
 
 const TENANT_CACHE_KEY = "activeTenantId";
 
@@ -142,7 +143,7 @@ export const ensureTenantAndUser = async (tenantId: string, role?: WorkspaceRole
     const tenantDoc = await getDoc(tenantDocRef(tenantId));
     if (!tenantDoc.exists() && !isOwner) {
         // Tenant doesn't exist and user is not the owner - don't create anything
-        console.warn(`ensureTenantAndUser: Tenant ${tenantId} does not exist and user is not owner. Skipping.`);
+        console.warn(`ensureTenantAndUser: Tenant ${tenantId} does not exist and user is not owner.Skipping.`);
         return;
     }
 
@@ -178,6 +179,8 @@ export const ensureTenantAndUser = async (tenantId: string, role?: WorkspaceRole
             aiUsage: {
                 tokensUsed: 0,
                 tokenLimit: 1000000,
+                imagesUsed: 0,
+                imageLimit: 50,
                 lastReset: serverTimestamp()
             }
         });
@@ -241,6 +244,7 @@ export const getAIUsage = async (userId: string, tenantId?: string): Promise<AIU
                     const resetUsage = {
                         ...data.aiUsage,
                         tokensUsed: 0,
+                        imagesUsed: 0,
                         lastReset: serverTimestamp()
                     };
                     await updateDoc(userRef, { aiUsage: resetUsage });
@@ -260,6 +264,14 @@ export const incrementAIUsage = async (userId: string, tokens: number, tenantId?
     const userRef = doc(tenantUsersCollection(resolvedTenant), userId);
     await updateDoc(userRef, {
         'aiUsage.tokensUsed': increment(tokens)
+    });
+};
+
+export const incrementImageUsage = async (userId: string, count: number, tenantId?: string) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const userRef = doc(tenantUsersCollection(resolvedTenant), userId);
+    await updateDoc(userRef, {
+        'aiUsage.imagesUsed': increment(count)
     });
 };
 
@@ -386,10 +398,23 @@ const findIdeaDoc = async (ideaId: string, projectId?: string, tenantId?: string
         if (snap.exists()) return snap;
     }
 
-    const cg = query(collectionGroup(db, IDEAS), where(documentId(), "==", ideaId));
+    // Note: documentId() in collection group queries requires a full path, not just the ID.
+    // So we iterate through results and find by ID instead.
+    const cg = collectionGroup(db, IDEAS);
     const snapshot = await getDocs(cg);
-    return snapshot.docs[0] || null;
+    const matchingDoc = snapshot.docs.find((d) => d.id === ideaId);
+    return matchingDoc || null;
 };
+
+export const getIdeaById = async (ideaId: string, projectId?: string, tenantId?: string): Promise<Idea | null> => {
+    const docSnap = await findIdeaDoc(ideaId, projectId, tenantId);
+    if (docSnap && docSnap.exists()) {
+        return { ...docSnap.data(), id: docSnap.id } as Idea;
+    }
+    return null;
+};
+
+
 
 const findMindmapDoc = async (mindmapId: string, projectId?: string, tenantId?: string) => {
     if (projectId) {
@@ -399,9 +424,11 @@ const findMindmapDoc = async (mindmapId: string, projectId?: string, tenantId?: 
         if (snap.exists()) return snap;
     }
 
-    const cg = query(collectionGroup(db, MINDMAPS), where(documentId(), "==", mindmapId));
+    // Note: documentId() in collection group queries requires a full path, not just the ID.
+    const cg = collectionGroup(db, MINDMAPS);
     const snapshot = await getDocs(cg);
-    return snapshot.docs[0] || null;
+    const matchingDoc = snapshot.docs.find((d) => d.id === mindmapId);
+    return matchingDoc || null;
 };
 
 const findSubtaskDoc = async (subTaskId: string, taskId?: string, projectId?: string, tenantId?: string) => {
@@ -414,9 +441,11 @@ const findSubtaskDoc = async (subTaskId: string, taskId?: string, projectId?: st
         }
     }
 
-    const cg = query(collectionGroup(db, SUBTASKS), where(documentId(), "==", subTaskId));
+    // Note: documentId() in collection group queries requires a full path, not just the ID.
+    const cg = collectionGroup(db, SUBTASKS);
     const snapshot = await getDocs(cg);
-    return snapshot.docs[0] || null;
+    const matchingDoc = snapshot.docs.find((d) => d.id === subTaskId);
+    return matchingDoc || null;
 };
 
 const logActivity = async (
@@ -437,6 +466,7 @@ const logActivity = async (
         action: payload.action,
         target: payload.target,
         details: payload.details || "",
+        relatedId: payload.relatedId || null,
         type: payload.type || "task",
         createdAt: serverTimestamp(),
     });
@@ -919,6 +949,24 @@ export const getSharedProjects = async (): Promise<Project[]> => {
         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
 };
 
+export const getAllMemberProjects = async (userId: string): Promise<Project[]> => {
+    // Query all projects where the user is a member
+    const q = query(
+        collectionGroup(db, PROJECTS),
+        where("memberIds", "array-contains", userId)
+    );
+
+    const snapshot = await getDocs(q);
+
+    return snapshot.docs
+        .map(docSnap => ({
+            id: docSnap.id,
+            tenantId: getTenantIdFromRef(docSnap.ref), // Extract tenant from path
+            ...docSnap.data()
+        } as Project))
+        .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
+};
+
 
 export const getUserGlobalActivities = async (tenantId?: string, limitCount = 20): Promise<Activity[]> => {
     const user = auth.currentUser;
@@ -1108,7 +1156,7 @@ export const updateMemberRole = async (
 
     await logActivity(
         projectId,
-        { action: `Updated ${userId}'s role to ${newRole}`, target: "Team", type: "status" },
+        { action: `Updated ${userId} 's role to ${newRole}`, target: "Team", type: "status" },
         resolvedTenant
     );
 };
@@ -1519,9 +1567,73 @@ export const getAllWorkspaceTasks = async (tenantId?: string): Promise<Task[]> =
 
 
 
+/**
+ * Get all issues across all projects in the workspace for search purposes
+ */
+export const getAllWorkspaceIssues = async (tenantId?: string): Promise<Issue[]> => {
+    const user = auth.currentUser;
+    if (!user) return [];
+
+    const resolvedTenant = tenantId || getCachedTenantId() || user.uid;
+    await ensureTenantAndUser(resolvedTenant);
+
+    // Get all projects first
+    const projects = await getAllWorkspaceProjects(resolvedTenant);
+
+    const issuePromises = projects.map(async p => {
+        try {
+            const snapshot = await getDocs(projectSubCollection(resolvedTenant, p.id, ISSUES));
+            return snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                tenantId: p.tenantId, // Ensure tenantId is set
+                projectId: p.id       // Ensure projectId is set
+            } as Issue));
+        } catch (e) {
+            console.warn(`Failed to fetch issues for project ${p.id}`, e);
+            return [];
+        }
+    });
+
+    const results = await Promise.all(issuePromises);
+    return results.flat();
+};
+
+/**
+ * Get all ideas across all projects in the workspace for search purposes
+ */
+export const getAllWorkspaceIdeas = async (tenantId?: string): Promise<Idea[]> => {
+    const user = auth.currentUser;
+    if (!user) return [];
+
+    const resolvedTenant = tenantId || getCachedTenantId() || user.uid;
+    await ensureTenantAndUser(resolvedTenant);
+
+    // Get all projects first
+    const projects = await getAllWorkspaceProjects(resolvedTenant);
+
+    const ideaPromises = projects.map(async p => {
+        try {
+            const snapshot = await getDocs(projectSubCollection(resolvedTenant, p.id, "ideas"));
+            return snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                tenantId: p.tenantId,
+                projectId: p.id
+            } as Idea));
+        } catch (e) {
+            console.warn(`Failed to fetch ideas for project ${p.id}`, e);
+            return [];
+        }
+    });
+
+    const results = await Promise.all(ideaPromises);
+    return results.flat();
+};
+
 // --- Tasks ---
 
-const ensureCategory = async (projectId: string, name?: string | string[], tenantId?: string) => {
+const ensureCategory = async (projectId: string, name?: string | string[], tenantId?: string, color?: string) => {
     const user = auth.currentUser;
     const list = Array.isArray(name) ? name : [name || ""];
     const trimmedList = list.map(n => n.trim()).filter(Boolean);
@@ -1540,9 +1652,48 @@ const ensureCategory = async (projectId: string, name?: string | string[], tenan
             ownerId: user?.uid || "",
             name: entry,
             normalized,
+            color: color || '#64748b', // Default slate-500
             createdAt: serverTimestamp()
         });
     }
+};
+
+export const addProjectCategory = async (projectId: string, name: string, color: string, tenantId?: string) => {
+    const user = auth.currentUser;
+    const resolvedTenant = resolveTenantId(tenantId);
+    const categoriesRef = projectSubCollection(resolvedTenant, projectId, CATEGORIES);
+
+    // Check if exists
+    const q = query(categoriesRef, where("normalized", "==", name.toLowerCase()));
+    const snap = await getDocs(q);
+    if (!snap.empty) throw new Error("Label already exists");
+
+    await addDoc(categoriesRef, {
+        projectId,
+        tenantId: resolvedTenant,
+        ownerId: user?.uid || "",
+        name,
+        normalized: name.toLowerCase(),
+        color,
+        createdAt: serverTimestamp()
+    });
+};
+
+export const updateProjectCategory = async (projectId: string, categoryId: string, updates: Partial<Pick<TaskCategory, 'name' | 'color'>>, tenantId?: string) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const docRef = doc(projectSubCollection(resolvedTenant, projectId, CATEGORIES), categoryId);
+
+    const data: any = { ...updates };
+    if (updates.name) {
+        data.normalized = updates.name.toLowerCase();
+    }
+
+    await updateDoc(docRef, data);
+};
+
+export const deleteProjectCategory = async (projectId: string, categoryId: string, tenantId?: string) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    await deleteDoc(doc(projectSubCollection(resolvedTenant, projectId, CATEGORIES), categoryId));
 };
 
 export const getProjectCategories = async (projectId: string, tenantId?: string): Promise<TaskCategory[]> => {
@@ -1559,7 +1710,7 @@ export const addTask = async (
     dueDate?: string,
     assignee?: string,
     priority: Task['priority'] = "Medium",
-    extra?: Partial<Pick<Task, 'description' | 'category' | 'status' | 'assigneeId' | 'assigneeIds' | 'linkedIssueId'>>,
+    extra?: Partial<Pick<Task, 'description' | 'category' | 'status' | 'assigneeId' | 'assigneeIds' | 'assignedGroupIds' | 'linkedIssueId' | 'convertedIdeaId' | 'startDate'>>,
     tenantId?: string
 ) => {
     const user = auth.currentUser;
@@ -1575,6 +1726,7 @@ export const addTask = async (
         title,
         isCompleted: false,
         dueDate: dueDate || "",
+        startDate: extra?.startDate || "",
         assignee: assignee || "",
         priority,
         description: extra?.description || "",
@@ -1582,6 +1734,8 @@ export const addTask = async (
         status: extra?.status || "Open",
         assigneeId: extra?.assigneeId || (user.uid === assignee ? user.uid : null),
         assigneeIds: extra?.assigneeIds || (extra?.assigneeId ? [extra.assigneeId] : []),
+        assignedGroupIds: extra?.assignedGroupIds || [],
+        createdBy: user.uid,
         createdAt: serverTimestamp()
     };
 
@@ -1590,9 +1744,14 @@ export const addTask = async (
         taskData.linkedIssueId = extra.linkedIssueId;
     }
 
+    // Add linked idea if converting from an idea
+    if (extra?.convertedIdeaId) {
+        taskData.convertedIdeaId = extra.convertedIdeaId;
+    }
+
     const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, TASKS), taskData);
     await ensureCategory(projectId, extra?.category, resolvedTenant);
-    await logActivity(projectId, { action: `Added task "${title}"`, target: "Tasks", type: "task" }, resolvedTenant);
+    await logActivity(projectId, { action: `Added task "${title}"`, target: "Tasks", type: "task", relatedId: docRef.id }, resolvedTenant);
 
     // Sync progress
     await syncProjectProgress(projectId, resolvedTenant);
@@ -1637,7 +1796,7 @@ export const createSubTask = async (
 
     await logActivity(
         projectId,
-        { action: `Added subtask "${title}"`, target: "Tasks", type: "task" },
+        { action: `Added subtask "${title}"`, target: "Tasks", type: "task", relatedId: taskId },
         resolvedTenant
     );
 
@@ -1828,12 +1987,23 @@ export const toggleTaskStatus = async (taskId: string, currentStatus: boolean, p
     if (!taskSnap) throw new Error("Task not found");
 
     const newStatus = !currentStatus;
-    await updateDoc(taskSnap.ref, { isCompleted: newStatus });
+    const user = auth.currentUser;
+    const updateData: any = { isCompleted: newStatus };
+
+    if (newStatus) {
+        updateData.completedBy = user?.uid;
+        updateData.completedAt = serverTimestamp();
+    } else {
+        updateData.completedBy = deleteField();
+        updateData.completedAt = deleteField();
+    }
+
+    await updateDoc(taskSnap.ref, updateData);
     const data = taskSnap.data() as Task;
     const { tenantId: resolvedTenant } = getProjectContextFromRef(taskSnap.ref);
     await logActivity(
         data.projectId,
-        { action: `${newStatus ? "Completed" : "Reopened"} task "${data.title}"`, target: "Tasks", type: "task" },
+        { action: `${newStatus ? "Completed" : "Reopened"} task "${data.title}"`, target: "Tasks", type: "task", relatedId: taskId },
         resolvedTenant
     );
     await syncProjectProgress(data.projectId, resolvedTenant);
@@ -1863,14 +2033,33 @@ export const updateTaskFields = async (taskId: string, updates: Partial<Task>, p
     Object.entries(updates).forEach(([key, value]) => {
         if (value !== undefined) sanitized[key] = value;
     });
+
+    if (sanitized.isCompleted !== undefined) {
+        const user = auth.currentUser;
+        if (sanitized.isCompleted === true) {
+            sanitized.completedBy = user?.uid;
+            sanitized.completedAt = serverTimestamp();
+        } else {
+            sanitized.completedBy = deleteField();
+            sanitized.completedAt = deleteField();
+        }
+    }
+
     if (Object.keys(sanitized).length === 0) return;
 
     await updateDoc(taskSnap.ref, sanitized);
     const data = taskSnap.data() as Task;
     const { tenantId: resolvedTenant } = getProjectContextFromRef(taskSnap.ref);
+    let action = `Updated task "${data.title}"`;
+    if (sanitized.isCompleted === true) {
+        action = `Completed task "${data.title}"`;
+    } else if (sanitized.isCompleted === false) {
+        action = `Reopened task "${data.title}"`;
+    }
+
     await logActivity(
         data.projectId,
-        { action: `Updated task "${data.title}"`, target: "Tasks", type: "task" },
+        { action, target: "Tasks", type: "task", relatedId: taskId },
         resolvedTenant
     );
     if (sanitized.category) {
@@ -1901,7 +2090,7 @@ export const deleteTask = async (taskId: string, projectId?: string, tenantId?: 
     await deleteDoc(taskSnap.ref);
     await logActivity(
         data.projectId,
-        { action: `Deleted task "${data.title}"`, target: "Tasks", type: "task" },
+        { action: `Deleted task "${data.title}"`, target: "Tasks", type: "task", relatedId: taskId },
         resolvedTenant
     );
     await syncProjectProgress(data.projectId, resolvedTenant);
@@ -1927,7 +2116,7 @@ export const addSubTask = async (taskId: string, title: string, projectId?: stri
         isCompleted: false,
         createdAt: serverTimestamp()
     });
-    await logActivity(task.projectId, { action: `Added subtask "${title}"`, target: task.title, type: "task" }, resolvedTenant);
+    await logActivity(task.projectId, { action: `Added subtask "${title}"`, target: task.title, type: "task", relatedId: taskId }, resolvedTenant);
 };
 
 export const getSubTasks = async (taskId: string, projectId?: string, tenantId?: string): Promise<SubTask[]> => {
@@ -1948,7 +2137,14 @@ export const toggleSubTaskStatus = async (
 ) => {
     const subSnap = await findSubtaskDoc(subTaskId, taskId, projectId, tenantId);
     if (!subSnap) return;
-    await updateDoc(subSnap.ref, { isCompleted: !currentStatus });
+    const user = auth.currentUser;
+    const isNowCompleted = !currentStatus;
+
+    await updateDoc(subSnap.ref, {
+        isCompleted: isNowCompleted,
+        completedBy: isNowCompleted ? user?.uid : deleteField(),
+        completedAt: isNowCompleted ? serverTimestamp() : deleteField()
+    });
 
     const data = subSnap.data() as SubTask | undefined;
     if (!data) return;
@@ -1958,7 +2154,7 @@ export const toggleSubTaskStatus = async (
     if (parentTask) {
         await logActivity(
             parentTask.projectId,
-            { action: `${!currentStatus ? "Completed" : "Reopened"} subtask "${data.title}"`, target: parentTask.title, type: "task" },
+            { action: `${!currentStatus ? "Completed" : "Reopened"} subtask "${data.title}"`, target: parentTask.title, type: "task", relatedId: data.taskId },
             resolvedTenant
         );
     }
@@ -1974,7 +2170,7 @@ export const deleteSubTask = async (subTaskId: string, taskId: string, projectId
     await deleteDoc(subSnap.ref);
     await logActivity(
         data.projectId,
-        { action: `Deleted subtask "${data.title}"`, target: "Tasks", type: "task" }, // context might differ but this works
+        { action: `Deleted subtask "${data.title}"`, target: "Tasks", type: "task", relatedId: data.taskId }, // context might differ but this works
         resolvedTenant
     );
 };
@@ -2048,7 +2244,7 @@ export const getUserIdeas = async (): Promise<Idea[]> => {
     const q = query(collectionGroup(db, IDEAS), where("ownerId", "==", user.uid));
     const snapshot = await getDocs(q);
     return snapshot.docs
-        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Idea))
+        .map(docSnap => ({ ...docSnap.data(), id: docSnap.id } as Idea))
         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
 };
 
@@ -2057,7 +2253,7 @@ export const getProjectIdeas = async (projectId: string, tenantId?: string): Pro
     await ensureTenantAndUser(resolvedTenant);
     const snapshot = await getDocs(projectSubCollection(resolvedTenant, projectId, IDEAS));
     return snapshot.docs
-        .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Idea))
+        .map(docSnap => ({ ...docSnap.data(), id: docSnap.id } as Idea))
         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
 };
 
@@ -2103,7 +2299,21 @@ export const getProjectActivity = async (projectId: string, tenantId?: string): 
     return snapshot.docs
         .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Activity))
         .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt))
-        .slice(0, 20);
+        .slice(0, 100);
+};
+
+export const subscribeTaskActivity = (projectId: string, taskId: string, callback: (activities: Activity[]) => void, tenantId?: string) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const q = query(
+        projectSubCollection(resolvedTenant, projectId, ACTIVITIES),
+        where("relatedId", "==", taskId),
+        orderBy("createdAt", "desc"),
+        limit(20)
+    );
+    return onSnapshot(q, (snapshot) => {
+        const activities = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Activity));
+        callback(activities);
+    });
 };
 
 // --- Issues ---
@@ -2127,7 +2337,9 @@ export const createIssue = async (projectId: string, issue: Partial<Issue>, tena
         assignee: issue.assignee || "",
         assigneeId: issue.assigneeId || null,
         assigneeIds: issue.assigneeIds || (issue.assigneeId ? [issue.assigneeId] : []),
+        assignedGroupIds: issue.assignedGroupIds || [],
         reporterId: user.uid,
+        createdBy: user.uid,
         createdAt: serverTimestamp()
     };
 
@@ -2157,9 +2369,11 @@ export const createIssue = async (projectId: string, issue: Partial<Issue>, tena
         console.warn("GitHub issue sync failed", e);
     }
 
-    await addDoc(projectSubCollection(resolvedTenant, projectId, ISSUES), issueData);
+    const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, ISSUES), issueData);
 
     await logActivity(projectId, { action: `Reported issue "${issue.title}"`, target: "Issues", type: "report" }, resolvedTenant);
+
+    return docRef.id;
 };
 
 const findIssueDoc = async (issueId: string, projectId?: string, tenantId?: string, path?: string) => {
@@ -2211,6 +2425,17 @@ export const updateIssue = async (issueId: string, updates: Partial<Issue>, proj
     let issueData: Issue | null = null;
     let issueRef: any = null;
 
+    if (updates.status) {
+        const user = auth.currentUser;
+        if (updates.status === 'Resolved' || updates.status === 'Closed') {
+            (updates as any).completedBy = user?.uid;
+            (updates as any).completedAt = serverTimestamp();
+        } else if (updates.status === 'Open' || updates.status === 'In Progress') {
+            (updates as any).completedBy = deleteField();
+            (updates as any).completedAt = deleteField();
+        }
+    }
+
     // First try path if available
     if (path) {
         issueRef = doc(db, path);
@@ -2225,6 +2450,22 @@ export const updateIssue = async (issueId: string, updates: Partial<Issue>, proj
         issueData = { id: issueSnap.id, ...issueSnap.data() } as Issue;
         issueRef = issueSnap.ref;
         await updateDoc(issueRef, updates);
+    }
+
+    if (issueData) {
+        let action = `Updated issue "${issueData.title}"`;
+        if (updates.status === 'Resolved' || updates.status === 'Closed') {
+            action = `Resolved issue "${issueData.title}"`;
+        } else if ((updates.status === 'Open' || updates.status === 'In Progress') &&
+            (issueData.status === 'Resolved' || issueData.status === 'Closed')) {
+            action = `Reopened issue "${issueData.title}"`;
+        }
+
+        await logActivity(
+            projectId,
+            { action, target: "Issues", type: "issue" },
+            resolvedTenant
+        );
     }
 
     // GitHub Sync (Status, Title, Description)
@@ -2391,6 +2632,7 @@ export const updateUserProfile = async (data: {
     bio?: string,
     address?: string,
     skills?: string[],
+    privacySettings?: PrivacySettings,
     file?: File,
     coverFile?: File
 }) => {
@@ -2439,7 +2681,8 @@ export const updateUserProfile = async (data: {
             bio: data.bio ?? '',
             email: user.email,
             address: data.address ?? '',
-            skills: data.skills ?? []
+            skills: data.skills ?? [],
+            privacySettings: data.privacySettings || {}
         };
         if (coverURL) updateData.coverURL = coverURL;
 
@@ -2630,7 +2873,7 @@ export const subscribeProjectIdeas = (
     // Don't call ensureTenantAndUser here - this is a read operation
     return onSnapshot(projectSubCollection(resolvedTenant, projectId, IDEAS), (snap) => {
         const items = snap.docs
-            .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Idea))
+            .map(docSnap => ({ ...docSnap.data(), id: docSnap.id } as Idea))
             .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
         callback(items);
     });
@@ -3194,6 +3437,50 @@ export const createCampaign = async (
     return docRef.id;
 };
 
+export const getCampaignById = async (
+    projectId: string,
+    campaignId: string,
+    tenantId?: string
+): Promise<SocialCampaign | null> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const ref = doc(projectSubCollection(resolvedTenant, projectId, SOCIAL_CAMPAIGNS), campaignId);
+    const snap = await getDoc(ref);
+
+    if (snap.exists()) {
+        return { id: snap.id, ...snap.data() } as SocialCampaign;
+    }
+    return null;
+};
+
+export const getSocialCampaign = async (projectId: string, campaignId: string, tenantId?: string) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const docRef = doc(db, 'tenants', resolvedTenant, 'projects', projectId, SOCIAL_CAMPAIGNS, campaignId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+        return { id: snap.id, ...snap.data() } as SocialCampaign;
+    }
+    return null;
+};
+
+
+export const createSocialCampaign = async (
+    projectId: string,
+    campaignData: Omit<SocialCampaign, 'id' | 'createdAt' | 'updatedAt'>,
+    tenantId?: string
+) => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+    const resolvedTenant = resolveTenantId(tenantId);
+
+    const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, SOCIAL_CAMPAIGNS), {
+        ...campaignData,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+    });
+
+    return docRef.id;
+};
+
 export const subscribeCampaigns = (
     projectId: string,
     onUpdate: (campaigns: SocialCampaign[]) => void,
@@ -3385,6 +3672,71 @@ export const deleteSocialAsset = async (projectId: string, assetId: string, tena
 // Social Integrations
 export const SOCIAL_INTEGRATIONS = 'social_integrations';
 
+// --- Caption Presets ---
+
+export const createCaptionPreset = async (
+    projectId: string,
+    presetData: Omit<CaptionPreset, "id" | "createdAt" | "createdBy">,
+    tenantId?: string
+): Promise<string> => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+    const resolvedTenant = resolveTenantId(tenantId);
+
+    const docRef = await addDoc(projectSubCollection(resolvedTenant, projectId, CAPTION_PRESETS), {
+        ...presetData,
+        projectId,
+        createdBy: user.uid,
+        createdAt: serverTimestamp()
+    });
+
+    return docRef.id;
+};
+
+export const subscribeCaptionPresets = (
+    projectId: string,
+    onUpdate: (presets: CaptionPreset[]) => void,
+    tenantId?: string
+): Unsubscribe => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const q = query(
+        projectSubCollection(resolvedTenant, projectId, CAPTION_PRESETS),
+        orderBy("createdAt", "desc")
+    );
+
+    return onSnapshot(q, (snapshot) => {
+        const presets = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as CaptionPreset));
+        onUpdate(presets);
+    });
+};
+
+export const updateCaptionPreset = async (
+    projectId: string,
+    presetId: string,
+    updates: Partial<CaptionPreset>,
+    tenantId?: string
+): Promise<void> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const presetRef = doc(projectSubCollection(resolvedTenant, projectId, CAPTION_PRESETS), presetId);
+    await updateDoc(presetRef, {
+        ...updates,
+        updatedAt: serverTimestamp()
+    });
+};
+
+export const deleteCaptionPreset = async (
+    projectId: string,
+    presetId: string,
+    tenantId?: string
+): Promise<void> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const presetRef = doc(projectSubCollection(resolvedTenant, projectId, CAPTION_PRESETS), presetId);
+    await deleteDoc(presetRef);
+};
+
 export const subscribeIntegrations = (
     projectId: string,
     onUpdate: (integrations: SocialIntegration[]) => void
@@ -3573,7 +3925,18 @@ export const updatePersonalTask = async (
 
     const resolvedTenant = resolveTenantId(tenantId);
     const taskRef = personalTaskDocRef(resolvedTenant, user.uid, taskId);
-    await updateDoc(taskRef, updates);
+
+    const sanitized: any = { ...updates };
+    // Handle completedAt logic
+    if (sanitized.isCompleted !== undefined) {
+        if (sanitized.isCompleted === true) {
+            sanitized.completedAt = serverTimestamp();
+        } else if (sanitized.isCompleted === false) {
+            sanitized.completedAt = deleteField();
+        }
+    }
+
+    await updateDoc(taskRef, sanitized);
 };
 
 export const deletePersonalTask = async (taskId: string, tenantId?: string): Promise<void> => {
@@ -3595,7 +3958,17 @@ export const togglePersonalTaskStatus = async (
 
     const resolvedTenant = resolveTenantId(tenantId);
     const taskRef = personalTaskDocRef(resolvedTenant, user.uid, taskId);
-    await updateDoc(taskRef, { isCompleted: !currentStatus });
+
+    const newStatus = !currentStatus;
+    const updates: any = { isCompleted: newStatus };
+
+    if (newStatus) {
+        updates.completedAt = serverTimestamp();
+    } else {
+        updates.completedAt = deleteField();
+    }
+
+    await updateDoc(taskRef, updates);
 };
 
 /**
@@ -3813,4 +4186,147 @@ export const validateAPITokenLocally = async (
     } catch (error: any) {
         return { valid: false, error: error.message };
     }
+};
+
+// --- Idea Interactions (Likes & Comments) ---
+
+export const toggleIdeaLike = async (ideaId: string, projectId: string, tenantId?: string) => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+    const resolvedTenant = resolveTenantId(tenantId);
+    const ideaRef = doc(projectSubCollection(resolvedTenant, projectId, IDEAS), ideaId);
+
+    const ideaDoc = await getDoc(ideaRef);
+    if (!ideaDoc.exists()) return;
+
+    const data = ideaDoc.data();
+    const likedBy = data.likedBy || [];
+    const dislikedBy = data.dislikedBy || [];
+    const isLiked = likedBy.includes(user.uid);
+
+    if (isLiked) {
+        // Untoggle like
+        await updateDoc(ideaRef, {
+            votes: increment(-1),
+            likedBy: arrayRemove(user.uid)
+        });
+    } else {
+        // Toggle like (and remove dislike if present)
+        const batch = writeBatch(db);
+        batch.update(ideaRef, {
+            votes: increment(1),
+            likedBy: arrayUnion(user.uid),
+            dislikedBy: arrayRemove(user.uid) // Remove from dislikes if they dislike it
+        });
+        await batch.commit();
+
+        // Notify owner if it's not self
+        if (data.ownerId && data.ownerId !== user.uid) {
+            // await createNotification(...) // Optional: Add notification later
+        }
+    }
+};
+
+export const toggleIdeaDislike = async (ideaId: string, projectId: string, tenantId?: string) => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+    const resolvedTenant = resolveTenantId(tenantId);
+    const ideaRef = doc(projectSubCollection(resolvedTenant, projectId, IDEAS), ideaId);
+
+    const ideaDoc = await getDoc(ideaRef);
+    if (!ideaDoc.exists()) return;
+
+    const data = ideaDoc.data();
+    const likedBy = data.likedBy || [];
+    const dislikedBy = data.dislikedBy || [];
+    const isDisliked = dislikedBy.includes(user.uid);
+
+    if (isDisliked) {
+        // Untoggle dislike
+        await updateDoc(ideaRef, {
+            dislikedBy: arrayRemove(user.uid)
+        });
+    } else {
+        // Toggle dislike (and remove like if present)
+        const batch = writeBatch(db);
+        // We probably don't decrement votes for dislikes unless we want a net score.
+        // Let's assume votes = number of likes for now, or net score.
+        // Prompt didn't specify, but usually dislikes don't affect "votes" count if votes implies positive support,
+        // UNLESS it's a reddit style score.
+        // Existing `votes: number`. Let's assume it tracks LIKES count primarily.
+        // If we remove a like to add a dislike, we must decrement votes.
+
+        let voteChange = 0;
+        if (likedBy.includes(user.uid)) {
+            voteChange = -1;
+        }
+
+        batch.update(ideaRef, {
+            votes: increment(voteChange),
+            dislikedBy: arrayUnion(user.uid),
+            likedBy: arrayRemove(user.uid)
+        });
+        await batch.commit();
+    }
+};
+
+/**
+ * Add a comment to an idea.
+ * Stored in project subcollection 'comments' with targetId = ideaId
+ */
+export const addIdeaComment = async (projectId: string, ideaId: string, content: string, tenantId?: string) => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+    const resolvedTenant = resolveTenantId(tenantId);
+
+    // 1. Create Comment
+    const commentData: Omit<ProjectComment, "id"> = {
+        projectId,
+        targetId: ideaId,
+        targetType: 'idea',
+        userId: user.uid,
+        userDisplayName: user.displayName || 'User',
+        userPhotoURL: user.photoURL || '',
+        content,
+        createdAt: serverTimestamp()
+    };
+
+    await addDoc(projectSubCollection(resolvedTenant, projectId, COMMENTS), commentData);
+
+    // 2. Update Idea comment count
+    const ideaRef = doc(projectSubCollection(resolvedTenant, projectId, IDEAS), ideaId);
+    await updateDoc(ideaRef, {
+        comments: increment(1)
+    });
+
+    // 3. Notify owner
+    const ideaDoc = await getDoc(ideaRef);
+    if (ideaDoc.exists()) {
+        const idea = ideaDoc.data();
+        if (idea.ownerId && idea.ownerId !== user.uid) {
+            await notifyComment(
+                idea.ownerId,
+                projectId,
+                `New comment on idea: ${idea.title}`,
+                content,
+                ideaId, // using ideaId as context
+                'idea'
+            );
+        }
+    }
+};
+
+export const getIdeaComments = async (projectId: string, ideaId: string, tenantId?: string): Promise<ProjectComment[]> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const q = query(
+        projectSubCollection(resolvedTenant, projectId, COMMENTS),
+        where("targetId", "==", ideaId),
+        orderBy("createdAt", "asc") // Oldest first
+    );
+
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+    } as ProjectComment));
 };

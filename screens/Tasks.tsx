@@ -341,7 +341,7 @@ export const Tasks = () => {
                         filteredAndSortedTasks.map(task => (
                             <div
                                 key={task.id}
-                                onClick={() => navigate(`/project/${task.projectId}/tasks/${task.id}`)}
+                                onClick={() => navigate(`/project/${task.projectId}/tasks/${task.id}${task.tenantId ? `?tenant=${task.tenantId}` : ''}`)}
                                 className="group bg-[var(--color-surface-paper)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] rounded-xl p-4 flex items-center gap-4 cursor-pointer transition-all shadow-sm hover:shadow-md relative overflow-hidden"
                             >
                                 {/* Left Checkbox */}
@@ -391,8 +391,27 @@ export const Tasks = () => {
                                             </div>
                                         )}
                                         {task.status && (
-                                            <div className="flex items-center gap-1">
-                                                <span className="material-symbols-outlined text-[14px] opacity-70">sync</span>
+                                            <div className={`
+                                                flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all duration-300
+                                                ${task.status === 'Done' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' :
+                                                    task.status === 'In Progress' ? 'bg-blue-600/15 text-blue-400 border-blue-500/40 shadow-[0_0_8px_rgba(59,130,246,0.15)]' :
+                                                        task.status === 'Review' ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' :
+                                                            task.status === 'Open' || task.status === 'Todo' ? 'bg-violet-500/10 text-violet-400 border-violet-500/20' :
+                                                                task.status === 'Backlog' ? 'bg-slate-500/10 text-slate-400 border-slate-500/20 opacity-80' :
+                                                                    task.status === 'On Hold' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                                                        task.status === 'Blocked' ? 'bg-rose-600/20 text-rose-500 border-rose-500/50 animate-pulse' :
+                                                                            'bg-slate-500/5 text-slate-400 border-slate-500/10'}
+                                            `}>
+                                                <span className="material-symbols-outlined text-[12px]">
+                                                    {task.status === 'Done' ? 'check_circle' :
+                                                        task.status === 'In Progress' ? 'sync' :
+                                                            task.status === 'Review' ? 'visibility' :
+                                                                task.status === 'Open' || task.status === 'Todo' ? 'play_circle' :
+                                                                    task.status === 'Backlog' ? 'inventory_2' :
+                                                                        task.status === 'On Hold' ? 'pause_circle' :
+                                                                            task.status === 'Blocked' ? 'dangerous' :
+                                                                                'circle'}
+                                                </span>
                                                 {task.status}
                                             </div>
                                         )}

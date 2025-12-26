@@ -1,16 +1,18 @@
-
+import { MediaLibrary } from '../../components/MediaLibrary/MediaLibraryModal';
+import { useState } from 'react';
 import React from 'react';
 import { NavLink, Outlet, useParams, useLocation } from 'react-router-dom';
 
 export const SocialLayout = () => {
     const { id: projectId } = useParams<{ id: string }>();
+    const [showMediaLibrary, setShowMediaLibrary] = useState(false);
 
     const tabs = [
         { to: "", label: "Dashboard", end: true, icon: "dashboard" },
         { to: "calendar", label: "Calendar", icon: "calendar_month" },
         { to: "campaigns", label: "Campaigns", icon: "campaign" },
         { to: "posts", label: "Posts", icon: "post" },
-        { to: "assets", label: "Assets", icon: "perm_media" },
+        { to: "assets", label: "Assets", icon: "perm_media" }, // This will be intercepted
         { to: "settings", label: "Settings", icon: "settings" },
     ];
 
@@ -28,23 +30,37 @@ export const SocialLayout = () => {
 
                 {/* Navigation Tabs */}
                 <nav className="flex items-center gap-1 overflow-x-auto no-scrollbar h-full">
-                    {tabs.map((tab) => (
-                        <NavLink
-                            key={tab.to}
-                            to={tab.to}
-                            end={tab.end}
-                            className={({ isActive }) => `
+                    {tabs.map((tab) => {
+                        if (tab.to === 'assets') {
+                            return (
+                                <button
+                                    key={tab.to}
+                                    onClick={() => setShowMediaLibrary(true)}
+                                    className="relative h-8 px-3 rounded-md flex items-center gap-1.5 text-xs font-medium transition-all whitespace-nowrap text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]"
+                                >
+                                    <span className="material-symbols-outlined text-[16px]">{tab.icon}</span>
+                                    <span>{tab.label}</span>
+                                </button>
+                            );
+                        }
+                        return (
+                            <NavLink
+                                key={tab.to}
+                                to={tab.to}
+                                end={tab.end}
+                                className={({ isActive }) => `
                                 relative h-8 px-3 rounded-md flex items-center gap-1.5 text-xs font-medium transition-all whitespace-nowrap
                                 ${isActive
-                                    ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] shadow-sm'
-                                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'
-                                }
+                                        ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] shadow-sm'
+                                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'
+                                    }
                             `}
-                        >
-                            <span className="material-symbols-outlined text-[16px]">{tab.icon}</span>
-                            <span>{tab.label}</span>
-                        </NavLink>
-                    ))}
+                            >
+                                <span className="material-symbols-outlined text-[16px]">{tab.icon}</span>
+                                <span>{tab.label}</span>
+                            </NavLink>
+                        );
+                    })}
                 </nav>
             </div>
 
@@ -54,6 +70,12 @@ export const SocialLayout = () => {
                     <Outlet />
                 </div>
             </div>
+
+            <MediaLibrary
+                isOpen={showMediaLibrary}
+                onClose={() => setShowMediaLibrary(false)}
+                projectId={projectId || ''}
+            />
         </div>
     );
 };

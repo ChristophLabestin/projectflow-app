@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider, Navigate, useLocation, Outlet } from 'react-router-dom';
 import { AppLayout } from './components/AppLayout';
 import { GlobalToast } from './components/ui/GlobalToast';
 import { GlobalConfirmationModal } from './components/ui/GlobalConfirmationModal';
@@ -15,6 +15,7 @@ import { ProjectTaskDetail } from './screens/ProjectTaskDetail';
 import { ProjectIssueDetail } from './screens/ProjectIssueDetail';
 import { ProjectActivity } from './screens/ProjectActivity';
 import { ProjectIdeas } from './screens/ProjectIdeas';
+import { IdeaDetail } from './screens/IdeaDetail';
 import { ProjectIssues } from './screens/ProjectIssues';
 import { ProjectMindmap } from './screens/ProjectMindmap';
 import { ProjectMilestones } from './screens/ProjectMilestones';
@@ -34,11 +35,13 @@ import { PersonalTaskDetailPage } from './screens/PersonalTaskDetailPage';
 import { SocialLayout } from './screens/social/SocialLayout';
 import { SocialDashboard } from './screens/social/SocialDashboard';
 import { CampaignList } from './screens/social/CampaignList';
+import { CampaignDetailView } from './screens/social/CampaignDetailView';
 import { PostList } from './screens/social/PostList';
 import { SocialCalendar } from './screens/social/SocialCalendar';
 import { SocialSettings } from './screens/social/SocialSettings';
 import { SocialAssets } from './screens/social/SocialAssets';
 import { CreateSocialPost } from './screens/social/CreateSocialPost';
+import { CreateCampaignPage } from './screens/social/CreateCampaignPage';
 import { MarketingLayout } from './screens/marketing/MarketingLayout';
 import { MarketingDashboard } from './screens/marketing/MarketingDashboard';
 import { PaidAdsList } from './screens/marketing/PaidAdsList';
@@ -53,6 +56,7 @@ import { useUIState } from './context/UIContext';
 import { ReleaseToDosModal } from './components/ReleaseToDosModal';
 import { PinnedTasksModal } from './components/PinnedTasksModal';
 import { PinnedTasksProvider } from './context/PinnedTasksContext';
+import { ErrorPage } from './screens/ErrorPage';
 
 const RequireAuth = ({ children }: { children?: React.ReactNode }) => {
     const location = useLocation();
@@ -67,9 +71,26 @@ const RequireAuth = ({ children }: { children?: React.ReactNode }) => {
     return <>{children}</>;
 };
 
+// Root Layout Component to host global modals dependent on Router
+const RootLayout = () => {
+    const { isReleaseModalOpen, setReleaseModalOpen } = useUIState();
+
+    return (
+        <>
+            {window.location.hostname === 'localhost' && (
+                <ReleaseToDosModal
+                    isOpen={isReleaseModalOpen}
+                    onClose={() => setReleaseModalOpen(false)}
+                />
+            )}
+            <PinnedTasksModal />
+            <Outlet />
+        </>
+    );
+};
+
 const App = () => {
     const [user, setUser] = useState<any>(null);
-    const { isReleaseModalOpen, setReleaseModalOpen } = useUIState();
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -116,77 +137,78 @@ const App = () => {
         );
     }
 
+    const router = createBrowserRouter(
+        createRoutesFromElements(
+            <Route element={<RootLayout />} errorElement={<ErrorPage />}>
+                <Route path="/login" element={<Login />} />
+                <Route path="/invite/:tenantId" element={<InviteLanding />} />
+                <Route path="/invite-project/:projectId" element={<ProjectInviteLanding />} />
+                <Route path="/join/:inviteLinkId" element={<JoinProjectViaLink />} />
+                <Route path="/join-workspace/:inviteLinkId" element={<JoinWorkspaceViaLink />} />
+
+                <Route element={user ? <RequireAuth><AppLayout /></RequireAuth> : <Navigate to="/login" replace />}>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/notifications" element={<Notifications />} />
+                    <Route path="/projects" element={<ProjectsList />} />
+                    <Route path="/tasks" element={<Tasks />} />
+                    <Route path="/calendar" element={<Calendar />} />
+                    <Route path="/brainstorm" element={<Brainstorming />} />
+                    <Route path="/create" element={<CreateProjectWizard />} />
+                    <Route path="/team" element={<Team />} />
+                    <Route path="/media" element={<MediaLibraryPage />} />
+                    <Route path="/profile" element={<Profile />} />
+                    <Route path="/settings" element={<Settings />} />
+                    <Route path="/personal-tasks" element={<PersonalTasksPage />} />
+                    <Route path="/personal-tasks/:taskId" element={<PersonalTaskDetailPage />} />
+
+                    <Route path="/project/:id">
+                        <Route index element={<ProjectOverview />} />
+                        <Route path="tasks" element={<ProjectTasks />} />
+                        <Route path="tasks/:taskId" element={<ProjectTaskDetail />} />
+                        <Route path="details" element={<ProjectDetails />} />
+                        <Route path="activity" element={<ProjectActivity />} />
+                        <Route path="ideas" element={<ProjectIdeas />} />
+                        <Route path="ideas/:ideaId" element={<IdeaDetail />} />
+                        <Route path="issues" element={<ProjectIssues />} />
+                        <Route path="issues/:issueId" element={<ProjectIssueDetail />} />
+                        <Route path="mindmap" element={<ProjectMindmap />} />
+                        <Route path="milestones" element={<ProjectMilestones />} />
+                        <Route path="social" element={<SocialLayout />}>
+                            <Route index element={<SocialDashboard />} />
+                            <Route path="campaigns" element={<CampaignList />} />
+                            <Route path="campaigns/create" element={<CreateCampaignPage />} />
+                            <Route path="campaigns/edit/:campaignId" element={<CreateCampaignPage />} />
+                            <Route path="campaigns/:campaignId" element={<CampaignDetailView />} />
+                            <Route path="posts" element={<PostList />} />
+                            <Route path="calendar" element={<SocialCalendar />} />
+                            <Route path="settings" element={<SocialSettings />} />
+                            <Route path="assets" element={<SocialAssets />} />
+                        </Route>
+                        <Route path="social/create" element={<CreateSocialPost />} />
+                        <Route path="social/edit/:postId" element={<CreateSocialPost />} />
+
+                        <Route path="marketing" element={<MarketingLayout />}>
+                            <Route index element={<MarketingDashboard />} />
+                            <Route path="ads" element={<PaidAdsList />} />
+                            <Route path="email" element={<EmailMarketingList />} />
+                            <Route path="email/create" element={<CreateEmailPage />} />
+                            <Route path="email/builder" element={<EmailBuilderPage />} />
+                            <Route path="recipients" element={<RecipientList />} />
+                            <Route path="settings" element={<MarketingSettings />} />
+                        </Route>
+                    </Route>
+                </Route>
+
+                <Route path="*" element={<Navigate to="/" replace />} />
+            </Route>
+        )
+    );
+
     return (
         <>
             <GlobalToast />
             <GlobalConfirmationModal />
-            {window.location.hostname === 'localhost' && (
-                <ReleaseToDosModal
-                    isOpen={isReleaseModalOpen}
-                    onClose={() => setReleaseModalOpen(false)}
-                />
-            )}
-            <BrowserRouter>
-                <PinnedTasksModal />
-                <Routes>
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/invite/:tenantId" element={<InviteLanding />} />
-                    <Route path="/invite-project/:projectId" element={<ProjectInviteLanding />} />
-                    <Route path="/join/:inviteLinkId" element={<JoinProjectViaLink />} />
-                    <Route path="/join-workspace/:inviteLinkId" element={<JoinWorkspaceViaLink />} />
-
-                    <Route element={user ? <RequireAuth><AppLayout /></RequireAuth> : <Navigate to="/login" replace />}>
-                        <Route path="/" element={<Dashboard />} />
-                        <Route path="/notifications" element={<Notifications />} />
-                        <Route path="/projects" element={<ProjectsList />} />
-                        <Route path="/tasks" element={<Tasks />} />
-                        <Route path="/calendar" element={<Calendar />} />
-                        <Route path="/brainstorm" element={<Brainstorming />} />
-                        <Route path="/create" element={<CreateProjectWizard />} />
-                        <Route path="/team" element={<Team />} />
-                        <Route path="/media" element={<MediaLibraryPage />} />
-                        <Route path="/profile" element={<Profile />} />
-                        <Route path="/settings" element={<Settings />} />
-                        <Route path="/personal-tasks" element={<PersonalTasksPage />} />
-                        <Route path="/personal-tasks/:taskId" element={<PersonalTaskDetailPage />} />
-
-                        <Route path="/project/:id">
-                            <Route index element={<ProjectOverview />} />
-                            <Route path="tasks" element={<ProjectTasks />} />
-                            <Route path="tasks/:taskId" element={<ProjectTaskDetail />} />
-                            <Route path="details" element={<ProjectDetails />} />
-                            <Route path="activity" element={<ProjectActivity />} />
-                            <Route path="ideas" element={<ProjectIdeas />} />
-                            <Route path="issues" element={<ProjectIssues />} />
-                            <Route path="issues/:issueId" element={<ProjectIssueDetail />} />
-                            <Route path="mindmap" element={<ProjectMindmap />} />
-                            <Route path="milestones" element={<ProjectMilestones />} />
-                            <Route path="social" element={<SocialLayout />}>
-                                <Route index element={<SocialDashboard />} />
-                                <Route path="campaigns" element={<CampaignList />} />
-                                <Route path="posts" element={<PostList />} />
-                                <Route path="calendar" element={<SocialCalendar />} />
-                                <Route path="settings" element={<SocialSettings />} />
-                                <Route path="assets" element={<SocialAssets />} />
-                            </Route>
-                            <Route path="social/create" element={<CreateSocialPost />} />
-                            <Route path="social/edit/:postId" element={<CreateSocialPost />} />
-
-                            <Route path="marketing" element={<MarketingLayout />}>
-                                <Route index element={<MarketingDashboard />} />
-                                <Route path="ads" element={<PaidAdsList />} />
-                                <Route path="email" element={<EmailMarketingList />} />
-                                <Route path="email/create" element={<CreateEmailPage />} />
-                                <Route path="email/builder" element={<EmailBuilderPage />} />
-                                <Route path="recipients" element={<RecipientList />} />
-                                <Route path="settings" element={<MarketingSettings />} />
-                            </Route>
-                        </Route>
-                    </Route>
-
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-            </BrowserRouter>
+            <RouterProvider router={router} />
         </>
     );
 };

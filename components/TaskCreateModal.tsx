@@ -1,14 +1,13 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { addTask, getProjectCategories, getProjectTasks } from '../services/dataService';
+import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { addTask, getProjectCategories, getProjectTasks, createSubTask } from '../services/dataService';
 import { IdeaGroup, Task, TaskCategory, TaskStatus } from '../types';
 import { generateProjectDescription } from '../services/geminiService';
 import { Button } from './ui/Button';
-import { Input } from './ui/Input';
-import { Select } from './ui/Select';
-import { Textarea } from './ui/Textarea';
 import { DatePicker } from './ui/DatePicker';
-import { Card } from './ui/Card';
 import { MultiAssigneeSelector } from './MultiAssigneeSelector';
+import { usePinnedTasks, PinnedItem } from '../context/PinnedTasksContext';
+import { ProjectLabelsModal } from './ProjectLabelsModal';
 
 type Props = {
     projectId: string;
@@ -18,20 +17,25 @@ type Props = {
 };
 
 export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose, onCreated }) => {
-    const [newTaskTitle, setNewTaskTitle] = useState('');
-    const [newTaskDue, setNewTaskDue] = useState('');
-    const [newTaskPriority, setNewTaskPriority] = useState<Task['priority']>('Medium');
-    const [newTaskCategories, setNewTaskCategories] = useState<IdeaGroup[]>([]);
-    const [newTaskCategoryInput, setNewTaskCategoryInput] = useState('');
-    const [newTaskStatus, setNewTaskStatus] = useState<TaskStatus>('Open');
-    const [newTaskDescription, setNewTaskDescription] = useState('');
+    const [title, setTitle] = useState('');
+    const [priority, setPriority] = useState<Task['priority']>('Medium');
+    const [description, setDescription] = useState('');
+    const [dueDate, setDueDate] = useState('');
+    const [selectedCategories, setSelectedCategories] = useState<IdeaGroup[]>([]);
+    const [status, setStatus] = useState<TaskStatus>('Open');
     const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
+    const [assignedGroupIds, setAssignedGroupIds] = useState<string[]>([]);
     const [isAdding, setIsAdding] = useState(false);
+    const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [categories, setCategories] = useState<TaskCategory[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
-    const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
-    // Removed ref in favor of autoFocus prop if available, or just rely on Input behavior
+    const [pinOnCreate, setPinOnCreate] = useState(false);
+    const [subtasks, setSubtasks] = useState<string[]>([]);
+    const [newSubtask, setNewSubtask] = useState('');
+    const [showLabelsModal, setShowLabelsModal] = useState(false);
+
+    const { pinItem } = usePinnedTasks();
 
     useEffect(() => {
         (async () => {
@@ -49,11 +53,11 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
     }, [projectId, tenantId]);
 
     useEffect(() => {
-        const handleKey = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') onClose();
+        const handleEsc = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') onClose();
         };
-        window.addEventListener('keydown', handleKey);
-        return () => window.removeEventListener('keydown', handleKey);
+        window.addEventListener('keydown', handleEsc);
+        return () => window.removeEventListener('keydown', handleEsc);
     }, [onClose]);
 
     const categoryOptions = useMemo(
@@ -70,46 +74,51 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
         [categories, tasks]
     );
 
-    const filteredNewCategories = useMemo(
-        () =>
-            categoryOptions.filter(
-                (c) => c.toLowerCase().includes((newTaskCategoryInput || '').toLowerCase()) && !newTaskCategories.includes(c)
-            ),
-        [categoryOptions, newTaskCategoryInput, newTaskCategories]
-    );
-
-    const handleAddTask = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!newTaskTitle.trim()) return;
+    const handleSubmit = async (e?: React.FormEvent) => {
+        e?.preventDefault();
+        if (!title.trim()) return;
         setIsAdding(true);
         setError(null);
         try {
             const categoriesToSave = Array.from(
-                new Set([...
-                    newTaskCategories,
-                ...(newTaskCategoryInput.trim() ? [newTaskCategoryInput.trim()] : [])
-                ])
+                new Set([...selectedCategories])
             );
-            await addTask(projectId, newTaskTitle.trim(), newTaskDue || undefined, undefined, newTaskPriority, {
-                description: newTaskDescription,
+
+            // Create the task first
+            const newTaskId = await addTask(projectId, title.trim(), dueDate || undefined, undefined, priority, {
+                description,
                 category: categoriesToSave.length ? categoriesToSave : undefined,
-                status: newTaskStatus,
-                assigneeIds: assigneeIds
+                status,
+                assigneeIds,
+                assignedGroupIds
             }, tenantId);
+
+            // Create subtasks if any using createSubTask
+            if (subtasks.length > 0 && newTaskId) {
+                for (const subtaskTitle of subtasks) {
+                    if (subtaskTitle.trim()) {
+                        await createSubTask(projectId, newTaskId, subtaskTitle.trim(), undefined, tenantId);
+                    }
+                }
+            }
+
+            // Pin the task if checkbox is checked
+            if (pinOnCreate && newTaskId) {
+                const newPinnedItem: PinnedItem = {
+                    id: newTaskId,
+                    type: 'task',
+                    title: title.trim(),
+                    projectId,
+                    priority
+                };
+                pinItem(newPinnedItem);
+            }
+
             const [refreshedTasks, refreshedCategories] = await Promise.all([
                 getProjectTasks(projectId, tenantId),
                 getProjectCategories(projectId, tenantId)
             ]);
-            setTasks(refreshedTasks);
-            setCategories(refreshedCategories);
             onCreated?.(refreshedTasks, refreshedCategories);
-            setNewTaskTitle('');
-            setNewTaskDue('');
-            setNewTaskPriority('Medium');
-            setNewTaskCategories([]);
-            setNewTaskCategoryInput('');
-            setNewTaskStatus('Open');
-            setNewTaskDescription('');
             onClose();
         } catch (err) {
             console.error('Failed to add task', err);
@@ -120,191 +129,333 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
     };
 
     const handleGenerateDescription = async () => {
-        if (!newTaskTitle.trim()) return;
+        if (!title.trim()) return;
         setIsGeneratingDesc(true);
-        setError(null);
         try {
-            const desc = await generateProjectDescription(newTaskTitle, newTaskDescription || 'Task details');
-            setNewTaskDescription(desc.slice(0, 280));
+            const desc = await generateProjectDescription(title, description || 'Task details');
+            setDescription(desc.slice(0, 280));
         } catch (err) {
             console.error('Failed to generate description', err);
-            setError('Could not generate a description right now.');
         } finally {
             setIsGeneratingDesc(false);
         }
     };
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm" onClick={onClose}>
+    const handleAddSubtask = () => {
+        if (newSubtask.trim()) {
+            setSubtasks(prev => [...prev, newSubtask.trim()]);
+            setNewSubtask('');
+        }
+    };
+
+    const handleRemoveSubtask = (index: number) => {
+        setSubtasks(prev => prev.filter((_, i) => i !== index));
+    };
+
+    const priorityConfig: Record<string, { color: string; bg: string }> = {
+        Urgent: { color: 'text-rose-500', bg: 'bg-rose-500/10' },
+        High: { color: 'text-orange-500', bg: 'bg-orange-500/10' },
+        Medium: { color: 'text-blue-500', bg: 'bg-blue-500/10' },
+        Low: { color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+    };
+
+    return createPortal(
+        <div
+            className="fixed inset-0 z-[9999] flex items-start justify-center pt-[12vh] bg-black/50 backdrop-blur-sm px-4 animate-fade-in"
+            onClick={onClose}
+        >
             <div
-                className="w-full max-w-4xl max-h-[90vh] overflow-y-auto p-6 animate-fade-up bg-[var(--color-surface-card)] rounded-xl border border-[var(--color-surface-border)] shadow-2xl"
+                className="w-full max-w-xl bg-[var(--color-surface-card)] rounded-2xl shadow-2xl border border-[var(--color-surface-border)] animate-scale-up overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
-                <form onSubmit={handleAddTask} className="space-y-6">
-                    <div className="flex items-center justify-between gap-3 border-b border-[var(--color-surface-border)] pb-4">
-                        <div>
-                            <h2 className="text-xl font-bold text-[var(--color-text-main)]">New Task</h2>
-                            <p className="text-sm text-[var(--color-text-muted)] mt-1">Capture details, status, and categories in one place.</p>
-                        </div>
-                        <Button type="button" variant="ghost" onClick={onClose} size="sm">
-                            Close
-                        </Button>
+                <form onSubmit={handleSubmit}>
+                    {/* Title Input - Large like Idea Modal */}
+                    <div className="px-6 pt-6 pb-4">
+                        <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="What needs to be done?"
+                            autoFocus
+                            maxLength={100}
+                            className="w-full text-2xl font-semibold bg-transparent border-none outline-none text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)]/50"
+                        />
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div className="lg:col-span-2 flex flex-col gap-6">
-                            <Input
-                                label="Title"
-                                placeholder="Add a new task..."
-                                value={newTaskTitle}
-                                maxLength={50}
-                                onChange={(e) => setNewTaskTitle(e.target.value)}
-                                autoFocus
-                                required
-                            />
-
-                            <div className="space-y-2">
-                                <div className="flex justify-between items-center">
-                                    <label className="text-sm font-bold text-[var(--color-text-main)]">Description</label>
-                                    <Button
+                    {/* Toolbar Row */}
+                    <div className="px-6 pb-4 flex items-center gap-1 flex-wrap">
+                        {/* Priority Dropdown */}
+                        <div className="relative group">
+                            <button
+                                type="button"
+                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-[var(--color-surface-hover)] ${priorityConfig[priority].color}`}
+                            >
+                                <span className="material-symbols-outlined text-[16px]">flag</span>
+                                {priority}
+                                <span className="material-symbols-outlined text-[14px] opacity-50">expand_more</span>
+                            </button>
+                            <div className="absolute left-0 top-full mt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-lg shadow-xl py-1 min-w-[120px] z-10">
+                                {(['Urgent', 'High', 'Medium', 'Low'] as const).map(p => (
+                                    <button
+                                        key={p}
                                         type="button"
-                                        onClick={handleGenerateDescription}
-                                        disabled={isGeneratingDesc || !newTaskTitle}
-                                        variant="ghost"
-                                        size="xs"
-                                        loading={isGeneratingDesc}
-                                        icon={<span className="material-symbols-outlined text-sm">auto_awesome</span>}
+                                        onClick={() => setPriority(p)}
+                                        className={`w-full px-3 py-1.5 text-left text-xs font-medium flex items-center gap-2 hover:bg-[var(--color-surface-hover)] ${priority === p ? priorityConfig[p].color : 'text-[var(--color-text-main)]'}`}
                                     >
-                                        Generate with Gemini
-                                    </Button>
-                                </div>
-                                <Textarea
-                                    value={newTaskDescription}
-                                    onChange={(e) => setNewTaskDescription(e.target.value)}
-                                    placeholder="Add context, acceptance criteria, or notes"
-                                    rows={4}
-                                />
+                                        <span className={`size-2 rounded-full ${priorityConfig[p].bg} ${priorityConfig[p].color.replace('text-', 'bg-')}`} />
+                                        {p}
+                                    </button>
+                                ))}
                             </div>
+                        </div>
 
-                            <div className="space-y-2">
-                                <label className="text-sm font-bold text-[var(--color-text-main)]">Categories</label>
-                                <div className="flex flex-wrap gap-2 mb-2">
-                                    {newTaskCategories.map((c) => (
-                                        <span key={c} className="px-2 py-1 rounded bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] text-xs font-medium text-[var(--color-text-main)] flex items-center gap-1">
-                                            {c}
-                                            <button
-                                                type="button"
-                                                onClick={() => setNewTaskCategories((prev) => prev.filter((x) => x !== c))}
-                                                className="hover:text-red-500"
-                                            >
-                                                ✕
-                                            </button>
-                                        </span>
-                                    ))}
+                        {/* Status Dropdown */}
+                        <div className="relative group">
+                            <button
+                                type="button"
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]"
+                            >
+                                <span className="material-symbols-outlined text-[16px]">radio_button_unchecked</span>
+                                {status}
+                                <span className="material-symbols-outlined text-[14px] opacity-50">expand_more</span>
+                            </button>
+                            <div className="absolute left-0 top-full mt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-lg shadow-xl py-1 min-w-[130px] z-10">
+                                {(['Backlog', 'Open', 'In Progress', 'On Hold', 'Blocked', 'Done'] as const).map(s => (
+                                    <button
+                                        key={s}
+                                        type="button"
+                                        onClick={() => setStatus(s)}
+                                        className={`w-full px-3 py-1.5 text-left text-xs font-medium hover:bg-[var(--color-surface-hover)] ${status === s ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-main)]'}`}
+                                    >
+                                        {s}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Divider */}
+                        <div className="w-px h-4 bg-[var(--color-surface-border)] mx-1" />
+
+                        {/* Categories */}
+                        {selectedCategories.map(catName => {
+                            const catData = categories.find(c => c.name === catName);
+                            const color = catData?.color || '#64748b';
+                            return (
+                                <span
+                                    key={catName}
+                                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-white text-[10px] font-bold uppercase tracking-wider shadow-sm"
+                                    style={{ backgroundColor: color }}
+                                >
+                                    {catName}
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelectedCategories(prev => prev.filter(x => x !== catName))}
+                                        className="hover:text-rose-200 transition-colors"
+                                    >
+                                        <span className="material-symbols-outlined text-[12px]">close</span>
+                                    </button>
+                                </span>
+                            );
+                        })}
+
+                        {/* Add Category */}
+                        <div className="relative group">
+                            <button
+                                type="button"
+                                className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-[14px]">sell</span>
+                                Label
+                            </button>
+                            <div className="absolute left-0 top-full mt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-lg shadow-xl py-1 min-w-[160px] z-10 max-h-[250px] overflow-y-auto">
+                                <div className="px-2 py-1 mb-1 border-b border-[var(--color-surface-border)]">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowLabelsModal(true)}
+                                        className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-[10px] font-bold uppercase text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 transition-colors"
+                                    >
+                                        <span className="material-symbols-outlined text-[16px]">settings</span>
+                                        Manage Labels
+                                    </button>
                                 </div>
-                                <Input
-                                    value={newTaskCategoryInput}
-                                    onChange={(e) => setNewTaskCategoryInput(e.target.value)}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            const val = newTaskCategoryInput.trim();
-                                            if (val && !newTaskCategories.includes(val)) {
-                                                setNewTaskCategories((prev) => [...prev, val]);
-                                            }
-                                            setNewTaskCategoryInput('');
-                                        }
-                                    }}
-                                    placeholder="Type and press Enter to add"
-                                />
-                                <div className="flex flex-wrap gap-2 pt-2">
-                                    {(newTaskCategoryInput ? filteredNewCategories : categoryOptions).map((c) => (
+                                {categoryOptions.filter(c => !selectedCategories.includes(c)).map(c => {
+                                    const catData = categories.find(cat => cat.name === c);
+                                    return (
                                         <button
                                             key={c}
                                             type="button"
-                                            onClick={() => {
-                                                if (!newTaskCategories.includes(c)) {
-                                                    setNewTaskCategories((prev) => [...prev, c]);
-                                                }
-                                                setNewTaskCategoryInput('');
-                                            }}
-                                            className={`px-2 py-1 rounded text-xs border transition-colors ${newTaskCategories.includes(c) ? 'bg-[var(--color-text-main)] text-[var(--color-surface-bg)] border-[var(--color-text-main)]' : 'bg-transparent border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-text-main)]'}`}
+                                            onClick={() => setSelectedCategories(prev => [...prev, c])}
+                                            className="w-full px-3 py-1.5 text-left text-xs font-medium text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] flex items-center gap-2"
                                         >
+                                            <div className="size-2 rounded-full" style={{ backgroundColor: catData?.color || '#64748b' }} />
                                             {c}
                                         </button>
-                                    ))}
-                                    {categoryOptions.length === 0 && <span className="text-xs text-[var(--color-text-muted)]">No categories yet</span>}
-                                </div>
+                                    );
+                                })}
+                                {categoryOptions.filter(c => !selectedCategories.includes(c)).length === 0 && (
+                                    <div className="px-3 py-2 text-[10px] text-[var(--color-text-muted)] italic text-center">
+                                        No more labels
+                                    </div>
+                                )}
                             </div>
                         </div>
-
-                        <Card className="flex flex-col gap-4 h-fit">
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] ml-1">Due Date</label>
-                                <DatePicker
-                                    value={newTaskDue}
-                                    onChange={setNewTaskDue}
-                                    placeholder="Set due date"
-                                    align="right"
-                                />
-                            </div>
-
-                            <Select
-                                label="Priority"
-                                value={newTaskPriority}
-                                onChange={(e) => setNewTaskPriority(e.target.value as Task['priority'])}
-                            >
-                                <option value="Urgent">Urgent</option>
-                                <option value="High">High</option>
-                                <option value="Medium">Medium</option>
-                                <option value="Low">Low</option>
-                            </Select>
-
-                            <Select
-                                label="Status"
-                                value={newTaskStatus}
-                                onChange={(e) => setNewTaskStatus(e.target.value as TaskStatus)}
-                            >
-                                <option value="Backlog">Backlog</option>
-                                <option value="Open">Open</option>
-                                <option value="In Progress">In Progress</option>
-                                <option value="On Hold">On Hold</option>
-                                <option value="Blocked">Blocked</option>
-                                <option value="Done">Done</option>
-                            </Select>
-
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] ml-1">Assignees</label>
-                                <MultiAssigneeSelector
-                                    projectId={projectId}
-                                    assigneeIds={assigneeIds}
-                                    onChange={setAssigneeIds}
-                                />
-                            </div>
-
-                            <div className="text-xs text-[var(--color-text-muted)] mt-2">
-                                Tip: Use categories and status to keep the board organized.
-                            </div>
-                        </Card>
                     </div>
 
-                    <div className="flex items-center justify-between pt-4 border-t border-[var(--color-surface-border)]">
-                        {error ? (
-                            <span className="text-sm text-rose-600">{error}</span>
-                        ) : (
-                            <span className="text-xs text-[var(--color-text-muted)]">Press Enter in categories to create new pills or click suggestions.</span>
+                    {/* Description */}
+                    <div className="px-6 pb-4">
+                        <textarea
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="Add description..."
+                            rows={2}
+                            className="w-full px-3 py-2.5 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] text-sm text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent)] transition-colors resize-none"
+                        />
+                        {title && (
+                            <button
+                                type="button"
+                                onClick={handleGenerateDescription}
+                                disabled={isGeneratingDesc}
+                                className="mt-2 flex items-center gap-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-accent)] transition-colors disabled:opacity-50"
+                            >
+                                {isGeneratingDesc ? (
+                                    <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                                ) : (
+                                    <span className="material-symbols-outlined text-sm">auto_awesome</span>
+                                )}
+                                Generate with AI
+                            </button>
                         )}
-                        <div className="flex gap-3">
-                            <Button variant="ghost" onClick={onClose}>
+                    </div>
+
+                    {/* Subtasks Section */}
+                    <div className="px-6 pb-4">
+                        <div className="space-y-2">
+                            <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">Subtasks</label>
+
+                            {/* Existing subtasks */}
+                            {subtasks.length > 0 && (
+                                <div className="space-y-1 max-h-[120px] overflow-y-auto pr-1">
+                                    {subtasks.map((subtask, idx) => (
+                                        <div key={idx} className="flex items-center gap-2 group">
+                                            <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">check_box_outline_blank</span>
+                                            <span className="flex-1 text-sm text-[var(--color-text-main)]">{subtask}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRemoveSubtask(idx)}
+                                                className="opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-rose-500 transition-all"
+                                            >
+                                                <span className="material-symbols-outlined text-[16px]">close</span>
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Add new subtask */}
+                            <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">add</span>
+                                <input
+                                    type="text"
+                                    value={newSubtask}
+                                    onChange={(e) => setNewSubtask(e.target.value)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                            e.preventDefault();
+                                            handleAddSubtask();
+                                        }
+                                    }}
+                                    placeholder="Add subtask..."
+                                    className="flex-1 text-sm bg-transparent border-none outline-none text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)]"
+                                />
+                                {newSubtask && (
+                                    <button
+                                        type="button"
+                                        onClick={handleAddSubtask}
+                                        className="text-xs text-[var(--color-accent)] hover:underline"
+                                    >
+                                        Add
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Due Date & Assignees - 2 Columns */}
+                    <div className="px-6 pb-4 grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">Due Date</label>
+                            <DatePicker
+                                value={dueDate}
+                                onChange={setDueDate}
+                                placeholder="Set due date"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">Assignees</label>
+                            <MultiAssigneeSelector
+                                projectId={projectId}
+                                assigneeIds={assigneeIds}
+                                assignedGroupIds={assignedGroupIds}
+                                onChange={setAssigneeIds}
+                                onGroupChange={setAssignedGroupIds}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Error */}
+                    {error && (
+                        <div className="mx-6 mb-4 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs">
+                            {error}
+                        </div>
+                    )}
+
+                    {/* Footer */}
+                    <div className="px-6 py-4 border-t border-[var(--color-surface-border)] flex items-center justify-between bg-[var(--color-surface-bg)]/50">
+                        <span className="text-xs text-[var(--color-text-muted)] flex items-center gap-1">
+                            <kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface-hover)] font-mono text-[10px]">⌘</kbd>
+                            <span>+</span>
+                            <kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface-hover)] font-mono text-[10px]">↵</kbd>
+                            <span className="ml-1">to Create</span>
+                        </span>
+                        <div className="flex items-center gap-3">
+                            <Button type="button" variant="ghost" size="sm" onClick={onClose}>
                                 Cancel
                             </Button>
-                            <Button type="submit" loading={isAdding}>
-                                Add Task
+
+                            {/* Pin on Create Toggle */}
+                            <button
+                                type="button"
+                                onClick={() => setPinOnCreate(!pinOnCreate)}
+                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${pinOnCreate
+                                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                                    : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'
+                                    }`}
+                            >
+                                <span className="material-symbols-outlined text-[16px]">{pinOnCreate ? 'keep' : 'keep_off'}</span>
+                                Pin on Create
+                            </button>
+
+                            <Button type="submit" size="sm" isLoading={isAdding} disabled={!title.trim()}>
+                                Create Task
                             </Button>
                         </div>
                     </div>
                 </form>
             </div>
-        </div>
+
+            {showLabelsModal && (
+                <ProjectLabelsModal
+                    isOpen={showLabelsModal}
+                    onClose={() => setShowLabelsModal(false)}
+                    projectId={projectId}
+                    tenantId={tenantId}
+                    onLabelsChange={async () => {
+                        const catData = await getProjectCategories(projectId, tenantId);
+                        setCategories(catData);
+                    }}
+                />
+            )}
+        </div>,
+        document.body
     );
 };

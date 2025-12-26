@@ -1,10 +1,11 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams, useOutletContext } from 'react-router-dom';
 import { usePinnedProject } from '../context/PinnedProjectContext';
-import { getProjectById, toggleTaskStatus, updateProjectFields, addActivityEntry, deleteProjectById, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues, getActiveTenantId, generateInviteLink, getLatestGeminiReport, saveGeminiReport, getProjectMembers } from '../services/dataService';
+import { usePinnedTasks } from '../context/PinnedTasksContext';
+import { getProjectById, toggleTaskStatus, updateProjectFields, addActivityEntry, deleteProjectById, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues, getActiveTenantId, getLatestGeminiReport, saveGeminiReport, getProjectMembers, getSubTasks } from '../services/dataService';
 import { TaskCreateModal } from '../components/TaskCreateModal';
 import { generateProjectReport, getGeminiInsight } from '../services/geminiService';
-import { Activity, Idea, Project, Task, Issue, ProjectRole, GeminiReport } from '../types';
+import { Activity, Idea, Project, Task, Issue, ProjectRole, GeminiReport, Milestone, ProjectGroup } from '../types';
 import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
 import { toMillis, timeAgo } from '../utils/time';
 import { auth, storage } from '../services/firebase';
@@ -13,24 +14,18 @@ import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Modal } from '../components/ui/Modal';
-import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { DatePicker } from '../components/ui/DatePicker';
-import { Textarea } from '../components/ui/Textarea';
-import { ImageCropper } from '../components/ui/ImageCropper';
-import { DonutChart } from '../components/charts/DonutChart';
-import { TeamCard } from '../components/TeamCard';
 import { InviteMemberModal } from '../components/InviteMemberModal';
-import { MilestoneCard } from '../components/Milestones/MilestoneCard';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
 // import { Checkbox } from '../components/ui/Checkbox'; // Removed
 import { fetchLastCommits, GithubCommit } from '../services/githubService';
-import { getUserProfile, linkWithGithub, updateUserData, subscribeProjectMilestones, updateMilestone } from '../services/dataService';
-import { calculateProjectHealth, ProjectHealth } from '../services/healthService';
+import { getUserProfile, subscribeProjectMilestones, updateMilestone } from '../services/dataService';
+import { subscribeProjectGroups } from '../services/projectGroupService';
+import { calculateProjectHealth } from '../services/healthService';
 import { HealthIndicator } from '../components/project/HealthIndicator';
 import { HealthDetailModal } from '../components/project/HealthDetailModal';
 import { ProjectEditModal } from '../components/project/ProjectEditModal';
-import { Milestone } from '../types';
 
 const cleanText = (value?: string | null) => (value || '').replace(/\*\*/g, '');
 
@@ -43,6 +38,11 @@ const activityIcon = (type?: Activity['type'], actionText?: string) => {
         if (action.includes('reopened')) return { icon: 'undo', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-500/10' };
         if (action.includes('completed') || action.includes('done')) return { icon: 'check_circle', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-500/10' };
         return { icon: 'add_task', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-500/10' };
+    }
+    if (type === 'issue') {
+        if (action.includes('resolved') || action.includes('closed')) return { icon: 'check_circle', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-500/10' };
+        if (action.includes('reopened')) return { icon: 'undo', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-500/10' };
+        return { icon: 'bug_report', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-500/10' };
     }
     if (type === 'status') return { icon: 'swap_horiz', color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-100 dark:bg-indigo-500/10' };
     if (type === 'report') return { icon: 'auto_awesome', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-500/10' };
@@ -72,8 +72,11 @@ export const ProjectOverview = () => {
     const navigate = useNavigate();
     const { statusPreference } = useOutletContext<{ statusPreference: 'online' | 'busy' | 'idle' | 'offline' }>();
     const { pinProject, unpinProject, pinnedProjectId } = usePinnedProject();
+    const { pinItem, unpinItem, isPinned } = usePinnedTasks();
     const [project, setProject] = useState<Project | null>(null);
     const [tasks, setTasks] = useState<Task[]>([]);
+    const [projectGroups, setProjectGroups] = useState<ProjectGroup[]>([]);
+    const [subtaskStats, setSubtaskStats] = useState<Record<string, { done: number; total: number }>>({});
     const [loading, setLoading] = useState(true);
     const [insight, setInsight] = useState<string | null>(null);
     const [activity, setActivity] = useState<Activity[]>([]);
@@ -101,6 +104,7 @@ export const ProjectOverview = () => {
 
     const [showGalleryModal, setShowGalleryModal] = useState(false);
     const [showMediaLibrary, setShowMediaLibrary] = useState(false);
+    const [mediaPickerTarget, setMediaPickerTarget] = useState<'cover' | 'icon' | 'gallery'>('gallery');
     const [projectAssets, setProjectAssets] = useState<string[]>([]);
     const [loadingAssets, setLoadingAssets] = useState(false);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
@@ -238,6 +242,7 @@ export const ProjectOverview = () => {
 
                 // Subscribe to real-time data using the correct tenant
                 const unsubTasks = subscribeProjectTasks(id, setTasks, projData.tenantId);
+                const unsubGroups = subscribeProjectGroups(id, setProjectGroups, projData.tenantId);
                 const unsubActivity = subscribeProjectActivity(id, setActivity, projData.tenantId);
                 const unsubIdeas = subscribeProjectIdeas(id, setIdeas, projData.tenantId);
                 const unsubIssues = subscribeProjectIssues(id, setIssues, projData.tenantId);
@@ -245,6 +250,7 @@ export const ProjectOverview = () => {
 
                 return () => {
                     unsubTasks();
+                    unsubGroups();
                     unsubActivity();
                     unsubIdeas();
                     unsubIssues();
@@ -259,6 +265,27 @@ export const ProjectOverview = () => {
         };
         fetchData();
     }, [id]);
+
+    useEffect(() => {
+        const loadSubtaskStats = async () => {
+            if (!tasks.length) {
+                setSubtaskStats({});
+                return;
+            }
+            try {
+                const entries = await Promise.all(tasks.map(async (task) => {
+                    const subs = await getSubTasks(task.id, project?.id, project?.tenantId);
+                    const done = subs.filter(s => s.isCompleted).length;
+                    return [task.id, { done, total: subs.length }] as const;
+                }));
+                setSubtaskStats(Object.fromEntries(entries));
+            } catch (err) {
+                console.warn('Failed to load subtask stats', err);
+            }
+        };
+
+        void loadSubtaskStats();
+    }, [tasks, project?.id, project?.tenantId]);
 
     useEffect(() => {
         let mounted = true;
@@ -357,7 +384,8 @@ export const ProjectOverview = () => {
         }
     }, [pinnedReport]);
 
-    const handleToggleTask = async (taskId: string, currentStatus: boolean) => {
+    const handleToggleTask = async (taskId: string, currentStatus: boolean, event?: React.MouseEvent<HTMLButtonElement>) => {
+        event?.stopPropagation();
         if (!project) return;
         setTasks(tasks.map(t => t.id === taskId ? { ...t, isCompleted: !currentStatus } : t));
         await toggleTaskStatus(taskId, currentStatus, project.id);
@@ -431,6 +459,31 @@ export const ProjectOverview = () => {
         }
     };
 
+    const handleUpdateField = async (field: keyof Project, value: any) => {
+        if (!project || !id) return;
+        if (project[field] === value) return;
+
+        try {
+            await updateProjectFields(id, { [field]: value });
+
+            await addActivityEntry(id, {
+                type: 'status',
+                user: (auth.currentUser?.displayName || 'Unknown'),
+                action: 'updated project settings',
+                targetId: id,
+                targetName: project.title,
+                metadata: {
+                    changes: [field]
+                }
+            });
+
+            setProject(prev => prev ? ({ ...prev, [field]: value } as Project) : prev);
+        } catch (error) {
+            console.error("Error updating project:", error);
+            setError("Failed to update project settings");
+        }
+    };
+
 
 
 
@@ -484,8 +537,19 @@ export const ProjectOverview = () => {
 
     // Stats Calculations
     const completedTasks = tasks.filter(t => t.isCompleted).length;
+    const subtaskTotals = Object.values(subtaskStats).reduce((acc, stat) => {
+        acc.total += stat.total;
+        acc.done += stat.done;
+        return acc;
+    }, { total: 0, done: 0 });
+    const completedTasksWithSubtasks = completedTasks + subtaskTotals.done;
+    const totalTasksWithSubtasks = tasks.length + subtaskTotals.total;
+    const completedBreakdownTotal = completedTasksWithSubtasks;
+    const taskCompletionShare = completedBreakdownTotal > 0 ? Math.round((completedTasks / completedBreakdownTotal) * 100) : 0;
+    const subtaskCompletionShare = completedBreakdownTotal > 0 ? 100 - taskCompletionShare : 0;
+    const openSubtasks = subtaskTotals.total - subtaskTotals.done;
     const progress = tasks.length > 0 ? Math.round((completedTasks / tasks.length) * 100) : 0;
-    const openTasks = tasks.length - completedTasks;
+    const openTasks = tasks.length - completedTasks + openSubtasks;
     const urgentCount = tasks.filter(t => t.priority === 'Urgent').length;
     const upcomingDeadlines = tasks.filter(t => t.dueDate && new Date(t.dueDate) > new Date() && !t.isCompleted).sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()).slice(0, 3);
 
@@ -501,7 +565,7 @@ export const ProjectOverview = () => {
             const dateB = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
             return dateA - dateB; // Ascending Due Date
         })
-        .slice(0, 5);
+        .slice(0, 10);
 
     const recentIssues = issues
         .filter(i => !['Resolved', 'Closed'].includes(i.status))
@@ -514,6 +578,33 @@ export const ProjectOverview = () => {
             return dateA - dateB;
         })
         .slice(0, 5);
+
+    const hasIssuesModule = project.modules?.includes('issues');
+    const hasIdeasModule = project.modules?.includes('ideas');
+    const openIssues = issues.filter(i => !['Resolved', 'Closed'].includes(i.status)).length;
+    const pendingMilestones = milestones.filter(m => m.status !== 'Achieved');
+    const ideaHighlights = ideas.slice().sort((a, b) => b.votes - a.votes).slice(0, 4);
+    const topIdea = ideaHighlights[0];
+    const showGithubCard = hasIssuesModule;
+    const showIdeaCard = hasIdeasModule;
+    const showIssueCard = hasIssuesModule;
+    const executionSideCards = Number(showIdeaCard) + Number(showIssueCard);
+    const galleryAssets = projectAssets
+        .map((url, index) => {
+            const match = url.match(/(?:^|%2F)(\d+)_media_/);
+            return {
+                url,
+                index,
+                timestamp: match ? Number(match[1]) : 0
+            };
+        })
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .slice(0, 3);
+    const workloadMetric = hasIssuesModule
+        ? { label: 'Open issues', value: openIssues, icon: 'bug_report' }
+        : hasIdeasModule
+            ? { label: 'Ideas', value: ideas.length, icon: 'lightbulb' }
+            : { label: 'Completed', value: completedTasks, icon: 'check_circle' };
 
     return (
         <div className="flex flex-col gap-8 fade-in pb-20 max-w-[1600px] mx-auto w-full">
@@ -608,6 +699,24 @@ export const ProjectOverview = () => {
                                 Invite
                             </Button>
                         )}
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => {
+                                if (!project?.id) return;
+                                if (pinnedProjectId === project.id) {
+                                    void unpinProject();
+                                } else {
+                                    void pinProject(project.id);
+                                }
+                            }}
+                            title={pinnedProjectId === project.id ? 'Unpin project' : 'Pin project'}
+                            className={pinnedProjectId === project.id ? 'text-amber-500 hover:text-amber-600' : ''}
+                        >
+                            <span className="material-symbols-outlined">
+                                {pinnedProjectId === project.id ? 'push_pin' : 'keep'}
+                            </span>
+                        </Button>
                         {isOwner && (
                             <Button size="icon" variant="ghost" onClick={() => setShowEditModal(true)}>
                                 <span className="material-symbols-outlined">settings</span>
@@ -636,13 +745,86 @@ export const ProjectOverview = () => {
                     </div>
 
                     {/* 2. Tasks Stat */}
-                    <div className="py-3 px-6 flex items-center gap-4">
-                        <span className="material-symbols-outlined text-green-500 text-[20px] shrink-0">task_alt</span>
-                        <div className="text-left min-w-0">
-                            <div className="text-sm font-bold text-[var(--color-text-main)] leading-none mb-1">
-                                {completedTasks} / {tasks.length}
+                    <div className="py-3 px-6 group relative overflow-visible cursor-help">
+                        {/* Trigger content */}
+                        <div className="flex items-center gap-4">
+                            <span className="material-symbols-outlined text-green-500 text-[20px] shrink-0">task_alt</span>
+                            <div className="text-left min-w-0">
+                                <div className="text-sm font-bold text-[var(--color-text-main)] leading-none mb-1">
+                                    {completedTasksWithSubtasks} / {totalTasksWithSubtasks}
+                                </div>
+                                <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-tight truncate block">Tasks Done</span>
                             </div>
-                            <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-tight truncate block">Tasks Done</span>
+                        </div>
+
+                        {/* Redesigned Floating Hover Card */}
+                        <div className="absolute left-1/2 -translate-x-1/2 top-[calc(100%+8px)] z-50 w-72 pointer-events-none group-hover:pointer-events-auto">
+                            <div className="relative opacity-0 translate-y-2 scale-95 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100 transition-all duration-200 ease-out origin-top shadow-2xl rounded-2xl">
+
+                                {/* Container */}
+                                <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/5">
+
+                                    {/* Header */}
+                                    <div className="px-5 py-3 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-hover)]/30 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">donut_small</span>
+                                            <span className="text-xs font-bold text-[var(--color-text-main)]">Composition</span>
+                                        </div>
+                                        <span className="text-[10px] font-medium text-[var(--color-text-muted)]">
+                                            Total Completed
+                                        </span>
+                                    </div>
+
+                                    {/* Body */}
+                                    <div className="p-5 space-y-5">
+
+                                        {/* Visual Bar */}
+                                        <div className="space-y-2">
+                                            <div className="flex w-full h-3 bg-[var(--color-surface-hover)] rounded-full overflow-hidden ring-1 ring-inset ring-black/5 dark:ring-white/5">
+                                                <div
+                                                    className="h-full bg-emerald-500 transition-all duration-300 relative group/segment"
+                                                    style={{ width: `${taskCompletionShare}%` }}
+                                                >
+                                                    {taskCompletionShare > 10 && <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-white/90">{taskCompletionShare}%</span>}
+                                                </div>
+                                                <div
+                                                    className="h-full bg-sky-500 transition-all duration-300 relative group/segment"
+                                                    style={{ width: `${subtaskCompletionShare}%` }}
+                                                >
+                                                    {subtaskCompletionShare > 10 && <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-white/90">{subtaskCompletionShare}%</span>}
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-between text-[10px] text-[var(--color-text-muted)] px-0.5">
+                                                <span>Tasks</span>
+                                                <span>Subtasks</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Detailed grid */}
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="flex flex-col p-3 rounded-xl bg-[var(--color-surface-hover)]/50 border border-[var(--color-surface-border)] transition-colors hover:bg-[var(--color-surface-hover)]">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <div className="size-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/20"></div>
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Main Tasks</span>
+                                                </div>
+                                                <div className="text-xl font-bold text-[var(--color-text-main)] mt-1 tabular-nums tracking-tight">
+                                                    {completedTasks} <span className="text-sm font-medium text-[var(--color-text-muted)]">/ {tasks.length}</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex flex-col p-3 rounded-xl bg-[var(--color-surface-hover)]/50 border border-[var(--color-surface-border)] transition-colors hover:bg-[var(--color-surface-hover)]">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <div className="size-2 rounded-full bg-sky-500 shadow-sm shadow-sky-500/20"></div>
+                                                    <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Subtasks</span>
+                                                </div>
+                                                <div className="text-xl font-bold text-[var(--color-text-main)] mt-1 tabular-nums tracking-tight">
+                                                    {subtaskTotals.done} <span className="text-sm font-medium text-[var(--color-text-muted)]">/ {subtaskTotals.total}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -699,258 +881,724 @@ export const ProjectOverview = () => {
             </div>
 
 
-            {/* MAIN CONTENT GRID */}
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
-
-                {/* LEFT: MAIN WORKSPACE (2 Columns) */}
-                <div className="xl:col-span-2 space-y-8">
-
-
-
-                    {/* Top Row: KPI Cards (Health, Ideas) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {/* Health Card */}
-                        <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm relative group/card hover:shadow-md transition-shadow">
-                            <div className={`absolute top-0 right-0 w-32 h-32 rounded-bl-full opacity-5 pointer-events-none ${health.status === 'excellent' || health.status === 'healthy' ? 'bg-green-500' :
-                                health.status === 'warning' ? 'bg-amber-500' : 'bg-rose-500'
-                                }`} />
-
-                            <div className="relative z-10 flex flex-col h-full">
-                                <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2 mb-4 shrink-0">
-                                    <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)]">query_stats</span>
-                                    Health
-                                </h3>
-
-                                <div className="flex-1 flex items-center gap-6">
-                                    {/* Left: Score */}
-                                    <div className="shrink-0 flex items-center gap-3">
-                                        <HealthIndicator health={health} size="md" showLabel={false} onOpenDetail={() => setShowHealthModal(true)} />
-                                        <div>
-                                            <div className="text-2xl font-bold text-[var(--color-text-main)] leading-none">{health.score}</div>
-                                            <div className={`text-[10px] font-bold uppercase tracking-wider mt-1.5 ${health.status === 'excellent' || health.status === 'healthy' ? 'text-green-600' : health.status === 'warning' ? 'text-amber-600' : 'text-rose-600'}`}>{health.status}</div>
+            {/* Project Overview Layout */}
+            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                <div className="xl:col-span-3 space-y-8">
+                    {/* Snapshot */}
+                    <section className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-[var(--color-text-main)]">Snapshot</h2>
+                            <span className="text-xs text-[var(--color-text-muted)] uppercase tracking-[0.2em]">Overview</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <Card className="h-full min-h-[180px] flex flex-col justify-between">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-sm font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)]">query_stats</span>
+                                        Health
+                                    </h3>
+                                    <button onClick={() => setShowHealthModal(true)} className="text-[10px] font-semibold text-[var(--color-primary)] hover:underline">
+                                        Details
+                                    </button>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <HealthIndicator health={health} size="md" showLabel={false} onOpenDetail={() => setShowHealthModal(true)} />
+                                    <div>
+                                        <div className={`text-sm font-bold uppercase tracking-wider ${health.status === 'excellent' || health.status === 'healthy'
+                                            ? 'text-emerald-600 dark:text-emerald-400'
+                                            : health.status === 'warning'
+                                                ? 'text-amber-600 dark:text-amber-400'
+                                                : 'text-rose-600 dark:text-rose-400'
+                                            }`}>
+                                            {health.status}
                                         </div>
-                                    </div>
-
-                                    {/* Right: Factors (Compact) */}
-                                    <div className="flex-1 min-w-0 border-l border-[var(--color-surface-border)] pl-6 space-y-2">
-                                        <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Top Risks</p>
-                                        {health.factors.filter(f => f.type === 'negative').length > 0 ? (
-                                            <ul className="space-y-1.5">
-                                                {health.factors.filter(f => f.type === 'negative').slice(0, 2).map((factor, i) => (
-                                                    <li key={i} className="text-[11px] text-[var(--color-text-main)] leading-tight flex items-start gap-1.5" title={factor.description}>
-                                                        <span className="text-rose-500 mt-1 text-[8px] shrink-0">●</span>
-                                                        <span className="line-clamp-1">{factor.label}</span>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        ) : (
-                                            <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5">
-                                                <span className="material-symbols-outlined text-sm">check_circle</span>
-                                                No risks detected
-                                            </p>
-                                        )}
+                                        <div className="text-[10px] text-[var(--color-text-muted)]">Health score</div>
                                     </div>
                                 </div>
+                                <div className="mt-3">
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Top Risks</p>
+                                    {health.factors.filter(f => f.type === 'negative').length > 0 ? (
+                                        <ul className="mt-2 space-y-1">
+                                            {health.factors.filter(f => f.type === 'negative').slice(0, 2).map((factor, i) => (
+                                                <li key={i} className="text-[11px] text-[var(--color-text-main)] flex items-center gap-1.5">
+                                                    <span className="text-rose-500 text-[8px]">●</span>
+                                                    <span className="line-clamp-1">{factor.label}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <p className="mt-2 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5">
+                                            <span className="material-symbols-outlined text-sm">check_circle</span>
+                                            No risks detected
+                                        </p>
+                                    )}
+                                </div>
+                            </Card>
+
+                            <Card className="h-full min-h-[180px] flex flex-col">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-sm font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)]">inbox</span>
+                                        Workload
+                                    </h3>
+                                    <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">{openTasks} open</span>
+                                </div>
+                                <div className="mt-3 space-y-2 flex-1">
+                                    <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--color-surface-hover)]">
+                                        <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                                            <span className="material-symbols-outlined text-[14px]">list_alt</span>
+                                            Open tasks
+                                        </div>
+                                        <span className="text-sm font-bold text-[var(--color-text-main)]">{openTasks}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--color-surface-hover)]">
+                                        <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                                            <span className="material-symbols-outlined text-[14px] text-rose-500">priority_high</span>
+                                            Urgent
+                                        </div>
+                                        <span className="text-sm font-bold text-[var(--color-text-main)]">{urgentCount}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--color-surface-hover)]">
+                                        <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                                            <span className="material-symbols-outlined text-[14px]">{workloadMetric.icon}</span>
+                                            {workloadMetric.label}
+                                        </div>
+                                        <span className="text-sm font-bold text-[var(--color-text-main)]">{workloadMetric.value}</span>
+                                    </div>
+                                </div>
+                                <Link to={`/project/${id}/tasks`} className="text-[10px] font-semibold text-[var(--color-primary)] hover:underline mt-3">
+                                    View tasks
+                                </Link>
+                            </Card>
+
+                            <Card className="h-full min-h-[180px] flex flex-col justify-between">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-sm font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)]">insights</span>
+                                        Activity
+                                    </h3>
+                                    <Link to={`/project/${id}/activity`} className="text-[10px] font-semibold text-[var(--color-primary)] hover:underline">
+                                        History
+                                    </Link>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4 mt-3">
+                                    <div>
+                                        <div className="text-xl font-bold text-[var(--color-text-main)]">{activity.length}</div>
+                                        <div className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Events</div>
+                                    </div>
+                                    <div>
+                                        <div className="text-xl font-bold text-indigo-600">{activity.filter(a => a.type === 'comment').length}</div>
+                                        <div className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Comments</div>
+                                    </div>
+                                </div>
+                                <div className="mt-3 text-[11px] text-[var(--color-text-muted)]">
+                                    {activity[0]
+                                        ? (
+                                            <>
+                                                <span className="font-semibold text-[var(--color-text-main)]">{activity[0].user}</span> {activity[0].action}
+                                                <span className="block text-[10px] text-[var(--color-text-subtle)] mt-1">{timeAgo(activity[0].createdAt)}</span>
+                                            </>
+                                        )
+                                        : 'No recent activity yet.'}
+                                </div>
+                            </Card>
+
+                            <Card className="h-full min-h-[180px] flex flex-col">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-sm font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)]">event_upcoming</span>
+                                        Upcoming
+                                    </h3>
+                                    <Link to={`/project/${id}/tasks`} className="text-[10px] font-semibold text-[var(--color-primary)] hover:underline">
+                                        View
+                                    </Link>
+                                </div>
+                                <div className="mt-3 space-y-2 flex-1">
+                                    {upcomingDeadlines.length === 0 ? (
+                                        <p className="text-sm text-[var(--color-text-muted)]">No upcoming deadlines.</p>
+                                    ) : (
+                                        upcomingDeadlines.slice(0, 2).map(task => (
+                                            <div key={task.id} className="flex items-center justify-between gap-3 p-2 rounded-lg border border-[var(--color-surface-border)]">
+                                                <div className="min-w-0">
+                                                    <p className="text-xs font-semibold text-[var(--color-text-main)] truncate">{task.title}</p>
+                                                    <p className="text-[10px] text-[var(--color-text-muted)]">{task.priority || 'Priority not set'}</p>
+                                                </div>
+                                                <span className="text-[10px] font-bold text-[var(--color-text-muted)] shrink-0">
+                                                    {new Date(task.dueDate!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                </span>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                                {upcomingDeadlines.length > 2 && (
+                                    <p className="text-[10px] text-[var(--color-text-muted)] mt-2">+{upcomingDeadlines.length - 2} more tasks</p>
+                                )}
+                            </Card>
+                        </div>
+                    </section>
+
+                    {/* Execution */}
+                    <section className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-[var(--color-text-main)]">Execution</h2>
+                            <div className="flex items-center gap-3 text-[10px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
+                                <span>{openTasks} open tasks</span>
+                                {showIssueCard && <span>{openIssues} open issues</span>}
+                                {showIdeaCard && <span>{ideas.length} ideas</span>}
                             </div>
                         </div>
-
-                        {/* Activity Summary Card */}
-                        <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm group/card hover:shadow-md transition-shadow flex flex-col justify-between h-full">
-                            <div className="flex items-center gap-4">
-                                <div className="size-11 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
-                                    <span className="material-symbols-outlined text-2xl">insights</span>
-                                </div>
-                                <div className="min-w-0">
-                                    <h3 className="font-bold text-[var(--color-text-main)] truncate">Activity</h3>
-                                    <p className="text-[10px] text-[var(--color-text-muted)] font-medium uppercase tracking-tight line-clamp-1">RECENT UPDATES</p>
-                                </div>
-                            </div>
-
-                            <div className="mt-6 flex items-end justify-between">
-                                <div className="flex items-center gap-6">
-                                    <div className="space-y-0.5">
-                                        <p className="text-xl font-bold text-[var(--color-text-main)] italic leading-none">{activity.length}</p>
-                                        <p className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Events</p>
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <Card className={`${executionSideCards === 0 ? 'lg:col-span-3' : 'lg:col-span-2'} h-full flex flex-col`}>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-[var(--color-text-subtle)]">checklist</span>
+                                        <h3 className="text-lg font-bold text-[var(--color-text-main)]">Tasks</h3>
                                     </div>
-                                    <div className="space-y-0.5">
-                                        <p className="text-xl font-bold text-indigo-600 italic leading-none">{activity.filter(a => a.type === 'comment').length}</p>
-                                        <p className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Comments</p>
-                                    </div>
+                                    <Link to={`/project/${id}/tasks`} className="text-xs font-semibold text-[var(--color-primary)] hover:underline">
+                                        View all tasks
+                                    </Link>
                                 </div>
-                                <Link to={`/project/${id}/activity`} className="size-9 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center hover:bg-[var(--color-primary)] hover:text-white transition-all hover:scale-105">
-                                    <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-                                </Link>
-                            </div>
-                        </div>
-                    </div>
-
-
-                    {/* Main Content Sections: Reordered (Tasks first, then Ideas/Issues) */}
-                    <div className="space-y-8">
-                        {/* Tasks List (Moved to Top) */}
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-lg font-bold text-[var(--color-text-main)] flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-[var(--color-primary)]">check_circle</span>
-                                    Active Tasks
-                                </h3>
-                                <Link to={`/project/${id}/tasks`} className="text-sm font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1">
-                                    View All <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                                </Link>
-                            </div>
-
-                            <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl shadow-sm overflow-hidden flex flex-col divide-y divide-[var(--color-surface-border)]">
-                                {recentTasks.length === 0 ? (
-                                    <div className="p-8 text-center text-[var(--color-text-muted)]">
-                                        <div className="inline-block p-4 rounded-full bg-[var(--color-surface-hover)] mb-3">
-                                            <span className="material-symbols-outlined text-2xl">task_alt</span>
+                                <div className="mt-4 space-y-2 flex-1">
+                                    {recentTasks.length === 0 ? (
+                                        <div className="flex-1 flex items-center justify-center text-xs text-[var(--color-text-muted)]">
+                                            No active tasks right now.
                                         </div>
-                                        <p>No active tasks. Good job!</p>
-                                    </div>
-                                ) : recentTasks.map(task => (
-                                    <div
-                                        key={task.id}
-                                        onClick={() => navigate(`/project/${id}/tasks/${task.id}`)}
-                                        className="group p-4 flex items-center gap-4 hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
-                                    >
-                                        <button
-                                            onClick={(e) => handleToggleTask(task.id, task.isCompleted, e)}
-                                            className={`
-                                                size-5 rounded-md border flex items-center justify-center transition-all duration-200 shrink-0
-                                                ${task.isCompleted
-                                                    ? 'bg-green-500 border-green-500 text-white scale-100'
-                                                    : 'border-[var(--color-surface-border)] hover:border-green-500 text-transparent bg-transparent hover:scale-110'}
-                                            `}
-                                        >
-                                            <span className="material-symbols-outlined text-[16px] font-bold">check</span>
-                                        </button>
-
-                                        <div className="flex-1 min-w-0 flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-                                            <span className={`font-medium truncate flex-1 ${task.isCompleted ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)]'}`}>
-                                                {task.title}
-                                            </span>
-
-                                            <div className="flex items-center gap-3 shrink-0">
-                                                {task.priority && (
-                                                    <Badge size="sm" variant={task.priority === 'Urgent' ? 'error' : task.priority === 'High' ? 'warning' : 'secondary'}>
-                                                        {task.priority}
-                                                    </Badge>
-                                                )}
-
-                                                {task.dueDate && (
-                                                    <div className={`flex items-center gap-1.5 text-xs font-medium px-2 py-1 rounded-md ${new Date(task.dueDate) < new Date() && !task.isCompleted ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/30' : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'}`}>
-                                                        <span className="material-symbols-outlined text-[14px]">event</span>
-                                                        <span>{new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                    ) : (
+                                        recentTasks.slice(0, 6).map(task => (
+                                            <div
+                                                key={task.id}
+                                                onClick={() => navigate(`/project/${id}/tasks/${task.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
+                                                className="group flex items-center gap-3 rounded-lg border border-[var(--color-surface-border)] px-3 py-2.5 hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
+                                            >
+                                                <button
+                                                    onClick={(e) => handleToggleTask(task.id, task.isCompleted, e)}
+                                                    className={`
+                                                        size-5 rounded-md border flex items-center justify-center transition-all duration-200 shrink-0
+                                                        ${task.isCompleted
+                                                            ? 'bg-green-500 border-green-500 text-white'
+                                                            : 'border-[var(--color-surface-border)] hover:border-green-500 text-transparent bg-transparent'}
+                                                    `}
+                                                >
+                                                    <span className="material-symbols-outlined text-[14px] font-bold">check</span>
+                                                </button>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className={`text-xs font-semibold truncate ${task.isCompleted ? 'line-through text-[var(--color-text-muted)]' : 'text-[var(--color-text-main)]'}`}>
+                                                        {task.title}
+                                                    </p>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        {task.priority && (
+                                                            <Badge size="sm" variant={task.priority === 'Urgent' ? 'error' : task.priority === 'High' ? 'warning' : 'secondary'}>
+                                                                {task.priority}
+                                                            </Badge>
+                                                        )}
+                                                        {task.dueDate && (
+                                                            <span className="text-[10px] text-[var(--color-text-muted)]">
+                                                                {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                            </span>
+                                                        )}
+                                                        {task.assignedGroupIds && task.assignedGroupIds.length > 0 && (
+                                                            <div className="flex -space-x-1.5 overflow-hidden ml-1">
+                                                                {task.assignedGroupIds.map(gid => {
+                                                                    const group = projectGroups.find(g => g.id === gid);
+                                                                    if (!group) return null;
+                                                                    return (
+                                                                        <div
+                                                                            key={gid}
+                                                                            className="size-4 rounded-full flex items-center justify-center text-[7px] font-bold text-white shadow-sm ring-1 ring-white dark:ring-[#1E1E1E]"
+                                                                            style={{ backgroundColor: group.color }}
+                                                                            title={`Group: ${group.name}`}
+                                                                        >
+                                                                            {group.name.substring(0, 1).toUpperCase()}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
                                                     </div>
+                                                </div>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (isPinned(task.id)) {
+                                                            unpinItem(task.id);
+                                                        } else {
+                                                            pinItem({
+                                                                id: task.id,
+                                                                type: 'task',
+                                                                title: task.title,
+                                                                projectId: id!,
+                                                                priority: task.priority,
+                                                                isCompleted: task.isCompleted
+                                                            });
+                                                        }
+                                                    }}
+                                                    className={`
+                                                        size-8 rounded-full flex items-center justify-center transition-colors shrink-0
+                                                        ${isPinned(task.id)
+                                                            ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10'
+                                                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}
+                                                    `}
+                                                    title={isPinned(task.id) ? 'Unpin task' : 'Pin task'}
+                                                >
+                                                    <span className="material-symbols-outlined text-[16px]">push_pin</span>
+                                                </button>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </Card>
+
+                            {(showIdeaCard || showIssueCard) && (
+                                <div className={`lg:col-span-1 grid grid-cols-1 gap-6 ${executionSideCards > 1 ? 'lg:grid-rows-2 lg:auto-rows-fr' : ''}`}>
+                                    {showIdeaCard && (
+                                        <Card className={`flex flex-col ${executionSideCards > 1 ? 'lg:h-full' : ''}`}>
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-lg font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                                    <span className="material-symbols-outlined text-[var(--color-text-subtle)]">lightbulb</span>
+                                                    Idea Spotlight
+                                                </h3>
+                                                <Link to={`/project/${id}/ideas`} className="text-xs font-semibold text-[var(--color-primary)] hover:underline">
+                                                    View all ideas
+                                                </Link>
+                                            </div>
+                                            {topIdea ? (
+                                                <Link
+                                                    to={`/project/${id}/ideas/${topIdea.id}`}
+                                                    className="mt-4 flex-1 block rounded-lg p-2 -m-2 hover:bg-[var(--color-surface-hover)] transition-colors"
+                                                >
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <Badge size="sm" variant="secondary" className="text-[10px] px-1.5 py-0">
+                                                            {topIdea.type}
+                                                        </Badge>
+                                                        {topIdea.generated && (
+                                                            <span className="material-symbols-outlined text-[14px] text-indigo-500" title="AI Generated">
+                                                                auto_awesome
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <h4 className="font-bold text-[var(--color-text-main)] text-sm mb-1 line-clamp-2">{topIdea.title}</h4>
+                                                    <p className="text-xs text-[var(--color-text-muted)] line-clamp-3">
+                                                        {topIdea.description || 'No description yet.'}
+                                                    </p>
+                                                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--color-surface-border)]/60">
+                                                        <div className="flex items-center gap-3 text-[10px] text-[var(--color-text-muted)]">
+                                                            <span className="flex items-center gap-0.5">
+                                                                <span className="material-symbols-outlined text-[12px]">thumb_up</span>
+                                                                {topIdea.votes || 0}
+                                                            </span>
+                                                            <span className="flex items-center gap-0.5">
+                                                                <span className="material-symbols-outlined text-[12px]">chat_bubble</span>
+                                                                {topIdea.comments || 0}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </Link>
+                                            ) : (
+                                                <div className="mt-4 flex-1 flex items-center justify-center text-sm text-[var(--color-text-muted)]">
+                                                    No ideas yet.
+                                                </div>
+                                            )}
+                                        </Card>
+                                    )}
+
+                                    {showIssueCard && (
+                                        <Card className={`flex flex-col ${executionSideCards > 1 ? 'lg:h-full' : ''}`}>
+                                            <div className="flex items-center justify-between">
+                                                <h3 className="text-lg font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                                    <span className="material-symbols-outlined text-[var(--color-text-subtle)]">bug_report</span>
+                                                    Issue Focus
+                                                </h3>
+                                                <Link to={`/project/${id}/issues`} className="text-xs font-semibold text-[var(--color-primary)] hover:underline">
+                                                    View all issues
+                                                </Link>
+                                            </div>
+
+                                            <div className="mt-4 space-y-2 flex-1 max-h-[500px] overflow-y-auto pr-2">
+                                                {recentIssues.length === 0 ? (
+                                                    <div className="text-sm text-[var(--color-text-muted)]">No open issues right now.</div>
+                                                ) : (
+                                                    recentIssues.map(issue => (
+                                                        <div
+                                                            key={issue.id}
+                                                            onClick={() => navigate(`/project/${id}/issues/${issue.id}`)}
+                                                            className="group flex items-start justify-between gap-3 rounded-lg border border-[var(--color-surface-border)] px-3 py-2.5 hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
+                                                        >
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="text-xs font-semibold text-[var(--color-text-main)] truncate">{issue.title}</p>
+                                                                <div className="flex items-center gap-2 mt-1">
+                                                                    <Badge size="sm" variant={issue.priority === 'Urgent' ? 'error' : issue.priority === 'High' ? 'warning' : issue.priority === 'Medium' ? 'secondary' : 'default'}>
+                                                                        {issue.priority}
+                                                                    </Badge>
+                                                                    <Badge size="sm" variant="outline">{issue.status}</Badge>
+                                                                    {issue.assignedGroupIds && issue.assignedGroupIds.length > 0 && (
+                                                                        <div className="flex -space-x-1.5 overflow-hidden ml-1">
+                                                                            {issue.assignedGroupIds.map(gid => {
+                                                                                const group = projectGroups.find(g => g.id === gid);
+                                                                                if (!group) return null;
+                                                                                return (
+                                                                                    <div
+                                                                                        key={gid}
+                                                                                        className="size-4 rounded-full flex items-center justify-center text-[7px] font-bold text-white shadow-sm ring-1 ring-white dark:ring-[#1E1E1E]"
+                                                                                        style={{ backgroundColor: group.color }}
+                                                                                        title={`Group: ${group.name}`}
+                                                                                    >
+                                                                                        {group.name.substring(0, 1).toUpperCase()}
+                                                                                    </div>
+                                                                                );
+                                                                            })}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 shrink-0 self-center">
+                                                                {issue.scheduledDate && (
+                                                                    <span className="text-[10px] font-semibold text-[var(--color-text-muted)]">
+                                                                        {new Date(issue.scheduledDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                                    </span>
+                                                                )}
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        if (isPinned(issue.id)) {
+                                                                            unpinItem(issue.id);
+                                                                        } else {
+                                                                            pinItem({
+                                                                                id: issue.id,
+                                                                                type: 'issue',
+                                                                                title: issue.title,
+                                                                                projectId: id!,
+                                                                                priority: issue.priority
+                                                                            });
+                                                                        }
+                                                                    }}
+                                                                    className={`
+                                                                        size-8 rounded-full flex items-center justify-center transition-colors
+                                                                        ${isPinned(issue.id)
+                                                                            ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10'
+                                                                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}
+                                                                    `}
+                                                                    title={isPinned(issue.id) ? 'Unpin issue' : 'Pin issue'}
+                                                                >
+                                                                    <span className="material-symbols-outlined text-[16px]">push_pin</span>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))
                                                 )}
                                             </div>
-                                        </div>
-
-                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity -ml-2">
-                                            <span className="material-symbols-outlined text-[var(--color-text-muted)]">chevron_right</span>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
+                                        </Card>
+                                    )}
+                                </div>
+                            )}
                         </div>
+                    </section>
 
-                        {/* Open Issues Card (only if module enabled) */}
-                        {project.modules?.includes('issues') && (
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
+                    {/* Updates */}
+                    <section className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-[var(--color-text-main)]">Updates</h2>
+                            <span className="text-xs text-[var(--color-text-muted)] uppercase tracking-[0.2em]">Timeline</span>
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                            <Card className={`flex flex-col ${showGithubCard ? 'lg:col-span-2' : 'lg:col-span-4'}`}>
+                                <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-lg font-bold text-[var(--color-text-main)] flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-[var(--color-primary)]">bug_report</span>
-                                        Open Issues
+                                        <span className="material-symbols-outlined text-slate-500">history</span>
+                                        Latest Activity
                                     </h3>
-                                    <Link to={`/project/${id}/issues`} className="text-sm font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1">
-                                        View All <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                                    <Link to={`/project/${id}/activity`} className="text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-primary)]">
+                                        History
                                     </Link>
                                 </div>
 
-                                <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-6 shadow-sm group/card hover:shadow-md transition-shadow">
-                                    <div className="space-y-4">
-                                        {recentIssues.length === 0 ? (
-                                            <div className="p-4 text-center text-[var(--color-text-muted)]">
-                                                <p className="italic text-sm">No open issues found.</p>
-                                            </div>
-                                        ) : (
-                                            recentIssues.map(issue => (
-                                                <div key={issue.id} className="group/issue flex items-start gap-4 p-3 rounded-xl hover:bg-[var(--color-surface-hover)] transition-all cursor-pointer border border-transparent hover:border-[var(--color-surface-border)]" onClick={() => navigate(`/project/${id}/issues/${issue.id}`)}>
-                                                    <div className={`mt-1 size-2 rounded-full shrink-0 ${issue.priority === 'High' || issue.priority === 'Urgent' ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]' :
-                                                        issue.priority === 'Medium' ? 'bg-amber-500' : 'bg-blue-500'
-                                                        }`} />
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center justify-between gap-4">
-                                                            <h4 className="text-sm font-bold text-[var(--color-text-main)] group-hover/issue:text-[var(--color-primary)] transition-colors truncate">{issue.title}</h4>
-                                                            <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest whitespace-nowrap">{issue.status}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 mt-1">
-                                                            <span className="text-xs text-[var(--color-text-muted)] font-medium">#{issue.id.slice(0, 4)}</span>
-                                                            <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase px-1.5 py-0.5 rounded bg-[var(--color-surface-hover)]">{issue.priority}</span>
-                                                        </div>
-                                                    </div>
-                                                    <span className="material-symbols-outlined text-[var(--color-text-muted)] opacity-0 group-hover/issue:opacity-100 transition-all -translate-x-2 group-hover/issue:translate-x-0">chevron_right</span>
+                                <div className="relative pl-0 space-y-5 max-h-[320px] overflow-y-auto pr-2 before:absolute before:inset-y-2 before:left-[15px] before:w-px before:bg-[var(--color-surface-border)]">
+                                    {activity.slice(0, 6).map((item) => {
+                                        const { icon, color, bg } = activityIcon(item.type, item.action);
+                                        return (
+                                            <div key={item.id} className="relative flex gap-3 pl-10">
+                                                <div className={`absolute left-0 top-0 size-8 rounded-full border-2 border-white dark:border-[var(--color-surface-card)] ${bg} z-10 flex items-center justify-center`}>
+                                                    <span className={`material-symbols-outlined text-[16px] ${color}`}>{icon}</span>
                                                 </div>
-                                            ))
+                                                <div className="space-y-0.5 pt-0.5">
+                                                    <p className="text-xs text-[var(--color-text-main)] leading-snug">
+                                                        <span className="font-semibold">{item.user}</span> {item.action}
+                                                    </p>
+                                                    <p className="text-[10px] text-[var(--color-text-muted)]">{timeAgo(item.createdAt)}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    {activity.length === 0 && <p className="text-xs text-[var(--color-text-muted)] pl-2">No recent activity.</p>}
+                                </div>
+                            </Card>
+
+                            {showGithubCard && (
+                                <Card className="flex flex-col lg:col-span-2">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="size-10 rounded-xl bg-slate-100 dark:bg-slate-900/30 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
+                                                <span className="material-symbols-outlined text-xl">terminal</span>
+                                            </div>
+                                            <div className="min-w-0">
+                                                <h3 className="font-bold text-[var(--color-text-main)] truncate">GitHub Commits</h3>
+                                                <p className="text-[10px] text-[var(--color-text-muted)] font-medium uppercase tracking-tight line-clamp-1">
+                                                    {project.githubRepo || 'No repository linked'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        {project.githubRepo && (
+                                            <a
+                                                href={`https://github.com/${project.githubRepo}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-xs font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1 shrink-0"
+                                            >
+                                                Repo <span className="material-symbols-outlined text-sm">open_in_new</span>
+                                            </a>
                                         )}
                                     </div>
+
+                                    {!project.githubRepo ? (
+                                        <div className="text-xs text-[var(--color-text-muted)] space-y-3">
+                                            <p>Link a repository in project settings to show recent commits.</p>
+                                            {isOwner && (
+                                                <button
+                                                    onClick={() => setShowEditModal(true)}
+                                                    className="inline-flex items-center gap-1 text-[var(--color-primary)] font-semibold hover:underline"
+                                                >
+                                                    Open settings <span className="material-symbols-outlined text-sm">settings</span>
+                                                </button>
+                                            )}
+                                        </div>
+                                    ) : commitsLoading ? (
+                                        <div className="flex items-center gap-2 text-[10px] text-[var(--color-text-muted)]">
+                                            <span className="material-symbols-outlined animate-spin text-[14px] text-[var(--color-primary)]">progress_activity</span>
+                                            Loading recent commits...
+                                        </div>
+                                    ) : commitsError ? (
+                                        <div className="text-xs text-rose-600 dark:text-rose-400">{commitsError}</div>
+                                    ) : githubCommits.length === 0 ? (
+                                        <div className="text-xs text-[var(--color-text-muted)]">No recent commits found.</div>
+                                    ) : (
+                                        <div className="space-y-2 max-h-[320px] overflow-y-auto pr-2">
+                                            {githubCommits.map(commit => (
+                                                <a
+                                                    key={commit.sha}
+                                                    href={commit.html_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="block p-3 rounded-xl border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] transition-all"
+                                                >
+                                                    <div className="flex items-start justify-between gap-3">
+                                                        <div className="flex items-start gap-2 min-w-0">
+                                                            {commit.author?.avatar_url ? (
+                                                                <img
+                                                                    src={commit.author.avatar_url}
+                                                                    alt={commit.author.login}
+                                                                    className="size-7 rounded-full border border-[var(--color-surface-border)]"
+                                                                />
+                                                            ) : (
+                                                                <div className="size-7 rounded-full bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] flex items-center justify-center text-[10px] font-bold">
+                                                                    {(commit.commit.author.name || '?').charAt(0).toUpperCase()}
+                                                                </div>
+                                                            )}
+                                                            <div className="min-w-0">
+                                                                <p className="text-xs font-semibold text-[var(--color-text-main)] line-clamp-1">
+                                                                    {commit.commit.message.split(/\r?\n/)[0]}
+                                                                </p>
+                                                                <div className="flex items-center gap-2 text-[10px] text-[var(--color-text-muted)]">
+                                                                    <span>@{commit.author?.login || commit.commit.author.name || 'unknown'}</span>
+                                                                    <span>•</span>
+                                                                    <span>{timeAgo(commit.commit.author.date)}</span>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <span className="text-[10px] font-mono text-[var(--color-text-subtle)] shrink-0">
+                                                            {commit.sha.slice(0, 7)}
+                                                        </span>
+                                                    </div>
+                                                </a>
+                                            ))}
+                                        </div>
+                                    )}
+                                </Card>
+                            )}
+                        </div>
+                    </section>
+
+                    {/* Resources */}
+                    <section className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <h2 className="text-lg font-bold text-[var(--color-text-main)]">Resources</h2>
+                            <span className="text-xs text-[var(--color-text-muted)] uppercase tracking-[0.2em]">Assets</span>
+                        </div>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            <Card className="h-full flex flex-col">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-lg font-bold text-[var(--color-text-main)]">Quick Links</h3>
+                                    {isOwner && (
+                                        <Button size="sm" variant="ghost" onClick={() => setShowEditModal(true)}>
+                                            Manage
+                                        </Button>
+                                    )}
                                 </div>
-                            </div>
-                        )}
-                    </div>
+                                <div className="mt-4 space-y-2 flex-1">
+                                    {project.links?.slice(0, 4).map((link, i) => (
+                                        <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors group">
+                                            <div className="size-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
+                                                <span className="material-symbols-outlined text-[18px]">link</span>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-[var(--color-text-main)] truncate group-hover:text-indigo-600 transition-colors">{link.title}</p>
+                                                <p className="text-[10px] text-[var(--color-text-muted)] truncate">{link.url.replace(/^https?:\/\//, '')}</p>
+                                            </div>
+                                            <span className="material-symbols-outlined text-[14px] text-[var(--color-text-subtle)] opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
+                                        </a>
+                                    ))}
+                                    {(!project.links || project.links.length === 0) && <p className="text-sm text-[var(--color-text-muted)]">No links available.</p>}
+                                </div>
+                                {project.links && project.links.length > 4 && (
+                                    <p className="text-[10px] text-[var(--color-text-muted)] mt-2">+{project.links.length - 4} more links</p>
+                                )}
+                            </Card>
 
+                            <Card className="h-full flex flex-col">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-lg font-bold text-[var(--color-text-main)]">Gallery</h3>
+                                    <Button size="sm" variant="ghost" onClick={() => setShowMediaLibrary(true)}>Manage</Button>
+                                </div>
 
-
-
-
-
-
+                                <div className="mt-4 grid grid-cols-3 gap-2">
+                                    {galleryAssets.map((asset) => (
+                                        <div
+                                            key={`${asset.url}-${asset.index}`}
+                                            className="aspect-square rounded-lg overflow-hidden border border-[var(--color-surface-border)] cursor-pointer hover:opacity-80 transition-opacity"
+                                            onClick={() => { setSelectedImageIndex(asset.index); setShowGalleryModal(true); }}
+                                        >
+                                            <img src={asset.url} alt="" className="w-full h-full object-cover" />
+                                        </div>
+                                    ))}
+                                    {projectAssets.length < 3 && (
+                                        <button onClick={() => setShowMediaLibrary(true)} className="aspect-square rounded-lg border border-dashed border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] transition-colors flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-primary)]">
+                                            <span className="material-symbols-outlined">add</span>
+                                        </button>
+                                    )}
+                                </div>
+                            </Card>
+                        </div>
+                    </section>
                 </div>
 
-                {/* RIGHT: SIDEBAR (1 Column) */}
-                <div className="space-y-8">
-
-                    {/* Ideas & Feedback Card (only if module enabled) */}
-                    {project.modules?.includes('ideas') && (
-                        <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm group/card hover:shadow-md transition-shadow">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-3">
-                                    <div className="size-10 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-                                        <span className="material-symbols-outlined text-xl">lightbulb</span>
-                                    </div>
-                                    <div>
-                                        <h3 className="font-bold text-[var(--color-text-main)]">Ideas & Feedback</h3>
-                                        <p className="text-[10px] text-[var(--color-text-muted)] font-medium uppercase tracking-tight">Brainstorming</p>
-                                    </div>
-                                </div>
-                                <Link to={`/project/${id}/ideas`} className="text-xs font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1">
-                                    View All <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                                </Link>
+                <div className="xl:col-span-1 space-y-6">
+                    {showInsight && (
+                        <div className="relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br from-indigo-600 to-violet-600 shadow-md text-white">
+                            <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                                <span className="material-symbols-outlined text-8xl">auto_awesome</span>
                             </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="p-3 rounded-xl bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)]">
-                                    <p className="text-2xl font-bold text-[var(--color-text-main)]">{ideas.length}</p>
-                                    <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Total Ideas</p>
+                            <div className="relative z-10 space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
+                                        <span className="material-symbols-outlined text-xl text-white">psychology</span>
+                                    </div>
+                                    <h3 className="font-bold">Project Insight</h3>
                                 </div>
-                                <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800">
-                                    <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{ideas.filter(i => i.status === 'Approved').length}</p>
-                                    <p className="text-[10px] font-bold text-emerald-600/70 dark:text-emerald-400/70 uppercase tracking-wider">Approved</p>
+                                <p className="text-indigo-100 leading-relaxed text-sm selection:bg-white/30">
+                                    {cleanText(insight) || "Generate a report to get tailored guidance and discover potential risks early."}
+                                </p>
+                                <div className="flex gap-2 pt-1">
+                                    <Button size="sm" className="bg-white text-indigo-600 hover:bg-indigo-50 border-none shadow-sm w-full justify-center" onClick={handleGenerateReport} isLoading={reportLoading}>
+                                        {pinnedReport ? 'Refresh' : 'Analyze'}
+                                    </Button>
                                 </div>
                             </div>
                         </div>
                     )}
+                    <Card className="flex flex-col">
+                        <div className="flex items-center gap-3">
+                            <div className="size-9 rounded-full bg-[var(--color-surface-hover)] text-[var(--color-text-subtle)] flex items-center justify-center shrink-0">
+                                <span className="material-symbols-outlined text-[18px]">schedule</span>
+                            </div>
+                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">Planning Snapshot</h3>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+                            <span>Timeline & milestones</span>
+                            <span className="flex items-center gap-1.5">
+                                <span className="size-1.5 rounded-full bg-[var(--color-primary)]" />
+                                <span className="text-[var(--color-text-main)]">{progress}%</span>
+                                complete
+                            </span>
+                        </div>
 
-                    {/* Team Card (Relocated from Main) */}
-                    <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm group/card hover:shadow-md transition-shadow">
-                        <div className="flex items-center justify-between pointer-events-auto mb-4">
+                        <div className="mt-4 space-y-4 flex-1">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Start</p>
+                                    <p className="text-sm font-semibold text-[var(--color-text-main)]">
+                                        {project.startDate ? new Date(project.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Not set'}
+                                    </p>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Due</p>
+                                    <p className="text-sm font-semibold text-[var(--color-text-main)]">
+                                        {project.dueDate ? new Date(project.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Not set'}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="h-2 w-full bg-[var(--color-surface-hover)] rounded-full overflow-hidden">
+                                <div className="h-full bg-[var(--color-primary)] rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+                            </div>
+
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Milestones</p>
+                                    <Link to={`/project/${id}/milestones`} className="text-[10px] font-semibold text-[var(--color-primary)] hover:underline">
+                                        View
+                                    </Link>
+                                </div>
+                                {pendingMilestones.length > 0 ? (
+                                    pendingMilestones
+                                        .slice()
+                                        .sort((a, b) => new Date(a.dueDate || '9999').getTime() - new Date(b.dueDate || '9999').getTime())
+                                        .slice(0, 3)
+                                        .map(milestone => (
+                                            <div key={milestone.id} className="flex items-center gap-2 rounded-lg border border-[var(--color-surface-border)] px-2.5 py-2">
+                                                <span className={`material-symbols-outlined text-[16px] ${new Date(milestone.dueDate || '') < new Date() ? 'text-rose-500' : 'text-indigo-500'}`}>
+                                                    {new Date(milestone.dueDate || '') < new Date() ? 'warning' : 'flag'}
+                                                </span>
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-xs font-semibold text-[var(--color-text-main)] truncate">{milestone.title}</p>
+                                                    <p className="text-[10px] text-[var(--color-text-muted)]">
+                                                        {milestone.dueDate ? new Date(milestone.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No due date'}
+                                                    </p>
+                                                </div>
+                                                <button onClick={() => handleToggleMilestone(milestone)} className="size-7 rounded-full hover:bg-[var(--color-surface-hover)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-green-500 transition-colors">
+                                                    <span className="material-symbols-outlined text-[16px]">check</span>
+                                                </button>
+                                            </div>
+                                        ))
+                                ) : (
+                                    <p className="text-xs text-[var(--color-text-muted)]">No milestones yet.</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {isOwner && (
+                            <button
+                                onClick={() => setShowEditModal(true)}
+                                className="text-[10px] font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1 mt-4"
+                            >
+                                Edit dates <span className="material-symbols-outlined text-[12px]">settings</span>
+                            </button>
+                        )}
+                    </Card>
+                    <Card className="flex flex-col">
+                        <div className="flex items-center justify-between mb-4">
                             <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
                                 <span className="material-symbols-outlined text-slate-500">group</span>
                                 Team
                                 <span className="text-xs font-medium text-[var(--color-text-muted)] bg-[var(--color-surface-hover)] px-2 py-0.5 rounded-full">
                                     {teamMemberProfiles.length}
                                 </span>
-                                {/* Online count indicator */}
                                 {activeProjectUsers.length > 0 && (
                                     <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-full flex items-center gap-1">
                                         <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -970,9 +1618,8 @@ export const ProjectOverview = () => {
                                 <p className="text-sm">No team members yet</p>
                             </div>
                         ) : (
-                            <div className="space-y-3">
-                                {teamMemberProfiles.slice(0, 5).map(member => {
-                                    // Check if this member is in the active users list
+                            <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+                                {teamMemberProfiles.map(member => {
                                     const presenceData = activeProjectUsers.find(u => u.uid === member.id);
                                     const isOnline = presenceData?.isOnline || false;
                                     const isIdle = presenceData?.isIdle || false;
@@ -980,7 +1627,6 @@ export const ProjectOverview = () => {
 
                                     return (
                                         <div key={member.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors group/member">
-                                            {/* Avatar */}
                                             <div className="relative shrink-0">
                                                 {member.photoURL ? (
                                                     <img
@@ -995,7 +1641,6 @@ export const ProjectOverview = () => {
                                                         {member.displayName?.charAt(0)?.toUpperCase() || '?'}
                                                     </div>
                                                 )}
-                                                {/* Online/Idle/Owner Indicator */}
                                                 {isOnline ? (
                                                     <div className="absolute -bottom-0.5 -right-0.5 size-3.5 bg-emerald-500 rounded-full border-2 border-white dark:border-[var(--color-surface-card)] shadow-sm" title="Online now" />
                                                 ) : isIdle ? (
@@ -1013,7 +1658,6 @@ export const ProjectOverview = () => {
                                                 ) : null}
                                             </div>
 
-                                            {/* Info */}
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
                                                     <span className="font-semibold text-sm text-[var(--color-text-main)] truncate">
@@ -1034,7 +1678,6 @@ export const ProjectOverview = () => {
                                                         }`}>
                                                         {member.role}
                                                     </span>
-                                                    {/* Status text */}
                                                     {isOnline && (
                                                         <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">• Online</span>
                                                     )}
@@ -1046,21 +1689,9 @@ export const ProjectOverview = () => {
                                         </div>
                                     );
                                 })}
-
-                                {/* Show more indicator */}
-                                {teamMemberProfiles.length > 5 && (
-                                    <Link
-                                        to={`/project/${id}/team`}
-                                        className="flex items-center justify-center gap-2 py-2 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors"
-                                    >
-                                        <span>+{teamMemberProfiles.length - 5} more members</span>
-                                        <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                                    </Link>
-                                )}
                             </div>
                         )}
 
-                        {/* Invite Button */}
                         {can('canInvite') && (
                             <button
                                 onClick={handleInvite}
@@ -1070,18 +1701,15 @@ export const ProjectOverview = () => {
                                 Invite Team Member
                             </button>
                         )}
-                    </div>
-
-                    {/* Project Controls Card */}
+                    </Card>
 
                     {isOwner && (
-                        <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm space-y-4">
+                        <Card className="space-y-4">
                             <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[var(--color-text-subtle)]">tune</span>
                                 Project Controls
                             </h3>
                             <div className="grid grid-cols-1 gap-3">
-                                {/* Status + Priority */}
                                 <div className="grid grid-cols-2 gap-2">
                                     <Select
                                         label="Status"
@@ -1110,7 +1738,6 @@ export const ProjectOverview = () => {
                                     </Select>
                                 </div>
 
-                                {/* Dates - Row */}
                                 <div className="grid grid-cols-2 gap-2">
                                     <div className="space-y-1.5">
                                         <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Start</label>
@@ -1132,242 +1759,13 @@ export const ProjectOverview = () => {
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </Card>
                     )}
-
-                    {/* AI Insight (Sidebar Version) */}
-                    {showInsight && (
-                        <div className="relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br from-indigo-600 to-violet-600 shadow-md text-white">
-                            <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-                                <span className="material-symbols-outlined text-8xl">auto_awesome</span>
-                            </div>
-                            <div className="relative z-10 space-y-3">
-                                <div className="flex items-center gap-3">
-                                    <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
-                                        <span className="material-symbols-outlined text-xl text-white">psychology</span>
-                                    </div>
-                                    <h3 className="font-bold">Project Insight</h3>
-                                </div>
-                                <p className="text-indigo-100 leading-relaxed text-sm selection:bg-white/30">
-                                    {cleanText(insight) || "Generate a report to get tailored guidance and discover potential risks early."}
-                                </p>
-                                <div className="flex gap-2 pt-1">
-                                    <Button size="sm" className="bg-white text-indigo-600 hover:bg-indigo-50 border-none shadow-sm w-full justify-center" onClick={handleGenerateReport} isLoading={reportLoading}>
-                                        {pinnedReport ? 'Refresh' : 'Analyze'}
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-
-
-
-                    {/* Milestones (Relocated to Sidebar) */}
-                    {milestones.length > 0 && milestones.some(m => m.status !== 'Achieved') && (
-                        <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-[var(--color-primary)]">flag</span>
-                                    Milestones
-                                </h3>
-                            </div>
-                            <div className="space-y-4">
-                                {milestones
-                                    .filter(m => m.status !== 'Achieved')
-                                    .sort((a, b) => new Date(a.dueDate || '9999').getTime() - new Date(b.dueDate || '9999').getTime())
-                                    .slice(0, 3)
-                                    .map(milestone => (
-                                        <div key={milestone.id} className="flex items-center gap-3 pb-3 border-b border-[var(--color-surface-border)] last:border-0 last:pb-0">
-                                            <div className={`size-9 rounded-lg flex items-center justify-center shrink-0 ${new Date(milestone.dueDate || '') < new Date() ? 'bg-rose-50 text-rose-500' : 'bg-indigo-50 text-indigo-500 dark:bg-indigo-900/20'}`}>
-                                                <span className="material-symbols-outlined text-[18px]">{new Date(milestone.dueDate || '') < new Date() ? 'warning' : 'flag'}</span>
-                                            </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="text-xs font-bold text-[var(--color-text-main)] truncate">{milestone.title}</h4>
-                                                <p className="text-[10px] text-[var(--color-text-muted)]">
-                                                    {new Date(milestone.dueDate || '').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                                </p>
-                                            </div>
-                                            <button onClick={() => handleToggleMilestone(milestone)} className="size-8 rounded-full hover:bg-[var(--color-surface-hover)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-green-500 transition-colors">
-                                                <span className="material-symbols-outlined text-[18px]">check</span>
-                                            </button>
-                                        </div>
-                                    ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Latest Activity (Moved) */}
-
-                    <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
-                                <span className="material-symbols-outlined text-slate-500">history</span>
-                                Latest Activity
-                            </h3>
-                            <Link to={`/project/${id}/activity`} className="text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-primary)]">History</Link>
-                        </div>
-
-                        <div className="relative pl-0 space-y-5 before:absolute before:inset-y-2 before:left-[15px] before:w-px before:bg-[var(--color-surface-border)]">
-                            {activity.slice(0, 6).map((item) => {
-                                const { icon, color, bg } = activityIcon(item.type, item.action);
-                                return (
-                                    <div key={item.id} className="relative flex gap-3 pl-10">
-                                        <div className={`absolute left-0 top-0 size-8 rounded-full border-2 border-white dark:border-[var(--color-surface-card)] ${bg} z-10 flex items-center justify-center`}>
-                                            <span className={`material-symbols-outlined text-[16px] ${color}`}>{icon}</span>
-                                        </div>
-                                        <div className="space-y-0.5 pt-0.5">
-                                            <p className="text-xs text-[var(--color-text-main)] leading-snug">
-                                                <span className="font-semibold">{item.user}</span> {item.action}
-                                            </p>
-                                            <p className="text-[10px] text-[var(--color-text-muted)]">{timeAgo(item.createdAt)}</p>
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                            {activity.length === 0 && <p className="text-xs text-[var(--color-text-muted)] pl-2">No recent activity.</p>}
-                        </div>
-                    </div>
-
-                    {/* GitHub Commits Card (only if Issues module enabled) */}
-                    {project.modules?.includes('issues') && (
-                        <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm group/card hover:shadow-md transition-shadow">
-                            <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-3 min-w-0">
-                                    <div className="size-10 rounded-xl bg-slate-100 dark:bg-slate-900/30 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
-                                        <span className="material-symbols-outlined text-xl">terminal</span>
-                                    </div>
-                                    <div className="min-w-0">
-                                        <h3 className="font-bold text-[var(--color-text-main)] truncate">GitHub Commits</h3>
-                                        <p className="text-[10px] text-[var(--color-text-muted)] font-medium uppercase tracking-tight line-clamp-1">
-                                            {project.githubRepo || 'No repository linked'}
-                                        </p>
-                                    </div>
-                                </div>
-                                {project.githubRepo && (
-                                    <a
-                                        href={`https://github.com/${project.githubRepo}`}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-xs font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1 shrink-0"
-                                    >
-                                        Repo <span className="material-symbols-outlined text-sm">open_in_new</span>
-                                    </a>
-                                )}
-                            </div>
-
-                            {!project.githubRepo ? (
-                                <div className="text-xs text-[var(--color-text-muted)] space-y-3">
-                                    <p>Link a repository in project settings to show recent commits.</p>
-                                    {isOwner && (
-                                        <button
-                                            onClick={() => setShowEditModal(true)}
-                                            className="inline-flex items-center gap-1 text-[var(--color-primary)] font-semibold hover:underline"
-                                        >
-                                            Open settings <span className="material-symbols-outlined text-sm">settings</span>
-                                        </button>
-                                    )}
-                                </div>
-                            ) : commitsLoading ? (
-                                <div className="flex items-center gap-2 text-[10px] text-[var(--color-text-muted)]">
-                                    <span className="material-symbols-outlined animate-spin text-[14px] text-[var(--color-primary)]">progress_activity</span>
-                                    Loading recent commits...
-                                </div>
-                            ) : commitsError ? (
-                                <div className="text-xs text-rose-600 dark:text-rose-400">{commitsError}</div>
-                            ) : githubCommits.length === 0 ? (
-                                <div className="text-xs text-[var(--color-text-muted)]">No recent commits found.</div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {githubCommits.map(commit => (
-                                        <a
-                                            key={commit.sha}
-                                            href={commit.html_url}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="block p-3 rounded-xl border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] transition-all"
-                                        >
-                                            <div className="flex items-start justify-between gap-3">
-                                                <div className="flex items-start gap-2 min-w-0">
-                                                    {commit.author?.avatar_url ? (
-                                                        <img
-                                                            src={commit.author.avatar_url}
-                                                            alt={commit.author.login}
-                                                            className="size-7 rounded-full border border-[var(--color-surface-border)]"
-                                                        />
-                                                    ) : (
-                                                        <div className="size-7 rounded-full bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] flex items-center justify-center text-[10px] font-bold">
-                                                            {(commit.commit.author.name || '?').charAt(0).toUpperCase()}
-                                                        </div>
-                                                    )}
-                                                    <div className="min-w-0">
-                                                        <p className="text-xs font-semibold text-[var(--color-text-main)] line-clamp-1">
-                                                            {commit.commit.message.split('\n')[0]}
-                                                        </p>
-                                                        <div className="flex items-center gap-2 text-[10px] text-[var(--color-text-muted)]">
-                                                            <span>@{commit.author?.login || commit.commit.author.name || 'unknown'}</span>
-                                                            <span>•</span>
-                                                            <span>{timeAgo(commit.commit.author.date)}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <span className="text-[10px] font-mono text-[var(--color-text-subtle)] shrink-0">
-                                                    {commit.sha.slice(0, 7)}
-                                                </span>
-                                            </div>
-                                        </a>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-
-                    {/* Links & Resources */}
-                    <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm space-y-4">
-                        <h3 className="font-bold text-[var(--color-text-main)]">Quick Links</h3>
-                        <div className="space-y-2">
-                            {project.links?.map((link, i) => (
-                                <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors group">
-                                    <div className="size-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-                                        <span className="material-symbols-outlined text-[18px]">link</span>
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-[var(--color-text-main)] truncate group-hover:text-indigo-600 transition-colors">{link.title}</p>
-                                        <p className="text-[10px] text-[var(--color-text-muted)] truncate">{link.url.replace(/^https?:\/\//, '')}</p>
-                                    </div>
-                                    <span className="material-symbols-outlined text-[14px] text-[var(--color-text-subtle)] opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
-                                </a>
-                            ))}
-                            {(!project.links || project.links.length === 0) && <p className="text-sm text-[var(--color-text-muted)]">No links available.</p>}
-                        </div>
-                    </div>
-
-                    {/* Gallery Preview */}
-                    <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="font-bold text-[var(--color-text-main)]">Gallery</h3>
-                            <Button size="sm" variant="ghost" onClick={() => setShowMediaLibrary(true)}>Manage</Button>
-                        </div>
-
-                        <div className="grid grid-cols-3 gap-2">
-                            {projectAssets.slice(0, 6).map((asset, i) => (
-                                <div key={i} className="aspect-square rounded-lg overflow-hidden border border-[var(--color-surface-border)] cursor-pointer hover:opacity-80 transition-opacity" onClick={() => { setSelectedImageIndex(i); setShowGalleryModal(true); }}>
-                                    <img src={asset} alt="" className="w-full h-full object-cover" />
-                                </div>
-                            ))}
-                            {projectAssets.length < 6 && (
-                                <button onClick={() => setShowMediaLibrary(true)} className="aspect-square rounded-lg border border-dashed border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] transition-colors flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-primary)]">
-                                    <span className="material-symbols-outlined">add</span>
-                                </button>
-                            )}
-                        </div>
-                    </div>
                 </div>
             </div>
 
             {/* Gallery Modal */}
-            < Modal isOpen={showGalleryModal} onClose={() => setShowGalleryModal(false)} title="Project Gallery" size="xl" >
+            <Modal isOpen={showGalleryModal} onClose={() => setShowGalleryModal(false)} title="Project Gallery" size="xl">
                 <div className="space-y-4">
                     <div className="aspect-video w-full bg-black rounded-xl overflow-hidden flex items-center justify-center relative group">
                         {projectAssets[selectedImageIndex] ? (
@@ -1406,7 +1804,7 @@ export const ProjectOverview = () => {
                         ))}
                     </div>
                 </div>
-            </Modal >
+            </Modal>
 
             {/* Media Library Modal */}
             {project && (
@@ -1423,12 +1821,12 @@ export const ProjectOverview = () => {
                     tenantId={project.tenantId}
                     onSelect={(asset) => {
                         if (mediaPickerTarget === 'cover') {
-                            setEditCoverUrl(asset.url);
+                            void handleUpdateField('coverImage', asset.url);
                             setCoverRemoved(false);
                             setShowMediaLibrary(false);
                             setMediaPickerTarget('gallery');
                         } else if (mediaPickerTarget === 'icon') {
-                            setEditIconUrl(asset.url);
+                            void handleUpdateField('squareIcon', asset.url);
                             setIconRemoved(false);
                             setShowMediaLibrary(false);
                             setMediaPickerTarget('gallery');
@@ -1447,7 +1845,7 @@ export const ProjectOverview = () => {
             )}
 
             {/* Delete Modal */}
-            < Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Delete Project"
+            <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Delete Project"
                 footer={
                     <>
                         <Button variant="ghost" onClick={() => setShowDeleteModal(false)}>Cancel</Button>
@@ -1458,7 +1856,7 @@ export const ProjectOverview = () => {
                 <p className="text-sm text-[var(--color-text-muted)]">
                     Are you sure you want to delete <span className="font-bold text-[var(--color-text-main)]">{project.title}</span>? This action cannot be undone and will remove all associated tasks and data.
                 </p>
-            </Modal >
+            </Modal>
 
             {
                 showTaskModal && can('canManageTasks') && (

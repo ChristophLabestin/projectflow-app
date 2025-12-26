@@ -13,10 +13,8 @@ interface WorkspaceTeamIndicatorProps {
  * Shows stacked avatars of online team members with smooth hover expansion
  */
 export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ tenantId, onClose }) => {
-    const [isHovered, setIsHovered] = useState(false);
-    const [isLocked, setIsLocked] = useState(false);
+    const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
-    const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Track workspace presence (Removed: now handled globally in AppLayout.tsx)
     // useWorkspacePresence({ tenantId, enabled: true });
@@ -68,37 +66,46 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                 ? 'bg-rose-500'
                 : 'bg-[var(--color-text-muted)]';
 
+    const statusIconGradient = hasOnline
+        ? 'from-emerald-500 to-teal-600'
+        : hasIdle
+            ? 'from-amber-400 to-orange-500'
+            : hasBusy
+                ? 'from-rose-500 to-pink-600'
+                : 'from-slate-400 to-slate-500';
+
+    const statusPanelGradient = hasOnline
+        ? 'from-emerald-500/20 via-transparent to-violet-500/10'
+        : hasIdle
+            ? 'from-amber-400/20 via-transparent to-violet-500/10'
+            : hasBusy
+                ? 'from-rose-500/20 via-transparent to-violet-500/10'
+                : 'from-slate-400/10 via-transparent to-transparent';
+
+    const statusShadowColor = hasOnline
+        ? 'shadow-emerald-500/20'
+        : hasIdle
+            ? 'shadow-amber-400/20'
+            : hasBusy
+                ? 'shadow-rose-500/20'
+                : 'shadow-slate-400/20';
+
     // Close when clicking outside
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
             if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-                setIsLocked(false);
-                setIsHovered(false);
+                setIsOpen(false);
             }
         };
 
-        if (isLocked) {
+        if (isOpen) {
             document.addEventListener('mousedown', handleClickOutside);
         }
         return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, [isLocked]);
-
-    // Hover handlers with delay for smoother UX
-    const handleMouseEnter = () => {
-        if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-        setIsHovered(true);
-    };
-
-    const handleMouseLeave = () => {
-        if (isLocked) return;
-        hoverTimeoutRef.current = setTimeout(() => {
-            setIsHovered(false);
-        }, 150);
-    };
+    }, [isOpen]);
 
     const handleClick = () => {
-        setIsLocked(!isLocked);
-        setIsHovered(true);
+        setIsOpen(!isOpen);
     };
 
     // Don't show if there are no other members
@@ -110,14 +117,11 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
     const displayMembers = [...filteredOnlineMembers, ...filteredIdleMembers, ...filteredBusyMembers].slice(0, 4);
     const extraCount = (filteredOnlineMembers.length + filteredIdleMembers.length + filteredBusyMembers.length) - 4;
 
-    const isExpanded = isHovered || isLocked;
 
     return (
         <div
             ref={containerRef}
             className="relative"
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}
         >
             {/* Collapsed State - Premium Stacked Avatars Row */}
             <div
@@ -125,7 +129,7 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                 className={`
                     flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer
                     transition-all duration-300 ease-out bg-gradient-to-r border
-                    ${isExpanded
+                    ${isOpen
                         ? statusGradientClass
                         : 'hover:bg-[var(--color-surface-hover)]/60 border-transparent'
                     }
@@ -221,7 +225,7 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                 <span className={`
                     material-symbols-outlined text-[16px] text-[var(--color-text-muted)]
                     transition-transform duration-300
-                    ${isExpanded ? 'rotate-180' : ''}
+                    ${isOpen ? 'rotate-180' : ''}
                 `}>
                     expand_less
                 </span>
@@ -236,7 +240,7 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                     rounded-2xl shadow-2xl
                     origin-bottom
                     transition-all duration-300 ease-out
-                    ${isExpanded
+                    ${isOpen
                         ? 'opacity-100 translate-y-0 scale-100 pointer-events-auto'
                         : 'opacity-0 translate-y-2 scale-95 pointer-events-none'
                     }
@@ -244,12 +248,12 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                 style={{ zIndex: 100 }}
             >
                 {/* Decorative gradient border */}
-                <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-emerald-500/20 via-transparent to-violet-500/10 pointer-events-none" />
+                <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${statusPanelGradient} pointer-events-none`} />
 
                 {/* Header */}
                 <div className="relative flex items-center justify-between px-4 py-3 border-b border-[var(--color-surface-border)]">
                     <div className="flex items-center gap-2.5">
-                        <div className="size-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                        <div className={`size-8 rounded-lg bg-gradient-to-br ${statusIconGradient} flex items-center justify-center shadow-lg ${statusShadowColor}`}>
                             <span className="material-symbols-outlined text-white text-[18px]">groups</span>
                         </div>
                         <div>
@@ -394,8 +398,7 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                 <Link
                     to="/team"
                     onClick={() => {
-                        setIsLocked(false);
-                        setIsHovered(false);
+                        setIsOpen(false);
                         onClose?.();
                     }}
                     className="

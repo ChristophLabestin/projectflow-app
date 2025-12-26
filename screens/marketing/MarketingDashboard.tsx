@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { getFunnelMetrics, subscribeMarketingCampaigns } from '../../services/marketingService';
 import { MarketingFunnelMetric, MarketingCampaign } from '../../types';
 import { BarChart } from '../../components/ui/charts/BarChart';
@@ -131,6 +131,11 @@ export const MarketingDashboard = () => {
                             <div className={`text-xs px-2 py-1 rounded-full ${c.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
                                 {c.status}
                             </div>
+                            {c.originIdeaId && (
+                                <Link to={`/project/${projectId}/ideas/${c.originIdeaId}`} className="text-purple-400 hover:text-purple-600 ml-1" title="View Source Idea">
+                                    <span className="material-symbols-outlined text-[18px]">lightbulb</span>
+                                </Link>
+                            )}
                         </div>
                     ))}
                 </div>

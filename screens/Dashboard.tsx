@@ -540,19 +540,6 @@ export const Dashboard = () => {
                 </div>
             </div>
 
-            {/* Quick Actions Row */}
-            <div className="flex justify-end mb-6">
-                <Link to="/create">
-                    <Button
-                        size="md"
-                        className="rounded-xl px-6 font-bold shadow-lg shadow-indigo-500/20 bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:opacity-90 border-none"
-                        icon={<span className="material-symbols-outlined">add</span>}
-                    >
-                        New Project
-                    </Button>
-                </Link>
-            </div>
-
             {/* Main Dashboard Grid */}
             <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
 
@@ -834,9 +821,20 @@ export const Dashboard = () => {
                                     </div>
                                     <h3 className="h3">Active Projects</h3>
                                 </div>
-                                <Link to="/projects" className="text-sm font-bold text-[var(--color-primary)] hover:text-indigo-700 transition-colors flex items-center gap-1 group">
-                                    View All <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                                </Link>
+                                <div className="flex justify-end gap-4">
+                                    <Link to="/projects" className="text-sm font-bold text-[var(--color-primary)] hover:text-indigo-700 transition-colors flex items-center gap-1 group">
+                                        View All <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                                    </Link>
+                                    <Link to="/create">
+                                        <Button
+                                            size="md"
+                                            className="rounded-xl px-6 font-bold shadow-lg shadow-indigo-500/20 bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:opacity-90 border-none"
+                                            icon={<span className="material-symbols-outlined">add</span>}
+                                        >
+                                            New Project
+                                        </Button>
+                                    </Link>
+                                </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                 {recentProjects.length === 0 ? (

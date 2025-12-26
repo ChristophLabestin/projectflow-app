@@ -655,6 +655,32 @@ export const ProjectIssueDetail = () => {
                                         </Link>
                                     </div>
                                 )}
+
+                                {(issue.status === 'Resolved' || issue.status === 'Closed') && (issue.completedBy || issue.completedAt) && (
+                                    <div className="pt-3 border-t border-[var(--color-surface-border)] flex flex-col gap-1">
+                                        <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">Completed</span>
+                                        <div className="flex flex-col gap-1">
+                                            {issue.completedAt && (
+                                                <span className="text-xs font-semibold text-[var(--color-text-main)] flex items-center gap-1.5">
+                                                    <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">event_available</span>
+                                                    {new Date(toMillis(issue.completedAt)).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}
+                                                </span>
+                                            )}
+                                            {issue.completedBy && (
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <img
+                                                        src={allUsers.find(u => (u as any).id === issue.completedBy || u.uid === issue.completedBy)?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'}
+                                                        className="size-5 rounded-full border border-[var(--color-surface-border)]"
+                                                        alt=""
+                                                    />
+                                                    <span className="text-xs font-semibold text-[var(--color-text-main)]">
+                                                        by {allUsers.find(u => (u as any).id === issue.completedBy || u.uid === issue.completedBy)?.displayName || 'Unknown User'}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>

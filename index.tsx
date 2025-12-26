@@ -15,13 +15,13 @@ const root = createRoot(rootElement);
 root.render(
   <React.StrictMode>
     <ThemeProvider defaultTheme="light" storageKey="vite-ui-theme">
-      <UIProvider>
+      <PinnedProjectProvider>
         <PinnedTasksProvider>
-          <PinnedProjectProvider>
+          <UIProvider>
             <App />
-          </PinnedProjectProvider>
+          </UIProvider>
         </PinnedTasksProvider>
-      </UIProvider>
+      </PinnedProjectProvider>
     </ThemeProvider>
   </React.StrictMode>
 );

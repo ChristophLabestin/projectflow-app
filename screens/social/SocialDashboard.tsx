@@ -102,6 +102,53 @@ export const SocialDashboard = () => {
                 </div>
             </div>
 
+            {/* Action Items (Approvals) */}
+            {posts.some(p => p.status === 'In Review') && (
+                <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-xl p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-lg">
+                                <span className="material-symbols-outlined">gavel</span>
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-amber-900 dark:text-amber-100">Approvals Needed</h3>
+                                <p className="text-sm text-amber-700 dark:text-amber-300">
+                                    {posts.filter(p => p.status === 'In Review').length} posts waiting for review
+                                </p>
+                            </div>
+                        </div>
+                        <Link to="approvals" className="text-sm font-semibold text-amber-700 hover:text-amber-800 hover:underline">
+                            Review All
+                        </Link>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {posts.filter(p => p.status === 'In Review').slice(0, 3).map(post => (
+                            <div key={post.id} className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-amber-100 dark:border-amber-900/50 shadow-sm flex flex-col">
+                                <div className="flex justify-between items-start mb-2">
+                                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${post.platform === 'Instagram' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700'}`}>
+                                        {post.platform}
+                                    </span>
+                                    <span className="text-[10px] text-[var(--color-text-muted)]">
+                                        {post.createdBy ? 'By Unknown' : 'Draft'} {/* Ideally fetch user name */}
+                                    </span>
+                                </div>
+                                <p className="text-sm font-medium line-clamp-2 mb-3 flex-1">{post.content.caption}</p>
+                                <div className="flex items-center justify-between mt-auto pt-3 border-t border-slate-100 dark:border-slate-700">
+                                    <span className="text-xs text-[var(--color-text-muted)]">Created {new Date(post.createdAt?.toDate ? post.createdAt.toDate() : post.createdAt).toLocaleDateString()}</span>
+                                    <Link
+                                        to={`${post.id}`} // Direct link to edit/review
+                                        className="text-xs font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1"
+                                    >
+                                        Review <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                                    </Link>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Upcoming Posts */}
                 <div className="space-y-4">

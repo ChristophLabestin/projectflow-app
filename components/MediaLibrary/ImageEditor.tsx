@@ -8,6 +8,7 @@ interface ImageEditorProps {
     onSave: (dataUrl: string) => void;
     onSaveReplace?: (dataUrl: string) => void;
     onCancel: () => void;
+    circularCrop?: boolean;
 }
 
 interface FilterState {
@@ -47,7 +48,7 @@ function centerAspectCrop(
     );
 }
 
-export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel, onSaveReplace }) => {
+export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel, onSaveReplace, circularCrop }) => {
     const imgRef = useRef<HTMLImageElement>(null);
     const [crop, setCrop] = useState<Crop>();
     const [completedCrop, setCompletedCrop] = useState<PixelCrop>();
@@ -140,6 +141,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel,
                             onComplete={(c) => setCompletedCrop(c)}
                             aspect={aspect}
                             className="max-h-full max-w-full"
+                            circularCrop={circularCrop}
                         >
                             <img
                                 ref={imgRef}

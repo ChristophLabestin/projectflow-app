@@ -181,6 +181,10 @@ export const AISearchBar = () => {
             navigate(`/project/${result.id}`);
         } else if (result.type === 'task') {
             navigate(`/project/${result.projectId}/tasks/${result.id}`);
+        } else if (result.type === 'issue') {
+            navigate(`/project/${result.projectId}/issues?issue=${result.id}`);
+        } else if (result.type === 'idea') {
+            navigate(`/project/${result.projectId}/ideas?idea=${result.id}`);
         }
 
         setQuery('');
@@ -190,6 +194,8 @@ export const AISearchBar = () => {
 
     const projectResults = results.filter(r => r.type === 'project');
     const taskResults = results.filter(r => r.type === 'task');
+    const issueResults = results.filter(r => r.type === 'issue');
+    const ideaResults = results.filter(r => r.type === 'idea');
     const isQuestion = isQuestionQuery(query);
 
     return (
@@ -202,21 +208,20 @@ export const AISearchBar = () => {
             <div
                 onClick={() => inputRef.current?.focus()}
                 className={`
-                    group flex items-center gap-3 rounded-full px-4 py-2.5 
-                    transition-all duration-300 ease-out
-                    bg-[var(--color-surface-bg)] 
-                    border border-[var(--color-surface-border)]
-                    ${isSafari
-                        ? 'relative w-full'
-                        : `absolute top-0 right-0 h-full ${isFocused || isOpen ? 'w-96 shadow-lg shadow-indigo-500/10' : 'w-80 hover:border-indigo-500/30'}`
+                    group flex items-center gap-2.5 rounded-lg px-3 py-1.5
+                    transition-all duration-200 ease-out
+                    bg-[var(--color-surface-bg-offset)] 
+                    border border-transparent
+                    relative w-full
+                    ${isFocused || isOpen
+                        ? 'bg-[var(--color-surface-card)] shadow-sm'
+                        : 'hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-surface-border)]'
                     }
-                    ${(isFocused || isOpen) && isSafari ? 'border-transparent' : ''} 
-                    ${(isFocused || isOpen) && !isSafari ? 'border-transparent' : ''}
                 `}
             >
                 {/* SVG Animated Border */}
                 <svg
-                    className={`absolute inset-0 w-full h-full pointer-events-none rounded-full overflow-visible transition-opacity duration-500 ${isFocused || isOpen ? 'opacity-100' : 'opacity-0'}`}
+                    className={`absolute inset-0 w-full h-full pointer-events-none rounded-lg overflow-visible transition-opacity duration-500 ${isFocused || isOpen ? 'opacity-100' : 'opacity-0'}`}
                 >
                     <defs>
                         <linearGradient id="borderGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -227,7 +232,7 @@ export const AISearchBar = () => {
                     </defs>
                     <rect
                         x="1" y="1"
-                        rx="20" ry="20"
+                        rx="8" ry="8"
                         width="calc(100% - 2px)" height="calc(100% - 2px)"
                         pathLength="1"
                         fill="none"
@@ -243,10 +248,11 @@ export const AISearchBar = () => {
                         }}
                     />
                 </svg>
+
                 {/* Search Icon */}
                 <span className={`
-                    material-symbols-outlined text-[20px] transition-colors duration-300
-                    ${isFocused || isOpen ? 'text-indigo-500' : 'text-[var(--color-text-subtle)] group-hover:text-[var(--color-text-muted)]'}
+                    material-symbols-outlined text-[18px] transition-colors duration-200
+                    ${isFocused || isOpen ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}
                 `}>
                     search
                 </span>
@@ -254,7 +260,7 @@ export const AISearchBar = () => {
                 <input
                     ref={inputRef}
                     className="flex-1 bg-transparent border-none outline-none ring-0 focus:ring-0 focus:outline-none focus:border-none p-0 text-sm text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)]"
-                    placeholder="Search or ask AI..."
+                    placeholder="Search..."
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={handleKeyDown}

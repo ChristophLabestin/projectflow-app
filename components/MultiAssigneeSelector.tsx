@@ -6,16 +6,20 @@ import { Input } from './ui/Input';
 interface MultiAssigneeSelectorProps {
     projectId: string;
     assigneeIds?: string[];
+    assignedGroupIds?: string[];
     onChange: (ids: string[]) => void;
+    onGroupChange?: (groupIds: string[]) => void;
     label?: string;
 }
 
-export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ projectId, assigneeIds = [], onChange, label }) => {
+export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ projectId, assigneeIds = [], assignedGroupIds = [], onChange, onGroupChange, label }) => {
     const [members, setMembers] = useState<string[]>([]);
+    const [groups, setGroups] = useState<{ id: string, name: string, color?: string, memberIds: string[] }[]>([]);
     const [userMap, setUserMap] = useState<Record<string, { displayName: string, photoURL?: string, email?: string }>>({});
     const [loading, setLoading] = useState(true);
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
+    const [projectModules, setProjectModules] = useState<string[]>([]);
     const wrapperRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -42,6 +46,7 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
             // 2. Get the project to determine its tenant
             const { getProjectById, getUserProfile } = await import('../services/dataService');
             const project = await getProjectById(projectId);
+            if (project?.modules) setProjectModules(project.modules);
             const projectTenantId = project?.tenantId || getActiveTenantId() || auth.currentUser?.uid;
             console.log('[MultiAssigneeSelector] Project tenantId:', projectTenantId);
 
@@ -119,6 +124,15 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                     setUserMap(combinedMap);
                 }, projectTenantId);
             }
+
+            // 5. Fetch Project Groups
+            const { getProjectGroups } = await import('../services/projectGroupService');
+            try {
+                const projectGroups = await getProjectGroups(projectId);
+                if (mounted) setGroups(projectGroups);
+            } catch (error) {
+                console.error("Failed to fetch project groups", error);
+            }
         };
         load();
 
@@ -146,11 +160,22 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
         onChange(newIds);
     };
 
+    const toggleGroupSelection = (groupId: string) => {
+        if (!onGroupChange) return;
+        const newGroupIds = assignedGroupIds.includes(groupId)
+            ? assignedGroupIds.filter(id => id !== groupId)
+            : [...assignedGroupIds, groupId];
+        onGroupChange(newGroupIds);
+    };
+
     const filteredMembers = members.filter(uid => {
         const user = userMap[uid];
         const name = user?.displayName || user?.email || '';
         return name.toLowerCase().includes(search.toLowerCase());
     });
+
+    const filteredGroups = groups.filter(g => g.name.toLowerCase().includes(search.toLowerCase()));
+
 
     if (loading) return <div className="h-10 bg-gray-100 rounded animate-pulse" />;
 
@@ -195,7 +220,15 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                             )}
                         </div>
                     )}
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)] leading-none">expand_more</span>
+
+                    {assignedGroupIds.length > 0 && (
+                        <div className="flex items-center gap-1 ml-2 pl-2 border-l border-[var(--color-surface-border)]">
+                            <span className="material-symbols-outlined text-[16px] text-indigo-500">groups</span>
+                            <span className="text-xs font-medium text-[var(--color-text-main)]">{assignedGroupIds.length}</span>
+                        </div>
+                    )}
+
+                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)] leading-none ml-auto">expand_more</span>
                 </div>
 
                 {/* Dropdown */}
@@ -255,10 +288,41 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                                     );
                                 })
                             )}
+
+                            {onGroupChange && filteredGroups.length > 0 && projectModules.includes('groups') && (
+                                <>
+                                    <div className="px-2 py-1 text-xs font-bold text-[var(--color-text-muted)] uppercase mt-2">Groups</div>
+                                    {filteredGroups.map(group => {
+                                        const isSelected = assignedGroupIds.includes(group.id);
+                                        return (
+                                            <div
+                                                key={group.id}
+                                                onClick={() => toggleGroupSelection(group.id)}
+                                                className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-[var(--color-primary)]/10' : 'hover:bg-[var(--color-surface-hover)]'}`}
+                                            >
+                                                <div className={`size-4 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-[var(--color-primary)] border-[var(--color-primary)]' : 'border-[var(--color-text-muted)]'}`}>
+                                                    {isSelected && <span className="material-symbols-outlined text-[12px] text-white">check</span>}
+                                                </div>
+                                                <div className="size-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 border border-indigo-200">
+                                                    <span className="material-symbols-outlined text-[18px]">groups</span>
+                                                </div>
+                                                <div className="flex flex-col min-w-0">
+                                                    <span className={`text-sm font-medium truncate ${isSelected ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}>
+                                                        {group.name}
+                                                    </span>
+                                                    <span className="text-[10px] text-[var(--color-text-muted)] truncate">
+                                                        {group.memberIds.length} members
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </>
+                            )}
                         </div>
                     </div>
                 )}
             </div>
-        </div>
+        </div >
     );
 };

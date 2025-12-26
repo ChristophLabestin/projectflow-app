@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { auth } from '../services/firebase';
-import { updateUserProfile, getActiveTenantId, subscribeTenantUsers, getUserGlobalActivities, getUserProfileStats } from '../services/dataService';
+import { updateUserProfile, getActiveTenantId, subscribeTenantUsers, getUserGlobalActivities, getUserProfileStats, getAllMemberProjects } from '../services/dataService';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { useToast } from '../context/UIContext';
-import { Activity } from '../types';
+import { Activity, PrivacySettings, Project } from '../types';
 import { ProfileSettingsModal } from '../components/ProfileSettingsModal';
 
 export const Profile = () => {
@@ -16,9 +16,11 @@ export const Profile = () => {
     const [skills, setSkills] = useState<string[]>([]);
     const [photoURL, setPhotoURL] = useState(user?.photoURL || '');
     const [coverURL, setCoverURL] = useState('');
+    const [privacySettings, setPrivacySettings] = useState<PrivacySettings | undefined>(undefined);
     const [loading, setLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'activity'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'projects' | 'activity' | 'about'>('overview');
     const [activities, setActivities] = useState<Activity[]>([]);
+    const [projects, setProjects] = useState<Project[]>([]);
     const [statsData, setStatsData] = useState({ projects: 0, teams: 1 });
     const [showEditModal, setShowEditModal] = useState(false);
 
@@ -38,7 +40,10 @@ export const Profile = () => {
                     setSkills(me.skills || []);
                     if (me.coverURL) setCoverURL(me.coverURL);
                     if (me.photoURL) setPhotoURL(me.photoURL);
+                    if (me.coverURL) setCoverURL(me.coverURL);
+                    if (me.photoURL) setPhotoURL(me.photoURL);
                     if (me.displayName) setDisplayName(me.displayName);
+                    if (me.privacySettings) setPrivacySettings(me.privacySettings);
                 }
                 setLoading(false);
             }, tenantId);
@@ -49,6 +54,9 @@ export const Profile = () => {
             // Fetch real stats
             getUserProfileStats(user.uid, tenantId).then(setStatsData);
 
+            // Fetch projects
+            getAllMemberProjects(user.uid).then(setProjects);
+
             return () => unsub();
         }
     }, [user]);
@@ -56,184 +64,354 @@ export const Profile = () => {
     if (!user) return <div className="p-10 text-center">Please login to view your profile.</div>;
 
     const statsMetrics = [
-        { label: 'Active Projects', value: statsData.projects.toString(), icon: 'rocket_launch', color: 'text-blue-500' },
-        { label: 'Teams', value: statsData.teams.toString(), icon: 'groups', color: 'text-purple-500' },
+        { label: 'Active Projects', value: statsData.projects.toString(), icon: 'rocket_launch' },
+        { label: 'Teams', value: statsData.teams.toString(), icon: 'groups' },
     ];
 
     return (
-        <div className="min-h-screen bg-[var(--color-surface-bg)] fade-in pb-20">
-            {/* Header Section with Cover - Rounded edges like project overview */}
-            <div className="max-w-6xl mx-auto px-6 pt-6">
-                <div className="relative h-64 md:h-80 w-full overflow-hidden rounded-2xl bg-gradient-to-r from-gray-200 to-gray-300 dark:from-gray-800 dark:to-gray-900 border border-[var(--color-surface-border)] shadow-sm">
+        <div className="min-h-screen bg-[var(--color-surface-bg)] text-[var(--color-text-main)] pb-20 fade-in">
+            <div className="max-w-[1600px] mx-auto px-6 pt-8">
+
+                {/* 1. HERO BANNER */}
+                <div className="relative h-64 md:h-80 w-full rounded-3xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-[var(--color-surface-border)] shadow-sm group">
                     {coverURL ? (
-                        <img src={coverURL} alt="Cover" className="w-full h-full object-cover rounded-2xl" />
+                        <img src={coverURL} alt="Cover" className="w-full h-full object-cover" />
                     ) : (
-                        <>
-                            <div className="absolute inset-0 opacity-30 dotted-bg"></div>
-                            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/40"></div>
-                        </>
+                        <div className="w-full h-full flex items-center justify-center">
+                            <span className="material-symbols-outlined text-6xl text-zinc-300 dark:text-zinc-700 opacity-20">image</span>
+                        </div>
                     )}
+
+                    {/* Gradient Overlay for Text Readability */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-60" />
+
                     <button
                         onClick={() => setShowEditModal(true)}
-                        className="absolute top-6 right-6 px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-md text-white rounded-full text-sm font-medium transition-all flex items-center gap-2 border border-white/20"
+                        className="absolute top-6 right-6 px-5 py-2.5 bg-black/40 hover:bg-black/60 backdrop-blur-md text-white rounded-xl text-sm font-bold transition-all flex items-center gap-2 border border-white/10 opacity-0 group-hover:opacity-100 hover:scale-105"
                     >
-                        <span className="material-symbols-outlined text-sm">edit</span>
+                        <span className="material-symbols-outlined text-[18px]">edit</span>
                         Edit Profile
                     </button>
                 </div>
-            </div>
 
-            <div className="max-w-6xl mx-auto px-6">
-                <div className="relative -mt-24 mb-8 flex flex-col md:flex-row items-end gap-6">
-                    {/* Avatar Container */}
-                    <div className="relative group">
-                        <div className="size-40 rounded-full overflow-hidden border-8 border-[var(--color-surface-bg)] shadow-2xl bg-white dark:bg-gray-800 ring-1 ring-black/5">
+                {/* 2. IDENTITY BAR (Overlapping) */}
+                <div className="relative px-4 md:px-10 -mt-20 mb-12 flex flex-col md:flex-row items-end gap-8">
+                    {/* Avatar */}
+                    <div className="relative group shrink-0">
+                        <div className="size-40 md:size-48 rounded-full border-[8px] border-[var(--color-surface-bg)] shadow-2xl bg-white dark:bg-black overflow-hidden relative z-10">
                             {photoURL ? (
                                 <img src={photoURL} alt="Profile" className="w-full h-full object-cover" />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-5xl font-bold bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
-                                    {displayName[0] || user.email?.[0].toUpperCase()}
+                                <div className="w-full h-full flex items-center justify-center text-6xl font-black text-black dark:text-white bg-white dark:bg-black">
+                                    {displayName[0]?.toUpperCase() || 'U'}
                                 </div>
                             )}
                         </div>
-                    </div>
-
-                    {/* Header Info */}
-                    <div className="flex-1 pb-2">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div>
-                                <h1 className="text-3xl font-bold text-[var(--color-text-main)] flex items-center gap-3">
-                                    {displayName || 'Anonymous User'}
-                                    <span className="material-symbols-outlined text-blue-500 fill-blue-500 text-xl" title="Verified Professional">verified</span>
-                                </h1>
-                                <p className="text-lg text-[var(--color-text-muted)] font-medium mt-1">{title || 'Digital Architect'}</p>
-                                <div className="flex items-center gap-4 mt-3 text-sm text-[var(--color-text-subtle)]">
-                                    <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-sm">location_on</span>{address || 'Location Unknown'}</span>
-                                    <span className="flex items-center gap-1.5"><span className="material-symbols-outlined text-sm">calendar_today</span>Joined Dec 2023</span>
-                                </div>
-                            </div>
-                            <div className="flex gap-3">
-                                <Button variant="secondary" className="rounded-full px-6">Message</Button>
-                                <Button className="rounded-full px-6 bg-indigo-600 hover:bg-indigo-700 text-white">Follow</Button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Quick Stats Bar - Actual Data */}
-                <div className="grid grid-cols-2 lg:grid-cols-2 gap-4 mb-8">
-                    {statsMetrics.map((stat, idx) => (
-                        <Card key={idx} className="p-5 glass-card border-none flex items-center gap-4 hover:translate-y-[-4px] transition-transform cursor-pointer group">
-                            <div className={`size-12 rounded-2xl bg-white dark:bg-gray-800 shadow-sm flex items-center justify-center ${stat.color} group-hover:scale-110 transition-transform`}>
-                                <span className="material-symbols-outlined">{stat.icon}</span>
-                            </div>
-                            <div>
-                                <p className="text-xs font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">{stat.label}</p>
-                                <p className="text-2xl font-bold text-[var(--color-text-main)] mt-0.5">{stat.value}</p>
-                            </div>
-                        </Card>
-                    ))}
-                </div>
-
-                {/* Tabs Selection */}
-                <div className="flex border-b border-[var(--color-surface-border)] mb-8 gap-8">
-                    {(['overview', 'projects', 'activity'] as const).map(tab => (
                         <button
-                            key={tab}
-                            onClick={() => setActiveTab(tab)}
-                            className={`pb-4 text-sm font-bold uppercase tracking-widest transition-all relative ${activeTab === tab ? 'text-indigo-600' : 'text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)]'
-                                }`}
+                            onClick={() => setShowEditModal(true)}
+                            className="absolute bottom-2 right-2 z-20 size-10 bg-black text-white rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg border-2 border-white dark:border-zinc-800"
                         >
-                            {tab}
-                            {activeTab === tab && (
-                                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600 rounded-full" />
-                            )}
+                            <span className="material-symbols-outlined text-[20px]">photo_camera</span>
                         </button>
-                    ))}
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 pb-4 text-center md:text-left">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                            <div>
+                                <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2 flex items-center justify-center md:justify-start gap-3">
+                                    {displayName || 'Anonymous'}
+                                    <span className="material-symbols-outlined text-2xl text-blue-500" title="Verified">verified</span>
+                                </h1>
+                                <p className="text-xl font-medium text-[var(--color-text-muted)] flex items-center justify-center md:justify-start gap-2">
+                                    {title || 'Digital Architect'}
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-text-subtle)]" />
+                                    <span className="text-base text-[var(--color-text-subtle)]">{address || 'No Location'}</span>
+                                </p>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <Button className="px-8 py-4 rounded-2xl font-bold bg-black dark:bg-white text-white dark:text-black hover:opacity-90 shadow-lg shadow-black/5 dark:shadow-white/5">
+                                    Follow
+                                </Button>
+                                <Button variant="secondary" className="px-8 py-4 rounded-2xl font-bold border-[var(--color-surface-border)] bg-white dark:bg-black hover:bg-[var(--color-surface-hover)]">
+                                    Message
+                                </Button>
+                                <button className="p-4 rounded-2xl border border-[var(--color-surface-border)] bg-white dark:bg-black hover:bg-[var(--color-surface-hover)] transition-colors">
+                                    <span className="material-symbols-outlined">more_horiz</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Unified Content Area - Replaced when switching tabs */}
-                <div className="animate-fade-in min-h-[400px]">
-                    {activeTab === 'overview' && (
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                            <div className="lg:col-span-2 space-y-8">
-                                <section>
-                                    <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-indigo-500">person</span>
-                                        About Me
-                                    </h3>
-                                    <div className="prose dark:prose-invert max-w-none text-[var(--color-text-muted)] p-6 bg-white dark:bg-gray-800/50 rounded-3xl border border-[var(--color-surface-border)]">
-                                        {bio || "Tell us something about yourself in your profile settings."}
-                                    </div>
-                                </section>
+                {/* 3. CONTENT AREA */}
+                {/* Desktop: Sidebar + Content Layout */}
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 pb-20">
+                    <div className="flex flex-col lg:flex-row gap-8 items-start">
 
-                                <section>
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-xl font-bold flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-indigo-500">history</span>
-                                            Recent Activity
-                                        </h3>
-                                        <button className="text-sm font-bold text-indigo-600 hover:text-indigo-700">View All</button>
+                        {/* Left Sidebar Navigation */}
+                        <aside className="w-full lg:w-64 shrink-0 space-y-2 sticky top-24">
+                            <div className="pb-4 mb-4 border-b border-[var(--color-surface-border)] lg:hidden">
+                                {/* Mobile Nav Header if needed, or just rely on the vertical list collapsing */}
+                            </div>
+
+                            <nav className="space-y-1">
+                                <button
+                                    onClick={() => setActiveTab('overview')}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === 'overview'
+                                        ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'
+                                        }`}
+                                >
+                                    <span className={`material-symbols-outlined text-[20px] ${activeTab === 'overview' ? 'text-[var(--color-primary)]' : ''}`}>dashboard</span>
+                                    Overview
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('projects')}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === 'projects'
+                                        ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'
+                                        }`}
+                                >
+                                    <div className="relative">
+                                        <span className={`material-symbols-outlined text-[20px] ${activeTab === 'projects' ? 'text-[var(--color-primary)]' : ''}`}>folder_open</span>
+                                        {projects.length > 0 && <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-primary)] opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--color-primary)]"></span>
+                                        </span>}
                                     </div>
-                                    <div className="space-y-4">
-                                        {activities.length > 0 ? activities.map(act => (
-                                            <div key={act.id} className="flex gap-4 p-4 hover:bg-white dark:hover:bg-gray-800 rounded-2xl transition-all group">
-                                                <div className="size-10 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-indigo-500 group-hover:scale-110 transition-transform">
-                                                    <span className="material-symbols-outlined text-[20px]">
-                                                        {act.type === 'task' ? 'list_alt' : act.type === 'comment' ? 'chat_bubble' : 'edit'}
-                                                    </span>
+                                    Projects
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('activity')}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === 'activity'
+                                        ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'
+                                        }`}
+                                >
+                                    <span className={`material-symbols-outlined text-[20px] ${activeTab === 'activity' ? 'text-[var(--color-primary)]' : ''}`}>history</span>
+                                    Activity Log
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('about')}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === 'about'
+                                        ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'
+                                        }`}
+                                >
+                                    <span className={`material-symbols-outlined text-[20px] ${activeTab === 'about' ? 'text-[var(--color-primary)]' : ''}`}>person</span>
+                                    About
+                                </button>
+                            </nav>
+
+                            {/* Quick Stats in Sidebar */}
+                            <div className="pt-6 mt-6 border-t border-[var(--color-surface-border)] px-4">
+                                <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-4">At a Glance</h3>
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-[var(--color-text-subtle)]">Projects</span>
+                                        <span className="text-sm font-bold font-mono">{statsData.projects}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-[var(--color-text-subtle)]">Karma</span>
+                                        <span className="text-sm font-bold font-mono text-[var(--color-primary)]">940</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-[var(--color-text-subtle)]">Joined</span>
+                                        <span className="text-sm font-bold font-mono">Dec '24</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </aside>
+
+                        {/* Main Content Area */}
+                        <main className="flex-1 w-full min-w-0 space-y-6">
+                            {activeTab === 'overview' && (
+                                <div className="space-y-6 animate-fade-in">
+                                    {/* Stats Grid */}
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-[var(--color-surface-border)] shadow-sm">
+                                            <div className="text-[var(--color-text-muted)] text-xs font-semibold uppercase tracking-wider mb-1">Projects</div>
+                                            <div className="text-2xl font-display font-bold">{statsData.projects}</div>
+                                        </div>
+                                        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-[var(--color-surface-border)] shadow-sm">
+                                            <div className="text-[var(--color-text-muted)] text-xs font-semibold uppercase tracking-wider mb-1">Tasks Done</div>
+                                            <div className="text-2xl font-display font-bold">142</div>
+                                        </div>
+                                        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-[var(--color-surface-border)] shadow-sm">
+                                            <div className="text-[var(--color-text-muted)] text-xs font-semibold uppercase tracking-wider mb-1">Teams</div>
+                                            <div className="text-2xl font-display font-bold">{statsData.teams}</div>
+                                        </div>
+                                        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-[var(--color-surface-border)] shadow-sm">
+                                            <div className="text-[var(--color-text-muted)] text-xs font-semibold uppercase tracking-wider mb-1">Focus</div>
+                                            <div className="text-2xl font-display font-bold text-emerald-500">89%</div>
+                                        </div>
+                                    </div>
+
+                                    <Card className="p-6">
+                                        <h3 className="text-lg font-bold mb-4">Recent Activity</h3>
+                                        <div className="space-y-6">
+                                            {activities.length > 0 ? (
+                                                activities.slice(0, 5).map((activity) => (
+                                                    <div key={activity.id} className="flex gap-4 group">
+                                                        <div className="flex flex-col items-center">
+                                                            <div className="w-2 h-2 rounded-full bg-[var(--color-primary)] ring-4 ring-[var(--color-surface-hover)] group-hover:ring-[var(--color-primary)]/20 transition-all"></div>
+                                                            <div className="w-px h-full bg-[var(--color-surface-border)] my-2 group-last:hidden"></div>
+                                                        </div>
+                                                        <div className="pb-4">
+                                                            <p className="text-sm text-[var(--color-text-main)]">
+                                                                <span className="font-semibold">{activity.action}</span>
+                                                                <span className="text-[var(--color-text-muted)]"> {activity.target}</span>
+                                                            </p>
+                                                            <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                                                                {activity.createdAt ? new Date(activity.createdAt.seconds * 1000).toLocaleDateString() : 'Just now'}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="text-center py-8 text-[var(--color-text-muted)]">
+                                                    No recent activity data.
                                                 </div>
-                                                <div>
-                                                    <p className="text-[var(--color-text-main)] font-medium">
-                                                        {act.action} <span className="font-bold">{act.target}</span>
+                                            )}
+                                        </div>
+                                    </Card>
+                                </div>
+                            )}
+
+                            {activeTab === 'projects' && (
+                                <div className="animate-fade-in space-y-6">
+                                    <div className="flex items-center justify-between">
+                                        <h2 className="text-xl font-bold font-display">My Projects</h2>
+                                        <Button size="sm" variant="outline">Filter</Button>
+                                    </div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        {projects.length > 0 ? projects.map(project => (
+                                            <div key={project.id} className="group bg-white dark:bg-black rounded-3xl border border-[var(--color-surface-border)] overflow-hidden shadow-sm hover:translate-y-[-4px] transition-all duration-300 cursor-pointer">
+                                                {/* Cover */}
+                                                <div className="h-40 bg-zinc-100 dark:bg-zinc-800 relative">
+                                                    {project.coverImage ? (
+                                                        <img src={project.coverImage} alt={project.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center">
+                                                            <span className="material-symbols-outlined text-4xl text-zinc-300 dark:text-zinc-700">folder</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="absolute top-3 right-3">
+                                                        <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md ${project.status === 'Active' ? 'bg-green-100/90 text-green-700 dark:bg-green-900/60 dark:text-green-300' :
+                                                                project.status === 'Completed' ? 'bg-blue-100/90 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300' :
+                                                                    'bg-zinc-100/90 text-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-300'
+                                                            }`}>
+                                                            {project.status || 'Active'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Content */}
+                                                <div className="p-6">
+                                                    <h3 className="font-bold text-lg mb-1 truncate group-hover:text-[var(--color-primary)] transition-colors">{project.title}</h3>
+                                                    <p className="text-sm text-[var(--color-text-muted)] line-clamp-2 mb-4 h-10 leading-relaxed">
+                                                        {project.description || 'No description provided.'}
                                                     </p>
-                                                    <p className="text-xs text-[var(--color-text-subtle)] mt-1">{new Date(act.createdAt?.seconds * 1000).toLocaleDateString()}</p>
+
+                                                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-[var(--color-surface-border)]">
+                                                        <div className="flex -space-x-2">
+                                                            {project.members?.slice(0, 3).map((m, i) => (
+                                                                <div key={i} className="size-8 rounded-full border-2 border-white dark:border-black bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold overflow-hidden" title={m.role}>
+                                                                    <span className="material-symbols-outlined text-[14px]">person</span>
+                                                                </div>
+                                                            ))}
+                                                            {(project.members?.length || 0) > 3 && (
+                                                                <div className="size-8 rounded-full border-2 border-white dark:border-black bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-[10px] font-bold text-[var(--color-text-subtle)]">
+                                                                    +{(project.members?.length || 0) - 3}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                        <span className="text-xs font-bold text-[var(--color-text-subtle)] uppercase tracking-wider flex items-center gap-1">
+                                                            {project.ownerId === user?.uid ? 'Owner' : 'Member'}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </div>
                                         )) : (
-                                            <div className="p-8 text-center text-[var(--color-text-subtle)] italic bg-gray-50 dark:bg-gray-900/50 rounded-3xl">
-                                                No recent activity to display.
+                                            <div className="col-span-full py-20 text-center bg-zinc-50 dark:bg-zinc-900/30 rounded-3xl border border-dashed border-[var(--color-surface-border)]">
+                                                <span className="material-symbols-outlined text-5xl text-zinc-300 mb-4">folder_off</span>
+                                                <p className="text-[var(--color-text-muted)] font-medium">No projects found.</p>
                                             </div>
                                         )}
                                     </div>
-                                </section>
-                            </div>
+                                </div>
+                            )}
 
-                            {/* Sidebar Column - Visual Summary */}
-                            <div className="space-y-6">
-                                <section>
-                                    <h3 className="text-sm font-bold text-[var(--color-text-subtle)] uppercase tracking-widest mb-4">Focus & Skills</h3>
-                                    <div className="flex flex-wrap gap-2">
-                                        {skills.map(skill => (
-                                            <span key={skill} className="px-3 py-1.5 bg-white dark:bg-gray-800 border border-[var(--color-surface-border)] rounded-xl text-xs font-bold text-[var(--color-text-muted)]">
-                                                {skill}
-                                            </span>
+                            {activeTab === 'activity' && (
+                                <div className="animate-fade-in">
+                                    <h2 className="text-xl font-bold font-display mb-6">Detailed Activity</h2>
+                                    <Card className="p-0 overflow-hidden divide-y divide-[var(--color-surface-border)]">
+                                        {activities.map((activity) => (
+                                            <div key={activity.id} className="p-4 hover:bg-[var(--color-surface-hover)] transition-colors flex gap-4">
+                                                <div className="size-10 rounded-full bg-[var(--color-surface-highlight)] flex items-center justify-center shrink-0 text-[var(--color-primary)]">
+                                                    <span className="material-symbols-outlined text-[20px]">
+                                                        {activity.type === 'comment' ? 'chat_bubble' :
+                                                            activity.type === 'task' ? 'check_circle' :
+                                                                activity.type === 'file' ? 'description' :
+                                                                    'history'}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-medium text-[var(--color-text-main)]">
+                                                        {activity.user} <span className="font-normal text-[var(--color-text-muted)]">{activity.action}</span>
+                                                    </div>
+                                                    <div className="text-sm text-[var(--color-text-main)] mb-1">{activity.target}</div>
+                                                    <div className="text-xs text-[var(--color-text-muted)]">
+                                                        {activity.createdAt ? new Date(activity.createdAt.seconds * 1000).toLocaleString() : ''}
+                                                    </div>
+                                                </div>
+                                            </div>
                                         ))}
-                                        {skills.length === 0 && <p className="text-xs text-[var(--color-text-subtle)] italic">No skills listed.</p>}
-                                    </div>
-                                </section>
-
-                                <section>
-                                    <Card className="p-6 bg-gradient-to-br from-indigo-600 to-purple-600 text-white border-none shadow-xl relative overflow-hidden group rounded-3xl">
-                                        <div className="absolute -top-10 -right-10 size-40 bg-white/10 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700"></div>
-                                        <h3 className="text-lg font-bold mb-2 relative z-10">Trusted Professional</h3>
-                                        <p className="text-white/80 text-sm mb-4 relative z-10">Verified expert in {skills[0] || 'Digital Products'}.</p>
-                                        <Button variant="secondary" className="w-full bg-white text-indigo-600 border-none hover:bg-white/90 relative z-10">Contact for Hire</Button>
+                                        {activities.length === 0 && (
+                                            <div className="p-8 text-center text-[var(--color-text-muted)]">No details available.</div>
+                                        )}
                                     </Card>
-                                </section>
-                            </div>
-                        </div>
-                    )}
+                                </div>
+                            )}
 
-                    {(activeTab === 'projects' || activeTab === 'activity') && (
-                        <div className="p-20 text-center space-y-4">
-                            <div className="size-20 mx-auto rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 mb-6 animate-pulse">
-                                <span className="material-symbols-outlined text-4xl">construction</span>
-                            </div>
-                            <h3 className="text-2xl font-bold">Coming Soon</h3>
-                            <p className="text-[var(--color-text-muted)] max-w-sm mx-auto">This section is currently under development. Check back soon for detailed insights.</p>
-                        </div>
-                    )}
+                            {activeTab === 'about' && (
+                                <div className="animate-fade-in space-y-6">
+                                    <h2 className="text-xl font-bold font-display">About & Skills</h2>
+                                    <Card className="p-6">
+                                        <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">Bio</h3>
+                                        <p className="text-[var(--color-text-main)] leading-relaxed">{bio || "No bio provided yet."}</p>
+                                    </Card>
+
+                                    <Card className="p-6">
+                                        <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">Skills</h3>
+                                        <div className="flex flex-wrap gap-2">
+                                            {(skills || 'React, TypeScript, Firebase, Tailwind CSS, UI/UX Design').split(',').map((skill, i) => (
+                                                <span key={i} className="px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-sm font-medium border border-[var(--color-surface-border)]">
+                                                    {skill.trim()}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </Card>
+
+                                    <Card className="p-6">
+                                        <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">Contact</h3>
+                                        <div className="space-y-3">
+                                            <div className="flex items-center gap-3 text-sm">
+                                                <span className="material-symbols-outlined text-[var(--color-text-muted)]">mail</span>
+                                                <span>{user?.email}</span>
+                                            </div>
+                                            <div className="flex items-center gap-3 text-sm">
+                                                <span className="material-symbols-outlined text-[var(--color-text-muted)]">location_on</span>
+                                                <span>{address || 'Remote'}</span>
+                                            </div>
+                                        </div>
+                                    </Card>
+                                </div>
+                            )}
+                        </main>
+                    </div>
                 </div>
             </div>
 
@@ -248,7 +426,8 @@ export const Profile = () => {
                     address,
                     skills,
                     photoURL,
-                    coverURL
+                    coverURL,
+                    privacySettings
                 }}
                 onUpdate={(newData) => {
                     if (newData.displayName) setDisplayName(newData.displayName);
@@ -258,12 +437,11 @@ export const Profile = () => {
                     if (newData.skills) setSkills(newData.skills);
                     if (newData.photoURL) setPhotoURL(newData.photoURL);
                     if (newData.coverURL) setCoverURL(newData.coverURL);
+                    if (newData.privacySettings) setPrivacySettings(newData.privacySettings);
 
-                    // Refresh stats just in case
-                    getUserProfileStats(user.uid).then(setStatsData);
+                    if (user) getUserProfileStats(user.uid).then(setStatsData);
                 }}
             />
         </div>
     );
 };
-

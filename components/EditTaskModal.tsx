@@ -4,6 +4,7 @@ import { Task } from '../types';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Textarea } from './ui/Textarea';
+import { MultiAssigneeSelector } from './MultiAssigneeSelector';
 import { updateTaskFields } from '../services/dataService';
 
 interface EditTaskModalProps {
@@ -17,6 +18,8 @@ interface EditTaskModalProps {
 export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onClose, onUpdate }) => {
     const [title, setTitle] = useState(task.title);
     const [description, setDescription] = useState(task.description || '');
+    const [assigneeIds, setAssigneeIds] = useState<string[]>(task.assigneeIds || (task.assigneeId ? [task.assigneeId] : []));
+    const [assignedGroupIds, setAssignedGroupIds] = useState<string[]>(task.assignedGroupIds || []);
 
     const [loading, setLoading] = useState(false);
 
@@ -24,6 +27,8 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
         if (isOpen) {
             setTitle(task.title);
             setDescription(task.description || '');
+            setAssigneeIds(task.assigneeIds || (task.assigneeId ? [task.assigneeId] : []));
+            setAssignedGroupIds(task.assignedGroupIds || []);
         }
     }, [isOpen, task]);
 
@@ -33,7 +38,9 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
         try {
             await updateTaskFields(task.id, {
                 title,
-                description
+                description,
+                assigneeIds,
+                assignedGroupIds
             }, task.projectId);
             onUpdate();
             onClose();
@@ -80,6 +87,17 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
                                 placeholder="Describe the task..."
                                 rows={8}
                                 className="min-h-[200px]"
+                            />
+                        </div>
+
+                        <div className="flex flex-col gap-1.5">
+                            <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] ml-1">Assignees</label>
+                            <MultiAssigneeSelector
+                                projectId={task.projectId}
+                                assigneeIds={assigneeIds}
+                                assignedGroupIds={assignedGroupIds}
+                                onChange={setAssigneeIds}
+                                onGroupChange={setAssignedGroupIds}
                             />
                         </div>
                     </div>

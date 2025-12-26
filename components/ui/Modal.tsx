@@ -8,11 +8,13 @@ interface ModalProps {
     title?: string;
     children: React.ReactNode;
     footer?: React.ReactNode;
-    size?: 'sm' | 'md' | 'lg' | 'xl';
+    size?: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl' | '4xl' | '5xl' | 'full';
     className?: string;
+    hideHeader?: boolean;
+    noPadding?: boolean;
 }
 
-export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', className = '' }: ModalProps) => {
+export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', className = '', hideHeader = false, noPadding = false }: ModalProps) => {
     const overlayRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -37,7 +39,12 @@ export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', c
         sm: 'max-w-md',
         md: 'max-w-lg',
         lg: 'max-w-2xl',
-        xl: 'max-w-4xl'
+        xl: 'max-w-3xl',
+        '2xl': 'max-w-4xl',
+        '3xl': 'max-w-5xl',
+        '4xl': 'max-w-6xl',
+        '5xl': 'max-w-7xl',
+        'full': 'max-w-[96vw]'
     };
 
     return createPortal(
@@ -49,22 +56,24 @@ export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', c
                 aria-hidden="true"
             />
             <div className={`
-                relative w-full ${sizeClasses[size]} bg-[var(--color-surface-card)] rounded-xl shadow-xl 
-                border border-[var(--color-surface-border)] flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200
+                relative w-full ${sizeClasses[size]} bg-[var(--color-surface-card)] rounded-2xl shadow-xl 
+                border border-[var(--color-surface-border)] flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200 overflow-hidden
             `}>
-                <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-surface-border)]">
-                    <h2 className="text-lg font-bold text-[var(--color-text-main)]">
-                        {title}
-                    </h2>
-                    <button
-                        onClick={onClose}
-                        className="p-1 rounded-full text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)] transition-colors"
-                    >
-                        <span className="material-symbols-outlined text-[20px]">close</span>
-                    </button>
-                </div>
+                {!hideHeader && (
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-surface-border)]">
+                        <h2 className="text-lg font-bold text-[var(--color-text-main)]">
+                            {title}
+                        </h2>
+                        <button
+                            onClick={onClose}
+                            className="p-1 rounded-full text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)] transition-colors"
+                        >
+                            <span className="material-symbols-outlined text-[20px]">close</span>
+                        </button>
+                    </div>
+                )}
 
-                <div className="p-6 overflow-y-auto">
+                <div className={noPadding ? '' : 'p-6 overflow-y-auto'}>
                     {children}
                 </div>
 

@@ -189,6 +189,7 @@ exports.newsletterSubscribe = functions.region(REGION).https.onRequest((req, res
                 status: 'Subscribed',
                 source: 'Signup Form',
                 projectId,
+                unsubscribeToken: crypto.randomUUID(),
                 createdAt: admin.firestore.FieldValue.serverTimestamp(),
                 updatedAt: admin.firestore.FieldValue.serverTimestamp()
             };
@@ -206,6 +207,7 @@ exports.newsletterSubscribe = functions.region(REGION).https.onRequest((req, res
                 success: true,
                 message: 'Subscriber added successfully',
                 recipientId: newRecipientRef.id,
+                unsubscribeToken: recipientData.unsubscribeToken,
                 isNew: true
             });
         }
@@ -220,9 +222,9 @@ exports.newsletterSubscribe = functions.region(REGION).https.onRequest((req, res
 });
 /**
  * Newsletter Unsubscribe Endpoint
- * POST /api/newsletter/unsubscribe
+ * POST or GET /api/newsletter/unsubscribe
  *
- * Body:
+ * Parameters (Body or Query):
  *   {
  *     email: string (required)
  *     projectId: string (required)
@@ -231,37 +233,82 @@ exports.newsletterSubscribe = functions.region(REGION).https.onRequest((req, res
  */
 exports.newsletterUnsubscribe = functions.region(REGION).https.onRequest((req, res) => {
     return cors({ origin: CORS_ORIGIN })(req, res, async () => {
-        // Only allow POST
-        if (req.method !== 'POST') {
+        const isGet = req.method === 'GET';
+        const isPost = req.method === 'POST';
+        // Only allow GET and POST
+        if (!isGet && !isPost) {
             res.status(405).json({ success: false, error: 'Method Not Allowed' });
             return;
         }
+        // Extract parameters from body or query
+        const params = isGet ? req.query : req.body;
+        const email = params.email;
+        const projectId = params.projectId;
         // Extract token
-        let token = '';
+        let token = params.token || '';
         const authHeader = req.headers.authorization;
         if (authHeader && authHeader.startsWith('Bearer ')) {
             token = authHeader.substring(7);
         }
-        else if (req.body.token) {
-            token = req.body.token;
-        }
-        if (!token) {
-            res.status(401).json({ success: false, error: 'Missing API token' });
-            return;
-        }
+        // Error helper to handle both JSON and HTML responses
+        const handleError = (status, message) => {
+            if (isGet) {
+                res.status(status).send(`
+                    <!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>Unsubscribe Error</title>
+                        <style>
+                            body { font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f9fafb; color: #111827; }
+                            .card { background: white; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 400px; width: 100%; text-align: center; }
+                            h1 { color: #ef4444; margin-top: 0; font-size: 1.5rem; }
+                            p { color: #4b5563; line-height: 1.5; margin-bottom: 0; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="card">
+                            <h1>Error</h1>
+                            <p>${message}</p>
+                        </div>
+                    </body>
+                    </html>
+                `);
+            }
+            else {
+                res.status(status).json({ success: false, error: message });
+            }
+        };
+        if (!token)
+            return handleError(401, 'Missing API token');
+        if (!email || !projectId)
+            return handleError(400, 'Email and Project ID are required');
         // Validate token
+        // We first check if it's a master API token
         const validation = await validateAPIToken(token, 'newsletter:write');
-        if (!validation.valid) {
-            res.status(401).json({ success: false, error: validation.error });
-            return;
-        }
-        const tenantId = validation.tenantId;
-        const { email, projectId } = req.body;
-        if (!email || !projectId) {
-            res.status(400).json({ success: false, error: 'Email and Project ID are required' });
-            return;
-        }
+        const isMasterToken = validation.valid;
+        const tenantIdFromMaster = validation.tenantId;
+        // If not a master token, we'll try to validate as a recipient-specific unsubscribe token later
+        // once we have the recipient document.
         try {
+            // If we have a master token, we can use the tenantId from it
+            // Otherwise, we need to find which tenant this project belongs to
+            let tenantId = tenantIdFromMaster;
+            if (!tenantId) {
+                // If no master token, we need to find the tenant by searching projects
+                // This is a bit expensive, but necessary for secure unsubscribes without master tokens
+                const tenantsSnapshot = await db.collection('tenants').get();
+                for (const tenantDoc of tenantsSnapshot.docs) {
+                    const projectDoc = await tenantDoc.ref.collection('projects').doc(projectId).get();
+                    if (projectDoc.exists) {
+                        tenantId = tenantDoc.id;
+                        break;
+                    }
+                }
+            }
+            if (!tenantId)
+                return handleError(404, 'Project not found');
             const recipientsRef = db
                 .collection('tenants')
                 .doc(tenantId)
@@ -272,23 +319,53 @@ exports.newsletterUnsubscribe = functions.region(REGION).https.onRequest((req, r
                 .where('email', '==', email.toLowerCase())
                 .limit(1)
                 .get();
-            if (existingQuery.empty) {
-                res.status(404).json({ success: false, error: 'Subscriber not found' });
-                return;
-            }
+            if (existingQuery.empty)
+                return handleError(404, 'Subscriber not found');
             const recipientDoc = existingQuery.docs[0];
+            const recipientData = recipientDoc.data();
+            // Check if token matches: either master token or recipient's unsubscribeToken
+            const isUserTokenMatch = recipientData.unsubscribeToken && recipientData.unsubscribeToken === token;
+            if (!isMasterToken && !isUserTokenMatch) {
+                return handleError(401, 'Invalid unsubscribe token');
+            }
             await recipientDoc.ref.update({
                 status: 'Unsubscribed',
                 updatedAt: admin.firestore.FieldValue.serverTimestamp()
             });
-            res.status(200).json({
-                success: true,
-                message: 'Successfully unsubscribed'
-            });
+            if (isGet) {
+                res.status(200).send(`
+                    <!DOCTYPE html>
+                    <html lang="en">
+                    <head>
+                        <meta charset="UTF-8">
+                        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                        <title>Unsubscribed Successfully</title>
+                        <style>
+                            body { font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f9fafb; color: #111827; }
+                            .card { background: white; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 400px; width: 100%; text-align: center; }
+                            h1 { color: #10b981; margin-top: 0; font-size: 1.5rem; }
+                            p { color: #4b5563; line-height: 1.5; margin-bottom: 0; }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="card">
+                            <h1>Unsubscribed</h1>
+                            <p>You have been successfully removed from our mailing list. We're sorry to see you go!</p>
+                        </div>
+                    </body>
+                    </html>
+                `);
+            }
+            else {
+                res.status(200).json({
+                    success: true,
+                    message: 'Successfully unsubscribed'
+                });
+            }
         }
         catch (error) {
             console.error('Newsletter unsubscribe error:', error);
-            res.status(500).json({ success: false, error: 'Failed to unsubscribe' });
+            return handleError(500, 'Failed to unsubscribe');
         }
     });
 });
@@ -298,12 +375,13 @@ exports.newsletterUnsubscribe = functions.region(REGION).https.onRequest((req, r
  */
 exports.api = functions.region(REGION).https.onRequest((req, res) => {
     return cors({ origin: CORS_ORIGIN })(req, res, async () => {
-        const path = req.path;
-        // Route: POST /api/newsletter/subscribe
+        // Use path relative to the function URL
+        const path = req.path.replace(/^\/api/, '');
+        // Route: newsletter/subscribe (POST)
         if (path === '/newsletter/subscribe' || path === '/api/newsletter/subscribe') {
             return (0, exports.newsletterSubscribe)(req, res);
         }
-        // Route: POST /api/newsletter/unsubscribe
+        // Route: newsletter/unsubscribe (POST, GET)
         if (path === '/newsletter/unsubscribe' || path === '/api/newsletter/unsubscribe') {
             return (0, exports.newsletterUnsubscribe)(req, res);
         }
@@ -311,9 +389,10 @@ exports.api = functions.region(REGION).https.onRequest((req, res) => {
         res.status(404).json({
             success: false,
             error: 'Endpoint not found',
+            path: req.path,
             availableEndpoints: [
                 'POST /api/newsletter/subscribe',
-                'POST /api/newsletter/unsubscribe'
+                'GET/POST /api/newsletter/unsubscribe'
             ]
         });
     });

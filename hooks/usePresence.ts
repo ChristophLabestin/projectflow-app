@@ -201,6 +201,7 @@ export const useProjectPresence = (
                     // Determine actual state based on time and reported state
                     let isOnline = false;
                     let isIdle = false;
+                    let isBusy = false;
 
                     if (timeSinceUpdate < offlineTimeout) {
                         if (u.state === 'online') {
@@ -218,7 +219,7 @@ export const useProjectPresence = (
                         displayName: u.displayName || 'User',
                         photoURL: u.photoURL,
                         email: u.email,
-                        state: (isOnline ? 'online' : isIdle ? 'idle' : 'offline') as PresenceState,
+                        state: (isOnline ? 'online' : isIdle ? 'idle' : isBusy ? 'busy' : 'offline') as PresenceState,
                         lastChanged: u.lastChanged,
                         isOnline,
                         isIdle,

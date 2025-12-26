@@ -8,6 +8,7 @@ import { db, auth } from '../services/firebase';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { Input } from './ui/Input';
+import { Select } from './ui/Select';
 import { useConfirm } from '../context/UIContext';
 import { CommentSection } from './CommentSection';
 import { fetchCommitsReferencingIssue, GithubCommit } from '../services/githubService';
@@ -17,7 +18,7 @@ import { timeAgo, toMillis } from '../utils/time';
 
 const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClose?: () => void; onComplete?: (id: string) => void }) => {
     const [item, setItem] = useState<Task | any | null>(null);
-    const [itemType, setItemType] = useState<'task' | 'issue'>('task');
+    const [itemType, setItemType] = useState<'task' | 'issue' | 'personal-task'>('task');
     const [subtasks, setSubtasks] = useState<SubTask[]>([]);
     const [loading, setLoading] = useState(true);
     const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
@@ -30,11 +31,14 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
         return saved === 'true';
     });
     const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
+    const [showCompletedSubtasks, setShowCompletedSubtasks] = useState(false);
     const [isEditingDesc, setIsEditingDesc] = useState(false);
     const [descValue, setDescValue] = useState("");
 
     const { pinnedItems } = usePinnedTasks();
     const confirm = useConfirm();
+
+
 
     useEffect(() => {
         localStorage.setItem(`pinned_desc_expanded_${itemId}`, isDescExpanded.toString());
@@ -54,19 +58,41 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                 }
                 setItemType(current.type);
 
-                // Fetch Task
-                // We construct the path manually if we know tenant/project, but simpler to use a helper if available.
-                // Since I don't have a direct 'getTask(id)' exported that handles everything perfect, I'll assume standard path if I can.
-                // But I'll use the findTaskDoc logic I saw earlier if I could, but I can't import internal functions.
-                // So I will rely on the fact that I stored projectId and try to fetch from there.
+                // Fetch Personal Task
+                if (current.type === 'personal-task') {
+                    const user = auth.currentUser;
+                    if (user) {
+                        // We need tenantId. PinnedItem might not have it.
+                        // But we can try to resolve it or fetch user profile to get default tenant.
+                        // Or try to guess.
+                        // Actually dataService functions usually resolve it.
+                        // But here we constructs path manually? No, let's use dataService logic if possible?
+                        // We can't use internal helpers.
+                        // Let's assume standard path with current user tenant?
+                        // Getting global tenantId from somewhere?
+                        // We can try to use `getPersonalTasks` but that gets all.
+                        // Let's try to get one doc.
+                        // We need tenantId.
+                        // Let's try to get profile first to get lastTenantId or similar.
+                        // Or if we have project context... PERSONAL tasks don't have project.
+                        // Let's assume the user is in the correct tenant context or use a hack to find it.
+                        // Actually, we can iterate known tenants? No.
+                        // Let's assume the current loaded project (if any) gives a hint, or auth profile.
 
-                // Note: I need the tenantId to construct the path correctly if strictly following `dataService`.
-                // However, `PinnedItem` might not have `tenantId` if it was added before I added that field.
-                // But generally dataService functions handle resolution. 
-                // Wait, `getProjectTasks` is exported. `getProjectById` is exported.
-
-                // Let's first get project to get tenantId, then get task.
-                if (current.projectId) {
+                        // Hack: we don't have easy `getPersonalTask(id)` exported.
+                        // Let's fetch all personal tasks and find it? It's inefficient but safe.
+                        const { getPersonalTasks } = await import('../services/dataService');
+                        const allPersonal = await getPersonalTasks();
+                        const found = allPersonal.find(t => t.id === itemId);
+                        if (found && mounted) {
+                            setItem(found);
+                            // Also set description
+                            setDescValue(found.description || "");
+                        }
+                    }
+                }
+                // Fetch Project Task / Issue
+                else if (current.projectId) {
                     const projectData = await getProjectById(current.projectId);
                     if (projectData) {
                         setProject(projectData);
@@ -85,19 +111,20 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                     if (mounted) setSubtasks(subs);
                 }
 
-                // Set description initial value
-                setDescValue(current.description || "");
-
-                // Check completion on load for auto-unpin
-                if (current.type === 'task' && (current as any).isCompleted && onComplete) {
-                    // If it's already completed, we might want to unpin it immediately without animation or with?
-                    // Let's allow valid viewing if user specifically navigated here?
-                    // No, user said "a task that has been completed should not appear".
-                    // So we should trigger removal. 
-                    // But let's verify if we have full data. 
-                    // Note: current context data might be stale. We should check the fetched 'snap' data.
-                    // The logic above sets 'item' from snap.data().
+                // Set description initial value if not already set by personal task load
+                if (current.type !== 'personal-task' && mounted) {
+                    // We set it inside the if block for project data, but let's be safe
+                    // actually setDescValue is called after setItem usually?
+                    // We need to wait for `setItem`.
+                    // The logic above sets item asynchronously.
+                    // The original code set it from `current.description`.
+                    // Let's keep that fallback.
+                    setDescValue(current.description || "");
                 }
+
+                // If we fetched fresh data, update description from that
+                // (This creates a race or need to use useEffect on item? No, let's just rely on fresh fetch)
+
             } catch (e) {
                 console.error(e);
             } finally {
@@ -112,6 +139,9 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
     useEffect(() => {
         if (!loading && item && onComplete) {
             if (itemType === 'task' && (item as Task).isCompleted) {
+                onComplete(item.id);
+            }
+            if (itemType === 'personal-task' && (item as PersonalTask).isCompleted) {
                 onComplete(item.id);
             }
             if (itemType === 'issue' && ((item as any).status === 'Resolved' || (item as any).status === 'Closed')) {
@@ -160,24 +190,48 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
             if (newStatus && onComplete) {
                 onComplete(t.id);
             }
+        } else if (itemType === 'personal-task') {
+            const t = item as PersonalTask;
+            const newStatus = !t.isCompleted;
+            setItem(prev => prev ? { ...prev, isCompleted: newStatus } : null);
+            const { togglePersonalTaskStatus } = await import('../services/dataService');
+            await togglePersonalTaskStatus(t.id, newStatus, t.tenantId);
+            if (newStatus && onComplete) {
+                onComplete(t.id);
+            }
         } else {
             const i = item as any; // Issue
             const isResolved = i.status === 'Resolved' || i.status === 'Closed';
             const newStatus = isResolved ? 'Open' : 'Resolved';
             setItem(prev => prev ? { ...prev, status: newStatus } : null);
-            // Direct update for issue since dataService might not expose explicit toggle for issues
-            // We need ref. But we don't have it easily here without fetching again or storing tenant/project.
-            // Simplified: we rely on identifying it correctly.
-            // I'll grab project info again or store it in state? 
-            // Better: use updateDoc with known path? I don't have the path here easily.
-            // I will implement a quick helper inline or just assume I can find it.
-            // Actually, in the useEffect I had the ref. I should store specific update function or path?
-            // Let's just fetch project again or store more info. 
-            // Optimized: We know projectId.
-            const project = await getProjectById(item.projectId);
+
+            const { updateIssue } = await import('../services/dataService');
+            // Optimistic update done, now server
             if (project) {
-                const ref = doc(db, `tenants/${project.tenantId}/projects/${project.id}/issues/${item.id}`);
-                await updateDoc(ref, { status: newStatus });
+                await updateIssue(project.id, i.id, { status: newStatus }, project.tenantId);
+            }
+
+            if ((newStatus === 'Resolved' || newStatus === 'Closed') && onComplete) {
+                onComplete(item.id);
+            }
+        }
+    };
+
+    const handleStatusChange = async (newStatus: string) => {
+        if (!item) return;
+
+        if (itemType === 'task') {
+            const isDone = newStatus === 'Done';
+            setItem(prev => prev ? ({ ...prev, status: newStatus as any, isCompleted: isDone }) : null);
+            await updateTaskFields(item.id, { status: newStatus as any, isCompleted: isDone });
+            if (isDone && onComplete) {
+                onComplete(item.id);
+            }
+        } else if (itemType === 'issue') {
+            setItem(prev => prev ? { ...prev, status: newStatus } : null);
+            const { updateIssue } = await import('../services/dataService');
+            if (project) {
+                await updateIssue(project.id, item.id, { status: newStatus }, project.tenantId);
             }
             if ((newStatus === 'Resolved' || newStatus === 'Closed') && onComplete) {
                 onComplete(item.id);
@@ -187,8 +241,6 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
 
     const handleToggleSubtask = async (subId: string, current: boolean) => {
         setSubtasks(prev => prev.map(s => s.id === subId ? { ...s, isCompleted: !current } : s));
-        // Fix: toggleSubTaskStatus(subTaskId, currentStatus, taskId, projectId, tenantId)
-        // Ensure we pass the correct arguments. The service expects (subTaskId, currentStatus, taskId) at minimum.
         await toggleSubTaskStatus(subId, current, item?.id);
     };
 
@@ -229,7 +281,11 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
         try {
             if (itemType === 'task') {
                 await updateTaskFields(item.id, { description: descValue });
+            } else if (itemType === 'personal-task') {
+                const { updatePersonalTask } = await import('../services/dataService');
+                await updatePersonalTask(item.id, { description: descValue }, item.tenantId);
             } else {
+                const { updateIssue } = await import('../services/dataService');
                 await updateIssue(item.projectId, item.id, { description: descValue });
             }
             setItem(prev => prev ? { ...prev, description: descValue } : null);
@@ -265,18 +321,66 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                     <h3 className={`text-xl font-bold leading-tight ${isCompleted ? 'line-through opacity-50' : ''}`}>
                         {item.title}
                     </h3>
-                    {item.priority && (
-                        <Badge size="sm" variant={item.priority === 'Urgent' ? 'danger' : item.priority === 'High' ? 'warning' : 'secondary'} className="mt-2">
-                            {item.priority}
-                        </Badge>
-                    )}
+                    <div className="flex items-center gap-3 mt-3 flex-wrap">
+                        {item.priority && <PriorityBadge priority={item.priority} />}
+                        {(itemType === 'task' || itemType === 'issue') && (
+                            <div className="relative inline-flex items-center">
+                                <span className={`flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all duration-300 ${(item.status === 'Done' || item.status === 'Resolved' || item.status === 'Closed') ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' :
+                                    item.status === 'In Progress' ? 'bg-blue-600/15 text-blue-400 border-blue-500/40' :
+                                        item.status === 'Review' ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' :
+                                            item.status === 'Open' || item.status === 'Todo' ? 'bg-violet-500/10 text-violet-400 border-violet-500/20' :
+                                                item.status === 'Backlog' ? 'bg-slate-500/10 text-slate-400 border-slate-500/20' :
+                                                    item.status === 'On Hold' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                                        item.status === 'Blocked' ? 'bg-rose-600/20 text-rose-500 border-rose-500/50' :
+                                                            'bg-slate-500/5 text-slate-400 border-slate-500/10'
+                                    }`}>
+                                    <span className="material-symbols-outlined text-[11px]">
+                                        {(item.status === 'Done' || item.status === 'Resolved' || item.status === 'Closed') ? 'check_circle' :
+                                            item.status === 'In Progress' ? 'sync' :
+                                                item.status === 'Review' ? 'visibility' :
+                                                    item.status === 'Open' || item.status === 'Todo' ? 'play_circle' :
+                                                        item.status === 'Backlog' ? 'inventory_2' :
+                                                            item.status === 'On Hold' ? 'pause_circle' :
+                                                                item.status === 'Blocked' ? 'dangerous' : 'circle'}
+                                    </span>
+                                    <select
+                                        value={item.status || 'Open'}
+                                        onChange={(e) => handleStatusChange(e.target.value)}
+                                        className="appearance-none bg-transparent border-none p-0 pr-3 m-0 text-[9px] font-black uppercase tracking-widest focus:ring-0 focus:outline-none cursor-pointer"
+                                        style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
+                                    >
+                                        {itemType === 'task' ? (
+                                            <>
+                                                <option value="Backlog">Backlog</option>
+                                                <option value="Open">Open</option>
+                                                <option value="In Progress">In Progress</option>
+                                                <option value="On Hold">On Hold</option>
+                                                <option value="Review">Review</option>
+                                                <option value="Blocked">Blocked</option>
+                                                <option value="Done">Done</option>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <option value="Open">Open</option>
+                                                <option value="In Progress">In Progress</option>
+                                                <option value="Resolved">Resolved</option>
+                                                <option value="Closed">Closed</option>
+                                            </>
+                                        )}
+                                    </select>
+                                    <span className="material-symbols-outlined text-[10px] opacity-50">expand_more</span>
+                                </span>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
 
             {/* Description Section */}
             {/* Description Section */}
-            {(item.description || itemType === 'task' || isEditingDesc) && (
+            {(item.description || itemType === 'task' || itemType === 'personal-task' || isEditingDesc) && (
                 <div className="mb-6">
+                    {/* ... (rest of description rendering) ... */}
                     <div className="flex items-center justify-between mb-2">
                         <button
                             onClick={() => setIsDescExpanded(!isDescExpanded)}
@@ -348,13 +452,32 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
                             <h4 className="text-sm font-semibold text-[var(--color-text-subtle)] uppercase tracking-wider">Subtasks</h4>
-                            <span className="text-xs font-medium bg-[var(--color-surface-hover)] px-2 py-0.5 rounded-full text-[var(--color-text-muted)]">
-                                {subtasks.filter(s => s.isCompleted).length}/{subtasks.length}
-                            </span>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setShowCompletedSubtasks(!showCompletedSubtasks)}
+                                    className={`text-[10px] font-medium px-2 py-0.5 rounded-full transition-colors ${showCompletedSubtasks ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                                >
+                                    {showCompletedSubtasks ? 'Hide Done' : 'Show All'}
+                                </button>
+                                <span className="text-xs font-medium bg-[var(--color-surface-hover)] px-2 py-0.5 rounded-full text-[var(--color-text-muted)]">
+                                    {subtasks.filter(s => s.isCompleted).length}/{subtasks.length}
+                                </span>
+                            </div>
                         </div>
 
+                        <form onSubmit={handleAddSubtask} className="mb-3 flex items-center gap-2 group">
+                            <span className="material-symbols-outlined text-[var(--color-text-muted)] group-focus-within:text-[var(--color-primary)]">add</span>
+                            <input
+                                type="text"
+                                value={newSubtaskTitle}
+                                onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                                placeholder="Add subtask..."
+                                className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-sm placeholder-[var(--color-text-subtle)]"
+                            />
+                        </form>
+
                         <div className="space-y-1">
-                            {subtasks.map(sub => (
+                            {subtasks.filter(sub => showCompletedSubtasks || !sub.isCompleted).map(sub => (
                                 <div key={sub.id} className="group flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors">
                                     <button
                                         onClick={() => handleToggleSubtask(sub.id, sub.isCompleted)}
@@ -406,19 +529,8 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                                 </div>
                             ))}
                         </div>
-
-                        <form onSubmit={handleAddSubtask} className="mt-2 flex items-center gap-2 group">
-                            <span className="material-symbols-outlined text-[var(--color-text-muted)] group-focus-within:text-[var(--color-primary)]">add</span>
-                            <input
-                                type="text"
-                                value={newSubtaskTitle}
-                                onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                                placeholder="Add subtask..."
-                                className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-sm placeholder-[var(--color-text-subtle)]"
-                            />
-                        </form>
                     </div>
-                ) : (
+                ) : itemType === 'personal-task' ? null : (
                     <div className="space-y-6">
                         {/* Discussion / Comments for Issues */}
                         <div>
@@ -489,6 +601,8 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                         )}
                     </div>
                 )}
+
+
             </div>
 
         </div>
@@ -503,6 +617,7 @@ export const PinnedTasksModal = () => {
     const [addingItems, setAddingItems] = useState<string[]>([]);
     const [newTaskTitle, setNewTaskTitle] = useState("");
     const [isCreatingTask, setIsCreatingTask] = useState(false);
+    const [pinnedFilter, setPinnedFilter] = useState<'all' | 'task' | 'issue'>('all');
     const navigate = useNavigate();
     const confirm = useConfirm();
 
@@ -855,7 +970,7 @@ export const PinnedTasksModal = () => {
                 style={{ resize: 'both', overflow: 'hidden', minWidth: '400px', minHeight: '300px' }}
             >
                 {/* Header Bar with close button */}
-                <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-[var(--color-surface-card)]/80 backdrop-blur-sm p-1 rounded-xl border border-[var(--color-surface-border)] shadow-sm">
+                <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-[var(--color-surface-card)]/80 backdrop-blur-sm px-1.5 py-1 rounded-xl border border-[var(--color-surface-border)] shadow-sm">
                     {selectedItemId && (
                         <>
                             <button
@@ -869,41 +984,41 @@ export const PinnedTasksModal = () => {
                                 className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-colors"
                                 title="Open Detail Page"
                             >
-                                <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                                <span className="material-symbols-outlined text-[18px] leading-none flex items-center justify-center">open_in_new</span>
                             </button>
                             <button
                                 onClick={() => setFocusItem(focusItemId === selectedItemId ? null : selectedItemId)}
-                                className={`p-2 rounded-lg transition-colors ${focusItemId === selectedItemId ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'}`}
+                                className={`p-2 rounded-lg transition-colors flex items-center justify-center ${focusItemId === selectedItemId ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'}`}
                                 title={focusItemId === selectedItemId ? "Unset Focus" : "Set as Focus"}
                             >
-                                <span className="material-symbols-outlined text-[18px]">{focusItemId === selectedItemId ? 'center_focus_strong' : 'center_focus_weak'}</span>
+                                <span className="material-symbols-outlined text-[18px] leading-none">{focusItemId === selectedItemId ? 'center_focus_strong' : 'center_focus_weak'}</span>
                             </button>
                             <button
                                 onClick={() => {
                                     unpinItem(selectedItemId);
                                     // Optionally select another item if this one is removed, handled by effect
                                 }}
-                                className="p-2 rounded-lg text-[var(--color-text-muted)] hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/30 transition-colors"
+                                className="p-2 rounded-lg text-[var(--color-text-muted)] hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/30 transition-colors flex items-center justify-center"
                                 title="Unpin"
                             >
-                                <span className="material-symbols-outlined text-[18px]">keep_off</span>
+                                <span className="material-symbols-outlined text-[18px] leading-none">keep_off</span>
                             </button>
                             <div className="w-[1px] h-5 bg-[var(--color-surface-border)] mx-1" />
                             <button
                                 onClick={() => setIsCompactMode(true)}
-                                className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                                className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-colors flex items-center justify-center"
                                 title="Compact floating mode"
                             >
-                                <span className="material-symbols-outlined text-[18px]">picture_in_picture_alt</span>
+                                <span className="material-symbols-outlined text-[18px] leading-none">picture_in_picture_alt</span>
                             </button>
                         </>
                     )}
                     <button
                         onClick={toggleModal}
-                        className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors"
+                        className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors flex items-center justify-center"
                         title="Close (Esc)"
                     >
-                        <span className="material-symbols-outlined text-[18px]">close</span>
+                        <span className="material-symbols-outlined text-[18px] leading-none">close</span>
                     </button>
                 </div>
 
@@ -917,16 +1032,35 @@ export const PinnedTasksModal = () => {
                         <span className="text-xs font-mono text-[var(--color-text-muted)] bg-[var(--color-surface-hover)] px-2 py-1 rounded">⌘+Shift+F</span>
                     </div>
 
+                    {/* Filter Tabs */}
+                    <div className="flex items-center gap-1 px-3 pb-2 border-b border-[var(--color-surface-border)]">
+                        {(['all', 'task', 'issue'] as const).map(tab => {
+                            const count = tab === 'all' ? pinnedItems.length : pinnedItems.filter(i => i.type === tab || (tab === 'task' && i.type === 'personal-task')).length;
+                            return (
+                                <button
+                                    key={tab}
+                                    onClick={() => setPinnedFilter(tab)}
+                                    className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full transition-colors ${pinnedFilter === tab
+                                        ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'
+                                        }`}
+                                >
+                                    {tab === 'all' ? 'All' : tab === 'task' ? 'Tasks' : 'Issues'} ({count})
+                                </button>
+                            );
+                        })}
+                    </div>
+
                     <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                        {pinnedItems.length === 0 && (
+                        {pinnedItems.filter(i => pinnedFilter === 'all' || i.type === pinnedFilter || (pinnedFilter === 'task' && i.type === 'personal-task')).length === 0 && (
                             <div className="text-center p-8 text-[var(--color-text-muted)] text-sm">
-                                No pinned tasks yet.
+                                {pinnedFilter === 'all' ? 'No pinned items yet.' : `No pinned ${pinnedFilter === 'task' ? 'tasks' : 'issues'}.`}
                             </div>
                         )}
 
                         {/* Separator for Focus Item if it's in the list? */}
 
-                        {pinnedItems.map(item => {
+                        {pinnedItems.filter(i => pinnedFilter === 'all' || i.type === pinnedFilter || (pinnedFilter === 'task' && i.type === 'personal-task')).map(item => {
                             const isFocus = item.id === focusItemId;
                             const isSelected = item.id === selectedItemId;
                             const isIssue = item.type === 'issue';
@@ -1056,5 +1190,44 @@ export const PinnedTasksModal = () => {
                 {/* Removed the old mobile close button as it's replaced by the new header buttons */}
             </div>
         </div>
+    );
+};
+
+const PriorityIcon = ({ priority }: { priority: string }) => {
+    const icons: Record<string, string> = {
+        'Urgent': 'error',
+        'High': 'keyboard_double_arrow_up',
+        'Medium': 'drag_handle',
+        'Low': 'keyboard_arrow_down',
+    };
+    const colors: Record<string, string> = {
+        'Urgent': 'text-rose-500',
+        'High': 'text-orange-500',
+        'Medium': 'text-blue-500',
+        'Low': 'text-slate-500',
+    };
+    return <span className={`material-symbols-outlined text-[18px] ${colors[priority]}`}>{icons[priority]}</span>;
+}
+
+const PriorityBadge = ({ priority }: { priority: string }) => {
+    const styles: Record<string, string> = {
+        'Urgent': 'bg-rose-500/10 text-rose-500 border-rose-500/20',
+        'High': 'bg-amber-500/10 text-amber-500 border-amber-500/20',
+        'Medium': 'bg-blue-500/10 text-blue-500 border-blue-500/20',
+        'Low': 'bg-slate-500/10 text-slate-500 border-slate-500/20',
+    };
+
+    const icons: Record<string, string> = {
+        'Urgent': 'error',
+        'High': 'keyboard_double_arrow_up',
+        'Medium': 'drag_handle',
+        'Low': 'keyboard_arrow_down',
+    }
+
+    return (
+        <span className={`px-2 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1.5 ${styles[priority] || styles['Medium']}`}>
+            <span className="material-symbols-outlined text-[14px]">{icons[priority] || 'drag_handle'}</span>
+            {priority}
+        </span>
     );
 };

@@ -1,16 +1,17 @@
 
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { subscribeCampaigns } from '../../services/dataService';
+import { useNavigate, useParams } from 'react-router-dom';
+import { subscribeCampaigns, deleteCampaign } from '../../services/dataService';
 import { SocialCampaign } from '../../types';
-import { SocialCampaignModal } from './components/SocialCampaignModal';
+import { useConfirm, useToast } from '../../context/UIContext';
 
 export const CampaignList = () => {
     const { id: projectId } = useParams<{ id: string }>();
+    const navigate = useNavigate();
     const [campaigns, setCampaigns] = useState<SocialCampaign[]>([]);
     const [loading, setLoading] = useState(true);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [editingCampaign, setEditingCampaign] = useState<SocialCampaign | undefined>(undefined);
+    const confirm = useConfirm();
+    const { showSuccess, showError } = useToast();
 
     useEffect(() => {
         if (!projectId) return;
@@ -22,25 +23,38 @@ export const CampaignList = () => {
     }, [projectId]);
 
     const handleCreate = () => {
-        setEditingCampaign(undefined);
-        setIsModalOpen(true);
+        navigate('create');
     };
 
-    const handleEdit = (campaign: SocialCampaign) => {
-        setEditingCampaign(campaign);
-        setIsModalOpen(true);
+    const handleEdit = (e: React.MouseEvent, campaign: SocialCampaign) => {
+        e.stopPropagation();
+        navigate(`edit/${campaign.id}`);
+    };
+
+    const handleDelete = async (e: React.MouseEvent, campaign: SocialCampaign) => {
+        e.stopPropagation();
+        if (!projectId) return;
+
+        const confirmed = await confirm(
+            "Delete Campaign",
+            `Are you sure you want to delete "${campaign.name}"? This action cannot be undone.`
+        );
+
+        if (confirmed) {
+            try {
+                await deleteCampaign(projectId, campaign.id);
+                showSuccess("Campaign deleted successfully");
+            } catch (error) {
+                console.error("Failed to delete campaign", error);
+                showError("Failed to delete campaign");
+            }
+        }
     };
 
     if (loading) return <div>Loading campaigns...</div>;
 
     return (
         <div className="space-y-6">
-            <SocialCampaignModal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                campaign={editingCampaign}
-            />
-
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="h2 mb-1">Campaigns</h1>
@@ -60,19 +74,40 @@ export const CampaignList = () => {
                     <div
                         key={c.id}
                         className="group bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl p-5 hover:shadow-md transition-all cursor-pointer"
-                        onClick={() => handleEdit(c)}
+                        onClick={() => navigate(`${c.id}`)}
                     >
                         <div className="flex justify-between items-start mb-3">
-                            <span className={`px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider ${c.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                            <span className={`px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider ${c.status === 'Active' ? 'bg-green-100 text-green-700' :
+                                    c.status === 'Planning' ? 'bg-blue-100 text-blue-700' :
+                                        c.status === 'Completed' ? 'bg-purple-100 text-purple-700' :
+                                            c.status === 'Paused' ? 'bg-amber-100 text-amber-700' :
+                                                'bg-gray-100 text-gray-700'
                                 }`}>
                                 {c.status}
                             </span>
-                            <span className="text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 transition-opacity material-symbols-outlined">edit</span>
+                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button
+                                    className="text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] p-1 rounded-full"
+                                    onClick={(e) => handleEdit(e, c)}
+                                    title="Edit Campaign"
+                                >
+                                    <span className="material-symbols-outlined text-base">edit</span>
+                                </button>
+                                {(c.status === 'Planning' || c.status === 'Backlog') && (
+                                    <button
+                                        className="text-[var(--color-text-muted)] hover:bg-red-50 hover:text-red-500 p-1 rounded-full"
+                                        onClick={(e) => handleDelete(e, c)}
+                                        title="Delete Campaign"
+                                    >
+                                        <span className="material-symbols-outlined text-base">delete</span>
+                                    </button>
+                                )}
+                            </div>
                         </div>
                         <h3 className="h4 mb-1">{c.name}</h3>
                         <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] mb-4">
                             <span className="material-symbols-outlined text-base">calendar_today</span>
-                            <span>{new Date(c.startDate || '').toLocaleDateString()}</span>
+                            <span>{c.startDate ? new Date(c.startDate).toLocaleDateString() : 'TBD'}</span>
                         </div>
                         <div className="pt-4 border-t border-[var(--color-surface-border)] text-sm text-[var(--color-text-muted)]">
                             {c.toneOfVoice || "No tone defined"}

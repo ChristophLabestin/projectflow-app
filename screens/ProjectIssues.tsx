@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { subscribeProjectIssues, getProjectById, createIssue, subscribeTenantUsers } from '../services/dataService';
-import { Issue, Project, Member } from '../types';
+import { subscribeProjectGroups } from '../services/projectGroupService';
+import { Issue, Project, Member, ProjectGroup } from '../types';
 import { auth } from '../services/firebase';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -22,6 +23,7 @@ export const ProjectIssues = () => {
     const [filter, setFilter] = useState<'Active' | 'Resolved' | 'All'>('Active');
     const [search, setSearch] = useState('');
     const [project, setProject] = useState<Project | null>(null);
+    const [projectGroups, setProjectGroups] = useState<ProjectGroup[]>([]);
     const [allUsers, setAllUsers] = useState<Member[]>([]);
     const { pinItem, unpinItem, isPinned } = usePinnedTasks();
 
@@ -33,6 +35,7 @@ export const ProjectIssues = () => {
     const [newIssueDescription, setNewIssueDescription] = useState('');
     const [newIssuePriority, setNewIssuePriority] = useState<Issue['priority']>('Medium');
     const [newIssueAssigneeIds, setNewIssueAssigneeIds] = useState<string[]>([]);
+    const [newIssueGroupIds, setNewIssueGroupIds] = useState<string[]>([]);
     const [submitting, setSubmitting] = useState(false);
 
     const user = auth.currentUser;
@@ -57,7 +60,13 @@ export const ProjectIssues = () => {
                     setIssues(loadedIssues);
                     setLoading(false);
                 }
+                if (mounted) {
+                    setIssues(loadedIssues);
+                    setLoading(false);
+                }
             }, foundProject.tenantId);
+
+            const unsubGroups = subscribeProjectGroups(id, setProjectGroups, foundProject.tenantId);
 
             if (foundProject.tenantId) {
                 unsubUsers = subscribeTenantUsers((users) => {
@@ -71,7 +80,9 @@ export const ProjectIssues = () => {
 
         return () => {
             mounted = false;
+            mounted = false;
             if (unsubIssues) unsubIssues();
+            unsubGroups();
             if (unsubUsers) unsubUsers();
         };
     }, [id]);
@@ -86,7 +97,9 @@ export const ProjectIssues = () => {
                 title: newIssueTitle.trim(),
                 description: newIssueDescription.trim(),
                 priority: newIssuePriority,
+                priority: newIssuePriority,
                 assigneeIds: newIssueAssigneeIds,
+                assignedGroupIds: newIssueGroupIds,
             }, project.tenantId);
             setShowNewIssueModal(false);
             resetForm();
@@ -101,7 +114,9 @@ export const ProjectIssues = () => {
         setNewIssueTitle('');
         setNewIssueDescription('');
         setNewIssuePriority('Medium');
+        setNewIssuePriority('Medium');
         setNewIssueAssigneeIds([]);
+        setNewIssueGroupIds([]);
     }
 
     const filteredIssues = useMemo(() => {
@@ -137,9 +152,6 @@ export const ProjectIssues = () => {
                     <h1 className="h2 text-[var(--color-text-main)]">Issues</h1>
                     <p className="text-[var(--color-text-muted)] text-sm">Track and resolve project bugs and improvements.</p>
                 </div>
-                <Button onClick={() => setShowNewIssueModal(true)} icon={<span className="material-symbols-outlined">add</span>}>
-                    Report Issue
-                </Button>
             </div>
 
             {/* Stats Cards */}
@@ -258,6 +270,24 @@ export const ProjectIssues = () => {
                                                     <span className="material-symbols-outlined text-[14px]">person_off</span>
                                                 </span>
                                             )}
+                                            {issue.assignedGroupIds && issue.assignedGroupIds.length > 0 && (
+                                                <div className="flex -space-x-2 ml-1">
+                                                    {issue.assignedGroupIds.map(gid => {
+                                                        const group = projectGroups.find(g => g.id === gid);
+                                                        if (!group) return null;
+                                                        return (
+                                                            <div
+                                                                key={gid}
+                                                                className="size-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white shadow-sm ring-2 ring-[var(--color-surface-bg)]"
+                                                                style={{ backgroundColor: group.color }}
+                                                                title={`Group: ${group.name}`}
+                                                            >
+                                                                {group.name.substring(0, 1).toUpperCase()}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
                                         </div>
 
                                         <div className="flex items-center gap-1 text-[10px] text-[var(--color-text-muted)] ml-auto">
@@ -347,7 +377,9 @@ export const ProjectIssues = () => {
                                     <MultiAssigneeSelector
                                         projectId={id!}
                                         assigneeIds={newIssueAssigneeIds}
+                                        assignedGroupIds={newIssueGroupIds}
                                         onChange={setNewIssueAssigneeIds}
+                                        onGroupChange={setNewIssueGroupIds}
                                     />
                                 </div>
                             </div>

@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, ReactNode, useCallback, useEffect } from 'react';
+import { usePinnedProject } from './PinnedProjectContext';
 
 type ToastType = 'success' | 'error' | 'info';
 
@@ -32,11 +33,25 @@ interface UIContextType {
     taskCreateProjectId: string | null;
     openTaskCreateModal: (projectId?: string) => void;
     closeTaskCreateModal: () => void;
+
+    // Global Idea Create Modal
+    isIdeaCreateModalOpen: boolean;
+    ideaCreateProjectId: string | null;
+    openIdeaCreateModal: (projectId?: string) => void;
+    closeIdeaCreateModal: () => void;
+
+    // Global Issue Create Modal
+    isIssueCreateModalOpen: boolean;
+    issueCreateProjectId: string | null;
+    openIssueCreateModal: (projectId?: string) => void;
+    closeIssueCreateModal: () => void;
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
 
 export const UIProvider = ({ children }: { children: ReactNode }) => {
+    const { pinnedProject } = usePinnedProject();
+
     const [toast, setToast] = useState<ToastState>({
         show: false,
         message: '',
@@ -52,9 +67,19 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
 
     const [isReleaseModalOpen, setReleaseModalOpen] = useState(false);
 
+    // Task Modal State
     const [isTaskCreateModalOpen, setTaskCreateModalOpen] = useState(false);
     const [taskCreateProjectId, setTaskCreateProjectId] = useState<string | null>(null);
 
+    // Idea Modal State
+    const [isIdeaCreateModalOpen, setIdeaCreateModalOpen] = useState(false);
+    const [ideaCreateProjectId, setIdeaCreateProjectId] = useState<string | null>(null);
+
+    // Issue Modal State
+    const [isIssueCreateModalOpen, setIssueCreateModalOpen] = useState(false);
+    const [issueCreateProjectId, setIssueCreateProjectId] = useState<string | null>(null);
+
+    // Task Modal Functions
     const openTaskCreateModal = useCallback((projectId?: string) => {
         setTaskCreateProjectId(projectId || null);
         setTaskCreateModalOpen(true);
@@ -64,6 +89,75 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
         setTaskCreateModalOpen(false);
         setTaskCreateProjectId(null);
     }, []);
+
+    // Idea Modal Functions
+    const openIdeaCreateModal = useCallback((projectId?: string) => {
+        setIdeaCreateProjectId(projectId || null);
+        setIdeaCreateModalOpen(true);
+    }, []);
+
+    const closeIdeaCreateModal = useCallback(() => {
+        setIdeaCreateModalOpen(false);
+        setIdeaCreateProjectId(null);
+    }, []);
+
+    // Issue Modal Functions
+    const openIssueCreateModal = useCallback((projectId?: string) => {
+        setIssueCreateProjectId(projectId || null);
+        setIssueCreateModalOpen(true);
+    }, []);
+
+    const closeIssueCreateModal = useCallback(() => {
+        setIssueCreateModalOpen(false);
+        setIssueCreateProjectId(null);
+    }, []);
+
+    // Global Keyboard Shortcuts
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Don't trigger if user is typing in an input/textarea
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+                return;
+            }
+
+            // Only trigger if we have a pinned project
+            if (!pinnedProject) return;
+
+            // Option/Alt + T = Toggle Task Modal
+            if (e.altKey && e.code === 'KeyT' && !e.metaKey && !e.ctrlKey) {
+                e.preventDefault();
+                if (isTaskCreateModalOpen) {
+                    closeTaskCreateModal();
+                } else {
+                    openTaskCreateModal(pinnedProject.id);
+                }
+            }
+
+            // Option/Alt + I = Toggle Idea Modal
+            if (e.altKey && e.code === 'KeyI' && !e.metaKey && !e.ctrlKey) {
+                e.preventDefault();
+                if (isIdeaCreateModalOpen) {
+                    closeIdeaCreateModal();
+                } else {
+                    openIdeaCreateModal(pinnedProject.id);
+                }
+            }
+
+            // Option/Alt + B = Toggle Bug/Issue Modal
+            if (e.altKey && e.code === 'KeyB' && !e.metaKey && !e.ctrlKey) {
+                e.preventDefault();
+                if (isIssueCreateModalOpen) {
+                    closeIssueCreateModal();
+                } else {
+                    openIssueCreateModal(pinnedProject.id);
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [pinnedProject, isTaskCreateModalOpen, isIdeaCreateModalOpen, isIssueCreateModalOpen, openTaskCreateModal, closeTaskCreateModal, openIdeaCreateModal, closeIdeaCreateModal, openIssueCreateModal, closeIssueCreateModal]);
 
     const showToast = useCallback((message: string, type: ToastType = 'info') => {
         setToast({ show: true, message, type });
@@ -113,7 +207,15 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
             isTaskCreateModalOpen,
             taskCreateProjectId,
             openTaskCreateModal,
-            closeTaskCreateModal
+            closeTaskCreateModal,
+            isIdeaCreateModalOpen,
+            ideaCreateProjectId,
+            openIdeaCreateModal,
+            closeIdeaCreateModal,
+            isIssueCreateModalOpen,
+            issueCreateProjectId,
+            openIssueCreateModal,
+            closeIssueCreateModal
         }}>
             {children}
         </UIContext.Provider>

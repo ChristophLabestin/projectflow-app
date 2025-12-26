@@ -1,19 +1,45 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams, useOutletContext, useSearchParams } from 'react-router-dom';
-import { addSubTask, getProjectTasks, getSubTasks, getTaskById, toggleSubTaskStatus, toggleTaskStatus, deleteTask, getProjectMembers, updateTaskFields, deleteSubTask, updateSubtaskFields, subscribeTenantUsers, getProjectById } from '../services/dataService';
+import { addSubTask, getProjectTasks, getSubTasks, getTaskById, toggleSubTaskStatus, toggleTaskStatus, deleteTask, getProjectMembers, updateTaskFields, deleteSubTask, updateSubtaskFields, subscribeTenantUsers, getProjectById, getIdeaById, subscribeTaskActivity, getProjectCategories } from '../services/dataService';
 import { deleteField } from 'firebase/firestore';
-import { SubTask, Task, Member, Project } from '../types';
+import { SubTask, Task, Member, Project, Activity } from '../types';
 import { CommentSection } from '../components/CommentSection';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
 import { EditTaskModal } from '../components/EditTaskModal';
 import { MultiAssigneeSelector } from '../components/MultiAssigneeSelector';
-import { toMillis } from '../utils/time';
+import { TaskCreateModal } from '../components/TaskCreateModal';
+import { ProjectLabelsModal } from '../components/ProjectLabelsModal';
+import { toMillis, timeAgo } from '../utils/time';
 import { auth } from '../services/firebase';
 import { DatePicker } from '../components/ui/DatePicker';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
+import { TaskStrategicContext } from '../components/tasks/TaskStrategicContext';
+
+const activityIcon = (type?: Activity['type'], actionText?: string) => {
+    const action = (actionText || '').toLowerCase();
+    if (type === 'task') {
+        if (action.includes('deleted') || action.includes('remove')) return { icon: 'delete', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-500/10' };
+        if (action.includes('reopened')) return { icon: 'undo', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-500/10' };
+        if (action.includes('completed') || action.includes('done')) return { icon: 'check_circle', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-500/10' };
+        return { icon: 'add_task', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-500/10' };
+    }
+    if (type === 'issue') {
+        if (action.includes('resolved') || action.includes('closed')) return { icon: 'check_circle', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-500/10' };
+        if (action.includes('reopened')) return { icon: 'undo', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-500/10' };
+        return { icon: 'bug_report', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-500/10' };
+    }
+    if (type === 'status') return { icon: 'swap_horiz', color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-100 dark:bg-indigo-500/10' };
+    if (type === 'report') return { icon: 'auto_awesome', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-500/10' };
+    if (type === 'comment') return { icon: 'chat_bubble', color: 'text-amber-600', bg: 'bg-amber-100' };
+    if (type === 'file') return { icon: 'attach_file', color: 'text-slate-600', bg: 'bg-slate-100' };
+    if (type === 'member') return { icon: 'person_add', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-500/10' };
+    if (type === 'commit') return { icon: 'code', color: 'text-blue-600', bg: 'bg-blue-100' };
+    if (type === 'priority') return { icon: 'priority_high', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-500/10' };
+    return { icon: 'more_horiz', color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-700/50' };
+};
 
 export const ProjectTaskDetail = () => {
     const { id, taskId } = useParams<{ id: string; taskId: string }>();
@@ -22,6 +48,7 @@ export const ProjectTaskDetail = () => {
     const navigate = useNavigate();
     const [task, setTask] = useState<Task | null>(null);
     const [subTasks, setSubTasks] = useState<SubTask[]>([]);
+    const [idea, setIdea] = useState<any | null>(null); // Store original idea
     const [loading, setLoading] = useState(true);
     const [adding, setAdding] = useState(false);
     const [newSubTitle, setNewSubTitle] = useState('');
@@ -36,8 +63,12 @@ export const ProjectTaskDetail = () => {
     const [activeSubAssignMenu, setActiveSubAssignMenu] = useState<string | null>(null);
     const [project, setProject] = useState<Project | null>(null);
     const [commentCount, setCommentCount] = useState(0);
+    const [activities, setActivities] = useState<Activity[]>([]);
+    const [showTaskModal, setShowTaskModal] = useState(false);
+    const [showLabelsModal, setShowLabelsModal] = useState(false);
+    const [allCategories, setAllCategories] = useState<TaskCategory[]>([]);
     const [copiedId, setCopiedId] = useState(false);
-    const { pinItem, unpinItem, isPinned } = usePinnedTasks();
+    const { pinItem, unpinItem, isPinned, focusItemId, setFocusItem } = usePinnedTasks();
 
     const isProjectOwner = useMemo(() => {
         return project?.ownerId === auth.currentUser?.uid;
@@ -62,6 +93,12 @@ export const ProjectTaskDetail = () => {
 
     const loadData = async () => {
         if (!taskId) return;
+        setLoading(true);
+        setTask(null);
+        setSubTasks([]);
+        setProject(null);
+        setMembers([]);
+        setError(null);
         try {
             let t = await getTaskById(taskId, id, tenantId);
             if (!t && id) {
@@ -69,6 +106,12 @@ export const ProjectTaskDetail = () => {
                 t = projectTasks.find((task) => task.id === taskId) || null;
             }
             setTask(t);
+
+            // Fetch linked idea if it exists
+            if (t?.convertedIdeaId && id) {
+                getIdeaById(t.convertedIdeaId, id).then(setIdea).catch(e => console.error("Failed to load strategic idea", e));
+            }
+
             const subs = await getSubTasks(taskId, id, tenantId);
             setSubTasks(subs);
 
@@ -104,6 +147,15 @@ export const ProjectTaskDetail = () => {
             unsubUsers();
         };
     }, [task?.tenantId]);
+
+    // Subscribe to task activity
+    useEffect(() => {
+        if (!taskId || !id) return;
+        const unsub = subscribeTaskActivity(id, taskId, (data) => {
+            setActivities(data);
+        }, tenantId);
+        return () => unsub();
+    }, [taskId, id, tenantId]);
 
     const refreshSubs = async () => {
         if (!taskId) return;
@@ -195,6 +247,11 @@ export const ProjectTaskDetail = () => {
         await updateTaskFields(task.id, { [field]: value }, id);
     };
 
+    useEffect(() => {
+        if (!id) return;
+        getProjectCategories(id).then(setAllCategories).catch(console.error);
+    }, [id]);
+
     const handleUpdateAssignees = async (ids: string[]) => {
         if (!task) return;
         const primaryAssignee = ids.length > 0 ? ids[0] : '';
@@ -234,7 +291,7 @@ export const ProjectTaskDetail = () => {
     }
 
     return (
-        <div className="max-w-6xl mx-auto px-4 md:px-8 py-8 animate-fade-in pb-20">
+        <div className="max-w-[1600px] mx-auto px-4 md:px-8 py-8 animate-fade-in pb-20">
             {isEditModalOpen && task && (
                 <EditTaskModal
                     task={task}
@@ -242,6 +299,30 @@ export const ProjectTaskDetail = () => {
                     onClose={() => setIsEditModalOpen(false)}
                     onUpdate={loadData}
                     projectMembers={members}
+                />
+            )}
+
+            {showLabelsModal && (
+                <ProjectLabelsModal
+                    isOpen={showLabelsModal}
+                    onClose={() => setShowLabelsModal(false)}
+                    projectId={id!}
+                    onLabelsChange={async () => {
+                        const cats = await getProjectCategories(id!);
+                        setAllCategories(cats);
+                    }}
+                />
+            )}
+
+            {showTaskModal && (
+                <TaskCreateModal
+                    isOpen={showTaskModal}
+                    onClose={() => setShowTaskModal(false)}
+                    projectId={id!}
+                    onSuccess={() => {
+                        setShowTaskModal(false);
+                        // Refresh if needed, but since it's a new task it won't affect this page's task data
+                    }}
                 />
             )}
 
@@ -300,19 +381,34 @@ export const ProjectTaskDetail = () => {
                                         <span className="material-symbols-outlined text-[14px] text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]">arrow_forward</span>
                                     </Link>
                                 )}
-                                <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border ${task.status === 'Done' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                    task.status === 'In Progress' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                        task.status === 'On Hold' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
-                                            'bg-slate-500/10 text-slate-500 border-slate-500/20'
+                                <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-[0.15em] uppercase border transition-all duration-300 ${task.status === 'Done' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' :
+                                        task.status === 'In Progress' ? 'bg-blue-600/15 text-blue-400 border-blue-500/40 shadow-[0_0_12px_rgba(59,130,246,0.2)]' :
+                                            task.status === 'Review' ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.1)]' :
+                                                task.status === 'Open' || task.status === 'Todo' ? 'bg-violet-500/10 text-violet-400 border-violet-500/20' :
+                                                    task.status === 'Backlog' ? 'bg-slate-500/10 text-slate-400 border-slate-500/20 opacity-80' :
+                                                        task.status === 'On Hold' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                                            task.status === 'Blocked' ? 'bg-rose-600/20 text-rose-500 border-rose-500/50 animate-pulse ring-1 ring-rose-500/20' :
+                                                                'bg-slate-500/5 text-slate-400 border-slate-500/10'
                                     }`}>
-                                    <span className="material-symbols-outlined text-[14px] leading-none">
+                                    <span className="material-symbols-outlined text-[14px]">
                                         {task.status === 'Done' ? 'check_circle' :
-                                            task.status === 'On Hold' ? 'pause_circle' :
-                                                'radio_button_unchecked'}
+                                            task.status === 'In Progress' ? 'sync' :
+                                                task.status === 'Review' ? 'visibility' :
+                                                    task.status === 'Open' || task.status === 'Todo' ? 'play_circle' :
+                                                        task.status === 'Backlog' ? 'inventory_2' :
+                                                            task.status === 'On Hold' ? 'pause_circle' :
+                                                                task.status === 'Blocked' ? 'dangerous' :
+                                                                    'circle'}
                                     </span>
                                     {task.status || 'Open'}
                                 </span>
                                 <PriorityBadge priority={task.priority} />
+                                {task.convertedIdeaId && (
+                                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border bg-indigo-500/10 text-indigo-500 border-indigo-500/20">
+                                        <span className="material-symbols-outlined text-[14px]">lightbulb</span>
+                                        Strategic
+                                    </div>
+                                )}
                             </div>
 
                             <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-[var(--color-text-main)] leading-[1.1] tracking-tight mb-8">
@@ -325,9 +421,19 @@ export const ProjectTaskDetail = () => {
                                 <div className="flex items-center gap-2.5 px-4 py-2 bg-[var(--color-surface-hover)] rounded-xl border border-[var(--color-surface-border)]">
                                     <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">calendar_today</span>
                                     <div className="flex flex-col">
-                                        <span className="text-[10px] leading-none uppercase font-bold text-[var(--color-text-subtle)] mb-0.5">Due Date</span>
+                                        <span className="text-[10px] leading-none uppercase font-bold text-[var(--color-text-subtle)] mb-0.5">
+                                            {task.startDate && task.dueDate ? 'Timeline' : 'Due Date'}
+                                        </span>
                                         <span className="text-[var(--color-text-main)] font-semibold whitespace-nowrap">
-                                            {task.dueDate ? new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'No due date'}
+                                            {task.startDate ? (
+                                                <>
+                                                    {new Date(task.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                    {' - '}
+                                                    {task.dueDate ? new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '...'}
+                                                </>
+                                            ) : (
+                                                task.dueDate ? new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'No due date'
+                                            )}
                                         </span>
                                     </div>
                                 </div>
@@ -386,14 +492,31 @@ export const ProjectTaskDetail = () => {
                         </div>
 
                         <div className="flex flex-col items-stretch lg:items-end gap-3 lg:mb-1">
+                            <Button
+                                variant={task.isCompleted ? 'secondary' : 'primary'}
+                                onClick={handleToggleTask}
+                                size="lg"
+                                className={`shadow-lg w-full lg:w-fit ${idea ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/25 border-none text-white' : 'shadow-primary/10'}`}
+                                icon={<span className="material-symbols-outlined">{task.isCompleted ? 'check_circle' : 'check'}</span>}
+                            >
+                                {task.isCompleted ? 'Completed' : 'Mark as Done'}
+                            </Button>
+
                             <div className="flex items-center gap-2 bg-[var(--color-surface-hover)] p-1 rounded-xl border border-[var(--color-surface-border)] w-full lg:w-fit">
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => {
                                         if (isPinned(task.id)) {
-                                            unpinItem(task.id);
+                                            if (focusItemId === task.id) {
+                                                // If already focused, just unpin (which also un-focuses)
+                                                unpinItem(task.id);
+                                            } else {
+                                                // If pinned but not focused, set it as focus
+                                                setFocusItem(task.id);
+                                            }
                                         } else {
+                                            // Pin and set as focus
                                             pinItem({
                                                 id: task.id,
                                                 type: 'task',
@@ -402,13 +525,25 @@ export const ProjectTaskDetail = () => {
                                                 priority: task.priority,
                                                 isCompleted: task.isCompleted
                                             });
+                                            setFocusItem(task.id);
                                         }
                                     }}
-                                    className={`flex-1 lg:flex-none ${isPinned(task.id) ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'hover:bg-[var(--color-surface-card)]'}`}
-                                    icon={<span className="material-symbols-outlined text-[20px]">push_pin</span>}
-                                >
-                                    {isPinned(task.id) ? 'Pinned' : 'Pin'}
-                                </Button>
+                                    onContextMenu={(e) => {
+                                        if (isPinned(task.id)) {
+                                            e.preventDefault();
+                                            unpinItem(task.id);
+                                        }
+                                    }}
+                                    className={`flex-1 lg:flex-none transition-all ${focusItemId === task.id
+                                        ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 shadow-sm border border-amber-500/20'
+                                        : isPinned(task.id)
+                                            ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 shadow-sm'
+                                            : 'hover:bg-[var(--color-surface-card)] text-[var(--color-text-muted)]'
+                                        }`}
+                                    icon={<span className={`material-symbols-outlined text-[20px] ${focusItemId === task.id ? 'fill-current' : ''}`}>
+                                        {focusItemId === task.id ? 'push_pin' : 'push_pin'}
+                                    </span>}
+                                />
                                 <div className="w-[1px] h-4 bg-[var(--color-surface-border)]" />
                                 <Button
                                     variant="ghost"
@@ -416,9 +551,7 @@ export const ProjectTaskDetail = () => {
                                     onClick={() => setIsEditModalOpen(true)}
                                     className="flex-1 lg:flex-none hover:bg-[var(--color-surface-card)]"
                                     icon={<span className="material-symbols-outlined text-[20px]">edit</span>}
-                                >
-                                    Edit
-                                </Button>
+                                />
                                 <div className="w-[1px] h-4 bg-[var(--color-surface-border)]" />
                                 <Button
                                     variant="ghost"
@@ -428,25 +561,54 @@ export const ProjectTaskDetail = () => {
                                 >
                                     <span className="material-symbols-outlined text-[20px]">delete</span>
                                 </Button>
+                                <div className="w-[1px] h-4 bg-[var(--color-surface-border)]" />
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setShowTaskModal(true)}
+                                    className="flex-1 lg:flex-none hover:bg-[var(--color-surface-card)]"
+                                    icon={<span className="material-symbols-outlined text-[20px]">add</span>}
+                                >
+                                    New Task
+                                </Button>
                             </div>
-
-                            <Button
-                                variant={task.isCompleted ? 'secondary' : 'primary'}
-                                onClick={handleToggleTask}
-                                size="lg"
-                                className="shadow-lg shadow-primary/10 w-full lg:w-fit"
-                                icon={<span className="material-symbols-outlined">{task.isCompleted ? 'check_circle' : 'check'}</span>}
-                            >
-                                {task.isCompleted ? 'Completed' : 'Mark as Done'}
-                            </Button>
                         </div>
                     </div>
+
+                    {/* Timeline Bar (Visual) */}
+                    {task.startDate && task.dueDate && (
+                        <div className="mt-8 relative pt-4">
+                            <div className="flex justify-between text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mb-2">
+                                <span>{new Date(task.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                <span>{new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                            </div>
+                            <div className="h-2 bg-[var(--color-surface-border)] rounded-full overflow-hidden relative">
+                                {/* Visual calculation for progress based on today vs start/end */}
+                                {(() => {
+                                    const start = new Date(task.startDate).getTime();
+                                    const end = new Date(task.dueDate).getTime();
+                                    const now = new Date().getTime();
+                                    const total = end - start;
+                                    const elapsed = now - start;
+                                    const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
+                                    return (
+                                        <div
+                                            className={`h-full absolute top-0 left-0 rounded-full ${idea ? 'bg-indigo-500' : 'bg-[var(--color-primary)]'}`}
+                                            style={{ width: `${pct}%` }}
+                                        />
+                                    );
+                                })()}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+
+
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
                 {/* Main Content */}
-                <div className="lg:col-span-8 space-y-8">
+                <div className="xl:col-span-9 space-y-8">
                     {/* Description */}
                     <div className="p-0">
                         <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-3 flex items-center gap-2 tracking-wider">
@@ -462,6 +624,8 @@ export const ProjectTaskDetail = () => {
                                 <p className="text-[var(--color-text-muted)] italic">No description provided.</p>
                             )}
                         </div>
+
+
                     </div>
 
                     {/* Subtasks */}
@@ -607,6 +771,13 @@ export const ProjectTaskDetail = () => {
                         </div>
                     </div>
 
+                    {/* Strategic Context (Moved here) */}
+                    {task.convertedIdeaId && (
+                        <div className="animate-fade-in-up">
+                            <TaskStrategicContext projectId={id!} convertedIdeaId={task.convertedIdeaId} ideaData={idea} />
+                        </div>
+                    )}
+
                     {/* Comments */}
                     <div>
                         <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-3 flex items-center gap-2 tracking-wider">
@@ -623,180 +794,389 @@ export const ProjectTaskDetail = () => {
                             onCountChange={setCommentCount}
                         />
                     </div>
+
+
                 </div>
+                {/* Side Details Column */}
+                <div className="xl:col-span-3 space-y-6">
+                    {/* Controls Card */}
+                    <div className="space-y-4">
+                        {/* Status Card */}
+                        <div className="app-card p-4">
+                            <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider block mb-3">Status</span>
+                            <div className="flex items-center gap-3">
+                                <div className={`p-2 rounded-lg ${task.status === 'Done' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-500/10 text-slate-500'}`}>
+                                    <span className="material-symbols-outlined text-[20px]">
+                                        {task.status === 'Done' ? 'check_circle' : 'swap_horiz'}
+                                    </span>
+                                </div>
+                                <Select
+                                    value={task.status || 'Open'}
+                                    onChange={(e) => {
+                                        const newStatus = e.target.value;
+                                        const isDone = newStatus === 'Done';
+                                        setTask(prev => prev ? ({ ...prev, status: newStatus as any, isCompleted: isDone }) : null);
+                                        updateTaskFields(task.id, { status: newStatus as any, isCompleted: isDone }, id);
+                                    }}
+                                    className="w-full text-sm font-bold border-none p-0 h-auto bg-transparent focus:ring-0 cursor-pointer hover:text-[var(--color-primary)] transition-colors"
+                                >
+                                    <option value="Backlog">Backlog</option>
+                                    <option value="Open">Open</option>
+                                    <option value="In Progress">In Progress</option>
+                                    <option value="On Hold">On Hold</option>
+                                    <option value="Review">Review</option>
+                                    <option value="Blocked">Blocked</option>
+                                    <option value="Done">Done</option>
+                                </Select>
+                            </div>
+                        </div>
 
-                {/* Sidebar / Meta Column */}
-                <div className="lg:col-span-4 space-y-6">
+                        {/* Priority Card */}
+                        <div className="app-card p-4">
+                            <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider block mb-3">Priority</span>
+                            <div className="grid grid-cols-2 gap-2">
+                                {(['Low', 'Medium', 'High', 'Urgent'] as const).map(p => {
+                                    const activeStyles: Record<string, string> = {
+                                        'Low': 'bg-slate-500/10 text-slate-500 border-slate-500/20 shadow-sm',
+                                        'Medium': 'bg-blue-500/10 text-blue-500 border-blue-500/20 shadow-sm',
+                                        'High': 'bg-orange-500/10 text-orange-500 border-orange-500/20 shadow-sm',
+                                        'Urgent': 'bg-rose-500/10 text-rose-500 border-rose-500/20 shadow-sm'
+                                    };
+                                    return (
+                                        <button
+                                            key={p}
+                                            onClick={() => handleUpdateField('priority', p)}
+                                            className={`
+                                                px-3 py-2 rounded-xl text-[10px] font-bold transition-all border flex flex-col items-center gap-1
+                                                ${task.priority === p
+                                                    ? activeStyles[p]
+                                                    : 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'
+                                                }
+                                            `}
+                                            title={p}
+                                        >
+                                            <PriorityIcon priority={p} />
+                                            <span>{p}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
 
-                    {/* Status Card */}
-                    <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">Status</h3>
-                        <Select
-                            value={task.status || 'Open'}
-                            onChange={(e) => {
-                                const newStatus = e.target.value;
-                                const isDone = newStatus === 'Done';
+                        {/* Timeline Card */}
+                        <div className="app-card p-4">
+                            <div className="flex items-center gap-2 mb-4">
+                                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]">event_note</span>
+                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">Timeline</span>
+                            </div>
+                            <div className="space-y-4 px-1">
+                                <div>
+                                    <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider block mb-1">Start Date</span>
+                                    <DatePicker
+                                        value={task.startDate || ''}
+                                        onChange={(date) => handleUpdateField('startDate', date)}
+                                        placeholder="Set start date"
+                                        className="w-full text-sm border-none p-0 h-auto bg-transparent focus:ring-0 text-[var(--color-text-main)] font-semibold"
+                                    />
+                                </div>
+                                <div>
+                                    <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider block mb-1">Due Date</span>
+                                    <DatePicker
+                                        value={task.dueDate || ''}
+                                        onChange={(date) => handleUpdateField('dueDate', date)}
+                                        placeholder="Set due date"
+                                        className="w-full text-sm border-none p-0 h-auto bg-transparent focus:ring-0 text-[var(--color-text-main)] font-semibold"
+                                    />
+                                </div>
+                            </div>
+                        </div>
 
-                                // Update local state immediately with both fields
-                                setTask(prev => prev ? ({ ...prev, status: newStatus as any, isCompleted: isDone }) : null);
-
-                                // Update backend
-                                updateTaskFields(task.id, { status: newStatus as any, isCompleted: isDone }, id);
-                            }}
-                            className="w-full"
-                        >
-                            <option value="Open">Open</option>
-                            <option value="In Progress">In Progress</option>
-                            <option value="On Hold">On Hold</option>
-                            <option value="Review">Review</option>
-                            <option value="Blocked">Blocked</option>
-                            <option value="Done">Done</option>
-                        </Select>
-                    </div>
-
-                    {/* Schedule Card */}
-                    <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">Schedule</h3>
-
-                        <div className="flex flex-col gap-4">
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-[11px] font-medium text-[var(--color-text-subtle)] uppercase">Due Date</label>
-                                <DatePicker
-                                    value={task.dueDate || ''}
-                                    onChange={(date) => handleUpdateField('dueDate', date)}
-                                    placeholder="Set due date"
-                                    align="right"
+                        {/* Assignees Card */}
+                        <div className="app-card p-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">Assignees</span>
+                                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]">group</span>
+                            </div>
+                            <div className="flex justify-start">
+                                <MultiAssigneeSelector
+                                    projectId={id!}
+                                    assigneeIds={task.assigneeIds || (task.assigneeId ? [task.assigneeId] : [])}
+                                    onChange={handleUpdateAssignees}
                                 />
                             </div>
+                        </div>
 
-                            {task.scheduledDate && (
-                                <div className="pt-3 border-t border-[var(--color-surface-border)] flex flex-col gap-1.5">
-                                    <label className="text-[11px] font-medium text-[var(--color-text-subtle)] uppercase">Smart Schedule</label>
-                                    <div className="flex items-center justify-between gap-2">
-                                        <div className="flex items-center gap-2 text-sm text-[var(--color-text-main)] font-medium">
-                                            <span className="material-symbols-outlined text-[20px] text-[var(--color-primary)]">event_available</span>
-                                            {new Date(task.scheduledDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                        </div>
+                        {/* Labels Card */}
+                        <div className="app-card p-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">Labels</span>
+                                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]">sell</span>
+                            </div>
 
-                                        <Link to={`/calendar`} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-[var(--color-primary)] bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 rounded-lg transition-colors whitespace-nowrap">
-                                            <span className="material-symbols-outlined text-[16px]">calendar_month</span>
-                                            View in Calendar
-                                        </Link>
+                            <div className="flex flex-wrap gap-2 mb-3">
+                                {(() => {
+                                    const taskCats = Array.isArray(task.category) ? task.category : [task.category || ''];
+                                    const filteredCats = taskCats.filter(Boolean);
+
+                                    if (filteredCats.length === 0) {
+                                        return <span className="text-xs text-[var(--color-text-muted)] italic px-1">No labels</span>;
+                                    }
+
+                                    return filteredCats.map(catName => {
+                                        const catData = allCategories.find(c => c.name === catName);
+                                        const color = catData?.color || '#64748b';
+                                        return (
+                                            <span
+                                                key={catName}
+                                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all"
+                                                style={{
+                                                    backgroundColor: `${color}10`,
+                                                    color: color,
+                                                    borderColor: `${color}30`
+                                                }}
+                                            >
+                                                {catName}
+                                                <button
+                                                    onClick={() => {
+                                                        const newCats = filteredCats.filter(c => c !== catName);
+                                                        handleUpdateField('category', newCats.length > 0 ? newCats : null);
+                                                    }}
+                                                    className="hover:opacity-70 transition-opacity flex items-center justify-center p-0.5"
+                                                    style={{ color: color }}
+                                                >
+                                                    <span className="material-symbols-outlined text-[14px]">close</span>
+                                                </button>
+                                            </span>
+                                        );
+                                    });
+                                })()}
+                            </div>
+
+                            <div className="relative group/label">
+                                <button className="w-full py-2 px-3 rounded-xl bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] text-[10px] font-bold text-[var(--color-text-main)] uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[var(--color-surface-card)] transition-all">
+                                    <span className="material-symbols-outlined text-[16px]">add</span>
+                                    Add Label
+                                </button>
+
+                                <div className="absolute right-0 bottom-full mb-2 w-48 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl shadow-2xl py-2 opacity-0 invisible group-hover/label:opacity-100 group-hover/label:visible transition-all z-20">
+                                    <div className="px-3 py-1 mb-1 border-b border-[var(--color-surface-border)]">
+                                        <button
+                                            onClick={() => setShowLabelsModal(true)}
+                                            className="w-full flex items-center gap-2 px-2 py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 transition-colors"
+                                        >
+                                            <span className="material-symbols-outlined text-sm">settings</span>
+                                            Manage Labels
+                                        </button>
                                     </div>
+                                    <div className="max-h-48 overflow-y-auto custom-scrollbar px-1">
+                                        {allCategories.map(cat => {
+                                            const taskCats = Array.isArray(task.category) ? task.category : [task.category || ''];
+                                            const isSelected = taskCats.includes(cat.name);
+
+                                            return (
+                                                <button
+                                                    key={cat.id}
+                                                    onClick={() => {
+                                                        const current = Array.isArray(task.category) ? task.category : (task.category ? [task.category] : []);
+                                                        const next = isSelected ? current.filter(c => c !== cat.name) : [...current, cat.name];
+                                                        handleUpdateField('category', next.length > 0 ? next : null);
+                                                    }}
+                                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-[var(--color-surface-hover)] text-xs font-semibold text-[var(--color-text-main)] transition-colors text-left"
+                                                >
+                                                    <div className="size-2 rounded-full" style={{ backgroundColor: cat.color || '#64748b' }} />
+                                                    <span className="flex-1">{cat.name}</span>
+                                                    {isSelected && <span className="material-symbols-outlined text-sm text-[var(--color-accent)]">check</span>}
+                                                </button>
+                                            );
+                                        })}
+                                        {allCategories.length === 0 && (
+                                            <div className="px-3 py-4 text-[10px] text-[var(--color-text-muted)] italic text-center">
+                                                No labels defined
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Strategic Value Card */}
+                    {idea && (
+                        <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl p-5 text-white shadow-lg shadow-indigo-500/20 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-2xl rounded-full -mr-10 -mt-10 pointer-events-none" />
+                            <div className="relative">
+                                <h3 className="text-xs font-bold text-indigo-200 uppercase tracking-wider mb-4 flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-[16px]">stars</span>
+                                    Strategic Value
+                                </h3>
+                                <div className="grid grid-cols-2 gap-4 mb-4">
+                                    <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm border border-white/10">
+                                        <span className="text-[10px] uppercase text-indigo-200 font-bold block mb-1">Impact</span>
+                                        <span className="text-lg font-black">{idea.impact || 'N/A'}</span>
+                                    </div>
+                                    <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm border border-white/10">
+                                        <span className="text-[10px] uppercase text-indigo-200 font-bold block mb-1">Effort</span>
+                                        <span className="text-lg font-black">{idea.effort || 'N/A'}</span>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs font-medium text-indigo-100 bg-white/10 px-3 py-2 rounded-lg backdrop-blur-md">
+                                    <span className="material-symbols-outlined text-[16px]">category</span>
+                                    {idea.type}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Consolidated Details Card */}
+                    <div className="app-card p-5">
+                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-4">Details</h3>
+                        <div className="space-y-5">
+                            {/* Task ID */}
+                            <div className="flex items-center justify-between group">
+                                <span className="text-[11px] font-bold text-[var(--color-text-subtle)] uppercase">ID</span>
+                                <div className="relative">
+                                    <button
+                                        className="text-[11px] font-mono text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] px-2 py-1 rounded transition-colors flex items-center gap-1.5"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(task.id);
+                                            setCopiedId(true);
+                                            setTimeout(() => setCopiedId(false), 2000);
+                                        }}
+                                    >
+                                        {task.id}
+                                        <span className="material-symbols-outlined text-[12px] opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {copiedId ? 'check' : 'content_copy'}
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Strategic Origin Link */}
+                            {task.convertedIdeaId && (
+                                <div className="pt-3 border-t border-[var(--color-surface-border)]">
+                                    <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase block mb-2">Origin</span>
+                                    <Link
+                                        to={`/project/${id}/ideas/${task.convertedIdeaId}`}
+                                        className="flex items-center gap-2 p-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 group hover:border-indigo-200 dark:hover:border-indigo-500/40 transition-all"
+                                    >
+                                        <div className="size-6 rounded bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                            <span className="material-symbols-outlined text-[14px]">lightbulb</span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <span className="block text-xs font-bold text-indigo-900 dark:text-indigo-100 truncate">Strategic Idea</span>
+                                            <span className="block text-[10px] text-indigo-600 dark:text-indigo-400">View source</span>
+                                        </div>
+                                        <span className="material-symbols-outlined text-[16px] text-indigo-400 -ml-1 opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+                                    </Link>
                                 </div>
                             )}
-                        </div>
-                    </div>
 
-                    {/* Assignees Card */}
-                    <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">Assignees</h3>
-                        <MultiAssigneeSelector
-                            projectId={id!}
-                            assigneeIds={task.assigneeIds || (task.assigneeId ? [task.assigneeId] : [])}
-                            onChange={handleUpdateAssignees}
-                        />
-                    </div>
-
-                    {/* Priority Card */}
-                    <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">Priority</h3>
-                        <div className="flex flex-col gap-1">
-                            {(['Low', 'Medium', 'High', 'Urgent'] as const).map(p => (
-                                <button
-                                    key={p}
-                                    onClick={() => handleUpdateField('priority', p)}
-                                    className={`
-                                        flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all
-                                        ${task.priority === p
-                                            ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] shadow-sm'
-                                            : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'
-                                        }
-                                    `}
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <PriorityIcon priority={p} />
-                                        {p}
-                                    </div>
-                                    {task.priority === p && <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Meta Card */}
-                    <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-4">Task Details</h3>
-                        <div className="space-y-4">
-                            <div className="flex flex-col gap-1">
-                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">Task ID</span>
-                                <div className="group relative">
-                                    <code className="block w-full text-[11px] font-mono text-[var(--color-text-main)] bg-[var(--color-surface-hover)] p-2 rounded-lg border border-[var(--color-surface-border)] break-all truncate hover:whitespace-normal transition-all cursor-pointer" title="Click to copy ID" onClick={() => {
-                                        navigator.clipboard.writeText(task.id);
-                                        setCopiedId(true);
-                                        setTimeout(() => setCopiedId(false), 2000);
-                                    }}>
-                                        {task.id}
-                                    </code>
-                                    <span className={`absolute right-2 top-2 transition-all material-symbols-outlined text-[14px] ${copiedId ? 'text-emerald-500 scale-110' : 'opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)]'} pointer-events-none`}>
-                                        {copiedId ? 'check_circle' : 'content_copy'}
-                                    </span>
-                                    {copiedId && (
-                                        <span className="absolute -top-7 right-0 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 animate-fade-in-up">
-                                            Copied!
-                                        </span>
-                                    )}
+                            {/* Related Issue Link */}
+                            {task.linkedIssueId && (
+                                <div className="pt-3 border-t border-[var(--color-surface-border)]">
+                                    <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase block mb-2">Reference</span>
+                                    <Link
+                                        to={`/project/${id}/issues/${task.linkedIssueId}`}
+                                        className="flex items-center gap-2 p-2 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 group hover:border-rose-200 dark:hover:border-rose-500/40 transition-all"
+                                    >
+                                        <div className="size-6 rounded bg-rose-100 dark:bg-rose-500/20 flex items-center justify-center text-rose-600 dark:text-rose-400">
+                                            <span className="material-symbols-outlined text-[14px]">bug_report</span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <span className="block text-xs font-bold text-rose-900 dark:text-rose-100 truncate">Related Issue</span>
+                                            <span className="block text-[10px] text-rose-600 dark:text-rose-400">View report</span>
+                                        </div>
+                                        <span className="material-symbols-outlined text-[16px] text-rose-400 -ml-1 opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+                                    </Link>
                                 </div>
-                            </div>
+                            )}
 
-                            <div className="grid grid-cols-1 gap-4">
-                                <div className="flex flex-col gap-1">
+                            {/* Timestamps */}
+                            <div className="pt-3 border-t border-[var(--color-surface-border)] space-y-3">
+                                <div className="flex items-center justify-between">
                                     <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">Created</span>
-                                    <span className="text-xs font-semibold text-[var(--color-text-main)] flex items-center gap-1.5">
-                                        <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">history</span>
-                                        {task.createdAt ? new Date(task.createdAt.toDate()).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' }) : '-'}
-                                    </span>
+                                    <div className="text-right">
+                                        <span className="block text-xs font-medium text-[var(--color-text-main)]">
+                                            {task.createdAt ? new Date(toMillis(task.createdAt)).toLocaleDateString() : '-'}
+                                        </span>
+                                        {task.createdBy && (
+                                            <span className="text-[10px] text-[var(--color-text-muted)] flex items-center justify-end gap-1">
+                                                by {allUsers.find(u => (u as any).id === task.createdBy)?.displayName?.split(' ')[0] || 'Unknown'}
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
 
-                                {task.ownerId && (
-                                    <div className="flex flex-col gap-1">
-                                        <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">Reporter</span>
-                                        <div className="flex items-center gap-2">
-                                            <img
-                                                src={allUsers.find(u => (u as any).id === task.ownerId || u.uid === task.ownerId)?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'}
-                                                className="size-5 rounded-full border border-[var(--color-surface-border)]"
-                                                alt=""
-                                            />
-                                            <span className="text-xs font-semibold text-[var(--color-text-main)]">
-                                                {allUsers.find(u => (u as any).id === task.ownerId || u.uid === task.ownerId)?.displayName || 'Unknown User'}
+                                {task.isCompleted && (
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">Completed</span>
+                                        <div className="text-right">
+                                            <span className="block text-xs font-medium text-[var(--color-text-main)]">
+                                                {task.completedAt ? new Date(toMillis(task.completedAt)).toLocaleDateString() : 'Just now'}
                                             </span>
+                                            {task.completedBy && (
+                                                <span className="text-[10px] text-[var(--color-text-muted)] flex items-center justify-end gap-1">
+                                                    by {allUsers.find(u => (u as any).id === task.completedBy)?.displayName?.split(' ')[0] || 'Unknown'}
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 )}
-
-                                <div className="pt-3 border-t border-[var(--color-surface-border)] flex items-center justify-between">
-                                    <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">Completion</span>
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${task.isCompleted ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'}`}>
-                                        {task.isCompleted ? 'Finished' : 'Active'}
-                                    </span>
-                                </div>
-
-                                {task.linkedIssueId && (
-                                    <div className="pt-3 border-t border-[var(--color-surface-border)]">
-                                        <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase block mb-1">Related Issue</span>
-                                        <Link to={`/project/${id}/issues/${task.linkedIssueId}`} className="text-xs font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1.5">
-                                            <span className="material-symbols-outlined text-[16px]">bug_report</span>
-                                            View Report
-                                        </Link>
-                                    </div>
-                                )}
                             </div>
                         </div>
                     </div>
 
+                    {/* Activity Feed (Moved to Sidebar) */}
+                    {activities.length > 0 && (
+                        <div className="pt-4 border-t border-[var(--color-surface-border)]">
+                            <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-4 flex items-center gap-2 tracking-wider">
+                                <span className="material-symbols-outlined text-[16px]">history</span>
+                                Activity
+                            </h3>
+                            <div className="relative pl-4 space-y-6 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                                {/* Vertical line */}
+                                <div className="absolute left-[19px] top-2 bottom-2 w-[2px] bg-[var(--color-surface-border)]" />
+
+                                {activities.map((item) => {
+                                    const { icon, color, bg } = activityIcon(item.type, item.action);
+                                    return (
+                                        <div key={item.id} className="relative flex gap-3 group">
+                                            <div className={`
+                                                relative z-10 size-8 rounded-full border-2 border-[var(--color-surface-bg)] flex items-center justify-center shrink-0
+                                                ${bg} ${color}
+                                            `}>
+                                                <span className="material-symbols-outlined text-[16px]">{icon}</span>
+                                            </div>
+                                            <div className="flex-1 min-w-0 py-1">
+                                                <div className="flex items-center gap-2 mb-0.5">
+                                                    <span className="text-sm font-medium text-[var(--color-text-main)] truncate">
+                                                        {item.user}
+                                                    </span>
+                                                    <span className="text-xs text-[var(--color-text-subtle)]">
+                                                        {timeAgo(item.createdAt)}
+                                                    </span>
+                                                </div>
+                                                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+                                                    {item.action}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
-        </div >
+
+
+
+
+
+
+
+        </div>
+
     );
 };
 

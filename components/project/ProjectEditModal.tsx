@@ -8,6 +8,8 @@ import { Checkbox } from '../ui/Checkbox';
 import { Badge } from '../ui/Badge';
 import { Project } from '../../types';
 import { MediaLibrary } from '../MediaLibrary/MediaLibraryModal';
+import { ProjectGroupManager } from './ProjectGroupManager';
+import { useProjectPermissions } from '../../hooks/useProjectPermissions';
 
 import { auth } from '../../services/firebase';
 import { getUserProfile, linkWithGithub, updateUserData, getUserProjectNavPrefs, setUserProjectNavPrefs, ProjectNavPrefs } from '../../services/dataService';
@@ -20,7 +22,7 @@ interface ProjectEditModalProps {
     onSave: (updatedFields: Partial<Project>) => Promise<void>;
 }
 
-type Tab = 'general' | 'appearance' | 'modules' | 'navigation' | 'integrations' | 'resources';
+type Tab = 'general' | 'appearance' | 'modules' | 'groups' | 'navigation' | 'integrations' | 'resources';
 
 export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     isOpen,
@@ -28,6 +30,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     project,
     onSave
 }) => {
+    const { can } = useProjectPermissions(project);
     const [activeTab, setActiveTab] = useState<Tab>('general');
     const [isSaving, setIsSaving] = useState(false);
 
@@ -184,6 +187,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         { id: 'general', label: 'General', icon: 'settings' },
         { id: 'appearance', label: 'Appearance', icon: 'palette' },
         { id: 'modules', label: 'Modules', icon: 'extension' },
+        { id: 'groups', label: 'Groups', icon: 'groups' },
         { id: 'navigation', label: 'Navigation', icon: 'menu' },
         { id: 'integrations', label: 'Integrations', icon: 'integration_instructions' },
         { id: 'resources', label: 'Resources', icon: 'link' },
@@ -304,7 +308,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                     <div className="space-y-4 animate-in fade-in duration-300">
                         <p className="text-sm text-[var(--color-text-muted)]">Enable features for this project.</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {['tasks', 'milestones', 'issues', 'ideas', 'mindmap', 'activity', 'social', 'marketing'].map((mod) => (
+                            {['tasks', 'milestones', 'issues', 'ideas', 'mindmap', 'groups', 'activity', 'social', 'marketing'].map((mod) => (
                                 <div
                                     key={mod}
                                     className={`
@@ -333,7 +337,8 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                         mod === 'mindmap' ? 'hub' :
                                                             mod === 'social' ? 'campaign' :
                                                                 mod === 'marketing' ? 'ads_click' :
-                                                                    mod === 'activity' ? 'history' : 'bug_report'}
+                                                                    mod === 'groups' ? 'groups' :
+                                                                        mod === 'activity' ? 'history' : 'bug_report'}
                                         </span>
                                     </div>
                                     <div className="flex-1">
@@ -348,6 +353,14 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                             ))}
                         </div>
                     </div>
+                );
+            case 'groups':
+                return (
+                    <ProjectGroupManager
+                        projectId={project.id}
+                        tenantId={project.tenantId}
+                        canManage={can('canManageGroups')}
+                    />
                 );
             case 'navigation':
                 // Get nav items in the user's custom order

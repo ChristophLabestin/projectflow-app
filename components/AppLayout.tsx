@@ -1,100 +1,28 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { Outlet, useLocation, useParams, useNavigate, Link } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
-import { Breadcrumbs } from './ui/Breadcrumbs';
-import { AISearchBar } from './AISearchBar';
-import { PinnedProjectPill } from './PinnedProjectPill';
 import { TaskCreateModal } from './TaskCreateModal';
+import { CreateIdeaModal } from './ideas/CreateIdeaModal';
+import { CreateIssueModal } from './CreateIssueModal';
 import { useUIState } from '../context/UIContext';
 import { useTheme } from '../context/ThemeContext';
 import { auth } from '../services/firebase';
-import { getProjectById, getProjectIdeas, getProjectTasks, getUserProjects, subscribeProject, getProjectIssues, subscribeProjectTasks, subscribeProjectIssues, subscribeProjectIdeas, getUserProjectNavPrefs, subscribeUserProjectNavPrefs, subscribeUserStatusPreference } from '../services/dataService';
+import { getProjectById, getProjectIdeas, getProjectTasks, getUserProjects, subscribeProject, getProjectIssues, subscribeProjectTasks, subscribeProjectIssues, subscribeProjectIdeas, getUserProjectNavPrefs, subscribeUserProjectNavPrefs, subscribeUserStatusPreference, getCampaignById } from '../services/dataService';
 import { Project } from '../types';
-import { usePinnedTasks } from '../context/PinnedTasksContext';
-import { getSubTasks } from '../services/dataService';
 import { useWorkspacePresence } from '../hooks/usePresence';
 import { SubTask } from '../types';
-import { UserProfileDropdown } from './UserProfileDropdown';
 
 
-const PinnedTasksToggle = () => {
-    const { toggleModal, pinnedItems, focusItemId } = usePinnedTasks();
-    const hasItems = pinnedItems.length > 0;
-
-    // Get the focused item details
-    const focusItem = focusItemId ? pinnedItems.find(i => i.id === focusItemId) : null;
-
-    // Fetch subtask counts for focus item
-    const [subtaskStats, setSubtaskStats] = useState<{ done: number; total: number } | null>(null);
-
-    useEffect(() => {
-        if (!focusItemId || !focusItem || focusItem.type !== 'task') {
-            setSubtaskStats(null);
-            return;
-        }
-
-        let mounted = true;
-        getSubTasks(focusItemId).then(subs => {
-            if (mounted) {
-                setSubtaskStats({
-                    done: subs.filter(s => s.isCompleted).length,
-                    total: subs.length
-                });
-            }
-        }).catch(() => {
-            if (mounted) setSubtaskStats(null);
-        });
-
-        return () => { mounted = false; };
-    }, [focusItemId, focusItem?.type]);
-
-    // Compact view when no focus
-    if (!focusItem) {
-        return (
-            <button
-                onClick={toggleModal}
-                className={`
-                    relative flex items-center justify-center h-[42px] w-[42px] rounded-full transition-all
-                    ${hasItems ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'}
-                `}
-                title="Pinned Tasks (Cmd+Shift+F)"
-            >
-                <span className="material-symbols-outlined text-[20px]">push_pin</span>
-            </button>
-        );
-    }
-
-    // Extended view with focus task info
-    return (
-        <button
-            onClick={toggleModal}
-            className="flex items-center gap-2.5 h-[42px] pl-3 pr-4 rounded-full bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-all group"
-            title="Focus Task (Cmd+Shift+F)"
-        >
-            <div className="relative shrink-0 flex items-center justify-center">
-                <span className="material-symbols-outlined text-[18px] text-amber-600 dark:text-amber-400">center_focus_strong</span>
-                <span className="absolute -top-0.5 -right-0.5 size-1.5 bg-amber-500 rounded-full animate-pulse" />
-            </div>
-            <div className="flex flex-col items-start min-w-0 leading-none">
-                <span className="text-[11px] font-semibold text-[var(--color-text-main)] truncate max-w-[160px]">
-                    {focusItem.title}
-                </span>
-                <span className="text-[9px] text-amber-600 dark:text-amber-400 font-medium">
-                    {subtaskStats && subtaskStats.total > 0
-                        ? `${subtaskStats.done}/${subtaskStats.total} done`
-                        : 'Focus'
-                    }
-                </span>
-            </div>
-            <span className="material-symbols-outlined text-[14px] text-amber-600 dark:text-amber-400">expand_more</span>
-        </button>
-    );
-};
+import { TopBar } from './TopBar';
 
 export const AppLayout = () => {
     const { id: paramProjectId } = useParams<{ id: string }>();
     const { theme } = useTheme();
-    const { isTaskCreateModalOpen, closeTaskCreateModal, taskCreateProjectId } = useUIState();
+    const {
+        isTaskCreateModalOpen, closeTaskCreateModal, taskCreateProjectId,
+        isIdeaCreateModalOpen, closeIdeaCreateModal, ideaCreateProjectId,
+        isIssueCreateModalOpen, closeIssueCreateModal, issueCreateProjectId
+    } = useUIState();
     const location = useLocation();
 
     // Derived project ID from URL if not in params (e.g. nested routes)
@@ -115,6 +43,7 @@ export const AppLayout = () => {
     const [projectMenuOpen, setProjectMenuOpen] = useState(false);
     const [projectOptions, setProjectOptions] = useState<Project[]>([]);
     const [taskTitle, setTaskTitle] = useState<string | null>(null);
+    const [campaignName, setCampaignName] = useState<string | null>(null);
 
     const user = auth?.currentUser;
     const navigate = useNavigate();
@@ -124,7 +53,36 @@ export const AppLayout = () => {
         setNavOpen(false);
         setProjectMenuOpen(false);
         setTaskTitle(null);
+        setCampaignName(null);
     }, [location.pathname]);
+
+    // Fetch campaign name when viewing a campaign detail page or editing/creating a post within a campaign
+    useEffect(() => {
+        // Check for campaign detail page pattern: /project/:id/social/campaigns/:campaignId
+        const pathMatch = location.pathname.match(/\/project\/([^/]+)\/social\/campaigns\/([^/]+)/);
+        if (pathMatch && pathMatch[1] && pathMatch[2]) {
+            const [, pId, campId] = pathMatch;
+            getCampaignById(pId, campId).then(campaign => {
+                setCampaignName(campaign?.name || null);
+            }).catch(() => setCampaignName(null));
+            return;
+        }
+
+        // Check for create/edit page with campaignId query param
+        const createEditMatch = location.pathname.match(/\/project\/([^/]+)\/social\/(create|edit)/);
+        const searchParams = new URLSearchParams(location.search);
+        const queryCampaignId = searchParams.get('campaignId');
+
+        if (createEditMatch && createEditMatch[1] && queryCampaignId) {
+            const pId = createEditMatch[1];
+            getCampaignById(pId, queryCampaignId).then(campaign => {
+                setCampaignName(campaign?.name || null);
+            }).catch(() => setCampaignName(null));
+            return;
+        }
+
+        setCampaignName(null);
+    }, [location.pathname, location.search]);
 
     // Fetch Project Data if we are in a project
     useEffect(() => {
@@ -257,6 +215,40 @@ export const AppLayout = () => {
                     case 'activity':
                         rawItems.push({ label: 'Activity', to: `/project/${parts[1]}/activity` });
                         break;
+                    case 'social':
+                        rawItems.push({ label: 'Social Studio', to: `/project/${parts[1]}/social` });
+                        // Handle social sub-menus
+                        if (parts[3]) {
+                            const socialSub = parts[3];
+                            const socialLabels: Record<string, string> = {
+                                'calendar': 'Calendar',
+                                'campaigns': 'Campaigns',
+                                'posts': 'Posts',
+                                'assets': 'Assets',
+                                'settings': 'Settings'
+                            };
+
+                            // Check for campaignId in query params (for create/edit pages)
+                            const searchParams = new URLSearchParams(location.search);
+                            const queryCampaignId = searchParams.get('campaignId');
+
+                            // Check if we're on a campaign detail page (has campaignId at parts[4])
+                            if (socialSub === 'campaigns' && parts[4]) {
+                                rawItems.push({ label: 'Campaigns', to: `/project/${parts[1]}/social/campaigns` });
+                                rawItems.push({ label: campaignName || 'Loading...' });
+                            } else if ((socialSub === 'create' || socialSub === 'edit') && queryCampaignId && campaignName) {
+                                // Creating or editing a post within a campaign context
+                                rawItems.push({ label: 'Campaigns', to: `/project/${parts[1]}/social/campaigns` });
+                                rawItems.push({ label: campaignName, to: `/project/${parts[1]}/social/campaigns/${queryCampaignId}` });
+                                rawItems.push({ label: socialSub === 'create' ? 'New Post' : 'Edit Post' });
+                            } else {
+                                rawItems.push({ label: socialLabels[socialSub] || socialSub.charAt(0).toUpperCase() + socialSub.slice(1) });
+                            }
+                        } else {
+                            // Default is Dashboard when no sub-path
+                            rawItems.push({ label: 'Dashboard' });
+                        }
+                        break;
                     default:
                         rawItems.push({ label: sub.charAt(0).toUpperCase() + sub.slice(1) });
                 }
@@ -288,7 +280,7 @@ export const AppLayout = () => {
             }
             return item;
         });
-    }, [location.pathname, project, taskTitle]);
+    }, [location.pathname, project, taskTitle, campaignName]);
 
     return (
         <div className="flex h-screen w-full bg-[var(--color-surface-bg)] overflow-hidden">
@@ -340,50 +332,44 @@ export const AppLayout = () => {
             <div className="flex-1 flex flex-col min-w-0 h-full relative">
 
                 {/* Header */}
-                <header className="flex items-center justify-between px-4 py-3 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-card)] sticky top-0 z-30">
-                    <div className="flex items-center gap-3 overflow-hidden">
-                        <button
-                            onClick={() => setNavOpen(true)}
-                            className="md:hidden p-2 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] shrink-0"
-                        >
-                            <span className="material-symbols-outlined">menu</span>
-                        </button>
-
-                        {/* Global Breadcrumbs */}
-                        <div className="flex-1 min-w-0">
-                            <Breadcrumbs items={breadcrumbs} />
-                        </div>
-                    </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                        {/* Pinned Tasks Toggle */}
-                        <PinnedProjectPill />
-                        <PinnedTasksToggle />
-
-                        {/* AI-Powered Search (Mobile/Desktop) */}
-                        <div className="hidden sm:block relative w-80 h-[42px] shrink-0">
-                            <AISearchBar />
-                        </div>
-
-                        {/* User Profile Dropdown */}
-                        <UserProfileDropdown />
-                    </div>
-                </header>
+                <TopBar
+                    project={project}
+                    breadcrumbs={breadcrumbs}
+                    onOpenNav={() => setNavOpen(true)}
+                />
 
                 {/* Main Scroll Area */}
-                <main className={`flex-1 w-full dotted-bg ${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') ? 'p-0 overflow-hidden' : 'overflow-y-auto p-4 sm:p-6 lg:p-8'}`}>
-                    <div className={`${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}`}>
+                <main className={`flex-1 w-full dotted-bg ${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/ideas') || location.pathname.includes('/activity') ? 'p-0 overflow-hidden' : 'overflow-y-auto p-4 sm:p-6 lg:p-8'}`}>
+                    <div className={`${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/ideas') || location.pathname.includes('/activity') ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}`}>
                         <Outlet context={{ setTaskTitle, statusPreference }} />
                     </div>
                 </main>
 
             </div>
             {/* Global Task Create Modal */}
-            {isTaskCreateModalOpen && (
+            {isTaskCreateModalOpen && taskCreateProjectId && (
                 <TaskCreateModal
-                    isOpen={isTaskCreateModalOpen}
                     onClose={closeTaskCreateModal}
-                    projectId={taskCreateProjectId || undefined}
+                    projectId={taskCreateProjectId}
+                />
+            )}
+
+            {/* Global Idea Create Modal */}
+            {isIdeaCreateModalOpen && ideaCreateProjectId && (
+                <CreateIdeaModal
+                    isOpen={isIdeaCreateModalOpen}
+                    onClose={closeIdeaCreateModal}
+                    projectId={ideaCreateProjectId}
+                    onCreated={closeIdeaCreateModal}
+                />
+            )}
+
+            {/* Global Issue Create Modal */}
+            {isIssueCreateModalOpen && issueCreateProjectId && (
+                <CreateIssueModal
+                    isOpen={isIssueCreateModalOpen}
+                    onClose={closeIssueCreateModal}
+                    projectId={issueCreateProjectId}
                 />
             )}
         </div>
