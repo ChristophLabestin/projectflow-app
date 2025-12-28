@@ -34,30 +34,49 @@ export const AuthAction = () => {
 
         const handleAction = async () => {
             try {
-                switch (mode) {
+                // First check what this code is for
+                const info = await checkActionCode(auth, oobCode);
+                const operation = info.operation;
+                const email = info.data.email;
+
+                // If the URL mode is different from what Firebase says, respect Firebase but prefer URLs for UI
+                const finalMode = mode === 'action' ? (
+                    operation === 'VERIFY_EMAIL' ? 'verifyEmail' :
+                        operation === 'PASSWORD_RESET' ? 'resetPassword' :
+                            operation === 'RECOVER_EMAIL' ? 'recoverEmail' : mode
+                ) : mode;
+
+                switch (finalMode) {
                     case 'verifyEmail':
                         await applyActionCode(auth, oobCode);
                         setStatus('success');
-                        setMessage('Your email address has been verified. You can now access all features of ProjectFlow.');
+                        setMessage(`The email address ${email} has been verified successfully. You can now access all features of ProjectFlow.`);
                         showSuccess('Email verified successfully!');
                         break;
                     case 'resetPassword':
-                        await verifyPasswordResetCode(auth, oobCode);
                         setStatus('reset-password');
+                        setMessage(`Updating password for ${email}`);
                         break;
                     case 'recoverEmail':
                         await applyActionCode(auth, oobCode);
                         setStatus('success');
-                        setMessage('Your email address has been recovered successfully.');
+                        setMessage(`The email address ${email} has been recovered successfully.`);
                         break;
                     default:
                         setStatus('error');
-                        setMessage('This action is not supported.');
+                        setMessage('This action is not supported or the link has expired.');
                 }
             } catch (error: any) {
                 console.error('Auth Action Error:', error);
-                setStatus('error');
-                setMessage(error.message || 'An error occurred while processing your request.');
+
+                // Special handling for already verified or custom errors
+                if (error.code === 'auth/invalid-action-code' || error.code === 'auth/action-code-expired') {
+                    setStatus('error');
+                    setMessage('This link has already been used or has expired. Please request a new one from your settings.');
+                } else {
+                    setStatus('error');
+                    setMessage(error.message || 'An error occurred while processing your request.');
+                }
             }
         };
 
