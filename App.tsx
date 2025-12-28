@@ -54,7 +54,6 @@ import { MarketingSettings } from './screens/marketing/MarketingSettings';
 import { auth } from './services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useUIState } from './context/UIContext';
-import { ReleaseToDosModal } from './components/ReleaseToDosModal';
 import { PinnedTasksModal } from './components/PinnedTasksModal';
 import { PinnedTasksProvider } from './context/PinnedTasksContext';
 import { ErrorPage } from './screens/ErrorPage';
@@ -72,17 +71,27 @@ const RequireAuth = ({ children }: { children?: React.ReactNode }) => {
     return <>{children}</>;
 };
 
+// Dynamically import ReleaseToDosModal only in development (won't break build if file doesn't exist)
+const ReleaseToDosModal = React.lazy(() =>
+    import('./components/ReleaseToDosModal')
+        .then(module => ({ default: module.ReleaseToDosModal }))
+        .catch(() => ({ default: () => null }))
+);
+
 // Root Layout Component to host global modals dependent on Router
 const RootLayout = () => {
     const { isReleaseModalOpen, setReleaseModalOpen } = useUIState();
+    const isLocalhost = window.location.hostname === 'localhost';
 
     return (
         <>
-            {window.location.hostname === 'localhost' && (
-                <ReleaseToDosModal
-                    isOpen={isReleaseModalOpen}
-                    onClose={() => setReleaseModalOpen(false)}
-                />
+            {isLocalhost && (
+                <React.Suspense fallback={null}>
+                    <ReleaseToDosModal
+                        isOpen={isReleaseModalOpen}
+                        onClose={() => setReleaseModalOpen(false)}
+                    />
+                </React.Suspense>
             )}
             <PinnedTasksModal />
             <Outlet />
