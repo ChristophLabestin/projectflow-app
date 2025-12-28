@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams, useOutletContext, useSearchParams } from 'react-router-dom';
 import { addSubTask, getProjectTasks, getSubTasks, getTaskById, toggleSubTaskStatus, toggleTaskStatus, deleteTask, getProjectMembers, updateTaskFields, deleteSubTask, updateSubtaskFields, subscribeTenantUsers, getProjectById, getIdeaById, subscribeTaskActivity, getProjectCategories } from '../services/dataService';
@@ -7,7 +7,6 @@ import { SubTask, Task, Member, Project, Activity } from '../types';
 import { CommentSection } from '../components/CommentSection';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
-import { Select } from '../components/ui/Select';
 import { EditTaskModal } from '../components/EditTaskModal';
 import { MultiAssigneeSelector } from '../components/MultiAssigneeSelector';
 import { TaskCreateModal } from '../components/TaskCreateModal';
@@ -41,6 +40,30 @@ const activityIcon = (type?: Activity['type'], actionText?: string) => {
     return { icon: 'more_horiz', color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-700/50' };
 };
 
+const TASK_STATUS_OPTIONS = ['Backlog', 'Open', 'In Progress', 'On Hold', 'Review', 'Blocked', 'Done'] as const;
+
+const getTaskStatusStyle = (status?: string) => {
+    return status === 'Done' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' :
+        status === 'In Progress' ? 'bg-blue-600/15 text-blue-400 border-blue-500/40 shadow-[0_0_12px_rgba(59,130,246,0.2)]' :
+            status === 'Review' ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.1)]' :
+                status === 'Open' || status === 'Todo' ? 'bg-violet-500/10 text-violet-400 border-violet-500/20' :
+                    status === 'Backlog' ? 'bg-slate-500/10 text-slate-400 border-slate-500/20 opacity-80' :
+                        status === 'On Hold' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                            status === 'Blocked' ? 'bg-rose-600/20 text-rose-500 border-rose-500/50 animate-pulse ring-1 ring-rose-500/20' :
+                                'bg-slate-500/5 text-slate-400 border-slate-500/10';
+};
+
+const getTaskStatusIcon = (status?: string) => {
+    return status === 'Done' ? 'check_circle' :
+        status === 'In Progress' ? 'sync' :
+            status === 'Review' ? 'visibility' :
+                status === 'Open' || status === 'Todo' ? 'play_circle' :
+                    status === 'Backlog' ? 'inventory_2' :
+                        status === 'On Hold' ? 'pause_circle' :
+                            status === 'Blocked' ? 'dangerous' :
+                                'circle';
+};
+
 export const ProjectTaskDetail = () => {
     const { id, taskId } = useParams<{ id: string; taskId: string }>();
     const [searchParams] = useSearchParams();
@@ -68,6 +91,8 @@ export const ProjectTaskDetail = () => {
     const [showLabelsModal, setShowLabelsModal] = useState(false);
     const [allCategories, setAllCategories] = useState<TaskCategory[]>([]);
     const [copiedId, setCopiedId] = useState(false);
+    const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+    const statusMenuRef = useRef<HTMLDivElement | null>(null);
     const { pinItem, unpinItem, isPinned, focusItemId, setFocusItem } = usePinnedTasks();
 
     const isProjectOwner = useMemo(() => {
@@ -134,6 +159,17 @@ export const ProjectTaskDetail = () => {
     useEffect(() => {
         loadData();
     }, [taskId, id]);
+
+    useEffect(() => {
+        if (!statusMenuOpen) return;
+        const handleClick = (event: MouseEvent) => {
+            if (!statusMenuRef.current?.contains(event.target as Node)) {
+                setStatusMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, [statusMenuOpen]);
 
     // Subscribe to workspace users once we have the task's tenantId
     useEffect(() => {
@@ -289,6 +325,8 @@ export const ProjectTaskDetail = () => {
             </div>
         );
     }
+
+    const currentStatus = task?.status || 'Open';
 
     return (
         <div className="max-w-[1600px] mx-auto px-4 md:px-8 py-8 animate-fade-in pb-20">
@@ -803,31 +841,55 @@ export const ProjectTaskDetail = () => {
                     <div className="space-y-4">
                         {/* Status Card */}
                         <div className="app-card p-4">
-                            <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider block mb-3">Status</span>
-                            <div className="flex items-center gap-3">
-                                <div className={`p-2 rounded-lg ${task.status === 'Done' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-500/10 text-slate-500'}`}>
-                                    <span className="material-symbols-outlined text-[20px]">
-                                        {task.status === 'Done' ? 'check_circle' : 'swap_horiz'}
-                                    </span>
-                                </div>
-                                <Select
-                                    value={task.status || 'Open'}
-                                    onChange={(e) => {
-                                        const newStatus = e.target.value;
-                                        const isDone = newStatus === 'Done';
-                                        setTask(prev => prev ? ({ ...prev, status: newStatus as any, isCompleted: isDone }) : null);
-                                        updateTaskFields(task.id, { status: newStatus as any, isCompleted: isDone }, id);
-                                    }}
-                                    className="w-full text-sm font-bold border-none p-0 h-auto bg-transparent focus:ring-0 cursor-pointer hover:text-[var(--color-primary)] transition-colors"
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">Status</span>
+                            </div>
+                            <div ref={statusMenuRef} className="relative">
+                                <button
+                                    type="button"
+                                    onClick={() => setStatusMenuOpen((open) => !open)}
+                                    className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-2xl border shadow-inner transition-all hover:brightness-110 ${getTaskStatusStyle(currentStatus)}`}
                                 >
-                                    <option value="Backlog">Backlog</option>
-                                    <option value="Open">Open</option>
-                                    <option value="In Progress">In Progress</option>
-                                    <option value="On Hold">On Hold</option>
-                                    <option value="Review">Review</option>
-                                    <option value="Blocked">Blocked</option>
-                                    <option value="Done">Done</option>
-                                </Select>
+                                    <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em]">
+                                        <span className="material-symbols-outlined text-[14px]">
+                                            {getTaskStatusIcon(currentStatus)}
+                                        </span>
+                                        {currentStatus}
+                                    </span>
+                                    <span className={`material-symbols-outlined text-[18px] text-current opacity-70 transition-transform ${statusMenuOpen ? 'rotate-180' : ''}`}>
+                                        expand_more
+                                    </span>
+                                </button>
+                                {statusMenuOpen && (
+                                    <div className="absolute left-0 top-full mt-2 w-full rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] shadow-lg p-2 space-y-2 z-20">
+                                        {TASK_STATUS_OPTIONS.map((status) => (
+                                            <button
+                                                key={status}
+                                                type="button"
+                                                onClick={() => {
+                                                    setStatusMenuOpen(false);
+                                                    const isDone = status === 'Done';
+                                                    setTask(prev => prev ? ({ ...prev, status: status as any, isCompleted: isDone }) : null);
+                                                    updateTaskFields(task.id, { status: status as any, isCompleted: isDone }, id);
+                                                }}
+                                                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-[0.18em] transition-all ${status === currentStatus
+                                                    ? 'ring-1 ring-[var(--color-primary)]/30'
+                                                    : 'hover:brightness-110'
+                                                    } ${getTaskStatusStyle(status)}`}
+                                            >
+                                                <span className="flex items-center gap-2">
+                                                    <span className="material-symbols-outlined text-[12px]">
+                                                        {getTaskStatusIcon(status)}
+                                                    </span>
+                                                    {status}
+                                                </span>
+                                                {status === currentStatus && (
+                                                    <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
 

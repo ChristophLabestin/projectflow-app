@@ -192,7 +192,9 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({ idea, onClick, isOverlay }) 
                                 {/* Tags Row */}
                                 <div className="flex items-center gap-1.5 mb-1.5">
                                     <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${typeColor}`}>
-                                        {idea.type}
+                                        {idea.type === 'Social'
+                                            ? (idea.socialType === 'campaign' ? 'Campaign' : 'Post')
+                                            : idea.type}
                                     </span>
                                     {idea.generated && (
                                         <span className="text-[9px] font-medium text-indigo-500 bg-indigo-500/5 px-1.5 py-0.5 rounded flex items-center gap-0.5">
@@ -220,8 +222,8 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({ idea, onClick, isOverlay }) 
                                 {/* Like/Dislike Buttons */}
                                 <button
                                     className={`flex items-center gap-1 p-1 rounded hover:bg-[var(--color-surface-hover)] transition-colors ${liked
-                                            ? 'text-emerald-500'
-                                            : 'text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)]'
+                                        ? 'text-emerald-500'
+                                        : 'text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)]'
                                         }`}
                                     onClick={handleLike}
                                     onPointerDown={(e) => e.stopPropagation()} // Prevent drag start

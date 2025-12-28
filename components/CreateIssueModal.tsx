@@ -26,6 +26,8 @@ export const CreateIssueModal: React.FC<CreateIssueModalProps> = ({
     const [status, setStatus] = useState<'Open' | 'In Progress' | 'Resolved' | 'Closed'>('Open');
     const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
     const [assignedGroupIds, setAssignedGroupIds] = useState<string[]>([]);
+    const [startDate, setStartDate] = useState('');
+    const [dueDate, setDueDate] = useState('');
     const [isAdding, setIsAdding] = useState(false);
     const [pinOnCreate, setPinOnCreate] = useState(false);
 
@@ -38,6 +40,8 @@ export const CreateIssueModal: React.FC<CreateIssueModalProps> = ({
             setPriority('Medium');
             setStatus('Open');
             setAssigneeIds([]);
+            setStartDate('');
+            setDueDate('');
             setPinOnCreate(false);
         }
     }, [isOpen, initialTitle, initialDescription]);
@@ -63,7 +67,9 @@ export const CreateIssueModal: React.FC<CreateIssueModalProps> = ({
                 priority,
                 status,
                 assigneeIds,
-                assignedGroupIds
+                assignedGroupIds,
+                startDate: startDate || undefined,
+                dueDate: dueDate || undefined
             });
 
             // Pin the issue if checkbox is checked
@@ -192,6 +198,30 @@ export const CreateIssueModal: React.FC<CreateIssueModalProps> = ({
                                 onChange={setAssigneeIds}
                                 onGroupChange={setAssignedGroupIds}
                             />
+                        </div>
+                    </div>
+
+                    {/* Dates */}
+                    <div className="px-6 pb-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">Start Date</label>
+                                <input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="w-full px-3 py-2 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] text-sm text-[var(--color-text-main)] outline-none focus:border-[var(--color-accent)] transition-colors"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">Due Date</label>
+                                <input
+                                    type="date"
+                                    value={dueDate}
+                                    onChange={(e) => setDueDate(e.target.value)}
+                                    className="w-full px-3 py-2 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] text-sm text-[var(--color-text-main)] outline-none focus:border-[var(--color-accent)] transition-colors"
+                                />
+                            </div>
                         </div>
                     </div>
 

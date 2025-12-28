@@ -19,7 +19,7 @@ const IDEA_TYPES = [
     { id: 'Moonshot', label: 'Moonshot', icon: 'rocket_launch', bg: 'from-slate-900 via-purple-950 to-slate-900' },
     { id: 'Optimization', label: 'Optimization', icon: 'speed', bg: 'from-slate-900 via-emerald-950 to-slate-900' },
     { id: 'Marketing', label: 'Marketing', icon: 'campaign', bg: 'from-slate-900 via-orange-950 to-slate-900' },
-    { id: 'Social', label: 'Social', icon: 'share', bg: 'from-slate-900 via-pink-950 to-slate-900' },
+    { id: 'Social', label: 'Social Media', icon: 'share', bg: 'from-slate-900 via-pink-950 to-slate-900' },
 ];
 
 export const CreateIdeaModal: React.FC<CreateIdeaModalProps> = ({ isOpen, onClose, projectId, onCreated }) => {

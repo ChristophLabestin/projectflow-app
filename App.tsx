@@ -42,6 +42,7 @@ import { SocialSettings } from './screens/social/SocialSettings';
 import { SocialAssets } from './screens/social/SocialAssets';
 import { CreateSocialPost } from './screens/social/CreateSocialPost';
 import { CreateCampaignPage } from './screens/social/CreateCampaignPage';
+import { SocialCampaignReviewPage } from './screens/social/SocialCampaignReviewPage';
 import { MarketingLayout } from './screens/marketing/MarketingLayout';
 import { MarketingDashboard } from './screens/marketing/MarketingDashboard';
 import { PaidAdsList } from './screens/marketing/PaidAdsList';
@@ -179,6 +180,8 @@ const App = () => {
                             <Route path="campaigns/create" element={<CreateCampaignPage />} />
                             <Route path="campaigns/edit/:campaignId" element={<CreateCampaignPage />} />
                             <Route path="campaigns/:campaignId" element={<CampaignDetailView />} />
+                            <Route path="review/:ideaId" element={<SocialCampaignReviewPage />} />
+
                             <Route path="posts" element={<PostList />} />
                             <Route path="calendar" element={<SocialCalendar />} />
                             <Route path="settings" element={<SocialSettings />} />

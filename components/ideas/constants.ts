@@ -1,3 +1,4 @@
+import { SocialPlatform, SocialPostFormat } from '../../types';
 
 export interface PipelineStageConfig {
     id: string;
@@ -29,10 +30,19 @@ export const PIPELINE_CONFIGS: Record<string, PipelineStageConfig[]> = {
         { id: 'Analysis', title: 'Analysis', color: 'bg-green-500', icon: 'analytics', bgGradient: 'bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-950/30' },
     ],
     'Social': [
-        { id: 'Ideation', title: 'Ideation', color: 'bg-rose-500', icon: 'lightbulb', bgGradient: 'bg-gradient-to-br from-rose-50 to-rose-100/50 dark:from-rose-900/20 dark:to-rose-950/30' },
-        { id: 'Drafting', title: 'Drafting', color: 'bg-orange-500', icon: 'edit_note', bgGradient: 'bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-900/20 dark:to-orange-950/30' },
-        { id: 'Scheduled', title: 'Scheduled', color: 'bg-indigo-500', icon: 'calendar_month', bgGradient: 'bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-indigo-900/20 dark:to-indigo-950/30' },
-        { id: 'Posted', title: 'Posted', color: 'bg-emerald-500', icon: 'send', bgGradient: 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-950/30' },
+        { id: 'Brainstorm', title: 'Brainstorm', color: 'bg-slate-500', icon: 'psychology', bgGradient: 'bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-800/50 dark:to-slate-900/30' },
+        { id: 'Strategy', title: 'Strategy', color: 'bg-rose-500', icon: 'ads_click', bgGradient: 'bg-gradient-to-br from-rose-50 to-rose-100/50 dark:from-rose-900/20 dark:to-rose-950/30' },
+        { id: 'CreativeLab', title: 'Creative Lab', color: 'bg-indigo-500', icon: 'experiment', bgGradient: 'bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-indigo-900/20 dark:to-indigo-950/30' },
+        { id: 'Studio', title: 'Content Studio', color: 'bg-orange-500', icon: 'movie_edit', bgGradient: 'bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-900/20 dark:to-orange-950/30' },
+        { id: 'Distribution', title: 'Distribution', color: 'bg-emerald-500', icon: 'analytics', bgGradient: 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-950/30' },
+    ],
+    'SocialCampaign': [
+        { id: 'Concept', title: 'Concept', color: 'bg-violet-500', icon: 'lightbulb', bgGradient: 'bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-900/20 dark:to-violet-950/30' },
+        { id: 'Strategy', title: 'Strategy', color: 'bg-rose-500', icon: 'ads_click', bgGradient: 'bg-gradient-to-br from-rose-50 to-rose-100/50 dark:from-rose-900/20 dark:to-rose-950/30' },
+        { id: 'Planning', title: 'Planning', color: 'bg-blue-500', icon: 'calendar_month', bgGradient: 'bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-950/30' },
+        { id: 'Submit', title: 'Submit', color: 'bg-emerald-500', icon: 'send', bgGradient: 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-950/30' },
+        { id: 'Approved', title: 'Live / Integrated', color: 'bg-green-500', icon: 'check_circle', bgGradient: 'bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-950/30' },
+        { id: 'Rejected', title: 'Rejected', color: 'bg-red-500', icon: 'cancel', bgGradient: 'bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-900/20 dark:to-red-950/30' },
     ],
     'Moonshot': [
         { id: 'Feasibility', title: 'Feasibility', color: 'bg-indigo-500', icon: 'science', bgGradient: 'bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-indigo-900/20 dark:to-indigo-950/30' },
@@ -65,3 +75,13 @@ export const TYPE_COLORS: Record<string, string> = {
     'Optimization': 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
     'default': 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
 };
+
+export const PLATFORM_FORMATS: Record<SocialPlatform, SocialPostFormat[]> = {
+    'Instagram': ['Post', 'Story', 'Reel'],
+    'Facebook': ['Text', 'Post', 'Reel', 'Story'],
+    'LinkedIn': ['Text', 'Post', 'Carousel'],
+    'TikTok': ['Video'],
+    'X': ['Text', 'Post'],
+    'YouTube': ['Video', 'Short'],
+};
+

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
-import { getIdeaById, updateIdea, addTask } from '../services/dataService';
+import { deleteField } from 'firebase/firestore';
+import { getIdeaById, updateIdea, addTask, createSocialCampaign, getSocialCampaign, updateCampaign, deleteSocialCampaign, subscribeToIdea } from '../services/dataService';
 import { BrainstormView } from '../components/ideas/stages/BrainstormView';
 import { RefinementView } from '../components/ideas/stages/RefinementView';
 import { ConceptView } from '../components/ideas/stages/ConceptView';
@@ -17,14 +18,20 @@ import { MarketingStrategyView } from '../components/ideas/stages/MarketingStrat
 import { MarketingPlanningView } from '../components/ideas/stages/MarketingPlanningView';
 import { MarketingExecutionView } from '../components/ideas/stages/MarketingExecutionView';
 import { MarketingAnalysisView } from '../components/ideas/stages/MarketingAnalysisView';
-import { SocialIdeationView } from '../components/ideas/stages/SocialIdeationView';
-import { SocialDraftingView } from '../components/ideas/stages/SocialDraftingView';
-import { SocialScheduledView } from '../components/ideas/stages/SocialScheduledView';
-import { SocialPostedView } from '../components/ideas/stages/SocialPostedView';
+import { SocialStrategyView } from '../components/ideas/stages/SocialStrategyView';
+import { SocialCreativeLabView } from '../components/ideas/stages/SocialCreativeLabView';
+import { SocialStudioView } from '../components/ideas/stages/SocialStudioView';
+import { SocialPerformanceView } from '../components/ideas/stages/SocialPerformanceView';
 import { MoonshotFeasibilityView } from '../components/ideas/stages/MoonshotFeasibilityView';
 import { MoonshotPrototypeView } from '../components/ideas/stages/MoonshotPrototypeView';
 import { MoonshotGreenlightView } from '../components/ideas/stages/MoonshotGreenlightView';
-import { Idea } from '../types';
+import { SocialTypeSelection } from '../components/ideas/stages/SocialTypeSelection';
+import { SocialCampaignConceptView } from '../components/ideas/stages/SocialCampaignConceptView';
+import { SocialCampaignStrategyView } from '../components/ideas/stages/SocialCampaignStrategyView';
+import { SocialCampaignPlanningView } from '../components/ideas/stages/SocialCampaignPlanningView';
+import { SocialCampaignSubmitView } from '../components/ideas/stages/SocialCampaignSubmitView';
+import { SocialCampaignApprovedView } from '../components/ideas/stages/SocialCampaignApprovedView';
+import { Idea, SocialCampaign } from '../types';
 import { useConfirm } from '../context/UIContext';
 import { PIPELINE_CONFIGS } from '../components/ideas/constants';
 
@@ -37,9 +44,12 @@ export const IdeaDetail = () => {
 
     const [idea, setIdea] = useState<Idea | null>(null);
     const [loading, setLoading] = useState(true);
+    const [linkedCampaign, setLinkedCampaign] = useState<SocialCampaign | null>(null);
     // Active tab is now just the stage ID string
     const [activeTab, setActiveTab] = useState<string>('');
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+    const [saving, setSaving] = useState(false);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
     // Refs for auto-save
     const saveTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -55,28 +65,47 @@ export const IdeaDetail = () => {
     }, []);
 
     useEffect(() => {
-        const loadIdea = async () => {
-            if (!ideaId || !projectId) return;
-            setLoading(true);
-            try {
-                const data = await getIdeaById(ideaId, projectId);
-                if (data) {
-                    setIdea(data);
-                    // Use the idea's stage as the active tab directly
-                    setActiveTab(data.stage);
-                } else {
-                    // Handle not found
-                    console.error("Idea not found");
-                    navigate(`/project/${projectId}/ideas`);
+        if (!ideaId || !projectId) return;
+
+        setLoading(true);
+        const unsubscribe = subscribeToIdea(ideaId, projectId, (data) => {
+            setIdea(data);
+            setLoading(false);
+
+            // Set active tab on first load
+            if (!activeTab) {
+                let stages = PIPELINE_CONFIGS[data.type] || PIPELINE_CONFIGS['Feature'];
+                if (data.type === 'Social' && data.socialType === 'campaign') {
+                    stages = PIPELINE_CONFIGS['SocialCampaign'];
                 }
+
+                const normalizedStage = (stage: string) => {
+                    if (stage === 'ChangeRequested') return 'Submit';
+                    if (stage === 'PendingReview') return 'Submit';
+                    if (stage === 'Review') return 'Submit';
+                    return stage;
+                };
+
+                setActiveTab(normalizedStage(data.stage) || stages[0].id);
+            }
+        });
+
+        return () => unsubscribe();
+    }, [ideaId, projectId]);
+
+    // Fetch linked campaign if exists
+    useEffect(() => {
+        const loadLinkedCampaign = async () => {
+            if (!projectId || !idea?.convertedCampaignId) return;
+            try {
+                const campaign = await getSocialCampaign(projectId, idea.convertedCampaignId);
+                setLinkedCampaign(campaign);
             } catch (e) {
-                console.error(e);
-            } finally {
-                setLoading(false);
+                console.error("Failed to load linked campaign", e);
             }
         };
-        loadIdea();
-    }, [ideaId, projectId, navigate]);
+        loadLinkedCampaign();
+    }, [projectId, idea?.convertedCampaignId]);
 
     const handleUpdate = (updates: Partial<Idea>) => {
         if (!idea || !projectId) return;
@@ -86,7 +115,13 @@ export const IdeaDetail = () => {
 
         // Auto-switch tab on stage progression
         if (updates.stage) {
-            setActiveTab(updates.stage);
+            const normalizedStage = (stage: string) => {
+                if (stage === 'ChangeRequested') return 'Submit';
+                if (stage === 'PendingReview') return 'Submit';
+                if (stage === 'Review') return 'Submit';
+                return stage;
+            };
+            setActiveTab(normalizedStage(updates.stage));
         }
 
         // 2. Accumulate changes
@@ -156,6 +191,76 @@ export const IdeaDetail = () => {
         navigate(`/project/${projectId}/ideas`);
     };
 
+
+
+    const handleRejectIdea = async (reason?: string) => {
+        if (!idea || !projectId) return;
+        // Move back to Refining (Generic) or appropriate stage
+        await updateIdea(idea.id, {
+            stage: 'Refining',
+            lastRejectionReason: reason
+        }, projectId);
+    };
+
+    const handleRejectEntirely = async () => {
+        if (!idea || !projectId) return;
+        await updateIdea(idea.id, { stage: 'Rejected' }, projectId);
+    };
+
+    const addApprovalEvent = async (type: 'submission' | 'approval' | 'rejection' | 'changes_requested', notes?: string) => {
+        if (!idea || !projectId || !idea.convertedCampaignId) return;
+
+        const event = {
+            id: Math.random().toString(36).substr(2, 9),
+            type,
+            actorId: 'current-user', // In real app, get from auth context
+            date: new Date().toISOString(),
+            notes,
+            snapshot: idea.concept // Optional snapshot
+        };
+
+        // We need to fetch the current campaign to append history
+        const currentCampaign = await getSocialCampaign(projectId, idea.convertedCampaignId);
+        const history = currentCampaign?.approvalHistory || [];
+
+        await updateCampaign(projectId, idea.convertedCampaignId, {
+            approvalHistory: [...history, event]
+        });
+    };
+
+    const handleSubmitSocialCampaign = async () => {
+        if (!idea || !projectId) return;
+        // Simply move to PendingReview state. No campaign creation yet.
+        await updateIdea(idea.id, { stage: 'PendingReview' }, projectId);
+    };
+
+
+
+
+
+
+    const handleRejectSocialCampaignEntirely = async () => {
+        if (!idea || !projectId) return;
+
+        // 1. Delete the campaign linked to this idea
+        if (idea.convertedCampaignId) {
+            try {
+                await deleteSocialCampaign(idea.convertedCampaignId);
+            } catch (error) {
+                console.error("Failed to delete campaign", error);
+            }
+        }
+
+        // 2. Reset the idea state to allow resubmission
+        // We remove the campaign link and set stage back to Submit
+        await updateIdea(idea.id, {
+            stage: 'Submit',
+            convertedCampaignId: deleteField() as any
+        }, projectId);
+    };
+
+
+
     // Render Logic
     const renderStageView = () => {
         if (!idea) return null;
@@ -168,7 +273,15 @@ export const IdeaDetail = () => {
                 case 'Concept': return <ConceptView idea={idea} onUpdate={handleUpdate} />;
                 case 'Review':
                 case 'Approved':
-                    return <ApprovalView idea={idea} onUpdate={handleUpdate} onConvert={handleConvertToTask} />;
+                    return (
+                        <ApprovalView
+                            idea={idea}
+                            onUpdate={handleUpdate}
+                            onConvert={handleConvertToTask}
+                            onReject={handleRejectIdea}
+                            onRejectEntirely={handleRejectEntirely}
+                        />
+                    );
             }
         }
 
@@ -197,11 +310,55 @@ export const IdeaDetail = () => {
 
         // Social specific mappings
         if (idea.type === 'Social') {
+            // 1. Interception: Select Type if not set
+            if (!idea.socialType) {
+                return (
+                    <SocialTypeSelection
+                        onSelect={(type) => {
+                            // Update idea with selected type
+                            // For 'campaign', also switch stage to 'Concept' if currently 'Brainstorm' (default)
+                            const updates: Partial<Idea> = { socialType: type };
+                            if (type === 'campaign') {
+                                updates.stage = 'Concept';
+                            } else {
+                                // For 'post', ensure we are on a valid stage (usually Brainstorm which is default)
+                                updates.stage = 'Brainstorm';
+                            }
+                            handleUpdate(updates);
+                        }}
+                    />
+                );
+            }
+
+            // 2. Campaign Pipeline
+            if (idea.socialType === 'campaign') {
+                switch (activeTab) {
+                    case 'Concept': return <SocialCampaignConceptView idea={idea} onUpdate={handleUpdate} />;
+
+                    case 'Strategy': return <SocialCampaignStrategyView idea={idea} onUpdate={handleUpdate} />;
+                    case 'Planning': return <SocialCampaignPlanningView idea={idea} onUpdate={handleUpdate} />;
+                    case 'Submit':
+                        return (
+                            <SocialCampaignSubmitView
+                                idea={idea}
+                                onUpdate={handleUpdate}
+                                campaignStatus={linkedCampaign?.status}
+                                onSubmit={handleSubmitSocialCampaign}
+                                onRejectEntirely={handleRejectSocialCampaignEntirely}
+                            />
+                        );
+                    case 'Approved':
+                        return <SocialCampaignApprovedView idea={idea} onUpdate={handleUpdate} />;
+                }
+            }
+
+            // 3. Single Post Pipeline (Legacy/Default)
             switch (activeTab) {
-                case 'Ideation': return <SocialIdeationView idea={idea} onUpdate={handleUpdate} />;
-                case 'Drafting': return <SocialDraftingView idea={idea} onUpdate={handleUpdate} />;
-                case 'Scheduled': return <SocialScheduledView idea={idea} onUpdate={handleUpdate} />;
-                case 'Posted': return <SocialPostedView idea={idea} onUpdate={handleUpdate} />;
+                case 'Brainstorm': return <BrainstormView idea={idea} onUpdate={handleUpdate} />;
+                case 'Strategy': return <SocialStrategyView idea={idea} onUpdate={handleUpdate} />;
+                case 'CreativeLab': return <SocialCreativeLabView idea={idea} onUpdate={handleUpdate} />;
+                case 'Studio': return <SocialStudioView idea={idea} onUpdate={handleUpdate} />;
+                case 'Distribution': return <SocialPerformanceView idea={idea} onUpdate={handleUpdate} />;
             }
         }
 
@@ -227,7 +384,18 @@ export const IdeaDetail = () => {
     if (!idea) return null;
 
     // Get current pipeline configuration
-    const pipelineStages = PIPELINE_CONFIGS[idea.type] || PIPELINE_CONFIGS['Feature'];
+    let pipelineStages = PIPELINE_CONFIGS[idea.type] || PIPELINE_CONFIGS['Feature'];
+    if (idea.type === 'Social' && idea.socialType === 'campaign') {
+        pipelineStages = PIPELINE_CONFIGS['SocialCampaign'].filter(stage => {
+            if (stage.id === 'Approved') {
+                return idea.stage === 'Approved' || linkedCampaign?.status === 'Active' || linkedCampaign?.status === 'Completed';
+            }
+            if (stage.id === 'Rejected') {
+                return idea.stage === 'Rejected' || linkedCampaign?.status === 'Rejected';
+            }
+            return true;
+        });
+    }
 
     return (
         <div className="flex flex-col h-full bg-[var(--color-surface-bg)]">
@@ -307,8 +475,14 @@ export const IdeaDetail = () => {
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 overflow-auto bg-[var(--color-surface-bg)] p-6">
-                <div className="max-w-6xl mx-auto h-full flex flex-col">
+            <div className={`flex-1 overflow-auto bg-[var(--color-surface-bg)] ${(idea.type === 'Social' && idea.socialType === 'campaign') ||
+                ((activeTab === 'Strategy' || activeTab === 'Brainstorm' || activeTab === 'CreativeLab' || activeTab === 'Studio' || activeTab === 'Distribution') && idea.type === 'Social')
+                ? 'p-0' : 'p-6'
+                }`}>
+                <div className={`${(idea.type === 'Social' && idea.socialType === 'campaign') ||
+                    ((activeTab === 'Strategy' || activeTab === 'Brainstorm' || activeTab === 'CreativeLab' || activeTab === 'Studio' || activeTab === 'Distribution') && idea.type === 'Social')
+                    ? 'h-full flex flex-col' : 'max-w-6xl mx-auto h-full flex flex-col'
+                    }`}>
                     {renderStageView()}
                 </div>
             </div>

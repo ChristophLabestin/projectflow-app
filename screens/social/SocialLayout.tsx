@@ -66,9 +66,19 @@ export const SocialLayout = () => {
 
             {/* Main Content */}
             <div className="flex-1 overflow-y-auto">
-                <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 h-full">
-                    <Outlet />
-                </div>
+                {/* 
+                  Check if we are on Campaign Detail Page (no /edit, no /create). 
+                  If so, remove constraints (max-w, padding) so it can be full screen/edge-to-edge.
+                */}
+                {(location.pathname.includes('/social/campaigns/') && !location.pathname.includes('/edit') && !location.pathname.includes('/create')) ? (
+                    <div className="h-full w-full">
+                        <Outlet />
+                    </div>
+                ) : (
+                    <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 h-full">
+                        <Outlet />
+                    </div>
+                )}
             </div>
 
             <MediaLibrary

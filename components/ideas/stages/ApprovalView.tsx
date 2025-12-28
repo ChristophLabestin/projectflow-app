@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Idea } from '../../../types';
 import { Button } from '../../ui/Button';
@@ -6,19 +6,24 @@ import { auth } from '../../../services/firebase';
 import { AnalysisDashboard } from '../AnalysisDashboard';
 import { generateRiskWinAnalysis } from '../../../services/geminiService';
 import { updateIdea } from '../../../services/dataService';
+import { Modal } from '../../ui/Modal';
 import { InitiativeConversionModal } from '../InitiativeConversionModal';
 
 interface ApprovalViewProps {
     idea: Idea;
     onUpdate: (updates: Partial<Idea>) => void;
     onConvert: (startDate?: string, dueDate?: string) => void;
+    onReject?: (reason: string) => void;
+    onRejectEntirely?: () => void;
 }
 
-export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onConvert }) => {
+export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onConvert, onReject, onRejectEntirely }) => {
     const navigate = useNavigate();
     const [viewMode, setViewMode] = useState<'analysis' | 'brief'>('analysis');
     const [analyzing, setAnalyzing] = useState(false);
     const [showConvertModal, setShowConvertModal] = useState(false);
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState('');
 
     const [checklist, setChecklist] = useState({
         conceptClear: !!idea.concept,
@@ -52,6 +57,17 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
 
     const isApproved = idea.stage === 'Approved' || idea.stage === 'Implemented';
     const isImplemented = idea.stage === 'Implemented';
+    const isRejected = idea.stage === 'Rejected' || idea.stage === 'Archived';
+
+    // Auto-calculate checklists based on data presence
+    useEffect(() => {
+        setChecklist({
+            conceptClear: !!idea.concept && idea.concept.length > 50,
+            feasibilityChecked: (idea.analysis?.weaknesses?.length || 0) > 0 || (idea.riskWinAnalysis !== undefined),
+            resourcesAvailable: checklist.resourcesAvailable, // Keep manual override
+            timelineEstimated: checklist.timelineEstimated, // Keep manual override, could check dueDate
+        });
+    }, [idea]);
 
     // Helper for status badge
     const StatusBadge = () => {
@@ -318,6 +334,25 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                 >
                                     Decide Later
                                 </Button>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Button
+                                        size="lg"
+                                        variant="secondary"
+                                        className="h-12 text-sm border-none bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-900/20 dark:hover:bg-rose-900/40 dark:text-rose-400"
+                                        onClick={() => onRejectEntirely ? onRejectEntirely() : onUpdate({ stage: 'Rejected' })}
+                                    >
+                                        Reject
+                                    </Button>
+                                    <Button
+                                        size="lg"
+                                        variant="secondary"
+                                        className="h-12 text-sm border-none bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:hover:bg-amber-900/40 dark:text-amber-400"
+                                        onClick={() => setShowRejectModal(true)}
+                                    >
+                                        Request Changes
+                                    </Button>
+                                </div>
                                 <Button
                                     size="lg"
                                     className="w-full h-12 text-base shadow-lg shadow-emerald-500/20 bg-emerald-600 hover:bg-emerald-700 text-white border-none"
@@ -355,6 +390,49 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                     </div>
                 </div>
             </div>
+            {/* Rejection / Feedback Modal */}
+            <Modal
+                isOpen={showRejectModal}
+                onClose={() => setShowRejectModal(false)}
+                title="Request Changes"
+                size="md"
+            >
+                <div className="space-y-4">
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                        Describe what needs to be changed before this idea can be approved. This feedback will be sent back to the idea refining stage.
+                    </p>
+                    <textarea
+                        value={rejectionReason}
+                        onChange={(e) => setRejectionReason(e.target.value)}
+                        placeholder="e.g. The scope is too large, please reduce..."
+                        className="w-full h-32 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none text-sm"
+                        autoFocus
+                    />
+                    <div className="flex justify-end gap-3 pt-2">
+                        <Button variant="ghost" onClick={() => setShowRejectModal(false)}>Cancel</Button>
+                        <Button
+                            variant="primary"
+                            className="bg-amber-600 hover:bg-amber-700 text-white border-none"
+                            onClick={() => {
+                                if (onReject) {
+                                    onReject(rejectionReason);
+                                } else {
+                                    // Default behavior
+                                    onUpdate({
+                                        stage: 'Refining', // or whatever "Changes Requested" map to
+                                        lastRejectionReason: rejectionReason
+                                    });
+                                }
+                                setShowRejectModal(false);
+                                setRejectionReason('');
+                            }}
+                            disabled={!rejectionReason.trim()}
+                        >
+                            Send Feedback
+                        </Button>
+                    </div>
+                </div>
+            </Modal>
         </div >
     );
 };

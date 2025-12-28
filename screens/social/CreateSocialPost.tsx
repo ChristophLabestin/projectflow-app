@@ -5,26 +5,21 @@ import { Input } from '../../components/ui/Input';
 import { Textarea } from '../../components/ui/Textarea';
 import { Select } from '../../components/ui/Select';
 import { DatePicker } from '../../components/ui/DatePicker';
-import { TimePicker } from '../../components/ui/TimePicker'; // Assuming this exists or using Input for now
+import { TimePicker } from '../../components/ui/TimePicker';
+import { DateTimePicker } from '../../components/ui/DateTimePicker';
 import { AICaptionGenerator } from './components/AICaptionGenerator';
 import { CaptionPresetPicker } from './components/CaptionPresetPicker';
 import { MediaLibrary } from '../../components/MediaLibrary/MediaLibraryModal';
 import { SocialPostPreview } from './components/SocialPostPreview';
-import { createSocialPost, updateSocialPost, getSocialPostById, subscribeCampaigns, deleteSocialPost } from '../../services/dataService';
-import { generateSocialHashtags, generateYouTubeScript } from '../../services/geminiService';
-import { SocialPost, SocialPlatform, SocialPostFormat, SocialAsset, SocialCampaign } from '../../types';
+import { PlatformIcon } from './components/PlatformIcon';
+import { createSocialPost, updateSocialPost, getSocialPostById, subscribeCampaigns, deleteSocialPost, subscribeSocialStrategy } from '../../services/dataService';
+import { generateSocialHashtags, generateYouTubeScript, reworkSocialHashtags } from '../../services/geminiService';
+import { SocialPost, SocialPlatform, SocialPostFormat, SocialAsset, SocialCampaign, SocialStrategy } from '../../types';
 import { auth } from '../../services/firebase';
 import { format as formatDate } from 'date-fns';
 import { useConfirm } from '../../context/UIContext';
 
-const PLATFORM_FORMATS: Record<SocialPlatform, SocialPostFormat[]> = {
-    'Instagram': ['Post', 'Story', 'Reel'],
-    'Facebook': ['Text', 'Post', 'Reel', 'Story'],
-    'LinkedIn': ['Text', 'Post', 'Carousel'],
-    'TikTok': ['Video'],
-    'X': ['Text', 'Post'],
-    'YouTube': ['Video', 'Short']
-};
+import { PIPELINE_CONFIGS, PLATFORM_FORMATS } from '../../components/ideas/constants';
 
 export const CreateSocialPost = () => {
     const { id: projectId, postId } = useParams<{ id: string; postId?: string }>();
@@ -37,7 +32,8 @@ export const CreateSocialPost = () => {
     const [platform, setPlatform] = useState<SocialPlatform>('Instagram');
     const [format, setFormat] = useState<SocialPostFormat>('Image');
     const [caption, setCaption] = useState('');
-    const [hashtags, setHashtags] = useState('');
+    const [hashtags, setHashtags] = useState<string[]>([]);
+    const [hashtagInput, setHashtagInput] = useState('');
     const [scheduledDate, setScheduledDate] = useState('');
     const [scheduledTime, setScheduledTime] = useState('');
     const [campaignId, setCampaignId] = useState<string>('');
@@ -45,6 +41,7 @@ export const CreateSocialPost = () => {
     const [assets, setAssets] = useState<SocialAsset[]>([]);
 
     const [isConcept, setIsConcept] = useState(false);
+    const [rejectionReason, setRejectionReason] = useState<string | undefined>(undefined);
 
     // YouTube / Concept State
     const [videoTitle, setVideoTitle] = useState('');
@@ -60,6 +57,7 @@ export const CreateSocialPost = () => {
 
     // Data State
     const [campaigns, setCampaigns] = useState<SocialCampaign[]>([]);
+    const [strategy, setStrategy] = useState<SocialStrategy | null>(null);
 
     // Modals
     const [showAssetPicker, setShowAssetPicker] = useState(false);
@@ -67,9 +65,19 @@ export const CreateSocialPost = () => {
 
     useEffect(() => {
         if (!projectId) return;
-        const unsub = subscribeCampaigns(projectId, (data) => setCampaigns(data));
-        return () => unsub();
-    }, [projectId]);
+        const unsubCampaigns = subscribeCampaigns(projectId, (data) => setCampaigns(data));
+        const unsubStrategy = subscribeSocialStrategy(projectId, (data) => {
+            setStrategy(data);
+            if (data?.defaultPlatforms && data.defaultPlatforms.length > 0 && !postId) {
+                setPlatform(data.defaultPlatforms[0]);
+                setFormat(PLATFORM_FORMATS[data.defaultPlatforms[0]][0]);
+            }
+        });
+        return () => {
+            unsubCampaigns();
+            unsubStrategy();
+        };
+    }, [projectId, postId]);
 
     // Initial Load (Edit Mode)
     useEffect(() => {
@@ -89,9 +97,10 @@ export const CreateSocialPost = () => {
                     setPlatform(post.platform);
                     setFormat(post.format);
                     setCaption(post.content.caption || '');
-                    setHashtags(post.content.hashtags?.join(' ') || '');
+                    setHashtags(post.content.hashtags || []);
                     setCampaignId(post.campaignId || '');
                     setIsConcept(post.isConcept || false);
+                    setRejectionReason(post.rejectionReason);
                     if (post.scheduledFor) {
                         setScheduledDate(formatDate(new Date(post.scheduledFor), 'yyyy-MM-dd'));
                         setScheduledTime(formatDate(new Date(post.scheduledFor), 'HH:mm'));
@@ -150,7 +159,7 @@ export const CreateSocialPost = () => {
         return () => clearInterval(timer);
     }, [format, platform, assets, activeCarouselIndex, isStoryPlaying, isPreviewHovered]);
 
-    const handleSubmit = async (forceIsConcept: boolean = false) => {
+    const handleSubmit = async (forceIsConcept: boolean = false, forceStatus?: 'Draft' | 'In Review' | 'Scheduled') => {
         if (!projectId) return;
         setLoading(true);
         try {
@@ -169,11 +178,11 @@ export const CreateSocialPost = () => {
                 campaignId: campaignId || null,
                 content: {
                     caption: isYouTube ? videoTitle : caption,
-                    hashtags: hashtags.split(' ').filter(h => h.startsWith('#')),
+                    hashtags: hashtags,
                 },
                 assets,
                 scheduledFor,
-                status: scheduledFor ? 'Scheduled' : 'Draft',
+                status: forceStatus || (scheduledFor ? 'Scheduled' : 'Draft'),
                 projectId,
                 isConcept: forceIsConcept,
                 videoConcept: shouldSaveVideoConcept ? {
@@ -218,15 +227,43 @@ export const CreateSocialPost = () => {
         }
     };
 
-    // Helper to get platform icon
-    const getPlatformIcon = (p: SocialPlatform) => {
-        switch (p) {
-            case 'Instagram': return 'photo_camera'; // Material icon equivalent? Or use svg
-            case 'Facebook': return 'facebook';
-            case 'LinkedIn': return 'work';
-            case 'X': return 'flutter_dash'; // Close enough
-            case 'TikTok': return 'music_note';
-            default: return 'public';
+    const getHashtagLimit = (platform: SocialPlatform) => {
+        return strategy?.hashtagLimits?.[platform] ?? (['Instagram', 'TikTok'].includes(platform) ? 5 : 30);
+    };
+
+    const currentHashtagCount = hashtags.length;
+    const isOverLimit = currentHashtagCount > getHashtagLimit(platform);
+
+    const handleAddHashtag = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            const val = hashtagInput.trim();
+            if (val) {
+                const newTag = val.startsWith('#') ? val : `#${val}`;
+                if (!hashtags.includes(newTag)) {
+                    setHashtags([...hashtags, newTag]);
+                }
+                setHashtagInput('');
+            }
+        }
+    };
+
+    const removeHashtag = (tagToRemove: string) => {
+        setHashtags(hashtags.filter(tag => tag !== tagToRemove));
+    };
+
+    const handleAIReworkHashtags = async () => {
+        if (hashtags.length === 0 || !caption) return;
+        setLoading(true);
+        try {
+            const limit = getHashtagLimit(platform);
+            const currentTagsStr = hashtags.join(' ');
+            const reworked = await reworkSocialHashtags(currentTagsStr, caption, platform, limit);
+            setHashtags(reworked.split(/\s+/).filter(t => t.startsWith('#')));
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -240,46 +277,59 @@ export const CreateSocialPost = () => {
                 {/* Close Button */}
                 <button
                     onClick={() => navigate(-1)}
-                    className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 transition-colors"
+                    className="absolute top-4 right-4 z-20 w-10 h-10 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/20 transition-colors"
                 >
-                    <span className="material-symbols-outlined">close</span>
+                    <span className="material-symbols-outlined text-[20px]">close</span>
                 </button>
 
                 {/* LEFT: Form Panel */}
                 <div className="w-[50%] flex flex-col border-r border-[var(--color-surface-border)]">
 
                     {/* Header with Stepper */}
-                    <header className="px-8 py-6 border-b border-[var(--color-surface-border)]">
-                        <div className="flex justify-between items-start mb-6">
-                            <div>
-                                <h1 className="text-xl font-bold text-[var(--color-text-main)]">{postId ? 'Edit Post' : 'Create New Post'}</h1>
-                                <p className="text-sm text-[var(--color-text-subtle)]">Step {currentStep} of {STEPS.length}: {STEPS[currentStep - 1].label}</p>
-                            </div>
-                            {postId && (
-                                <button
-                                    onClick={handleDeletePost}
-                                    className="p-2 text-[var(--color-text-muted)] hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                    title="Delete Post"
-                                >
-                                    <span className="material-symbols-outlined">delete</span>
-                                </button>
-                            )}
-                        </div>
-
-                        {/* Stepper Indicator */}
-                        <div className="flex items-center gap-2">
-                            {STEPS.map((step) => (
-                                <div key={step.id} className="flex items-center flex-1">
-                                    <div
-                                        className={`flex-1 h-2 rounded-full transition-colors ${step.id <= currentStep
-                                            ? 'bg-gradient-to-r from-violet-600 to-indigo-600'
-                                            : 'bg-[var(--color-surface-hover)]'
-                                            }`}
-                                    />
+                    <div className="bg-[var(--color-surface-card)]">
+                        {rejectionReason && (
+                            <div className="bg-red-50 dark:bg-red-900/20 border-b border-red-100 dark:border-red-900/30 px-8 py-3 flex items-start gap-3">
+                                <span className="material-symbols-outlined text-red-500 text-lg mt-0.5">error</span>
+                                <div>
+                                    <h4 className="text-sm font-bold text-red-700 dark:text-red-400">Changes Requested</h4>
+                                    <p className="text-sm text-red-600 dark:text-red-300">{rejectionReason}</p>
                                 </div>
-                            ))}
-                        </div>
-                    </header>
+                            </div>
+                        )}
+
+
+                        <header className="px-8 py-6 border-b border-[var(--color-surface-border)]">
+                            <div className="flex justify-between items-center mb-6">
+                                <div>
+                                    <h1 className="text-xl font-bold text-[var(--color-text-main)]">{postId ? 'Edit Post' : 'Create New Post'}</h1>
+                                    <p className="text-sm text-[var(--color-text-subtle)]">Step {currentStep} of {STEPS.length}: {STEPS[currentStep - 1].label}</p>
+                                </div>
+                                {postId && (
+                                    <button
+                                        onClick={handleDeletePost}
+                                        className="w-10 h-10 flex items-center justify-center text-[var(--color-text-muted)] hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                                        title="Delete Post"
+                                    >
+                                        <span className="material-symbols-outlined text-[20px]">delete</span>
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Stepper Indicator */}
+                            <div className="flex items-center gap-2">
+                                {STEPS.map((step) => (
+                                    <div key={step.id} className="flex items-center flex-1">
+                                        <div
+                                            className={`flex-1 h-2 rounded-full transition-colors ${step.id <= currentStep
+                                                ? 'bg-gradient-to-r from-violet-600 to-indigo-600'
+                                                : 'bg-[var(--color-surface-hover)]'
+                                                }`}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </header>
+                    </div>
 
                     {/* Step Content */}
                     <div className="flex-1 p-8 overflow-y-auto custom-scrollbar">
@@ -306,26 +356,37 @@ export const CreateSocialPost = () => {
                                     <div className="col-span-2 space-y-4">
                                         <label className="text-sm font-bold text-[var(--color-text-main)]">Target Platform</label>
                                         <div className="grid grid-cols-3 gap-3">
-                                            {['Instagram', 'Facebook', 'LinkedIn', 'TikTok', 'X', 'YouTube'].map((p) => (
-                                                <button
-                                                    key={p}
-                                                    onClick={() => {
-                                                        const newPlatform = p as SocialPlatform;
-                                                        setPlatform(newPlatform);
-                                                        const validFormats = PLATFORM_FORMATS[newPlatform];
-                                                        if (newPlatform !== 'YouTube' && !validFormats.includes(format)) {
-                                                            setFormat(validFormats[0]);
-                                                        }
-                                                    }}
-                                                    className={`h-24 rounded-xl border flex flex-col items-center justify-center gap-2 transition-all ${platform === p
-                                                        ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600'
-                                                        : 'border-[var(--color-surface-border)] hover:border-[var(--color-text-muted)] text-[var(--color-text-muted)]'
-                                                        }`}
-                                                >
-                                                    <span className="material-symbols-outlined text-2xl">{getPlatformIcon(p as SocialPlatform)}</span>
-                                                    <span className="text-xs font-semibold">{p}</span>
-                                                </button>
-                                            ))}
+                                            {['Instagram', 'Facebook', 'LinkedIn', 'TikTok', 'X', 'YouTube']
+                                                .filter(p => !strategy?.defaultPlatforms || strategy.defaultPlatforms.includes(p as SocialPlatform) || p === platform)
+                                                .map((p) => (
+                                                    <button
+                                                        key={p}
+                                                        onClick={() => {
+                                                            const newPlatform = p as SocialPlatform;
+                                                            setPlatform(newPlatform);
+                                                            const validFormats = PLATFORM_FORMATS[newPlatform];
+                                                            if (newPlatform !== 'YouTube' && !validFormats.includes(format)) {
+                                                                setFormat(validFormats[0]);
+                                                            }
+                                                        }}
+                                                        className={`h-24 rounded-2xl border flex flex-col items-center justify-center gap-3 transition-all relative overflow-hidden group ${platform === p
+                                                            ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 ring-1 ring-[var(--color-primary)] shadow-sm'
+                                                            : 'border-[var(--color-surface-border)] hover:border-[var(--color-text-muted)] bg-[var(--color-surface-card)]'
+                                                            }`}
+                                                    >
+                                                        <div className="w-8 h-8 flex items-center justify-center pointer-events-none transform group-hover:scale-110 transition-transform">
+                                                            <PlatformIcon platform={p as SocialPlatform} />
+                                                        </div>
+                                                        <span className={`text-[10px] font-bold uppercase tracking-widest ${platform === p ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'}`}>
+                                                            {p}
+                                                        </span>
+                                                        {platform === p && (
+                                                            <div className="absolute top-2 right-2 flex items-center justify-center w-5 h-5 bg-[var(--color-primary)] text-white dark:text-black rounded-full scale-in animate-scale-up">
+                                                                <span className="material-symbols-outlined text-[14px] font-bold">check</span>
+                                                            </div>
+                                                        )}
+                                                    </button>
+                                                ))}
                                         </div>
                                     </div>
 
@@ -481,7 +542,7 @@ export const CreateSocialPost = () => {
                                                             onApply={(presetCaption, presetHashtags) => {
                                                                 setCaption(presetCaption);
                                                                 if (presetHashtags && presetHashtags.length > 0) {
-                                                                    setHashtags(presetHashtags.join(' '));
+                                                                    setHashtags(presetHashtags);
                                                                 }
                                                             }}
                                                         />
@@ -521,32 +582,70 @@ export const CreateSocialPost = () => {
                                         {/* Hashtags */}
                                         <div className="space-y-2">
                                             <div className="flex justify-between items-center">
-                                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase">Hashtags</label>
-                                                <button
-                                                    onClick={async () => {
-                                                        if (!caption && !videoTitle) return;
-                                                        setLoading(true);
-                                                        try {
-                                                            const tags = await generateSocialHashtags(caption || videoTitle || "marketing", platform);
-                                                            setHashtags(tags);
-                                                        } catch (e) {
-                                                            console.error(e);
-                                                        } finally {
-                                                            setLoading(false);
-                                                        }
-                                                    }}
-                                                    className="text-[10px] font-bold text-indigo-500 hover:underline disabled:opacity-50"
-                                                    disabled={loading || (!caption && !videoTitle)}
-                                                >
-                                                    Generate Relevant Tags
-                                                </button>
+                                                <div className="flex items-center gap-2">
+                                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase">Hashtags</label>
+                                                    {isOverLimit && (
+                                                        <span className="flex items-center gap-1 text-[10px] font-black text-red-600 dark:text-red-400 animate-pulse bg-red-50 dark:bg-red-900/40 px-1.5 py-0.5 rounded">
+                                                            <span className="material-symbols-outlined text-[14px]">warning</span>
+                                                            Limit Exceeded: {currentHashtagCount}/{getHashtagLimit(platform)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    {isOverLimit && (
+                                                        <button
+                                                            onClick={handleAIReworkHashtags}
+                                                            disabled={loading}
+                                                            className="text-[10px] font-bold text-indigo-600 hover:text-indigo-500 flex items-center gap-1 bg-indigo-50 px-2 py-0.5 rounded"
+                                                        >
+                                                            <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
+                                                            AI Rework
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={async () => {
+                                                            if (!caption && !videoTitle) return;
+                                                            setLoading(true);
+                                                            try {
+                                                                const limit = getHashtagLimit(platform);
+                                                                const tags = await generateSocialHashtags(caption || videoTitle || "marketing", platform, limit);
+                                                                setHashtags(tags.split(/\s+/).filter(t => t.startsWith('#')));
+                                                            } catch (e) {
+                                                                console.error(e);
+                                                            } finally {
+                                                                setLoading(false);
+                                                            }
+                                                        }}
+                                                        className="text-[10px] font-bold text-indigo-500 hover:underline disabled:opacity-50"
+                                                        disabled={loading || (!caption && !videoTitle)}
+                                                    >
+                                                        {isOverLimit ? 'Regenerate' : 'Generate Relevant Tags'}
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <Input
-                                                value={hashtags}
-                                                onChange={e => setHashtags(e.target.value)}
-                                                placeholder="#marketing #social #growth"
-                                                className="font-mono text-sm text-[var(--color-primary)]"
-                                            />
+
+                                            <div className={`p-3 rounded-xl border transition-all bg-[var(--color-surface-bg)] ${isOverLimit ? 'border-red-500 ring-1 ring-red-500 bg-red-50/10' : 'border-[var(--color-surface-border)] focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500'}`}>
+                                                <div className="flex flex-wrap gap-2 mb-2">
+                                                    {hashtags.map(tag => (
+                                                        <span key={tag} className={`px-2 py-1 rounded text-xs font-bold flex items-center gap-1 ${isOverLimit ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'}`}>
+                                                            {tag}
+                                                            <button
+                                                                onClick={() => removeHashtag(tag)}
+                                                                className="hover:text-red-600 dark:hover:text-red-400"
+                                                            >
+                                                                <span className="material-symbols-outlined text-[14px]">close</span>
+                                                            </button>
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <input
+                                                    value={hashtagInput}
+                                                    onChange={e => setHashtagInput(e.target.value)}
+                                                    onKeyDown={handleAddHashtag}
+                                                    placeholder={hashtags.length === 0 ? "Type #hashtag and press Enter..." : "Add another..."}
+                                                    className="w-full bg-transparent border-none focus:ring-0 p-0 text-sm font-medium placeholder:text-[var(--color-text-subtle)] placeholder:font-normal"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
                                 )}
@@ -572,16 +671,12 @@ export const CreateSocialPost = () => {
                                         Scheduling
                                     </h4>
                                     <div className="space-y-4">
-                                        <DatePicker
-                                            label="Date"
-                                            value={scheduledDate}
-                                            onChange={setScheduledDate}
-                                            min={new Date().toISOString().split('T')[0]}
-                                        />
-                                        <TimePicker
-                                            label="Time"
-                                            value={scheduledTime}
-                                            onChange={setScheduledTime}
+                                        <DateTimePicker
+                                            dateValue={scheduledDate}
+                                            timeValue={scheduledTime}
+                                            onDateChange={setScheduledDate}
+                                            onTimeChange={setScheduledTime}
+                                            label="Publication Schedule"
                                         />
                                         {!scheduledDate && (
                                             <div className="flex items-center gap-2 text-xs text-amber-500 bg-amber-50 dark:bg-amber-900/10 p-3 rounded-lg">
@@ -607,38 +702,32 @@ export const CreateSocialPost = () => {
                         )}
 
                         <div className="flex gap-3">
+                            {/* Persistent Save as Draft */}
+                            <Button
+                                variant="ghost"
+                                onClick={() => handleSubmit(false, 'Draft')}
+                                isLoading={loading}
+                                className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+                            >
+                                {isConcept ? 'Convert to Draft' : 'Save as Draft'}
+                            </Button>
+
                             {currentStep < 3 ? (
                                 <Button variant="primary" onClick={() => setCurrentStep(prev => prev + 1)}>
                                     Next Step
                                     <span className="material-symbols-outlined ml-1">arrow_forward</span>
                                 </Button>
                             ) : (
-                                <>
-                                    {isConcept && (
-                                        <Button
-                                            variant="ghost"
-                                            onClick={() => handleSubmit(true)}
-                                            isLoading={loading}
-                                            className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
-                                        >
-                                            Update Concept
-                                        </Button>
-                                    )}
-                                    <Button
-                                        variant="secondary"
-                                        onClick={() => {
-                                            setScheduledDate('');
-                                            setScheduledTime('');
-                                            setTimeout(() => handleSubmit(false), 0);
-                                        }}
-                                        isLoading={loading}
-                                    >
-                                        {isConcept ? 'Convert to Draft' : 'Save as Draft'}
-                                    </Button>
-                                    <Button variant="primary" onClick={() => handleSubmit(false)} isLoading={loading} disabled={!!scheduledDate && !scheduledTime}>
-                                        {scheduledDate ? 'Schedule Post' : 'Save & Close'}
-                                    </Button>
-                                </>
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => handleSubmit(false, 'In Review')}
+                                    isLoading={loading}
+                                    className="bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 border-none px-6 disabled:opacity-30"
+                                    disabled={!scheduledDate || !scheduledTime}
+                                    title={(!scheduledDate || !scheduledTime) ? "Please set a schedule first" : ""}
+                                >
+                                    Send for Review
+                                </Button>
                             )}
                         </div>
                     </footer>
@@ -652,7 +741,9 @@ export const CreateSocialPost = () => {
                     <div className="mb-6 text-center z-10">
                         <h2 className="text-sm font-semibold text-[var(--color-text-subtle)] uppercase tracking-wider mb-1">Preview</h2>
                         <div className="flex items-center justify-center gap-2 text-xs text-[var(--color-text-muted)]">
-                            <span className="material-symbols-outlined text-[16px]">{getPlatformIcon(platform)}</span>
+                            <div className="w-5 h-5 flex-shrink-0">
+                                <PlatformIcon platform={platform} />
+                            </div>
                             {platform} • {format}
                         </div>
                     </div>

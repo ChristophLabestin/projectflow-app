@@ -22,9 +22,11 @@ interface DatePickerProps {
     placeholder?: string;
     className?: string;
     align?: 'left' | 'right';
+    disabled?: boolean;
+    label?: string;
 }
 
-export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, placeholder = "Select date", className = "", align = 'left' }) => {
+export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, placeholder = "Select date", className = "", align = 'left', disabled = false, label }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [popoverPosition, setPopoverPosition] = useState({ top: 0, left: 0 });
@@ -209,14 +211,18 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, placeho
 
     return (
         <div className={`relative ${className}`} ref={containerRef}>
+            {label && (
+                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-2 block">{label}</label>
+            )}
             {/* Input Trigger */}
             <div
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={() => !disabled && setIsOpen(!isOpen)}
                 className={`
-                    w-full px-3 py-2.5 rounded-xl flex items-center justify-between cursor-pointer transition-all text-sm
+                    w-full px-3 py-2.5 rounded-xl flex items-center justify-between transition-all text-sm
                     bg-[var(--color-surface-bg)] text-[var(--color-text-main)]
                     focus:outline-none focus:ring-0 focus:ring-offset-0
                     ${className.includes('border-0') ? 'border-0' : 'border border-[var(--color-surface-border)]'}
+                    ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
                 `}
             >
                 <div className="flex items-center gap-2 overflow-hidden">
@@ -227,7 +233,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, placeho
                         <span className="text-[var(--color-text-subtle)] truncate">{placeholder}</span>
                     )}
                 </div>
-                {value && (
+                {value && !disabled && (
                     <div
                         onClick={clearDate}
                         className="hover:bg-[var(--color-surface-hover)] p-0.5 rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors flex-shrink-0 ml-1"

@@ -158,278 +158,275 @@ export const Tasks = () => {
     );
 
     return (
-        <div className="flex flex-col gap-8 fade-in max-w-6xl mx-auto pb-12">
-
-            {/* Header Section */}
-            <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-8 fade-in max-w-6xl mx-auto pb-20 px-4 md:px-0">
+            {/* Premium Header */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
                 <div>
-                    <h1 className="text-3xl font-bold text-[var(--color-text-main)] mb-1">My Focus</h1>
-                    <p className="text-[var(--color-text-muted)] text-lg">
-                        You have <span className="text-[var(--color-text-main)] font-semibold">{stats.dueToday} tasks</span> due today and <span className="text-rose-500 font-semibold">{stats.overdue} overdue</span>.
+                    <h1 className="text-4xl font-black text-[var(--color-text-main)] tracking-tight mb-2">
+                        My <span className="text-[var(--color-primary)]">Focus</span>
+                    </h1>
+                    <p className="text-[var(--color-text-muted)] text-lg font-medium opacity-80">
+                        You have <span className="text-[var(--color-text-main)] font-bold">{stats.dueToday} tasks</span> due today and <span className="text-rose-500 font-bold">{stats.overdue} overdue</span>.
                     </p>
                 </div>
 
-                {/* Stats Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <Card padding="md" className="flex flex-col gap-1 border-l-4 border-l-rose-500">
-                        <span className="text-xs font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">Attention Needed</span>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-3xl font-bold text-[var(--color-text-main)]">{stats.overdue + stats.dueToday}</span>
-                            <span className="text-sm text-[var(--color-text-muted)]">due soon</span>
+                {/* Stats Row - Compact for this view */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 flex-1 max-w-4xl">
+                    {[
+                        { label: 'Attention', val: stats.overdue + stats.dueToday, icon: 'assignment_late', color: 'rose', sub: 'due soon' },
+                        { label: 'Priority', val: stats.highPriority, icon: 'priority_high', color: 'amber', sub: 'critical' },
+                        { label: 'Active', val: stats.activeProjects, icon: 'folder_open', color: 'indigo', sub: 'projects' },
+                        { label: 'Completed', val: stats.completedTotal, icon: 'check_circle', color: 'emerald', sub: 'all time' }
+                    ].map((stat, idx) => (
+                        <div key={idx} className={`p-4 rounded-2xl bg-white dark:bg-white/[0.03] border border-${stat.color}-100 dark:border-${stat.color}-500/20 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300`}>
+                            <div className="absolute -right-2 -top-2 p-3 opacity-[0.05] group-hover:opacity-[0.15] group-hover:scale-110 transition-all duration-500">
+                                <span className={`material-symbols-outlined text-6xl text-${stat.color}-500`}>{stat.icon}</span>
+                            </div>
+                            <div className="relative z-10">
+                                <p className={`text-[10px] font-bold text-${stat.color}-600 dark:text-${stat.color}-400 uppercase tracking-[0.1em] mb-1`}>{stat.label}</p>
+                                <div className="flex items-baseline gap-2">
+                                    <p className="text-2xl font-black text-[var(--color-text-main)]">{stat.val}</p>
+                                    <span className="text-[10px] font-medium opacity-60">{stat.sub}</span>
+                                </div>
+                            </div>
                         </div>
-                    </Card>
-
-                    <Card padding="md" className="flex flex-col gap-1 border-l-4 border-l-amber-500">
-                        <span className="text-xs font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">High Priority</span>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-3xl font-bold text-[var(--color-text-main)]">{stats.highPriority}</span>
-                            <span className="text-sm text-[var(--color-text-muted)]">critical tasks</span>
-                        </div>
-                    </Card>
-
-                    <Card padding="md" className="flex flex-col gap-1 border-l-4 border-l-indigo-500">
-                        <span className="text-xs font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">Active Projects</span>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-3xl font-bold text-[var(--color-text-main)]">{stats.activeProjects}</span>
-                            <span className="text-sm text-[var(--color-text-muted)]">in progress</span>
-                        </div>
-                    </Card>
-
-                    <Card padding="md" className="flex flex-col gap-1 border-l-4 border-l-emerald-500">
-                        <span className="text-xs font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">Total Completed</span>
-                        <div className="flex items-baseline gap-2">
-                            <span className="text-3xl font-bold text-[var(--color-text-main)]">{stats.completedTotal}</span>
-                            <span className="text-sm text-[var(--color-text-muted)]">all time</span>
-                        </div>
-                    </Card>
+                    ))}
                 </div>
             </div>
 
-            {/* Main Content Area */}
-            <div className="flex flex-col gap-4">
+            {/* Main Content Area - Split View */}
+            <div className="flex flex-col gap-6">
 
-                {/* Sticky Toolbar */}
-                <div className="sticky -top-4 sm:-top-6 lg:-top-8 z-40 bg-[var(--color-surface-bg)] py-4 border-b border-[var(--color-surface-border)] shadow-sm flex flex-col lg:flex-row gap-4 justify-between items-center transition-all -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8">
+                {/* Glassmorphic Controls Bar */}
+                <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-4 sticky top-6 z-20">
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="flex bg-white/60 dark:bg-black/40 backdrop-blur-2xl p-1.5 rounded-2xl border border-white/20 dark:border-white/10 shadow-xl shadow-black/5 ring-1 ring-black/5">
+                            {(['open', 'completed', 'all'] as const).map((s) => (
+                                <button
+                                    key={s}
+                                    onClick={() => setStatusFilter(s)}
+                                    className={`
+                                        relative px-6 py-2.5 rounded-xl text-sm font-bold transition-all capitalize z-10
+                                        ${statusFilter === s
+                                            ? 'text-[var(--color-primary)]'
+                                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}
+                                    `}
+                                >
+                                    {statusFilter === s && (
+                                        <div className="absolute inset-0 bg-white dark:bg-white/10 rounded-xl shadow-sm z-[-1] fade-in" />
+                                    )}
+                                    {s}
+                                </button>
+                            ))}
+                        </div>
 
-                    {/* Filter Tabs */}
-                    <div className="flex bg-[var(--color-surface-hover)] p-1 rounded-xl w-full lg:w-auto">
-                        {(['open', 'completed', 'all'] as const).map(status => (
-                            <button
-                                key={status}
-                                onClick={() => setStatusFilter(status)}
-                                className={`
-                                    flex-1 lg:flex-none px-6 py-2 rounded-lg text-sm font-semibold capitalize transition-all
-                                    ${statusFilter === status
-                                        ? 'bg-[var(--color-surface-paper)] text-[var(--color-text-main)] shadow-sm scale-100'
-                                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-black/5 dark:hover:bg-white/5'}
-                                `}
-                            >
-                                {status}
-                            </button>
-                        ))}
+                        <div className="h-8 w-px bg-black/5 dark:bg-white/5 mx-2 hidden xl:block" />
+
+                        {/* Secondary Filters - Styled Selects */}
+                        <div className="flex flex-wrap gap-2">
+                            <div className="relative group">
+                                <select
+                                    value={assigneeFilter}
+                                    onChange={(e) => setAssigneeFilter(e.target.value as any)}
+                                    className="appearance-none bg-white/60 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-xl pl-4 pr-8 py-2.5 text-sm font-bold text-[var(--color-text-main)] hover:bg-white dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all cursor-pointer"
+                                >
+                                    <option value="me">Assigned to Me</option>
+                                    <option value="all">Everything</option>
+                                </select>
+                                <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[16px] opacity-50">expand_more</span>
+                            </div>
+
+                            <div className="relative group">
+                                <select
+                                    value={priorityFilter}
+                                    onChange={(e) => setPriorityFilter(e.target.value)}
+                                    className="appearance-none bg-white/60 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-xl pl-4 pr-8 py-2.5 text-sm font-bold text-[var(--color-text-main)] hover:bg-white dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all cursor-pointer"
+                                >
+                                    <option value="all">Any Priority</option>
+                                    <option value="Urgent">Urgent</option>
+                                    <option value="High">High</option>
+                                    <option value="Medium">Medium</option>
+                                    <option value="Low">Low</option>
+                                </select>
+                                <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[16px] opacity-50">expand_more</span>
+                            </div>
+
+                            <div className="relative group">
+                                <select
+                                    value={projectFilter}
+                                    onChange={(e) => setProjectFilter(e.target.value)}
+                                    className="appearance-none bg-white/60 dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-xl pl-4 pr-8 py-2.5 text-sm font-bold text-[var(--color-text-main)] hover:bg-white dark:hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] transition-all cursor-pointer max-w-[150px]"
+                                >
+                                    <option value="all">All Projects</option>
+                                    {projects.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
+                                </select>
+                                <span className="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[16px] opacity-50">expand_more</span>
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Right Actions */}
-                    <div className="flex items-center gap-3 w-full lg:w-auto overflow-x-auto pb-1 lg:pb-0 no-scrollbar">
-                        <div className="relative group min-w-[200px] flex-1 lg:flex-none">
+                    <div className="flex items-center gap-3 w-full xl:w-auto">
+                        <div className="relative group flex-1 xl:flex-none xl:w-80 shadow-xl shadow-black/5">
                             <input
                                 type="text"
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                                 placeholder="Search tasks..."
-                                className="w-full bg-[var(--color-surface-bg)] border-none ring-1 ring-[var(--color-surface-border)] focus:ring-2 focus:ring-[var(--color-primary)] rounded-xl pl-10 pr-4 py-2 text-sm transition-all"
+                                className="w-full bg-white/60 dark:bg-black/40 backdrop-blur-2xl border-none ring-1 ring-black/5 dark:ring-white/10 focus:ring-2 focus:ring-[var(--color-primary)] rounded-2xl pl-12 pr-6 py-4 text-sm font-medium transition-all outline-none"
                             />
-                            <span className="material-symbols-outlined absolute left-3 top-2 text-[var(--color-text-muted)] group-focus-within:text-[var(--color-primary)] transition-colors">search</span>
+                            <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] group-focus-within:text-[var(--color-primary)] transition-colors">search</span>
                         </div>
-
-                        <div className="h-8 w-px bg-[var(--color-surface-border)] mx-1 shrink-0" />
-
-                        <Select
-                            value={assigneeFilter}
-                            onChange={(e) => setAssigneeFilter(e.target.value as 'me' | 'all')}
-                            className="w-[150px] shrink-0"
-                            size="sm"
-                        >
-                            <option value="me">Assigned to Me</option>
-                            <option value="all">Everything</option>
-                        </Select>
-
-                        <Select
-                            value={projectFilter}
-                            onChange={(e) => setProjectFilter(e.target.value)}
-                            className="w-[140px] shrink-0"
-                            size="sm"
-                        >
-                            <option value="all">All Projects</option>
-                            {projects.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
-                        </Select>
-
-                        <Select
-                            value={priorityFilter}
-                            onChange={(e) => setPriorityFilter(e.target.value)}
-                            className="w-[130px] shrink-0"
-                            size="sm"
-                        >
-                            <option value="all">Any Priority</option>
-                            <option value="Urgent">Urgent</option>
-                            <option value="High">High</option>
-                            <option value="Medium">Medium</option>
-                            <option value="Low">Low</option>
-                        </Select>
-
                         <button
                             onClick={() => setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')}
-                            className="size-9 flex items-center justify-center rounded-lg bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] transition-colors shrink-0"
-                            title="Sort Direction"
+                            className="size-[52px] rounded-2xl bg-white/60 dark:bg-black/40 backdrop-blur-xl border border-white/20 dark:border-white/10 ring-1 ring-black/5 shadow-xl shadow-black/5 flex items-center justify-center hover:scale-105 active:scale-95 transition-all text-[var(--color-text-muted)] hover:text-[var(--color-primary)]"
+                            title={sortDirection === "asc" ? "Sort Ascending" : "Sort Descending"}
                         >
-                            <span className="material-symbols-outlined text-[18px] text-[var(--color-text-main)]">
-                                {sortDirection === 'asc' ? 'arrow_upward' : 'arrow_downward'}
-                            </span>
+                            <span className="material-symbols-outlined">sort</span>
                         </button>
                     </div>
                 </div>
 
-                {/* Quick Add (Only Visible for Active) */}
+                {/* Quick Add Bar */}
                 {statusFilter !== 'completed' && (
-                    <div className="bg-[var(--color-surface-paper)] border border-[var(--color-surface-border)] rounded-xl p-2 flex gap-3 shadow-sm transition-all">
-                        <div className="flex-1">
-                            <input
-                                type="text"
-                                value={quickTitle}
-                                onChange={(e) => setQuickTitle(e.target.value)}
-                                placeholder="Add a new task..."
-                                className="w-full bg-transparent border-none focus:ring-0 p-2 text-sm text-[var(--color-text-main)] placeholder-[var(--color-text-muted)]"
-                                onKeyDown={(e) => e.key === 'Enter' && handleQuickAdd(e)}
-                            />
+                    <div className="bg-gradient-to-r from-white/80 to-white/40 dark:from-white/5 dark:to-white/[0.02] backdrop-blur-md rounded-[24px] p-2 pr-3 border border-white/40 dark:border-white/10 shadow-xl shadow-indigo-500/5 ring-1 ring-black/5 flex items-center gap-2 group focus-within:ring-2 focus-within:ring-[var(--color-primary)] focus-within:scale-[1.01] transition-all">
+                        <div className="pl-4">
+                            <span className="material-symbols-outlined text-[var(--color-text-muted)] group-focus-within:text-[var(--color-primary)] transition-colors">add_task</span>
                         </div>
-                        <div className="w-40 border-l border-[var(--color-surface-border)] pl-3">
+                        <input
+                            type="text"
+                            value={quickTitle}
+                            onChange={(e) => setQuickTitle(e.target.value)}
+                            placeholder="What needs to be done?"
+                            className="flex-1 bg-transparent border-none focus:ring-0 p-3 text-lg font-medium text-[var(--color-text-main)] placeholder:font-normal placeholder:opacity-50"
+                            onKeyDown={(e) => e.key === 'Enter' && handleQuickAdd(e)}
+                        />
+                        <div className="h-8 w-px bg-black/5 dark:bg-white/5 mx-2" />
+                        <div className="relative w-48">
                             <select
                                 value={quickProjectId}
                                 onChange={(e) => setQuickProjectId(e.target.value)}
-                                className="w-full h-full bg-transparent border-none focus:ring-0 text-sm text-[var(--color-text-subtle)] cursor-pointer"
+                                className="w-full appearance-none bg-transparent border-none focus:ring-0 text-xs font-bold text-[var(--color-text-subtle)] cursor-pointer pr-6 py-2 uppercase tracking-wide text-right hover:text-[var(--color-primary)] transition-colors"
                             >
                                 <option value="" disabled>Select Project</option>
                                 {projects.map(p => <option key={p.id} value={p.id}>{p.title}</option>)}
                             </select>
+                            <span className="material-symbols-outlined absolute right-0 top-1/2 -translate-y-1/2 pointer-events-none text-[16px] opacity-30">arrow_drop_down</span>
                         </div>
                         <Button
-                            size="sm"
+                            size="lg"
                             variant="primary"
                             disabled={!quickTitle || !quickProjectId}
                             onClick={handleQuickAdd}
                             isLoading={quickSaving}
-                            className="shrink-0"
+                            className="rounded-xl shadow-lg shadow-indigo-500/20"
                         >
-                            <span className="material-symbols-outlined text-[18px]">add</span>
+                            Add
                         </Button>
                     </div>
                 )}
 
                 {/* Task List */}
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-3 min-h-[400px]">
                     {filteredAndSortedTasks.length === 0 ? (
-                        <div className="py-20 text-center flex flex-col items-center justify-center">
-                            <div className="bg-[var(--color-surface-hover)] p-6 rounded-full mb-4 animate-pulse">
-                                <span className="material-symbols-outlined text-4xl text-[var(--color-text-subtle)]">check</span>
+                        <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-white/30 dark:bg-white/[0.02] border-2 border-dashed border-black/5 dark:border-white/5 rounded-[32px] fade-in">
+                            <div className="size-24 bg-gradient-to-br from-[var(--color-primary)]/10 to-transparent rounded-full flex items-center justify-center mb-6 ring-8 ring-[var(--color-primary)]/5">
+                                <span className="material-symbols-outlined text-5xl text-[var(--color-primary)] animate-pulse-slow">check_circle</span>
                             </div>
-                            <h3 className="text-xl font-bold text-[var(--color-text-main)] mb-2">All Caught Up!</h3>
-                            <p className="text-[var(--color-text-muted)] max-w-sm mx-auto">
-                                No tasks found matching your current filters. Enjoy your free time or create a new task.
+                            <h3 className="text-2xl font-bold text-[var(--color-text-main)] mb-2">All Caught Up!</h3>
+                            <p className="text-[var(--color-text-muted)] max-w-sm font-medium opacity-70">
+                                No tasks found matching your current filters. Enjoy your free time or add a new task to get started.
                             </p>
                         </div>
                     ) : (
-                        filteredAndSortedTasks.map(task => (
-                            <div
-                                key={task.id}
-                                onClick={() => navigate(`/project/${task.projectId}/tasks/${task.id}${task.tenantId ? `?tenant=${task.tenantId}` : ''}`)}
-                                className="group bg-[var(--color-surface-paper)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] rounded-xl p-4 flex items-center gap-4 cursor-pointer transition-all shadow-sm hover:shadow-md relative overflow-hidden"
-                            >
-                                {/* Left Checkbox */}
-                                <button
-                                    onClick={(e) => handleToggle(e, task.id, task.isCompleted)}
+                        <div className="grid grid-cols-1 gap-3">
+                            {filteredAndSortedTasks.map(task => (
+                                <div
+                                    key={task.id}
+                                    onClick={() => navigate(`/project/${task.projectId}/tasks/${task.id}${task.tenantId ? `?tenant=${task.tenantId}` : ''}`)}
                                     className={`
-                                        flex-shrink-0 size-6 rounded-lg border-2 flex items-center justify-center transition-all duration-300 z-10
+                                        group relative flex flex-col md:flex-row md:items-center gap-4 p-5 rounded-[24px] border transition-all duration-300 cursor-pointer
                                         ${task.isCompleted
-                                            ? 'bg-green-500 border-green-500 text-white shadow-sm shadow-green-500/20 scale-105'
-                                            : 'border-[var(--color-text-subtle)]/30 text-transparent hover:border-green-500 hover:text-green-500/20 bg-transparent'}
+                                            ? 'bg-emerald-50/50 dark:bg-emerald-900/5 border-emerald-100 dark:border-emerald-500/10 opacity-70'
+                                            : 'bg-white dark:bg-white/[0.03] border-black/5 dark:border-white/5 hover:border-[var(--color-primary)]/30 hover:shadow-xl hover:shadow-black/5 hover:-translate-y-0.5'
+                                        }
                                     `}
                                 >
-                                    <span className="material-symbols-outlined text-[16px] font-bold">check</span>
-                                </button>
+                                    {/* Left: Checkbox & Info */}
+                                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                                        <button
+                                            onClick={(e) => handleToggle(e, task.id, task.isCompleted)}
+                                            className={`
+                                                flex-shrink-0 size-8 rounded-xl border-2 flex items-center justify-center transition-all duration-300 z-10
+                                                ${task.isCompleted
+                                                    ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/30 scale-105 rotate-3'
+                                                    : 'border-black/10 dark:border-white/10 text-transparent hover:border-emerald-500 hover:text-emerald-500/20 bg-transparent group-hover:scale-110'}
+                                            `}
+                                        >
+                                            <span className="material-symbols-outlined text-[20px] font-bold">check</span>
+                                        </button>
 
-                                {/* Task Details */}
-                                <div className="flex-1 min-w-0 z-10">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        {/* Project Badge */}
-                                        {task.projectId && (
-                                            <div
-                                                className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] text-[10px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wide cursor-pointer hover:text-[var(--color-primary)] transition-colors max-w-[150px] truncate"
-                                                onClick={(e) => { e.stopPropagation(); navigate(`/project/${task.projectId}`); }}
-                                            >
-                                                <span className="size-1.5 rounded-full bg-[var(--color-primary)] shrink-0"></span>
-                                                <span className="truncate">{projectNameById[task.projectId]}</span>
+                                        <div className="flex-1 min-w-0">
+                                            {/* Top Meta Row */}
+                                            <div className="flex items-center flex-wrap gap-2 mb-1.5">
+                                                {task.projectId && (
+                                                    <div
+                                                        className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/5 text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider hover:bg-[var(--color-primary)] hover:text-white transition-colors cursor-pointer"
+                                                        onClick={(e) => { e.stopPropagation(); navigate(`/project/${task.projectId}`); }}
+                                                    >
+                                                        <span className={`size-1.5 rounded-full bg-[var(--color-primary)] shrink-0 group-hover:bg-white`}></span>
+                                                        <span className="truncate max-w-[120px]">{projectNameById[task.projectId]}</span>
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
-                                        {task.priority === 'Urgent' && <Badge size="sm" variant="danger" className="animate-pulse">Urgent</Badge>}
+
+                                            {/* Title */}
+                                            <h4 className={`text-lg font-bold truncate transition-all duration-300 ${task.isCompleted ? 'text-[var(--color-text-muted)] line-through decoration-2 decoration-emerald-500/30' : 'text-[var(--color-text-main)] group-hover:text-[var(--color-primary)]'}`}>
+                                                {task.title}
+                                            </h4>
+
+                                            {/* Bottom Meta Row */}
+                                            <div className="flex flex-wrap items-center gap-4 mt-1.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                                                {task.dueDate && (
+                                                    <div className={`flex items-center gap-1 text-xs font-bold ${new Date(task.dueDate) < new Date() && !task.isCompleted ? 'text-rose-500' : 'text-[var(--color-text-muted)]'}`}>
+                                                        <span className="material-symbols-outlined text-[16px] filled">event</span>
+                                                        {new Date(task.dueDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                                                    </div>
+                                                )}
+
+                                                {task.priority && task.priority !== "Medium" && (
+                                                    <div className={`
+                                                        flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest
+                                                        ${task.priority === 'Urgent' ? 'text-rose-500' :
+                                                            task.priority === 'High' ? 'text-amber-500' :
+                                                                'text-slate-400'}
+                                                    `}>
+                                                        <span className="material-symbols-outlined text-[14px]">
+                                                            {task.priority === 'Urgent' ? 'error' : 'keyboard_double_arrow_up'}
+                                                        </span>
+                                                        {task.priority}
+                                                    </div>
+                                                )}
+
+                                                <div className="flex items-center gap-1 text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">
+                                                    <span className={`size-2 rounded-full ${task.status === 'Done' ? 'bg-emerald-500' :
+                                                            task.status === 'In Progress' ? 'bg-blue-500' :
+                                                                'bg-slate-300'
+                                                        }`} />
+                                                    {task.status}
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    <h3 className={`text-base font-semibold leading-snug transition-all ${task.isCompleted ? 'text-[var(--color-text-muted)] line-through decoration-2 decoration-[var(--color-surface-border)]' : 'text-[var(--color-text-main)] group-hover:text-[var(--color-primary)]'}`}>
-                                        {task.title}
-                                    </h3>
-
-                                    <div className="flex flex-wrap items-center gap-4 mt-2 text-xs text-[var(--color-text-muted)]">
-                                        {task.dueDate && (
-                                            <div className={`flex items-center gap-1 font-medium ${new Date(task.dueDate) < new Date() && !task.isCompleted ? 'text-rose-500' : ''}`}>
-                                                <span className="material-symbols-outlined text-[14px]">event</span>
-                                                {new Date(task.dueDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-                                            </div>
-                                        )}
-                                        {task.priority !== 'Urgent' && task.priority && (
-                                            <div className="flex items-center gap-1">
-                                                <span className={`size-1.5 rounded-full ${task.priority === 'High' ? 'bg-amber-500' : 'bg-slate-300'}`}></span>
-                                                {task.priority} Priority
-                                            </div>
-                                        )}
-                                        {task.status && (
-                                            <div className={`
-                                                flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all duration-300
-                                                ${task.status === 'Done' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' :
-                                                    task.status === 'In Progress' ? 'bg-blue-600/15 text-blue-400 border-blue-500/40 shadow-[0_0_8px_rgba(59,130,246,0.15)]' :
-                                                        task.status === 'Review' ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' :
-                                                            task.status === 'Open' || task.status === 'Todo' ? 'bg-violet-500/10 text-violet-400 border-violet-500/20' :
-                                                                task.status === 'Backlog' ? 'bg-slate-500/10 text-slate-400 border-slate-500/20 opacity-80' :
-                                                                    task.status === 'On Hold' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                                                                        task.status === 'Blocked' ? 'bg-rose-600/20 text-rose-500 border-rose-500/50 animate-pulse' :
-                                                                            'bg-slate-500/5 text-slate-400 border-slate-500/10'}
-                                            `}>
-                                                <span className="material-symbols-outlined text-[12px]">
-                                                    {task.status === 'Done' ? 'check_circle' :
-                                                        task.status === 'In Progress' ? 'sync' :
-                                                            task.status === 'Review' ? 'visibility' :
-                                                                task.status === 'Open' || task.status === 'Todo' ? 'play_circle' :
-                                                                    task.status === 'Backlog' ? 'inventory_2' :
-                                                                        task.status === 'On Hold' ? 'pause_circle' :
-                                                                            task.status === 'Blocked' ? 'dangerous' :
-                                                                                'circle'}
-                                                </span>
-                                                {task.status}
-                                            </div>
-                                        )}
+                                    {/* Right Action */}
+                                    <div className="flex items-center gap-4 md:pl-6 md:border-l border-black/5 dark:border-white/5 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-4 group-hover:translate-x-0">
+                                        <div className="size-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center text-[var(--color-text-main)] transition-all duration-300 group-hover:bg-[var(--color-primary)] group-hover:text-white group-hover:shadow-lg group-hover:shadow-[var(--color-primary)]/30 shrink-0">
+                                            <span className="material-symbols-outlined text-xl">arrow_forward</span>
+                                        </div>
                                     </div>
                                 </div>
-
-                                {/* Hover Action */}
-                                <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2 z-10">
-                                    <span className="text-xs font-semibold text-[var(--color-primary)]">Open</span>
-                                    <div className="size-8 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center text-[var(--color-primary)]">
-                                        <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                                    </div>
-                                </div>
-
-                                {/* Background Accents */}
-                                <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-white dark:from-[#1C1C1E] to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                            </div>
-                        ))
+                            ))}
+                        </div>
                     )}
                 </div>
             </div>

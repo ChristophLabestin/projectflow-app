@@ -235,7 +235,7 @@ If you reference specific projects or tasks, use their exact titles.
 Rate your confidence in the answer as Low, Medium, or High.`;
 
         const response = await ai.models.generateContent({
-            model: "gemini-2.0-flash-exp",
+            model: "gemini-3-pro-preview",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",

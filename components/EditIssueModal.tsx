@@ -19,6 +19,8 @@ export const EditIssueModal: React.FC<EditIssueModalProps> = ({ issue, isOpen, o
     const [description, setDescription] = useState(issue.description || '');
     const [assigneeIds, setAssigneeIds] = useState<string[]>(issue.assigneeIds || (issue.assigneeId ? [issue.assigneeId] : []));
     const [assignedGroupIds, setAssignedGroupIds] = useState<string[]>(issue.assignedGroupIds || []);
+    const [startDate, setStartDate] = useState(issue.startDate || '');
+    const [dueDate, setDueDate] = useState(issue.dueDate || issue.scheduledDate || '');
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -27,6 +29,8 @@ export const EditIssueModal: React.FC<EditIssueModalProps> = ({ issue, isOpen, o
             setDescription(issue.description || '');
             setAssigneeIds(issue.assigneeIds || (issue.assigneeId ? [issue.assigneeId] : []));
             setAssignedGroupIds(issue.assignedGroupIds || []);
+            setStartDate(issue.startDate || '');
+            setDueDate(issue.dueDate || issue.scheduledDate || '');
         }
     }, [isOpen, issue]);
 
@@ -38,7 +42,9 @@ export const EditIssueModal: React.FC<EditIssueModalProps> = ({ issue, isOpen, o
                 title,
                 description,
                 assigneeIds,
-                assignedGroupIds
+                assignedGroupIds,
+                startDate: startDate || undefined,
+                dueDate: dueDate || undefined
             }, issue.projectId, issue.tenantId);
             onUpdate();
             onClose();
@@ -97,6 +103,28 @@ export const EditIssueModal: React.FC<EditIssueModalProps> = ({ issue, isOpen, o
                                 onChange={setAssigneeIds}
                                 onGroupChange={setAssignedGroupIds}
                             />
+                        </div>
+
+                        {/* Dates */}
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] ml-1">Start Date</label>
+                                <input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="w-full px-3 py-2 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] text-sm text-[var(--color-text-main)] outline-none focus:border-[var(--color-accent)] transition-colors"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                                <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] ml-1">Due Date</label>
+                                <input
+                                    type="date"
+                                    value={dueDate}
+                                    onChange={(e) => setDueDate(e.target.value)}
+                                    className="w-full px-3 py-2 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] text-sm text-[var(--color-text-main)] outline-none focus:border-[var(--color-accent)] transition-colors"
+                                />
+                            </div>
                         </div>
                     </div>
 

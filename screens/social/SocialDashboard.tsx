@@ -1,16 +1,21 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { subscribeSocialPosts, subscribeCampaigns } from '../../services/dataService';
-import { SocialPost, SocialCampaign } from '../../types';
+import { subscribeSocialPosts, subscribeCampaigns, subscribeProjectIdeas } from '../../services/dataService';
+import { SocialPost, SocialCampaign, Idea } from '../../types';
 import { DonutChart } from '../../components/ui/charts/DonutChart';
 import { BarChart } from '../../components/ui/charts/BarChart';
 import { subDays, format, isSameDay } from 'date-fns';
+import { PlatformIcon } from './components/PlatformIcon';
+import { DashboardIdeationCard } from './components/DashboardIdeationCard';
+import { DashboardCampaignCard } from './components/DashboardCampaignCard';
+import { Button } from '../../components/ui/Button';
 
 export const SocialDashboard = () => {
     const { id: projectId } = useParams<{ id: string }>();
     const [posts, setPosts] = useState<SocialPost[]>([]);
     const [campaigns, setCampaigns] = useState<SocialCampaign[]>([]);
+    const [ideas, setIdeas] = useState<Idea[]>([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -18,12 +23,17 @@ export const SocialDashboard = () => {
 
         const unsubPosts = subscribeSocialPosts(projectId, (data) => setPosts(data));
         const unsubCampaigns = subscribeCampaigns(projectId, (data) => setCampaigns(data));
+        const unsubIdeas = subscribeProjectIdeas(projectId, (data) => {
+            // Filter only social ideas
+            setIdeas(data.filter(i => i.campaignType === 'social' || i.type === 'Social' || (i.type === 'Marketing' && i.stage === 'Ideation')));
+        });
 
         setLoading(false);
 
         return () => {
             unsubPosts();
             unsubCampaigns();
+            unsubIdeas();
         };
     }, [projectId]);
 
@@ -31,21 +41,23 @@ export const SocialDashboard = () => {
         totalPosts: posts.length,
         scheduled: posts.filter(p => p.status === 'Scheduled').length,
         published: posts.filter(p => p.status === 'Published').length,
+        pendingIdeas: ideas.filter(i => i.stage === 'Ideation' || i.stage === 'Drafting').length,
         activeCampaigns: campaigns.filter(c => c.status === 'Active' || c.status === 'Planning').length
     };
 
     // Platform Distribution (Donut Chart)
     const platformData = [
-        { label: 'Instagram', value: posts.filter(p => p.platform === 'Instagram').length, color: '#E1306C' },
-        { label: 'Facebook', value: posts.filter(p => p.platform === 'Facebook').length, color: '#1877F2' },
-        { label: 'LinkedIn', value: posts.filter(p => p.platform === 'LinkedIn').length, color: '#0A66C2' },
-        { label: 'X', value: posts.filter(p => p.platform === 'X').length, color: '#000000' },
-        { label: 'TikTok', value: posts.filter(p => p.platform === 'TikTok').length, color: '#00F2EA' }
+        { label: 'Instagram', value: posts.filter(p => p.platforms?.includes('Instagram') || p.platform === 'Instagram').length, color: '#E1306C' },
+        { label: 'Facebook', value: posts.filter(p => p.platforms?.includes('Facebook') || p.platform === 'Facebook').length, color: '#1877F2' },
+        { label: 'LinkedIn', value: posts.filter(p => p.platforms?.includes('LinkedIn') || p.platform === 'LinkedIn').length, color: '#0A66C2' },
+        { label: 'X', value: posts.filter(p => p.platforms?.includes('X') || p.platform === 'X').length, color: '#000000' },
+        { label: 'TikTok', value: posts.filter(p => p.platforms?.includes('TikTok') || p.platform === 'TikTok').length, color: '#00F2EA' },
+        { label: 'YouTube', value: posts.filter(p => p.platforms?.includes('YouTube') || p.platform === 'YouTube').length, color: '#FF0000' }
     ].filter(d => d.value > 0);
 
     // Activity (Bar Chart)
-    const activityData = Array.from({ length: 30 }, (_, i) => {
-        const date = subDays(new Date(), 29 - i); // Last 30 days
+    const activityData = Array.from({ length: 14 }, (_, i) => {
+        const date = subDays(new Date(), 13 - i); // Last 14 days for more density
         const count = posts.filter(p => {
             const pDate = p.scheduledFor ? new Date(p.scheduledFor) : p.publishedAt ? new Date(p.publishedAt) : null;
             return pDate && isSameDay(pDate, date);
@@ -53,178 +65,363 @@ export const SocialDashboard = () => {
         return { label: format(date, 'MMM d'), value: count };
     });
 
+    const reviewsNeeded = posts.filter(p => p.status === 'In Review');
+
     const upcomingPosts = posts
         .filter(p => p.status === 'Scheduled')
         .sort((a, b) => new Date(a.scheduledFor!).getTime() - new Date(b.scheduledFor!).getTime())
-        .slice(0, 3);
+        .slice(0, 4);
 
     const activeCampaignsList = campaigns
         .filter(c => c.status === 'Active' || c.status === 'Planning')
+        .sort((a, b) => (b.status === 'Active' ? 1 : 0) - (a.status === 'Active' ? 1 : 0))
         .slice(0, 3);
 
+    const missionControlIdeas = ideas
+        .filter(i => i.stage === 'Ideation' || i.stage === 'Drafting')
+        .slice(0, 4);
+
+    const pendingReviewIdeas = ideas.filter(i => i.stage === 'PendingReview' && i.type === 'Social');
+
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <span className="material-symbols-outlined animate-spin text-3xl text-[var(--color-primary)]">progress_activity</span>
+            </div>
+        );
+    }
+
     return (
-        <div className="space-y-8">
-            <div className="flex justify-between items-center">
+        <div className="space-y-8 pb-20">
+            {/* ... Header & Stats ... */}
+            {/* Header Area */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
                 <div>
-                    <h1 className="h2 mb-2">Social Dashboard</h1>
-                    <p className="text-[var(--color-text-muted)]">Overview of your social media performance.</p>
+                    <h1 className="text-3xl font-extrabold tracking-tight text-[var(--color-text-main)] mb-1">Social Command</h1>
+                    <p className="text-[var(--color-text-muted)] text-base">
+                        Overview of your creative pipeline and performance.
+                    </p>
                 </div>
-                <Link
-                    to={`/project/${projectId}/social/create`}
-                    className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:bg-[var(--color-primary)]/90 rounded-lg text-sm font-semibold transition-colors shadow-sm"
-                >
-                    <span className="material-symbols-outlined text-[18px]">add</span>
-                    New Post
-                </Link>
-            </div>
-
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard label="Total Posts" value={stats.totalPosts} icon="post" color="bg-blue-500" />
-                <StatCard label="Scheduled" value={stats.scheduled} icon="calendar_clock" color="bg-amber-500" />
-                <StatCard label="Published" value={stats.published} icon="check_circle" color="bg-green-500" />
-                <StatCard label="Active Campaigns" value={stats.activeCampaigns} icon="flag" color="bg-purple-500" />
-            </div>
-
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-[var(--color-surface-card)] rounded-xl border border-[var(--color-surface-border)] p-6">
-                    <h3 className="text-lg font-bold mb-6">Platform Distribution</h3>
-                    <div className="flex justify-center">
-                        <DonutChart data={platformData} />
-                    </div>
-                </div>
-                <div className="bg-[var(--color-surface-card)] rounded-xl border border-[var(--color-surface-border)] p-6">
-                    <h3 className="text-lg font-bold mb-6">30-Day Activity</h3>
-                    <div className="mt-4">
-                        <BarChart data={activityData} />
-                    </div>
+                <div className="flex items-center gap-3">
+                    <Button
+                        variant="ghost"
+                        className="bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)]"
+                        onClick={() => window.open(`/project/${projectId}/ideas?pipeline=Social`, '_self')}
+                        icon={<span className="material-symbols-outlined">lightbulb</span>}
+                    >
+                        Ideation Pipeline
+                    </Button>
+                    <Link
+                        to={`/project/${projectId}/social/create`}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] rounded-xl text-sm font-bold transition-all"
+                    >
+                        <span className="material-symbols-outlined text-[20px]">add</span>
+                        Create Post
+                    </Link>
                 </div>
             </div>
 
-            {/* Action Items (Approvals) */}
-            {posts.some(p => p.status === 'In Review') && (
-                <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-xl p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-amber-100 dark:bg-amber-900/30 text-amber-600 rounded-lg">
-                                <span className="material-symbols-outlined">gavel</span>
+            {/* Stats Overview */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <ModernStatCard
+                    label="Total Content"
+                    value={stats.totalPosts}
+                    icon="auto_awesome_motion"
+                    color="from-blue-500 to-indigo-600"
+                    trend="+12% activity"
+                />
+                <ModernStatCard
+                    label="Scheduled"
+                    value={stats.scheduled}
+                    icon="event_available"
+                    color="from-amber-400 to-orange-500"
+                    trend="Ready to publish"
+                />
+                <ModernStatCard
+                    label="Active Campaigns"
+                    value={stats.activeCampaigns}
+                    icon="campaign"
+                    color="from-rose-500 to-pink-600"
+                    trend="Live now"
+                />
+                <ModernStatCard
+                    label="Ideation Backlog"
+                    value={stats.pendingIdeas}
+                    icon="architecture"
+                    color="from-emerald-400 to-teal-500"
+                    trend="New concepts"
+                />
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+
+                {/* LEFT COLUMN: Main Feed (lnbound Pipeline & Activity) - Span 8 */}
+                <div className="xl:col-span-8 space-y-10">
+
+                    {/* Inbound Pipeline Section */}
+                    <div className="space-y-6">
+                        <div className="flex items-center gap-3 pb-2 border-b border-[var(--color-surface-border)]">
+                            <h2 className="text-lg font-black text-[var(--color-text-main)] uppercase tracking-wide flex items-center gap-2">
+                                <span className="material-symbols-outlined text-emerald-500">all_inclusive</span>
+                                Inbound Pipeline
+                            </h2>
+                        </div>
+
+                        {/* 1. Campaign Concepts (High Priority) */}
+                        {pendingReviewIdeas.length > 0 && (
+                            <div className="space-y-4">
+                                <div className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider pl-1">Ready for Review</div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {pendingReviewIdeas.map(idea => (
+                                        <Link
+                                            key={idea.id}
+                                            to={`/project/${projectId}/social/review/${idea.id}`}
+                                            className="group relative bg-[var(--color-surface-card)] rounded-2xl border border-[var(--color-surface-border)] hover:border-emerald-500/50 p-5 transition-all hover:shadow-lg flex flex-col gap-3 overflow-hidden"
+                                        >
+                                            <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                                                <span className="material-symbols-outlined text-5xl text-emerald-500 -rotate-12 translate-x-2 -translate-y-2">rocket_launch</span>
+                                            </div>
+
+                                            <div className="flex items-center gap-3 relative z-10">
+                                                <div className="size-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center shrink-0">
+                                                    <span className="material-symbols-outlined text-lg">lightbulb</span>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider mb-0.5">Strategy Review</div>
+                                                    <h3 className="font-bold text-[var(--color-text-main)] truncate group-hover:text-emerald-600 transition-colors">{idea.title}</h3>
+                                                </div>
+                                            </div>
+
+                                            <div className="mt-auto pt-3 flex items-center justify-between text-xs font-bold text-emerald-600 relative z-10 pl-11">
+                                                <span>Review Strategy</span>
+                                                <span className="material-symbols-outlined text-base group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="text-lg font-bold text-amber-900 dark:text-amber-100">Approvals Needed</h3>
-                                <p className="text-sm text-amber-700 dark:text-amber-300">
-                                    {posts.filter(p => p.status === 'In Review').length} posts waiting for review
-                                </p>
+                        )}
+
+                        {/* 2. Raw Ideas (Lower Priority) */}
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between pl-1">
+                                <div className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Raw Ideas</div>
+                                <Link to={`/project/${projectId}/ideas?pipeline=Social`} className="text-[10px] font-bold text-[var(--color-primary)] hover:underline">View All Pipeline</Link>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {missionControlIdeas.length === 0 ? (
+                                    <div className="md:col-span-2 p-8 text-center bg-[var(--color-surface-card)] rounded-2xl border-2 border-dashed border-[var(--color-surface-border)]">
+                                        <p className="text-xs font-medium text-[var(--color-text-muted)]">Pipeline empty. Start brainstorming!</p>
+                                    </div>
+                                ) : (
+                                    missionControlIdeas.map(idea => (
+                                        <DashboardIdeationCard key={idea.id} idea={idea} projectId={projectId!} />
+                                    ))
+                                )}
                             </div>
                         </div>
-                        <Link to="approvals" className="text-sm font-semibold text-amber-700 hover:text-amber-800 hover:underline">
-                            Review All
-                        </Link>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {posts.filter(p => p.status === 'In Review').slice(0, 3).map(post => (
-                            <div key={post.id} className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-amber-100 dark:border-amber-900/50 shadow-sm flex flex-col">
-                                <div className="flex justify-between items-start mb-2">
-                                    <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${post.platform === 'Instagram' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700'}`}>
-                                        {post.platform}
-                                    </span>
-                                    <span className="text-[10px] text-[var(--color-text-muted)]">
-                                        {post.createdBy ? 'By Unknown' : 'Draft'} {/* Ideally fetch user name */}
-                                    </span>
+                    {/* Content Velocity Section */}
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between pb-2 border-b border-[var(--color-surface-border)]">
+                            <h2 className="text-lg font-black text-[var(--color-text-main)] uppercase tracking-wide flex items-center gap-2">
+                                <span className="material-symbols-outlined text-blue-500">monitoring</span>
+                                Content Velocity
+                            </h2>
+                        </div>
+                        <div className="bg-[var(--color-surface-card)] rounded-2xl border border-[var(--color-surface-border)] p-6 h-[260px]">
+                            <BarChart data={activityData} />
+                        </div>
+                    </div>
+
+                </div>
+
+                {/* RIGHT COLUMN: Action Center (Sidebar) - Span 4 */}
+                <div className="xl:col-span-4 space-y-8">
+
+                    {/* Action Center Header */}
+                    <div className="pb-2 border-b border-[var(--color-surface-border)]">
+                        <h2 className="text-lg font-black text-[var(--color-text-main)] uppercase tracking-wide flex items-center gap-2">
+                            <span className="material-symbols-outlined text-amber-500">gavel</span>
+                            Action Center
+                        </h2>
+                    </div>
+
+                    {/* 1. Review Queue */}
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Pending Approvals</h3>
+                            <Link to="approvals" className="text-[10px] font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1">
+                                View All <span className="material-symbols-outlined text-[12px]">arrow_forward</span>
+                            </Link>
+                        </div>
+
+                        <div className="bg-[var(--color-surface-card)] rounded-2xl border border-[var(--color-surface-border)] overflow-hidden shadow-sm">
+                            {reviewsNeeded.length === 0 ? (
+                                <div className="p-8 text-center bg-[var(--color-surface-bg)]/50">
+                                    <span className="material-symbols-outlined text-3xl mb-2 text-emerald-500/50">verified</span>
+                                    <p className="text-xs font-medium text-[var(--color-text-muted)]">All caught up!</p>
                                 </div>
-                                <p className="text-sm font-medium line-clamp-2 mb-3 flex-1">{post.content.caption}</p>
-                                <div className="flex items-center justify-between mt-auto pt-3 border-t border-slate-100 dark:border-slate-700">
-                                    <span className="text-xs text-[var(--color-text-muted)]">Created {new Date(post.createdAt?.toDate ? post.createdAt.toDate() : post.createdAt).toLocaleDateString()}</span>
+                            ) : (
+                                <div className="divide-y divide-[var(--color-surface-border)]">
+                                    {reviewsNeeded.slice(0, 4).map(post => (
+                                        <Link
+                                            key={post.id}
+                                            to={`/project/${projectId}/social/${post.campaignId ? `campaigns/${post.campaignId}` : `posts/edit/${post.id}`}`}
+                                            className="flex items-center gap-3 p-3 hover:bg-[var(--color-surface-hover)] transition-colors group"
+                                        >
+                                            <div className="size-8 shrink-0">
+                                                <PlatformIcon platform={post.platform} className="size-full" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between mb-0.5">
+                                                    <span className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase">{post.format}</span>
+                                                    <span className="text-[9px] font-bold text-amber-600 bg-amber-100 dark:bg-amber-900/30 px-1.5 rounded">Review</span>
+                                                </div>
+                                                <p className="text-xs font-bold text-[var(--color-text-main)] truncate opacity-90 group-hover:text-[var(--color-primary)] transition-colors">
+                                                    {post.content.caption}
+                                                </p>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* 2. Upcoming Schedule */}
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Up Next</h3>
+                            <Link to="calendar" className="text-[10px] font-bold text-[var(--color-primary)] hover:underline">Calendar</Link>
+                        </div>
+
+                        <div className="space-y-2">
+                            {upcomingPosts.length === 0 ? (
+                                <div className="p-6 text-center bg-[var(--color-surface-card)] rounded-xl border border-[var(--color-surface-border)] border-dashed">
+                                    <p className="text-xs text-[var(--color-text-muted)] italic">Queue empty.</p>
+                                </div>
+                            ) : (
+                                upcomingPosts.map(post => {
+                                    const date = new Date(post.scheduledFor!);
+                                    return (
+                                        <div key={post.id} className="flex gap-3 p-3 bg-[var(--color-surface-card)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] rounded-xl transition-all items-center">
+                                            <div className="flex flex-col items-center justify-center w-10 h-10 bg-[var(--color-surface-bg)] rounded-lg border border-[var(--color-surface-border)] shrink-0">
+                                                <span className="text-[10px] font-black text-[var(--color-text-main)] leading-none">{format(date, 'd')}</span>
+                                                <span className="text-[8px] font-bold text-[var(--color-text-muted)] uppercase">{format(date, 'MMM')}</span>
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <div className="flex items-center gap-2 mb-0.5">
+                                                    <div className="size-3"><PlatformIcon platform={post.platform} /></div>
+                                                    <span className="text-[9px] font-bold text-[var(--color-text-muted)]">{format(date, 'HH:mm')}</span>
+                                                </div>
+                                                <p className="text-xs font-medium text-[var(--color-text-main)] truncate">{post.content.caption}</p>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
+
+                    {/* 3. Active Campaigns */}
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Live Campaigns</h3>
+                            <Link to="campaigns" className="text-[10px] font-bold text-[var(--color-primary)] hover:underline">View All</Link>
+                        </div>
+
+                        <div className="space-y-3">
+                            {activeCampaignsList.length === 0 ? (
+                                <div className="p-6 text-center bg-[var(--color-surface-card)] rounded-xl border border-[var(--color-surface-border)]">
+                                    <p className="text-xs text-[var(--color-text-muted)]">No active campaigns.</p>
+                                </div>
+                            ) : (
+                                activeCampaignsList.map(campaign => (
                                     <Link
-                                        to={`${post.id}`} // Direct link to edit/review
-                                        className="text-xs font-semibold text-amber-600 hover:text-amber-700 flex items-center gap-1"
+                                        key={campaign.id}
+                                        to={`/project/${projectId}/social/campaigns/${campaign.id}`}
+                                        className="block p-4 bg-[var(--color-surface-card)] hover:border-indigo-500/50 border border-[var(--color-surface-border)] rounded-xl transition-all group"
                                     >
-                                        Review <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                                        <div className="flex items-start justify-between mb-2">
+                                            <div className="flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-indigo-500 text-lg">flag</span>
+                                                <h4 className="text-sm font-bold text-[var(--color-text-main)] truncate max-w-[150px] group-hover:text-indigo-500 transition-colors">{campaign.name}</h4>
+                                            </div>
+                                            {campaign.status === 'Active' && <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />}
+                                        </div>
+                                        <div className="flex items-center gap-3 text-[10px] text-[var(--color-text-muted)]">
+                                            <span className="flex items-center gap-1">
+                                                <span className="material-symbols-outlined text-[12px]">calendar_month</span>
+                                                {(campaign.phases || []).length} Phases
+                                            </span>
+                                        </div>
                                     </Link>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Upcoming Posts */}
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="h4">Upcoming Posts</h2>
-                        <Link to="calendar" className="text-sm text-[var(--color-primary)] hover:underline">View Calendar</Link>
+                                ))
+                            )}
+                        </div>
                     </div>
 
-                    <div className="space-y-3">
-                        {upcomingPosts.length === 0 && (
-                            <div className="p-6 text-center text-[var(--color-text-muted)] bg-[var(--color-surface-card)] rounded-xl border border-[var(--color-surface-border)]">
-                                No upcoming posts scheduled.
-                            </div>
-                        )}
-                        {upcomingPosts.map(post => (
-                            <div key={post.id} className="flex gap-4 p-4 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl">
-                                <div className="flex flex-col items-center justify-center w-12 h-12 bg-[var(--color-surface-hover)] rounded-lg text-xs font-bold shrink-0">
-                                    <span className="text-[var(--color-primary)]">{new Date(post.scheduledFor!).getDate()}</span>
-                                    <span className="text-[var(--color-text-muted)] uppercase">{new Date(post.scheduledFor!).toLocaleString('default', { month: 'short' })}</span>
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <span className={`text-[10px] uppercase font-bold px-1.5 py-0.5 rounded ${post.platform === 'Instagram' ? 'bg-pink-100 text-pink-700' : 'bg-blue-100 text-blue-700'
-                                            }`}>
-                                            {post.platform}
+                    {/* 4. Platform Health (Mini) */}
+                    <div className="bg-[var(--color-surface-card)] rounded-xl border border-[var(--color-surface-border)] p-4 space-y-3">
+                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Platform Mix</h3>
+                        {platformData.slice(0, 4).map((item, idx) => {
+                            const total = platformData.reduce((acc, curr) => acc + curr.value, 0);
+                            const percentage = total > 0 ? (item.value / total) * 100 : 0;
+                            return (
+                                <div key={idx} className="space-y-1">
+                                    <div className="flex items-center justify-between text-[10px]">
+                                        <span className="font-bold flex items-center gap-1.5">
+                                            <div className="size-3"><PlatformIcon platform={item.label as any} className="size-full" /></div>
+                                            {item.label}
                                         </span>
-                                        <span className="text-xs text-[var(--color-text-muted)]">{new Date(post.scheduledFor!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                        <span className="text-[var(--color-text-muted)]">{Math.round(percentage)}%</span>
                                     </div>
-                                    <p className="text-sm font-medium line-clamp-1">{post.content.caption}</p>
+                                    <div className="h-1 w-full bg-[var(--color-surface-hover)] rounded-full overflow-hidden">
+                                        <div className="h-full rounded-full" style={{ width: `${percentage}%`, backgroundColor: item.color }} />
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Active Campaigns */}
-                <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="h4">Active Campaigns</h2>
-                        <Link to="campaigns" className="text-sm text-[var(--color-primary)] hover:underline">View All</Link>
+                            );
+                        })}
                     </div>
 
-                    <div className="space-y-3">
-                        {activeCampaignsList.length === 0 && (
-                            <div className="p-6 text-center text-[var(--color-text-muted)] bg-[var(--color-surface-card)] rounded-xl border border-[var(--color-surface-border)]">
-                                No active campaigns.
-                            </div>
-                        )}
-                        {activeCampaignsList.map(campaign => (
-                            <div key={campaign.id} className="p-4 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl">
-                                <div className="flex justify-between items-start mb-2">
-                                    <h3 className="font-bold">{campaign.name}</h3>
-                                    <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full">{campaign.status}</span>
-                                </div>
-                                <p className="text-sm text-[var(--color-text-muted)] line-clamp-1">{campaign.goal}</p>
-                                <div className="mt-3 flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
-                                    <span className="material-symbols-outlined text-[14px]">calendar_today</span>
-                                    <span>Ends {new Date(campaign.endDate || '').toLocaleDateString()}</span>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
                 </div>
             </div>
         </div>
     );
 };
 
-const StatCard = ({ label, value, icon, color }: any) => (
-    <div className="bg-[var(--color-surface-card)] p-5 rounded-xl border border-[var(--color-surface-border)] flex items-center gap-4">
-        <div className={`size-12 rounded-full flex items-center justify-center text-white ${color}`}>
-            <span className="material-symbols-outlined">{icon}</span>
-        </div>
-        <div>
-            <div className="text-2xl font-bold">{value}</div>
-            <div className="text-xs text-[var(--color-text-muted)] font-medium uppercase tracking-wider">{label}</div>
+interface ModernStatCardProps {
+    label: string;
+    value: number | string;
+    icon: string;
+    color: string;
+    trend?: string;
+}
+
+const ModernStatCard: React.FC<ModernStatCardProps> = ({ label, value, icon, color, trend }) => (
+    <div className="group bg-[var(--color-surface-card)] p-6 rounded-2xl border border-[var(--color-surface-border)] hover:border-[var(--color-primary)]/50 hover:shadow-xl transition-all relative overflow-hidden">
+        {/* Background Accent */}
+        <div className={`absolute top-0 right-0 w-32 h-32 opacity-10 bg-gradient-to-br ${color} rounded-full -mr-16 -mt-16 group-hover:scale-110 transition-transform`} />
+
+        <div className="relative z-10">
+            <div className={`size-12 rounded-xl flex items-center justify-center text-white bg-gradient-to-br ${color} shadow-lg shadow-${color.split('-')[1]}-500/20 mb-4`}>
+                <span className="material-symbols-outlined text-[28px]">{icon}</span>
+            </div>
+            <div className="flex items-end justify-between">
+                <div>
+                    <div className="text-3xl font-black text-[var(--color-text-main)] mb-1 tracking-tight">{value}</div>
+                    <div className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{label}</div>
+                </div>
+            </div>
+            {trend && (
+                <div className="mt-4 pt-4 border-t border-[var(--color-surface-border)] flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[14px] text-emerald-500">trending_up</span>
+                    <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{trend}</span>
+                </div>
+            )}
         </div>
     </div>
 );

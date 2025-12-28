@@ -1,10 +1,13 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { Idea, MindmapGrouping, Project, Task, ProjectBlueprint, ProjectRisk } from "../types";
+import { Idea, MindmapGrouping, Project, Task, ProjectBlueprint, ProjectRisk, SocialCampaign } from "../types";
 import { auth } from "./firebase";
-import { getAIUsage, incrementAIUsage } from "./dataService";
+import { getAIUsage, incrementAIUsage, incrementIdeaAIUsage, incrementCampaignAIUsage } from "./dataService";
 
 // Helper to check and track usage with retry logic
-const runWithTokenCheck = async (operation: (ai: any) => Promise<any>): Promise<any> => {
+const runWithTokenCheck = async (
+    operation: (ai: any) => Promise<any>,
+    tracking?: { ideaId?: string; projectId?: string; campaignId?: string; tenantId?: string }
+): Promise<any> => {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
 
@@ -26,6 +29,13 @@ const runWithTokenCheck = async (operation: (ai: any) => Promise<any>): Promise<
             const tokens = result.usageMetadata?.totalTokenCount || 0;
             if (tokens > 0) {
                 await incrementAIUsage(user.uid, tokens);
+
+                // Track per idea/campaign
+                if (tracking?.ideaId && tracking?.projectId) {
+                    await incrementIdeaAIUsage(tracking.ideaId, tokens, tracking.projectId, tracking.tenantId);
+                } else if (tracking?.campaignId) {
+                    await incrementCampaignAIUsage(tracking.campaignId, tokens, tracking.tenantId);
+                }
             }
 
             return result;
@@ -81,7 +91,7 @@ export const generateBrainstormIdeas = async (prompt: string): Promise<Idea[]> =
         };
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-pro-preview",
             contents: `Generate 4-6 specific, actionable project ideas based on this goal: "${prompt}". 
             Keep descriptions concise (under 20 words).`,
             config: {
@@ -116,7 +126,7 @@ export const generateBrainstormIdeas = async (prompt: string): Promise<Idea[]> =
 export const generateProjectDescription = async (projectName: string, context: string): Promise<string> => {
     try {
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-pro-preview",
             contents: `Write a professional, concise (1-2 sentences) project description for a project named "${projectName}". 
             Context: ${context || "A general software or business initiative."}.`,
         }));
@@ -148,7 +158,7 @@ export const generateProjectReport = async (project: Project, tasks: Task[]): Pr
         Keep it under 180 words. Provide a short risk/next steps section.
         `;
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-pro-preview",
             contents: prompt,
             config: { temperature: 0.4 }
         }));
@@ -198,7 +208,7 @@ export const generateProjectIdeasAI = async (project: Project, tasks: Task[], ty
         Keep descriptions under 18 words.
         `;
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-pro-preview",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -251,7 +261,7 @@ export const suggestMindmapGrouping = async (project: Project, ideas: Idea[]): P
             .join('\n');
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-pro-preview",
             contents: `You are an AI mind - mapping assistant.Group the provided project ideas into 3 - 6 concise branches with short names(1 - 2 words).
             Project: "${project.title}".
                 Ideas(id: title — description):
@@ -319,7 +329,7 @@ export const generateProjectBlueprint = async (prompt: string): Promise<ProjectB
         };
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.0-flash",
+            model: "gemini-3-pro-preview",
             contents: `Create a comprehensive project blueprint for this idea: "${prompt}". 
             Flesh out the name, a compelling description, identify the target audience,
             plan 3 - 5 major milestones, and list 5 - 8 initial setup and development tasks.`,
@@ -360,7 +370,7 @@ export const analyzeProjectRisks = async (context: string): Promise<ProjectRisk[
         };
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.0-flash",
+            model: "gemini-3-pro-preview",
             contents: `Analyze the potential project risks for this project description: "${context}".
             Identify 4 - 6 specific risks, assess their impact and probability, and suggest a practical mitigation strategy for each.`,
             config: {
@@ -415,7 +425,7 @@ export const generateSWOTAnalysisAI = async (idea: any): Promise<{ strengths: st
         Provide 3 - 5 NEW, concise bullet points for each category based on the description and keywords.
         `;
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-pro-preview",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -451,20 +461,22 @@ export const refineIdeaAI = async (idea: any, history: { role: string, content: 
         Be concise, helpful, and conversational.Do not just list generic advice; be specific to this idea.
         `;
 
-        const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
-        const chat = model.startChat({
-            history: [
-                { role: "user", parts: [{ text: context }] },
-                { role: "model", parts: [{ text: "Understood. I am ready to help refine this idea. What specific aspect would you like to discuss, or should I start with some initial thoughts?" }] },
-                ...history.map(msg => ({
-                    role: msg.role === 'ai' ? 'model' : 'user',
-                    parts: [{ text: msg.content }]
-                }))
-            ]
-        });
+        const contents = [
+            { role: "user", parts: [{ text: context }] },
+            { role: "model", parts: [{ text: "Understood. I am ready to help refine this idea. What specific aspect would you like to discuss, or should I start with some initial thoughts?" }] },
+            ...history.map(msg => ({
+                role: msg.role === 'ai' ? 'model' : 'user',
+                parts: [{ text: msg.content }]
+            })),
+            { role: "user", parts: [{ text: "Please provide your next response based on the latest input." }] }
+        ];
 
-        const result = await runWithTokenCheck((_ai) => chat.sendMessage("Please provide your next response based on the latest input."));
-        return result.response.text();
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: contents
+        }));
+
+        return response.text || "";
     } catch (error) {
         console.error("Gemini Idea Refinement Error:", error);
         throw error;
@@ -533,7 +545,7 @@ Keep the HTML clean. Use only h1, h2, h3, p, ul, li, strong, em tags. No div or 
 `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-pro-preview",
             contents: prompt,
             config: {
                 temperature: 0.7,
@@ -564,7 +576,7 @@ export const generateMagicalDraft = async (title: string, type: string): Promise
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-pro-preview",
             contents: prompt,
             config: {
                 temperature: 0.7,
@@ -597,7 +609,7 @@ export const generateKeywordsAI = async (idea: Idea, existingKeywords: string[])
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-pro-preview",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -657,6 +669,24 @@ W: ${idea.analysis.weaknesses.join(', ')}
 O: ${idea.analysis.opportunities.join(', ')}
 T: ${idea.analysis.threats.join(', ')}` : '';
 
+        // Added: Parse campaign strategy if available to give better analysis
+        let strategyContext = '';
+        try {
+            if (idea.concept && idea.concept.startsWith('{')) {
+                const parsed = JSON.parse(idea.concept);
+                strategyContext = `
+Campaign Strategy:
+Goal: ${parsed.campaignType || 'Engagement'}
+Target Audience: ${Array.isArray(parsed.audienceSegments) ? parsed.audienceSegments.map((s: any) => typeof s === 'string' ? s : s.name).join(', ') : 'Not specified'}
+Phases: ${parsed.phases?.map((p: any) => `${p.name} (${p.durationValue} ${p.durationUnit}) - Focus: ${p.focus}`).join('; ')}
+Platforms: ${parsed.platforms?.map((p: any) => `${p.id} (${p.frequencyValue} ${p.frequencyUnit})`).join(', ')}
+Content Plan: ${parsed.planningPosts?.length || 0} posts scheduled.
+`;
+            } else if (idea.concept) {
+                strategyContext = `Concept: ${idea.concept.substring(0, 500)}...`;
+            }
+        } catch (e) { }
+
         const prompt = `
         Analyze the following project idea effectively as a Venture Capitalist and Chief Technology Officer.
         
@@ -666,6 +696,8 @@ T: ${idea.analysis.threats.join(', ')}` : '';
         Impact: ${idea.impact || 'Unknown'}
         Effort: ${idea.effort || 'Unknown'}
         ${swotContext}
+        ${strategyContext}
+
 
         Provide a quantitative and qualitative analysis:
         1. Success Probability (0-100%): Estimate based on feasibility and market need.
@@ -677,14 +709,14 @@ T: ${idea.analysis.threats.join(', ')}` : '';
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-pro-preview",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
                 responseSchema,
                 temperature: 0.5,
             }
-        }));
+        }), { ideaId: idea.id, projectId: idea.projectId, tenantId: idea.tenantId });
 
         return JSON.parse(response.text || "{}");
     } catch (error) {
@@ -721,7 +753,7 @@ export const generateProductStrategyAI = async (idea: Idea): Promise<{ vision: s
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-pro-preview",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -801,7 +833,7 @@ export const generateProductDiscoveryAI = async (idea: Idea): Promise<{
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-pro-preview",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -839,7 +871,7 @@ export const generateSocialCaption = async (topic: string, tone: string, platfor
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-pro-preview",
             contents: prompt,
             config: {
                 temperature: 0.8,
@@ -853,16 +885,16 @@ export const generateSocialCaption = async (topic: string, tone: string, platfor
     }
 };
 
-export const generateSocialHashtags = async (topic: string, platform: string): Promise<string> => {
+export const generateSocialHashtags = async (topic: string, platform: string, limit?: number): Promise<string> => {
     try {
         const ai = getAiClient();
         const prompt = `
-        Generate 10-15 highly relevant and trending hashtags for a ${platform} post about: "${topic}".
+        Generate ${limit ? `exactly ${limit}` : '10-15'} highly relevant and trending hashtags for a ${platform} post about: "${topic}".
         Return them as a single string separated by spaces (e.g. #tech #coding #design).
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-pro-preview",
             contents: prompt,
             config: {
                 temperature: 0.7,
@@ -872,6 +904,34 @@ export const generateSocialHashtags = async (topic: string, platform: string): P
         return response.text?.trim() || "";
     } catch (error) {
         console.error("Gemini Hashtag Gen Error:", error);
+        throw error;
+    }
+};
+
+export const reworkSocialHashtags = async (hashtags: string, caption: string, platform: string, limit: number): Promise<string> => {
+    try {
+        const ai = getAiClient();
+        const prompt = `
+        You are a social media expert. The following ${platform} post has too many hashtags.
+        Limit: ${limit} hashtags.
+        Current hashtags: ${hashtags}
+        Caption for context: "${caption}"
+
+        Please select the ${limit} most relevant and impactful hashtags from the list or generate better ones that fit the limit and the platform's current trends.
+        Return ONLY the hashtags as a single string separated by spaces.
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                temperature: 0.5,
+            }
+        }));
+
+        return response.text?.trim() || "";
+    } catch (error) {
+        console.error("Gemini Hashtag Rework Error:", error);
         throw error;
     }
 };
@@ -898,16 +958,16 @@ export const generateYouTubeScript = async (title: string, thumbnailIdea: string
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-pro-preview",
             contents: prompt,
             config: {
                 temperature: 0.7,
             }
         }));
 
-        return response.text?.trim() || "";
+        return response.text || "";
     } catch (error) {
-        console.error("Gemini Script Gen Error:", error);
+        console.error("Gemini YouTube Script Error:", error);
         throw error;
     }
 };
@@ -941,34 +1001,34 @@ export const generateProductDefinitionAI = async (idea: Idea): Promise<{ scope: 
             try {
                 const parsed = JSON.parse(idea.concept);
                 return `
-                    Personas: ${parsed.personas?.map((p: any) => p.name + " (" + p.role + ")").join(', ') || 'N/A'}
-                    Market: ${parsed.marketSize || 'N/A'} / ${parsed.targetSegment || 'N/A'}
-                `;
+Personas: ${parsed.personas?.map((p: any) => p.name + " (" + p.role + ")").join(', ') || 'N/A'}
+Market: ${parsed.marketSize || 'N/A'} / ${parsed.targetSegment || 'N/A'}
+    `;
             } catch { return ''; }
         })() : '';
 
         const prompt = `
         Create a detailed Product Definition for the following idea.
-        
-        Context:
-        Title: ${idea.title}
-        Description: ${idea.description}
-        Vision: ${idea.vision || 'N/A'}
+
+    Context:
+    Title: ${idea.title}
+Description: ${idea.description}
+Vision: ${idea.vision || 'N/A'}
         ${discoveryContext}
 
-        Generate:
-        1. **In Scope**: 3-5 high-level deliverables or boundaries.
-        2. **Out of Scope**: 2-3 specific things we are NOT doing right now.
-        3. **Success Criteria**: 3-5 specific, measurable success metrics (KPIs).
-        4. **Requirements**: 6-10 specific functional requirements prioritized using MoSCoW (Must, Should, Could, Won't).
-           - Must: Critical for MVP
-           - Should: Important but not vital for launch
-           - Could: Desirable but can be delayed
-           - Wont: Explicitly deferred
+Generate:
+1. ** In Scope **: 3 - 5 high - level deliverables or boundaries.
+        2. ** Out of Scope **: 2 - 3 specific things we are NOT doing right now.
+        3. ** Success Criteria **: 3 - 5 specific, measurable success metrics(KPIs).
+        4. ** Requirements **: 6 - 10 specific functional requirements prioritized using MoSCoW (Must, Should, Could, Won't).
+    - Must: Critical for MVP
+        - Should: Important but not vital for launch
+            - Could: Desirable but can be delayed
+                - Wont: Explicitly deferred
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-pro-preview",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -984,7 +1044,7 @@ export const generateProductDefinitionAI = async (idea: Idea): Promise<{ scope: 
             outOfScope: (result.outOfScope || []).join('\n'),
             successCriteria: (result.successCriteria || []).join('\n'),
             requirements: (result.requirements || []).map((req: any, index: number) => ({
-                id: `ai-req-${Date.now()}-${index}`,
+                id: `ai - req - ${Date.now()} -${index} `,
                 ...req
             }))
         };
@@ -1033,33 +1093,33 @@ export const generateProductDevelopmentAI = async (idea: Idea): Promise<{ techSt
                 const parsed = JSON.parse(idea.requirements);
                 const reqs = parsed.requirements?.filter((r: any) => r.priority === 'must' || r.priority === 'should').map((r: any) => r.title).join(', ') || 'N/A';
                 return `
-                    Scope: ${parsed.scope || 'N/A'}
+Scope: ${parsed.scope || 'N/A'}
                     Core Requirements: ${reqs}
-                `;
+`;
             } catch { return ''; }
         })() : '';
 
         const prompt = `
         Create a practical Development Plan for the following idea.
-        
-        Context:
-        Title: ${idea.title}
-        Description: ${idea.description}
+
+    Context:
+    Title: ${idea.title}
+Description: ${idea.description}
         Tech Feasibility: ${idea.riskWinAnalysis?.technicalFeasibilityScore || 'Unknown'}/10
         ${definitionContext}
 
-        Generate:
-        1. **Tech Stack**: Recommend a modern, appropriate tech stack grouped by category (e.g., Frontend, Backend, Database, Infrastructure).
-           - Do NOT just list languages. Suggest specific frameworks/libraries (e.g., "React + Vite", "Firebase Auth", "PostgreSQL").
-           - Create 3-4 categories.
+Generate:
+1. ** Tech Stack **: Recommend a modern, appropriate tech stack grouped by category(e.g., Frontend, Backend, Database, Infrastructure).
+           - Do NOT just list languages.Suggest specific frameworks / libraries(e.g., "React + Vite", "Firebase Auth", "PostgreSQL").
+           - Create 3 - 4 categories.
         
-        2. **Implementation Phases**: Break the project into 3-4 logical phases (e.g., "Setup & Core", "MVP Features", "Polish & Launch").
-           - For each phase, suggested duration (e.g. "2 weeks") and 4-6 specific actionable tasks.
+        2. ** Implementation Phases **: Break the project into 3 - 4 logical phases(e.g., "Setup & Core", "MVP Features", "Polish & Launch").
+           - For each phase, suggested duration(e.g. "2 weeks") and 4 - 6 specific actionable tasks.
            - Ensure tasks align with the provided scope and requirements.
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-pro-preview",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -1103,27 +1163,27 @@ export const generateProductLaunchAI = async (idea: Idea): Promise<{ checklist: 
             required: ['checklist', 'channels', 'announcement']
         };
 
-        const strategyContext = idea.description ? `Vision: ${idea.description}` : '';
+        const strategyContext = idea.description ? `Vision: ${idea.description} ` : '';
 
         const prompt = `
-        Create a Go-to-Market Launch Plan for the following idea.
-        
-        Context:
-        Title: ${idea.title}
+        Create a Go - to - Market Launch Plan for the following idea.
+
+    Context:
+    Title: ${idea.title}
         ${strategyContext}
         Target Audience: ${idea.riskWinAnalysis?.marketFitScore ? 'Defined in strategy' : 'General'}
 
-        Generate:
-        1. **Launch Checklist**: 3-4 categories of tasks (e.g. "QA & Polish", "Assets", "Distribution").
-           - 3-5 specific, critical launch tasks per category.
+Generate:
+1. ** Launch Checklist **: 3 - 4 categories of tasks(e.g. "QA & Polish", "Assets", "Distribution").
+           - 3 - 5 specific, critical launch tasks per category.
         
-        2. **Marketing Channels**: List 5-7 distinct channels appropriate for this product (e.g., "Product Hunt", "Hacker News", "LinkedIn", "Internal Newsletter").
+        2. ** Marketing Channels **: List 5 - 7 distinct channels appropriate for this product(e.g., "Product Hunt", "Hacker News", "LinkedIn", "Internal Newsletter").
 
-        3. **Announcement Draft**: A punchy, exciting "One-Liner" announcement text (tweet length) that can be used as a hook.
+        3. ** Announcement Draft **: A punchy, exciting "One-Liner" announcement text(tweet length) that can be used as a hook.
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-pro-preview",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -1184,19 +1244,19 @@ export const generateCampaignDetailsAI = async (title: string): Promise<{
         Creates a comprehensive social media campaign plan for a campaign titled: "${title}".
 
         Generate the following details:
-        1. **Goal**: A specific, measurable goal (e.g., "Increase brand awareness by 20%").
-        2. **Description**: A detailed campaign strategy and overview (approx. 100-150 words). Return the content as **clean HTML** (e.g., using <h3>, <p>, <ul>, <li>, <strong> tags). Do NOT use markdown. Start with a <h3> for the overview title.
-        3. **Target Audience**: A concise description of the demographics and psychographics.
-        4. **Tone of Voice**: The desired persona (e.g., "Witty, Professional, Urgent").
-        5. **Platforms**: Choose the best platforms (Select from: Instagram, Facebook, LinkedIn, TikTok, X, YouTube).
-        6. **Tags**: 5-8 relevant hashtags or keywords (without #).
-        7. **Timeline**: Suggest a realistic Start Date (using ${today} as baseline) and End Date (typical duration 2-4 weeks). Format as YYYY-MM-DD.
+1. ** Goal **: A specific, measurable goal(e.g., "Increase brand awareness by 20%").
+        2. ** Description **: A detailed campaign strategy and overview(approx. 100 - 150 words).Return the content as ** clean HTML ** (e.g., using<h3>, <p>, <ul>, <li>, <strong>tags).Do NOT use markdown.Start with a<h3> for the overview title.
+        3. ** Target Audience **: A concise description of the demographics and psychographics.
+        4. ** Tone of Voice **: The desired persona(e.g., "Witty, Professional, Urgent").
+        5. ** Platforms **: Choose the best platforms(Select from: Instagram, Facebook, LinkedIn, TikTok, X, YouTube).
+        6. ** Tags **: 5 - 8 relevant hashtags or keywords(without #).
+        7. ** Timeline **: Suggest a realistic Start Date(using ${today} as baseline) and End Date(typical duration 2 - 4 weeks).Format as YYYY - MM - DD.
 
         Return valid JSON.
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-pro-preview",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -1211,11 +1271,65 @@ export const generateCampaignDetailsAI = async (title: string): Promise<{
         throw error;
     }
 };
-// ... existing imports
-import { SocialCampaign } from "../types";
+
+export const generateCampaignDescriptionAI = async (campaignData: {
+    name: string;
+    goal?: string;
+    bigIdea?: string;
+    hook?: string;
+    platforms?: string;
+    targetAudience?: string;
+    toneOfVoice?: string;
+    mood?: string;
+    visualDirection?: string;
+    phases?: string;
+    startDate?: string;
+    endDate?: string;
+}): Promise<string> => {
+    try {
+        const prompt = `You are a marketing strategist. Write a compelling, professional campaign description (2-3 paragraphs in HTML format) based on the following campaign details:
+
+Campaign Name: ${campaignData.name}
+Goal: ${campaignData.goal || 'Not specified'}
+Big Idea: ${campaignData.bigIdea || 'Not specified'}
+Hook: ${campaignData.hook || 'Not specified'}
+Platforms: ${campaignData.platforms || 'Not specified'}
+Target Audience: ${campaignData.targetAudience || 'Not specified'}
+Tone: ${campaignData.toneOfVoice || 'Not specified'}
+Mood: ${campaignData.mood || 'Not specified'}
+Visual Direction: ${campaignData.visualDirection || 'Not specified'}
+Phases: ${campaignData.phases || 'Not specified'}
+Start Date: ${campaignData.startDate || 'Not specified'}
+End Date: ${campaignData.endDate || 'Not specified'}
+
+Write the description in a way that:
+1. Summarizes the campaign's purpose and objectives
+2. Highlights the key strategy and approach
+3. Creates excitement and clarity about the campaign
+
+Respond ONLY with the HTML content (using <p>, <strong>, <em> tags). No markdown, no code blocks.`;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                temperature: 0.7,
+            }
+        }));
+
+        const text = response.text || "";
+        // Clean up any markdown artifacts
+        return text.replace(/```html\n?/g, '').replace(/```\n?/g, '').trim();
+    } catch (error) {
+        console.error("Gemini Campaign Description Error:", error);
+        throw error;
+    }
+};
+
+// ... existing definitions
 
 export interface SocialPostDraft {
-    platform: string;
+    platforms: string[];
     content: string; // The main text/caption
     hashtags: string[];
     scheduledDayOffset: number; // 0-6
@@ -1236,14 +1350,14 @@ export const generateCampaignContentPlan = async (
             items: {
                 type: Type.OBJECT,
                 properties: {
-                    platform: { type: Type.STRING },
+                    platforms: { type: Type.ARRAY, items: { type: Type.STRING } },
                     content: { type: Type.STRING },
                     hashtags: { type: Type.ARRAY, items: { type: Type.STRING } },
                     scheduledDayOffset: { type: Type.INTEGER },
                     type: { type: Type.STRING },
                     imagePrompt: { type: Type.STRING }
                 },
-                required: ['platform', 'content', 'hashtags', 'scheduledDayOffset', 'type']
+                required: ['platforms', 'content', 'hashtags', 'scheduledDayOffset', 'type']
             }
         };
 
@@ -1252,35 +1366,35 @@ export const generateCampaignContentPlan = async (
             : '';
 
         const targetPlatforms = overrides?.platforms?.length ? overrides.platforms : (campaign.platforms || ["Instagram", "LinkedIn"]);
-        const focusContext = overrides?.focus ? `Main Focus/Theme for this week: "${overrides.focus}".` : '';
+        const focusContext = overrides?.focus ? `Main Focus / Theme for this week: "${overrides.focus}".` : '';
 
         const prompt = `
-        You are a social media manager. Create a 7-day content plan for the following campaign.
-        
-        Campaign: "${campaign.name}"
-        Goal: ${campaign.goal || "Engagement"}
-        Description: ${campaign.description || "No description"}
-        Audience: ${campaign.targetAudience}
-        Tone: ${campaign.toneOfVoice}
-        Platforms: ${targetPlatforms.join(', ')}
+        You are a social media manager.Create a 7 - day content plan for the following campaign.
+
+    Campaign: "${campaign.name}"
+Goal: ${campaign.goal || "Engagement"}
+Description: ${campaign.description || "No description"}
+Audience: ${campaign.targetAudience}
+Tone: ${campaign.toneOfVoice}
+Platforms: ${targetPlatforms.join(', ')}
         
         Project Context: "${project.title}" - ${project.description}
         
         ${focusContext}
         ${existingContext}
-        
-        Requirements:
-        1. Generate 7-10 high-quality, fully fleshed-out posts spread over 7 days (offsets 0-6).
-        2. Vary the platforms based on the provided target platforms.
-        3. Include a mix of formats (Posts, Reels/Shorts, Stories).
-        4. "content" must be the actual caption/text ready to post, not just an idea.
-        5. "imagePrompt" should describe a visual to accompany the text (NO text in image, just visual description).
+
+Requirements:
+1. Generate 7 - 10 high - quality content * concepts * spread over 7 days(offsets 0 - 6).
+        2. Each concept should be suitable for ONE OR MORE of the target platforms(list them in "platforms").
+        3. Include a mix of formats(Posts, Reels / Shorts, Stories).
+        4. "content" must be the actual caption / text ready to post, not just an idea.
+        5. "imagePrompt" should describe a visual to accompany the text(NO text in image, just visual description).
         
         Return a JSON array of post drafts.
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-2.5-flash",
+            model: "gemini-3-pro-preview",
             contents: prompt,
             config: {
                 responseMimeType: "application/json",
@@ -1293,6 +1407,1106 @@ export const generateCampaignContentPlan = async (
         return Array.isArray(result) ? result : [];
     } catch (error) {
         console.error("Gemini Content Plan Error:", error);
+        throw error;
+    }
+};
+
+export const generateSocialStrategyAI = async (idea: Idea): Promise<{
+    goal: string;
+    subGoal: string;
+    targetAudience: string;
+    pillar: string;
+    platformNuances: string;
+}> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.OBJECT,
+            properties: {
+                goal: { type: Type.STRING },
+                subGoal: { type: Type.STRING },
+                targetAudience: { type: Type.STRING },
+                pillar: { type: Type.STRING },
+                platformNuances: { type: Type.STRING }
+            },
+            required: ['goal', 'subGoal', 'targetAudience', 'pillar', 'platformNuances']
+        };
+
+        const prompt = `
+        You are a Social Media Strategist. Define a high-level strategy for:
+        "${idea.title}": ${idea.description}
+        ${idea.keywords && idea.keywords.length > 0 ? `Contextual Keywords: ${idea.keywords.join(', ')}` : ''}
+
+        Generate:
+        1. **Goal**: A clear, measurable primary objective (e.g., Brand Awareness, Engagement).
+        2. **Sub-Goal**: A complementary secondary objective (e.g., if Brand Awareness, maybe Community Building).
+        3. **Target Audience**: Who is this for?
+        4. **Brand Pillar**: Which content pillar does this fit (e.g., Educational, Promotional, Entertainment)?
+        5. **Platform Nuances**: Tips for adapting this across various social platforms.
+        
+        Keep each field concise (1-2 sentences). Return JSON.
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.7,
+            }
+        }), { ideaId: idea.id, projectId: idea.projectId, tenantId: idea.tenantId });
+
+        return JSON.parse(response.text || "{}");
+    } catch (error) {
+        console.error("Gemini Social Strategy Error:", error);
+        throw error;
+    }
+};
+
+export const generateSocialCreativeAI = async (idea: Idea, strategy: any): Promise<{
+    hooks: string[];
+    scenes: { title: string; visual: string; audio: string }[];
+}> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.OBJECT,
+            properties: {
+                hooks: { type: Type.ARRAY, items: { type: Type.STRING } },
+                scenes: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            title: { type: Type.STRING },
+                            visual: { type: Type.STRING },
+                            audio: { type: Type.STRING }
+                        },
+                        required: ['title', 'visual', 'audio']
+                    }
+                }
+            },
+            required: ['hooks', 'scenes']
+        };
+
+        const prompt = `
+        You are a Creative Director.Generate content ideas for:
+    "${idea.title}"
+Strategy: ${JSON.stringify(strategy)}
+
+Generate:
+1. ** Hooks **: 3 - 5 viral hooks to grab attention.
+        2. ** Storyboard **: 3 - 4 scenes for a video / carousel breakdown. 
+           Each scene needs a Title, Visual description, and Audio / Voicover suggestion.
+           
+        Return JSON.
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.8,
+            }
+        }), { ideaId: idea.id, projectId: idea.projectId, tenantId: idea.tenantId });
+
+        return JSON.parse(response.text || "{}");
+    } catch (error) {
+        console.error("Gemini Social Creative Error:", error);
+        throw error;
+    }
+};
+
+export const refineSocialContentAI = async (content: string, platform: string, tone: string, customInstruction?: string): Promise<string> => {
+    try {
+        const ai = getAiClient();
+        const instructionPart = customInstruction ? `Additional Instruction: ${customInstruction}` : '';
+        const prompt = `
+        Refine the following social media content for better engagement.
+        Target Platform: ${platform}
+        Desired Tone: ${tone}
+        ${instructionPart}
+        
+        Current Content:
+"${content}"
+        
+        Output only the refined content.Do not include explanations.Ensure it feels native to ${platform}.
+`;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: { temperature: 0.7 }
+        }));
+
+        return response.text?.trim() || content;
+    } catch (error) {
+        console.error("Gemini Content Refine Error:", error);
+        throw error;
+    }
+};
+
+export const generateAudienceAlternativesAI = async (idea: Idea): Promise<string[]> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.ARRAY,
+            items: { type: Type.STRING }
+        };
+
+        const prompt = `
+        Analyze the following campaign idea and perform a brief research to identify 3 high-potential, non-obvious target audience segments.
+        Title: ${idea.title}
+        Description: ${idea.description}
+        
+        Search for:
+        - "Current trending demographics for [Topic]"
+        - "Underserved niches interested in [Topic]"
+        
+        Return exactly 3 strings representing the audience descriptions. Include both demographics and psychographics.
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.8,
+                tools: [{ googleSearch: {} }]
+            }
+        }), { ideaId: idea.id, projectId: idea.projectId, tenantId: idea.tenantId });
+
+        return JSON.parse(response.text || "[]");
+    } catch (error) {
+        console.error("Gemini Audience Alternatives Error:", error);
+        throw error;
+    }
+};
+
+export const expandStoryboardSceneAI = async (sceneTitle: string, visual: string, audio: string, tone: string): Promise<{ detailedVisual: string, detailedAudio: string }> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.OBJECT,
+            properties: {
+                detailedVisual: { type: Type.STRING },
+                detailedAudio: { type: Type.STRING }
+            },
+            required: ['detailedVisual', 'detailedAudio']
+        };
+
+        const prompt = `
+        Expand the following storyboard scene into a detailed script.
+        Scene Title: ${sceneTitle}
+        Current Visual: ${visual}
+        Current Audio: ${audio}
+        Goal Tone: ${tone}
+        
+        Generate:
+        1. **Detailed Visual**: A descriptive breakdown of what appears on screen, camera angles, and transitions.
+        2. **Detailed Audio**: A word-for-word script or professional audio direction.
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.7,
+            }
+        }));
+
+        return JSON.parse(response.text || "{}");
+    } catch (error) {
+        console.error("Gemini Scene Expansion Error:", error);
+        throw error;
+    }
+};
+
+export const generateSocialCTA_AI = async (content: string, platform: string, goal: string): Promise<string[]> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.ARRAY,
+            items: { type: Type.STRING }
+        };
+
+        const prompt = `
+        Suggest 3 high-converting Call to Action (CTA) options for the following social media post.
+        Platform: ${platform}
+        Goal: ${goal}
+        Content: "${content}"
+        
+        Return exactly 3 different CTA strings.
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.7,
+            }
+        }));
+
+        return JSON.parse(response.text || "[]");
+    } catch (error) {
+        console.error("Gemini CTA Suggestion Error:", error);
+        throw error;
+    }
+};
+
+export const scoreSocialContentAI = async (content: string, strategy: string): Promise<{ score: number, feedback: string }> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.OBJECT,
+            properties: {
+                score: { type: Type.NUMBER },
+                feedback: { type: Type.STRING }
+            },
+            required: ['score', 'feedback']
+        };
+
+        const prompt = `
+        Score the following social media content (0-100) based on how well it aligns with the defined strategy.
+        Strategy: ${strategy}
+        Content: "${content}"
+        
+        Provide:
+        1. **Score**: A number from 0 to 100.
+        2. **Feedback**: A concise explanation (max 2 sentences) on how to improve alignment.
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.5,
+            }
+        }));
+
+        return JSON.parse(response.text || "{}");
+    } catch (error) {
+        console.error("Gemini Content Scoring Error:", error);
+        throw error;
+    }
+};
+
+export const generateSocialPlaybookAI = async (idea: Idea, platforms: SocialPlatform[], scope: 'post' | 'campaign' = 'post', strategy?: { goal?: string, subGoal?: string, audience?: string }): Promise<Record<string, { play: string, tips: string[] }>> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.OBJECT,
+            properties: platforms.reduce((acc: any, p) => {
+                acc[p] = {
+                    type: Type.OBJECT,
+                    properties: {
+                        play: { type: Type.STRING },
+                        tips: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    },
+                    required: ['play', 'tips']
+                };
+                return acc;
+            }, {}),
+            required: platforms
+        };
+
+        const prompt = `
+        Create a high-impact "Winning Play" for each social platform based on this idea.
+        The scope of this project is a: ${scope === 'post' ? 'Single Post (spread across platforms)' : 'Full Multi-Post Campaign'}.
+        
+        Title: ${idea.title}
+        Description: ${idea.description}
+        Goals: ${strategy?.goal || idea.campaignType || 'Engagement'} ${strategy?.subGoal ? ` & ${strategy.subGoal}` : ''}
+        Target Audience: ${strategy?.audience || idea.targetAudience || 'General Audience'}
+        ${idea.keywords && idea.keywords.length > 0 ? `Contextual Keywords: ${idea.keywords.join(', ')}` : ''}
+        
+        For each platform (${platforms.join(", ")}):
+        1. **Play**: A catchy title for the content strategy (e.g., "The Educational Carousel", "The Behind-the-Scenes Reel").
+        2. **Tips**: 3 actionable, platform-specific tips to make this content go viral.
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.8,
+            }
+        }));
+
+        return JSON.parse(response.text || "{}");
+    } catch (error) {
+        console.error("Gemini Playbook Error:", error);
+        throw error;
+    }
+};
+
+export const generatePlatformConceptsAI = async (
+    idea: Idea,
+    strategy: any,
+    tone: string
+): Promise<Record<string, { hook: string; contentBody: string; visualCue: string; format: string }>> => {
+    try {
+        const ai = getAiClient();
+        const platforms = strategy.channels as string[] || [];
+
+        // Dynamic schema based on selected platforms
+        const responseSchema: Schema = {
+            type: Type.OBJECT,
+            properties: platforms.reduce((acc: any, p) => {
+                acc[p] = {
+                    type: Type.OBJECT,
+                    properties: {
+                        hook: { type: Type.STRING },
+                        contentBody: { type: Type.STRING },
+                        visualCue: { type: Type.STRING },
+                        format: { type: Type.STRING } // e.g., 'Reel', 'Carousel', 'Thread'
+                    },
+                    required: ['hook', 'contentBody', 'visualCue', 'format']
+                };
+                return acc;
+            }, {}),
+            required: platforms
+        };
+
+        const prompt = `
+        You are a generic Social Media Content Creator.
+        Transform the strategic "Winning Plays" into concrete content concepts for each platform.
+        
+        Project: "${idea.title}"
+        Description: ${idea.description}
+        Tone: ${tone}
+        Strategy: ${JSON.stringify(strategy)}
+        
+        For each platform (${platforms.join(', ')}):
+        1. **Format**: Reconfirm the best format (e.g. Reel, Carousel, Text Post).
+        2. **Hook**: Write a specific, attention-grabbing opening line or visual text hook (3-sec rule).
+        3. **ContentBody**: A brief outline of the value proposition or main content (bullet points).
+        4. **VisualCue**: A one-sentence direction for the visual style or key shot.
+        
+        Ensure the content perfectly matches the "Winning Play" described in the strategy for that platform.
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.85, // Higher creativity
+            }
+        }));
+
+        return JSON.parse(response.text || "{}");
+    } catch (error) {
+        console.error("Gemini Platform Concepts Error:", error);
+        throw error;
+    }
+};
+// ... existing code ...
+
+export const refineCampaignConceptAI = async (
+    currentIdea: string,
+    feedback: string,
+    context: any
+): Promise<string> => {
+    try {
+        const ai = getAiClient();
+        const prompt = `
+        You are a Senior Creative Strategist. Refine the following Campaign Big Idea based on user feedback.
+        
+        Current Big Idea: "${currentIdea}"
+        User Feedback/Instruction: "${feedback}"
+        Campaign Context: ${JSON.stringify(context)}
+        
+        Provide a refined, more impactful version of the Big Idea. Keep it to max 3 sentences.
+        Return ONLY the refined text.
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: { temperature: 0.8 }
+        }));
+
+        return response.text || currentIdea;
+    } catch (error) {
+        console.error("Gemini Concept Refinement Error:", error);
+        throw error;
+    }
+};
+
+export const generateCampaignHooksAI = async (
+    bigIdea: string,
+    themes: string[]
+): Promise<string[]> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.ARRAY,
+            items: { type: Type.STRING }
+        };
+
+        const prompt = `
+        You are a Copywriter specialized in viral social hooks.
+        Generate 5 high-converting, punchy campaign hooks/taglines based on this Big Idea and Themes.
+        
+        Big Idea: "${bigIdea}"
+        Themes: ${themes.join(', ')}
+        
+        Return exactly 5 unique options.
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.9,
+            }
+        }));
+
+        return JSON.parse(response.text || "[]");
+    } catch (error) {
+        console.error("Gemini Hook Generation Error:", error);
+        throw error;
+    }
+};
+
+export const optimizeCampaignTimelineAI = async (
+    phases: any[],
+    goal: string,
+    bigIdea: string
+): Promise<{ name: string; duration: string; focus: string }[]> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    name: { type: Type.STRING },
+                    duration: { type: Type.STRING },
+                    focus: { type: Type.STRING }
+                },
+                required: ['name', 'duration', 'focus']
+            }
+        };
+
+        const prompt = `
+        You are a Campaign Growth Strategist. Review and optimize these campaign phases to maximize ROI for the goal "${goal}".
+        
+        Campaign Idea: "${bigIdea}"
+        Current Phases: ${JSON.stringify(phases)}
+        
+        Improve the phase names, suggest better durations, and refine the focus for each to create a high-performance rollout.
+        Keep the number of phases relative to the input (usually 3-4).
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.7,
+            }
+        }));
+
+        return JSON.parse(response.text || "[]");
+    } catch (error) {
+        console.error("Gemini Timeline Optimization Error:", error);
+        throw error;
+    }
+};
+
+
+export const generateSocialCampaignConceptAI = async (idea: Idea): Promise<{
+    bigIdea: string;
+    hook: string;
+    themes: string[];
+    mood: string;
+    visualDirection: string;
+}> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.OBJECT,
+            properties: {
+                bigIdea: { type: Type.STRING },
+                hook: { type: Type.STRING },
+                themes: { type: Type.ARRAY, items: { type: Type.STRING } },
+                mood: { type: Type.STRING },
+                visualDirection: { type: Type.STRING }
+            },
+            required: ['bigIdea', 'hook', 'themes', 'mood', 'visualDirection']
+        };
+
+        const prompt = `
+        You are a Creative Director at a top-tier Social Media Agency.
+        Develop a creative campaign concept for the following project:
+
+        Title: ${idea.title}
+        Description: ${idea.description}
+
+        Generate:
+        1. Big Idea: A compelling, creative core concept for a social media campaign (max 2 sentences).
+        2. Hook: A catchy, one-sentence elevator pitch or tagline.
+        3. Themes: 3-4 content pillars or themes that support the big idea (short phrases).
+        4. Mood: A single word describing the vibe (e.g., "Energetic", "Authentic", "Luxurious").
+        5. Visual Direction: A concise description of the aesthetic and production style (max 2 sentences).
+
+        Be creative, specific, and trend-aware.
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.8,
+            }
+        }), { ideaId: idea.id, projectId: idea.projectId, tenantId: idea.tenantId });
+
+        return JSON.parse(response.text || "{}");
+    } catch (error) {
+        console.error("Gemini Social Campaign Concept Error:", error);
+        throw error;
+    }
+};
+
+export const generateSocialCampaignStrategyAI = async (
+    idea: Idea,
+    conceptData?: any,
+    enabledPlatforms?: SocialPlatform[],
+    customInstructions?: string,
+    brandSettings?: { preferredTone?: string; brandPillars?: string }
+): Promise<{
+    phases: { name: string; duration: string; focus: string }[];
+    platforms: { id: string; role: string; frequency: string }[];
+    kpis: { metric: string; target: string }[];
+    audienceSegments: string[];
+    campaignType?: string;
+    subGoal?: string;
+    pillar?: string;
+}> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.OBJECT,
+            properties: {
+                phases: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            name: { type: Type.STRING },
+                            duration: { type: Type.STRING },
+                            focus: { type: Type.STRING }
+                        },
+                        required: ['name', 'duration', 'focus']
+                    }
+                },
+                platforms: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            id: { type: Type.STRING },
+                            role: { type: Type.STRING },
+                            frequency: { type: Type.STRING },
+                            phaseFrequencies: {
+                                type: Type.ARRAY,
+                                items: {
+                                    type: Type.OBJECT,
+                                    properties: {
+                                        phaseName: { type: Type.STRING },
+                                        frequency: { type: Type.STRING }
+                                    },
+                                    required: ['phaseName', 'frequency']
+                                }
+                            }
+                        },
+                        required: ['id', 'role', 'frequency']
+                    }
+                },
+                kpis: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            metric: { type: Type.STRING },
+                            target: { type: Type.STRING }
+                        },
+                        required: ['metric', 'target']
+                    }
+                },
+                audienceSegments: { type: Type.ARRAY, items: { type: Type.STRING } },
+                campaignType: { type: Type.STRING },
+                subGoal: { type: Type.STRING },
+                pillar: { type: Type.STRING }
+            },
+            required: ['phases', 'platforms', 'kpis', 'audienceSegments', 'campaignType']
+        };
+
+        // Build rich context from concept data
+        const conceptContext = conceptData ? `
+        === CAMPAIGN CREATIVE CONCEPT ===
+        Big Idea: "${conceptData.bigIdea || 'Not defined'}"
+        Hook/Tagline: "${conceptData.hook || 'Not defined'}"
+        Content Themes: ${Array.isArray(conceptData.themes) ? conceptData.themes.join(', ') : 'Not defined'}
+        Mood/Vibe: "${conceptData.mood || 'Not defined'}"
+        Visual Direction: "${conceptData.visualDirection || 'Not defined'}"
+        ` : '';
+
+        const swotContext = idea.analysis ? `
+        === SWOT ANALYSIS ===
+        Strengths: ${idea.analysis.strengths.join(', ') || 'N/A'}
+        Weaknesses: ${idea.analysis.weaknesses.join(', ') || 'N/A'}
+        Opportunities: ${idea.analysis.opportunities.join(', ') || 'N/A'}
+        Threats: ${idea.analysis.threats.join(', ') || 'N/A'}
+        ` : '';
+
+        const keywordsContext = idea.keywords && idea.keywords.length > 0
+            ? `=== CORE KEYWORDS ===\n${idea.keywords.join(', ')}`
+            : '';
+
+        const brandContext = brandSettings ? `
+        === BRAND IDENTITY ===
+        Tone: ${brandSettings.preferredTone || 'Professional & Engaging'}
+        Pillars/Values: ${brandSettings.brandPillars || 'Expertise, Quality, Innovation'}
+        ` : '';
+
+        // Platforms the user has enabled
+        const availablePlatforms = enabledPlatforms && enabledPlatforms.length > 0
+            ? enabledPlatforms
+            : ['Instagram', 'Facebook', 'TikTok', 'X', 'YouTube Video', 'YouTube Shorts'];
+
+        const platformsList = availablePlatforms.join(', ');
+
+        const instructionContext = customInstructions ? `
+        === SPECIAL INSTRUCTIONS ===
+        The user has provided specific requirements for this strategy:
+        "${customInstructions}"
+        Please ensure these instructions are prioritized in your generation.
+        ` : '';
+
+        const prompt = `
+        You are a Senior Social Media Strategist at a leading digital marketing agency.
+        Create a comprehensive, realistic, and actionable campaign execution strategy.
+
+        === CAMPAIGN OVERVIEW ===
+        Campaign Title: "${idea.title}"
+        Campaign Description: ${idea.description}
+        ${brandContext}
+        ${conceptContext}
+        ${swotContext}
+        ${keywordsContext}
+
+        === AVAILABLE PLATFORMS ===
+        You may ONLY use these platforms (user's enabled channels): ${platformsList}
+        
+        ${instructionContext}
+
+        === RESEARCH TASK (MANDATORY) ===
+        Before recommending frequencies, you MUST use the Google Search tool to research:
+        
+        1. **Niche-Specific Best Practices**: Search for "optimal posting frequency for [campaign topic/niche] ${new Date().getFullYear()}"
+        2. **Platform Algorithm Trends**: Search for "[platform name] algorithm best practices ${new Date().getFullYear()}"
+        3. **Campaign Type Cadence**: Search for "[campaign goal] campaign posting schedule recommendations"
+        
+        Use your research findings to determine realistic, topic-appropriate frequencies. Different campaigns require different approaches:
+        - A product launch may need high-intensity bursts
+        - A brand awareness campaign may favor consistent, moderate frequency
+        - An educational series may work best with weekly scheduled content
+        - A viral/trend-based campaign may require daily or multiple daily posts
+
+        === MULTI-FORMAT PLATFORM CONSIDERATIONS ===
+        Remember that some platforms support MULTIPLE content formats, allowing for higher total frequency:
+        
+        **Instagram**: Can combine Posts + Reels + Stories (e.g., 2 Posts/week + 3 Reels/week + daily Stories)
+        **YouTube**: Distinguish between long-form Videos (high production, 1-2/week max) and Shorts (quick content, can be daily)
+        **Facebook**: Mix of Posts, Reels, Stories, and Live content
+        **TikTok**: Primary format is short video, high frequency often rewarded by algorithm
+        **X**: Tweets, Threads, Spaces - higher volume typically acceptable
+        **LinkedIn**: Professional posts, articles, document carousels - quality over quantity
+        
+        When recommending frequency, specify the FORMAT mix in the "role" field if using multiple formats.
+
+        === YOUR TASK ===
+        Generate a complete rollout strategy:
+
+        1. **PHASES** (3-4 phases):
+           - Create a logical campaign arc appropriate for this specific campaign type
+           - Duration: specific and realistic based on your research (e.g., "5 days", "2 weeks", "10 days")
+           - Focus: describe key activities for each phase
+
+        2. **PLATFORMS** (2-4 from available):
+           - Select platforms that make strategic sense FOR THIS SPECIFIC CAMPAIGN TOPIC
+           - "role": Explain the strategic purpose AND format strategy (e.g., "Primary engagement driver via Reels (3/week) + Stories (daily) + 1 Carousel/week")
+           - "frequency": Your researched recommendation in format "X Posts/Week" or "X Posts/Day"
+             - Base this on your research, NOT on generic guidelines
+             - Consider the campaign topic, audience behavior, and platform algorithms
+           - **phaseFrequencies**: Provide overrides for each phase based on campaign intensity
+             - Teaser phases typically have lower frequency
+             - Launch/Peak phases may spike to 2-3x normal
+             - Sustaining phases return to sustainable cadence
+             - Match "phaseName" EXACTLY to phase names you generate
+
+        3. **KPIs** (4-5 metrics):
+           - Mix awareness, engagement, conversion metrics
+           - Specific, realistic targets based on campaign scope
+
+        4. **AUDIENCE SEGMENTS** (3-4 segments):
+           - Specific personas with demographics AND psychographics
+           - Tailored to this campaign's topic and goals
+
+        5. **CAMPAIGN OBJECTIVES** (select the most appropriate):
+           - "campaignType": Choose ONE primary goal from: "Brand Awareness", "Engagement", "Traffic / Link", "Sales / Promo", "Community Building", "Education"
+           - "subGoal": Choose ONE secondary goal (different from campaignType) from the same list, or leave empty
+           - "pillar": Choose ONE content pillar from: "Educational", "Promotional", "Entertainment", "Inspirational", "Community", "Behind the Scenes"
+           - Base your selections on the campaign description, concept, and what makes strategic sense
+
+        IMPORTANT: Your frequency recommendations must be:
+        - Grounded in your research findings
+        - Appropriate for the specific campaign topic (not generic)
+        - Realistic for the content production requirements
+        - Aligned with current platform algorithm preferences
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.7,
+                tools: [{ googleSearch: {} }]
+            }
+        }), { ideaId: idea.id, projectId: idea.projectId, tenantId: idea.tenantId });
+
+        return JSON.parse(response.text || "{}");
+    } catch (error) {
+        console.error("Gemini Campaign Strategy Error:", error);
+        throw error;
+    }
+};
+
+// ==========================================
+// CAMPAIGN PLANNING AI FUNCTIONS
+// ==========================================
+
+export interface PostPlaceholder {
+    id: string;
+    dayOffset: number;
+    platforms: string[];
+    contentType: 'Reel' | 'Story' | 'Post' | 'Carousel' | 'Short' | 'Video';
+    phaseId?: string;
+    hook?: string;
+    visualDirection?: string;
+    status: 'empty' | 'outlined' | 'ready';
+}
+
+export const generateCampaignWeekPlanAI = async (
+    idea: Idea,
+    strategyData: {
+        phases?: { id: string; name: string; durationValue: number; durationUnit: string; focus: string }[];
+        platforms?: {
+            id: string;
+            role: string;
+            frequencyValue?: number;
+            frequencyUnit?: string;
+            phaseFrequencies?: { phaseId: string; frequencyValue?: number; frequencyUnit: string }[];
+        }[];
+        audienceSegments?: string[];
+        campaignType?: string;
+        totalDays?: number;
+        totalWeeks?: number;
+        targetPosts?: number;
+        platformFrequencies?: { platform: string; postsPerWeek: number; totalPosts: number }[];
+        phaseRanges?: { name: string; startDay: number; endDay: number; focus: string }[];
+    },
+    weekOffset: number = 0
+): Promise<PostPlaceholder[]> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    id: { type: Type.STRING },
+                    dayOffset: { type: Type.INTEGER },
+                    platforms: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    contentType: { type: Type.STRING },
+                    phaseId: { type: Type.STRING },
+                    hook: { type: Type.STRING },
+                    visualDirection: { type: Type.STRING },
+                    status: { type: Type.STRING }
+                },
+                required: ['id', 'dayOffset', 'platforms', 'contentType', 'hook', 'status']
+            }
+        };
+
+        // Build platform frequency context with explicit targets
+        const platformFrequencies = strategyData.platforms?.map(p => {
+            if (p.phaseFrequencies && p.phaseFrequencies.length > 0) {
+                // Format phase frequencies
+                const details = p.phaseFrequencies.map(pf => {
+                    const phaseName = strategyData.phases?.find(ph => ph.id === pf.phaseId)?.name || 'Unknown Phase';
+                    return `${phaseName}: ${pf.frequencyValue} ${pf.frequencyUnit}`;
+                }).join(', ');
+                return `${p.id}: [Phase Specific] ${details}`;
+            } else {
+                const freq = p.frequencyValue || 3;
+                const unit = p.frequencyUnit || 'Posts/Week';
+                return `${p.id}: ${freq} ${unit}`;
+            }
+        }).join('\n') || 'No frequencies set';
+
+        // Build phase ranges context
+        const phaseRangesContext = strategyData.phaseRanges?.map(r =>
+            `"${r.name}" (Days ${r.startDay + 1}-${r.endDay + 1}): ${r.focus}`
+        ).join('\n') || strategyData.phases?.map((p, i) => `Phase ${i + 1}: "${p.name}" - ${p.focus}`).join('\n') || 'No phases defined';
+
+        const audienceContext = strategyData.audienceSegments?.join(', ') || 'General audience';
+        const totalDays = strategyData.totalDays || 14;
+        const targetPosts = strategyData.targetPosts || 10;
+
+        const prompt = `
+        You are a Social Media Content Planner. Generate post placeholders for an ENTIRE campaign based on the strategy settings.
+        
+        === CAMPAIGN CONTEXT ===
+        Campaign: "${idea.title}"
+        Description: ${idea.description}
+        Goal: ${strategyData.campaignType || 'Engagement'}
+        Target Audience: ${audienceContext}
+        
+        === CAMPAIGN DURATION ===
+        Total Campaign Length: ${totalDays} days (Days 1 to ${totalDays})
+        Target Total Posts: ${targetPosts} posts
+        
+        === TIMELINE & PHASES ===
+        ${phaseRangesContext}
+        
+        === FREQUENCIES (CRITICAL) ===
+        ${platformFrequencies}
+        
+        === EXECUTION PLAN ===
+        You must generate a schedule that distributes exactly ${targetPosts} posts.
+        
+        **ALGORITHM TO FOLLOW:**
+        1. **Map the Calendar**: For each of the ${totalDays} days, determine which Phase it falls into.
+        2. **Check Frequency**: For that day/phase, check the "PLATFORM POSTING FREQUENCY" rules.
+           - If it says "Daily" -> You MUST schedule a post.
+           - If it says "3 Posts/Week" -> Check if you need a post to maintain that average.
+        3. **Distribute**: Ensure posts are not bunched up. If frequency is "3/Week", spread them (Mon/Wed/Fri logic).
+        4. **YouTube Video vs Shorts (CRITICAL)**:
+           - "YouTube Video" = Long-form content. Use contentType: "Video", platform: "YouTube Video"
+           - "YouTube Shorts" = Short-form vertical content. Use contentType: "Short", platform: "YouTube Shorts"
+           - These are SEPARATE platforms with DIFFERENT frequencies. Check the strategy to see which are enabled.
+           - If both are enabled: YouTube Video posts should be LOW frequency (1-2/week), YouTube Shorts should be HIGHER frequency
+           - For every YouTube Video planned, consider adding a YouTube Shorts teaser on the same or following day
+        
+        **JSON OUTPUT REQUIREMENTS:**
+        Return an ARRAY of Post objects.
+        1. "dayOffset": INTEGER (0 to ${totalDays - 1}). 0 is the first day.
+        2. "platforms": Array of STRINGS. Use the EXACT platform names from strategy:
+           - Available: ${strategyData.platforms?.map(p => p.id).join(', ')}.
+           - For YouTube content, use EXACTLY "YouTube Video" or "YouTube Shorts" as specified in the strategy.
+        3. "contentType": MUST match the platform's valid formats:
+           
+           === PLATFORM FORMAT RULES (MANDATORY) ===
+           | Platform       | Valid Formats                    |
+           |----------------|----------------------------------|
+           | Instagram      | "Post", "Story", "Reel"          |
+           | Facebook       | "Text", "Post", "Reel", "Story"  |
+           | LinkedIn       | "Text", "Post", "Carousel"       |
+           | TikTok         | "Video"                          |
+           | X              | "Text", "Post"                   |
+           | YouTube Video  | "Video" (ONLY)                   |
+           | YouTube Shorts | "Short" (ONLY)                   |
+           
+           You MUST use only the formats listed above for each platform.
+           If a post has multiple platforms, pick a format that works for all OR create separate posts.
+           
+        4. "phaseId": STRING. The name of the phase matching the dayOffset.
+        5. "hook": STRING. 1-2 sentences. Specific to the phase focus.
+        6. "status": "outlined".
+        
+        **CRITICAL RULES:**
+        - DO NOT generate more than ${targetPosts + 5} posts.
+        - DO NOT generate fewer than ${Math.max(1, targetPosts - 2)} posts.
+        - dayOffset MUST be < ${totalDays}.
+        - Start posting on dayOffset 0 or 1.
+        - Use EXACT platform names from the strategy ("YouTube Video" not just "YouTube").
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.8,
+            }
+        }));
+
+        return JSON.parse(response.text || "[]");
+    } catch (error) {
+        console.error("Gemini Campaign Plan Error:", error);
+        throw error;
+    }
+};
+
+
+export const suggestOptimalScheduleAI = async (
+    platforms: string[],
+    targetAudience: string,
+    timezone?: string
+): Promise<{ platform: string; bestTimes: string[]; rationale: string }[]> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    platform: { type: Type.STRING },
+                    bestTimes: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    rationale: { type: Type.STRING }
+                },
+                required: ['platform', 'bestTimes', 'rationale']
+            }
+        };
+
+        const prompt = `
+        You are a Social Media Analytics Expert. Suggest optimal posting times for each platform.
+        
+        === CONTEXT ===
+        Platforms: ${platforms.join(', ')}
+        Target Audience: ${targetAudience}
+        Timezone: ${timezone || 'User timezone (general recommendations)'}
+        
+        === TASK ===
+        For each platform, provide:
+        1. "platform": The platform name
+        2. "bestTimes": Array of 2-3 optimal posting times (e.g., "9:00 AM", "1:00 PM", "7:00 PM")
+        3. "rationale": A brief explanation of why these times work best for this audience (1-2 sentences)
+        
+        Consider:
+        - Platform-specific peak usage times
+        - Target audience behavior patterns
+        - Content consumption habits
+        - Weekday vs. weekend differences
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.6,
+            }
+        }));
+
+        return JSON.parse(response.text || "[]");
+    } catch (error) {
+        console.error("Gemini Schedule Suggestion Error:", error);
+        throw error;
+    }
+};
+
+export const analyzeContentMixAI = async (
+    posts: PostPlaceholder[],
+    strategyData: { platforms?: { id: string }[]; campaignType?: string }
+): Promise<{
+    analysis: { category: string; current: number; recommended: number; status: 'good' | 'low' | 'high' }[];
+    suggestions: string[];
+}> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.OBJECT,
+            properties: {
+                analysis: {
+                    type: Type.ARRAY,
+                    items: {
+                        type: Type.OBJECT,
+                        properties: {
+                            category: { type: Type.STRING },
+                            current: { type: Type.INTEGER },
+                            recommended: { type: Type.INTEGER },
+                            status: { type: Type.STRING }
+                        },
+                        required: ['category', 'current', 'recommended', 'status']
+                    }
+                },
+                suggestions: { type: Type.ARRAY, items: { type: Type.STRING } }
+            },
+            required: ['analysis', 'suggestions']
+        };
+
+        const postsSummary = posts.map(p => `${p.contentType} on ${p.platforms.join(', ')}`).join('; ');
+        const platformsList = strategyData.platforms?.map(p => p.id).join(', ') || 'Multiple platforms';
+
+        const prompt = `
+        You are a Content Strategy Analyst. Analyze the content mix and provide recommendations.
+        
+        === CURRENT CONTENT PLAN ===
+        Posts: ${postsSummary || 'No posts planned yet'}
+        Total Posts: ${posts.length}
+        Platforms: ${platformsList}
+        Campaign Goal: ${strategyData.campaignType || 'Engagement'}
+        
+        === TASK ===
+        Analyze the content mix across these dimensions:
+        
+        1. "analysis": Array of categories with current vs. recommended counts
+           Categories to analyze:
+           - "Reels/Shorts" (video content)
+           - "Carousels" (educational swipe content)
+           - "Static Posts" (single image/text posts)
+           - "Stories" (ephemeral content)
+           
+           For each:
+           - "category": The content type
+           - "current": Number of posts of this type
+           - "recommended": Optimal number for the campaign goal
+           - "status": "good" if balanced, "low" if underrepresented, "high" if overrepresented
+        
+        2. "suggestions": 2-4 actionable suggestions to improve the content mix
+        
+        Consider the campaign goal when making recommendations (e.g., Reels for engagement, Carousels for education).
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.5,
+            }
+        }));
+
+        return JSON.parse(response.text || '{"analysis":[],"suggestions":[]}');
+    } catch (error) {
+        console.error("Gemini Content Mix Analysis Error:", error);
         throw error;
     }
 };

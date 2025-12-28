@@ -96,6 +96,7 @@ export interface Project {
     description: string;
     progress: number;
     status: 'Active' | 'Brainstorming' | 'Completed' | 'Review' | 'On Hold' | 'Planning';
+    projectState?: 'pre-release' | 'released' | 'not specified';
     dueDate?: string;
     startDate?: string;
     ownerId: string;
@@ -280,7 +281,11 @@ export interface Idea {
     launchPlan?: string;  // JSON string for Launch data
     convertedCampaignId?: string; // ID of the created marketing campaign
     campaignType?: 'email' | 'ad' | 'marketing' | 'social'; // Type of the created campaign
+    socialType?: 'post' | 'campaign'; // Distinguish between single post and campaign
+    lastRejectionReason?: string; // Feedback from rejection/change request
     originIdeaId?: string;
+    assignedUserIds?: string[];
+    aiTokensUsed?: number;
 }
 
 export interface RiskWinAnalysis {
@@ -308,7 +313,9 @@ export interface Issue {
     assigneeId?: string; // User UID
     assigneeIds?: string[]; // New: Multiple User UIDs
     assignedGroupIds?: string[]; // New: Assigned Groups
-    scheduledDate?: string; // Smart Schedule Date
+    scheduledDate?: string; // Smart Schedule Date (legacy, prefer dueDate)
+    startDate?: string; // Start date for the issue
+    dueDate?: string; // Due date for the issue
     createdAt: any;
     linkedTaskId?: string; // Linked task (if converted to a task)
     githubIssueUrl?: string; // URL of the synced GitHub issue
@@ -486,6 +493,15 @@ export type SocialPlatform = 'Instagram' | 'Facebook' | 'LinkedIn' | 'TikTok' | 
 export type SocialPostStatus = 'Draft' | 'In Review' | 'Approved' | 'Scheduled' | 'Publishing' | 'Published' | 'Failed' | 'Needs Manual Publish' | 'Archived';
 export type SocialPostFormat = 'Text' | 'Post' | 'Image' | 'Video' | 'Carousel' | 'Story' | 'Reel' | 'Short';
 
+export interface ApprovalEvent {
+    id: string;
+    type: 'submission' | 'approval' | 'rejection' | 'changes_requested';
+    actorId: string;
+    date: string;
+    notes?: string;
+    snapshot?: string; // Optional: JSON of the concept at that time
+}
+
 export interface SocialCampaign {
     id: string;
     projectId: string;
@@ -495,7 +511,7 @@ export interface SocialCampaign {
     endDate?: string;   // ISO Date
     targetAudience?: string;
     toneOfVoice?: string;
-    status: 'Backlog' | 'Planning' | 'Active' | 'Completed' | 'Paused' | 'Archived';
+    status: 'Backlog' | 'Planning' | 'Concept' | 'Active' | 'Completed' | 'Paused' | 'Archived' | 'Rejected' | 'PendingReview' | 'ChangesRequested';
     ownerId: string;
     createdAt: any;
     updatedAt: any;
@@ -504,6 +520,57 @@ export interface SocialCampaign {
     platforms?: SocialPlatform[];
     tags?: string[];
     originIdeaId?: string;
+    assignedUserIds?: string[];
+    approvalHistory?: ApprovalEvent[];
+    aiTokensUsed?: number;
+    // Enhanced Strategy Fields
+    bigIdea?: string;
+    hook?: string;
+    visualDirection?: string;
+    mood?: string;
+    phases?: CampaignPhase[];
+    kpis?: CampaignKPI[];
+    audienceSegments?: string[];
+    channelStrategy?: CampaignChannelStrategy[];
+    risks?: { title: string; severity: string; mitigation: string }[];
+    wins?: { title: string; impact: string }[];
+    plannedContent?: PlannedPost[];
+}
+
+export interface PlannedPost {
+    dayOffset: number;
+    platform: string | string[];
+    contentType: string;
+    hook: string;
+    visualDirection?: string;
+}
+
+export interface CampaignPhase {
+    id: string;
+    name: string;
+    durationValue: number;
+    durationUnit: 'Days' | 'Weeks' | 'Months';
+    focus: string;
+}
+
+export interface CampaignKPI {
+    id?: string;
+    metric: string;
+    target: string;
+}
+
+export interface CampaignChannelStrategy {
+    id: string; // Platform name
+    role: string;
+    frequencyValue?: number;
+    frequencyUnit?: string;
+    format?: SocialPostFormat;
+    phaseFrequencies?: {
+        phaseId: string;
+        frequencyValue?: number;
+        frequencyUnit: string;
+        format?: SocialPostFormat;
+    }[];
 }
 
 export interface SocialAsset {
@@ -578,10 +645,15 @@ export interface SocialPost {
         approvedAt?: any;
         originIdeaId?: string;
     }[];
+    rejectionReason?: string; // Feedback if the post was rejected
+
+    // Lineage
+    originPostId?: string; // ID of the concept post this draft was created from
 
     // Publishing Metadata
     externalId?: string; // ID from the platform (e.g. IG Media ID)
     error?: string; // Last error message if failed
+    platforms?: SocialPlatform[]; // For concepts/ideas that target multiple platforms
     originIdeaId?: string;
 }
 
@@ -597,6 +669,16 @@ export interface CaptionPreset {
     createdAt: any;
     createdBy: string;
     updatedAt?: any;
+}
+
+export interface SocialStrategy {
+    id?: string;
+    projectId: string;
+    defaultPlatforms: SocialPlatform[];
+    preferredTone: string;
+    brandPillars: string;
+    hashtagLimits?: Record<string, number>;
+    updatedAt: any;
 }
 
 // --- Online Marketing Module Types ---

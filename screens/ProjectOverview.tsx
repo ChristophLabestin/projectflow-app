@@ -26,6 +26,7 @@ import { calculateProjectHealth } from '../services/healthService';
 import { HealthIndicator } from '../components/project/HealthIndicator';
 import { HealthDetailModal } from '../components/project/HealthDetailModal';
 import { ProjectEditModal } from '../components/project/ProjectEditModal';
+import { TYPE_COLORS } from '../components/ideas/constants';
 
 const cleanText = (value?: string | null) => (value || '').replace(/\*\*/g, '');
 
@@ -556,7 +557,7 @@ export const ProjectOverview = () => {
     const priorityMap: Record<string, number> = { Urgent: 4, High: 3, Medium: 2, Low: 1 };
 
     const recentTasks = tasks
-        .filter(t => !t.isCompleted && t.status !== 'Done')
+        .filter(t => !t.isCompleted && t.status !== 'Done' && !t.convertedIdeaId)
         .sort((a, b) => {
             const pA = priorityMap[a.priority || 'Medium'] || 0;
             const pB = priorityMap[b.priority || 'Medium'] || 0;
@@ -566,6 +567,18 @@ export const ProjectOverview = () => {
             return dateA - dateB; // Ascending Due Date
         })
         .slice(0, 10);
+
+    // Initiatives (strategic tasks converted from ideas)
+    const initiatives = tasks
+        .filter(t => !t.isCompleted && t.status !== 'Done' && t.convertedIdeaId)
+        .sort((a, b) => {
+            const pA = priorityMap[a.priority || 'Medium'] || 0;
+            const pB = priorityMap[b.priority || 'Medium'] || 0;
+            if (pA !== pB) return pB - pA;
+            const dateA = a.dueDate ? new Date(a.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+            const dateB = b.dueDate ? new Date(b.dueDate).getTime() : Number.MAX_SAFE_INTEGER;
+            return dateA - dateB;
+        });
 
     const recentIssues = issues
         .filter(i => !['Resolved', 'Closed'].includes(i.status))
@@ -1087,15 +1100,73 @@ export const ProjectOverview = () => {
                                                     </p>
                                                     <div className="flex items-center gap-2 mt-1">
                                                         {task.priority && (
-                                                            <Badge size="sm" variant={task.priority === 'Urgent' ? 'error' : task.priority === 'High' ? 'warning' : 'secondary'}>
+                                                            <div className={`
+                                                                flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border
+                                                                ${task.priority === 'Urgent' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                                                                    task.priority === 'High' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                                                        task.priority === 'Medium' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                                                            'bg-slate-500/10 text-slate-500 border-slate-500/20'}
+                                                            `}>
+                                                                <span className="material-symbols-outlined text-[12px]">
+                                                                    {task.priority === 'Urgent' ? 'error' :
+                                                                        task.priority === 'High' ? 'keyboard_double_arrow_up' :
+                                                                            task.priority === 'Medium' ? 'drag_handle' :
+                                                                                'keyboard_arrow_down'}
+                                                                </span>
                                                                 {task.priority}
-                                                            </Badge>
+                                                            </div>
                                                         )}
-                                                        {task.dueDate && (
-                                                            <span className="text-[10px] text-[var(--color-text-muted)]">
-                                                                {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                                            </span>
+                                                        {/* Subtask Count */}
+                                                        {subtaskStats[task.id]?.total > 0 && (
+                                                            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-slate-100 dark:bg-white/5 text-[var(--color-text-muted)]">
+                                                                <span className="material-symbols-outlined text-[11px]">checklist</span>
+                                                                {subtaskStats[task.id].done}/{subtaskStats[task.id].total}
+                                                            </div>
                                                         )}
+                                                        {/* Timeline or Due Date Display */}
+                                                        {(() => {
+                                                            const hasStart = Boolean(task.startDate);
+                                                            const hasDue = Boolean(task.dueDate);
+                                                            const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+                                                            const isOverdue = dueDate && dueDate < new Date() && !task.isCompleted;
+
+                                                            // Timeline when both dates exist
+                                                            if (hasStart && hasDue) {
+                                                                const start = new Date(task.startDate!).getTime();
+                                                                const end = dueDate!.getTime();
+                                                                const now = new Date().getTime();
+                                                                const total = end - start;
+                                                                const elapsed = now - start;
+                                                                const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
+                                                                return (
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <span className="text-[9px] font-semibold text-[var(--color-text-muted)] whitespace-nowrap">
+                                                                            {new Date(task.startDate!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                                        </span>
+                                                                        <div className="w-12 h-1.5 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden relative">
+                                                                            <div
+                                                                                className={`h-full absolute top-0 left-0 rounded-full transition-all duration-1000 ${isOverdue ? 'bg-rose-500' : 'bg-[var(--color-primary)]'}`}
+                                                                                style={{ width: `${pct}%` }}
+                                                                            />
+                                                                        </div>
+                                                                        <span className={`text-[9px] font-semibold whitespace-nowrap ${isOverdue ? 'text-rose-500' : 'text-[var(--color-text-muted)]'}`}>
+                                                                            {dueDate!.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                                        </span>
+                                                                    </div>
+                                                                );
+                                                            }
+
+                                                            // Due date only
+                                                            if (hasDue && dueDate) {
+                                                                return (
+                                                                    <span className={`text-[10px] ${isOverdue ? 'text-rose-500 font-bold' : 'text-[var(--color-text-muted)]'}`}>
+                                                                        {dueDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                                    </span>
+                                                                );
+                                                            }
+
+                                                            return null;
+                                                        })()}
                                                         {task.assignedGroupIds && task.assignedGroupIds.length > 0 && (
                                                             <div className="flex -space-x-1.5 overflow-hidden ml-1">
                                                                 {task.assignedGroupIds.map(gid => {
@@ -1133,10 +1204,10 @@ export const ProjectOverview = () => {
                                                         }
                                                     }}
                                                     className={`
-                                                        size-8 rounded-full flex items-center justify-center transition-colors shrink-0
+                                                        size-8 rounded-full flex items-center justify-center transition-all shrink-0
                                                         ${isPinned(task.id)
                                                             ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10'
-                                                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}
+                                                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] opacity-0 group-hover:opacity-100'}
                                                     `}
                                                     title={isPinned(task.id) ? 'Unpin task' : 'Pin task'}
                                                 >
@@ -1161,39 +1232,58 @@ export const ProjectOverview = () => {
                                                     View all ideas
                                                 </Link>
                                             </div>
-                                            {topIdea ? (
-                                                <Link
-                                                    to={`/project/${id}/ideas/${topIdea.id}`}
-                                                    className="mt-4 flex-1 block rounded-lg p-2 -m-2 hover:bg-[var(--color-surface-hover)] transition-colors"
-                                                >
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <Badge size="sm" variant="secondary" className="text-[10px] px-1.5 py-0">
-                                                            {topIdea.type}
-                                                        </Badge>
-                                                        {topIdea.generated && (
-                                                            <span className="material-symbols-outlined text-[14px] text-indigo-500" title="AI Generated">
-                                                                auto_awesome
+                                            {topIdea ? (() => {
+                                                const typeColor = TYPE_COLORS[topIdea.type] || TYPE_COLORS['default'] || 'bg-slate-100 text-slate-600';
+                                                return (
+                                                    <Link
+                                                        to={`/project/${id}/ideas/${topIdea.id}`}
+                                                        className="group mt-4 flex-1 block rounded-xl border border-[var(--color-surface-border)] p-4 hover:shadow-md hover:border-[var(--color-primary)]/30 transition-all bg-[var(--color-surface-paper)]"
+                                                    >
+                                                        {/* Type Badge Row */}
+                                                        <div className="flex items-center gap-2 mb-2">
+                                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${typeColor}`}>
+                                                                {topIdea.type}
                                                             </span>
+                                                            {topIdea.generated && (
+                                                                <span className="text-[10px] font-medium text-indigo-500 flex items-center gap-0.5">
+                                                                    <span className="material-symbols-outlined text-[12px]">auto_awesome</span>
+                                                                    AI
+                                                                </span>
+                                                            )}
+                                                            {topIdea.stage && (
+                                                                <span className="text-[10px] font-medium text-[var(--color-text-muted)] flex items-center gap-1 ml-auto">
+                                                                    <span className="material-symbols-outlined text-[12px]">layers</span>
+                                                                    {topIdea.stage}
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Title */}
+                                                        <h4 className="font-semibold text-[var(--color-text-main)] text-sm mb-1.5 line-clamp-2 group-hover:text-[var(--color-primary)] transition-colors">
+                                                            {topIdea.title}
+                                                        </h4>
+
+                                                        {/* Description */}
+                                                        {topIdea.description && (
+                                                            <p className="text-xs text-[var(--color-text-muted)] line-clamp-2 mb-3">
+                                                                {topIdea.description}
+                                                            </p>
                                                         )}
-                                                    </div>
-                                                    <h4 className="font-bold text-[var(--color-text-main)] text-sm mb-1 line-clamp-2">{topIdea.title}</h4>
-                                                    <p className="text-xs text-[var(--color-text-muted)] line-clamp-3">
-                                                        {topIdea.description || 'No description yet.'}
-                                                    </p>
-                                                    <div className="flex items-center justify-between mt-4 pt-3 border-t border-[var(--color-surface-border)]/60">
-                                                        <div className="flex items-center gap-3 text-[10px] text-[var(--color-text-muted)]">
-                                                            <span className="flex items-center gap-0.5">
-                                                                <span className="material-symbols-outlined text-[12px]">thumb_up</span>
+
+                                                        {/* Meta Row */}
+                                                        <div className="flex items-center gap-4 text-[var(--color-text-subtle)]">
+                                                            <span className="flex items-center gap-1 text-xs">
+                                                                <span className="material-symbols-outlined text-[14px]">thumb_up</span>
                                                                 {topIdea.votes || 0}
                                                             </span>
-                                                            <span className="flex items-center gap-0.5">
-                                                                <span className="material-symbols-outlined text-[12px]">chat_bubble</span>
+                                                            <span className="flex items-center gap-1 text-xs">
+                                                                <span className="material-symbols-outlined text-[14px]">chat_bubble</span>
                                                                 {topIdea.comments || 0}
                                                             </span>
                                                         </div>
-                                                    </div>
-                                                </Link>
-                                            ) : (
+                                                    </Link>
+                                                );
+                                            })() : (
                                                 <div className="mt-4 flex-1 flex items-center justify-center text-sm text-[var(--color-text-muted)]">
                                                     No ideas yet.
                                                 </div>
@@ -1213,7 +1303,7 @@ export const ProjectOverview = () => {
                                                 </Link>
                                             </div>
 
-                                            <div className="mt-4 space-y-2 flex-1 max-h-[500px] overflow-y-auto pr-2">
+                                            <div className="mt-4 space-y-2 flex-1 max-h-[500px] overflow-y-auto -mr-2">
                                                 {recentIssues.length === 0 ? (
                                                     <div className="text-sm text-[var(--color-text-muted)]">No open issues right now.</div>
                                                 ) : (
@@ -1226,10 +1316,24 @@ export const ProjectOverview = () => {
                                                             <div className="min-w-0 flex-1">
                                                                 <p className="text-xs font-semibold text-[var(--color-text-main)] truncate">{issue.title}</p>
                                                                 <div className="flex items-center gap-2 mt-1">
-                                                                    <Badge size="sm" variant={issue.priority === 'Urgent' ? 'error' : issue.priority === 'High' ? 'warning' : issue.priority === 'Medium' ? 'secondary' : 'default'}>
+                                                                    <div className={`
+                                                                        flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border
+                                                                        ${issue.priority === 'Urgent' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                                                                            issue.priority === 'High' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                                                                issue.priority === 'Medium' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                                                                    'bg-slate-500/10 text-slate-500 border-slate-500/20'}
+                                                                    `}>
+                                                                        <span className="material-symbols-outlined text-[12px]">
+                                                                            {issue.priority === 'Urgent' ? 'error' :
+                                                                                issue.priority === 'High' ? 'keyboard_double_arrow_up' :
+                                                                                    issue.priority === 'Medium' ? 'drag_handle' :
+                                                                                        'keyboard_arrow_down'}
+                                                                        </span>
                                                                         {issue.priority}
-                                                                    </Badge>
-                                                                    <Badge size="sm" variant="outline">{issue.status}</Badge>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10">
+                                                                        {issue.status}
+                                                                    </div>
                                                                     {issue.assignedGroupIds && issue.assignedGroupIds.length > 0 && (
                                                                         <div className="flex -space-x-1.5 overflow-hidden ml-1">
                                                                             {issue.assignedGroupIds.map(gid => {
@@ -1251,11 +1355,59 @@ export const ProjectOverview = () => {
                                                                 </div>
                                                             </div>
                                                             <div className="flex items-center gap-2 shrink-0 self-center">
-                                                                {issue.scheduledDate && (
-                                                                    <span className="text-[10px] font-semibold text-[var(--color-text-muted)]">
-                                                                        {new Date(issue.scheduledDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                                                    </span>
-                                                                )}
+                                                                {(() => {
+                                                                    const hasStart = Boolean(issue.startDate);
+                                                                    const hasDue = Boolean(issue.dueDate || issue.scheduledDate);
+                                                                    const dueDateStr = issue.dueDate || issue.scheduledDate;
+                                                                    const dueDate = dueDateStr ? new Date(dueDateStr) : null;
+                                                                    const isResolved = ['Resolved', 'Closed'].includes(issue.status);
+                                                                    const isOverdue = dueDate && dueDate < new Date() && !isResolved;
+
+                                                                    // Timeline view when both start and due exist
+                                                                    if (hasStart && hasDue) {
+                                                                        const start = new Date(issue.startDate!).getTime();
+                                                                        const end = dueDate!.getTime();
+                                                                        const now = new Date().getTime();
+                                                                        const total = end - start;
+                                                                        const elapsed = now - start;
+                                                                        const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
+                                                                        return (
+                                                                            <div className="flex flex-col gap-1.5 w-28">
+                                                                                <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-[0.1em] text-[var(--color-text-muted)]">
+                                                                                    <span>Timeline</span>
+                                                                                    <span>{Math.round(pct)}%</span>
+                                                                                </div>
+                                                                                <div className="h-1.5 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden relative ring-1 ring-black/[0.02]">
+                                                                                    <div
+                                                                                        className={`h-full absolute top-0 left-0 rounded-full transition-all duration-1000 ${isOverdue ? 'bg-rose-500' : 'bg-[var(--color-primary)]'}`}
+                                                                                        style={{ width: `${pct}%` }}
+                                                                                    />
+                                                                                </div>
+                                                                                <div className="flex justify-between text-[8px] font-bold opacity-60">
+                                                                                    <span>{new Date(issue.startDate!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                                                                    <span className={isOverdue ? 'text-rose-500' : ''}>
+                                                                                        {dueDate!.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                                                    </span>
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    }
+
+                                                                    // Due date only
+                                                                    if (hasDue && dueDate) {
+                                                                        return (
+                                                                            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border ${isOverdue ? 'border-rose-500/30 bg-rose-500/10 text-rose-500' : 'border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] text-[var(--color-text-main)]'}`}>
+                                                                                <span className="material-symbols-outlined text-[14px]">event</span>
+                                                                                <div className="flex flex-col">
+                                                                                    <span className="text-[8px] font-black uppercase tracking-[0.15em] opacity-70">{isOverdue ? 'Overdue' : 'Due'}</span>
+                                                                                    <span className="text-[10px] font-semibold">{dueDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    }
+
+                                                                    return null;
+                                                                })()}
                                                                 <button
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
@@ -1291,6 +1443,154 @@ export const ProjectOverview = () => {
                                 </div>
                             )}
                         </div>
+
+                        {/* Initiatives Row */}
+                        {initiatives.length > 0 && (
+                            <div className="mt-6">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-sm font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-[16px] text-indigo-500">rocket_launch</span>
+                                        Initiatives
+                                        <span className="text-xs font-medium text-[var(--color-text-muted)]">({initiatives.length})</span>
+                                    </h3>
+                                    <Link to={`/project/${id}/tasks`} className="text-xs font-semibold text-[var(--color-primary)] hover:underline">
+                                        View all
+                                    </Link>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    {initiatives.slice(0, 8).map(initiative => {
+                                        const hasStart = Boolean(initiative.startDate);
+                                        const hasDue = Boolean(initiative.dueDate);
+                                        const dueDate = initiative.dueDate ? new Date(initiative.dueDate) : null;
+                                        const isOverdue = dueDate && dueDate < new Date() && !initiative.isCompleted;
+                                        let pct = 0;
+                                        if (hasStart && hasDue) {
+                                            const start = new Date(initiative.startDate!).getTime();
+                                            const end = dueDate!.getTime();
+                                            const now = new Date().getTime();
+                                            const total = end - start;
+                                            const elapsed = now - start;
+                                            pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
+                                        }
+                                        return (
+                                            <div
+                                                key={initiative.id}
+                                                onClick={() => navigate(`/project/${id}/tasks/${initiative.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
+                                                className="group relative rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 hover:bg-[var(--color-surface-hover)] hover:border-indigo-500/30 transition-all cursor-pointer"
+                                            >
+                                                {/* Priority indicator */}
+                                                <div className={`absolute top-0 left-4 w-8 h-1 rounded-b-full ${initiative.priority === 'Urgent' ? 'bg-rose-500' :
+                                                    initiative.priority === 'High' ? 'bg-amber-500' :
+                                                        initiative.priority === 'Medium' ? 'bg-blue-500' : 'bg-slate-400'
+                                                    }`} />
+
+                                                <div className="flex items-start justify-between gap-2 mb-2">
+                                                    <h4 className="text-sm font-semibold text-[var(--color-text-main)] line-clamp-2 leading-tight">
+                                                        {initiative.title}
+                                                    </h4>
+                                                    <span className="material-symbols-outlined text-[14px] text-indigo-500 shrink-0">rocket_launch</span>
+                                                </div>
+
+                                                {/* Description */}
+                                                {initiative.description && (
+                                                    <p className="text-[11px] text-[var(--color-text-muted)] line-clamp-2 mb-3">
+                                                        {initiative.description}
+                                                    </p>
+                                                )}
+
+                                                {/* Status & Priority Row */}
+                                                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                                                    {initiative.status && (
+                                                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10">
+                                                            {initiative.status}
+                                                        </div>
+                                                    )}
+                                                    {initiative.priority && (
+                                                        <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border
+                                                            ${initiative.priority === 'Urgent' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                                                                initiative.priority === 'High' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                                                    initiative.priority === 'Medium' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                                                        'bg-slate-500/10 text-slate-500 border-slate-500/20'}
+                                                        `}>
+                                                            <span className="material-symbols-outlined text-[10px]">
+                                                                {initiative.priority === 'Urgent' ? 'error' :
+                                                                    initiative.priority === 'High' ? 'keyboard_double_arrow_up' :
+                                                                        initiative.priority === 'Medium' ? 'drag_handle' : 'keyboard_arrow_down'}
+                                                            </span>
+                                                            {initiative.priority}
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                {/* Assignees */}
+                                                {initiative.assignedGroupIds && initiative.assignedGroupIds.length > 0 && (
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                        <div className="flex -space-x-1.5 overflow-hidden">
+                                                            {initiative.assignedGroupIds.slice(0, 3).map(gid => {
+                                                                const group = projectGroups.find(g => g.id === gid);
+                                                                if (!group) return null;
+                                                                return (
+                                                                    <div
+                                                                        key={gid}
+                                                                        className="size-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white shadow-sm ring-1 ring-white dark:ring-[#1E1E1E]"
+                                                                        style={{ backgroundColor: group.color }}
+                                                                        title={group.name}
+                                                                    >
+                                                                        {group.name.substring(0, 1).toUpperCase()}
+                                                                    </div>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                        {initiative.assignedGroupIds.length > 3 && (
+                                                            <span className="text-[10px] text-[var(--color-text-muted)]">+{initiative.assignedGroupIds.length - 3}</span>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* Subtask progress if available */}
+                                                {subtaskStats[initiative.id]?.total > 0 && (
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <span className="material-symbols-outlined text-[12px] text-[var(--color-text-muted)]">checklist</span>
+                                                        <div className="flex-1 h-1.5 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                                            <div
+                                                                className="h-full bg-indigo-500 rounded-full transition-all"
+                                                                style={{ width: `${(subtaskStats[initiative.id].done / subtaskStats[initiative.id].total) * 100}%` }}
+                                                            />
+                                                        </div>
+                                                        <span className="text-[10px] font-semibold text-[var(--color-text-muted)]">
+                                                            {subtaskStats[initiative.id].done}/{subtaskStats[initiative.id].total}
+                                                        </span>
+                                                    </div>
+                                                )}
+
+                                                {/* Timeline */}
+                                                {hasStart && hasDue && (
+                                                    <div className="flex items-center gap-1.5 text-[9px] text-[var(--color-text-muted)]">
+                                                        <span className="material-symbols-outlined text-[12px]">schedule</span>
+                                                        <span className="font-semibold">{new Date(initiative.startDate!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                                        <div className="flex-1 h-1 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                                            <div
+                                                                className={`h-full rounded-full ${isOverdue ? 'bg-rose-500' : 'bg-indigo-500'}`}
+                                                                style={{ width: `${pct}%` }}
+                                                            />
+                                                        </div>
+                                                        <span className={`font-semibold ${isOverdue ? 'text-rose-500' : ''}`}>
+                                                            {dueDate!.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {!hasStart && hasDue && (
+                                                    <div className={`flex items-center gap-1.5 text-[10px] font-semibold ${isOverdue ? 'text-rose-500' : 'text-[var(--color-text-muted)]'}`}>
+                                                        <span className="material-symbols-outlined text-[12px]">event</span>
+                                                        Due {dueDate!.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
                     </section>
 
                     {/* Updates */}
@@ -1548,38 +1848,7 @@ export const ProjectOverview = () => {
                                 <div className="h-full bg-[var(--color-primary)] rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
                             </div>
 
-                            <div className="space-y-2">
-                                <div className="flex items-center justify-between">
-                                    <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">Milestones</p>
-                                    <Link to={`/project/${id}/milestones`} className="text-[10px] font-semibold text-[var(--color-primary)] hover:underline">
-                                        View
-                                    </Link>
-                                </div>
-                                {pendingMilestones.length > 0 ? (
-                                    pendingMilestones
-                                        .slice()
-                                        .sort((a, b) => new Date(a.dueDate || '9999').getTime() - new Date(b.dueDate || '9999').getTime())
-                                        .slice(0, 3)
-                                        .map(milestone => (
-                                            <div key={milestone.id} className="flex items-center gap-2 rounded-lg border border-[var(--color-surface-border)] px-2.5 py-2">
-                                                <span className={`material-symbols-outlined text-[16px] ${new Date(milestone.dueDate || '') < new Date() ? 'text-rose-500' : 'text-indigo-500'}`}>
-                                                    {new Date(milestone.dueDate || '') < new Date() ? 'warning' : 'flag'}
-                                                </span>
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="text-xs font-semibold text-[var(--color-text-main)] truncate">{milestone.title}</p>
-                                                    <p className="text-[10px] text-[var(--color-text-muted)]">
-                                                        {milestone.dueDate ? new Date(milestone.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No due date'}
-                                                    </p>
-                                                </div>
-                                                <button onClick={() => handleToggleMilestone(milestone)} className="size-7 rounded-full hover:bg-[var(--color-surface-hover)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-green-500 transition-colors">
-                                                    <span className="material-symbols-outlined text-[16px]">check</span>
-                                                </button>
-                                            </div>
-                                        ))
-                                ) : (
-                                    <p className="text-xs text-[var(--color-text-muted)]">No milestones yet.</p>
-                                )}
-                            </div>
+
                         </div>
 
                         {isOwner && (
@@ -1590,6 +1859,111 @@ export const ProjectOverview = () => {
                                 Edit dates <span className="material-symbols-outlined text-[12px]">settings</span>
                             </button>
                         )}
+                    </Card>
+
+                    <Card className="flex flex-col relative overflow-hidden">
+                        <div className="flex items-center justify-between mb-2 z-10 relative">
+                            <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                <span className="material-symbols-outlined text-[var(--color-text-subtle)]">flag</span>
+                                Milestones
+                            </h3>
+                            <Link to={`/project/${id}/milestones`} className="size-6 flex items-center justify-center rounded-full hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors">
+                                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                            </Link>
+                        </div>
+
+                        {/* Progress Header */}
+                        <div className="flex items-center gap-3 mb-6 z-10 relative">
+                            <div className="flex-1">
+                                <div className="h-1 w-full bg-[var(--color-surface-hover)] rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-500"
+                                        style={{ width: `${milestones.length > 0 ? (milestones.filter(m => m.status === 'Achieved').length / milestones.length) * 100 : 0}%` }}
+                                    />
+                                </div>
+                                <div className="flex items-center justify-between mt-1.5">
+                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Progress</span>
+                                    <span className="text-[10px] font-bold text-[var(--color-text-main)]">{milestones.filter(m => m.status === 'Achieved').length}/{milestones.length}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-4 flex-1 relative min-h-[160px] z-10">
+                            {/* Vertical Line */}
+                            {pendingMilestones.length > 0 && (
+                                <div className="absolute left-[11px] top-2 bottom-4 w-0.5 bg-[var(--color-surface-border)]" />
+                            )}
+
+                            {pendingMilestones.length > 0 ? (
+                                pendingMilestones
+                                    .slice()
+                                    .sort((a, b) => new Date(a.dueDate || '9999').getTime() - new Date(b.dueDate || '9999').getTime())
+                                    .slice(0, 3)
+                                    .map((milestone, index) => {
+                                        const isFirst = index === 0;
+                                        return (
+                                            <div key={milestone.id} className="relative flex items-start gap-4 group">
+                                                {/* Timeline Dot */}
+                                                <div className={`
+                                                    relative z-10 shrink-0 flex items-center justify-center rounded-full transition-all duration-300
+                                                    ${isFirst
+                                                        ? 'size-6 bg-white dark:bg-[var(--color-surface-card)] border-2 border-indigo-500 shadow-[0_0_0_2px_rgba(99,102,241,0.2)]'
+                                                        : 'size-2.5 ml-[7px] mt-[5px] bg-[var(--color-surface-border)] border-2 border-white dark:border-[var(--color-surface-card)]'
+                                                    }
+                                                 `}>
+                                                    {isFirst && <div className="size-1.5 bg-indigo-500 rounded-full animate-pulse" />}
+                                                </div>
+
+                                                <div className={`flex-1 min-w-0 transition-all ${isFirst ? '' : 'opacity-80 group-hover:opacity-100'}`}>
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div className="min-w-0">
+                                                            <p className={`text-xs font-bold truncate leading-snug ${isFirst ? 'text-[var(--color-text-main)] text-[13px] mb-0.5' : 'text-[var(--color-text-main)]'}`}>
+                                                                {milestone.title}
+                                                            </p>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className={`text-[10px] font-medium ${new Date(milestone.dueDate || '') < new Date()
+                                                                    ? 'text-rose-500 font-bold'
+                                                                    : isFirst ? 'text-indigo-600 dark:text-indigo-400' : 'text-[var(--color-text-muted)]'
+                                                                    }`}>
+                                                                    {milestone.dueDate ? new Date(milestone.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'No date'}
+                                                                </p>
+                                                                {isFirst && (
+                                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] bg-[var(--color-surface-hover)] px-1.5 py-px rounded">
+                                                                        Next Up
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {isFirst && (
+                                                            <button
+                                                                onClick={() => handleToggleMilestone(milestone)}
+                                                                className="size-7 rounded-lg bg-[var(--color-surface-hover)] hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-[var(--color-text-muted)] hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center justify-center transition-all shrink-0"
+                                                                title="Mark as achieved"
+                                                            >
+                                                                <span className="material-symbols-outlined text-[16px]">check</span>
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                            ) : (
+                                <div className="text-center py-8 text-[var(--color-text-muted)] flex flex-col items-center">
+                                    <div className="size-12 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center mb-3">
+                                        <span className="material-symbols-outlined text-xl opacity-50">emoji_events</span>
+                                    </div>
+                                    <p className="text-xs font-medium">All milestones achieved!</p>
+                                    <p className="text-[10px] opacity-70 mt-1">Time to celebrate or set new goals.</p>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Background Decoration */}
+                        <div className="absolute -bottom-6 -right-6 text-[var(--color-surface-hover)] opacity-50 pointer-events-none">
+                            <span className="material-symbols-outlined text-[120px]">flag</span>
+                        </div>
                     </Card>
                     <Card className="flex flex-col">
                         <div className="flex items-center justify-between mb-4">
@@ -1735,6 +2109,19 @@ export const ProjectOverview = () => {
                                         <option value="Medium">Medium Priority</option>
                                         <option value="High">High Priority</option>
                                         <option value="Urgent">Urgent</option>
+                                    </Select>
+                                </div>
+
+                                <div>
+                                    <Select
+                                        label="Project State"
+                                        value={project.projectState || 'not specified'}
+                                        onChange={(e) => handleUpdateField('projectState', e.target.value)}
+                                        className="!py-2 !text-sm"
+                                    >
+                                        <option value="not specified">Not Specified</option>
+                                        <option value="pre-release">Pre-Release</option>
+                                        <option value="released">Released</option>
                                     </Select>
                                 </div>
 

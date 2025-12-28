@@ -271,7 +271,6 @@ export const EmailBuilderPage = () => {
                 onFetchDrafts={fetchDrafts}
                 onLoadDraft={handleLoadDraft}
                 onCancel={() => navigate(-1)}
-                onCancel={() => navigate(-1)}
                 saving={saving}
                 readOnly={isReadOnly}
                 tenantId={resolvedTenantId}

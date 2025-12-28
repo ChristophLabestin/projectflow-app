@@ -60,7 +60,9 @@ export const IdeaPipelineBoard: React.FC<IdeaPipelineBoardProps> = ({ ideas, col
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             <div className="flex h-full gap-4 overflow-x-auto pb-2 items-start snap-x snap-mandatory">
                 {columns.map((column) => (
-                    <div key={column.id} className="snap-start shrink-0 h-full">
+                    <div key={column.id} className="snap-start shrink-0 h-full flex flex-col w-80">
+
+
                         <IdeaColumn
                             column={column}
                             ideas={ideas.filter((i) => (i.stage || columns[0].id) === column.id)}

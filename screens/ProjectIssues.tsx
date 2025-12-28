@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { subscribeProjectIssues, getProjectById, createIssue, subscribeTenantUsers } from '../services/dataService';
+import { subscribeProjectIssues, getProjectById, createIssue, subscribeTenantUsers, deleteIssue } from '../services/dataService';
 import { subscribeProjectGroups } from '../services/projectGroupService';
 import { Issue, Project, Member, ProjectGroup } from '../types';
 import { auth } from '../services/firebase';
@@ -9,11 +9,11 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Textarea } from '../components/ui/Textarea';
 import { Select } from '../components/ui/Select';
-import { Card } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
-import { toMillis } from '../utils/time';
 import { MultiAssigneeSelector } from '../components/MultiAssigneeSelector';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
+import { toMillis } from '../utils/time';
+import { useConfirm } from '../context/UIContext';
+import { useProjectPermissions } from '../hooks/useProjectPermissions';
 
 export const ProjectIssues = () => {
     const { id } = useParams<{ id: string }>();
@@ -25,7 +25,8 @@ export const ProjectIssues = () => {
     const [project, setProject] = useState<Project | null>(null);
     const [projectGroups, setProjectGroups] = useState<ProjectGroup[]>([]);
     const [allUsers, setAllUsers] = useState<Member[]>([]);
-    const { pinItem, unpinItem, isPinned } = usePinnedTasks();
+    const { pinItem, unpinItem, isPinned, focusItemId, setFocusItem } = usePinnedTasks();
+    const confirm = useConfirm();
 
     // Modal State
     const [showNewIssueModal, setShowNewIssueModal] = useState(false);
@@ -39,6 +40,7 @@ export const ProjectIssues = () => {
     const [submitting, setSubmitting] = useState(false);
 
     const user = auth.currentUser;
+    const { can } = useProjectPermissions(project);
 
     useEffect(() => {
         if (!id) return;
@@ -46,6 +48,7 @@ export const ProjectIssues = () => {
         let mounted = true;
         let unsubIssues: (() => void) | undefined;
         let unsubUsers: (() => void) | undefined;
+        let unsubGroups: (() => void) | undefined;
 
         getProjectById(id).then((foundProject) => {
             if (!mounted || !foundProject) {
@@ -60,13 +63,9 @@ export const ProjectIssues = () => {
                     setIssues(loadedIssues);
                     setLoading(false);
                 }
-                if (mounted) {
-                    setIssues(loadedIssues);
-                    setLoading(false);
-                }
             }, foundProject.tenantId);
 
-            const unsubGroups = subscribeProjectGroups(id, setProjectGroups, foundProject.tenantId);
+            unsubGroups = subscribeProjectGroups(id, setProjectGroups, foundProject.tenantId);
 
             if (foundProject.tenantId) {
                 unsubUsers = subscribeTenantUsers((users) => {
@@ -80,9 +79,8 @@ export const ProjectIssues = () => {
 
         return () => {
             mounted = false;
-            mounted = false;
             if (unsubIssues) unsubIssues();
-            unsubGroups();
+            if (unsubGroups) unsubGroups();
             if (unsubUsers) unsubUsers();
         };
     }, [id]);
@@ -97,7 +95,6 @@ export const ProjectIssues = () => {
                 title: newIssueTitle.trim(),
                 description: newIssueDescription.trim(),
                 priority: newIssuePriority,
-                priority: newIssuePriority,
                 assigneeIds: newIssueAssigneeIds,
                 assignedGroupIds: newIssueGroupIds,
             }, project.tenantId);
@@ -110,10 +107,19 @@ export const ProjectIssues = () => {
         }
     };
 
+    const handleDelete = async (issueId: string) => {
+        if (!can('canManageTasks')) return; // Assuming managing issues falls under managing tasks or similar
+        if (!await confirm("Delete Issue", "Are you sure you want to delete this issue?")) return;
+        try {
+            await deleteIssue(issueId);
+        } catch (e) {
+            console.error("Failed to delete issue:", e);
+        }
+    };
+
     const resetForm = () => {
         setNewIssueTitle('');
         setNewIssueDescription('');
-        setNewIssuePriority('Medium');
         setNewIssuePriority('Medium');
         setNewIssueAssigneeIds([]);
         setNewIssueGroupIds([]);
@@ -132,203 +138,296 @@ export const ProjectIssues = () => {
         });
     }, [issues, filter, search]);
 
-    const stats = useMemo(() => ({
-        open: issues.filter(i => i.status === 'Open').length,
-        inProgress: issues.filter(i => i.status === 'In Progress').length,
-        resolved: issues.filter(i => i.status === 'Resolved' || i.status === 'Closed').length,
-        urgent: issues.filter(i => (i.priority === 'Urgent' || i.priority === 'High') && i.status !== 'Closed' && i.status !== 'Resolved').length
-    }), [issues]);
+    const stats = useMemo(() => {
+        const total = issues.length;
+        const open = issues.filter(i => i.status === 'Open').length;
+        const inProgress = issues.filter(i => i.status === 'In Progress').length;
+        const resolved = issues.filter(i => i.status === 'Resolved' || i.status === 'Closed').length;
+        const urgent = issues.filter(i => (i.priority === 'Urgent' || i.priority === 'High') && i.status !== 'Closed' && i.status !== 'Resolved').length;
+        const progress = total > 0 ? Math.round((resolved / total) * 100) : 0;
+        return { total, open, inProgress, resolved, urgent, progress };
+    }, [issues]);
+
+    const IssueCard = ({ issue }: { issue: Issue }) => {
+        const isClosed = issue.status === 'Closed' || issue.status === 'Resolved';
+
+        return (
+            <div
+                onClick={() => navigate(`/project/${id}/issues/${issue.id}`)}
+                className={`
+                    group relative flex flex-col md:flex-row md:items-center gap-4 p-5 rounded-[24px] border transition-all duration-300 cursor-pointer
+                    ${isClosed
+                        ? 'bg-slate-50/50 dark:bg-white/[0.01] border-slate-100 dark:border-white/5 opacity-80'
+                        : 'bg-white dark:bg-white/[0.03] border-black/5 dark:border-white/5 hover:border-[var(--color-primary)]/30 hover:shadow-xl hover:shadow-black/5 hover:-translate-y-0.5'
+                    }
+                `}
+            >
+                {/* Left: Status & Main Info */}
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className={`
+                        flex-shrink-0 size-10 rounded-xl border flex items-center justify-center transition-all duration-300
+                        ${isClosed
+                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
+                            : issue.priority === 'Urgent' ? 'bg-rose-500/10 border-rose-500/20 text-rose-500 animate-pulse'
+                                : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-[var(--color-text-muted)]'}
+                    `}>
+                        <span className="material-symbols-outlined text-[20px]">
+                            {isClosed ? 'check_circle' : 'bug_report'}
+                        </span>
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                        <div className="flex items-center flex-wrap gap-2 mb-2">
+                            <span className="text-xs font-mono font-bold text-[var(--color-text-muted)] opacity-60">
+                                #{issue.id.slice(0, 4).toUpperCase()}
+                            </span>
+                            <h4 className={`text-lg font-bold truncate transition-all duration-300 ${isClosed ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)] group-hover:text-[var(--color-primary)]'}`}>
+                                {issue.title}
+                            </h4>
+                            {issue.priority && (
+                                <div className={`
+                                    flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border
+                                    ${issue.priority === 'Urgent' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                                        issue.priority === 'High' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                            issue.priority === 'Medium' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                                'bg-slate-500/10 text-slate-500 border-slate-500/20'}
+                                `}>
+                                    <span className="material-symbols-outlined text-[14px]">
+                                        {issue.priority === 'Urgent' ? 'error' :
+                                            issue.priority === 'High' ? 'keyboard_double_arrow_up' :
+                                                issue.priority === 'Medium' ? 'drag_handle' :
+                                                    'keyboard_arrow_down'}
+                                    </span>
+                                    {issue.priority}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-4 mb-1">
+                            {/* Status Pill */}
+                            <div className={`
+                                flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.15em] border transition-all duration-300
+                                ${issue.status === 'Resolved' || issue.status === 'Closed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' :
+                                    issue.status === 'In Progress' ? 'bg-blue-600/15 text-blue-400 border-blue-500/40 shadow-[0_0_12px_rgba(59,130,246,0.2)]' :
+                                        issue.status === 'Open' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
+                                            'bg-slate-500/5 text-slate-400 border-slate-500/10'}
+                            `}>
+                                <span className="material-symbols-outlined text-[13px]">
+                                    {issue.status === 'Resolved' || issue.status === 'Closed' ? 'check_circle' :
+                                        issue.status === 'In Progress' ? 'sync' :
+                                            issue.status === 'Open' ? 'error_outline' :
+                                                'circle'}
+                                </span>
+                                {issue.status}
+                            </div>
+
+                            {/* Date */}
+                            <div className="flex items-center gap-1 text-[11px] font-bold text-[var(--color-text-muted)] opacity-70">
+                                <span className="material-symbols-outlined text-[14px]">calendar_today</span>
+                                {new Date(toMillis(issue.createdAt)).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </div>
+
+                            {/* Assignees */}
+                            {(issue.assignedGroupIds?.length > 0 || issue.assigneeIds?.length > 0) && (
+                                <div className="flex -space-x-1.5 overflow-hidden py-1 pl-2 border-l border-black/5 dark:border-white/5">
+                                    {(issue.assigneeIds || []).slice(0, 3).map(uid => {
+                                        const member = allUsers.find(u => u.uid === uid || (u as any).id === uid);
+                                        return (
+                                            <img
+                                                key={uid}
+                                                src={member?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'}
+                                                className="size-6 rounded-full ring-2 ring-white dark:ring-[#1E1E1E]"
+                                                title={member?.displayName || 'Unknown'}
+                                            />
+                                        );
+                                    })}
+                                    {issue.assignedGroupIds?.map(gid => {
+                                        const group = projectGroups.find(g => g.id === gid);
+                                        if (!group) return null;
+                                        return (
+                                            <div
+                                                key={gid}
+                                                className="size-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-[#1E1E1E]"
+                                                style={{ backgroundColor: group.color }}
+                                                title={`Group: ${group.name}`}
+                                            >
+                                                {group.name.substring(0, 2).toUpperCase()}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Right Actions */}
+                <div className="flex flex-col md:flex-row items-center gap-4 md:pl-6 md:border-l border-black/5 dark:border-white/5">
+                    {can('canManageTasks') && (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleDelete(issue.id); }}
+                            className="size-10 rounded-xl bg-slate-100 dark:bg-white/5 text-rose-500 hover:bg-rose-500 hover:text-white transition-all duration-300 opacity-0 group-hover:opacity-100 flex items-center justify-center shrink-0"
+                            title="Delete Issue"
+                        >
+                            <span className="material-symbols-outlined text-xl">delete</span>
+                        </button>
+                    )}
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (isPinned(issue.id)) {
+                                unpinItem(issue.id);
+                            } else {
+                                pinItem({
+                                    id: issue.id,
+                                    type: 'issue',
+                                    title: issue.title,
+                                    projectId: id!,
+                                });
+                            }
+                        }}
+                        onContextMenu={(e) => {
+                            e.preventDefault();
+                            setFocusItem(focusItemId === issue.id ? null : issue.id);
+                        }}
+                        className={`
+                            size-10 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0
+                            bg-slate-100 dark:bg-white/5
+                            ${isPinned(issue.id) ? 'opacity-100 text-[var(--color-primary)]' : 'opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] shadow-sm'}
+                        `}
+                        title={isPinned(issue.id) ? 'Unpin (Right-click to focus)' : 'Pin (Right-click to focus)'}
+                    >
+                        <span className={`material-symbols-outlined text-xl transition-colors duration-300 ${focusItemId === issue.id ? 'text-amber-500' : ''}`}>
+                            push_pin
+                        </span>
+                    </button>
+                    <div className="size-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center text-[var(--color-text-main)] transition-all duration-300 group-hover:bg-[var(--color-primary)] group-hover:text-white group-hover:translate-x-1 shrink-0">
+                        <span className="material-symbols-outlined text-xl">east</span>
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     if (loading) return (
         <div className="flex items-center justify-center p-12">
-            <span className="material-symbols-outlined text-[var(--color-primary)] animate-spin text-4xl">progress_activity</span>
+            <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-3xl">rotate_right</span>
         </div>
     );
 
     return (
-        <div className="flex flex-col gap-6 fade-in max-w-5xl mx-auto pb-20">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-8 fade-in max-w-6xl mx-auto pb-20 px-4 md:px-0">
+            {/* Premium Header */}
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
                 <div>
-                    <h1 className="h2 text-[var(--color-text-main)]">Issues</h1>
-                    <p className="text-[var(--color-text-muted)] text-sm">Track and resolve project bugs and improvements.</p>
+                    <h1 className="text-4xl font-black text-[var(--color-text-main)] tracking-tight mb-2">
+                        Project <span className="text-[var(--color-primary)]">Issues</span>
+                    </h1>
+                    <p className="text-[var(--color-text-muted)] text-lg font-medium opacity-80">
+                        {project?.name ? `Track bugs and improvements for ${project.name}` : 'Track and prioritize project issues.'}
+                    </p>
                 </div>
+                <Button
+                    onClick={() => setShowNewIssueModal(true)}
+                    icon={<span className="material-symbols-outlined font-bold">bug_report</span>}
+                    variant="primary"
+                    size="lg"
+                    className="shadow-2xl shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all px-8 py-4 rounded-2xl"
+                >
+                    Report Issue
+                </Button>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Stats Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                    { label: 'Active', value: stats.open + stats.inProgress, icon: 'bug_report', color: 'text-blue-500', bg: 'bg-blue-50 dark:bg-blue-900/10' },
-                    { label: 'Resolved', value: stats.resolved, icon: 'check_circle', color: 'text-emerald-500', bg: 'bg-emerald-50 dark:bg-emerald-900/10' },
-                    { label: 'Urgent', value: stats.urgent, icon: 'priority_high', color: 'text-rose-500', bg: 'bg-rose-50 dark:bg-rose-900/10' },
-                    { label: 'Total', value: issues.length, icon: 'analytics', color: 'text-slate-500', bg: 'bg-slate-50 dark:bg-slate-900/10' },
+                    { label: 'Active Issues', val: stats.open + stats.inProgress, icon: 'bug_report', color: 'indigo' },
+                    { label: 'Resolved', val: stats.resolved, icon: 'check_circle', color: 'emerald', progress: stats.progress },
+                    { label: 'In Progress', val: stats.inProgress, icon: 'sync', color: 'blue' },
+                    { label: 'Urgent', val: stats.urgent, icon: 'warning', color: 'rose' }
                 ].map((stat, idx) => (
-                    <Card key={idx} className="p-4 flex items-center gap-3">
-                        <div className={`size-10 rounded-xl ${stat.bg} ${stat.color} flex items-center justify-center`}>
-                            <span className="material-symbols-outlined text-[20px]">{stat.icon}</span>
+                    <div key={idx} className={`p-6 rounded-2xl bg-white dark:bg-white/[0.03] border border-${stat.color}-100 dark:border-${stat.color}-500/20 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300`}>
+                        <div className="absolute -right-2 -top-2 p-4 opacity-[0.05] group-hover:opacity-[0.15] group-hover:scale-110 transition-all duration-500">
+                            <span className={`material-symbols-outlined text-8xl text-${stat.color}-500`}>{stat.icon}</span>
                         </div>
-                        <div>
-                            <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{stat.label}</p>
-                            <p className="text-xl font-bold text-[var(--color-text-main)] leading-tight">{stat.value}</p>
+                        <div className="relative z-10">
+                            <p className={`text-xs font-bold text-${stat.color}-600 dark:text-${stat.color}-400 uppercase tracking-[0.1em] mb-2`}>{stat.label}</p>
+                            <div className="flex items-baseline gap-3">
+                                <p className="text-4xl font-black text-[var(--color-text-main)]">{stat.val}</p>
+                                {stat.progress !== undefined && (
+                                    <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30">
+                                        {stat.progress}%
+                                    </span>
+                                )}
+                            </div>
                         </div>
-                    </Card>
+                    </div>
                 ))}
             </div>
 
-            <Card padding="none" className="overflow-visible">
-                {/* Search & Filters */}
-                <div className="p-4 border-b border-[var(--color-surface-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex bg-[var(--color-surface-hover)] rounded-lg p-1">
+            {/* Interactive Controls Bar */}
+            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 sticky top-6 z-20">
+                <div className="flex flex-wrap gap-2">
+                    <div className="flex bg-white/60 dark:bg-black/40 backdrop-blur-2xl p-1.5 rounded-2xl border border-white/20 dark:border-white/10 shadow-xl shadow-black/5 ring-1 ring-black/5">
                         {(['Active', 'Resolved', 'All'] as const).map((f) => (
                             <button
                                 key={f}
                                 onClick={() => setFilter(f)}
                                 className={`
-                                    px-4 py-1.5 rounded-md text-sm font-medium transition-all
-                                    ${filter === f ? 'bg-[var(--color-surface-paper)] text-[var(--color-text-main)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}
+                                    relative flex-1 lg:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all capitalize z-10
+                                    ${filter === f
+                                        ? 'text-[var(--color-primary)]'
+                                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}
                                 `}
                             >
+                                {filter === f && (
+                                    <div className="absolute inset-0 bg-white dark:bg-white/10 rounded-xl shadow-sm z-[-1] fade-in" />
+                                )}
                                 {f}
                             </button>
                         ))}
                     </div>
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <Input
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder="Search issues..."
-                            className="w-full sm:w-64"
-                            icon={<span className="material-symbols-outlined">search</span>}
-                        />
-                    </div>
                 </div>
 
-                {/* Issues List */}
-                <div className="flex flex-col gap-2 p-2">
-                    {filteredIssues.length === 0 ? (
-                        <div className="p-16 text-center flex flex-col items-center justify-center text-[var(--color-text-muted)] border-2 border-dashed border-[var(--color-surface-border)] rounded-2xl m-2">
-                            <div className="size-16 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center mb-4">
-                                <span className="material-symbols-outlined text-4xl opacity-20">bug_report</span>
-                            </div>
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-1">No issues found</h3>
-                            <p className="text-sm">Try adjusting your filters or search terms.</p>
+                <div className="relative group w-full lg:w-96 shadow-xl shadow-black/5">
+                    <input
+                        type="text"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Search issues..."
+                        className="w-full bg-white/60 dark:bg-black/40 backdrop-blur-2xl border-none ring-1 ring-black/5 dark:ring-white/10 focus:ring-2 focus:ring-[var(--color-primary)] rounded-2xl pl-12 pr-6 py-4 text-sm font-medium transition-all outline-none"
+                    />
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] group-focus-within:text-[var(--color-primary)] transition-colors">search</span>
+                </div>
+            </div>
+
+            {/* Issues List */}
+            <div className="flex flex-col gap-4 min-h-[400px]">
+                {filteredIssues.length === 0 ? (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-white/30 dark:bg-white/[0.02] border-2 border-dashed border-black/5 dark:border-white/5 rounded-[32px] fade-in">
+                        <div className="size-24 bg-gradient-to-br from-rose-500/10 to-indigo-500/10 rounded-full flex items-center justify-center mb-6 ring-8 ring-indigo-500/5">
+                            <span className="material-symbols-outlined text-5xl text-rose-500 animate-pulse">bug_report</span>
                         </div>
-                    ) : (
-                        filteredIssues.map(issue => (
-                            <div
-                                key={issue.id}
-                                onClick={() => navigate(`/project/${id}/issues/${issue.id}`)}
-                                className="group flex items-start gap-4 p-4 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] transition-all cursor-pointer"
-                            >
-                                <div className="flex-1 min-w-0 space-y-2">
-                                    <div className="flex items-start justify-between gap-4">
-                                        <div className="space-y-1">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-xs font-mono text-[var(--color-text-muted)] bg-[var(--color-surface-hover)] px-1.5 py-0.5 rounded">
-                                                    #{issue.id.slice(0, 6).toUpperCase()}
-                                                </span>
-                                                <span className={`text-sm font-semibold leading-tight group-hover:text-[var(--color-primary)] transition-colors ${issue.status === 'Closed' || issue.status === 'Resolved' ? 'text-[var(--color-text-muted)]' : 'text-[var(--color-text-main)]'}`}>
-                                                    {issue.title}
-                                                </span>
-                                            </div>
-                                            {issue.description && (
-                                                <p className="text-xs text-[var(--color-text-muted)] line-clamp-1">
-                                                    {issue.description}
-                                                </p>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    <div className="flex flex-wrap items-center gap-3">
-                                        <Badge size="sm" variant={issue.status === 'Open' ? 'primary' : issue.status === 'Resolved' ? 'success' : 'secondary'}>
-                                            <span className="material-symbols-outlined text-[12px] mr-1">
-                                                {issue.status === 'Open' ? 'error' : issue.status === 'Resolved' ? 'check_circle' : 'cancel'}
-                                            </span>
-                                            {issue.status}
-                                        </Badge>
-
-                                        <PriorityBadge priority={issue.priority} />
-
-                                        <div className="flex -space-x-2">
-                                            {(issue.assigneeIds || []).slice(0, 3).map(uid => {
-                                                const member = allUsers.find(u => u.uid === uid || (u as any).id === uid);
-                                                return (
-                                                    <img
-                                                        key={uid}
-                                                        src={member?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'}
-                                                        className="size-5 rounded-full ring-2 ring-[var(--color-surface-bg)]"
-                                                        title={member?.displayName || 'Unknown'}
-                                                    />
-                                                );
-                                            })}
-                                            {issue.assigneeIds && issue.assigneeIds.length > 3 && (
-                                                <div className="size-5 rounded-full bg-[var(--color-surface-hover)] ring-2 ring-[var(--color-surface-bg)] flex items-center justify-center text-[8px] font-bold text-[var(--color-text-muted)]">
-                                                    +{issue.assigneeIds.length - 3}
-                                                </div>
-                                            )}
-                                            {(!issue.assigneeIds || issue.assigneeIds.length === 0) && !issue.assignee && (
-                                                <span className="text-[10px] text-[var(--color-text-muted)] flex items-center gap-1">
-                                                    <span className="material-symbols-outlined text-[14px]">person_off</span>
-                                                </span>
-                                            )}
-                                            {issue.assignedGroupIds && issue.assignedGroupIds.length > 0 && (
-                                                <div className="flex -space-x-2 ml-1">
-                                                    {issue.assignedGroupIds.map(gid => {
-                                                        const group = projectGroups.find(g => g.id === gid);
-                                                        if (!group) return null;
-                                                        return (
-                                                            <div
-                                                                key={gid}
-                                                                className="size-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white shadow-sm ring-2 ring-[var(--color-surface-bg)]"
-                                                                style={{ backgroundColor: group.color }}
-                                                                title={`Group: ${group.name}`}
-                                                            >
-                                                                {group.name.substring(0, 1).toUpperCase()}
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="flex items-center gap-1 text-[10px] text-[var(--color-text-muted)] ml-auto">
-                                            <span className="material-symbols-outlined text-[14px]">calendar_today</span>
-                                            {new Date(toMillis(issue.createdAt)).toLocaleDateString()}
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className={`flex items-center gap-2 self-center ${isPinned(issue.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            if (isPinned(issue.id)) {
-                                                unpinItem(issue.id);
-                                            } else {
-                                                pinItem({
-                                                    id: issue.id,
-                                                    type: 'issue',
-                                                    title: issue.title,
-                                                    projectId: id!,
-                                                });
-                                            }
-                                        }}
-                                        className={`
-                                            p-1 rounded-full transition-all duration-200
-                                            ${isPinned(issue.id)
-                                                ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10'
-                                                : 'text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}
-                                        `}
-                                        title={isPinned(issue.id) ? "Unpin" : "Pin Issue"}
-                                    >
-                                        <span className="material-symbols-outlined text-[20px]">{isPinned(issue.id) ? 'push_pin' : 'push_pin'}</span>
-                                    </button>
-                                    <span className="material-symbols-outlined text-[var(--color-text-subtle)]">chevron_right</span>
-                                </div>
-                            </div>
-                        ))
-                    )}
-                </div>
-            </Card>
+                        <h3 className="text-2xl font-bold text-[var(--color-text-main)] mb-2">No issues found</h3>
+                        <p className="text-[var(--color-text-muted)] max-w-sm font-medium opacity-70">
+                            No issues match your current filters.
+                        </p>
+                        <Button
+                            variant="secondary"
+                            className="mt-8 rounded-xl px-10"
+                            onClick={() => setShowNewIssueModal(true)}
+                        >
+                            Report New Issue
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 gap-3">
+                        {filteredIssues.map(issue => (
+                            <IssueCard key={issue.id} issue={issue} />
+                        ))}
+                    </div>
+                )}
+            </div>
 
             {/* Create Issue Modal */}
             {showNewIssueModal && createPortal(
@@ -398,28 +497,5 @@ export const ProjectIssues = () => {
                 document.body
             )}
         </div >
-    );
-};
-
-const PriorityBadge = ({ priority }: { priority: string }) => {
-    const styles: Record<string, string> = {
-        'Urgent': 'bg-rose-50 text-rose-700 border-rose-200',
-        'High': 'bg-amber-50 text-amber-700 border-amber-200',
-        'Medium': 'bg-blue-50 text-blue-700 border-blue-200',
-        'Low': 'bg-slate-100 text-slate-700 border-slate-200',
-    };
-
-    const icons: Record<string, string> = {
-        'Urgent': 'error',
-        'High': 'keyboard_double_arrow_up',
-        'Medium': 'drag_handle',
-        'Low': 'keyboard_arrow_down',
-    }
-
-    return (
-        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${styles[priority] || styles['Medium']}`}>
-            <span className="material-symbols-outlined text-[12px]">{icons[priority]}</span>
-            {priority}
-        </span>
     );
 };

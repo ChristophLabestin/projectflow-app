@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePinnedTasks, PinnedItem } from '../context/PinnedTasksContext';
 import { Task, SubTask, Project, Member, PersonalTask } from '../types';
@@ -8,11 +8,53 @@ import { db, auth } from '../services/firebase';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
 import { Input } from './ui/Input';
-import { Select } from './ui/Select';
 import { useConfirm } from '../context/UIContext';
 import { CommentSection } from './CommentSection';
 import { fetchCommitsReferencingIssue, GithubCommit } from '../services/githubService';
 import { timeAgo, toMillis } from '../utils/time';
+
+const TASK_STATUS_OPTIONS = ['Backlog', 'Open', 'In Progress', 'On Hold', 'Blocked', 'Done'] as const;
+const ISSUE_STATUS_OPTIONS = ['Open', 'In Progress', 'Resolved', 'Closed'] as const;
+
+type StatusKind = 'task' | 'issue';
+
+const getStatusStyle = (status?: string, kind: StatusKind = 'task') => {
+    if (kind === 'issue') {
+        return status === 'Resolved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
+            status === 'Open' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                status === 'In Progress' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/25' :
+                    status === 'Closed' ? 'bg-slate-500/10 text-slate-500 border-slate-500/20' :
+                        'bg-slate-500/5 text-slate-400 border-slate-500/10';
+    }
+
+    return status === 'Done' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' :
+        status === 'In Progress' ? 'bg-blue-600/15 text-blue-400 border-blue-500/40 shadow-[0_0_8px_rgba(59,130,246,0.15)]' :
+            status === 'Review' ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' :
+                status === 'Open' || status === 'Todo' ? 'bg-violet-500/10 text-violet-400 border-violet-500/20' :
+                    status === 'Backlog' ? 'bg-slate-500/10 text-slate-400 border-slate-500/20 opacity-80' :
+                        status === 'On Hold' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                            status === 'Blocked' ? 'bg-rose-600/20 text-rose-500 border-rose-500/50' :
+                                'bg-slate-500/5 text-slate-400 border-slate-500/10';
+};
+
+const getStatusIcon = (status?: string, kind: StatusKind = 'task') => {
+    if (kind === 'issue') {
+        return status === 'Resolved' ? 'check_circle' :
+            status === 'Closed' ? 'cancel' :
+                status === 'In Progress' ? 'sync' :
+                    status === 'Open' ? 'error' :
+                        'report';
+    }
+
+    return status === 'Done' ? 'check_circle' :
+        status === 'In Progress' ? 'sync' :
+            status === 'Review' ? 'visibility' :
+                status === 'Open' || status === 'Todo' ? 'play_circle' :
+                    status === 'Backlog' ? 'inventory_2' :
+                        status === 'On Hold' ? 'pause_circle' :
+                            status === 'Blocked' ? 'dangerous' :
+                                'circle';
+};
 
 
 
@@ -34,6 +76,8 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
     const [showCompletedSubtasks, setShowCompletedSubtasks] = useState(false);
     const [isEditingDesc, setIsEditingDesc] = useState(false);
     const [descValue, setDescValue] = useState("");
+    const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+    const statusMenuRef = useRef<HTMLDivElement | null>(null);
 
     const { pinnedItems } = usePinnedTasks();
     const confirm = useConfirm();
@@ -43,6 +87,17 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
     useEffect(() => {
         localStorage.setItem(`pinned_desc_expanded_${itemId}`, isDescExpanded.toString());
     }, [isDescExpanded, itemId]);
+
+    useEffect(() => {
+        if (!statusMenuOpen) return;
+        const handleClick = (event: MouseEvent) => {
+            if (!statusMenuRef.current?.contains(event.target as Node)) {
+                setStatusMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, [statusMenuOpen]);
 
 
     useEffect(() => {
@@ -296,6 +351,8 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
     };
 
     const isCompleted = itemType === 'task' ? (item as Task)?.isCompleted : (item as any)?.status === 'Resolved' || (item as any)?.status === 'Closed';
+    const statusKind: StatusKind = itemType === 'issue' ? 'issue' : 'task';
+    const currentStatus = item?.status || 'Open';
 
     if (loading) return <div className="p-8 text-center text-[var(--color-text-subtle)]">Loading...</div>;
     if (!item) return <div className="p-8 text-center text-[var(--color-text-subtle)]">Item not found</div>;
@@ -324,52 +381,41 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                     <div className="flex items-center gap-3 mt-3 flex-wrap">
                         {item.priority && <PriorityBadge priority={item.priority} />}
                         {(itemType === 'task' || itemType === 'issue') && (
-                            <div className="relative inline-flex items-center">
-                                <span className={`flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all duration-300 ${(item.status === 'Done' || item.status === 'Resolved' || item.status === 'Closed') ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' :
-                                    item.status === 'In Progress' ? 'bg-blue-600/15 text-blue-400 border-blue-500/40' :
-                                        item.status === 'Review' ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' :
-                                            item.status === 'Open' || item.status === 'Todo' ? 'bg-violet-500/10 text-violet-400 border-violet-500/20' :
-                                                item.status === 'Backlog' ? 'bg-slate-500/10 text-slate-400 border-slate-500/20' :
-                                                    item.status === 'On Hold' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                                                        item.status === 'Blocked' ? 'bg-rose-600/20 text-rose-500 border-rose-500/50' :
-                                                            'bg-slate-500/5 text-slate-400 border-slate-500/10'
-                                    }`}>
+                            <div ref={statusMenuRef} className="relative inline-flex items-center">
+                                <button
+                                    type="button"
+                                    onClick={() => setStatusMenuOpen((open) => !open)}
+                                    className={`flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border transition-all duration-200 ${getStatusStyle(currentStatus, statusKind)}`}
+                                >
                                     <span className="material-symbols-outlined text-[11px]">
-                                        {(item.status === 'Done' || item.status === 'Resolved' || item.status === 'Closed') ? 'check_circle' :
-                                            item.status === 'In Progress' ? 'sync' :
-                                                item.status === 'Review' ? 'visibility' :
-                                                    item.status === 'Open' || item.status === 'Todo' ? 'play_circle' :
-                                                        item.status === 'Backlog' ? 'inventory_2' :
-                                                            item.status === 'On Hold' ? 'pause_circle' :
-                                                                item.status === 'Blocked' ? 'dangerous' : 'circle'}
+                                        {getStatusIcon(currentStatus, statusKind)}
                                     </span>
-                                    <select
-                                        value={item.status || 'Open'}
-                                        onChange={(e) => handleStatusChange(e.target.value)}
-                                        className="appearance-none bg-transparent border-none p-0 pr-3 m-0 text-[9px] font-black uppercase tracking-widest focus:ring-0 focus:outline-none cursor-pointer"
-                                        style={{ WebkitAppearance: 'none', MozAppearance: 'none' }}
-                                    >
-                                        {itemType === 'task' ? (
-                                            <>
-                                                <option value="Backlog">Backlog</option>
-                                                <option value="Open">Open</option>
-                                                <option value="In Progress">In Progress</option>
-                                                <option value="On Hold">On Hold</option>
-                                                <option value="Review">Review</option>
-                                                <option value="Blocked">Blocked</option>
-                                                <option value="Done">Done</option>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <option value="Open">Open</option>
-                                                <option value="In Progress">In Progress</option>
-                                                <option value="Resolved">Resolved</option>
-                                                <option value="Closed">Closed</option>
-                                            </>
-                                        )}
-                                    </select>
-                                    <span className="material-symbols-outlined text-[10px] opacity-50">expand_more</span>
-                                </span>
+                                    <span>{currentStatus}</span>
+                                    <span className={`material-symbols-outlined text-[10px] opacity-60 transition-transform ${statusMenuOpen ? 'rotate-180' : ''}`}>expand_more</span>
+                                </button>
+                                {statusMenuOpen && (
+                                    <div className="absolute left-0 top-full mt-2 w-52 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] shadow-lg p-1 z-20">
+                                        {(itemType === 'task' ? TASK_STATUS_OPTIONS : ISSUE_STATUS_OPTIONS).map((status) => (
+                                            <button
+                                                key={status}
+                                                type="button"
+                                                onClick={() => {
+                                                    setStatusMenuOpen(false);
+                                                    handleStatusChange(status);
+                                                }}
+                                                className={`w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-colors ${status === currentStatus
+                                                    ? 'bg-[var(--color-surface-hover)]'
+                                                    : 'hover:bg-[var(--color-surface-hover)]'
+                                                    } ${getStatusStyle(status, statusKind)}`}
+                                            >
+                                                <span className="material-symbols-outlined text-[12px]">
+                                                    {getStatusIcon(status, statusKind)}
+                                                </span>
+                                                <span>{status}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -1082,7 +1128,7 @@ export const PinnedTasksModal = () => {
                                     `}
                                 >
                                     <div className={`relative shrink-0 flex items-center justify-center p-2 rounded-lg border ${isFocus ? 'bg-amber-500/10 border-amber-500/30' : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)]'}`}>
-                                        <span className={`material-symbols-outlined text-[18px] ${isFocus ? 'text-amber-500' : (isIssue ? 'text-indigo-500' : 'text-emerald-500')}`}>
+                                        <span className={`material-symbols-outlined text-[18px] ${isFocus ? 'text-amber-500' : (isIssue ? 'text-indigo-500' : 'text-cyan-500')}`}>
                                             {isIssue ? 'bug_report' : 'task_alt'}
                                         </span>
                                         {isFocus && (
@@ -1094,7 +1140,7 @@ export const PinnedTasksModal = () => {
                                             {item.title}
                                         </p>
                                         <div className="flex items-center gap-2 mt-1">
-                                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${isFocus ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : (isIssue ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400')}`}>
+                                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${isFocus ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400' : (isIssue ? 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400')}`}>
                                                 {item.type}
                                             </span>
 
@@ -1225,9 +1271,9 @@ const PriorityBadge = ({ priority }: { priority: string }) => {
     }
 
     return (
-        <span className={`px-2 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1.5 ${styles[priority] || styles['Medium']}`}>
-            <span className="material-symbols-outlined text-[14px]">{icons[priority] || 'drag_handle'}</span>
-            {priority}
+        <span className={`flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${styles[priority] || styles['Medium']}`}>
+            <span className="material-symbols-outlined text-[11px]">{icons[priority] || 'drag_handle'}</span>
+            <span>{priority}</span>
         </span>
     );
 };

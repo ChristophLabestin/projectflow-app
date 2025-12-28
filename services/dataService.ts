@@ -27,7 +27,7 @@ import {
 import { updateProfile, linkWithPopup } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, auth, GithubAuthProvider, FacebookAuthProvider } from "./firebase";
-import type { Task, Idea, Activity, Project, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, EmailComponent, GeminiReport, Milestone, AIUsage, Member, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset } from '../types';
+import type { Task, Idea, Activity, Project, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, EmailComponent, GeminiReport, Milestone, AIUsage, Member, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy } from '../types';
 import { toMillis } from "../utils/time";
 import {
     notifyTaskAssignment,
@@ -55,6 +55,7 @@ export const SOCIAL_CAMPAIGNS = "social_campaigns";
 export const SOCIAL_POSTS = "social_posts";
 export const SOCIAL_ASSETS = "social_assets";
 export const CAPTION_PRESETS = "caption_presets";
+export const SOCIAL_STRATEGY = "social_strategy";
 
 const TENANT_CACHE_KEY = "activeTenantId";
 
@@ -275,6 +276,28 @@ export const incrementImageUsage = async (userId: string, count: number, tenantI
     });
 };
 
+export const incrementIdeaAIUsage = async (ideaId: string, tokens: number, projectId: string, tenantId?: string) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const ideaRef = doc(projectSubCollection(resolvedTenant, projectId, IDEAS), ideaId);
+    await updateDoc(ideaRef, {
+        aiTokensUsed: increment(tokens)
+    });
+};
+
+export const incrementCampaignAIUsage = async (campaignId: string, tokens: number, tenantId?: string) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const campaignRef = doc(db, SOCIAL_CAMPAIGNS, campaignId);
+    await updateDoc(campaignRef, {
+        aiTokensUsed: increment(tokens)
+    });
+};
+
+
+export const deleteSocialCampaign = async (campaignId: string) => {
+    const campaignRef = doc(db, SOCIAL_CAMPAIGNS, campaignId);
+    await deleteDoc(campaignRef);
+};
+
 // --- User Project Navigation Preferences ---
 
 export const getUserProjectNavPrefs = async (userId: string, projectId: string, tenantId?: string): Promise<ProjectNavPrefs | null> => {
@@ -412,6 +435,16 @@ export const getIdeaById = async (ideaId: string, projectId?: string, tenantId?:
         return { ...docSnap.data(), id: docSnap.id } as Idea;
     }
     return null;
+};
+
+export const subscribeToIdea = (ideaId: string, projectId: string, onUpdate: (idea: Idea) => void, tenantId?: string) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const ideaRef = doc(projectSubCollection(resolvedTenant, projectId, IDEAS), ideaId);
+    return onSnapshot(ideaRef, (snap) => {
+        if (snap.exists()) {
+            onUpdate({ ...snap.data(), id: snap.id } as Idea);
+        }
+    });
 };
 
 
@@ -4329,4 +4362,61 @@ export const getIdeaComments = async (projectId: string, ideaId: string, tenantI
         id: doc.id,
         ...doc.data()
     } as ProjectComment));
+};
+
+// --- Social Strategy ---
+
+export const subscribeSocialStrategy = (projectId: string, onUpdate: (strategy: SocialStrategy | null) => void) => {
+    const tenantId = resolveTenantId();
+    const strategyRef = doc(db, 'tenants', tenantId, 'projects', projectId, SOCIAL_STRATEGY, 'default');
+
+    return onSnapshot(strategyRef, (snap) => {
+        if (snap.exists()) {
+            onUpdate({ id: snap.id, ...snap.data() } as SocialStrategy);
+        } else {
+            onUpdate(null);
+        }
+    });
+};
+
+export const updateSocialStrategy = async (projectId: string, updates: Partial<SocialStrategy>) => {
+    const tenantId = resolveTenantId();
+    const strategyRef = doc(db, 'tenants', tenantId, 'projects', projectId, SOCIAL_STRATEGY, 'default');
+
+    await setDoc(strategyRef, {
+        ...updates,
+        projectId,
+        updatedAt: serverTimestamp()
+    }, { merge: true });
+};
+
+export const syncSocialStrategyPlatforms = async (projectId: string, platformToRemove: SocialPlatform) => {
+    const tenantId = resolveTenantId();
+    const ideasRef = collection(db, 'tenants', tenantId, 'projects', projectId, 'ideas');
+    const q = query(ideasRef, where('type', '==', 'Marketing'), where('campaignType', '==', 'social'));
+
+    const snapshot = await getDocs(q);
+    const batch = writeBatch(db);
+    let count = 0;
+
+    snapshot.docs.forEach(docSnap => {
+        const data = docSnap.data() as Idea;
+        try {
+            const concept = JSON.parse(data.concept || '{}');
+            if (concept.channels && Array.isArray(concept.channels) && concept.channels.includes(platformToRemove)) {
+                const newChannels = concept.channels.filter((c: string) => c !== platformToRemove);
+                batch.update(docSnap.ref, {
+                    concept: JSON.stringify({ ...concept, channels: newChannels }),
+                    updatedAt: serverTimestamp()
+                });
+                count++;
+            }
+        } catch (e) {
+            console.error("Failed to parse concept for idea", docSnap.id, e);
+        }
+    });
+
+    if (count > 0) {
+        await batch.commit();
+    }
 };

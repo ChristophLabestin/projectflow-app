@@ -9,6 +9,7 @@ import { Badge } from '../ui/Badge';
 import { Project } from '../../types';
 import { MediaLibrary } from '../MediaLibrary/MediaLibraryModal';
 import { ProjectGroupManager } from './ProjectGroupManager';
+import { ProjectTeamManager } from './ProjectTeamManager';
 import { useProjectPermissions } from '../../hooks/useProjectPermissions';
 
 import { auth } from '../../services/firebase';
@@ -22,7 +23,7 @@ interface ProjectEditModalProps {
     onSave: (updatedFields: Partial<Project>) => Promise<void>;
 }
 
-type Tab = 'general' | 'appearance' | 'modules' | 'groups' | 'navigation' | 'integrations' | 'resources';
+type Tab = 'general' | 'team' | 'appearance' | 'modules' | 'groups' | 'navigation' | 'integrations' | 'resources';
 
 export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     isOpen,
@@ -39,6 +40,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     const [description, setDescription] = useState(project.description);
     const [status, setStatus] = useState(project.status);
     const [priority, setPriority] = useState(project.priority);
+    const [projectState, setProjectState] = useState(project.projectState || 'not specified');
     const [coverImage, setCoverImage] = useState(project.coverImage);
     const [squareIcon, setSquareIcon] = useState(project.squareIcon);
     const [modules, setModules] = useState(project.modules || []);
@@ -82,6 +84,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             setDescription(project.description);
             setStatus(project.status);
             setPriority(project.priority);
+            setProjectState(project.projectState || 'not specified');
             setCoverImage(project.coverImage);
             setSquareIcon(project.squareIcon);
             setModules(project.modules || []);
@@ -157,6 +160,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 description,
                 status,
                 priority,
+                projectState,
                 coverImage,
                 squareIcon,
                 modules,
@@ -185,6 +189,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
 
     const tabs: { id: Tab; label: string; icon: string }[] = [
         { id: 'general', label: 'General', icon: 'settings' },
+        { id: 'team', label: 'Team', icon: 'group' },
         { id: 'appearance', label: 'Appearance', icon: 'palette' },
         { id: 'modules', label: 'Modules', icon: 'extension' },
         { id: 'groups', label: 'Groups', icon: 'groups' },
@@ -237,7 +242,25 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                 <option value="Urgent">Urgent</option>
                             </Select>
                         </div>
+                        <div className="grid grid-cols-1">
+                            <Select
+                                label="Project State"
+                                value={projectState || 'not specified'}
+                                onChange={(e) => setProjectState(e.target.value as any)}
+                            >
+                                <option value="not specified">Not Specified</option>
+                                <option value="pre-release">Pre-Release</option>
+                                <option value="released">Released</option>
+                            </Select>
+                        </div>
                     </div>
+                );
+            case 'team':
+                return (
+                    <ProjectTeamManager
+                        project={project}
+                        canManage={can('canInvite')}
+                    />
                 );
             case 'appearance':
                 return (

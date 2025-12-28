@@ -1,42 +1,69 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useToast } from '../../context/UIContext';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 import { Textarea as TextArea } from '../../components/ui/Textarea';
 import { Select } from '../../components/ui/Select';
 import { RichTextEditor } from '../../components/ui/RichTextEditor';
 import { DatePicker } from '../../components/ui/DatePicker';
-import { SocialCampaign, SocialPlatform } from '../../types';
-import { updateCampaign, subscribeCampaigns, updateIdea, createSocialCampaign, getSocialCampaign } from '../../services/dataService';
+import { SocialCampaign, SocialPlatform, CampaignPhase } from '../../types';
+import { updateCampaign, createSocialCampaign, getSocialCampaign, updateIdea } from '../../services/dataService';
 import { auth, db } from '../../services/firebase';
 import { doc, getDoc } from 'firebase/firestore';
-import { generateCampaignDetailsAI } from '../../services/geminiService';
+import { generateCampaignDetailsAI, generateCampaignDescriptionAI } from '../../services/geminiService';
 
 const ALL_PLATFORMS: SocialPlatform[] = ['Instagram', 'Facebook', 'LinkedIn', 'TikTok', 'X', 'YouTube'];
-const GOALS = ['Brand Awareness', 'Engagement', 'Traffic', 'Lead Generation', 'Sales', 'Community Building'];
 
 export const CreateCampaignPage = () => {
     const { id: projectId, campaignId } = useParams<{ id: string; campaignId?: string }>();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const ideaId = searchParams.get('ideaId');
+    const { showError } = useToast();
 
-    // Form State
+    // Mode State
+    const [editMode, setEditMode] = useState<'simple' | 'advanced'>('simple');
+
+    // Core Identity
     const [name, setName] = useState('');
     const [goal, setGoal] = useState('');
     const [status, setStatus] = useState<SocialCampaign['status']>('Planning');
+    const [color, setColor] = useState('#E1306C');
+
+    // Dates
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+
+    // Strategy & Content
     const [description, setDescription] = useState('');
     const [platforms, setPlatforms] = useState<SocialPlatform[]>([]);
+    const [bigIdea, setBigIdea] = useState('');
+    const [hook, setHook] = useState('');
     const [toneOfVoice, setToneOfVoice] = useState('');
+    const [visualDirection, setVisualDirection] = useState('');
+    const [mood, setMood] = useState('');
+
+    // Audience
     const [targetAudience, setTargetAudience] = useState('');
+    const [audienceSegments, setAudienceSegments] = useState<string[]>([]);
+    const [segmentInput, setSegmentInput] = useState('');
+
+    // Tags
     const [tags, setTags] = useState<string[]>([]);
     const [tagInput, setTagInput] = useState('');
-    const [color, setColor] = useState('#E1306C'); // Default generic pink/red
+
+    // Dynamic Lists
+    const [phases, setPhases] = useState<CampaignPhase[]>([]);
+    const [kpis, setKpis] = useState<{ metric: string, target: string }[]>([]);
+    const [risks, setRisks] = useState<{ title: string, severity: string, mitigation: string }[]>([]);
+    const [wins, setWins] = useState<{ title: string, impact: string }[]>([]);
 
     const [loading, setLoading] = useState(false);
-    const [ideaData, setIdeaData] = useState<any>(null);
+    const [originIdeaId, setOriginIdeaId] = useState<string | null>(null);
+
+    // Derived: Is end date auto-calculated?
+    const isEndDateDerived = !!originIdeaId && phases.length > 0;
 
     // Initial Load
     useEffect(() => {
@@ -54,27 +81,24 @@ export const CreateCampaignPage = () => {
                         setStatus(data.status);
                         setStartDate(data.startDate || '');
                         setEndDate(data.endDate || '');
-                        setEndDate(data.endDate || '');
-
-                        // Parse description (Markdown to HTML if needed)
-                        let desc = data.description || '';
-                        if (desc && !desc.trim().match(/^<[a-z][\s\S]*>/i)) {
-                            desc = desc
-                                .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-                                .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-                                .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-                                .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
-                                .replace(/\*(.*?)\*/gim, '<em>$1</em>')
-                                .replace(/^\s*-\s+(.*$)/gim, '<ul><li>$1</li></ul>') // Basic list
-                                .replace(/\n/gim, '<br />');
-                        }
-                        setDescription(desc);
-
+                        setDescription(data.description || '');
                         setPlatforms(data.platforms || []);
                         setToneOfVoice(data.toneOfVoice || '');
                         setTargetAudience(data.targetAudience || '');
                         setTags(data.tags || []);
                         setColor(data.color || '#E1306C');
+
+                        // Rich Strategy Fields
+                        setBigIdea(data.bigIdea || '');
+                        setHook(data.hook || '');
+                        setVisualDirection(data.visualDirection || '');
+                        setMood(data.mood || '');
+                        setPhases(data.phases || []);
+                        setKpis(data.kpis || []);
+                        setAudienceSegments(data.audienceSegments || []);
+                        setRisks(data.risks || []);
+                        setWins(data.wins || []);
+                        setOriginIdeaId(data.originIdeaId || null);
                     }
                 } catch (e) {
                     console.error("Failed to fetch campaign", e);
@@ -93,7 +117,6 @@ export const CreateCampaignPage = () => {
                     const snap = await getDoc(doc(db, 'ideas', ideaId));
                     if (snap.exists()) {
                         const idea = snap.data();
-                        setIdeaData(idea);
                         setName(idea.title);
 
                         // Parse concept if available
@@ -102,11 +125,31 @@ export const CreateCampaignPage = () => {
                             setGoal(parsed.goal || '');
                             if (parsed.timelineStart) setStartDate(parsed.timelineStart);
                             if (parsed.timelineEnd) setEndDate(parsed.timelineEnd);
-                            // Add logic to extract platforms from concept if stored
                             if (parsed.platforms && Array.isArray(parsed.platforms)) {
-                                setPlatforms(parsed.platforms);
+                                // Platforms in concept are stored as objects with 'id' field (CampaignChannelStrategy)
+                                const rawPlatforms = parsed.platforms.map((p: any) => typeof p === 'string' ? p : p.id).filter(Boolean);
+
+                                // Normalize YouTube variants (YouTube Shorts, YouTube Video) to just YouTube
+                                const normalizedPlatforms = rawPlatforms.map((p: string) => {
+                                    if (p.toLowerCase().includes('youtube')) return 'YouTube';
+                                    return p;
+                                });
+
+                                // Deduplicate
+                                const uniquePlatforms = [...new Set(normalizedPlatforms)] as SocialPlatform[];
+                                setPlatforms(uniquePlatforms);
                             }
+                            // Rich Fields map
+                            setBigIdea(parsed.bigIdea || '');
+                            setHook(parsed.hook || '');
+                            setVisualDirection(parsed.visualDirection || '');
+                            setMood(parsed.mood || '');
+                            if (parsed.phases) setPhases(parsed.phases);
+                            if (parsed.kpis) setKpis(parsed.kpis);
+                            if (parsed.audienceSegments) setAudienceSegments(parsed.audienceSegments);
                         }
+                        // Mark as idea-derived
+                        setOriginIdeaId(ideaId);
                     }
                 } catch (e) {
                     console.error("Failed to fetch idea", e);
@@ -117,6 +160,33 @@ export const CreateCampaignPage = () => {
             fetchIdea();
         }
     }, [projectId, campaignId, ideaId]);
+
+    // Auto-calculate end date from start date + phases for idea-derived campaigns
+    useEffect(() => {
+        if (!isEndDateDerived || !startDate) return;
+
+        // Calculate total days from phases
+        let totalDays = 0;
+        phases.forEach(phase => {
+            const val = phase.durationValue || 0;
+            const unit = phase.durationUnit || 'Days';
+            if (unit === 'Weeks') {
+                totalDays += val * 7;
+            } else if (unit === 'Months') {
+                totalDays += val * 30; // Approximation
+            } else {
+                totalDays += val;
+            }
+        });
+
+        if (totalDays > 0) {
+            const start = new Date(startDate);
+            start.setDate(start.getDate() + totalDays);
+            setEndDate(start.toISOString().split('T')[0]);
+        }
+    }, [isEndDateDerived, startDate, phases]);
+
+    // --- Helpers ---
 
     const togglePlatform = (p: SocialPlatform) => {
         if (platforms.includes(p)) {
@@ -129,17 +199,22 @@ export const CreateCampaignPage = () => {
     const handleAddTag = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && tagInput.trim()) {
             e.preventDefault();
-            if (!tags.includes(tagInput.trim())) {
-                setTags([...tags, tagInput.trim()]);
-            }
+            if (!tags.includes(tagInput.trim())) setTags([...tags, tagInput.trim()]);
             setTagInput('');
         }
     };
+    const removeTag = (tag: string) => setTags(tags.filter(t => t !== tag));
 
-    const removeTag = (tag: string) => {
-        setTags(tags.filter(t => t !== tag));
+    const handleAddSegment = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter' && segmentInput.trim()) {
+            e.preventDefault();
+            if (!audienceSegments.includes(segmentInput.trim())) setAudienceSegments([...audienceSegments, segmentInput.trim()]);
+            setSegmentInput('');
+        }
     };
+    const removeSegment = (seg: string) => setAudienceSegments(audienceSegments.filter(s => s !== seg));
 
+    // AI Generation
     const handleGenerateAI = async () => {
         if (!name) return;
         setLoading(true);
@@ -149,15 +224,44 @@ export const CreateCampaignPage = () => {
             setDescription(result.description);
             setTargetAudience(result.targetAudience);
             setToneOfVoice(result.toneOfVoice);
-            setPlatforms(result.platforms as SocialPlatform[]); // Assuming AI returns valid types, might need validation in real app
+            setPlatforms(result.platforms as SocialPlatform[]);
             setTags(result.tags);
             setStartDate(result.startDate);
             setEndDate(result.endDate);
         } catch (error) {
             console.error("AI Generation failed", error);
-            // Optionally add toast error here
         } finally {
             setLoading(false);
+        }
+    };
+
+    // AI Description Generation (uses all campaign data)
+    const [generatingDescription, setGeneratingDescription] = useState(false);
+    const handleGenerateDescription = async () => {
+        if (!name) return;
+        setGeneratingDescription(true);
+        try {
+            const campaignData = {
+                name,
+                goal,
+                bigIdea,
+                hook,
+                platforms: platforms.join(', '),
+                targetAudience,
+                toneOfVoice,
+                mood,
+                visualDirection,
+                phases: phases.map(p => p.name).join(', '),
+                startDate,
+                endDate
+            };
+            const result = await generateCampaignDescriptionAI(campaignData);
+            setDescription(result);
+        } catch (error) {
+            console.error("Failed to generate description", error);
+            showError("Failed to generate description");
+        } finally {
+            setGeneratingDescription(false);
         }
     };
 
@@ -166,48 +270,99 @@ export const CreateCampaignPage = () => {
         setLoading(true);
         try {
             const data: any = {
+                ownerId: auth.currentUser.uid,
+                projectId,
                 name,
+                status,
                 goal,
                 description,
+                startDate: startDate || undefined,
+                endDate: endDate || undefined,
                 platforms,
-                toneOfVoice,
-                targetAudience,
-                startDate: startDate || null,
-                endDate: endDate || null,
-                status,
-                projectId,
                 tags,
                 color,
-                ownerId: auth.currentUser.uid,
-                originIdeaId: ideaId || (campaignId ? undefined : null) // Keep original idea link if converting
+                // Rich Strategy Data - Save all regardless of mode
+                bigIdea,
+                hook,
+                toneOfVoice,
+                visualDirection,
+                mood,
+                targetAudience,
+                audienceSegments,
+                phases,
+                kpis,
+                risks,
+                wins
             };
+
+            if (ideaId) {
+                data.originIdeaId = ideaId;
+            }
+
+            // Sanitize payload
+            const payload = JSON.parse(JSON.stringify(data));
 
             let newCampaignId = campaignId;
             if (campaignId) {
-                await updateCampaign(projectId, campaignId, data);
+                await updateCampaign(projectId, campaignId, payload);
             } else {
-                newCampaignId = await createSocialCampaign(projectId, data);
+                newCampaignId = await createSocialCampaign(projectId, payload);
             }
 
             if (ideaId && newCampaignId) {
-                await updateIdea(projectId, ideaId, {
+                await updateIdea(ideaId, {
                     convertedCampaignId: newCampaignId,
                     campaignType: 'social',
                     stage: 'Scheduled'
-                });
+                }, projectId);
             }
 
-            navigate(`/project/${projectId}/social/campaigns`);
-        } catch (error) {
+            navigate(`/project/${projectId}/social/campaigns/${newCampaignId}`);
+        } catch (error: any) {
             console.error("Failed to save campaign", error);
+            showError(`Failed to save: ${error.message || 'Unknown error'}`);
         } finally {
             setLoading(false);
         }
     };
 
+    // --- Dynamic List Components ---
+    const addPhase = () => setPhases([...phases, { name: '', durationValue: 1, durationUnit: 'Weeks', focus: '' }]);
+    const updatePhase = (index: number, field: string, value: any) => {
+        const newPhases = [...phases];
+        newPhases[index] = { ...newPhases[index], [field]: value };
+        setPhases(newPhases);
+    };
+    const removePhase = (index: number) => setPhases(phases.filter((_, i) => i !== index));
+
+    const addKPI = () => setKpis([...kpis, { metric: '', target: '' }]);
+    const updateKPI = (index: number, field: string, value: any) => {
+        const newKpis = [...kpis];
+        newKpis[index] = { ...newKpis[index], [field]: value };
+        setKpis(newKpis);
+    };
+    const removeKPI = (index: number) => setKpis(kpis.filter((_, i) => i !== index));
+
+    const addRisk = () => setRisks([...risks, { title: '', severity: 'Medium', mitigation: '' }]);
+    const updateRisk = (index: number, field: string, value: any) => {
+        const newRisks = [...risks];
+        newRisks[index] = { ...newRisks[index], [field]: value };
+        setRisks(newRisks);
+    };
+    const removeRisk = (index: number) => setRisks(risks.filter((_, i) => i !== index));
+
+    const addWin = () => setWins([...wins, { title: '', impact: 'Medium' }]);
+    const updateWin = (index: number, field: string, value: any) => {
+        const newWins = [...wins];
+        newWins[index] = { ...newWins[index], [field]: value };
+        setWins(newWins);
+    };
+    const removeWin = (index: number) => setWins(wins.filter((_, i) => i !== index));
+
+
     return (
         <div className="flex items-center justify-center p-6 min-h-full w-full bg-[var(--color-bg-base)]">
-            <div className="w-full max-w-5xl bg-[var(--color-surface-card)] rounded-3xl shadow-xl border border-[var(--color-surface-border)] overflow-hidden flex flex-col md:flex-row animate-fade-in relative">
+            <div className={`w-full ${editMode === 'simple' ? 'max-w-4xl' : 'max-w-6xl'} bg-[var(--color-surface-card)] rounded-3xl shadow-xl border border-[var(--color-surface-border)] overflow-hidden flex flex-col md:flex-row animate-fade-in relative transition-all duration-300`}>
 
                 {/* Close Button */}
                 <button
@@ -219,23 +374,44 @@ export const CreateCampaignPage = () => {
 
                 {/* Left Panel: Form */}
                 <div className="flex-1 flex flex-col border-r border-[var(--color-surface-border)]">
-                    <header className="px-8 py-6 border-b border-[var(--color-surface-border)]">
-                        <div className="flex items-center gap-3 mb-1">
-                            <span className="p-2 bg-orange-100 text-orange-600 rounded-lg material-symbols-outlined">campaign</span>
-                            <h1 className="text-xl font-bold text-[var(--color-text-main)]">
-                                {campaignId ? 'Edit Campaign' : 'Create New Campaign'}
-                            </h1>
+                    <header className="px-8 py-6 border-b border-[var(--color-surface-border)] flex items-center justify-between">
+                        <div>
+                            <div className="flex items-center gap-3 mb-1">
+                                <span className="p-2 bg-orange-100 text-orange-600 rounded-lg material-symbols-outlined">campaign</span>
+                                <h1 className="text-xl font-bold text-[var(--color-text-main)]">
+                                    {campaignId ? 'Edit Campaign' : 'Create New Campaign'}
+                                </h1>
+                            </div>
+                            <p className="text-sm text-[var(--color-text-subtle)] ml-12">
+                                {editMode === 'simple' ? 'Define essential campaign details.' : 'Manage full campaign strategy and details.'}
+                            </p>
                         </div>
-                        <p className="text-sm text-[var(--color-text-subtle)] ml-12">
-                            {campaignId ? 'Update your campaign details and strategy.' : 'Define your social media campaign strategy and goals.'}
-                        </p>
+
+                        {/* Mode Toggle */}
+                        <div className="flex bg-[var(--color-surface-bg)] rounded-lg p-1 border border-[var(--color-surface-border)]">
+                            <button
+                                onClick={() => setEditMode('simple')}
+                                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${editMode === 'simple' ? 'bg-[var(--color-surface-card)] text-[var(--color-text-main)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                            >
+                                Simple
+                            </button>
+                            <button
+                                onClick={() => setEditMode('advanced')}
+                                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${editMode === 'advanced' ? 'bg-[var(--color-surface-card)] text-[var(--color-text-main)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                            >
+                                Advanced
+                            </button>
+                        </div>
                     </header>
 
-                    <div className="flex-1 p-8 overflow-y-auto custom-scrollbar space-y-6">
+                    <div className="flex-1 p-8 overflow-y-auto custom-scrollbar space-y-8">
 
-                        {/* Basic Info */}
+                        {/* --- SIMPLE MODE FIELDS (Always Visible) --- */}
                         <div className="space-y-4">
-                            <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Campaign Details</h3>
+                            <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider flex items-center gap-2">
+                                <span className="material-symbols-outlined text-[16px]">info</span>
+                                General Information
+                            </h3>
                             <div className="flex gap-2 items-end">
                                 <div className="flex-1">
                                     <Input
@@ -282,11 +458,25 @@ export const CreateCampaignPage = () => {
                                     </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Strategy */}
-                        <div className="space-y-4">
-                            <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Campaign Strategy</h3>
+                            <div className="grid grid-cols-2 gap-6">
+                                <DatePicker label="Start Date" value={startDate} onChange={setStartDate} />
+                                <div className="space-y-1">
+                                    <DatePicker
+                                        label="End Date"
+                                        value={endDate}
+                                        onChange={setEndDate}
+                                        disabled={isEndDateDerived}
+                                    />
+                                    {isEndDateDerived && (
+                                        <p className="text-[10px] text-[var(--color-text-muted)] flex items-center gap-1">
+                                            <span className="material-symbols-outlined text-[12px]">info</span>
+                                            Calculated from phases ({phases.length} phases)
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+
                             <Input
                                 label="Primary Goal"
                                 value={goal}
@@ -294,55 +484,7 @@ export const CreateCampaignPage = () => {
                                 placeholder="e.g. Increase brand awareness by 20%"
                             />
 
-                            <div>
-                                <label className="text-sm font-bold text-[var(--color-text-main)] mb-1 block">Description & Strategy</label>
-                                <RichTextEditor
-                                    value={description}
-                                    onChange={setDescription}
-                                    placeholder="Outline your campaign strategy, key phases, and messaging pillars..."
-                                    className="min-h-[200px]"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <TextArea
-                                    label="Target Audience"
-                                    value={targetAudience}
-                                    onChange={e => setTargetAudience(e.target.value)}
-                                    placeholder="Demographics, psychographics, pain points..."
-                                    rows={3}
-                                />
-                                <TextArea
-                                    label="Tone of Voice"
-                                    value={toneOfVoice}
-                                    onChange={e => setToneOfVoice(e.target.value)}
-                                    placeholder="e.g. Witty, Professional, Urgent..."
-                                    rows={3}
-                                />
-                            </div>
-                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-2 block">Tags</label>
-                            <div className="flex flex-wrap gap-2 mb-2">
-                                {tags.map(tag => (
-                                    <span key={tag} className="px-2 py-1 bg-[var(--color-surface-hover)] rounded-md text-xs font-medium flex items-center gap-1 group">
-                                        #{tag}
-                                        <button onClick={() => removeTag(tag)} className="hover:text-red-500"><span className="material-symbols-outlined text-[14px]">close</span></button>
-                                    </span>
-                                ))}
-                                <input
-                                    type="text"
-                                    value={tagInput}
-                                    onChange={e => setTagInput(e.target.value)}
-                                    onKeyDown={handleAddTag}
-                                    placeholder="Add tag + Enter"
-                                    className="bg-transparent border-none text-xs focus:ring-0 p-1 min-w-[80px]"
-                                />
-                            </div>
-
-                        </div>
-                        {/* Platforms & Timeline */}
-                        <div className="space-y-4 pt-4 border-t border-[var(--color-surface-border)]">
-                            <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Platforms & Schedule</h3>
-
+                            {/* Platforms - Basic */}
                             <div>
                                 <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-2 block">Target Platforms</label>
                                 <div className="flex flex-wrap gap-2">
@@ -362,40 +504,217 @@ export const CreateCampaignPage = () => {
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-6">
-                                <DatePicker
-                                    label="Start Date"
-                                    value={startDate}
-                                    onChange={setStartDate}
-                                />
-                                <DatePicker
-                                    label="End Date"
-                                    value={endDate}
-                                    onChange={setEndDate}
+                            <div>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="text-sm font-bold text-[var(--color-text-main)]">Description</label>
+                                    <button
+                                        onClick={handleGenerateDescription}
+                                        disabled={generatingDescription || !name}
+                                        className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg transition-all bg-gradient-to-r from-violet-100 to-fuchsia-100 text-violet-700 hover:from-violet-200 hover:to-fuchsia-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <span className={`material-symbols-outlined text-[14px] ${generatingDescription ? 'animate-spin' : ''}`}>
+                                            {generatingDescription ? 'progress_activity' : 'auto_awesome'}
+                                        </span>
+                                        {generatingDescription ? 'Generating...' : 'AI Generate'}
+                                    </button>
+                                </div>
+                                <RichTextEditor
+                                    value={description}
+                                    onChange={setDescription}
+                                    placeholder="Brief campaign description..."
+                                    className="min-h-[150px]"
                                 />
                             </div>
 
-                            {/* Color Picker */}
-                            <div>
-                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-2 block">Campaign Color</label>
-                                <div className="flex gap-2">
-                                    {['#E1306C', '#1877F2', '#0A66C2', '#000000', '#FF0000', '#1DB954', '#F48024'].map(c => (
-                                        <button
-                                            key={c}
-                                            onClick={() => setColor(c)}
-                                            className={`w-6 h-6 rounded-full border-2 transition-all ${color === c ? 'border-[var(--color-text-main)] scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`}
-                                            style={{ backgroundColor: c }}
-                                        />
+                            <div className="space-y-2">
+                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-2 block">Tags</label>
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                    {tags.map(tag => (
+                                        <span key={tag} className="px-2 py-1 bg-[var(--color-surface-hover)] rounded-md text-xs font-medium flex items-center gap-1 group">
+                                            #{tag}
+                                            <button onClick={() => removeTag(tag)} className="hover:text-red-500"><span className="material-symbols-outlined text-[14px]">close</span></button>
+                                        </span>
                                     ))}
                                     <input
-                                        type="color"
-                                        value={color}
-                                        onChange={e => setColor(e.target.value)}
-                                        className="w-6 h-6 rounded-full overflow-hidden border-0 p-0 cursor-pointer"
+                                        type="text"
+                                        value={tagInput}
+                                        onChange={e => setTagInput(e.target.value)}
+                                        onKeyDown={handleAddTag}
+                                        placeholder="Add tag + Enter"
+                                        className="bg-transparent border-none text-xs focus:ring-0 p-1 min-w-[80px]"
                                     />
                                 </div>
                             </div>
                         </div>
+
+                        {/* --- ADVANCED MODE FIELDS --- */}
+                        {editMode === 'advanced' && (
+                            <>
+                                {/* Core Strategy */}
+                                <div className="space-y-4 pt-4 border-t border-[var(--color-surface-border)] animate-fade-in">
+                                    <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-[16px]">lightbulb</span>
+                                        Deep Strategy
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <Input
+                                            label="Big Idea / Concept"
+                                            value={bigIdea}
+                                            onChange={e => setBigIdea(e.target.value)}
+                                            placeholder="The core message or theme..."
+                                        />
+                                        <Input
+                                            label="The Hook"
+                                            value={hook}
+                                            onChange={e => setHook(e.target.value)}
+                                            placeholder="The grabby line that pulls people in..."
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Visuals & Mood */}
+                                <div className="space-y-4 pt-4 border-t border-[var(--color-surface-border)] animate-fade-in">
+                                    <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-[16px]">palette</span>
+                                        Visuals & Mood
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <TextArea
+                                            label="Visual Direction"
+                                            value={visualDirection}
+                                            onChange={e => setVisualDirection(e.target.value)}
+                                            placeholder="e.g. Minimalist, Neon-noir, Hand-drawn..."
+                                            rows={3}
+                                        />
+                                        <div className="space-y-4">
+                                            <Input
+                                                label="Mood"
+                                                value={mood}
+                                                onChange={e => setMood(e.target.value)}
+                                                placeholder="e.g. Exciting, Serene, Professional..."
+                                            />
+                                            <Input
+                                                label="Tone of Voice"
+                                                value={toneOfVoice}
+                                                onChange={e => setToneOfVoice(e.target.value)}
+                                                placeholder="e.g. Witty, Urgent..."
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Audience - Advanced */}
+                                <div className="space-y-4 pt-4 border-t border-[var(--color-surface-border)] animate-fade-in">
+                                    <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-[16px]">group</span>
+                                        Detailed Audience
+                                    </h3>
+                                    <TextArea
+                                        label="Target Audience Description"
+                                        value={targetAudience}
+                                        onChange={e => setTargetAudience(e.target.value)}
+                                        placeholder="Demographics, psychographics..."
+                                        rows={2}
+                                    />
+                                    <div>
+                                        <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-2 block">Audience Segments</label>
+                                        <div className="flex flex-wrap gap-2 mb-2">
+                                            {audienceSegments.map(seg => (
+                                                <span key={seg} className="px-2 py-1 bg-[var(--color-surface-hover)] rounded-md text-xs font-medium flex items-center gap-1 group">
+                                                    {seg}
+                                                    <button onClick={() => removeSegment(seg)} className="hover:text-red-500"><span className="material-symbols-outlined text-[14px]">close</span></button>
+                                                </span>
+                                            ))}
+                                            <input
+                                                type="text"
+                                                value={segmentInput}
+                                                onChange={e => setSegmentInput(e.target.value)}
+                                                onKeyDown={handleAddSegment}
+                                                placeholder="Add segment + Enter"
+                                                className="bg-transparent border-none text-xs focus:ring-0 p-1 min-w-[120px]"
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Phases & KPI & Analysis */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-[var(--color-surface-border)] animate-fade-in">
+                                    {/* Phases */}
+                                    <div className="space-y-2">
+                                        <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider flex items-center gap-2 mb-2">
+                                            <span className="material-symbols-outlined text-[16px]">timeline</span>
+                                            Rollout Phases
+                                        </h3>
+                                        {phases.map((phase, idx) => (
+                                            <div key={idx} className="bg-[var(--color-surface-bg)] rounded-xl p-3 border border-[var(--color-surface-border)] space-y-2">
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        className="flex-1 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded px-2 py-1 text-sm font-bold"
+                                                        placeholder="Phase Name"
+                                                        value={phase.name}
+                                                        onChange={e => updatePhase(idx, 'name', e.target.value)}
+                                                    />
+                                                    <button onClick={() => removePhase(idx)} className="text-[var(--color-text-muted)] hover:text-red-500">
+                                                        <span className="material-symbols-outlined text-[16px]">delete</span>
+                                                    </button>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        className="w-20 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded px-2 py-1 text-xs"
+                                                        type="number"
+                                                        value={phase.durationValue}
+                                                        onChange={e => updatePhase(idx, 'durationValue', parseInt(e.target.value) || 1)}
+                                                    />
+                                                    <select
+                                                        className="w-24 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded px-2 py-1 text-xs"
+                                                        value={phase.durationUnit}
+                                                        onChange={e => updatePhase(idx, 'durationUnit', e.target.value)}
+                                                    >
+                                                        <option value="Days">Days</option>
+                                                        <option value="Weeks">Weeks</option>
+                                                    </select>
+                                                </div>
+                                                <input
+                                                    className="w-full bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded px-2 py-1 text-xs"
+                                                    placeholder="Phase Focus..."
+                                                    value={phase.focus}
+                                                    onChange={e => updatePhase(idx, 'focus', e.target.value)}
+                                                />
+                                            </div>
+                                        ))}
+                                        <Button variant="secondary" size="sm" onClick={addPhase} className="text-xs w-full">Add Phase</Button>
+                                    </div>
+
+                                    {/* KPIs */}
+                                    <div className="space-y-2">
+                                        <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider flex items-center gap-2 mb-2">
+                                            <span className="material-symbols-outlined text-[16px]">flag</span>
+                                            Success Metrics
+                                        </h3>
+                                        {kpis.map((kpi, idx) => (
+                                            <div key={idx} className="flex gap-2">
+                                                <input
+                                                    className="flex-1 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded px-3 py-2 text-sm"
+                                                    placeholder="Metric (e.g. Views)"
+                                                    value={kpi.metric}
+                                                    onChange={e => updateKPI(idx, 'metric', e.target.value)}
+                                                />
+                                                <input
+                                                    className="w-24 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded px-3 py-2 text-sm"
+                                                    placeholder="Target"
+                                                    value={kpi.target}
+                                                    onChange={e => updateKPI(idx, 'target', e.target.value)}
+                                                />
+                                                <button onClick={() => removeKPI(idx)} className="text-[var(--color-text-muted)] hover:text-red-500 px-1">
+                                                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <Button variant="secondary" size="sm" onClick={addKPI} className="text-xs w-full">Add Metric</Button>
+                                    </div>
+                                </div>
+                            </>
+                        )}
 
                     </div>
 
@@ -409,8 +728,8 @@ export const CreateCampaignPage = () => {
                 </div>
 
 
-                {/* Right Panel: Preview / Summary (Optional, purely visual for now) */}
-                <div className="w-1/3 bg-[var(--color-surface-bg)] hidden md:flex flex-col p-8 border-l border-[var(--color-surface-border)] relative overflow-hidden">
+                {/* Right Panel: Preview / Summary */}
+                <div className="w-80 min-w-[320px] bg-[var(--color-surface-bg)] hidden lg:flex flex-col p-6 border-l border-[var(--color-surface-border)] relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-orange-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none" />
 
@@ -426,9 +745,6 @@ export const CreateCampaignPage = () => {
                                 }`}>
                                 {status}
                             </span>
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center bg-[var(--color-surface-hover)]">
-                                <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">more_horiz</span>
-                            </div>
                         </div>
 
                         <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-2 line-clamp-2">
@@ -436,11 +752,10 @@ export const CreateCampaignPage = () => {
                         </h3>
 
                         <p className="text-sm text-[var(--color-text-muted)] line-clamp-3 mb-6 min-h-[40px]">
-                            {description || 'No description provided.'}
+                            {bigIdea || description || 'No description provided.'}
                         </p>
 
                         <div className="space-y-3">
-                            {/* Date */}
                             <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
                                 <span className="material-symbols-outlined text-[16px]">calendar_today</span>
                                 <span>
@@ -448,7 +763,6 @@ export const CreateCampaignPage = () => {
                                 </span>
                             </div>
 
-                            {/* Platforms */}
                             <div className="flex flex-wrap gap-1">
                                 {platforms.length > 0 ? platforms.map(p => (
                                     <span key={p} className="px-1.5 py-0.5 bg-[var(--color-surface-hover)] rounded text-[10px] font-medium text-[var(--color-text-muted)]">
@@ -457,30 +771,17 @@ export const CreateCampaignPage = () => {
                                 )) : <span className="text-[10px] text-[var(--color-text-muted)] italic">No platforms selected</span>}
                             </div>
                         </div>
-
-                        <div className="mt-6 pt-4 border-t border-[var(--color-surface-border)] flex justify-between items-center">
-                            <div className="flex -space-x-2">
-                                <div className="w-6 h-6 rounded-full bg-gray-200 border-2 border-white dark:border-black" />
-                                <div className="w-6 h-6 rounded-full bg-gray-300 border-2 border-white dark:border-black" />
-                            </div>
-                            <div className="text-xs font-bold text-[var(--color-primary)]">
-                                View Details
-                            </div>
-                        </div>
                     </div>
-
                     <div className="mt-8 relative z-10">
-                        <h4 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-2">Tips</h4>
+                        <h4 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-2">Strategy Tips</h4>
                         <ul className="text-xs text-[var(--color-text-subtle)] space-y-2 list-disc pl-4">
-                            <li>Set a clear, measurable goal.</li>
-                            <li>Define your target audience to tailor content.</li>
-                            <li>Align your tone of voice with your brand identity.</li>
-                            <li>Choose platforms where your audience is most active.</li>
+                            <li><strong>Big Idea:</strong> Make it single-minded.</li>
+                            <li><strong>Hook:</strong> Ensure it stops the scroll.</li>
+                            <li><strong>Visuals:</strong> Keep it consistent.</li>
                         </ul>
                     </div>
                 </div>
             </div >
         </div>
-
     );
 };
