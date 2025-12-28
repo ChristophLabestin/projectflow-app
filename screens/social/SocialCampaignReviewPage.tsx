@@ -289,7 +289,7 @@ export const SocialCampaignReviewPage = () => {
                     <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => openHelpCenter({ pageId: 'social-studio', sectionId: 'campaign-review' })}
+                        onClick={() => openHelpCenter({ pageId: 'social-studio', sectionId: 'review-approval' })}
                         icon={<span className="material-symbols-outlined text-[16px]">help</span>}
                     >
                         Review help

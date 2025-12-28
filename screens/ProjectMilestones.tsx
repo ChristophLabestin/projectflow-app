@@ -4,6 +4,8 @@ import { Milestone } from '../types';
 import { MilestoneModal } from '../components/Milestones/MilestoneModal';
 import { useConfirm } from '../context/UIContext';
 import { subscribeProjectMilestones, deleteMilestone, updateMilestone } from '../services/dataService';
+import { db } from '../services/firebase';
+import { collectionGroup, query, where, getDocs, onSnapshot, collection } from 'firebase/firestore';
 import { toMillis } from '../utils/time';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -16,6 +18,9 @@ export const ProjectMilestones = () => {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingMilestone, setEditingMilestone] = useState<Milestone | undefined>(undefined);
+    const [ideaLookup, setIdeaLookup] = useState<Record<string, string>>({});
+    const [taskStatusLookup, setTaskStatusLookup] = useState<Record<string, { isCompleted: boolean; hasSubtasks: boolean; dueDate?: string; priority?: string }>>({});
+    const [subtaskLookup, setSubtaskLookup] = useState<Record<string, { total: number; completed: number }>>({});
     const confirm = useConfirm();
 
     useEffect(() => {
@@ -27,11 +32,87 @@ export const ProjectMilestones = () => {
             setLoading(false);
         });
 
+        // Background fetch for idea names (Initiatives)
+        const fetchIdeas = async () => {
+            try {
+                const q = query(collectionGroup(db, 'ideas'), where('projectId', '==', projectId));
+                const snap = await getDocs(q);
+                const lookup: Record<string, string> = {};
+                snap.forEach(doc => {
+                    lookup[doc.id] = doc.data().title;
+                });
+                setIdeaLookup(lookup);
+            } catch (e) {
+                console.error("Failed to fetch idea lookup", e);
+            }
+        };
+        fetchIdeas();
+
+
+
+        // Subscribe to tasks for progress calculation
+        const tasksQ = query(collectionGroup(db, 'tasks'), where('projectId', '==', projectId));
+        const unsubTasks = onSnapshot(tasksQ, (snap) => {
+            const lookup: Record<string, { isCompleted: boolean; hasSubtasks: boolean; dueDate?: string; priority?: string }> = {};
+            snap.forEach(doc => {
+                const data = doc.data();
+                lookup[doc.id] = {
+                    isCompleted: data.isCompleted === true || data.status === 'Done',
+                    hasSubtasks: false,
+                    dueDate: data.dueDate,
+                    priority: data.priority
+                };
+            });
+            setTaskStatusLookup(prev => ({ ...prev, ...lookup }));
+        });
+
         return () => {
             unsub();
+            unsubTasks();
             setTaskTitle(null);
         };
     }, [projectId, setTaskTitle]);
+
+    // Separate useEffect for Subtasks (Per-Task Listeners) to avoid CollectionGroup Index issues
+    useEffect(() => {
+        if (milestones.length === 0) return;
+        const tenantId = milestones[0].tenantId;
+        if (!tenantId) return;
+
+        const allTaskIds = new Set<string>();
+        milestones.forEach(m => m.linkedTaskIds?.forEach(id => allTaskIds.add(id)));
+
+        if (allTaskIds.size === 0) {
+            setSubtaskLookup({});
+            return;
+        }
+
+        const unsubs: (() => void)[] = [];
+
+        allTaskIds.forEach(taskId => {
+            // Path: tenants/{tid}/projects/{pid}/tasks/{taskId}/subtasks
+            const subtasksRef = collection(db, 'tenants', tenantId, 'projects', projectId!, 'tasks', taskId, 'subtasks');
+
+            const unsub = onSnapshot(subtasksRef, (snap) => {
+                let total = 0;
+                let completed = 0;
+                snap.forEach(doc => {
+                    total++;
+                    if (doc.data().isCompleted) completed++;
+                });
+
+                setSubtaskLookup(prev => ({
+                    ...prev,
+                    [taskId]: { total, completed }
+                }));
+            });
+            unsubs.push(unsub);
+        });
+
+        return () => {
+            unsubs.forEach(u => u());
+        };
+    }, [milestones, projectId]); // Re-run if milestones (and thus linked tasks) change
 
     const handleEdit = (milestone: Milestone) => {
         setEditingMilestone(milestone);
@@ -168,6 +249,66 @@ export const ProjectMilestones = () => {
                             // Alternate sides for desktop
                             const isLeft = index % 2 === 0;
 
+                            // Risk Calculation
+                            const getMilestoneRisk = (m: Milestone, progress: number) => {
+                                if (m.status === 'Achieved') return 'Low';
+
+                                const now = new Date();
+                                const dueDate = m.dueDate ? new Date(m.dueDate) : null;
+
+                                // 1. Overdue = High Risk
+                                if (dueDate && dueDate < now) return 'High';
+
+                                // 2. Time Criticality
+                                if (dueDate) {
+                                    const diffDays = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+                                    // < 3 days left & < 50% done = High
+                                    if (diffDays <= 3 && progress < 50) return 'High';
+
+                                    // < 7 days left & < 70% done = Medium
+                                    if (diffDays <= 7 && progress < 70) return 'Medium';
+                                }
+
+                                // 3. Task Priorities (Urgent/High incomplete tasks)
+                                let hasUrgent = false;
+                                let hasHigh = false;
+
+                                m.linkedTaskIds?.forEach(tid => {
+                                    const task = taskStatusLookup[tid];
+                                    if (task && !task.isCompleted) {
+                                        if (task.priority === 'Urgent') hasUrgent = true;
+                                        if (task.priority === 'High') hasHigh = true;
+                                    }
+                                });
+
+                                if (hasUrgent) return 'High';
+                                if (hasHigh) return 'Medium';
+
+                                return 'Low';
+                            };
+
+                            // Calculate Progress First (needed for Risk)
+                            let totalProgress = 0;
+                            if (milestone.linkedTaskIds && milestone.linkedTaskIds.length > 0) {
+                                milestone.linkedTaskIds.forEach(tid => {
+                                    const sub = subtaskLookup[tid];
+                                    if (sub && sub.total > 0) {
+                                        totalProgress += (sub.completed / sub.total);
+                                    } else {
+                                        const taskData = taskStatusLookup[tid];
+                                        if (taskData && taskData.isCompleted) {
+                                            totalProgress += 1;
+                                        }
+                                    }
+                                });
+                            }
+                            const finalPct = milestone.linkedTaskIds && milestone.linkedTaskIds.length > 0
+                                ? Math.round((totalProgress / milestone.linkedTaskIds.length) * 100)
+                                : 0;
+
+                            const calculatedRisk = getMilestoneRisk(milestone, finalPct);
+
                             return (
                                 <div key={milestone.id} className={`relative flex items-center md:justify-center group ${isAchieved ? 'opacity-70 hover:opacity-100 transition-opacity' : ''}`}>
 
@@ -196,9 +337,13 @@ export const ProjectMilestones = () => {
                                             padding="none"
                                             className={`
                                                 relative overflow-hidden transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-lg
-                                                ${isNextUp
-                                                    ? 'ring-2 ring-indigo-500/20 border-indigo-500/50 shadow-md'
-                                                    : 'border-[var(--color-surface-border)]'
+                                                ${calculatedRisk === 'High'
+                                                    ? 'border-red-500 shadow-lg shadow-red-500/20 ring-1 ring-red-500'
+                                                    : calculatedRisk === 'Medium'
+                                                        ? 'border-orange-500 shadow-lg shadow-orange-500/20 ring-1 ring-orange-500'
+                                                        : isNextUp
+                                                            ? 'ring-2 ring-indigo-500/20 border-indigo-500/50 shadow-md'
+                                                            : 'border-[var(--color-surface-border)]'
                                                 }
                                             `}
                                         >
@@ -212,7 +357,11 @@ export const ProjectMilestones = () => {
                                                             ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
                                                             : isAchieved
                                                                 ? 'bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-500'
-                                                                : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'
+                                                                : calculatedRisk === 'High'
+                                                                    ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
+                                                                    : calculatedRisk === 'Medium'
+                                                                        ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400'
+                                                                        : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'
                                                         }
                                                     `}>
                                                         {milestone.dueDate ? (
@@ -253,11 +402,76 @@ export const ProjectMilestones = () => {
                                                                 {milestone.description}
                                                             </p>
                                                         )}
+
+                                                        {/* Linked Items & Risk */}
+                                                        <div className="flex flex-wrap items-center gap-2 mt-3">
+                                                            {(milestone.riskRating || calculatedRisk !== 'Low') && (
+                                                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${(milestone.riskRating === 'High' || calculatedRisk === 'High') ? 'bg-red-500/10 text-red-500 border-red-500/20' :
+                                                                    (milestone.riskRating === 'Medium' || calculatedRisk === 'Medium') ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
+                                                                        'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
+                                                                    }`}>
+                                                                    {calculatedRisk !== 'Low' ? `${calculatedRisk} Risk` : `${milestone.riskRating} Risk`}
+                                                                </span>
+                                                            )}
+
+                                                            {milestone.linkedTaskIds && milestone.linkedTaskIds.length > 0 && (
+                                                                <div className="flex flex-col gap-1">
+                                                                    <span className="flex items-center gap-1 text-[11px] font-medium text-[var(--color-text-subtle)] bg-[var(--color-surface-bg)] px-2 py-0.5 rounded-full border border-[var(--color-surface-border)] w-fit">
+                                                                        <span className="material-symbols-outlined text-[14px]">task</span>
+                                                                        {milestone.linkedTaskIds.length} Tasks
+                                                                    </span>
+                                                                </div>
+                                                            )}
+
+                                                            {milestone.linkedInitiativeId && (
+                                                                <span className="flex items-center gap-1 text-[11px] font-medium text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">
+                                                                    <span className="material-symbols-outlined text-[14px]">rocket_launch</span>
+                                                                    <span className="truncate max-w-[150px]">{ideaLookup[milestone.linkedInitiativeId] || 'Initiative'}</span>
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
 
+
+                                                {/* Progress Bar (Above Footer) */}
+                                                {milestone.linkedTaskIds && milestone.linkedTaskIds.length > 0 && (() => {
+                                                    let totalProgress = 0;
+                                                    milestone.linkedTaskIds.forEach(tid => {
+                                                        const sub = subtaskLookup[tid];
+                                                        if (sub && sub.total > 0) {
+                                                            totalProgress += (sub.completed / sub.total);
+                                                        } else {
+                                                            const taskData = taskStatusLookup[tid];
+                                                            if (taskData && taskData.isCompleted) {
+                                                                totalProgress += 1;
+                                                            }
+                                                        }
+                                                    });
+
+                                                    const finalPct = Math.round((totalProgress / milestone.linkedTaskIds.length) * 100);
+                                                    const isDone = finalPct === 100;
+
+                                                    return (
+                                                        <div className="mt-4 mb-1">
+                                                            <div className="flex items-center justify-between mb-1.5">
+                                                                <span className="text-[10px] uppercase font-bold text-[var(--color-text-subtle)] tracking-wider">Progress</span>
+                                                                <span className={`text-xs font-bold ${isDone ? 'text-emerald-500' : 'text-indigo-500'}`}>
+                                                                    {finalPct}%
+                                                                </span>
+                                                            </div>
+                                                            <div className="h-2 bg-[var(--color-surface-hover)] rounded-full overflow-hidden">
+                                                                <div
+                                                                    className={`h-full rounded-full transition-all duration-1000 ease-out ${isDone ? 'bg-emerald-500' : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`}
+                                                                    style={{ width: `${finalPct}%` }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
+
                                                 {/* Actions Footer */}
-                                                <div className={`mt-4 pt-3 border-t border-[var(--color-surface-border)] flex items-center gap-2 ${isLeft ? 'md:flex-row-reverse' : ''}`}>
+                                                <div className={`mt-4 pt-3 flex items-center gap-2 ${isLeft ? 'md:flex-row-reverse' : ''}`}>
                                                     <Button
                                                         size="sm"
                                                         variant={isAchieved ? "outline" : "primary"}
@@ -285,7 +499,10 @@ export const ProjectMilestones = () => {
                                             </div>
 
                                             {/* Status Stripe */}
-                                            <div className={`absolute left-0 top-0 bottom-0 w-1 ${isAchieved ? 'bg-emerald-500' : isNextUp ? 'bg-indigo-500' : 'bg-transparent'
+                                            <div className={`absolute left-0 top-0 bottom-0 w-1 ${isAchieved ? 'bg-emerald-500' : isNextUp ? 'bg-indigo-500' :
+                                                calculatedRisk === 'High' ? 'bg-red-500' :
+                                                    calculatedRisk === 'Medium' ? 'bg-orange-500' :
+                                                        'bg-transparent'
                                                 }`} />
                                         </Card>
                                     </div>
@@ -294,7 +511,7 @@ export const ProjectMilestones = () => {
                         })
                     )}
                 </div>
-            </div>
+            </div >
 
             <MilestoneModal
                 projectId={projectId}
@@ -302,6 +519,6 @@ export const ProjectMilestones = () => {
                 onClose={() => setIsModalOpen(false)}
                 milestone={editingMilestone}
             />
-        </div>
+        </div >
     );
 };

@@ -1,9 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams, useOutletContext, useSearchParams } from 'react-router-dom';
-import { addSubTask, getProjectTasks, getSubTasks, getTaskById, toggleSubTaskStatus, toggleTaskStatus, deleteTask, getProjectMembers, updateTaskFields, deleteSubTask, updateSubtaskFields, subscribeTenantUsers, getProjectById, getIdeaById, subscribeTaskActivity, getProjectCategories } from '../services/dataService';
+import { addSubTask, getProjectTasks, getSubTasks, getTaskById, toggleSubTaskStatus, toggleTaskStatus, deleteTask, getProjectMembers, updateTaskFields, deleteSubTask, updateSubtaskFields, subscribeTenantUsers, getProjectById, getIdeaById, subscribeTaskActivity, getProjectCategories, subscribeProjectMilestones, updateMilestone } from '../services/dataService';
 import { deleteField } from 'firebase/firestore';
-import { SubTask, Task, Member, Project, Activity } from '../types';
+import { SubTask, Task, Member, Project, Activity, Milestone } from '../types';
 import { CommentSection } from '../components/CommentSection';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
@@ -92,6 +92,8 @@ export const ProjectTaskDetail = () => {
     const [allCategories, setAllCategories] = useState<TaskCategory[]>([]);
     const [copiedId, setCopiedId] = useState(false);
     const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+    const [milestones, setMilestones] = useState<Milestone[]>([]);
+    const [activeMilestoneMenu, setActiveMilestoneMenu] = useState(false);
     const statusMenuRef = useRef<HTMLDivElement | null>(null);
     const { pinItem, unpinItem, isPinned, focusItemId, setFocusItem } = usePinnedTasks();
 
@@ -190,7 +192,16 @@ export const ProjectTaskDetail = () => {
         const unsub = subscribeTaskActivity(id, taskId, (data) => {
             setActivities(data);
         }, tenantId);
-        return () => unsub();
+
+        // Subscribe to Milestones
+        const unsubMilestones = subscribeProjectMilestones(id, (data) => {
+            setMilestones(data);
+        }, tenantId);
+
+        return () => {
+            unsub();
+            unsubMilestones();
+        };
     }, [taskId, id, tenantId]);
 
     const refreshSubs = async () => {
@@ -298,6 +309,40 @@ export const ProjectTaskDetail = () => {
         setTask(prev => prev ? { ...prev, ...updates } : null);
         await updateTaskFields(task.id, updates, id);
     };
+
+    const handleLinkMilestone = async (milestoneId: string) => {
+        if (!id || !task) return;
+        const milestone = milestones.find(m => m.id === milestoneId);
+        if (!milestone) return;
+
+        const currentTasks = milestone.linkedTaskIds || [];
+        // Prevent duplicates
+        if (!currentTasks.includes(task.id)) {
+            await updateMilestone(id, milestoneId, {
+                linkedTaskIds: [...currentTasks, task.id]
+            }, tenantId);
+        }
+        setActiveMilestoneMenu(false);
+        // If task has no due date, inherit? This is done in modal but nice to have here too?
+        // Prompt didn't ask explicitly for it here but consistency is good.
+        // Let's stick to simple linking as per request "card... to link...".
+    };
+
+    const handleUnlinkMilestone = async (milestoneId: string) => {
+        if (!id || !task) return;
+        const milestone = milestones.find(m => m.id === milestoneId);
+        if (!milestone) return;
+
+        const currentTasks = milestone.linkedTaskIds || [];
+        await updateMilestone(id, milestoneId, {
+            linkedTaskIds: currentTasks.filter(tid => tid !== task.id)
+        }, tenantId);
+    };
+
+    const linkedMilestone = useMemo(() => {
+        if (!task) return null;
+        return milestones.find(m => m.linkedTaskIds?.includes(task.id));
+    }, [milestones, task]);
 
     const { setTaskTitle } = useOutletContext<{ setTaskTitle: (title: string) => void }>();
 
@@ -420,13 +465,13 @@ export const ProjectTaskDetail = () => {
                                     </Link>
                                 )}
                                 <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-[0.15em] uppercase border transition-all duration-300 ${task.status === 'Done' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' :
-                                        task.status === 'In Progress' ? 'bg-blue-600/15 text-blue-400 border-blue-500/40 shadow-[0_0_12px_rgba(59,130,246,0.2)]' :
-                                            task.status === 'Review' ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.1)]' :
-                                                task.status === 'Open' || task.status === 'Todo' ? 'bg-violet-500/10 text-violet-400 border-violet-500/20' :
-                                                    task.status === 'Backlog' ? 'bg-slate-500/10 text-slate-400 border-slate-500/20 opacity-80' :
-                                                        task.status === 'On Hold' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                                                            task.status === 'Blocked' ? 'bg-rose-600/20 text-rose-500 border-rose-500/50 animate-pulse ring-1 ring-rose-500/20' :
-                                                                'bg-slate-500/5 text-slate-400 border-slate-500/10'
+                                    task.status === 'In Progress' ? 'bg-blue-600/15 text-blue-400 border-blue-500/40 shadow-[0_0_12px_rgba(59,130,246,0.2)]' :
+                                        task.status === 'Review' ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.1)]' :
+                                            task.status === 'Open' || task.status === 'Todo' ? 'bg-violet-500/10 text-violet-400 border-violet-500/20' :
+                                                task.status === 'Backlog' ? 'bg-slate-500/10 text-slate-400 border-slate-500/20 opacity-80' :
+                                                    task.status === 'On Hold' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
+                                                        task.status === 'Blocked' ? 'bg-rose-600/20 text-rose-500 border-rose-500/50 animate-pulse ring-1 ring-rose-500/20' :
+                                                            'bg-slate-500/5 text-slate-400 border-slate-500/10'
                                     }`}>
                                     <span className="material-symbols-outlined text-[14px]">
                                         {task.status === 'Done' ? 'check_circle' :
@@ -1113,6 +1158,69 @@ export const ProjectTaskDetail = () => {
                                 </div>
                             </div>
 
+                            {/* Linked Milestone Card */}
+                            <div className="pt-3 border-t border-[var(--color-surface-border)]">
+                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase block mb-2">Milestone</span>
+
+                                {linkedMilestone ? (
+                                    <div className="group relative">
+                                        <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 transition-all">
+                                            <div className="size-8 rounded bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                                                <span className="material-symbols-outlined text-[16px]">flag</span>
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <span className="block text-xs font-bold text-emerald-900 dark:text-emerald-100 truncate">{linkedMilestone.title}</span>
+                                                {linkedMilestone.dueDate && (
+                                                    <span className="block text-[10px] text-emerald-600 dark:text-emerald-400">
+                                                        Due {new Date(linkedMilestone.dueDate).toLocaleDateString()}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <button
+                                                onClick={() => handleUnlinkMilestone(linkedMilestone.id)}
+                                                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/50 rounded transition-all text-emerald-600"
+                                                title="Unlink Milestone"
+                                            >
+                                                <span className="material-symbols-outlined text-[16px]">link_off</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => setActiveMilestoneMenu(!activeMilestoneMenu)}
+                                            className="w-full flex items-center justify-center gap-2 p-2 border border-dashed border-[var(--color-surface-border)] rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] transition-all text-xs font-medium"
+                                        >
+                                            <span className="material-symbols-outlined text-[16px]">add_link</span>
+                                            Link to Milestone
+                                        </button>
+
+                                        {activeMilestoneMenu && (
+                                            <>
+                                                <div className="fixed inset-0 z-40" onClick={() => setActiveMilestoneMenu(false)} />
+                                                <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-xl z-50 p-1 max-h-48 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-1 duration-200">
+                                                    {milestones.filter(m => m.status === 'Pending').length === 0 ? (
+                                                        <div className="p-3 text-center text-[10px] text-[var(--color-text-muted)] italic">No pending milestones</div>
+                                                    ) : (
+                                                        milestones.filter(m => m.status === 'Pending').map(m => (
+                                                            <button
+                                                                key={m.id}
+                                                                onClick={() => handleLinkMilestone(m.id)}
+                                                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors text-left"
+                                                            >
+                                                                <span className="material-symbols-outlined text-[14px] text-[var(--color-text-subtle)]">flag</span>
+                                                                <span className="truncate flex-1">{m.title}</span>
+                                                                {m.dueDate && <span className="text-[10px] text-[var(--color-text-muted)]">{new Date(m.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>}
+                                                            </button>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
                             {/* Strategic Origin Link */}
                             {task.convertedIdeaId && (
                                 <div className="pt-3 border-t border-[var(--color-surface-border)]">
@@ -1237,7 +1345,7 @@ export const ProjectTaskDetail = () => {
 
 
 
-        </div>
+        </div >
 
     );
 };

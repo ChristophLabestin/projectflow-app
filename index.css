@@ -45,7 +45,7 @@
 
   /* --- Layout Metrics --- */
   --app-sidebar-width: 0px;
-  --help-center-width-collapsed: calc((100vw - var(--app-sidebar-width)) * 0.5);
+  --help-center-width-collapsed: calc((100vw - var(--app-sidebar-width)) * 0.75);
   --help-center-width-expanded: calc(100vw - var(--app-sidebar-width));
 }
 
@@ -534,6 +534,20 @@ html.dark .switch-track.active {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* --- Help Center Utilities --- */
+.help-section {
+  scroll-margin-top: 24px;
+}
+
+.help-highlight {
+  box-shadow: 0 0 0 2px rgba(23, 23, 23, 0.15);
+  background: var(--color-surface-hover);
+}
+
+html.dark .help-highlight {
+  box-shadow: 0 0 0 2px rgba(229, 229, 229, 0.2);
 }
 
 @keyframes gradient-xy {

@@ -405,6 +405,9 @@ export interface Milestone {
     createdAt: any;
     createdBy: string;
     tenantId: string;
+    linkedTaskIds?: string[];
+    linkedInitiativeId?: string;
+    riskRating?: 'Low' | 'Medium' | 'High';
     originIdeaId?: string;
 }
 

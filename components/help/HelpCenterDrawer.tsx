@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Input } from '../ui/Input';
-import { helpCenterPages, HelpCenterPage } from './helpCenterContent';
+import { helpCenterPages } from './helpCenterContent';
+import type { HelpCenterPageDefinition } from './helpCenterTypes';
 import { useHelpCenter } from '../../context/HelpCenterContext';
 
 type SearchResult = {
@@ -14,8 +15,8 @@ type SearchResult = {
     detail?: string;
 };
 
-const groupPagesByCategory = (pages: HelpCenterPage[]) => {
-    const grouped: Record<string, HelpCenterPage[]> = {};
+const groupPagesByCategory = (pages: HelpCenterPageDefinition[]) => {
+    const grouped: Record<string, HelpCenterPageDefinition[]> = {};
     pages.forEach(page => {
         if (!grouped[page.category]) grouped[page.category] = [];
         grouped[page.category].push(page);
@@ -36,7 +37,6 @@ export const HelpCenterDrawer = () => {
     } = useHelpCenter();
 
     const [shouldRender, setShouldRender] = useState(isOpen);
-    const [highlightedSectionId, setHighlightedSectionId] = useState<string | null>(null);
     const [isExpanded, setIsExpanded] = useState(false);
     const contentRef = useRef<HTMLDivElement | null>(null);
     const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -46,6 +46,7 @@ export const HelpCenterDrawer = () => {
     }, [activePageId]);
 
     const categories = useMemo(() => groupPagesByCategory(helpCenterPages), []);
+    const ActivePageComponent = activePage?.component;
 
     useEffect(() => {
         if (isOpen) {
@@ -73,8 +74,8 @@ export const HelpCenterDrawer = () => {
         const target = container?.querySelector(`[data-section-id="${activeSectionId}"]`) as HTMLElement | null;
         if (!target) return;
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        setHighlightedSectionId(activeSectionId);
-        const timeout = window.setTimeout(() => setHighlightedSectionId(null), 1200);
+        target.classList.add('help-highlight');
+        const timeout = window.setTimeout(() => target.classList.remove('help-highlight'), 1200);
         return () => window.clearTimeout(timeout);
     }, [activePage?.id, activeSectionId, isOpen]);
 
@@ -104,8 +105,7 @@ export const HelpCenterDrawer = () => {
                 const sectionText = [
                     section.title,
                     section.summary || '',
-                    ...(section.bullets || []),
-                    ...(section.steps || []),
+                    section.content || '',
                     ...(section.keywords || [])
                 ].join(' ').toLowerCase();
 
@@ -266,72 +266,14 @@ export const HelpCenterDrawer = () => {
                                 ))}
                             </aside>
 
-                            <section ref={contentRef} className="h-full overflow-y-auto px-6 py-5 space-y-6">
-                                <div className="space-y-2">
-                                    <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
-                                        {activePage?.category}
-                                    </div>
-                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">
-                                        {activePage?.title}
-                                    </h2>
-                                    <p className="text-sm text-[var(--color-text-muted)]">
-                                        {activePage?.description}
-                                    </p>
-                                </div>
-
-                                <div className="flex flex-wrap gap-2">
-                                    {activePage?.sections.map(section => (
-                                        <button
-                                            key={section.id}
-                                            onClick={() => setActiveSection(section.id)}
-                                            className={`
-                                                px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-colors
-                                                ${activeSectionId === section.id
-                                                    ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-[var(--color-primary)]'
-                                                    : 'bg-[var(--color-surface-bg)] text-[var(--color-text-muted)] border-[var(--color-surface-border)] hover:text-[var(--color-text-main)]'
-                                                }
-                                            `}
-                                        >
-                                            {section.title}
-                                        </button>
-                                    ))}
-                                </div>
-
-                                <div className="space-y-4">
-                                    {activePage?.sections.map(section => (
-                                        <div
-                                            key={section.id}
-                                            data-section-id={section.id}
-                                            className={`
-                                                rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-4 space-y-2 transition-colors
-                                                ${highlightedSectionId === section.id ? 'ring-2 ring-[var(--color-primary)]/40 bg-[var(--color-surface-hover)]' : ''}
-                                            `}
-                                        >
-                                            <div className="text-sm font-semibold text-[var(--color-text-main)]">
-                                                {section.title}
-                                            </div>
-                                            {section.summary && (
-                                                <div className="text-sm text-[var(--color-text-muted)]">
-                                                    {section.summary}
-                                                </div>
-                                            )}
-                                            {section.bullets && (
-                                                <ul className="list-disc list-inside text-sm text-[var(--color-text-main)] space-y-1">
-                                                    {section.bullets.map((bullet, index) => (
-                                                        <li key={`${section.id}-bullet-${index}`}>{bullet}</li>
-                                                    ))}
-                                                </ul>
-                                            )}
-                                            {section.steps && (
-                                                <ol className="list-decimal list-inside text-sm text-[var(--color-text-main)] space-y-1">
-                                                    {section.steps.map((step, index) => (
-                                                        <li key={`${section.id}-step-${index}`}>{step}</li>
-                                                    ))}
-                                                </ol>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
+                            <section ref={contentRef} className="h-full overflow-y-auto">
+                                {ActivePageComponent && (
+                                    <ActivePageComponent
+                                        sections={activePage.sections}
+                                        activeSectionId={activeSectionId}
+                                        onSectionSelect={setActiveSection}
+                                    />
+                                )}
                             </section>
                         </div>
                     )}
