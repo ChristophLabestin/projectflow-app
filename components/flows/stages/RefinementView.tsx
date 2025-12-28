@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Idea } from '../../../types';
 import { Button } from '../../ui/Button';
 import { Textarea } from '../../ui/Textarea';
 import { generateSWOTAnalysisAI } from '../../../services/geminiService';
 import { SWOTCard } from './SWOTCard';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface RefinementViewProps {
     idea: Idea;
@@ -11,6 +12,7 @@ interface RefinementViewProps {
 }
 
 export const RefinementView: React.FC<RefinementViewProps> = ({ idea, onUpdate }) => {
+    const { t } = useLanguage();
     const [generating, setGenerating] = useState(false);
     const [aiSuggestions, setAiSuggestions] = useState<{
         strengths: string[];
@@ -60,6 +62,12 @@ export const RefinementView: React.FC<RefinementViewProps> = ({ idea, onUpdate }
         }
     };
 
+    const levelLabels = useMemo(() => ({
+        Low: t('flowStages.refinement.level.low'),
+        Medium: t('flowStages.refinement.level.medium'),
+        High: t('flowStages.refinement.level.high'),
+    }), [t]);
+
     // Helper to render Impact/Effort pills
     const renderPillSelector = (
         label: string,
@@ -82,7 +90,7 @@ export const RefinementView: React.FC<RefinementViewProps> = ({ idea, onUpdate }
                                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-white/50 dark:hover:bg-white/5'
                                 }`}
                         >
-                            {option}
+                            {levelLabels[option as keyof typeof levelLabels] || option}
                         </button>
                     );
                 })}
@@ -96,8 +104,8 @@ export const RefinementView: React.FC<RefinementViewProps> = ({ idea, onUpdate }
             {/* Top Bar: Generate Action */}
             <div className="flex items-center justify-between shrink-0 px-1">
                 <div>
-                    <h2 className="text-lg font-bold text-[var(--color-text-main)]">Refinement Dashboard</h2>
-                    <p className="text-xs text-[var(--color-text-muted)]">Analyze feasibility and strategic value.</p>
+                    <h2 className="text-lg font-bold text-[var(--color-text-main)]">{t('flowStages.refinement.title')}</h2>
+                    <p className="text-xs text-[var(--color-text-muted)]">{t('flowStages.refinement.subtitle')}</p>
                 </div>
                 <Button
                     variant="primary"
@@ -107,7 +115,7 @@ export const RefinementView: React.FC<RefinementViewProps> = ({ idea, onUpdate }
                     className="bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 border-none shadow-md !text-white"
                     icon={<span className="material-symbols-outlined">auto_awesome</span>}
                 >
-                    Generate Analysis
+                    {t('flowStages.refinement.actions.generate')}
                 </Button>
             </div>
 
@@ -119,20 +127,20 @@ export const RefinementView: React.FC<RefinementViewProps> = ({ idea, onUpdate }
                     <div className="bg-[var(--color-surface-paper)] p-4 rounded-xl border border-[var(--color-surface-border)] shadow-sm flex flex-col gap-3 flex-1 min-h-[300px]">
                         <div className="flex items-center gap-2 text-[var(--color-text-main)] font-semibold border-b border-[var(--color-surface-border)] pb-2 shrink-0">
                             <span className="material-symbols-outlined text-[18px] text-[var(--color-primary)]">subject</span>
-                            Execution Summary
+                            {t('flowStages.refinement.summary.title')}
                         </div>
                         <textarea
                             value={idea.description}
                             onChange={(e) => onUpdate({ description: e.target.value })}
                             className="flex-1 w-full bg-transparent border-none focus:ring-0 p-0 resize-none text-sm leading-relaxed text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] focus:outline-none"
-                            placeholder="Detail the execution plan..."
+                            placeholder={t('flowStages.refinement.summary.placeholder')}
                         />
                     </div>
 
                     {/* Impact & Effort */}
                     <div className="bg-[var(--color-surface-paper)] p-4 rounded-xl border border-[var(--color-surface-border)] shadow-sm space-y-6 shrink-0">
                         {renderPillSelector(
-                            "Impact Estimate",
+                            t('flowStages.refinement.impact.title'),
                             idea.impact,
                             ['Low', 'Medium', 'High'],
                             {
@@ -144,7 +152,7 @@ export const RefinementView: React.FC<RefinementViewProps> = ({ idea, onUpdate }
                         )}
 
                         {renderPillSelector(
-                            "Effort Estimate",
+                            t('flowStages.refinement.effort.title'),
                             idea.effort,
                             ['Low', 'Medium', 'High'],
                             {
@@ -162,7 +170,7 @@ export const RefinementView: React.FC<RefinementViewProps> = ({ idea, onUpdate }
                             className="w-full h-12 text-base justify-between group bg-[var(--color-text-main)] text-[var(--color-surface-bg)] hover:bg-[var(--color-text-main)]/90 shadow-lg hover:shadow-xl transition-all rounded-xl"
                             onClick={() => onUpdate({ stage: 'Concept' })}
                         >
-                            <span className="font-bold pl-1">Advance to Concept</span>
+                            <span className="font-bold pl-1">{t('flowStages.refinement.actions.advance')}</span>
                             <div className="size-8 rounded-lg bg-white/20 flex items-center justify-center group-hover:translate-x-1 transition-transform">
                                 <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                             </div>
@@ -174,7 +182,7 @@ export const RefinementView: React.FC<RefinementViewProps> = ({ idea, onUpdate }
                 <div className="lg:col-span-8 flex flex-col gap-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
                         <SWOTCard
-                            title="Strengths"
+                            title={t('flowStages.refinement.swot.strengths')}
                             icon="check_circle"
                             items={analysis.strengths}
                             colorClass="emerald"
@@ -192,7 +200,7 @@ export const RefinementView: React.FC<RefinementViewProps> = ({ idea, onUpdate }
                             highlightedItems={aiSuggestions?.strengths}
                         />
                         <SWOTCard
-                            title="Weaknesses"
+                            title={t('flowStages.refinement.swot.weaknesses')}
                             icon="warning"
                             items={analysis.weaknesses}
                             colorClass="rose"
@@ -210,7 +218,7 @@ export const RefinementView: React.FC<RefinementViewProps> = ({ idea, onUpdate }
                             highlightedItems={aiSuggestions?.weaknesses}
                         />
                         <SWOTCard
-                            title="Opportunities"
+                            title={t('flowStages.refinement.swot.opportunities')}
                             icon="trending_up"
                             items={analysis.opportunities}
                             colorClass="indigo"
@@ -228,7 +236,7 @@ export const RefinementView: React.FC<RefinementViewProps> = ({ idea, onUpdate }
                             highlightedItems={aiSuggestions?.opportunities}
                         />
                         <SWOTCard
-                            title="Threats"
+                            title={t('flowStages.refinement.swot.threats')}
                             icon="security"
                             items={analysis.threats}
                             colorClass="amber"

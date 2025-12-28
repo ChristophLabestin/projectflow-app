@@ -13,6 +13,7 @@ import { ProjectTeamManager } from './ProjectTeamManager';
 import { useProjectPermissions } from '../../hooks/useProjectPermissions';
 import { useWorkspacePermissions } from '../../hooks/useWorkspacePermissions';
 import { getWorkspaceGroups } from '../../services/dataService';
+import { useLanguage } from '../../context/LanguageContext';
 
 import { auth } from '../../services/firebase';
 import { getUserProfile, linkWithGithub, updateUserData, getUserProjectNavPrefs, setUserProjectNavPrefs, ProjectNavPrefs } from '../../services/dataService';
@@ -34,6 +35,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     onSave
 }) => {
     const { can } = useProjectPermissions(project);
+    const { t } = useLanguage();
     const [activeTab, setActiveTab] = useState<Tab>('general');
     const [isSaving, setIsSaving] = useState(false);
 
@@ -74,15 +76,15 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
 
     // Default nav items
     const defaultNavItems = [
-        { id: 'overview', icon: 'grid_view', label: 'Overview', canHide: false },
-        { id: 'tasks', icon: 'checklist', label: 'Tasks', moduleKey: 'tasks' },
-        { id: 'ideas', icon: 'emoji_objects', label: 'Flows', moduleKey: 'ideas' },
-        { id: 'issues', icon: 'medication', label: 'Issues', moduleKey: 'issues' },
-        { id: 'mindmap', icon: 'hub', label: 'Mindmap', moduleKey: 'mindmap' },
-        { id: 'milestones', icon: 'outlined_flag', label: 'Milestones', moduleKey: 'milestones' },
-        { id: 'social', icon: 'campaign', label: 'Social', moduleKey: 'social' },
-        { id: 'marketing', icon: 'ads_click', label: 'Marketing', moduleKey: 'marketing' },
-        { id: 'activity', icon: 'history', label: 'Activity', moduleKey: 'activity' },
+        { id: 'overview', icon: 'grid_view', label: t('nav.overview'), canHide: false },
+        { id: 'tasks', icon: 'checklist', label: t('nav.tasks'), moduleKey: 'tasks' },
+        { id: 'ideas', icon: 'emoji_objects', label: t('nav.flows'), moduleKey: 'ideas' },
+        { id: 'issues', icon: 'medication', label: t('nav.issues'), moduleKey: 'issues' },
+        { id: 'mindmap', icon: 'hub', label: t('nav.mindmap'), moduleKey: 'mindmap' },
+        { id: 'milestones', icon: 'outlined_flag', label: t('nav.milestones'), moduleKey: 'milestones' },
+        { id: 'social', icon: 'campaign', label: t('nav.social'), moduleKey: 'social' },
+        { id: 'marketing', icon: 'ads_click', label: t('nav.marketing'), moduleKey: 'marketing' },
+        { id: 'activity', icon: 'history', label: t('nav.activity'), moduleKey: 'activity' },
     ];
 
     // Reset state when modal opens & Load GitHub & Nav Prefs
@@ -201,15 +203,42 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     };
 
     const tabs: { id: Tab; label: string; icon: string }[] = [
-        { id: 'general', label: 'General', icon: 'settings' },
-        { id: 'team', label: 'Team', icon: 'group' },
-        { id: 'appearance', label: 'Appearance', icon: 'palette' },
-        { id: 'modules', label: 'Modules', icon: 'extension' },
-        { id: 'groups', label: 'Groups', icon: 'groups' },
-        { id: 'navigation', label: 'Navigation', icon: 'menu' },
-        { id: 'integrations', label: 'Integrations', icon: 'integration_instructions' },
-        { id: 'resources', label: 'Resources', icon: 'link' },
+        { id: 'general', label: t('projectSettings.tabs.general'), icon: 'settings' },
+        { id: 'team', label: t('projectSettings.tabs.team'), icon: 'group' },
+        { id: 'appearance', label: t('projectSettings.tabs.appearance'), icon: 'palette' },
+        { id: 'modules', label: t('projectSettings.tabs.modules'), icon: 'extension' },
+        { id: 'groups', label: t('projectSettings.tabs.groups'), icon: 'groups' },
+        { id: 'navigation', label: t('projectSettings.tabs.navigation'), icon: 'menu' },
+        { id: 'integrations', label: t('projectSettings.tabs.integrations'), icon: 'integration_instructions' },
+        { id: 'resources', label: t('projectSettings.tabs.resources'), icon: 'link' },
     ];
+
+    const moduleLabels: Record<string, string> = {
+        tasks: t('nav.tasks'),
+        milestones: t('nav.milestones'),
+        issues: t('nav.issues'),
+        ideas: t('nav.flows'),
+        mindmap: t('nav.mindmap'),
+        groups: t('projectSettings.modules.groups'),
+        activity: t('nav.activity'),
+        social: t('nav.social'),
+        marketing: t('nav.marketing')
+    };
+
+    const projectStatusLabels: Record<string, string> = {
+        Active: t('project.status.active'),
+        Planning: t('project.status.planning'),
+        'On Hold': t('project.status.onHold'),
+        Completed: t('project.status.completed'),
+        Brainstorming: t('project.status.brainstorming'),
+        Review: t('project.status.review')
+    };
+
+    const projectStateLabels: Record<string, string> = {
+        'not specified': t('projectSettings.state.notSpecified'),
+        'pre-release': t('projectSettings.state.preRelease'),
+        released: t('projectSettings.state.released')
+    };
 
     const renderContent = () => {
         switch (activeTab) {
@@ -218,13 +247,13 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                     <div className="space-y-6 animate-in fade-in duration-300">
                         <div className="space-y-4">
                             <Input
-                                label="Project Title"
+                                label={t('projectSettings.general.fields.title')}
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
                                 className="w-full"
                             />
                             <Textarea
-                                label="Description"
+                                label={t('projectSettings.general.fields.description')}
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 rows={5}
@@ -233,37 +262,37 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                         </div>
                         <div className="grid grid-cols-2 gap-4">
                             <Select
-                                label="Status"
+                                label={t('projectSettings.general.fields.status')}
                                 value={status}
                                 onChange={(e) => setStatus(e.target.value as any)}
                             >
-                                <option value="Active">Active</option>
-                                <option value="Planning">Planning</option>
-                                <option value="On Hold">On Hold</option>
-                                <option value="Completed">Completed</option>
-                                <option value="Brainstorming">Brainstorming</option>
-                                <option value="Review">Review</option>
+                                <option value="Active">{projectStatusLabels.Active}</option>
+                                <option value="Planning">{projectStatusLabels.Planning}</option>
+                                <option value="On Hold">{projectStatusLabels['On Hold']}</option>
+                                <option value="Completed">{projectStatusLabels.Completed}</option>
+                                <option value="Brainstorming">{projectStatusLabels.Brainstorming}</option>
+                                <option value="Review">{projectStatusLabels.Review}</option>
                             </Select>
                             <Select
-                                label="Priority"
+                                label={t('projectSettings.general.fields.priority')}
                                 value={priority || 'Medium'}
                                 onChange={(e) => setPriority(e.target.value)}
                             >
-                                <option value="Low">Low</option>
-                                <option value="Medium">Medium</option>
-                                <option value="High">High</option>
-                                <option value="Urgent">Urgent</option>
+                                <option value="Low">{t('tasks.priority.low')}</option>
+                                <option value="Medium">{t('tasks.priority.medium')}</option>
+                                <option value="High">{t('tasks.priority.high')}</option>
+                                <option value="Urgent">{t('tasks.priority.urgent')}</option>
                             </Select>
                         </div>
                         <div className="grid grid-cols-1">
                             <Select
-                                label="Project State"
+                                label={t('projectSettings.general.fields.state')}
                                 value={projectState || 'not specified'}
                                 onChange={(e) => setProjectState(e.target.value as any)}
                             >
-                                <option value="not specified">Not Specified</option>
-                                <option value="pre-release">Pre-Release</option>
-                                <option value="released">Released</option>
+                                <option value="not specified">{projectStateLabels['not specified']}</option>
+                                <option value="pre-release">{projectStateLabels['pre-release']}</option>
+                                <option value="released">{projectStateLabels.released}</option>
                             </Select>
                         </div>
 
@@ -271,7 +300,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                         {
                             canChangeVisibility && workspaceGroups.length > 0 && (
                                 <div className="pt-4 mt-4 border-t border-[var(--color-surface-border)]">
-                                    <label className="text-sm font-medium text-[var(--color-text-main)] mb-2 block">Project Visibility</label>
+                                    <label className="text-sm font-medium text-[var(--color-text-main)] mb-2 block">{t('projectSettings.visibility.title')}</label>
                                     <div className="grid grid-cols-2 gap-3 mb-3">
                                         <button
                                             type="button"
@@ -283,9 +312,9 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                         >
                                             <div className="flex items-center gap-2 mb-1">
                                                 <span className={`material-symbols-outlined text-lg ${visibilityGroupIds.length === 0 ? 'text-emerald-600' : 'text-[var(--color-text-subtle)]'}`}>public</span>
-                                                <span className={`text-sm font-bold ${visibilityGroupIds.length === 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-[var(--color-text-main)]'}`}>Everyone</span>
+                                                <span className={`text-sm font-bold ${visibilityGroupIds.length === 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-[var(--color-text-main)]'}`}>{t('projectSettings.visibility.everyone')}</span>
                                             </div>
-                                            <p className="text-xs text-[var(--color-text-muted)]">Visible to all workspace members</p>
+                                            <p className="text-xs text-[var(--color-text-muted)]">{t('projectSettings.visibility.everyoneDescription')}</p>
                                         </button>
 
                                         <button
@@ -302,16 +331,16 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                         >
                                             <div className="flex items-center gap-2 mb-1">
                                                 <span className={`material-symbols-outlined text-lg ${visibilityGroupIds.length > 0 ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}>lock_person</span>
-                                                <span className={`text-sm font-bold ${visibilityGroupIds.length > 0 ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}>Specific Group</span>
+                                                <span className={`text-sm font-bold ${visibilityGroupIds.length > 0 ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}>{t('projectSettings.visibility.specificGroup')}</span>
                                             </div>
-                                            <p className="text-xs text-[var(--color-text-muted)]">Restricted to selected groups</p>
+                                            <p className="text-xs text-[var(--color-text-muted)]">{t('projectSettings.visibility.specificGroupDescription')}</p>
                                         </button>
                                     </div>
 
                                     {visibilityGroupIds.length > 0 && (
                                         <div className="animate-fade-in bg-[var(--color-surface-hover)] rounded-xl p-3 border border-[var(--color-surface-border)]">
                                             <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2 block">
-                                                Select Allowed Groups
+                                                {t('projectSettings.visibility.allowedGroups')}
                                             </label>
                                             <div className="grid grid-cols-2 gap-2">
                                                 {workspaceGroups.map(group => {
@@ -364,16 +393,16 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Cover Image */}
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-[var(--color-text-main)]">Cover Image</label>
+                                <label className="text-sm font-medium text-[var(--color-text-main)]">{t('projectSettings.appearance.coverLabel')}</label>
                                 <div
                                     className="group relative aspect-video rounded-xl border border-dashed border-[var(--color-surface-border)] hover:border-[var(--color-primary)] bg-[var(--color-surface-hover)]/30 overflow-hidden cursor-pointer transition-all"
                                     onClick={() => { setMediaTarget('cover'); setShowMediaLibrary(true); }}
                                 >
                                     {coverImage ? (
                                         <>
-                                            <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+                                            <img src={coverImage} alt={t('projectSettings.appearance.coverAlt')} className="w-full h-full object-cover" />
                                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <span className="text-white text-sm font-medium">Change Cover</span>
+                                                <span className="text-white text-sm font-medium">{t('projectSettings.appearance.coverChange')}</span>
                                             </div>
                                             <button
                                                 className="absolute top-2 right-2 p-1 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
@@ -385,7 +414,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                     ) : (
                                         <div className="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)]">
                                             <span className="material-symbols-outlined text-3xl mb-2">image</span>
-                                            <span className="text-sm">Upload Cover Image</span>
+                                            <span className="text-sm">{t('projectSettings.appearance.coverUpload')}</span>
                                         </div>
                                     )}
                                 </div>
@@ -393,16 +422,16 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
 
                             {/* Icon */}
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-[var(--color-text-main)]">Project Icon</label>
+                                <label className="text-sm font-medium text-[var(--color-text-main)]">{t('projectSettings.appearance.iconLabel')}</label>
                                 <div
                                     className="group relative w-32 h-32 rounded-2xl border border-dashed border-[var(--color-surface-border)] hover:border-[var(--color-primary)] bg-[var(--color-surface-hover)]/30 overflow-hidden cursor-pointer transition-all"
                                     onClick={() => { setMediaTarget('icon'); setShowMediaLibrary(true); }}
                                 >
                                     {squareIcon ? (
                                         <>
-                                            <img src={squareIcon} alt="Icon" className="w-full h-full object-cover" />
+                                            <img src={squareIcon} alt={t('projectSettings.appearance.iconAlt')} className="w-full h-full object-cover" />
                                             <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <span className="text-white text-xs font-medium">Change</span>
+                                                <span className="text-white text-xs font-medium">{t('projectSettings.appearance.iconChange')}</span>
                                             </div>
                                             <button
                                                 className="absolute top-1 right-1 p-0.5 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
@@ -414,7 +443,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                     ) : (
                                         <div className="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)]">
                                             <span className="material-symbols-outlined text-2xl mb-1">apps</span>
-                                            <span className="text-xs">Upload Icon</span>
+                                            <span className="text-xs">{t('projectSettings.appearance.iconUpload')}</span>
                                         </div>
                                     )}
                                 </div>
@@ -425,7 +454,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             case 'modules':
                 return (
                     <div className="space-y-4 animate-in fade-in duration-300">
-                        <p className="text-sm text-[var(--color-text-muted)]">Enable features for this project.</p>
+                        <p className="text-sm text-[var(--color-text-muted)]">{t('projectSettings.modules.description')}</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {['tasks', 'milestones', 'issues', 'ideas', 'mindmap', 'groups', 'activity', 'social', 'marketing'].map((mod) => (
                                 <div
@@ -461,7 +490,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                         </span>
                                     </div>
                                     <div className="flex-1">
-                                        <p className="font-semibold text-sm capitalize text-[var(--color-text-main)]">{mod}</p>
+                                        <p className="font-semibold text-sm text-[var(--color-text-main)]">{moduleLabels[mod] || mod}</p>
                                     </div>
                                     <Checkbox
                                         checked={modules.includes(mod as any)}
@@ -528,8 +557,8 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 return (
                     <div className="space-y-4 animate-in fade-in duration-300">
                         <p className="text-sm text-[var(--color-text-muted)]">
-                            Customize your sidebar navigation for this project. Drag items to reorder, or toggle visibility.
-                            <span className="font-medium"> These settings only affect you.</span>
+                            {t('projectSettings.navigation.description')}
+                            <span className="font-medium"> {t('projectSettings.navigation.note')}</span>
                         </p>
 
                         <div className="space-y-2">
@@ -586,7 +615,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                         : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 hover:bg-emerald-100'
                                                     }
                                                 `}
-                                                title={isHidden ? 'Show in sidebar' : 'Hide from sidebar'}
+                                                title={isHidden ? t('projectSettings.navigation.show') : t('projectSettings.navigation.hide')}
                                             >
                                                 <span className="material-symbols-outlined text-[18px]">
                                                     {isHidden ? 'visibility_off' : 'visibility'}
@@ -594,7 +623,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                             </button>
                                         ) : (
                                             <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide px-2 py-1 rounded bg-[var(--color-surface-hover)]">
-                                                Always Visible
+                                                {t('projectSettings.navigation.alwaysVisible')}
                                             </span>
                                         )}
                                     </div>
@@ -605,7 +634,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                         {availableNavItems.length === 0 && (
                             <div className="text-center py-8 text-[var(--color-text-muted)]">
                                 <span className="material-symbols-outlined text-4xl opacity-30 mb-2 block">extension_off</span>
-                                <p className="text-sm">Enable some modules first to customize navigation.</p>
+                                <p className="text-sm">{t('projectSettings.navigation.empty')}</p>
                             </div>
                         )}
                     </div>
@@ -619,10 +648,10 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                     <span className="material-symbols-outlined">terminal</span>
                                 </div>
                                 <div className="flex-1">
-                                    <h3 className="font-bold text-[var(--color-text-main)]">GitHub</h3>
-                                    <p className="text-xs text-[var(--color-text-muted)]">Connect a repository to sync issues.</p>
+                                    <h3 className="font-bold text-[var(--color-text-main)]">{t('projectSettings.integrations.github.title')}</h3>
+                                    <p className="text-xs text-[var(--color-text-muted)]">{t('projectSettings.integrations.github.subtitle')}</p>
                                 </div>
-                                <Badge variant={githubRepo ? 'success' : 'secondary'}>{githubRepo ? 'Connected' : 'Not Linked'}</Badge>
+                                <Badge variant={githubRepo ? 'success' : 'secondary'}>{githubRepo ? t('projectSettings.integrations.github.connected') : t('projectSettings.integrations.github.notLinked')}</Badge>
                             </div>
 
                             {!githubToken ? (
@@ -632,22 +661,22 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                     className="w-full p-3 rounded-lg bg-black/[0.05] dark:bg-white/[0.05] hover:bg-black/[0.1] dark:hover:bg-white/[0.1] transition-colors flex items-center justify-center gap-2 text-sm font-medium text-[var(--color-text-main)]"
                                 >
                                     {connectingGithub ? (
-                                        <><span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span> Connecting...</>
+                                        <><span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span> {t('projectSettings.integrations.github.connecting')}</>
                                     ) : (
-                                        <>Connect GitHub Account</>
+                                        <>{t('projectSettings.integrations.github.connectAccount')}</>
                                     )}
                                 </button>
                             ) : (
                                 <div className="space-y-4">
                                     <div className="space-y-1">
-                                        <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Repository</label>
+                                        <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('projectSettings.integrations.github.repositoryLabel')}</label>
                                         <select
                                             value={githubRepo}
                                             onChange={(e) => setGithubRepo(e.target.value)}
                                             disabled={loadingGithub}
                                             className="w-full h-10 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-3 text-sm text-[var(--color-text-main)] outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
                                         >
-                                            <option value="">{loadingGithub ? 'Loading repositories...' : 'Select a repository'}</option>
+                                            <option value="">{loadingGithub ? t('projectSettings.integrations.github.loadingRepos') : t('projectSettings.integrations.github.selectRepo')}</option>
                                             {githubRepos.map(repo => (
                                                 <option key={repo.id} value={repo.full_name}>{repo.full_name}</option>
                                             ))}
@@ -662,7 +691,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                             disabled={!githubRepo}
                                         />
                                         <label htmlFor="gh-sync" className={`text-sm ${!githubRepo ? 'opacity-50' : ''} text-[var(--color-text-main)]`}>
-                                            Enable Issue Sync
+                                            {t('projectSettings.integrations.github.issueSync')}
                                         </label>
                                     </div>
                                 </div>
@@ -676,15 +705,15 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                         {/* Overview Links */}
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                                <label className="text-sm font-semibold text-[var(--color-text-main)]">Overview Quick Links</label>
-                                <Button size="sm" variant="ghost" onClick={() => setLinks([...links, { title: '', url: '' }])}>+ Add Link</Button>
+                                <label className="text-sm font-semibold text-[var(--color-text-main)]">{t('projectSettings.resources.overviewTitle')}</label>
+                                <Button size="sm" variant="ghost" onClick={() => setLinks([...links, { title: '', url: '' }])}>{t('projectSettings.resources.addLink')}</Button>
                             </div>
                             <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
                                 {links.map((link, idx) => (
                                     <div key={idx} className="flex gap-2 items-start">
                                         <div className="flex-1 grid grid-cols-2 gap-2">
                                             <Input
-                                                placeholder="Title"
+                                                placeholder={t('projectSettings.resources.linkTitlePlaceholder')}
                                                 value={link.title}
                                                 onChange={(e) => {
                                                     const newLinks = [...links];
@@ -693,7 +722,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                 }}
                                             />
                                             <Input
-                                                placeholder="URL"
+                                                placeholder={t('projectSettings.resources.linkUrlPlaceholder')}
                                                 value={link.url}
                                                 onChange={(e) => {
                                                     const newLinks = [...links];
@@ -707,7 +736,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                         </button>
                                     </div>
                                 ))}
-                                {links.length === 0 && <p className="text-sm text-[var(--color-text-muted)] italic">No links added.</p>}
+                                {links.length === 0 && <p className="text-sm text-[var(--color-text-muted)] italic">{t('projectSettings.resources.noLinks')}</p>}
                             </div>
                         </div>
 
@@ -716,15 +745,15 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                         {/* Sidebar Resources */}
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                                <label className="text-sm font-semibold text-[var(--color-text-main)]">Sidebar Shortcuts</label>
-                                <Button size="sm" variant="ghost" onClick={() => setExternalResources([...externalResources, { title: '', url: '', icon: 'link' }])}>+ Add Shortcut</Button>
+                                <label className="text-sm font-semibold text-[var(--color-text-main)]">{t('projectSettings.resources.sidebarTitle')}</label>
+                                <Button size="sm" variant="ghost" onClick={() => setExternalResources([...externalResources, { title: '', url: '', icon: 'link' }])}>{t('projectSettings.resources.addShortcut')}</Button>
                             </div>
                             <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
                                 {externalResources.map((res, idx) => (
                                     <div key={idx} className="flex gap-2 items-start">
                                         <div className="flex-1 grid grid-cols-2 gap-2">
                                             <Input
-                                                placeholder="Title"
+                                                placeholder={t('projectSettings.resources.shortcutTitlePlaceholder')}
                                                 value={res.title}
                                                 onChange={(e) => {
                                                     const newRes = [...externalResources];
@@ -733,7 +762,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                 }}
                                             />
                                             <Input
-                                                placeholder="URL"
+                                                placeholder={t('projectSettings.resources.shortcutUrlPlaceholder')}
                                                 value={res.url}
                                                 onChange={(e) => {
                                                     const newRes = [...externalResources];
@@ -747,7 +776,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                         </button>
                                     </div>
                                 ))}
-                                {externalResources.length === 0 && <p className="text-sm text-[var(--color-text-muted)] italic">No shortcuts added.</p>}
+                                {externalResources.length === 0 && <p className="text-sm text-[var(--color-text-muted)] italic">{t('projectSettings.resources.noShortcuts')}</p>}
                             </div>
                         </div>
                     </div>
@@ -757,7 +786,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
 
     return (
         <>
-            <Modal isOpen={isOpen} onClose={onClose} title="Project Settings" size="xl">
+            <Modal isOpen={isOpen} onClose={onClose} title={t('projectSettings.title')} size="xl">
                 <div className="flex h-[600px] -m-6">
                     {/* Sidebar */}
                     <div className="w-64 shrink-0 bg-[var(--color-surface-hover)]/30 border-r border-[var(--color-surface-border)] p-4 flex flex-col gap-1">
@@ -786,8 +815,8 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
 
                         {/* Footer */}
                         <div className="shrink-0 p-4 border-t border-[var(--color-surface-border)] flex items-center justify-end gap-3 bg-[var(--color-surface-paper)]">
-                            <Button variant="ghost" onClick={onClose}>Cancel</Button>
-                            <Button variant="primary" onClick={handleSave} isLoading={isSaving}>Save Changes</Button>
+                            <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
+                            <Button variant="primary" onClick={handleSave} isLoading={isSaving}>{t('common.saveChanges')}</Button>
                         </div>
                     </div>
                 </div>

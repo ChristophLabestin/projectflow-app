@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { ProjectHealth, HealthStatus, HealthFactor } from '../../services/healthService';
 import { Task, Milestone, Issue } from '../../types';
 import { Button } from '../ui/Button';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface HealthDetailModalProps {
     isOpen: boolean;
@@ -21,7 +22,6 @@ const themes = {
         border: 'border-rose-200/50 dark:border-rose-500/20',
         shadow: 'shadow-[0_20px_60px_-15px_rgba(244,63,94,0.4)]',
         statusDot: 'bg-rose-500',
-        statusText: 'Critical',
         color: '#f43f5e',
         ring: 'ring-rose-500/30'
     },
@@ -32,7 +32,6 @@ const themes = {
         border: 'border-amber-200/50 dark:border-amber-500/20',
         shadow: 'shadow-[0_20px_60px_-15px_rgba(245,158,11,0.4)]',
         statusDot: 'bg-amber-500',
-        statusText: 'Warning',
         color: '#f59e0b',
         ring: 'ring-amber-500/30'
     },
@@ -43,7 +42,6 @@ const themes = {
         border: 'border-emerald-200/50 dark:border-emerald-500/20',
         shadow: 'shadow-[0_20px_60px_-15px_rgba(16,185,129,0.35)]',
         statusDot: 'bg-emerald-500',
-        statusText: 'Healthy',
         color: '#10b981',
         ring: 'ring-emerald-500/30'
     },
@@ -54,7 +52,6 @@ const themes = {
         border: 'border-slate-200/50 dark:border-white/10',
         shadow: 'shadow-[0_20px_60px_-15px_rgba(99,102,241,0.35)]',
         statusDot: 'bg-indigo-500',
-        statusText: 'Normal',
         color: '#6366f1',
         ring: 'ring-indigo-500/30'
     },
@@ -76,8 +73,16 @@ export const HealthDetailModal: React.FC<HealthDetailModalProps> = ({
     issues = [],
     projectTitle
 }) => {
+    const { t } = useLanguage();
     const state = getThemeState(health.status);
     const theme = themes[state];
+    const statusLabel = state === 'critical'
+        ? t('status.critical')
+        : state === 'warning'
+            ? t('status.warning')
+            : state === 'success'
+                ? t('status.healthy')
+                : t('status.normal');
 
     // Derive at-risk items
     const now = Date.now();
@@ -159,7 +164,7 @@ export const HealthDetailModal: React.FC<HealthDetailModalProps> = ({
                                         </svg>
                                         <div className="absolute inset-0 flex flex-col items-center justify-center">
                                             <span className="text-5xl font-black text-slate-900 dark:text-white">{health.score}</span>
-                                            <span className="text-[10px] font-bold text-slate-500 dark:text-white/50 uppercase tracking-widest">Score</span>
+                                            <span className="text-[10px] font-bold text-slate-500 dark:text-white/50 uppercase tracking-widest">{t('healthDetail.score')}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -174,7 +179,7 @@ export const HealthDetailModal: React.FC<HealthDetailModalProps> = ({
                                     </button>
 
                                     <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight mb-1">
-                                        Project Health
+                                        {t('healthDetail.title')}
                                     </h2>
                                     {projectTitle && (
                                         <p className="text-slate-500 dark:text-white/60 font-medium mb-4 truncate">{projectTitle}</p>
@@ -183,13 +188,13 @@ export const HealthDetailModal: React.FC<HealthDetailModalProps> = ({
                                     <div className="flex items-center gap-3 mb-6">
                                         <div className={`px-3 py-1.5 rounded-lg border text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${theme.badge}`}>
                                             <span className={`size-2 rounded-full ${theme.statusDot} animate-pulse`} />
-                                            {theme.statusText}
+                                            {statusLabel}
                                         </div>
                                         <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-white/70 font-medium">
                                             <span className={`material-symbols-outlined text-[18px] ${health.trend === 'improving' ? 'text-emerald-500' : health.trend === 'declining' ? 'text-rose-500' : 'text-slate-400'}`}>
                                                 {health.trend === 'improving' ? 'trending_up' : health.trend === 'declining' ? 'trending_down' : 'trending_flat'}
                                             </span>
-                                            {health.trend.charAt(0).toUpperCase() + health.trend.slice(1)}
+                                            {t(`trend.${health.trend}`, health.trend)}
                                         </div>
                                     </div>
 
@@ -197,15 +202,15 @@ export const HealthDetailModal: React.FC<HealthDetailModalProps> = ({
                                     <div className="grid grid-cols-3 gap-3">
                                         <div className="bg-slate-100 dark:bg-white/5 rounded-xl p-3 border border-slate-100 dark:border-white/5">
                                             <span className="block text-2xl font-black text-rose-500">{negativeFactors.length}</span>
-                                            <span className="text-[10px] text-slate-500 dark:text-white/50 uppercase font-bold tracking-wide">Risks</span>
+                                            <span className="text-[10px] text-slate-500 dark:text-white/50 uppercase font-bold tracking-wide">{t('healthDetail.stats.risks')}</span>
                                         </div>
                                         <div className="bg-slate-100 dark:bg-white/5 rounded-xl p-3 border border-slate-100 dark:border-white/5">
                                             <span className="block text-2xl font-black text-emerald-500">{positiveFactors.length}</span>
-                                            <span className="text-[10px] text-slate-500 dark:text-white/50 uppercase font-bold tracking-wide">Strengths</span>
+                                            <span className="text-[10px] text-slate-500 dark:text-white/50 uppercase font-bold tracking-wide">{t('healthDetail.stats.strengths')}</span>
                                         </div>
                                         <div className="bg-slate-100 dark:bg-white/5 rounded-xl p-3 border border-slate-100 dark:border-white/5">
                                             <span className="block text-2xl font-black text-amber-500">{attentionCount}</span>
-                                            <span className="text-[10px] text-slate-500 dark:text-white/50 uppercase font-bold tracking-wide">Attention</span>
+                                            <span className="text-[10px] text-slate-500 dark:text-white/50 uppercase font-bold tracking-wide">{t('healthDetail.stats.attention')}</span>
                                         </div>
                                     </div>
                                 </div>
@@ -220,23 +225,23 @@ export const HealthDetailModal: React.FC<HealthDetailModalProps> = ({
                                 <div className="backdrop-blur-xl bg-white/60 dark:bg-white/5 p-5 rounded-2xl border border-slate-200 dark:border-white/10">
                                     <div className="flex items-center gap-2 mb-4">
                                         <span className="material-symbols-outlined text-amber-500">warning</span>
-                                        <span className="font-bold text-slate-900 dark:text-white">Needs Attention</span>
+                                        <span className="font-bold text-slate-900 dark:text-white">{t('healthDetail.attention.title')}</span>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
                                         {overdueTasks.length > 0 && (
-                                            <AttentionChip icon="event_busy" label="Overdue Tasks" count={overdueTasks.length} color="rose" />
+                                            <AttentionChip icon="event_busy" label={t('healthDetail.attention.overdueTasks')} count={overdueTasks.length} color="rose" />
                                         )}
                                         {dueSoonTasks.length > 0 && (
-                                            <AttentionChip icon="schedule" label="Due Soon" count={dueSoonTasks.length} color="amber" />
+                                            <AttentionChip icon="schedule" label={t('healthDetail.attention.dueSoon')} count={dueSoonTasks.length} color="amber" />
                                         )}
                                         {blockedTasks.length > 0 && (
-                                            <AttentionChip icon="block" label="Blocked" count={blockedTasks.length} color="rose" />
+                                            <AttentionChip icon="block" label={t('healthDetail.attention.blocked')} count={blockedTasks.length} color="rose" />
                                         )}
                                         {overdueMilestones.length > 0 && (
-                                            <AttentionChip icon="flag" label="Milestones" count={overdueMilestones.length} color="orange" />
+                                            <AttentionChip icon="flag" label={t('healthDetail.attention.milestones')} count={overdueMilestones.length} color="orange" />
                                         )}
                                         {urgentIssues.length > 0 && (
-                                            <AttentionChip icon="bug_report" label="Critical Issues" count={urgentIssues.length} color="rose" />
+                                            <AttentionChip icon="bug_report" label={t('healthDetail.attention.criticalIssues')} count={urgentIssues.length} color="rose" />
                                         )}
                                     </div>
                                 </div>
@@ -247,7 +252,7 @@ export const HealthDetailModal: React.FC<HealthDetailModalProps> = ({
                                 <div className="space-y-3">
                                     <h3 className="text-[10px] font-bold text-slate-500 dark:text-white/50 uppercase tracking-widest flex items-center gap-2">
                                         <span className="material-symbols-outlined text-sm">analytics</span>
-                                        Health Factors
+                                        {t('healthDetail.factors.title')}
                                     </h3>
                                     <div className="space-y-2">
                                         {health.factors.map((factor) => (
@@ -262,7 +267,7 @@ export const HealthDetailModal: React.FC<HealthDetailModalProps> = ({
                                 <div className="space-y-3">
                                     <h3 className="text-[10px] font-bold text-slate-500 dark:text-white/50 uppercase tracking-widest flex items-center gap-2">
                                         <span className="material-symbols-outlined text-sm">auto_awesome</span>
-                                        AI Recommendations
+                                        {t('healthDetail.recommendations.title')}
                                     </h3>
                                     <div className="space-y-2">
                                         {health.recommendations.map((rec, i) => (
@@ -282,15 +287,15 @@ export const HealthDetailModal: React.FC<HealthDetailModalProps> = ({
                             {health.factors.length === 0 && health.recommendations.length === 0 && attentionCount === 0 && (
                                 <div className="text-center py-8">
                                     <span className="material-symbols-outlined text-5xl text-emerald-500 mb-3">verified</span>
-                                    <p className="text-slate-900 dark:text-white font-bold text-lg">All Clear!</p>
-                                    <p className="text-sm text-slate-500 dark:text-white/60">This project is in great shape.</p>
+                                    <p className="text-slate-900 dark:text-white font-bold text-lg">{t('healthDetail.empty.title')}</p>
+                                    <p className="text-sm text-slate-500 dark:text-white/60">{t('healthDetail.empty.subtitle')}</p>
                                 </div>
                             )}
                         </div>
 
                         {/* Footer */}
                         <div className="p-6 pt-0 flex justify-end">
-                            <Button onClick={onClose} size="lg" className="px-8 rounded-xl font-bold">Done</Button>
+                            <Button onClick={onClose} size="lg" className="px-8 rounded-xl font-bold">{t('healthDetail.actions.done')}</Button>
                         </div>
                     </div>
                 </div>

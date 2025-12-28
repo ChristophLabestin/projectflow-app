@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react';
 import { Portal } from '../ui/Portal';
 import { FlowComments } from './FlowComments';
 import { useRef } from 'react';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface FlowCardProps {
     flow: Idea;
@@ -31,6 +32,7 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 export const FlowCard: React.FC<FlowCardProps> = ({ flow, onClick, isOverlay }) => {
+    const { t } = useLanguage();
     const {
         attributes,
         listeners,
@@ -48,6 +50,17 @@ export const FlowCard: React.FC<FlowCardProps> = ({ flow, onClick, isOverlay }) 
 
     // Compact type colors
     const typeColor = TYPE_COLORS[flow.type] || TYPE_COLORS['default'];
+    const flowTypeLabels: Record<string, string> = {
+        Feature: t('flows.type.feature'),
+        Product: t('flows.type.product'),
+        Marketing: t('flows.type.marketing'),
+        Social: t('flows.type.social'),
+        Moonshot: t('flows.type.moonshot'),
+        Optimization: t('flows.type.optimization'),
+    };
+
+    const impactLabel = t('flows.badges.impactShort');
+    const effortLabel = t('flows.badges.effortShort');
 
     // --- Optimistic UI State ---
     const user = auth.currentUser;
@@ -193,13 +206,13 @@ export const FlowCard: React.FC<FlowCardProps> = ({ flow, onClick, isOverlay }) 
                                 <div className="flex items-center gap-1.5 mb-1.5">
                                     <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${typeColor}`}>
                                         {flow.type === 'Social'
-                                            ? (flow.socialType === 'campaign' ? 'Campaign' : 'Post')
-                                            : flow.type}
+                                            ? (flow.socialType === 'campaign' ? t('flows.badge.campaign') : t('flows.badge.post'))
+                                            : (flowTypeLabels[flow.type] || flow.type)}
                                     </span>
                                     {flow.generated && (
                                         <span className="text-[9px] font-medium text-indigo-500 bg-indigo-500/5 px-1.5 py-0.5 rounded flex items-center gap-0.5">
                                             <span className="material-symbols-outlined text-[10px]">auto_awesome</span>
-                                            AI
+                                            {t('flows.badge.ai')}
                                         </span>
                                     )}
                                 </div>
@@ -275,7 +288,7 @@ export const FlowCard: React.FC<FlowCardProps> = ({ flow, onClick, isOverlay }) 
                                             flow.impact === 'Medium' ? 'bg-amber-500/10 text-amber-600' :
                                                 'bg-slate-500/10 text-slate-500'
                                             }`}>
-                                            I:{flow.impact[0]}
+                                            {impactLabel}:{flow.impact[0]}
                                         </span>
                                     )}
                                     {flow.effort && (
@@ -283,7 +296,7 @@ export const FlowCard: React.FC<FlowCardProps> = ({ flow, onClick, isOverlay }) 
                                             flow.effort === 'Medium' ? 'bg-amber-500/10 text-amber-600' :
                                                 'bg-emerald-500/10 text-emerald-600'
                                             }`}>
-                                            E:{flow.effort[0]}
+                                            {effortLabel}:{flow.effort[0]}
                                         </span>
                                     )}
                                 </div>
@@ -307,7 +320,7 @@ export const FlowCard: React.FC<FlowCardProps> = ({ flow, onClick, isOverlay }) 
                     >
                         {/* Header */}
                         <div className="flex items-center justify-between mb-3 border-b border-[var(--color-surface-border)] pb-2">
-                            <h4 className="text-xs font-bold text-[var(--color-text-main)]">Discussion</h4>
+                            <h4 className="text-xs font-bold text-[var(--color-text-main)]">{t('flows.comments.title')}</h4>
                             <button onClick={() => setShowComments(false)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]">
                                 <span className="material-symbols-outlined text-[16px]">close</span>
                             </button>

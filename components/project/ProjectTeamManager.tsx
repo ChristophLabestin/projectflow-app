@@ -38,7 +38,7 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
     const [generatedLink, setGeneratedLink] = useState<string>('');
     const [isGenerating, setIsGenerating] = useState(false);
     const confirm = useConfirm();
-    const { dateFormat, dateLocale } = useLanguage();
+    const { t, dateFormat, dateLocale } = useLanguage();
 
     // Subscribe to project updates to get real-time member list
     useEffect(() => {
@@ -62,14 +62,14 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
                         const profile = await getUserProfile(memberData.userId, resolvedTenant);
                         return {
                             ...memberData,
-                            displayName: profile?.displayName || 'Unknown User',
+                            displayName: profile?.displayName || t('projectTeam.unknownUser'),
                             email: profile?.email || '',
                             photoURL: profile?.photoURL
                         };
                     } catch (e) {
                         return {
                             ...memberData,
-                            displayName: 'Unknown User',
+                            displayName: t('projectTeam.unknownUser'),
                             email: '',
                         };
                     }
@@ -102,19 +102,19 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
             await updateMemberRole(project.id, userId, newRole, project.tenantId);
         } catch (e) {
             console.error("Failed to update role", e);
-            alert("Failed to update role");
+            alert(t('projectTeam.errors.updateRole'));
         }
     };
 
     const handleRemoveMember = async (userId: string) => {
         if (!canManage) return;
-        if (!await confirm("Remove Member", "Are you sure you want to remove this member from the project?")) return;
+        if (!await confirm(t('projectTeam.confirm.removeTitle'), t('projectTeam.confirm.removeMessage'))) return;
 
         try {
             await removeMember(project.id, userId, project.tenantId);
         } catch (e) {
             console.error("Failed to remove member", e);
-            alert("Failed to remove member");
+            alert(t('projectTeam.errors.removeMember'));
         }
     };
 
@@ -127,14 +127,14 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
             loadInviteLinks();
         } catch (e) {
             console.error("Failed to generate link", e);
-            alert("Failed to generate invite link");
+            alert(t('projectTeam.errors.generateInvite'));
         } finally {
             setIsGenerating(false);
         }
     };
 
     const handleRevokeLink = async (linkId: string) => {
-        if (!await confirm("Revoke Link", "Are you sure you want to revoke this invite link?")) return;
+        if (!await confirm(t('projectTeam.confirm.revokeTitle'), t('projectTeam.confirm.revokeMessage'))) return;
         try {
             await revokeProjectInviteLink(project.id, linkId, project.tenantId);
             loadInviteLinks();
@@ -146,7 +146,7 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
         // Could show a toast here
-        alert("Link copied to clipboard!");
+        alert(t('projectTeam.actions.copied'));
     };
 
     return (
@@ -155,8 +155,8 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h3 className="text-lg font-bold text-[var(--color-text-main)]">Team Members</h3>
-                        <p className="text-sm text-[var(--color-text-muted)]">Manage who has access to this project.</p>
+                        <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectTeam.title')}</h3>
+                        <p className="text-sm text-[var(--color-text-muted)]">{t('projectTeam.subtitle')}</p>
                     </div>
                 </div>
 
@@ -167,7 +167,7 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
                         </div>
                     ) : members.length === 0 ? (
                         <div className="p-8 text-center text-[var(--color-text-muted)]">
-                            <p>No members found.</p>
+                            <p>{t('projectTeam.empty')}</p>
                         </div>
                     ) : (
                         <div className="divide-y divide-[var(--color-surface-border)]">
@@ -182,7 +182,7 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
                                             )}
                                         </div>
                                         <div>
-                                            <p className="font-semibold text-sm text-[var(--color-text-main)]">{member.displayName} {auth.currentUser?.uid === member.userId && <span className="text-[var(--color-text-subtle)] text-xs font-normal">(You)</span>}</p>
+                                            <p className="font-semibold text-sm text-[var(--color-text-main)]">{member.displayName} {auth.currentUser?.uid === member.userId && <span className="text-[var(--color-text-subtle)] text-xs font-normal">({t('common.you')})</span>}</p>
                                             <p className="text-xs text-[var(--color-text-muted)]">{member.email}</p>
                                         </div>
                                     </div>
@@ -195,14 +195,14 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
                                                     onChange={(e) => handleRoleChange(member.userId, e.target.value as ProjectRole)}
                                                     className="w-32 h-9 text-xs"
                                                 >
-                                                    <option value="Viewer">Viewer</option>
-                                                    <option value="Editor">Editor</option>
-                                                    <option value="Owner">Owner</option>
+                                                    <option value="Viewer">{t('roles.viewer')}</option>
+                                                    <option value="Editor">{t('roles.editor')}</option>
+                                                    <option value="Owner">{t('roles.owner')}</option>
                                                 </Select>
                                                 <button
                                                     onClick={() => handleRemoveMember(member.userId)}
                                                     className="p-1.5 text-[var(--color-text-subtle)] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                    title="Remove member"
+                                                    title={t('projectTeam.actions.remove')}
                                                 >
                                                     <span className="material-symbols-outlined text-[20px]">person_remove</span>
                                                 </button>
@@ -224,8 +224,8 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
                     <div className="h-px bg-[var(--color-surface-border)]" />
                     <div className="flex items-center justify-between">
                         <div>
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">Invite People</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">Generate a link to share with your team.</p>
+                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectTeam.invite.title')}</h3>
+                            <p className="text-sm text-[var(--color-text-muted)]">{t('projectTeam.invite.subtitle')}</p>
                         </div>
                     </div>
 
@@ -236,9 +236,9 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
                                 onChange={(e) => setInviteRole(e.target.value as ProjectRole)}
                                 className="w-32"
                             >
-                                <option value="Viewer">Viewer</option>
-                                <option value="Editor">Editor</option>
-                                <option value="Owner">Owner</option>
+                                <option value="Viewer">{t('roles.viewer')}</option>
+                                <option value="Editor">{t('roles.editor')}</option>
+                                <option value="Owner">{t('roles.owner')}</option>
                             </Select>
                             <Button
                                 variant="primary"
@@ -247,14 +247,14 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
                                 icon={<span className="material-symbols-outlined">link</span>}
                                 className="whitespace-nowrap flex-1"
                             >
-                                Generate Invite Link
+                                {t('projectTeam.invite.generate')}
                             </Button>
                         </div>
 
                         {generatedLink && (
                             <div className="flex gap-2 animate-in fade-in slide-in-from-top-2">
                                 <Input value={generatedLink} readOnly className="flex-1 font-mono text-xs" />
-                                <Button variant="secondary" onClick={() => copyToClipboard(generatedLink)}>Copy</Button>
+                                <Button variant="secondary" onClick={() => copyToClipboard(generatedLink)}>{t('common.copy')}</Button>
                             </div>
                         )}
                     </div>
@@ -262,15 +262,17 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
                     {/* Active Invite Links */}
                     {inviteLinks.length > 0 && (
                         <div className="space-y-2">
-                            <h4 className="text-sm font-semibold text-[var(--color-text-main)]">Active Invite Links</h4>
+                            <h4 className="text-sm font-semibold text-[var(--color-text-main)]">{t('projectTeam.invite.active')}</h4>
                             <div className="space-y-2">
                                 {inviteLinks.map(link => (
                                     <div key={link.id} className="flex items-center justify-between p-3 border border-[var(--color-surface-border)] rounded-lg bg-[var(--color-surface-card)]">
                                         <div className="flex items-center gap-3">
                                             <Badge variant="outline">{link.role}</Badge>
                                             <div className="flex flex-col">
-                                                <span className="text-xs text-[var(--color-text-muted)]">Expires {format(new Date(link.expiresAt.toDate ? link.expiresAt.toDate() : link.expiresAt), dateFormat, { locale: dateLocale })}</span>
-                                                <span className="text-xs text-[var(--color-text-subtle)]">Created by you</span>
+                                                <span className="text-xs text-[var(--color-text-muted)]">
+                                                    {t('projectTeam.invite.expires').replace('{date}', format(new Date(link.expiresAt.toDate ? link.expiresAt.toDate() : link.expiresAt), dateFormat, { locale: dateLocale }))}
+                                                </span>
+                                                <span className="text-xs text-[var(--color-text-subtle)]">{t('projectTeam.invite.createdByYou')}</span>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -278,14 +280,14 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
                                                 onClick={() => copyToClipboard(`${window.location.origin}/join/${link.id}?projectId=${project.id}&tenantId=${project.tenantId}`)}
                                                 className="text-xs font-medium text-[var(--color-primary)] hover:underline"
                                             >
-                                                Copy Link
+                                                {t('projectTeam.invite.copyLink')}
                                             </button>
                                             <div className="w-px h-3 bg-[var(--color-surface-border)]" />
                                             <button
                                                 onClick={() => handleRevokeLink(link.id)}
                                                 className="text-xs font-medium text-red-500 hover:text-red-600 hover:underline"
                                             >
-                                                Revoke
+                                                {t('projectTeam.invite.revoke')}
                                             </button>
                                         </div>
                                     </div>

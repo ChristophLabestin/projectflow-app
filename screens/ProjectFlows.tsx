@@ -14,12 +14,14 @@ import { PIPELINE_CONFIGS, PipelineStageConfig, OVERVIEW_COLUMNS, TYPE_COLORS } 
 import { PipelineSummary } from '../components/flows/PipelineSummary';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
+import { useLanguage } from '../context/LanguageContext';
 
 // ... (STAGE_CONFIG, TYPE_COLORS, OVERVIEW_COLUMNS constants remain unchanged)
 
 export const ProjectFlows = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { t } = useLanguage();
     const [ideas, setIdeas] = useState<Idea[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
     const [project, setProject] = useState<Project | null>(null);
@@ -48,6 +50,62 @@ export const ProjectFlows = () => {
     // Form State
     const [formData, setFormData] = useState({ id: '', title: '', description: '', type: '' });
     const [error, setError] = useState<string | null>(null);
+
+    const pipelineTypeLabels = useMemo(() => ({
+        Overview: t('flows.type.overview'),
+        Feature: t('flows.type.feature'),
+        Product: t('flows.type.product'),
+        Moonshot: t('flows.type.moonshot'),
+        Optimization: t('flows.type.optimization'),
+        Marketing: t('flows.type.marketing'),
+        Social: t('flows.type.social'),
+        SocialCampaign: t('flows.type.socialCampaign'),
+    }), [t]);
+
+    const overviewLabels = useMemo(() => ({
+        Feature: t('flows.overview.featurePipeline'),
+        Product: t('flows.overview.productLaunch'),
+        Marketing: t('flows.overview.marketing'),
+        Social: t('flows.overview.social'),
+        Moonshot: t('flows.overview.moonshot'),
+        Optimization: t('flows.overview.optimization'),
+    }), [t]);
+
+    const stageLabels = useMemo(() => ({
+        Brainstorm: t('flows.stage.brainstorm'),
+        Refining: t('flows.stage.refining'),
+        Concept: t('flows.stage.concept'),
+        Review: t('flows.stage.inReview'),
+        Approved: t('flows.stage.approved'),
+        Discovery: t('flows.stage.discovery'),
+        Definition: t('flows.stage.definition'),
+        Development: t('flows.stage.development'),
+        Launch: t('flows.stage.launch'),
+        Strategy: t('flows.stage.strategy'),
+        Planning: t('flows.stage.planning'),
+        Execution: t('flows.stage.execution'),
+        Analysis: t('flows.stage.analysis'),
+        CreativeLab: t('flows.stage.creativeLab'),
+        Studio: t('flows.stage.studio'),
+        Distribution: t('flows.stage.distribution'),
+        Submit: t('flows.stage.submit'),
+        Rejected: t('flows.stage.rejected'),
+        Feasibility: t('flows.stage.feasibility'),
+        Prototype: t('flows.stage.prototype'),
+        Greenlight: t('flows.stage.greenlight'),
+        Proposal: t('flows.stage.proposal'),
+        Benchmark: t('flows.stage.benchmark'),
+        Implementation: t('flows.stage.implementation'),
+    }), [t]);
+
+    const socialCampaignStageLabels = useMemo(() => ({
+        Concept: t('flows.stage.concept'),
+        Strategy: t('flows.stage.strategy'),
+        Planning: t('flows.stage.planning'),
+        Submit: t('flows.stage.submit'),
+        Approved: t('flows.stage.liveIntegrated'),
+        Rejected: t('flows.stage.rejected'),
+    }), [t]);
 
     // Stats - Enhanced for Pipeline Summary
     const pipelineStats = useMemo(() => {
@@ -161,7 +219,7 @@ export const ProjectFlows = () => {
             // No need to reload, real-time listener will catch it
         } catch (e) {
             console.error(e);
-            setError("AI generation failed.");
+            setError(t('flows.errors.generationFailed'));
         } finally {
             setGenerating(false);
         }
@@ -218,7 +276,7 @@ export const ProjectFlows = () => {
     };
 
     const handleDelete = async (ideaId: string) => {
-        if (!await confirm("Delete Flow", "Are you sure you want to delete this flow?")) return;
+        if (!await confirm(t('flows.confirm.deleteTitle'), t('flows.confirm.deleteMessage'))) return;
         try {
             await deleteIdea(ideaId, id);
             // Real-time listener handles update
@@ -275,34 +333,50 @@ export const ProjectFlows = () => {
         }).filter(Boolean) as Idea[];
     }, [ideas, activePipeline]);
 
-    const activeColumns = activePipeline === 'Overview' ? OVERVIEW_COLUMNS : (PIPELINE_CONFIGS[activePipeline] || PIPELINE_CONFIGS['Feature']);
+    const activeColumns = useMemo(() => {
+        const baseColumns = activePipeline === 'Overview'
+            ? OVERVIEW_COLUMNS
+            : (PIPELINE_CONFIGS[activePipeline] || PIPELINE_CONFIGS['Feature']);
+
+        return baseColumns.map((column) => {
+            let title = column.title;
+            if (activePipeline === 'Overview') {
+                title = overviewLabels[column.id] || column.title;
+            } else if (activePipeline === 'SocialCampaign') {
+                title = socialCampaignStageLabels[column.id] || stageLabels[column.id] || column.title;
+            } else {
+                title = stageLabels[column.id] || column.title;
+            }
+            return { ...column, title };
+        });
+    }, [activePipeline, overviewLabels, stageLabels, socialCampaignStageLabels]);
 
     const onboardingSteps = useMemo<OnboardingStep[]>(() => ([
         {
             id: 'header',
             targetId: 'project-flows-header',
-            title: 'Flow command bar',
-            description: 'Switch layouts, generate AI flows, or add a new Flow entry from the header.'
+            title: t('onboarding.projectFlows.header.title'),
+            description: t('onboarding.projectFlows.header.description')
         },
         {
             id: 'tabs',
             targetId: 'project-flows-tabs',
-            title: 'Flow pipelines',
-            description: 'Jump between the triage overview and specialized pipelines for each Flow type.'
+            title: t('onboarding.projectFlows.tabs.title'),
+            description: t('onboarding.projectFlows.tabs.description')
         },
         {
             id: 'summary',
             targetId: 'project-flows-summary',
-            title: 'Pipeline health',
-            description: 'The summary shows how flows are distributed across stages, so you can balance the funnel.'
+            title: t('onboarding.projectFlows.summary.title'),
+            description: t('onboarding.projectFlows.summary.description')
         },
         {
             id: 'board',
             targetId: 'project-flows-board',
-            title: 'Flow workspace',
-            description: 'Drag, review, and advance flows as they move from concept to delivery.'
+            title: t('onboarding.projectFlows.board.title'),
+            description: t('onboarding.projectFlows.board.description')
         }
-    ]), []);
+    ]), [t]);
 
     const {
         onboardingActive,
@@ -325,8 +399,8 @@ export const ProjectFlows = () => {
             <div className="flex flex-col gap-6 shrink-0 border-b border-[var(--color-surface-border)] pb-0">
                 <div data-onboarding-id="project-flows-header" className="flex items-center justify-between gap-4">
                     <div className="flex flex-col gap-1">
-                        <h1 className="text-2xl font-bold text-[var(--color-text-main)]">Innovation Pipeline</h1>
-                        <p className="text-sm text-[var(--color-text-muted)]">Manage and track flows across all development stages</p>
+                        <h1 className="text-2xl font-bold text-[var(--color-text-main)]">{t('flows.page.title')}</h1>
+                        <p className="text-sm text-[var(--color-text-muted)]">{t('flows.page.subtitle')}</p>
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -337,7 +411,7 @@ export const ProjectFlows = () => {
                                 className={`p-2 rounded-md transition-all flex items-center justify-center ${viewMode === 'board'
                                     ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] shadow-sm'
                                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}`}
-                                title="Board View"
+                                title={t('flows.view.board')}
                             >
                                 <span className="material-symbols-outlined text-[20px]">view_kanban</span>
                             </button>
@@ -346,7 +420,7 @@ export const ProjectFlows = () => {
                                 className={`p-2 rounded-md transition-all flex items-center justify-center ${viewMode === 'list'
                                     ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] shadow-sm'
                                     : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}`}
-                                title="List View"
+                                title={t('flows.view.list')}
                             >
                                 <span className="material-symbols-outlined text-[20px]">view_list</span>
                             </button>
@@ -360,7 +434,7 @@ export const ProjectFlows = () => {
                             isLoading={generating}
                             icon={<span className="material-symbols-outlined">auto_awesome</span>}
                         >
-                            Generate Flows
+                            {t('flows.actions.generate')}
                         </Button>
                         <Button
                             onClick={() => {
@@ -369,7 +443,7 @@ export const ProjectFlows = () => {
                             }}
                             icon={<span className="material-symbols-outlined">add</span>}
                         >
-                            Add Flow
+                            {t('flows.actions.add')}
                         </Button>
                     </div>
                 </div>
@@ -387,7 +461,7 @@ export const ProjectFlows = () => {
                         `}
                     >
                         <span className="material-symbols-outlined text-[18px]">dashboard</span>
-                        Triage & Overview
+                        {t('flows.tabs.overview')}
                     </button>
                     {Object.keys(PIPELINE_CONFIGS).map(type => (
                         <button
@@ -401,7 +475,7 @@ export const ProjectFlows = () => {
                                 }
                             `}
                         >
-                            {type}
+                            {pipelineTypeLabels[type] || type}
                         </button>
                     ))}
                 </div>
@@ -426,13 +500,13 @@ export const ProjectFlows = () => {
                                 <div className="size-20 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 flex items-center justify-center mx-auto mb-6">
                                     <span className="material-symbols-outlined text-[40px] text-indigo-500">lightbulb</span>
                                 </div>
-                                <h3 className="text-xl font-bold text-[var(--color-text-main)] mb-2">No flows here</h3>
+                                <h3 className="text-xl font-bold text-[var(--color-text-main)] mb-2">{t('flows.empty.title')}</h3>
                                 <p className="text-[var(--color-text-muted)] mb-6">
-                                    The {activePipeline} pipeline is empty. Start brainstorming!
+                                    {t('flows.empty.description').replace('{pipeline}', pipelineTypeLabels[activePipeline] || activePipeline)}
                                 </p>
                                 <div className="flex items-center justify-center gap-3">
                                     <Button variant="secondary" onClick={() => setShowCreateModal(true)}>
-                                        Add Manually
+                                        {t('flows.empty.actions.add')}
                                     </Button>
                                 </div>
                             </div>
@@ -471,12 +545,12 @@ export const ProjectFlows = () => {
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${typeColor}`}>
-                                                        {idea.type}
+                                                        {pipelineTypeLabels[idea.type] || idea.type}
                                                     </span>
                                                     {idea.generated && (
                                                         <span className="text-[10px] font-medium text-indigo-500 flex items-center gap-0.5">
                                                             <span className="material-symbols-outlined text-[12px]">auto_awesome</span>
-                                                            AI
+                                                            {t('flows.badge.ai')}
                                                         </span>
                                                     )}
                                                 </div>

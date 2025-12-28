@@ -19,43 +19,107 @@ export const ProjectReportModal: React.FC<ProjectReportModalProps> = ({
     onGenerate,
     lastUpdated
 }) => {
-    // Basic markdown parser for headers and lists
+    // Enhanced markdown parser for headers, lists, bold, and inline formatting
     const renderMarkdown = (text: string) => {
         if (!text) return null;
 
-        return text.split('\n').map((line, index) => {
-            if (line.startsWith('# ')) {
-                return <h1 key={index} className="text-2xl font-bold mt-6 mb-4 text-[var(--color-text-main)]">{line.replace('# ', '')}</h1>;
-            }
-            if (line.startsWith('## ')) {
-                return <h2 key={index} className="text-lg font-bold mt-5 mb-3 text-[var(--color-text-main)] border-b border-[var(--color-surface-border)] pb-2">{line.replace('## ', '')}</h2>;
-            }
-            if (line.startsWith('### ')) {
-                return <h3 key={index} className="text-base font-bold mt-4 mb-2 text-[var(--color-text-main)]">{line.replace('### ', '')}</h3>;
-            }
-            if (line.startsWith('- ')) {
-                return <li key={index} className="ml-4 mb-1 text-[var(--color-text-main)]">{line.replace('- ', '')}</li>;
-            }
-            if (line.startsWith('* ')) {
-                return <li key={index} className="ml-4 mb-1 text-[var(--color-text-main)]">{line.replace('* ', '')}</li>;
-            }
-            if (line.trim() === '') {
-                return <br key={index} />;
+        // Clean up excessive newlines (more than 2 consecutive)
+        const cleanedText = text.replace(/\n{3,}/g, '\n\n').trim();
+
+        // Helper to parse inline formatting (bold)
+        const parseInline = (line: string) => {
+            const parts = line.split(/(\*\*.*?\*\*)/g);
+            return parts.map((part, i) => {
+                if (part.startsWith('**') && part.endsWith('**')) {
+                    return <strong key={i} className="font-semibold">{part.slice(2, -2)}</strong>;
+                }
+                return part;
+            });
+        };
+
+        const lines = cleanedText.split('\n');
+        const elements: React.ReactNode[] = [];
+        let skipNext = false;
+
+        lines.forEach((line, index) => {
+            if (skipNext) {
+                skipNext = false;
+                return;
             }
 
-            // Bold text parsing (**text**)
-            const parts = line.split(/(\*\*.*?\*\*)/g);
-            return (
+            const trimmedLine = line.trim();
+
+            // Skip completely empty lines (don't add breaks for them)
+            if (trimmedLine === '') {
+                // Only add spacing if next line has content
+                if (index < lines.length - 1 && lines[index + 1].trim() !== '') {
+                    elements.push(<div key={`space-${index}`} className="h-2" />);
+                }
+                return;
+            }
+
+            // H1 with emoji support
+            if (trimmedLine.startsWith('# ')) {
+                elements.push(
+                    <h1 key={index} className="text-xl font-bold mt-6 mb-3 text-[var(--color-text-main)] flex items-center gap-2">
+                        {parseInline(trimmedLine.replace('# ', ''))}
+                    </h1>
+                );
+                return;
+            }
+
+            // H2 with emoji (section headers like 📊, 🚨, etc.)
+            if (trimmedLine.startsWith('## ') || /^[📊🚨📅🏗🐛💡✅⚠️🔥]/.test(trimmedLine)) {
+                const content = trimmedLine.startsWith('## ') ? trimmedLine.replace('## ', '') : trimmedLine;
+                elements.push(
+                    <h2 key={index} className="text-lg font-bold mt-5 mb-2 text-[var(--color-text-main)] border-b border-[var(--color-surface-border)] pb-2">
+                        {parseInline(content)}
+                    </h2>
+                );
+                return;
+            }
+
+            // H3
+            if (trimmedLine.startsWith('### ')) {
+                elements.push(
+                    <h3 key={index} className="text-base font-semibold mt-4 mb-2 text-[var(--color-text-main)]">
+                        {parseInline(trimmedLine.replace('### ', ''))}
+                    </h3>
+                );
+                return;
+            }
+
+            // Numbered list items
+            if (/^\d+\.\s/.test(trimmedLine)) {
+                elements.push(
+                    <div key={index} className="flex gap-2 ml-2 mb-2">
+                        <span className="text-[var(--color-primary)] font-bold shrink-0">{trimmedLine.match(/^\d+/)?.[0]}.</span>
+                        <p className="text-[var(--color-text-main)] leading-relaxed">{parseInline(trimmedLine.replace(/^\d+\.\s/, ''))}</p>
+                    </div>
+                );
+                return;
+            }
+
+            // Bullet list items (- or *)
+            if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
+                elements.push(
+                    <div key={index} className="flex gap-2 ml-2 mb-1.5 items-baseline">
+                        <span className="text-[var(--color-primary)]">•</span>
+                        <p className="text-[var(--color-text-main)] leading-relaxed flex-1">{parseInline(trimmedLine.replace(/^[-*]\s/, ''))}</p>
+                    </div>
+                );
+                return;
+            }
+
+            // Regular paragraph
+            elements.push(
                 <p key={index} className="mb-2 text-[var(--color-text-main)] leading-relaxed">
-                    {parts.map((part, i) => {
-                        if (part.startsWith('**') && part.endsWith('**')) {
-                            return <strong key={i}>{part.slice(2, -2)}</strong>;
-                        }
-                        return part;
-                    })}
+                    {parseInline(trimmedLine)}
                 </p>
             );
         });
+
+        return elements;
     };
 
     return (

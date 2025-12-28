@@ -4,6 +4,7 @@ import { TaskCategory } from '../types';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
+import { useLanguage } from '../context/LanguageContext';
 
 type Props = {
     isOpen: boolean;
@@ -44,6 +45,7 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
     const [editColor, setEditColor] = useState('');
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const { t } = useLanguage();
 
     const loadLabels = async () => {
         setLoading(true);
@@ -74,7 +76,7 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
             loadLabels();
             onLabelsChange?.();
         } catch (err: any) {
-            setError(err.message || 'Failed to add label');
+            setError(err.message || t('projectLabels.errors.addFailed'));
         } finally {
             setIsSaving(false);
         }
@@ -92,7 +94,7 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
     };
 
     const handleDeleteLabel = async (id: string) => {
-        if (!window.confirm('Are you sure you want to delete this label?')) return;
+        if (!window.confirm(t('projectLabels.confirm.delete'))) return;
         try {
             await deleteProjectCategory(projectId, id, tenantId);
             loadLabels();
@@ -106,7 +108,7 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title="Manage Project Labels"
+            title={t('projectLabels.title')}
             size="md"
         >
             <div className="space-y-5">
@@ -114,10 +116,10 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
                 <form onSubmit={handleAddLabel} className="space-y-4 p-3.5 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)]">
                     <div className="flex flex-col gap-3">
                         <Input
-                            label="New Label"
+                            label={t('projectLabels.new.label')}
                             value={newName}
                             onChange={(e) => setNewName(e.target.value)}
-                            placeholder="e.g. Bug, Feature, Urgent"
+                            placeholder={t('projectLabels.new.placeholder')}
                             autoComplete="off"
                         />
                         <div>
@@ -140,19 +142,19 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
                             isLoading={isSaving}
                             className="w-full py-2 h-9 text-sm"
                         >
-                            Create Label
+                            {t('projectLabels.actions.create')}
                         </Button>
                     </div>
                 </form>
 
                 {/* Labels List / More Compact */}
                 <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-widest block px-1">Active Labels</label>
+                    <label className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-widest block px-1">{t('projectLabels.list.title')}</label>
                     <div className="space-y-1.5 max-h-[300px] overflow-y-auto px-1 custom-scrollbar">
                         {loading ? (
-                            <div className="py-8 text-center text-[var(--color-text-muted)] animate-pulse">Loading labels...</div>
+                            <div className="py-8 text-center text-[var(--color-text-muted)] animate-pulse">{t('projectLabels.loading')}</div>
                         ) : labels.length === 0 ? (
-                            <div className="py-8 text-center text-[var(--color-text-muted)] italic text-sm">No labels created yet</div>
+                            <div className="py-8 text-center text-[var(--color-text-muted)] italic text-sm">{t('projectLabels.empty')}</div>
                         ) : (
                             labels.map(label => (
                                 <div key={label.id} className={`flex flex-col p-1.5 rounded-lg transition-all border ${editingLabelId === label.id ? 'bg-[var(--color-surface-card)] border-[var(--color-surface-border)] shadow-sm' : 'hover:bg-[var(--color-surface-hover)] border-transparent group'}`}>
@@ -165,7 +167,7 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
                                                     value={editName}
                                                     onChange={(e) => setEditName(e.target.value)}
                                                     className="bg-transparent border-none outline-none text-sm font-semibold w-full text-[var(--color-text-main)]"
-                                                    placeholder="Label Name"
+                                                    placeholder={t('projectLabels.edit.placeholder')}
                                                     onKeyDown={(e) => {
                                                         if (e.key === 'Enter') handleUpdateLabel(label.id, { name: editName.trim(), color: editColor });
                                                         if (e.key === 'Escape') setEditingLabelId(null);
@@ -190,7 +192,7 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
                                                     <button
                                                         onClick={() => setEditingLabelId(null)}
                                                         className="p-1 rounded-md hover:bg-[var(--color-surface-bg)] text-[var(--color-text-muted)]"
-                                                        title="Cancel"
+                                                        title={t('common.cancel')}
                                                     >
                                                         <span className="material-symbols-outlined text-[16px]">close</span>
                                                     </button>
@@ -198,7 +200,7 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
                                                         onClick={() => handleUpdateLabel(label.id, { name: editName.trim(), color: editColor })}
                                                         disabled={!editName.trim() || isSaving}
                                                         className="p-1 rounded-md hover:bg-[var(--color-primary)]/10 text-[var(--color-primary)]"
-                                                        title="Save"
+                                                        title={t('projectLabels.actions.save')}
                                                     >
                                                         <span className="material-symbols-outlined text-[16px]">check</span>
                                                     </button>

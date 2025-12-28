@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Idea } from '../../../types';
 import { Button } from '../../ui/Button';
 import { generateKeywordsAI } from '../../../services/geminiService';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface BrainstormViewProps {
     idea: Idea;
@@ -9,6 +10,7 @@ interface BrainstormViewProps {
 }
 
 export const BrainstormView: React.FC<BrainstormViewProps> = ({ idea, onUpdate }) => {
+    const { t } = useLanguage();
     const [keywordInput, setKeywordInput] = useState('');
     const [hoveredKeyword, setHoveredKeyword] = useState<string | null>(null);
     const [suggesting, setSuggesting] = useState(false);
@@ -139,12 +141,16 @@ export const BrainstormView: React.FC<BrainstormViewProps> = ({ idea, onUpdate }
 
     const missionText = (
         <div className="text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
-            "We are exploring <span className="text-rose-500 font-black">Creative Concepts</span>
-            {' '}for <span className="text-rose-500 font-black">{idea.title || 'Untitled Flow'}</span>
-            {' '}expand by <span className="text-rose-500 font-black">{keywords.length} Core Keywords</span>
-            {' '}and associations to unlock <span className="text-rose-500 font-black">
-                Insightful Angles
-            </span>."
+            "{t('flowStages.brainstorm.mission.prefix')}{' '}
+            <span className="text-rose-500 font-black">{t('flowStages.brainstorm.mission.concept')}</span>
+            {' '}{t('flowStages.brainstorm.mission.for')}{' '}
+            <span className="text-rose-500 font-black">{idea.title || t('flowStages.brainstorm.untitled')}</span>
+            {' '}{t('flowStages.brainstorm.mission.expandBy')}{' '}
+            <span className="text-rose-500 font-black">
+                {t('flowStages.brainstorm.mission.coreKeywords').replace('{count}', String(keywords.length))}
+            </span>
+            {' '}{t('flowStages.brainstorm.mission.associations')}{' '}
+            <span className="text-rose-500 font-black">{t('flowStages.brainstorm.mission.angles')}</span>."
         </div>
     );
 
@@ -160,12 +166,12 @@ export const BrainstormView: React.FC<BrainstormViewProps> = ({ idea, onUpdate }
                         <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
                             <div className="flex items-center gap-2 shrink-0">
                                 <div className="px-3 py-1 bg-rose-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-rose-200 dark:shadow-none">
-                                    Brainstorming
+                                    {t('flowStages.brainstorm.badge')}
                                 </div>
                                 <div className="h-[1px] w-8 bg-rose-200 dark:bg-rose-800 rounded-full" />
                             </div>
                             <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-                                Creative Mind Map
+                                {t('flowStages.brainstorm.title')}
                             </h1>
                         </div>
                         <div className="max-w-3xl p-5 bg-white/70 dark:bg-slate-950/50 rounded-2xl border border-white dark:border-slate-800 shadow-lg shadow-rose-100/50 dark:shadow-none backdrop-blur-md">
@@ -179,13 +185,13 @@ export const BrainstormView: React.FC<BrainstormViewProps> = ({ idea, onUpdate }
                     <div className="lg:col-span-4 space-y-5">
                         {/* Core Concept Input */}
                         <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest mb-4 opacity-50">Core Concept</h3>
+                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest mb-4 opacity-50">{t('flowStages.brainstorm.coreConcept.title')}</h3>
                             <div className="relative">
                                 <input
                                     value={idea.title}
                                     onChange={(e) => onUpdate({ title: e.target.value })}
                                     className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 dark:text-white focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all placeholder:text-slate-400"
-                                    placeholder="What's the core flow?"
+                                    placeholder={t('flowStages.brainstorm.coreConcept.placeholder')}
                                 />
                                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                                     <span className="material-symbols-outlined text-[18px]">edit</span>
@@ -196,7 +202,7 @@ export const BrainstormView: React.FC<BrainstormViewProps> = ({ idea, onUpdate }
                         {/* Keyword Input & Suggestions */}
                         <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest opacity-50">Associative Thinking</h3>
+                                <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest opacity-50">{t('flowStages.brainstorm.associative.title')}</h3>
                                 <button
                                     onClick={handleGenerateKeywords}
                                     disabled={suggesting}
@@ -205,7 +211,7 @@ export const BrainstormView: React.FC<BrainstormViewProps> = ({ idea, onUpdate }
                                     <span className={`material-symbols-outlined text-[12px] ${suggesting ? 'animate-spin' : ''}`}>
                                         {suggesting ? 'progress_activity' : 'auto_awesome'}
                                     </span>
-                                    AI SUGGEST
+                                    {t('flowStages.brainstorm.associative.aiSuggest')}
                                 </button>
                             </div>
 
@@ -217,7 +223,7 @@ export const BrainstormView: React.FC<BrainstormViewProps> = ({ idea, onUpdate }
                                         onChange={(e) => setKeywordInput(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && handleAddKeyword(keywordInput)}
                                         className="flex-1 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-white focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all placeholder:text-slate-400"
-                                        placeholder="Add a keyword..."
+                                        placeholder={t('flowStages.brainstorm.keywords.placeholder')}
                                     />
                                     <button
                                         onClick={() => handleAddKeyword(keywordInput)}
@@ -238,7 +244,7 @@ export const BrainstormView: React.FC<BrainstormViewProps> = ({ idea, onUpdate }
                                         </span>
                                     ))}
                                     {keywords.length === 0 && (
-                                        <p className="text-[10px] text-slate-400 italic">No keywords added yet.</p>
+                                        <p className="text-[10px] text-slate-400 italic">{t('flowStages.brainstorm.keywords.empty')}</p>
                                     )}
                                 </div>
 
@@ -246,8 +252,8 @@ export const BrainstormView: React.FC<BrainstormViewProps> = ({ idea, onUpdate }
                                 {suggestions.length > 0 && (
                                     <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2">
                                         <div className="flex items-center justify-between mb-3">
-                                            <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest">Suggested for you</span>
-                                            <button onClick={() => setSuggestions([])} className="text-[9px] text-slate-400 hover:text-slate-600 underline decoration-dotted">Clear</button>
+                                            <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest">{t('flowStages.brainstorm.keywords.suggested')}</span>
+                                            <button onClick={() => setSuggestions([])} className="text-[9px] text-slate-400 hover:text-slate-600 underline decoration-dotted">{t('flowStages.brainstorm.keywords.clear')}</button>
                                         </div>
                                         <div className="flex flex-wrap gap-2">
                                             {suggestions.map((s, i) => (
@@ -290,7 +296,7 @@ export const BrainstormView: React.FC<BrainstormViewProps> = ({ idea, onUpdate }
 
                                     <span className="material-symbols-outlined text-3xl md:text-4xl text-rose-500 mb-2 drop-shadow-sm group-hover:scale-110 transition-transform">lightbulb</span>
                                     <span className="font-black text-slate-800 dark:text-white text-xs md:text-sm line-clamp-2 leading-tight px-2 tracking-tight">
-                                        {idea.title || 'Untitled Flow'}
+                                        {idea.title || t('flowStages.brainstorm.untitled')}
                                     </span>
                                 </div>
 
@@ -355,7 +361,7 @@ export const BrainstormView: React.FC<BrainstormViewProps> = ({ idea, onUpdate }
                                     onUpdate({ stage: nextStage });
                                 }}
                             >
-                                Advance to {idea.type === 'Social' ? 'Strategy' : 'Refinement'}
+                                {t('flowStages.brainstorm.actions.advance').replace('{stage}', idea.type === 'Social' ? t('flows.stage.strategy') : t('flows.stage.refining'))}
                                 <div className="size-7 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-2 transition-all">
                                     <span className="material-symbols-outlined text-[18px] font-black">arrow_forward</span>
                                 </div>

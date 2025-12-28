@@ -18,19 +18,30 @@ import { auth, storage } from '../services/firebase'; // Added storage for manua
 import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
 
 const STEPS = [
-    { id: 0, label: 'Method' },
-    { id: 1, label: 'Details' },
-    { id: 2, label: 'Modules' },
-    { id: 3, label: 'Team' },
-    { id: 4, label: 'Timeline' },
-    { id: 5, label: 'Assets' },
+    { id: 0, labelKey: 'createProjectWizard.steps.method' },
+    { id: 1, labelKey: 'createProjectWizard.steps.details' },
+    { id: 2, labelKey: 'createProjectWizard.steps.modules' },
+    { id: 3, labelKey: 'createProjectWizard.steps.team' },
+    { id: 4, labelKey: 'createProjectWizard.steps.timeline' },
+    { id: 5, labelKey: 'createProjectWizard.steps.assets' },
 ];
+
+const MODULE_OPTIONS = [
+    { id: 'tasks', labelKey: 'createProjectWizard.modules.tasks.label', descKey: 'createProjectWizard.modules.tasks.desc', icon: 'check_circle' },
+    { id: 'issues', labelKey: 'createProjectWizard.modules.issues.label', descKey: 'createProjectWizard.modules.issues.desc', icon: 'bug_report' },
+    { id: 'ideas', labelKey: 'createProjectWizard.modules.flows.label', descKey: 'createProjectWizard.modules.flows.desc', icon: 'lightbulb' },
+    { id: 'milestones', labelKey: 'createProjectWizard.modules.milestones.label', descKey: 'createProjectWizard.modules.milestones.desc', icon: 'flag' },
+    { id: 'social', labelKey: 'createProjectWizard.modules.social.label', descKey: 'createProjectWizard.modules.social.desc', icon: 'campaign' },
+    { id: 'marketing', labelKey: 'createProjectWizard.modules.marketing.label', descKey: 'createProjectWizard.modules.marketing.desc', icon: 'ads_click' },
+    { id: 'mindmap', labelKey: 'createProjectWizard.modules.mindmap.label', descKey: 'createProjectWizard.modules.mindmap.desc', icon: 'account_tree' },
+    { id: 'activity', labelKey: 'createProjectWizard.modules.activity.label', descKey: 'createProjectWizard.modules.activity.desc', icon: 'history' },
+] as const;
 
 export const CreateProjectWizard = () => {
     const navigate = useNavigate();
     const { can } = useWorkspacePermissions();
     const { showToast } = useToast();
-    const { dateFormat, dateLocale } = useLanguage();
+    const { dateFormat, dateLocale, t } = useLanguage();
 
     const [currentStep, setCurrentStep] = useState(0);
     const [creationMode, setCreationMode] = useState<'scratch' | 'ai' | null>(null);
@@ -145,7 +156,7 @@ export const CreateProjectWizard = () => {
             handleNext();
         } catch (e) {
             console.error(e);
-            showToast('Failed to generate blueprint.', 'error');
+            showToast(t('createProjectWizard.errors.generateBlueprint'), 'error');
         } finally {
             setIsGenerating(false);
         }
@@ -219,15 +230,15 @@ export const CreateProjectWizard = () => {
             }
 
             navigate('/projects');
-            showToast(`Project "${name}" created.`, 'success');
+            showToast(t('createProjectWizard.toast.created').replace('{name}', name), 'success');
         } catch (e) {
             console.error(e);
             setIsSubmitting(false);
-            showToast('Failed to create project.', 'error');
+            showToast(t('createProjectWizard.errors.createProject'), 'error');
         }
     };
 
-    if (!can('canCreateProjects')) return <div className="p-10 text-center text-[var(--color-text-subtle)]">Access Denied</div>;
+    if (!can('canCreateProjects')) return <div className="p-10 text-center text-[var(--color-text-subtle)]">{t('createProjectWizard.errors.accessDenied')}</div>;
 
     const getTypeIcon = (type: string) => {
         switch (type) {
@@ -236,6 +247,28 @@ export const CreateProjectWizard = () => {
             default: return 'folder_open';
         }
     };
+
+    const typeLabels: Record<typeof projectType, string> = {
+        standard: t('createProjectWizard.type.standard'),
+        software: t('createProjectWizard.type.software'),
+        creative: t('createProjectWizard.type.creative'),
+    };
+
+    const priorityLabels: Record<string, string> = {
+        Low: t('tasks.priority.low'),
+        Medium: t('tasks.priority.medium'),
+        High: t('tasks.priority.high'),
+        Urgent: t('tasks.priority.urgent'),
+    };
+
+    const statusLabels: Record<string, string> = {
+        Planning: t('dashboard.projectStatus.planning'),
+        Active: t('dashboard.projectStatus.active'),
+        'On Hold': t('dashboard.projectStatus.onHold'),
+    };
+
+    const totalSteps = STEPS.length - 1;
+    const currentStepLabel = t(STEPS[currentStep]?.labelKey);
 
     return (
         <div className="flex-1 flex items-center justify-center p-8 lg:p-12 bg-gradient-to-br from-[var(--color-surface-bg)] via-[var(--color-surface-bg)] to-zinc-100/30 dark:to-zinc-800/10 overflow-auto">
@@ -284,9 +317,14 @@ export const CreateProjectWizard = () => {
                     <header className="px-8 py-5 border-b border-[var(--color-surface-border)] flex items-center justify-between shrink-0">
                         <div className="flex items-center gap-4">
                             <div>
-                                <h1 className="text-lg font-bold text-[var(--color-text-main)]">New Project</h1>
+                                <h1 className="text-lg font-bold text-[var(--color-text-main)]">{t('createProjectWizard.header.title')}</h1>
                                 {currentStep > 0 && (
-                                    <p className="text-[11px] text-[var(--color-text-subtle)] font-medium">Step {currentStep} of 5 — {STEPS[currentStep]?.label}</p>
+                                    <p className="text-[11px] text-[var(--color-text-subtle)] font-medium">
+                                        {t('createProjectWizard.header.step')
+                                            .replace('{step}', String(currentStep))
+                                            .replace('{total}', String(totalSteps))
+                                            .replace('{label}', currentStepLabel)}
+                                    </p>
                                 )}
                             </div>
                         </div>
@@ -312,8 +350,8 @@ export const CreateProjectWizard = () => {
                         {currentStep === 0 && (
                             <div className="space-y-8 animate-fade-in h-full flex flex-col">
                                 <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">How would you like to start?</h2>
-                                    <p className="text-sm text-[var(--color-text-subtle)]">Choose a method to set up your project.</p>
+                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">{t('createProjectWizard.method.title')}</h2>
+                                    <p className="text-sm text-[var(--color-text-subtle)]">{t('createProjectWizard.method.subtitle')}</p>
                                 </div>
 
                                 <div className="grid gap-5 flex-1 content-center">
@@ -325,8 +363,8 @@ export const CreateProjectWizard = () => {
                                             <span className="material-symbols-outlined text-[28px]">edit_note</span>
                                         </div>
                                         <div className="flex-1">
-                                            <div className="text-lg font-bold text-[var(--color-text-main)]">Start from Scratch</div>
-                                            <div className="text-sm text-[var(--color-text-subtle)] mt-1">Manually configure all project settings and customize every detail.</div>
+                                            <div className="text-lg font-bold text-[var(--color-text-main)]">{t('createProjectWizard.method.scratch.title')}</div>
+                                            <div className="text-sm text-[var(--color-text-subtle)] mt-1">{t('createProjectWizard.method.scratch.description')}</div>
                                         </div>
                                         <span className="material-symbols-outlined text-[var(--color-text-muted)] text-[28px] group-hover:translate-x-1 transition-transform">chevron_right</span>
                                     </button>
@@ -339,8 +377,8 @@ export const CreateProjectWizard = () => {
                                             <span className="material-symbols-outlined text-[28px]">auto_awesome</span>
                                         </div>
                                         <div className="flex-1">
-                                            <div className="text-lg font-bold text-[var(--color-text-main)]">Use AI Architect</div>
-                                            <div className="text-sm text-[var(--color-text-subtle)] mt-1">Describe your flow and let AI generate a complete project blueprint.</div>
+                                            <div className="text-lg font-bold text-[var(--color-text-main)]">{t('createProjectWizard.method.ai.title')}</div>
+                                            <div className="text-sm text-[var(--color-text-subtle)] mt-1">{t('createProjectWizard.method.ai.description')}</div>
                                         </div>
                                         <span className="material-symbols-outlined text-[var(--color-text-muted)] text-[28px] group-hover:translate-x-1 transition-transform">chevron_right</span>
                                     </button>
@@ -352,14 +390,14 @@ export const CreateProjectWizard = () => {
                         {currentStep === 1 && creationMode === 'ai' && (
                             <div className="space-y-6 animate-fade-in">
                                 <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">Describe Your Project</h2>
-                                    <p className="text-sm text-[var(--color-text-subtle)]">Provide a brief description and AI will generate a structure.</p>
+                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">{t('createProjectWizard.ai.title')}</h2>
+                                    <p className="text-sm text-[var(--color-text-subtle)]">{t('createProjectWizard.ai.subtitle')}</p>
                                 </div>
 
                                 <textarea
                                     value={aiPrompt}
                                     onChange={handleAiPromptChange}
-                                    placeholder="e.g. A mobile app for tracking personal fitness goals with social features..."
+                                    placeholder={t('createProjectWizard.ai.placeholder')}
                                     className="w-full min-h-[200px] p-4 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl text-sm text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus:ring-2 focus:ring-zinc-500/20 focus:border-zinc-500 outline-none resize-none transition-all"
                                 />
 
@@ -370,9 +408,9 @@ export const CreateProjectWizard = () => {
                                     variant="primary"
                                 >
                                     {isGenerating ? (
-                                        <><span className="material-symbols-outlined animate-spin text-[18px] mr-2">progress_activity</span>Generating Blueprint...</>
+                                        <><span className="material-symbols-outlined animate-spin text-[18px] mr-2">progress_activity</span>{t('createProjectWizard.ai.generating')}</>
                                     ) : (
-                                        <><span className="material-symbols-outlined text-[18px] mr-2">magic_button</span>Generate Blueprint</>
+                                        <><span className="material-symbols-outlined text-[18px] mr-2">magic_button</span>{t('createProjectWizard.ai.action')}</>
                                     )}
                                 </Button>
                             </div>
@@ -382,37 +420,37 @@ export const CreateProjectWizard = () => {
                         {currentStep === 1 && creationMode === 'scratch' && (
                             <div className="space-y-5 animate-fade-in">
                                 <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">Project Details</h2>
-                                    <p className="text-sm text-[var(--color-text-subtle)]">Give your project a name and description.</p>
+                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">{t('createProjectWizard.details.title')}</h2>
+                                    <p className="text-sm text-[var(--color-text-subtle)]">{t('createProjectWizard.details.subtitle')}</p>
                                 </div>
 
                                 <div className="space-y-4">
                                     <Input
-                                        label="Project Name"
+                                        label={t('createProjectWizard.details.name.label')}
                                         value={name}
                                         onChange={e => setName(e.target.value)}
-                                        placeholder="e.g. Q1 Marketing Campaign"
+                                        placeholder={t('createProjectWizard.details.name.placeholder')}
                                         autoFocus
                                     />
 
                                     <div className="space-y-2">
                                         <div className="flex justify-between items-center">
-                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Description</label>
+                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('createProjectWizard.details.description.label')}</label>
                                             <button onClick={handleGenerateDesc} disabled={!name || isGenerating} className="text-[10px] font-semibold text-[var(--color-text-main)] hover:text-[var(--color-text-main)] disabled:opacity-30 flex items-center gap-1">
                                                 <span className={`material-symbols-outlined text-sm ${isGenerating ? 'animate-spin' : ''}`}>auto_awesome</span>
-                                                AI Compose
+                                                {t('createProjectWizard.details.description.aiCompose')}
                                             </button>
                                         </div>
                                         <Textarea
                                             value={description}
                                             onChange={e => setDescription(e.target.value)}
-                                            placeholder="Briefly describe the goals and scope..."
+                                            placeholder={t('createProjectWizard.details.description.placeholder')}
                                             className="min-h-[80px]"
                                         />
                                     </div>
 
                                     <div className="space-y-3">
-                                        <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Type</label>
+                                        <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('createProjectWizard.details.type.label')}</label>
                                         <div className="grid grid-cols-3 gap-3">
                                             {(['standard', 'software', 'creative'] as const).map(t => (
                                                 <button
@@ -424,7 +462,7 @@ export const CreateProjectWizard = () => {
                                                         }`}
                                                 >
                                                     <span className="material-symbols-outlined text-[24px]">{getTypeIcon(t)}</span>
-                                                    <span className="text-[10px] font-bold uppercase">{t}</span>
+                                                    <span className="text-[10px] font-bold uppercase">{typeLabels[t]}</span>
                                                 </button>
                                             ))}
                                         </div>
@@ -437,21 +475,12 @@ export const CreateProjectWizard = () => {
                         {currentStep === 2 && (
                             <div className="space-y-5 animate-fade-in">
                                 <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">Select Modules</h2>
-                                    <p className="text-sm text-[var(--color-text-subtle)]">Choose the tools you need for this project.</p>
+                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">{t('createProjectWizard.modules.title')}</h2>
+                                    <p className="text-sm text-[var(--color-text-subtle)]">{t('createProjectWizard.modules.subtitle')}</p>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
-                                    {[
-                                        { id: 'tasks', label: 'Tasks', desc: 'Track work items', icon: 'check_circle' },
-                                        { id: 'issues', label: 'Issues', desc: 'Bug tracking', icon: 'bug_report' },
-                                        { id: 'ideas', label: 'Flows', desc: 'Brainstorming', icon: 'lightbulb' },
-                                        { id: 'milestones', label: 'Milestones', desc: 'Key deadlines', icon: 'flag' },
-                                        { id: 'social', label: 'Social', desc: 'Campaign Manager', icon: 'campaign' },
-                                        { id: 'marketing', label: 'Marketing', desc: 'Ads & Email', icon: 'ads_click' },
-                                        { id: 'mindmap', label: 'Mind Map', desc: 'Visual structures', icon: 'account_tree' },
-                                        { id: 'activity', label: 'Activity', desc: 'Change log', icon: 'history' },
-                                    ].map(m => {
+                                    {MODULE_OPTIONS.map(m => {
                                         const isActive = modules.includes(m.id as any);
                                         return (
                                             <button
@@ -466,8 +495,8 @@ export const CreateProjectWizard = () => {
                                                     <span className="material-symbols-outlined text-[18px]">{m.icon}</span>
                                                 </div>
                                                 <div className="flex-1 text-left min-w-0">
-                                                    <div className={`text-sm font-semibold truncate ${isActive ? 'text-white dark:text-zinc-800' : 'text-[var(--color-text-main)]'}`}>{m.label}</div>
-                                                    <div className={`text-[10px] truncate ${isActive ? 'text-white/70 dark:text-zinc-600' : 'text-[var(--color-text-subtle)]'}`}>{m.desc}</div>
+                                                    <div className={`text-sm font-semibold truncate ${isActive ? 'text-white dark:text-zinc-800' : 'text-[var(--color-text-main)]'}`}>{t(m.labelKey)}</div>
+                                                    <div className={`text-[10px] truncate ${isActive ? 'text-white/70 dark:text-zinc-600' : 'text-[var(--color-text-subtle)]'}`}>{t(m.descKey)}</div>
                                                 </div>
                                                 {isActive && <span className="material-symbols-outlined text-white dark:text-zinc-800 text-[18px] shrink-0">check_circle</span>}
                                             </button>
@@ -481,14 +510,14 @@ export const CreateProjectWizard = () => {
                         {currentStep === 3 && (
                             <div className="space-y-5 animate-fade-in">
                                 <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">Add Team Members</h2>
-                                    <p className="text-sm text-[var(--color-text-subtle)]">Select people to invite to this project.</p>
+                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">{t('createProjectWizard.team.title')}</h2>
+                                    <p className="text-sm text-[var(--color-text-subtle)]">{t('createProjectWizard.team.subtitle')}</p>
                                 </div>
 
                                 {availableMembers.length === 0 ? (
                                     <div className="text-center py-12 text-[var(--color-text-subtle)]">
                                         <span className="material-symbols-outlined text-5xl opacity-30">group</span>
-                                        <p className="mt-3 text-sm">No team members available.</p>
+                                        <p className="mt-3 text-sm">{t('createProjectWizard.team.empty')}</p>
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-2 gap-3">
@@ -520,8 +549,8 @@ export const CreateProjectWizard = () => {
                                 {/* Project Visibility Section */}
                                 <div className="pt-6 mt-2 border-t border-[var(--color-surface-border)]">
                                     <div className="space-y-2 mb-4">
-                                        <h3 className="text-lg font-bold text-[var(--color-text-main)]">Visibility</h3>
-                                        <p className="text-sm text-[var(--color-text-subtle)]">Who can see this project?</p>
+                                        <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('createProjectWizard.visibility.title')}</h3>
+                                        <p className="text-sm text-[var(--color-text-subtle)]">{t('createProjectWizard.visibility.subtitle')}</p>
                                     </div>
 
                                     <div className="grid grid-cols-2 gap-3">
@@ -534,10 +563,10 @@ export const CreateProjectWizard = () => {
                                         >
                                             <div className="flex items-center gap-2">
                                                 <span className="material-symbols-outlined text-[20px]">public</span>
-                                                <span className="text-sm font-bold">Everyone</span>
+                                                <span className="text-sm font-bold">{t('createProjectWizard.visibility.everyone')}</span>
                                             </div>
                                             <span className={`text-[10px] ${visibilityGroupIds.length === 0 ? 'text-white/70 dark:text-zinc-600' : 'text-[var(--color-text-subtle)]'}`}>
-                                                Visible to all workspace members
+                                                {t('createProjectWizard.visibility.everyoneHint')}
                                             </span>
                                         </button>
 
@@ -555,10 +584,10 @@ export const CreateProjectWizard = () => {
                                         >
                                             <div className="flex items-center gap-2">
                                                 <span className="material-symbols-outlined text-[20px]">lock_person</span>
-                                                <span className="text-sm font-bold">Specific Groups</span>
+                                                <span className="text-sm font-bold">{t('createProjectWizard.visibility.groups')}</span>
                                             </div>
                                             <span className={`text-[10px] ${visibilityGroupIds.length > 0 ? 'text-white/70 dark:text-zinc-600' : 'text-[var(--color-text-subtle)]'}`}>
-                                                {workspaceGroups.length === 0 ? 'No groups available' : 'Restricted to selected groups'}
+                                                {workspaceGroups.length === 0 ? t('createProjectWizard.visibility.noGroups') : t('createProjectWizard.visibility.groupsHint')}
                                             </span>
                                         </button>
                                     </div>
@@ -567,7 +596,7 @@ export const CreateProjectWizard = () => {
                                     {visibilityGroupIds.length > 0 && workspaceGroups.length > 0 && (
                                         <div className="mt-4 animate-fade-in">
                                             <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2 block">
-                                                Select Allowed Groups
+                                                {t('createProjectWizard.visibility.selectGroups')}
                                             </label>
                                             <div className="grid grid-cols-2 gap-2">
                                                 {workspaceGroups.map(group => {
@@ -615,24 +644,24 @@ export const CreateProjectWizard = () => {
                         {currentStep === 4 && (
                             <div className="space-y-5 animate-fade-in">
                                 <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">Set Timeline</h2>
-                                    <p className="text-sm text-[var(--color-text-subtle)]">Define the project schedule and priority.</p>
+                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">{t('createProjectWizard.timeline.title')}</h2>
+                                    <p className="text-sm text-[var(--color-text-subtle)]">{t('createProjectWizard.timeline.subtitle')}</p>
                                 </div>
 
                                 <div className="space-y-5">
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="space-y-2 relative">
-                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Start Date</label>
+                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('createProjectWizard.timeline.startDate')}</label>
                                             <DatePicker value={startDate} onChange={setStartDate} />
                                         </div>
                                         <div className="space-y-2 relative">
-                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Due Date</label>
+                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('createProjectWizard.timeline.dueDate')}</label>
                                             <DatePicker value={dueDate} onChange={setDueDate} align="right" />
                                         </div>
                                     </div>
 
                                     <div className="space-y-3">
-                                        <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Priority</label>
+                                        <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('createProjectWizard.timeline.priority')}</label>
                                         <div className="grid grid-cols-4 gap-2">
                                             {['Low', 'Medium', 'High', 'Urgent'].map(p => (
                                                 <button
@@ -643,22 +672,22 @@ export const CreateProjectWizard = () => {
                                                         : 'bg-black/[0.03] dark:bg-white/[0.03] text-[var(--color-text-subtle)]'
                                                         }`}
                                                 >
-                                                    {p}
+                                                    {priorityLabels[p] || p}
                                                 </button>
                                             ))}
                                         </div>
                                     </div>
 
                                     <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Initial Status</label>
+                                        <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('createProjectWizard.timeline.status')}</label>
                                         <select
                                             className="w-full h-11 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl px-4 text-sm text-[var(--color-text-main)] outline-none focus:ring-2 focus:ring-zinc-500/20 focus:border-zinc-500"
                                             value={status}
                                             onChange={e => setStatus(e.target.value)}
                                         >
-                                            <option>Planning</option>
-                                            <option>Active</option>
-                                            <option>On Hold</option>
+                                            {Object.keys(statusLabels).map((key) => (
+                                                <option key={key} value={key}>{statusLabels[key]}</option>
+                                            ))}
                                         </select>
                                     </div>
                                 </div>
@@ -669,15 +698,15 @@ export const CreateProjectWizard = () => {
                         {currentStep === 5 && (
                             <div className="space-y-5 animate-fade-in">
                                 <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">Upload Assets</h2>
-                                    <p className="text-sm text-[var(--color-text-subtle)]">Add a cover image and icon for your project.</p>
+                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">{t('createProjectWizard.assets.title')}</h2>
+                                    <p className="text-sm text-[var(--color-text-subtle)]">{t('createProjectWizard.assets.subtitle')}</p>
                                 </div>
 
                                 <div className="space-y-5">
                                     <div className="flex gap-4">
                                         {/* Cover Selection */}
                                         <div className="flex-1 space-y-2">
-                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Project Cover</label>
+                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('createProjectWizard.assets.cover.label')}</label>
                                             <div
                                                 onClick={() => { setMediaPickerTarget('cover'); setShowMediaLibrary(true); }}
                                                 className="relative h-32 rounded-2xl bg-gradient-to-br from-[var(--color-surface-bg)] to-[var(--color-surface-hover)] border border-dashed border-[var(--color-surface-border)] overflow-hidden flex flex-col items-center justify-center gap-2 group transition-all hover:border-[var(--color-primary)]/50 hover:bg-[var(--color-primary)]/5 cursor-pointer"
@@ -688,7 +717,7 @@ export const CreateProjectWizard = () => {
                                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                             <span className="text-white text-xs font-bold flex items-center gap-2">
                                                                 <span className="material-symbols-outlined text-[16px]">edit</span>
-                                                                Change
+                                                                {t('createProjectWizard.assets.change')}
                                                             </span>
                                                         </div>
                                                         <button
@@ -701,7 +730,7 @@ export const CreateProjectWizard = () => {
                                                 ) : (
                                                     <div className="flex flex-col items-center gap-2 text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)] transition-colors">
                                                         <span className="material-symbols-outlined text-[24px]">image</span>
-                                                        <span className="text-xs font-semibold">Select Cover</span>
+                                                        <span className="text-xs font-semibold">{t('createProjectWizard.assets.cover.select')}</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -709,7 +738,7 @@ export const CreateProjectWizard = () => {
 
                                         {/* Icon Selection */}
                                         <div className="flex-1 space-y-2">
-                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Project Icon</label>
+                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('createProjectWizard.assets.icon.label')}</label>
                                             <div
                                                 onClick={() => { setMediaPickerTarget('icon'); setShowMediaLibrary(true); }}
                                                 className="relative h-32 rounded-2xl bg-gradient-to-br from-[var(--color-surface-bg)] to-[var(--color-surface-hover)] border border-dashed border-[var(--color-surface-border)] overflow-hidden flex flex-col items-center justify-center gap-2 group transition-all hover:border-[var(--color-primary)]/50 hover:bg-[var(--color-primary)]/5 cursor-pointer"
@@ -720,7 +749,7 @@ export const CreateProjectWizard = () => {
                                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                                             <span className="text-white text-xs font-bold flex items-center gap-2">
                                                                 <span className="material-symbols-outlined text-[16px]">edit</span>
-                                                                Change
+                                                                {t('createProjectWizard.assets.change')}
                                                             </span>
                                                         </div>
                                                         <button
@@ -733,7 +762,7 @@ export const CreateProjectWizard = () => {
                                                 ) : (
                                                     <div className="flex flex-col items-center gap-2 text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)] transition-colors">
                                                         <span className="material-symbols-outlined text-[24px]">smart_button</span>
-                                                        <span className="text-xs font-semibold">Select Icon</span>
+                                                        <span className="text-xs font-semibold">{t('createProjectWizard.assets.icon.select')}</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -745,8 +774,8 @@ export const CreateProjectWizard = () => {
                                         <div className="pt-4 border-t border-[var(--color-surface-border)]">
                                             <div className="flex items-center justify-between mb-3">
                                                 <div>
-                                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">GitHub Integration</label>
-                                                    <p className="text-[10px] text-[var(--color-text-subtle)] mt-0.5">Link a repository to sync issues.</p>
+                                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('createProjectWizard.github.title')}</label>
+                                                    <p className="text-[10px] text-[var(--color-text-subtle)] mt-0.5">{t('createProjectWizard.github.subtitle')}</p>
                                                 </div>
                                             </div>
                                             {!githubToken ? (
@@ -775,9 +804,9 @@ export const CreateProjectWizard = () => {
                                                     </div>
                                                     <div className="flex-1 text-left">
                                                         <div className="text-sm font-semibold text-[var(--color-text-main)]">
-                                                            {connectingGithub ? 'Connecting...' : 'Connect GitHub'}
+                                                            {connectingGithub ? t('createProjectWizard.github.connecting') : t('createProjectWizard.github.connect')}
                                                         </div>
-                                                        <div className="text-[10px] text-[var(--color-text-subtle)]">Link your account to select a repository</div>
+                                                        <div className="text-[10px] text-[var(--color-text-subtle)]">{t('createProjectWizard.github.connectHint')}</div>
                                                     </div>
                                                     <span className="material-symbols-outlined text-[var(--color-text-muted)]">arrow_forward</span>
                                                 </button>
@@ -789,7 +818,7 @@ export const CreateProjectWizard = () => {
                                                         disabled={loadingGithub}
                                                         className="w-full h-11 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl px-4 text-sm text-[var(--color-text-main)] outline-none focus:ring-2 focus:ring-zinc-500/20 focus:border-zinc-500"
                                                     >
-                                                        <option value="">{loadingGithub ? 'Loading repositories...' : 'Select a repository'}</option>
+                                                        <option value="">{loadingGithub ? t('createProjectWizard.github.loadingRepos') : t('createProjectWizard.github.selectRepo')}</option>
                                                         {githubRepos.map(repo => (
                                                             <option key={repo.id} value={repo.full_name}>{repo.full_name}</option>
                                                         ))}
@@ -797,7 +826,7 @@ export const CreateProjectWizard = () => {
                                                     {selectedGithubRepo && (
                                                         <p className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                                                             <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                                                            Issue sync will be enabled for this project
+                                                            {t('createProjectWizard.github.syncNotice')}
                                                         </p>
                                                     )}
                                                 </div>
@@ -812,7 +841,7 @@ export const CreateProjectWizard = () => {
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
                                                     <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">link</span>
-                                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Quick Links</label>
+                                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('createProjectWizard.links.title')}</label>
                                                 </div>
                                             </div>
 
@@ -827,7 +856,7 @@ export const CreateProjectWizard = () => {
                                                         </div>
                                                         <div className="flex-1 space-y-1">
                                                             <input
-                                                                placeholder="Resource Label"
+                                                                placeholder={t('createProjectWizard.links.resourcePlaceholder')}
                                                                 value={res.title}
                                                                 onChange={(e) => {
                                                                     const newRes = [...externalResources];
@@ -837,7 +866,7 @@ export const CreateProjectWizard = () => {
                                                                 className="w-full text-sm font-medium bg-transparent text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
                                                             />
                                                             <input
-                                                                placeholder="https://example.com"
+                                                                placeholder={t('createProjectWizard.links.urlPlaceholder')}
                                                                 value={res.url}
                                                                 onChange={(e) => {
                                                                     const newRes = [...externalResources];
@@ -864,7 +893,7 @@ export const CreateProjectWizard = () => {
                                                         </div>
                                                         <div className="flex-1 space-y-1">
                                                             <input
-                                                                placeholder="Link Label"
+                                                                placeholder={t('createProjectWizard.links.linkPlaceholder')}
                                                                 value={link.title}
                                                                 onChange={(e) => {
                                                                     const newLinks = [...links];
@@ -874,7 +903,7 @@ export const CreateProjectWizard = () => {
                                                                 className="w-full text-sm font-medium bg-transparent text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus:outline-none"
                                                             />
                                                             <input
-                                                                placeholder="https://example.com"
+                                                                placeholder={t('createProjectWizard.links.urlPlaceholder')}
                                                                 value={link.url}
                                                                 onChange={(e) => {
                                                                     const newLinks = [...links];
@@ -899,14 +928,14 @@ export const CreateProjectWizard = () => {
                                                         className="flex-1 py-3 px-4 rounded-xl border border-dashed border-[var(--color-surface-border)] text-xs font-medium text-[var(--color-text-subtle)] hover:border-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-bg)] transition-all flex items-center justify-center gap-2"
                                                     >
                                                         <span className="material-symbols-outlined text-[16px]">add</span>
-                                                        Add Sidebar Resource
+                                                        {t('createProjectWizard.links.addResource')}
                                                     </button>
                                                     <button
                                                         onClick={() => setLinks([...links, { title: '', url: '' }])}
                                                         className="flex-1 py-3 px-4 rounded-xl border border-dashed border-[var(--color-surface-border)] text-xs font-medium text-[var(--color-text-subtle)] hover:border-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-bg)] transition-all flex items-center justify-center gap-2"
                                                     >
                                                         <span className="material-symbols-outlined text-[16px]">add</span>
-                                                        Add Overview Link
+                                                        {t('createProjectWizard.links.addOverview')}
                                                     </button>
                                                 </div>
                                             </div>
@@ -923,19 +952,19 @@ export const CreateProjectWizard = () => {
                             {currentStep > 0 && (
                                 <button onClick={handleBack} className="px-4 py-2 text-sm font-semibold text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] rounded-xl transition-all flex items-center gap-2">
                                     <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-                                    Back
+                                    {t('createProjectWizard.actions.back')}
                                 </button>
                             )}
                         </div>
                         <div className="flex gap-3">
                             {currentStep > 0 && currentStep < 5 && (
                                 <Button onClick={handleNext} disabled={currentStep === 1 && !name} variant="primary" className="px-8 h-11 bg-gradient-to-r from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 hover:from-zinc-900 hover:to-black dark:hover:from-zinc-100 dark:hover:to-white !text-white dark:!text-zinc-900">
-                                    Continue
+                                    {t('createProjectWizard.actions.continue')}
                                 </Button>
                             )}
                             {currentStep === 5 && (
                                 <Button onClick={handleSubmit} disabled={isSubmitting || !name} variant="primary" className="px-8 h-11 bg-gradient-to-r from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 hover:from-zinc-900 hover:to-black dark:hover:from-zinc-100 dark:hover:to-white !text-white dark:!text-zinc-900">
-                                    {isSubmitting ? 'Creating...' : 'Create Project'}
+                                    {isSubmitting ? t('createProjectWizard.actions.creating') : t('createProjectWizard.actions.create')}
                                 </Button>
                             )}
                         </div>
@@ -978,15 +1007,15 @@ export const CreateProjectWizard = () => {
 
                             <div className="pt-12 space-y-4">
                                 <div className="space-y-1">
-                                    <h3 className="text-lg font-bold text-[var(--color-text-main)] leading-tight truncate">{name || 'Project Name'}</h3>
+                                    <h3 className="text-lg font-bold text-[var(--color-text-main)] leading-tight truncate">{name || t('createProjectWizard.preview.nameFallback')}</h3>
                                     <p className="text-xs text-[var(--color-text-subtle)] line-clamp-2">
-                                        {description || 'Your project description will appear here...'}
+                                        {description || t('createProjectWizard.preview.descriptionFallback')}
                                     </p>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4 py-4 border-y border-[var(--color-surface-border)]">
                                     <div className="space-y-1">
-                                        <div className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Team</div>
+                                        <div className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{t('createProjectWizard.preview.team')}</div>
                                         <div className="flex -space-x-2 h-7">
                                             {selectedMemberIds.length > 0 ? selectedMemberIds.slice(0, 3).map(id => (
                                                 <div key={id} className="size-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700 dark:from-zinc-300 dark:to-zinc-400 border-2 border-[var(--color-surface-card)] flex items-center justify-center font-bold text-[9px] text-white overflow-hidden">
@@ -1004,7 +1033,7 @@ export const CreateProjectWizard = () => {
                                         </div>
                                     </div>
                                     <div className="space-y-1 text-right">
-                                        <div className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Deadline</div>
+                                        <div className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{t('createProjectWizard.preview.deadline')}</div>
                                         <div className="text-sm font-bold text-[var(--color-text-main)]">{dueDate ? format(new Date(dueDate), dateFormat, { locale: dateLocale }) : '—'}</div>
                                     </div>
                                 </div>
@@ -1021,7 +1050,7 @@ export const CreateProjectWizard = () => {
                                             priority === 'Medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400' :
                                                 'bg-green-100 text-green-600 dark:bg-green-900/20 dark:text-green-400'
                                         }`}>
-                                        {priority}
+                                        {priorityLabels[priority] || priority}
                                     </span>
                                 </div>
                             </div>

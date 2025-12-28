@@ -14,8 +14,8 @@ import { toMillis } from '../utils/time';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { useConfirm, useToast } from '../context/UIContext';
+import { useLanguage } from '../context/LanguageContext';
 import { format } from 'date-fns';
-import { dateLocale } from '../utils/activityHelpers';
 
 export const PersonalTasksPage = () => {
     const [tasks, setTasks] = useState<PersonalTask[]>([]);
@@ -28,6 +28,7 @@ export const PersonalTasksPage = () => {
     const [showMoveDropdown, setShowMoveDropdown] = useState<string | null>(null);
     const confirm = useConfirm();
     const { showSuccess, showError } = useToast();
+    const { t, dateFormat, dateLocale } = useLanguage();
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -82,9 +83,9 @@ export const PersonalTasksPage = () => {
         e.stopPropagation();
 
         const confirmed = await confirm({
-            title: 'Delete Personal Task',
-            message: 'Are you sure you want to delete this task? This action cannot be undone.',
-            confirmText: 'Delete',
+            title: t('personalTasks.confirm.delete.title'),
+            message: t('personalTasks.confirm.delete.message'),
+            confirmText: t('personalTasks.confirm.delete.action'),
             variant: 'danger'
         });
 
@@ -107,13 +108,13 @@ export const PersonalTasksPage = () => {
             setTasks(prev => prev.filter(t => t.id !== taskId));
 
             const project = projects.find(p => p.id === projectId);
-            showSuccess(`Task moved to "${project?.title || 'project'}"`);
+            showSuccess(t('personalTasks.move.success').replace('{project}', project?.title || t('personalTasks.move.projectFallback')));
 
             // Optionally navigate to the new task
             navigate(`/project/${projectId}/tasks/${newTaskId}`);
         } catch (error: any) {
             console.error('Failed to move task', error);
-            showError(`Failed to move task: ${error.message}`);
+            showError(t('personalTasks.move.error').replace('{error}', error?.message || t('personalTasks.move.unknownError')));
         } finally {
             setMovingTaskId(null);
         }
@@ -154,9 +155,9 @@ export const PersonalTasksPage = () => {
         <div className="flex flex-col gap-8 fade-in max-w-3xl mx-auto pb-12">
             {/* Header */}
             <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold text-[var(--color-text-main)]">Personal Tasks</h1>
+                <h1 className="text-3xl font-bold text-[var(--color-text-main)]">{t('personalTasks.header.title')}</h1>
                 <p className="text-[var(--color-text-muted)]">
-                    Your private tasks, not associated with any project.
+                    {t('personalTasks.header.subtitle')}
                 </p>
             </div>
 
@@ -164,15 +165,15 @@ export const PersonalTasksPage = () => {
             <div className="grid grid-cols-3 gap-4">
                 <Card padding="md" className="flex flex-col items-center border-l-4 border-l-indigo-500">
                     <span className="text-2xl font-bold text-[var(--color-text-main)]">{stats.total}</span>
-                    <span className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide">Total</span>
+                    <span className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide">{t('personalTasks.stats.total')}</span>
                 </Card>
                 <Card padding="md" className="flex flex-col items-center border-l-4 border-l-amber-500">
                     <span className="text-2xl font-bold text-[var(--color-text-main)]">{stats.open}</span>
-                    <span className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide">Open</span>
+                    <span className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide">{t('personalTasks.stats.open')}</span>
                 </Card>
                 <Card padding="md" className="flex flex-col items-center border-l-4 border-l-emerald-500">
                     <span className="text-2xl font-bold text-[var(--color-text-main)]">{stats.completed}</span>
-                    <span className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide">Done</span>
+                    <span className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide">{t('personalTasks.stats.done')}</span>
                 </Card>
             </div>
 
@@ -189,7 +190,7 @@ export const PersonalTasksPage = () => {
                                 : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}
                         `}
                     >
-                        {status}
+                        {t(`personalTasks.filters.${status}`)}
                     </button>
                 ))}
             </div>
@@ -201,7 +202,7 @@ export const PersonalTasksPage = () => {
                         type="text"
                         value={newTaskTitle}
                         onChange={(e) => setNewTaskTitle(e.target.value)}
-                        placeholder="Add a new personal task..."
+                        placeholder={t('personalTasks.form.placeholder')}
                         className="w-full bg-[var(--color-surface-paper)] border border-[var(--color-surface-border)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 rounded-xl px-4 py-3 text-sm text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] transition-all"
                     />
                 </div>
@@ -213,7 +214,7 @@ export const PersonalTasksPage = () => {
                     className="shrink-0"
                 >
                     <span className="material-symbols-outlined text-[18px]">add</span>
-                    Add Task
+                    {t('personalTasks.form.addAction')}
                 </Button>
             </form>
 
@@ -227,12 +228,12 @@ export const PersonalTasksPage = () => {
                             </span>
                         </div>
                         <h3 className="text-xl font-bold text-[var(--color-text-main)] mb-2">
-                            {statusFilter === 'completed' ? 'No completed tasks yet' : 'All caught up!'}
+                            {statusFilter === 'completed' ? t('personalTasks.empty.completed.title') : t('personalTasks.empty.open.title')}
                         </h3>
                         <p className="text-[var(--color-text-muted)] max-w-sm">
                             {statusFilter === 'completed'
-                                ? 'Complete some tasks to see them here.'
-                                : 'Add a personal task to get started.'}
+                                ? t('personalTasks.empty.completed.description')
+                                : t('personalTasks.empty.open.description')}
                         </p>
                     </div>
                 ) : (
@@ -268,7 +269,7 @@ export const PersonalTasksPage = () => {
                                 {task.dueDate && (
                                     <div className="flex items-center gap-1 mt-2 text-xs text-[var(--color-text-muted)]">
                                         <span className="material-symbols-outlined text-[14px]">event</span>
-                                        {format(new Date(task.dueDate), 'EEE, MMM d', { locale: dateLocale })}
+                                        {format(new Date(task.dueDate), dateFormat, { locale: dateLocale })}
                                     </div>
                                 )}
                             </div>
@@ -281,7 +282,7 @@ export const PersonalTasksPage = () => {
                                         onClick={(e) => { e.stopPropagation(); setShowMoveDropdown(showMoveDropdown === task.id ? null : task.id); }}
                                         disabled={movingTaskId === task.id}
                                         className="p-2 rounded-lg hover:bg-indigo-500/10 text-[var(--color-text-muted)] hover:text-indigo-500 transition-all"
-                                        title="Move to project"
+                                        title={t('personalTasks.move.title')}
                                     >
                                         {movingTaskId === task.id ? (
                                             <span className="material-symbols-outlined text-[18px] animate-spin">progress_activity</span>
@@ -296,12 +297,12 @@ export const PersonalTasksPage = () => {
                                             <div className="fixed inset-0 z-10" onClick={() => setShowMoveDropdown(null)} />
                                             <div className="absolute right-0 top-full mt-1 z-20 w-56 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-xl overflow-hidden animate-scale-up origin-top-right">
                                                 <div className="px-3 py-2 border-b border-[var(--color-surface-border)] text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
-                                                    Move to Project
+                                                    {t('personalTasks.move.dropdown.title')}
                                                 </div>
                                                 <div className="max-h-48 overflow-y-auto">
                                                     {projects.length === 0 ? (
                                                         <div className="px-3 py-4 text-sm text-[var(--color-text-muted)] text-center">
-                                                            No projects available
+                                                            {t('personalTasks.move.dropdown.empty')}
                                                         </div>
                                                     ) : (
                                                         projects.map(project => (
@@ -325,7 +326,7 @@ export const PersonalTasksPage = () => {
                                 <button
                                     onClick={(e) => handleDelete(e, task.id)}
                                     className="p-2 rounded-lg hover:bg-red-500/10 text-[var(--color-text-muted)] hover:text-red-500 transition-all"
-                                    title="Delete task"
+                                    title={t('personalTasks.actions.delete')}
                                 >
                                     <span className="material-symbols-outlined text-[18px]">delete</span>
                                 </button>

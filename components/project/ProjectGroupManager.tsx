@@ -6,6 +6,7 @@ import { Modal } from '../ui/Modal';
 import { subscribeProjectGroups, createProjectGroup, updateProjectGroup, deleteProjectGroup } from '../../services/projectGroupService';
 import { getProjectMembers, getUserProfile, getActiveTenantId } from '../../services/dataService';
 import { auth } from '../../services/firebase';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface ProjectGroupManagerProps {
     projectId: string;
@@ -17,6 +18,7 @@ export const ProjectGroupManager: React.FC<ProjectGroupManagerProps> = ({ projec
     const [groups, setGroups] = useState<ProjectGroup[]>([]);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [editingGroup, setEditingGroup] = useState<ProjectGroup | null>(null);
+    const { t } = useLanguage();
 
     useEffect(() => {
         const unsub = subscribeProjectGroups(projectId, setGroups, tenantId);
@@ -29,7 +31,7 @@ export const ProjectGroupManager: React.FC<ProjectGroupManagerProps> = ({ projec
     };
 
     const handleDelete = async (groupId: string) => {
-        if (confirm('Are you sure you want to delete this group?')) {
+        if (confirm(t('projectGroups.confirm.delete'))) {
             await deleteProjectGroup(projectId, groupId, tenantId);
         }
     };
@@ -43,12 +45,12 @@ export const ProjectGroupManager: React.FC<ProjectGroupManagerProps> = ({ projec
         <div className="space-y-6 animate-in fade-in duration-300">
             <div className="flex items-center justify-between">
                 <div>
-                    <h3 className="text-lg font-bold text-[var(--color-text-main)]">Project Groups</h3>
-                    <p className="text-sm text-[var(--color-text-muted)]">Create groups to assign tasks to multiple people at once.</p>
+                    <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectGroups.title')}</h3>
+                    <p className="text-sm text-[var(--color-text-muted)]">{t('projectGroups.subtitle')}</p>
                 </div>
                 {canManage && (
                     <Button variant="primary" onClick={() => setIsCreateModalOpen(true)} icon={<span className="material-symbols-outlined">add</span>}>
-                        Create Group
+                        {t('projectGroups.actions.create')}
                     </Button>
                 )}
             </div>
@@ -72,7 +74,7 @@ export const ProjectGroupManager: React.FC<ProjectGroupManagerProps> = ({ projec
                                 </div>
                             )}
                         </div>
-                        <p className="text-xs text-[var(--color-text-muted)] mb-3 line-clamp-1">{group.description || 'No description'}</p>
+                        <p className="text-xs text-[var(--color-text-muted)] mb-3 line-clamp-1">{group.description || t('projectGroups.empty.description')}</p>
 
                         <div className="flex items-center justify-between mt-auto">
                             <div className="flex -space-x-2 overflow-hidden">
@@ -85,11 +87,11 @@ export const ProjectGroupManager: React.FC<ProjectGroupManagerProps> = ({ projec
                                     </div>
                                 )}
                                 {group.memberIds.length === 0 && (
-                                    <span className="text-xs text-[var(--color-text-muted)] italic">No members</span>
+                                    <span className="text-xs text-[var(--color-text-muted)] italic">{t('projectGroups.empty.members')}</span>
                                 )}
                             </div>
                             <span className="text-[10px] text-[var(--color-text-subtle)] font-medium bg-[var(--color-surface-hover)] px-2 py-0.5 rounded-full">
-                                {group.memberIds.length} members
+                                {t('projectGroups.count.members').replace('{count}', String(group.memberIds.length))}
                             </span>
                         </div>
                     </div>
@@ -97,7 +99,7 @@ export const ProjectGroupManager: React.FC<ProjectGroupManagerProps> = ({ projec
                 {groups.length === 0 && (
                     <div className="col-span-full border border-dashed border-[var(--color-surface-border)] rounded-xl p-8 flex flex-col items-center justify-center text-center text-[var(--color-text-subtle)]">
                         <span className="material-symbols-outlined text-4xl mb-2 opacity-30">groups</span>
-                        <p className="text-sm">No groups created yet.</p>
+                        <p className="text-sm">{t('projectGroups.empty.groups')}</p>
                     </div>
                 )}
             </div>
@@ -161,6 +163,7 @@ const GroupFormModal: React.FC<GroupFormModalProps> = ({ isOpen, onClose, projec
     const [description, setDescription] = useState(initialData?.description || '');
     const [color, setColor] = useState(initialData?.color || '#3b82f6');
     const [selectedMembers, setSelectedMembers] = useState<string[]>(initialData?.memberIds || []);
+    const { t } = useLanguage();
 
     // Member selection state
     const [availableMembers, setAvailableMembers] = useState<{ uid: string, displayName: string, email?: string, photoURL?: string }[]>([]);
@@ -182,7 +185,7 @@ const GroupFormModal: React.FC<GroupFormModalProps> = ({ isOpen, onClose, projec
 
                 return {
                     uid,
-                    displayName: p?.displayName || 'Unknown User',
+                    displayName: p?.displayName || t('projectGroups.unknownUser'),
                     email: p?.email,
                     photoURL: p?.photoURL
                 };
@@ -227,13 +230,13 @@ const GroupFormModal: React.FC<GroupFormModalProps> = ({ isOpen, onClose, projec
     const colors = ['#ef4444', '#f97316', '#f59e0b', '#10b981', '#3b82f6', '#6366f1', '#8b5cf6', '#ec4899', '#64748b'];
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title={initialData ? 'Edit Group' : 'Create New Group'}>
+        <Modal isOpen={isOpen} onClose={onClose} title={initialData ? t('projectGroups.modal.editTitle') : t('projectGroups.modal.createTitle')}>
             <form onSubmit={handleSubmit} className="space-y-4">
-                <Input label="Group Name" value={name} onChange={(e) => setName(e.target.value)} required placeholder="e.g. Frontend Team" />
-                <Input label="Description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional description" />
+                <Input label={t('projectGroups.modal.fields.name')} value={name} onChange={(e) => setName(e.target.value)} required placeholder={t('projectGroups.modal.fields.namePlaceholder')} />
+                <Input label={t('projectGroups.modal.fields.description')} value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t('projectGroups.modal.fields.descriptionPlaceholder')} />
 
                 <div>
-                    <label className="text-sm font-medium text-[var(--color-text-main)] mb-2 block">Group Color</label>
+                    <label className="text-sm font-medium text-[var(--color-text-main)] mb-2 block">{t('projectGroups.modal.fields.color')}</label>
                     <div className="flex flex-wrap gap-2">
                         {colors.map(c => (
                             <button
@@ -248,7 +251,9 @@ const GroupFormModal: React.FC<GroupFormModalProps> = ({ isOpen, onClose, projec
                 </div>
 
                 <div>
-                    <label className="text-sm font-medium text-[var(--color-text-main)] mb-2 block">Members ({selectedMembers.length})</label>
+                    <label className="text-sm font-medium text-[var(--color-text-main)] mb-2 block">
+                        {t('projectGroups.modal.fields.members').replace('{count}', String(selectedMembers.length))}
+                    </label>
                     <div className="max-h-48 overflow-y-auto border border-[var(--color-surface-border)] rounded-xl p-2 bg-[var(--color-surface-bg)] space-y-1">
                         {loadingMembers ? (
                             <div className="flex items-center justify-center p-4"><span className="material-symbols-outlined animate-spin">progress_activity</span></div>
@@ -274,9 +279,9 @@ const GroupFormModal: React.FC<GroupFormModalProps> = ({ isOpen, onClose, projec
                 </div>
 
                 <div className="flex justify-end gap-2 pt-2">
-                    <Button type="button" variant="ghost" onClick={onClose}>Cancel</Button>
+                    <Button type="button" variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
                     <Button type="submit" variant="primary" disabled={!name.trim() || saving}>
-                        {saving ? 'Saving...' : (initialData ? 'Save Changes' : 'Create Group')}
+                        {saving ? t('common.saving') : (initialData ? t('common.saveChanges') : t('projectGroups.actions.create'))}
                     </Button>
                 </div>
             </form>

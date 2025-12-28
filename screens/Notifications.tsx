@@ -22,7 +22,7 @@ export const Notifications = () => {
     const [showClearConfirm, setShowClearConfirm] = useState(false);
     const navigate = useNavigate();
     const { showToast } = useToast();
-    const { dateFormat, dateLocale } = useLanguage();
+    const { t, dateFormat, dateLocale } = useLanguage();
 
     const user = auth.currentUser;
     const unreadCount = notifications.filter(n => !n.read).length;
@@ -66,7 +66,7 @@ export const Notifications = () => {
     const handleMarkAllAsRead = async () => {
         if (!user) return;
         await markAllNotificationsAsRead(user.uid);
-        showToast('All notifications marked as read', 'success');
+        showToast(t('notifications.toast.markAllRead'), 'success');
     };
 
     const formatTime = (timestamp: any) => {
@@ -78,10 +78,10 @@ export const Notifications = () => {
         const hours = Math.floor(diff / 3600000);
         const days = Math.floor(diff / 86400000);
 
-        if (minutes < 1) return 'Just now';
-        if (minutes < 60) return `${minutes}m ago`;
-        if (hours < 24) return `${hours}h ago`;
-        if (days < 7) return `${days}d ago`;
+        if (minutes < 1) return t('notifications.time.justNow');
+        if (minutes < 60) return t('notifications.time.minutesAgo').replace('{count}', String(minutes));
+        if (hours < 24) return t('notifications.time.hoursAgo').replace('{count}', String(hours));
+        if (days < 7) return t('notifications.time.daysAgo').replace('{count}', String(days));
         return format(date, dateFormat, { locale: dateLocale });
     };
 
@@ -119,10 +119,11 @@ export const Notifications = () => {
                 accept,
                 notification.tenantId
             );
-            showToast(`Request ${accept ? 'accepted' : 'denied'}`, 'success');
+            showToast(accept ? t('notifications.toast.requestAccepted') : t('notifications.toast.requestDenied'), 'success');
         } catch (error) {
             console.error(error);
-            showToast(`Failed to respond: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+            const errorMessage = error instanceof Error ? error.message : t('notifications.error.unknown');
+            showToast(t('notifications.error.respond').replace('{error}', errorMessage), 'error');
         }
     };
 
@@ -130,10 +131,10 @@ export const Notifications = () => {
         e.stopPropagation();
         try {
             await deleteNotification(notificationId);
-            showToast('Notification deleted', 'success');
+            showToast(t('notifications.toast.delete'), 'success');
         } catch (error) {
             console.error(error);
-            showToast('Failed to delete notification', 'error');
+            showToast(t('notifications.toast.deleteError'), 'error');
         }
     };
 
@@ -141,11 +142,11 @@ export const Notifications = () => {
         if (!user) return;
         try {
             await deleteAllNotifications(user.uid);
-            showToast('All notifications cleared', 'success');
+            showToast(t('notifications.toast.clearAll'), 'success');
             setShowClearConfirm(false);
         } catch (error) {
             console.error(error);
-            showToast('Failed to clear notifications', 'error');
+            showToast(t('notifications.toast.clearError'), 'error');
         }
     };
 
@@ -154,9 +155,9 @@ export const Notifications = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-[var(--color-text)]">Notifications</h1>
+                    <h1 className="text-2xl font-bold text-[var(--color-text)]">{t('notifications.title')}</h1>
                     <p className="text-[var(--color-text-muted)]">
-                        Stay updated with your latest activities
+                        {t('notifications.page.subtitle')}
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -167,7 +168,7 @@ export const Notifications = () => {
                             className="flex items-center gap-2 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20 border-transparent"
                         >
                             <span className="material-symbols-outlined text-[18px]">delete_sweep</span>
-                            Clear all
+                            {t('notifications.actions.clearAll')}
                         </Button>
                     )}
                     {unreadCount > 0 && (
@@ -177,7 +178,7 @@ export const Notifications = () => {
                             className="flex items-center gap-2"
                         >
                             <span className="material-symbols-outlined text-[18px]">done_all</span>
-                            Mark all as read
+                            {t('notifications.actions.markAllRead')}
                         </Button>
                     )}
                 </div>
@@ -188,22 +189,22 @@ export const Notifications = () => {
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                     <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-[var(--color-surface-border)]">
                         <div className="space-y-4 text-center">
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">Clear all notifications?</h3>
+                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('notifications.clearConfirm.title')}</h3>
                             <p className="text-sm text-[var(--color-text-muted)]">
-                                This action cannot be undone. All your notifications will be permanently deleted.
+                                {t('notifications.clearConfirm.message')}
                             </p>
                             <div className="grid grid-cols-2 gap-3">
                                 <Button
                                     variant="ghost"
                                     onClick={() => setShowClearConfirm(false)}
                                 >
-                                    Cancel
+                                    {t('notifications.clearConfirm.cancel')}
                                 </Button>
                                 <Button
                                     variant="danger"
                                     onClick={handleClearAll}
                                 >
-                                    Clear All
+                                    {t('notifications.clearConfirm.confirm')}
                                 </Button>
                             </div>
                         </div>
@@ -225,9 +226,9 @@ export const Notifications = () => {
                                 notifications_off
                             </span>
                         </div>
-                        <h3 className="text-lg font-medium text-[var(--color-text)]">No notifications</h3>
+                        <h3 className="text-lg font-medium text-[var(--color-text)]">{t('notifications.empty.title')}</h3>
                         <p className="text-[var(--color-text-muted)] mt-1">
-                            You're all caught up!
+                            {t('notifications.empty.description')}
                         </p>
                     </div>
                 ) : (
@@ -279,7 +280,7 @@ export const Notifications = () => {
                                                     onClick={(e) => handleJoinResponse(e, notification, true)}
                                                     className="bg-emerald-500 hover:bg-emerald-600 border-emerald-500 text-white min-w-[80px]"
                                                 >
-                                                    Accept
+                                                    {t('notifications.actions.accept')}
                                                 </Button>
                                                 <Button
                                                     size="sm"
@@ -287,7 +288,7 @@ export const Notifications = () => {
                                                     onClick={(e) => handleJoinResponse(e, notification, false)}
                                                     className="hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20 border-transparent min-w-[80px]"
                                                 >
-                                                    Deny
+                                                    {t('notifications.actions.decline')}
                                                 </Button>
                                             </div>
                                         )}
@@ -301,7 +302,7 @@ export const Notifications = () => {
                                         <button
                                             onClick={(e) => handleDelete(e, notification.id)}
                                             className="p-1.5 rounded-full text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
-                                            title="Delete notification"
+                                            title={t('notifications.actions.delete')}
                                         >
                                             <span className="material-symbols-outlined text-[20px]">close</span>
                                         </button>

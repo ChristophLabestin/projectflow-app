@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { format, isSameDay, startOfDay, addDays, isToday, startOfWeek, endOfWeek, eachDayOfInterval, isValid, parseISO, startOfMonth, endOfMonth, isSameMonth, isAfter } from 'date-fns';
 import { useTheme } from '../context/ThemeContext';
 import { useToast } from '../context/UIContext';
+import { useLanguage } from '../context/LanguageContext';
 import { getUserTasks, getUserIssues, updateIssue, updateTask, getUnassignedTasks, getUsersTasks } from '../services/dataService';
 import { Task, Issue } from '../types';
 import { distributeTasks, ProposedSchedule } from '../utils/scheduler';
@@ -12,6 +13,7 @@ import { db, auth } from '../services/firebase';
 
 export const Calendar = () => {
     const { theme } = useTheme();
+    const { t, dateLocale } = useLanguage();
     const navigate = useNavigate();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [issues, setIssues] = useState<Issue[]>([]);
@@ -32,6 +34,13 @@ export const Calendar = () => {
     const [isUnscheduledOpen, setIsUnscheduledOpen] = useState(true);
 
     const { showError, showSuccess, showToast } = useToast();
+    const priorityLabels = useMemo(() => ({
+        Urgent: t('tasks.priority.urgent'),
+        High: t('tasks.priority.high'),
+        Medium: t('tasks.priority.medium'),
+        Low: t('tasks.priority.low')
+    }), [t]);
+    const getErrorMessage = (error: any) => error?.message || t('calendar.errors.unknown');
 
     // Drag and Drop State & Handlers
     const [dragActiveDate, setDragActiveDate] = useState<string | null>(null);
@@ -115,7 +124,7 @@ export const Calendar = () => {
 
         } catch (error: any) {
             console.error("Drop failed", error);
-            showError(`Failed to move item: ${error.message}`);
+            showError(t('calendar.errors.moveItem').replace('{error}', getErrorMessage(error)));
         }
     };
 
@@ -145,7 +154,7 @@ export const Calendar = () => {
             refreshData();
         } catch (error: any) {
             console.error("Drop to unscheduled failed", error);
-            showError(`Failed to unschedule item: ${error.message}`);
+            showError(t('calendar.errors.unscheduleItem').replace('{error}', getErrorMessage(error)));
         }
     };
 
@@ -161,7 +170,7 @@ export const Calendar = () => {
             );
 
             if (unassignedScheduled.length === 0) {
-                showToast('No unassigned tasks to clear from calendar.');
+                showToast(t('calendar.info.noUnassignedToClear'));
                 return;
             }
 
@@ -169,11 +178,11 @@ export const Calendar = () => {
                 updateTask(task.id, { scheduledDate: null }, task.projectId, (task as any).tenantId, (task as any).path)
             ));
 
-            showSuccess(`Moved ${unassignedScheduled.length} unassigned task(s) to inbox.`);
+            showSuccess(t('calendar.success.unassignedCleared').replace('{count}', String(unassignedScheduled.length)));
             refreshData();
         } catch (error: any) {
             console.error("Failed to clear unassigned tasks", error);
-            showError(`Failed to clear unassigned tasks: ${error.message}`);
+            showError(t('calendar.errors.clearUnassigned').replace('{error}', getErrorMessage(error)));
         }
     };
 
@@ -187,7 +196,7 @@ export const Calendar = () => {
             const allFuture = [...futureTasks, ...futureIssues];
 
             if (allFuture.length === 0) {
-                showToast('No future items found on the calendar.');
+                showToast(t('calendar.info.noFutureItems'));
                 return;
             }
 
@@ -202,11 +211,11 @@ export const Calendar = () => {
                 }
             }));
 
-            showSuccess(`Successfully unscheduled ${allFuture.length} future items.`);
+            showSuccess(t('calendar.success.futureUnscheduled').replace('{count}', String(allFuture.length)));
             refreshData();
         } catch (error: any) {
             console.error("Failed to unschedule future items", error);
-            showError(`Failed to unschedule: ${error.message}`);
+            showError(t('calendar.errors.unscheduleFuture').replace('{error}', getErrorMessage(error)));
         }
     };
 
@@ -234,7 +243,7 @@ export const Calendar = () => {
             refreshData();
         } catch (error: any) {
             console.error("Failed to unschedule", error);
-            showError(`Failed to unschedule: ${error.message}`);
+            showError(t('calendar.errors.unscheduleItem').replace('{error}', getErrorMessage(error)));
         }
     };
 
@@ -260,7 +269,7 @@ export const Calendar = () => {
             }
         } catch (error: any) {
             console.error('Failed to fetch calendar data', error);
-            showError(`Error loading data: ${error.message}`);
+            showError(t('calendar.errors.loadingData').replace('{error}', getErrorMessage(error)));
         } finally {
             setLoading(false);
         }
@@ -309,7 +318,7 @@ export const Calendar = () => {
             });
 
             if (changes.length === 0) {
-                showSuccess('Your schedule is already optimized! No changes needed.');
+                showSuccess(t('calendar.info.scheduleOptimized'));
                 return;
             }
 
@@ -318,7 +327,7 @@ export const Calendar = () => {
             setShowScheduleModal(true);
         } catch (error: any) {
             console.error("Failed to prepare schedule", error);
-            showError(`Preparation failed: ${error.message}`);
+            showError(t('calendar.errors.prepareSchedule').replace('{error}', getErrorMessage(error)));
         } finally {
             setDistributing(false);
         }
@@ -364,10 +373,10 @@ export const Calendar = () => {
             await refreshData();
             setShowScheduleModal(false);
             setTempTeamTasks([]);
-            showSuccess(`Successfully optimized schedule for you and your team!`);
+            showSuccess(t('calendar.success.optimized'));
         } catch (error: any) {
             console.error('Distribution failed', error);
-            showError('Failed to optimize schedule: ' + error.message);
+            showError(t('calendar.errors.optimizeSchedule').replace('{error}', getErrorMessage(error)));
             // Keep modal open so they don't lose context? Or close it?
             // Usually close or let them try again. Let's keep modal open if we failed?
             // Actually simplest is close logic modal, show error alert.
@@ -454,7 +463,7 @@ export const Calendar = () => {
                             progress_activity
                         </span>
                     </div>
-                    <p className="text-[var(--color-text-muted)] font-medium animate-pulse">Loading calendar...</p>
+                    <p className="text-[var(--color-text-muted)] font-medium animate-pulse">{t('calendar.loading')}</p>
                 </div>
             </div>
 
@@ -471,8 +480,8 @@ export const Calendar = () => {
                             </button>
                             <h2 className="text-xl font-bold min-w-[200px] text-center">
                                 {viewMode === 'week'
-                                    ? `${format(days[0], 'MMM d')} - ${format(days[days.length - 1], 'MMM d, yyyy')}`
-                                    : format(viewDate, 'MMMM yyyy')
+                                    ? `${format(days[0], 'MMM d', { locale: dateLocale })} - ${format(days[days.length - 1], 'MMM d, yyyy', { locale: dateLocale })}`
+                                    : format(viewDate, 'MMMM yyyy', { locale: dateLocale })
                                 }
                             </h2>
                             <button onClick={() => setViewDate(d => viewMode === 'week' ? addDays(d, 7) : addDays(endOfMonth(d), 1))} className="p-2 hover:bg-[var(--color-surface-hover)] rounded-full transition-colors">
@@ -486,13 +495,13 @@ export const Calendar = () => {
                                     onClick={() => setViewMode('week')}
                                     className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${viewMode === 'week' ? 'bg-white dark:bg-slate-700 shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
                                 >
-                                    Week
+                                    {t('calendar.view.week')}
                                 </button>
                                 <button
                                     onClick={() => setViewMode('month')}
                                     className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${viewMode === 'month' ? 'bg-white dark:bg-slate-700 shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
                                 >
-                                    Month
+                                    {t('calendar.view.month')}
                                 </button>
                             </div>
 
@@ -502,7 +511,7 @@ export const Calendar = () => {
                                 className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded-xl hover:opacity-90 transition-all font-semibold disabled:opacity-50 shadow-sm"
                             >
                                 <span className="material-symbols-outlined text-[18px]">{distributing ? 'hourglass_top' : 'auto_fix_high'}</span>
-                                <span className="hidden sm:inline">{distributing ? 'Optimizing...' : 'Smart Schedule'}</span>
+                                <span className="hidden sm:inline">{distributing ? t('calendar.actions.optimizing') : t('calendar.actions.smartSchedule')}</span>
                             </button>
 
                             <button
@@ -527,8 +536,8 @@ export const Calendar = () => {
                             const isCurrentMonth = isSameMonth(day, viewDate);
 
                             const items = getItemsForDate(day);
-                            const displayDate = format(day, 'd');
-                            const displayDay = format(day, 'EEE');
+                            const displayDate = format(day, 'd', { locale: dateLocale });
+                            const displayDay = format(day, 'EEE', { locale: dateLocale });
 
                             return (
                                 <div
@@ -588,7 +597,7 @@ export const Calendar = () => {
                                                                             'bg-green-500'
                                                                     }`}></span>
                                                                 <span className='scale-75 origin-left'>
-                                                                    {(item as Task).dueDate ? format(new Date((item as Task).dueDate!), 'HH:mm') : ''}
+                                                                    {(item as Task).dueDate ? format(new Date((item as Task).dueDate!), 'HH:mm', { locale: dateLocale }) : ''}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -596,7 +605,7 @@ export const Calendar = () => {
                                                         <button
                                                             onClick={(e) => handleUnschedule(e, item, itemType)}
                                                             className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-[var(--color-surface-hover)] transition-opacity"
-                                                            title="Unschedule"
+                                                            title={t('calendar.actions.unschedule')}
                                                         >
                                                             <span className="material-symbols-outlined text-[14px] text-[var(--color-text-muted)]">event_busy</span>
                                                         </button>
@@ -624,28 +633,28 @@ export const Calendar = () => {
                             <div className="absolute inset-0 pointer-events-none bg-[var(--color-primary)]/10 flex items-center justify-center z-10">
                                 <div className="text-[var(--color-primary)] font-bold text-sm flex items-center gap-2">
                                     <span className="material-symbols-outlined">inbox</span>
-                                    Drop to unschedule
+                                    {t('calendar.unassigned.dropHint')}
                                 </div>
                             </div>
                         )}
                         <div className="p-4 border-b border-[var(--color-surface-border)] flex items-center justify-between">
                             <h3 className="font-bold flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[var(--color-text-muted)]">inbox</span>
-                                Unscheduled
+                                {t('calendar.unassigned.title')}
                                 <span className="bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] text-xs px-2 py-0.5 rounded-full">{unscheduledItems.length}</span>
                             </h3>
                             <div className="flex items-center gap-1">
                                 <button
                                     onClick={unscheduleFutureItems}
                                     className="p-1.5 rounded-lg hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
-                                    title="Unschedule all future items (tomorrow onwards)"
+                                    title={t('calendar.actions.unscheduleFuture')}
                                 >
                                     <span className="material-symbols-outlined text-[18px]">event_busy</span>
                                 </button>
                                 <button
                                     onClick={clearUnassignedFromCalendar}
                                     className="p-1.5 rounded-lg hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
-                                    title="Clear unassigned tasks from calendar"
+                                    title={t('calendar.actions.clearUnassigned')}
                                 >
                                     <span className="material-symbols-outlined text-[18px]">playlist_remove</span>
                                 </button>
@@ -659,7 +668,7 @@ export const Calendar = () => {
                             {unscheduledItems.length === 0 ? (
                                 <div className="text-center py-10 text-[var(--color-text-muted)]">
                                     <span className="material-symbols-outlined text-[48px] opacity-20 block mb-2">check_circle</span>
-                                    <p className="text-sm">All caught up!</p>
+                                    <p className="text-sm">{t('calendar.unassigned.empty')}</p>
                                 </div>
                             ) : (
                                 <div className="flex flex-col gap-3">
@@ -678,10 +687,10 @@ export const Calendar = () => {
                                                         item.priority === 'High' ? 'bg-orange-500' :
                                                             'bg-green-500'
                                                         }`}></span>
-                                                    {'reporter' in item ? 'Issue' : 'Task'}
+                                                    {'reporter' in item ? t('calendar.item.issue') : t('calendar.item.task')}
                                                 </div>
                                                 <button className="opacity-0 group-hover:opacity-100 text-[var(--color-primary)] font-bold transition-opacity">
-                                                    Drag to Schedule
+                                                    {t('calendar.unassigned.dragToSchedule')}
                                                 </button>
                                             </div>
                                         </div>
@@ -692,7 +701,7 @@ export const Calendar = () => {
 
                         <div className="p-4 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]">
                             <p className="text-xs text-[var(--color-text-muted)] text-center">
-                                Use "Smart Schedule" to automatically assign dates to these items.
+                                {t('calendar.unassigned.helper').replace('{action}', t('calendar.actions.smartSchedule'))}
                             </p>
                         </div>
                     </div>
@@ -708,10 +717,10 @@ export const Calendar = () => {
                                         <div className="p-2 rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
                                             <span className="material-symbols-outlined text-[24px]">auto_fix_high</span>
                                         </div>
-                                        Optimized Schedule
+                                        {t('calendar.modal.title')}
                                     </h3>
                                     <p className="text-[var(--color-text-muted)] text-sm mt-1 ml-14">
-                                        Review proposed changes ({selectedChanges.size} selected)
+                                        {t('calendar.modal.subtitle').replace('{count}', String(selectedChanges.size))}
                                     </p>
                                 </div>
                                 <div className="flex gap-2">
@@ -719,13 +728,13 @@ export const Calendar = () => {
                                         onClick={() => setSelectedChanges(new Set(proposedSchedule.map(p => p.taskId)))}
                                         className="px-4 py-2 text-xs font-bold uppercase tracking-wider bg-[var(--color-surface-hover)] text-[var(--color-text-main)] rounded-lg hover:bg-[var(--color-surface-border)] transition-colors"
                                     >
-                                        Select All
+                                        {t('calendar.modal.selectAll')}
                                     </button>
                                     <button
                                         onClick={() => setSelectedChanges(new Set())}
                                         className="px-4 py-2 text-xs font-bold uppercase tracking-wider bg-transparent text-[var(--color-text-muted)] rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors border border-[var(--color-surface-border)] hover:border-[var(--color-text-muted)]"
                                     >
-                                        Deselect All
+                                        {t('calendar.modal.deselectAll')}
                                     </button>
                                 </div>
                             </div>
@@ -735,18 +744,18 @@ export const Calendar = () => {
                                 <div className="w-6 flex justify-center">
                                     <span className="material-symbols-outlined text-[18px]">check_box</span>
                                 </div>
-                                <div>Task Details</div>
-                                <div>Assignee</div>
-                                <div>Schedule Change</div>
-                                <div className="text-right">Action</div>
+                                <div>{t('calendar.modal.headers.taskDetails')}</div>
+                                <div>{t('calendar.modal.headers.assignee')}</div>
+                                <div>{t('calendar.modal.headers.scheduleChange')}</div>
+                                <div className="text-right">{t('calendar.modal.headers.action')}</div>
                             </div>
 
                             <div className="flex-1 overflow-y-auto custom-scrollbar bg-[var(--color-surface-bg)]/30">
                                 {proposedSchedule.length === 0 ? (
                                     <div className="flex flex-col items-center justify-center h-64 text-[var(--color-text-muted)]">
                                         <span className="material-symbols-outlined text-5xl mb-4 opacity-20">check_circle</span>
-                                        <p className="text-lg font-medium">No schedule changes needed!</p>
-                                        <p className="text-sm opacity-60">Your calendar is already optimized.</p>
+                                        <p className="text-lg font-medium">{t('calendar.modal.empty.title')}</p>
+                                        <p className="text-sm opacity-60">{t('calendar.modal.empty.subtitle')}</p>
                                     </div>
                                 ) : (
                                     <div className="flex flex-col">
@@ -760,7 +769,7 @@ export const Calendar = () => {
                                                 unassignedTasks.find(t => t.id === change.taskId);
 
                                             const itemTitle = item?.title;
-                                            const assignee = isUnassigned ? 'Unassigned' : ((item as any)?.assignee || 'Me');
+                                            const assignee = isUnassigned ? t('calendar.assignee.unassigned') : ((item as any)?.assignee || t('calendar.assignee.me'));
                                             const isSelected = selectedChanges.has(change.taskId);
 
                                             // Priority & Status colors
@@ -803,11 +812,11 @@ export const Calendar = () => {
                                                             <span className={`material-symbols-outlined text-[18px] shrink-0 ${isIssue ? 'text-purple-500' : 'text-blue-500'}`}>
                                                                 {isIssue ? 'bug_report' : 'check_circle'}
                                                             </span>
-                                                            <span className="truncate">{itemTitle || 'Unknown Item'}</span>
+                                                            <span className="truncate">{itemTitle || t('calendar.modal.unknownItem')}</span>
                                                         </div>
                                                         <div className="flex items-center gap-2 mt-1.5 ml-6">
                                                             <span className={`h-1.5 w-1.5 rounded-full ${priorityColor}`}></span>
-                                                            <span className="text-[11px] font-medium text-[var(--color-text-muted)] uppercase tracking-wide opacity-80">{priority} Priority</span>
+                                                            <span className="text-[11px] font-medium text-[var(--color-text-muted)] uppercase tracking-wide opacity-80">{t('calendar.modal.priority').replace('{priority}', priorityLabels[priority as keyof typeof priorityLabels] || priority)}</span>
                                                         </div>
                                                     </div>
 
@@ -832,11 +841,11 @@ export const Calendar = () => {
                                                     <div className="flex flex-col justify-center">
                                                         <div className="flex items-center gap-3 text-sm">
                                                             <span className={`font-medium ${change.originalDate ? 'text-[var(--color-text-muted)] line-through opacity-70' : 'text-[var(--color-text-muted)] italic'}`}>
-                                                                {change.originalDate ? format(new Date(change.originalDate), 'MMM d') : 'Unscheduled'}
+                                                                {change.originalDate ? format(new Date(change.originalDate), 'MMM d', { locale: dateLocale }) : t('calendar.modal.unscheduled')}
                                                             </span>
                                                             <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)] opacity-50">arrow_forward</span>
                                                             <span className="font-bold text-[var(--color-primary)]">
-                                                                {format(change.newDate, 'MMM d')}
+                                                                {format(change.newDate, 'MMM d', { locale: dateLocale })}
                                                             </span>
                                                         </div>
                                                         <div className="text-[10px] text-[var(--color-text-muted)] mt-1 opacity-70 flex items-center gap-1">
@@ -854,7 +863,7 @@ export const Calendar = () => {
                                                                     ? 'bg-orange-500/10 text-orange-600 border-orange-500/20 shadow-orange-500/10'
                                                                     : 'bg-[var(--color-surface-border)] text-[var(--color-text-muted)] border-transparent opacity-50'}
                                                         `}>
-                                                                Assign & Schedule
+                                                                {t('calendar.modal.assignAndSchedule')}
                                                             </span>
                                                         ) : (
                                                             <span className={`
@@ -863,7 +872,7 @@ export const Calendar = () => {
                                                                     ? 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 shadow-indigo-500/10'
                                                                     : 'bg-[var(--color-surface-border)] text-[var(--color-text-muted)] border-transparent opacity-50'}
                                                         `}>
-                                                                Reschedule
+                                                                {t('calendar.modal.reschedule')}
                                                             </span>
                                                         )}
                                                     </div>
@@ -879,7 +888,7 @@ export const Calendar = () => {
                                     onClick={() => setShowScheduleModal(false)}
                                     className="px-6 py-3 rounded-xl font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-all"
                                 >
-                                    Cancel
+                                    {t('calendar.actions.cancel')}
                                 </button>
                                 <button
                                     onClick={applyAutoSchedule}
@@ -887,7 +896,7 @@ export const Calendar = () => {
                                     className="px-8 py-3 rounded-xl font-bold bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-indigo-500/30 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed flex items-center gap-2"
                                 >
                                     {selectedChanges.size > 0 && <span className="flex items-center justify-center bg-white/20 text-[var(--color-primary-text)] w-5 h-5 rounded-full text-[10px]">{selectedChanges.size}</span>}
-                                    <span>Start Schedule</span>
+                                    <span>{t('calendar.actions.startSchedule')}</span>
                                 </button>
                             </div>
                         </div>
@@ -923,13 +932,13 @@ export const Calendar = () => {
                                                 hoveredTask.item.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
                                                     'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                                             }`}>
-                                            {hoveredTask.item.priority || 'Low'}
+                                            {priorityLabels[(hoveredTask.item.priority || 'Low') as keyof typeof priorityLabels] || hoveredTask.item.priority || t('tasks.priority.low')}
                                         </span>
                                         <span className="text-[10px] opacity-60">•</span>
                                         <span>
                                             {(hoveredTask.item as any).status !== undefined
-                                                ? `Issue: ${(hoveredTask.item as Issue).status}`
-                                                : `Task: ${(hoveredTask.item as Task).status || 'Open'}`
+                                                ? t('calendar.tooltip.issue').replace('{status}', (hoveredTask.item as Issue).status || t('tasks.status.open'))
+                                                : t('calendar.tooltip.task').replace('{status}', (hoveredTask.item as Task).status || t('tasks.status.open'))
                                             }
                                         </span>
                                     </div>
@@ -948,17 +957,17 @@ export const Calendar = () => {
                                     <span className="material-symbols-outlined text-[14px]">schedule</span>
                                     <span>
                                         {hoveredTask.item.scheduledDate
-                                            ? format(new Date(hoveredTask.item.scheduledDate), 'MMM d, HH:mm')
+                                            ? format(new Date(hoveredTask.item.scheduledDate), 'MMM d, HH:mm', { locale: dateLocale })
                                             : (hoveredTask.item as Task).dueDate
-                                                ? format(new Date((hoveredTask.item as Task).dueDate!), 'MMM d, HH:mm')
-                                                : 'No date'
+                                                ? format(new Date((hoveredTask.item as Task).dueDate!), 'MMM d, HH:mm', { locale: dateLocale })
+                                                : t('calendar.tooltip.noDate')
                                         }
                                     </span>
                                 </div>
                                 {((hoveredTask.item as Task).assigneeIds?.length > 0 || (hoveredTask.item as Task).assigneeId) && (
                                     <div className="flex items-center gap-1 text-[var(--color-text-muted)]">
                                         <span className="material-symbols-outlined text-[14px]">person</span>
-                                        <span className="text-[10px]">Assigned</span>
+                                        <span className="text-[10px]">{t('calendar.tooltip.assigned')}</span>
                                     </div>
                                 )}
                             </div>

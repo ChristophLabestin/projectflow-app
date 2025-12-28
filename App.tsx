@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { createBrowserRouter, createRoutesFromElements, Route, RouterProvider, Navigate, useLocation, Outlet } from 'react-router-dom';
 import { AppLayout } from './components/AppLayout';
 import { GlobalToast } from './components/ui/GlobalToast';
@@ -96,6 +96,21 @@ const RootLayout = () => {
     );
 };
 
+// Auth Protected Layout
+const AuthenticatedLayout = ({ user }: { user: any }) => {
+    const location = useLocation();
+
+    if (!user) {
+        return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+
+    return (
+        <RequireAuth>
+            <AppLayout />
+        </RequireAuth>
+    );
+};
+
 const App = () => {
     const { t } = useLanguage();
     const [user, setUser] = useState<any>(null);
@@ -122,32 +137,10 @@ const App = () => {
         }
     }, [t]);
 
-    if (loading) {
-        return (
-            <div className="h-screen w-full flex items-center justify-center bg-[var(--color-surface-bg)]">
-                <div className="flex flex-col items-center gap-4">
-                    <span className="material-symbols-outlined text-4xl animate-spin text-[var(--color-primary)]">progress_activity</span>
-                    <span className="text-sm font-semibold text-[var(--color-text-muted)]">{t('app.loading.connecting')}</span>
-                </div>
-            </div>
-        );
-    }
-
-    if (error) {
-        return (
-            <div className="h-screen w-full flex flex-col items-center justify-center gap-4 p-4 bg-[var(--color-surface-bg)]">
-                <div className="p-6 text-center space-y-3 bg-white rounded-2xl shadow-xl border border-red-100 max-w-md">
-                    <span className="material-symbols-outlined text-4xl text-rose-500">error</span>
-                    <p className="text-rose-600 font-bold text-center">{error}</p>
-                    <p className="text-[var(--color-text-muted)] text-sm text-center">{t('app.error.checkConsole')}</p>
-                </div>
-            </div>
-        );
-    }
-
-    const router = createBrowserRouter(
+    const router = useMemo(() => createBrowserRouter(
         createRoutesFromElements(
             <Route element={<RootLayout />} errorElement={<ErrorPage />}>
+                {/* Public / Auth-Action Routes - Higher priority siblings */}
                 <Route path="/login" element={<Login />} />
                 <Route path="/auth/action" element={<AuthAction />} />
                 <Route path="/invite/:tenantId" element={<InviteLanding />} />
@@ -155,7 +148,8 @@ const App = () => {
                 <Route path="/join/:inviteLinkId" element={<JoinProjectViaLink />} />
                 <Route path="/join-workspace/:inviteLinkId" element={<JoinWorkspaceViaLink />} />
 
-                <Route element={user ? <RequireAuth><AppLayout /></RequireAuth> : <Navigate to="/login" replace />}>
+                {/* Authenticated Routes Block */}
+                <Route element={<AuthenticatedLayout user={user} />}>
                     <Route path="/" element={<Dashboard />} />
                     <Route path="/notifications" element={<Notifications />} />
                     <Route path="/projects" element={<ProjectsList />} />
@@ -214,7 +208,30 @@ const App = () => {
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
         )
-    );
+    ), [user]); // Only recreate if user identity changes
+
+    if (loading) {
+        return (
+            <div className="h-screen w-full flex items-center justify-center bg-[var(--color-surface-bg)]">
+                <div className="flex flex-col items-center gap-4">
+                    <span className="material-symbols-outlined text-4xl animate-spin text-[var(--color-primary)]">progress_activity</span>
+                    <span className="text-sm font-semibold text-[var(--color-text-muted)]">{t('app.loading.connecting')}</span>
+                </div>
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="h-screen w-full flex flex-col items-center justify-center gap-4 p-4 bg-[var(--color-surface-bg)]">
+                <div className="p-6 text-center space-y-3 bg-white rounded-2xl shadow-xl border border-red-100 max-w-md">
+                    <span className="material-symbols-outlined text-4xl text-rose-500">error</span>
+                    <p className="text-rose-600 font-bold text-center">{error}</p>
+                    <p className="text-[var(--color-text-muted)] text-sm text-center">{t('app.error.checkConsole')}</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <>

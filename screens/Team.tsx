@@ -32,6 +32,7 @@ import { Project, WorkspaceGroup, WorkspaceRole, Member, ProjectRole } from '../
 import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
 import { useConfirm, useToast } from '../context/UIContext';
 import { toMillis } from '../utils/time';
+import { useLanguage } from '../context/LanguageContext';
 
 // Helper to align local types if needed, or just use Member
 interface TeamMember extends Member {
@@ -65,6 +66,8 @@ export const Team = () => {
 
     // Permission Hook
     const { can, isOwner, isAdmin, role: myRole } = useWorkspacePermissions();
+    const { t, language } = useLanguage();
+    const locale = language === 'de' ? 'de-DE' : 'en-US';
 
     const confirm = useConfirm();
     const { showError, showSuccess } = useToast();
@@ -158,7 +161,7 @@ export const Team = () => {
     }, [tenantId, activeTab, isAdmin, isOwner, projects]);
 
     const handleRevokeLink = async (link: any) => {
-        if (!await confirm('Revoke Invite Link?', 'This link will no longer work for new users.')) return;
+        if (!await confirm(t('team.invites.confirmRevoke.title'), t('team.invites.confirmRevoke.message'))) return;
         try {
             if (link.type === 'workspace') {
                 await revokeWorkspaceInviteLink(link.id, tenantId);
@@ -166,7 +169,7 @@ export const Team = () => {
                 await revokeProjectInviteLink(link.projectId, link.id, tenantId);
             }
 
-            showSuccess('Invite link revoked');
+            showSuccess(t('team.invites.toast.revoked'));
 
             // Re-fetch to refresh list
             // (We could duplicate the fetch logic or extract it to a function, but triggering effect via a transient state might be cleaner or just copy-paste for now for simplicity)
@@ -179,7 +182,7 @@ export const Team = () => {
             setInviteLinks(prev => prev.filter(l => l.id !== link.id));
 
         } catch (err: any) {
-            showError(err.message || 'Failed to revoke link');
+            showError(err.message || t('team.invites.toast.revokeError'));
         }
     };
 
@@ -262,28 +265,37 @@ export const Team = () => {
         return { projectGroups: relevantGroups, workspaceUsers: unassigned };
     }, [users, projects, sharedProjects, externalUsers]);
 
+    const roleLabels: Record<string, string> = {
+        Owner: t('roles.owner'),
+        Admin: t('roles.admin'),
+        Member: t('roles.member'),
+        Guest: t('roles.guest'),
+        Editor: t('roles.editor'),
+        Viewer: t('roles.viewer')
+    };
+
     const handleRoleChange = async (userId: string, newRole: string) => {
         if (!can('canManageMembers')) return;
         try {
             await updateUserRole(userId, newRole as WorkspaceRole, tenantId);
         } catch (error) {
             console.error("Failed to update role", error);
-            showError("Failed to update role");
+            showError(t('team.members.errors.updateRole'));
         }
     };
 
     const handleCreateGroup = async (name: string, description: string, color: string) => {
         try {
             await createWorkspaceGroup(name, color, description, tenantId);
-            showSuccess("Group created");
+            showSuccess(t('team.groups.toast.created'));
         } catch (error) {
             console.error(error);
-            showError("Failed to create group");
+            showError(t('team.groups.toast.createError'));
         }
     };
 
     const handleDeleteGroup = async (groupId: string) => {
-        if (!await confirm("Delete Group", "Are you sure you want to delete this group?")) return;
+        if (!await confirm(t('team.groups.confirmDelete.title'), t('team.groups.confirmDelete.message'))) return;
         try {
             await deleteWorkspaceGroup(groupId, tenantId);
         } catch (error) {
@@ -303,7 +315,7 @@ export const Team = () => {
     };
 
     const handleRemoveMemberFromGroup = async (groupId: string, userId: string) => {
-        if (!await confirm("Remove Member", "Remove user from group?")) return;
+        if (!await confirm(t('team.groups.confirmRemoveMember.title'), t('team.groups.confirmRemoveMember.message'))) return;
         try {
             await removeUserFromGroup(userId, groupId, tenantId);
         } catch (error) {
@@ -312,35 +324,35 @@ export const Team = () => {
     };
 
     const handleRemoveFromProject = async (projectId: string, userId: string, projectTenantId?: string) => {
-        if (!await confirm("Remove Member", "Are you sure you want to remove this member from the project?")) return;
+        if (!await confirm(t('team.projects.confirmRemove.title'), t('team.projects.confirmRemove.message'))) return;
         try {
             await removeMember(projectId, userId, projectTenantId || tenantId);
-            showSuccess("Member removed from project");
+            showSuccess(t('team.projects.toast.removed'));
         } catch (error: any) {
             console.error("Failed to remove member from project:", error);
-            showError(error.message || "Failed to remove member");
+            showError(error.message || t('team.projects.toast.removeError'));
         }
     };
 
     const handleRemoveFromWorkspace = async (userId: string) => {
-        if (!await confirm("Remove User", "Are you sure you want to remove this user from the workspace? This will remove them from all groups.")) return;
+        if (!await confirm(t('team.members.confirmRemove.title'), t('team.members.confirmRemove.message'))) return;
         try {
             await removeUserFromWorkspace(userId, tenantId);
-            showSuccess("User removed from workspace");
+            showSuccess(t('team.members.toast.removed'));
         } catch (error: any) {
             console.error("Failed to remove user from workspace:", error);
-            showError(error.message || "Failed to remove user");
+            showError(error.message || t('team.members.toast.removeError'));
         }
     };
 
     const handleProjectRoleChange = async (projectId: string, userId: string, newRole: string, projectTenantId?: string) => {
         try {
             await updateProjectMemberRole(projectId, userId, newRole as ProjectRole, projectTenantId || tenantId);
-            showSuccess(`Role updated to ${newRole}`);
+            showSuccess(t('team.projects.toast.roleUpdated').replace('{role}', roleLabels[newRole] || newRole));
             // Note: Optimistic update or refresh might be needed, but subscription should handle it
         } catch (error: any) {
             console.error(error);
-            showError(error.message || "Failed to update project role");
+            showError(error.message || t('team.projects.toast.roleError'));
         }
     };
 
@@ -365,26 +377,26 @@ export const Team = () => {
             </div>
             <div className="flex flex-col min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                    <span className="font-semibold text-[var(--color-text-main)] truncate">{u.displayName || 'Member'}</span>
+                    <span className="font-semibold text-[var(--color-text-main)] truncate">{u.displayName || t('team.members.fallbackName')}</span>
 
                     {/* Workspace Owner Badge */}
                     {u.id === tenantId && (
                         <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400">
-                            Workspace Owner
+                            {t('team.members.badges.workspaceOwner')}
                         </span>
                     )}
 
                     {/* Context Role (e.g. Project Role) */}
                     {contextRole && (
                         <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-400">
-                            {contextRole}
+                            {roleLabels[contextRole] || contextRole}
                         </span>
                     )}
 
                     {/* Me Badge */}
                     {u.id === auth.currentUser?.uid && (
                         <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md bg-gray-100 dark:bg-gray-800 text-gray-500">
-                            You
+                            {t('common.you')}
                         </span>
                     )}
                 </div>
@@ -422,9 +434,9 @@ export const Team = () => {
                                 ))
                             ) : (
                                 <>
-                                    <option value="Admin">Admin</option>
-                                    <option value="Member">Member</option>
-                                    <option value="Guest">Guest</option>
+                                    <option value="Admin">{t('roles.admin')}</option>
+                                    <option value="Member">{t('roles.member')}</option>
+                                    <option value="Guest">{t('roles.guest')}</option>
                                 </>
                             )}
                         </Select>
@@ -433,7 +445,7 @@ export const Team = () => {
                 {/* Show static role if logic prevents dropdown or not in dropdown mode */}
                 {(!showRoleDropdown || (!onRoleChange && (!can('canManageMembers') || u.id === tenantId))) && !contextRole && (
                     <span className="text-xs font-medium text-[var(--color-text-muted)] border px-2 py-1 rounded">
-                        {u.role || 'Member'}
+                        {roleLabels[u.role || 'Member'] || u.role || t('roles.member')}
                     </span>
                 )}
 
@@ -442,7 +454,7 @@ export const Team = () => {
                     <button
                         onClick={onRemove}
                         className="text-[var(--color-text-subtle)] hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
-                        title="Remove member"
+                        title={t('team.members.actions.remove')}
                     >
                         <span className="material-symbols-outlined">delete</span>
                     </button>
@@ -458,10 +470,10 @@ export const Team = () => {
                 <div>
                     <div className="flex items-center gap-2 mb-1">
                         <span className="material-symbols-outlined text-[var(--color-primary)]">groups</span>
-                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-primary)]">Workspace</span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-primary)]">{t('team.header.workspace')}</span>
                     </div>
-                    <h1 className="h2 text-[var(--color-text-main)]">Team</h1>
-                    <p className="text-[var(--color-text-muted)]">Manage your team, permissions, and groups.</p>
+                    <h1 className="h2 text-[var(--color-text-main)]">{t('team.header.title')}</h1>
+                    <p className="text-[var(--color-text-muted)]">{t('team.header.subtitle')}</p>
                 </div>
                 <div>
                     {can('canManageMembers') && (
@@ -470,7 +482,7 @@ export const Team = () => {
                             variant="primary"
                             icon={<span className="material-symbols-outlined">person_add</span>}
                         >
-                            Invite Member
+                            {t('team.actions.inviteMember')}
                         </Button>
                     )}
                 </div>
@@ -479,10 +491,10 @@ export const Team = () => {
             {/* Tabs */}
             <div className="flex items-center gap-1 border-b border-[var(--color-border)]">
                 {[
-                    { id: 'projects', label: 'By Project', icon: 'folder' },
-                    { id: 'groups', label: 'Groups', icon: 'diversity_3' },
-                    { id: 'members', label: 'All Members', icon: 'group' },
-                    ...((isAdmin || isOwner) ? [{ id: 'invites', label: 'Invites', icon: 'mail' }] : [])
+                    { id: 'projects', label: t('team.tabs.projects'), icon: 'folder' },
+                    { id: 'groups', label: t('team.tabs.groups'), icon: 'diversity_3' },
+                    { id: 'members', label: t('team.tabs.members'), icon: 'group' },
+                    ...((isAdmin || isOwner) ? [{ id: 'invites', label: t('team.tabs.invites'), icon: 'mail' }] : [])
                 ].map(tab => (
                     <button
                         key={tab.id}
@@ -509,7 +521,7 @@ export const Team = () => {
                                         <span className="material-symbols-outlined text-lg">folder</span>
                                     </div>
                                     <h3 className="text-base font-bold text-[var(--color-text-main)]">
-                                        {group.project.title || 'Untitled Project'}
+                                        {group.project.title || t('team.projects.untitled')}
                                     </h3>
                                 </div>
                                 <div className="flex items-center gap-3">
@@ -519,10 +531,10 @@ export const Team = () => {
                                         onClick={() => navigate(`/project/${group.project.id}`)}
                                         icon={<span className="material-symbols-outlined">arrow_forward</span>}
                                     >
-                                        Go to Project
+                                        {t('team.projects.goToProject')}
                                     </Button>
                                     <span className="text-xs font-medium bg-[var(--color-surface-paper)] px-2 py-0.5 rounded-full text-[var(--color-text-muted)] border border-[var(--color-surface-border)]">
-                                        {group.users.length} members
+                                        {t('team.projects.memberCount').replace('{count}', String(group.users.length))}
                                     </span>
                                 </div>
                             </div>
@@ -545,14 +557,14 @@ export const Team = () => {
                                             (canEditThisMember && !isRowUserProjectOwner) ? () => handleRemoveFromProject(group.project.id, u.id, group.project.tenantId) : undefined,
                                             canEditThisMember ? (newRole) => handleProjectRoleChange(group.project.id, u.id, newRole, group.project.tenantId) : undefined,
                                             [
-                                                { label: 'Owner', value: 'Owner' },
-                                                { label: 'Editor', value: 'Editor' },
-                                                { label: 'Viewer', value: 'Viewer' }
+                                                { label: t('roles.owner'), value: 'Owner' },
+                                                { label: t('roles.editor'), value: 'Editor' },
+                                                { label: t('roles.viewer'), value: 'Viewer' }
                                             ]
                                         );
                                     })
                                 ) : (
-                                    <div className="p-4 text-sm text-[var(--color-text-muted)] italic">No members assigned</div>
+                                    <div className="p-4 text-sm text-[var(--color-text-muted)] italic">{t('team.projects.emptyMembers')}</div>
                                 )}
                             </Card>
                         </section>
@@ -562,7 +574,7 @@ export const Team = () => {
                         <section>
                             <div className="flex items-center gap-3 mb-3 px-1">
                                 <span className="material-symbols-outlined text-gray-400">domain</span>
-                                <h3 className="text-base font-bold text-[var(--color-text-main)]">Unassigned Members</h3>
+                                <h3 className="text-base font-bold text-[var(--color-text-main)]">{t('team.projects.unassigned')}</h3>
                             </div>
                             <Card padding="none" className="flex flex-col gap-1 p-1">
                                 {workspaceUsers.map(u => renderUserRow(
@@ -587,7 +599,7 @@ export const Team = () => {
                                 variant="outline"
                                 icon={<span className="material-symbols-outlined">add</span>}
                             >
-                                Create Group
+                                {t('team.groups.actions.create')}
                             </Button>
                         </div>
                     )}
@@ -618,7 +630,7 @@ export const Team = () => {
                                             <button
                                                 onClick={() => handleDeleteGroup(group.id)}
                                                 className="text-[var(--color-text-subtle)] hover:text-rose-500 transition-colors"
-                                                title="Delete Group"
+                                                title={t('team.groups.actions.delete')}
                                             >
                                                 <span className="material-symbols-outlined">delete</span>
                                             </button>
@@ -627,7 +639,7 @@ export const Team = () => {
 
                                     <div className="flex-1 flex flex-col gap-3">
                                         <div className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] border-b border-[var(--color-border)] pb-2 flex justify-between items-center">
-                                            <span>Members ({groupMembers.length})</span>
+                                            <span>{t('team.groups.membersCount').replace('{count}', String(groupMembers.length))}</span>
                                         </div>
 
                                         <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
@@ -652,7 +664,7 @@ export const Team = () => {
                                                     </div>
                                                 ))
                                             ) : (
-                                                <p className="text-sm text-[var(--color-text-subtle)] italic">No members yet.</p>
+                                                <p className="text-sm text-[var(--color-text-subtle)] italic">{t('team.groups.emptyMembers')}</p>
                                             )}
                                         </div>
 
@@ -662,9 +674,9 @@ export const Team = () => {
                                                     <Select
                                                         value={selectedUserForGroup[group.id] || ''}
                                                         onChange={(e) => setSelectedUserForGroup(p => ({ ...p, [group.id]: e.target.value }))}
-                                                        placeholder="Add user..."
+                                                        placeholder={t('team.groups.addUserPlaceholder')}
                                                     >
-                                                        <option value="" disabled>Select User</option>
+                                                        <option value="" disabled>{t('team.groups.selectUser')}</option>
                                                         {usersNotInGroup.map(u => (
                                                             <option key={u.id} value={u.id}>{u.displayName}</option>
                                                         ))}
@@ -676,7 +688,7 @@ export const Team = () => {
                                                     onClick={() => handleAddMemberToGroup(group.id)}
                                                     icon={<span className="material-symbols-outlined">add</span>}
                                                 >
-                                                    Add
+                                                    {t('common.add')}
                                                 </Button>
                                             </div>
                                         )}
@@ -686,7 +698,7 @@ export const Team = () => {
                         })}
                         {groups.length === 0 && (
                             <div className="col-span-full text-center p-8 text-[var(--color-text-muted)] border-2 border-dashed border-[var(--color-border)] rounded-xl">
-                                <p>No groups created yet.</p>
+                                <p>{t('team.groups.empty')}</p>
                             </div>
                         )}
                     </div>
@@ -700,7 +712,7 @@ export const Team = () => {
                     <section>
                         <div className="flex items-center gap-3 mb-3 px-1">
                             <span className="material-symbols-outlined text-[var(--color-primary)]">badge</span>
-                            <h3 className="text-base font-bold text-[var(--color-text-main)]">Workspace Members</h3>
+                            <h3 className="text-base font-bold text-[var(--color-text-main)]">{t('team.members.workspaceTitle')}</h3>
                         </div>
                         <Card padding="none" className="flex flex-col gap-1 p-1">
                             {users.filter(u => u.role !== 'Guest').map(u => renderUserRow(
@@ -710,7 +722,7 @@ export const Team = () => {
                                 can('canManageMembers') ? () => handleRemoveFromWorkspace(u.id) : undefined
                             ))}
                             {users.filter(u => u.role !== 'Guest').length === 0 && (
-                                <div className="p-4 text-sm text-[var(--color-text-muted)] italic">No workspace members found.</div>
+                                <div className="p-4 text-sm text-[var(--color-text-muted)] italic">{t('team.members.emptyWorkspace')}</div>
                             )}
                         </Card>
                     </section>
@@ -719,7 +731,7 @@ export const Team = () => {
                     <section>
                         <div className="flex items-center gap-3 mb-3 px-1">
                             <span className="material-symbols-outlined text-[var(--color-text-subtle)]">person_outline</span>
-                            <h3 className="text-base font-bold text-[var(--color-text-main)]">Guests / External</h3>
+                            <h3 className="text-base font-bold text-[var(--color-text-main)]">{t('team.members.guestsTitle')}</h3>
                         </div>
                         <Card padding="none" className="flex flex-col gap-1 p-1">
                             {users.filter(u => u.role === 'Guest').map(u => renderUserRow(
@@ -729,7 +741,7 @@ export const Team = () => {
                                 can('canManageMembers') ? () => handleRemoveFromWorkspace(u.id) : undefined
                             ))}
                             {users.filter(u => u.role === 'Guest').length === 0 && (
-                                <div className="p-4 text-sm text-[var(--color-text-muted)] italic">No guests.</div>
+                                <div className="p-4 text-sm text-[var(--color-text-muted)] italic">{t('team.members.emptyGuests')}</div>
                             )}
                         </Card>
                     </section>
@@ -741,14 +753,14 @@ export const Team = () => {
                 <div className="space-y-6">
                     <div className="flex justify-between items-center">
                         <div>
-                            <h3 className="h4 text-[var(--color-text-main)]">Active Invite Links</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">Manage invite links for this workspace.</p>
+                            <h3 className="h4 text-[var(--color-text-main)]">{t('team.invites.title')}</h3>
+                            <p className="text-sm text-[var(--color-text-muted)]">{t('team.invites.subtitle')}</p>
                         </div>
                         <Button
                             onClick={() => setShowInviteModal(true)}
                             icon={<span className="material-symbols-outlined">add_link</span>}
                         >
-                            Create Invite Link
+                            {t('team.invites.actions.create')}
                         </Button>
                     </div>
 
@@ -757,7 +769,7 @@ export const Team = () => {
                             const isWorkspace = link.type === 'workspace';
                             const accentColor = isWorkspace ? 'border-indigo-500' : 'border-amber-500';
                             const icon = isWorkspace ? 'domain' : 'folder_open';
-                            const title = isWorkspace ? 'Workspace Invite' : link.projectName;
+                            const title = isWorkspace ? t('team.invites.workspaceTitle') : link.projectName;
 
                             return (
                                 <Card
@@ -777,11 +789,11 @@ export const Team = () => {
                                                     </h4>
                                                     <div className="flex items-center gap-2">
                                                         <Badge variant={link.role === 'Admin' ? 'warning' : 'primary'} size="sm">
-                                                            {link.role}
+                                                            {roleLabels[link.role] || link.role}
                                                         </Badge>
                                                         {!isWorkspace && (
                                                             <span className="text-[10px] text-[var(--color-text-subtle)] uppercase tracking-wider font-bold">
-                                                                Project
+                                                                {t('team.invites.projectBadge')}
                                                             </span>
                                                         )}
                                                     </div>
@@ -792,7 +804,7 @@ export const Team = () => {
                                                 size="sm"
                                                 className="text-[var(--color-text-subtle)] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 -mr-2 -mt-2"
                                                 onClick={() => handleRevokeLink(link)}
-                                                title="Revoke Link"
+                                                title={t('team.invites.actions.revoke')}
                                             >
                                                 <span className="material-symbols-outlined text-[20px]">delete</span>
                                             </Button>
@@ -801,20 +813,20 @@ export const Team = () => {
                                         <div className="grid grid-cols-2 gap-2 mb-4">
                                             <div className="bg-[var(--color-surface-hover)] rounded-lg p-2">
                                                 <span className="block text-[10px] uppercase font-bold text-[var(--color-text-subtle)] mb-1">
-                                                    Expires
+                                                    {t('team.invites.expires')}
                                                 </span>
                                                 <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
                                                     <span className="material-symbols-outlined text-[14px]">event</span>
-                                                    <span>{new Date(toMillis(link.expiresAt)).toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' })}</span>
+                                                    <span>{new Date(toMillis(link.expiresAt)).toLocaleString(locale, { dateStyle: 'short', timeStyle: 'short' })}</span>
                                                 </div>
                                             </div>
                                             <div className="bg-[var(--color-surface-hover)] rounded-lg p-2">
                                                 <span className="block text-[10px] uppercase font-bold text-[var(--color-text-subtle)] mb-1">
-                                                    Usage
+                                                    {t('team.invites.usage')}
                                                 </span>
                                                 <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
                                                     <span className="material-symbols-outlined text-[14px]">group</span>
-                                                    <span>{link.uses} / {link.maxUses || '∞'}</span>
+                                                    <span>{link.uses} / {link.maxUses || t('team.invites.unlimited')}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -839,7 +851,7 @@ export const Team = () => {
                                                         className={`font-bold ml-2 transition-all ${isCopied ? 'text-emerald-600 dark:text-emerald-400 opacity-100' : 'text-[var(--color-primary)] opacity-0 group-hover/link:opacity-100'}`}
                                                         onClick={() => handleCopy(link.id, finalUrl)}
                                                     >
-                                                        {isCopied ? 'Copied!' : 'Copy'}
+                                                        {isCopied ? t('common.copied') : t('common.copy')}
                                                     </button>
                                                 </div>
                                             );
@@ -851,8 +863,8 @@ export const Team = () => {
                         {inviteLinks.length === 0 && (
                             <div className="col-span-full py-12 text-center text-[var(--color-text-muted)] border-2 border-dashed border-[var(--color-surface-border)] rounded-xl">
                                 <span className="material-symbols-outlined text-4xl opacity-50 mb-2">link_off</span>
-                                <p>No active invite links found.</p>
-                                <Button variant="ghost" className="mt-2" onClick={() => setShowInviteModal(true)}>Create one now</Button>
+                                <p>{t('team.invites.empty')}</p>
+                                <Button variant="ghost" className="mt-2" onClick={() => setShowInviteModal(true)}>{t('team.invites.actions.createNow')}</Button>
                             </div>
                         )}
                     </div>
@@ -872,7 +884,7 @@ export const Team = () => {
                 onGenerateLink={(role, maxUses, expiresIn) =>
                     generateWorkspaceInviteLink(role as WorkspaceRole, maxUses, expiresIn, tenantId)
                 }
-                projectTitle="Workspace"
+                projectTitle={t('team.header.workspace')}
                 isWorkspace={true}
             />
 

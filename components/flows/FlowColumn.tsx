@@ -4,6 +4,7 @@ import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { Idea } from '../../types';
 import { FlowCard } from './FlowCard';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface FlowColumnProps {
     column: { id: string; title: string; color: string; icon: string; bgGradient: string };
@@ -12,9 +13,11 @@ interface FlowColumnProps {
 }
 
 export const FlowColumn: React.FC<FlowColumnProps> = ({ column, flows, onFlowClick }) => {
+    const { t } = useLanguage();
     const { setNodeRef, isOver } = useDroppable({
         id: column.id,
     });
+    const flowLabel = flows.length === 1 ? t('flows.labels.flow') : t('flows.labels.flows');
 
     return (
         <div
@@ -36,7 +39,7 @@ export const FlowColumn: React.FC<FlowColumnProps> = ({ column, flows, onFlowCli
                         <div>
                             <h3 className="font-bold text-sm text-[var(--color-text-main)]">{column.title}</h3>
                             <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wide">
-                                {flows.length} {flows.length === 1 ? 'flow' : 'flows'}
+                                {flows.length} {flowLabel}
                             </p>
                         </div>
                     </div>
@@ -52,16 +55,16 @@ export const FlowColumn: React.FC<FlowColumnProps> = ({ column, flows, onFlowCli
             {/* Cards Container */}
             <div className="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-hide">
                 {flows.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-8 text-center">
-                        <div className="size-12 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center mb-3">
-                            <span className="material-symbols-outlined text-[24px] text-[var(--color-text-subtle)]">
-                                {column.icon}
-                            </span>
+                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                            <div className="size-12 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center mb-3">
+                                <span className="material-symbols-outlined text-[24px] text-[var(--color-text-subtle)]">
+                                    {column.icon}
+                                </span>
+                            </div>
+                            <p className="text-sm font-medium text-[var(--color-text-muted)]">{t('flows.column.empty.title')}</p>
+                            <p className="text-xs text-[var(--color-text-subtle)] mt-1">{t('flows.column.empty.subtitle')}</p>
                         </div>
-                        <p className="text-sm font-medium text-[var(--color-text-muted)]">No flows yet</p>
-                        <p className="text-xs text-[var(--color-text-subtle)] mt-1">Drag flows here or create new ones</p>
-                    </div>
-                ) : (
+                    ) : (
                     <SortableContext items={flows.map(flow => flow.id)} strategy={verticalListSortingStrategy}>
                         {flows.map((flow) => (
                             <FlowCard

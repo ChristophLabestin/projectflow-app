@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { generateBrainstormIdeas, generateProjectBlueprint, analyzeProjectRisks } from '../services/geminiService';
 import { getUserIdeas, saveIdea, createProject, addTask, getAIUsage } from '../services/dataService';
 import { Idea, ProjectBlueprint, ProjectRisk, StudioTool, AIUsage } from '../types';
@@ -9,36 +9,38 @@ import { BlueprintResult } from '../components/studio/BlueprintResult';
 import { RiskResult } from '../components/studio/RiskResult';
 import { useToast } from '../context/UIContext';
 import { Textarea } from '../components/ui/Textarea';
+import { useLanguage } from '../context/LanguageContext';
 
-const TOOLS: { id: StudioTool; title: string; description: string; icon: string; color: string; placeholder: string }[] = [
+const TOOL_CONFIGS: { id: StudioTool; titleKey: string; descriptionKey: string; placeholderKey: string; icon: string; color: string }[] = [
     {
         id: 'Architect',
-        title: 'Project Architect',
-        description: 'Turn a rough seed into a full project blueprint with milestones and tasks.',
+        titleKey: 'aiStudio.tools.architect.title',
+        descriptionKey: 'aiStudio.tools.architect.description',
         icon: 'architecture',
         color: 'indigo',
-        placeholder: 'Describe your project goal (e.g. "A marketplace for vintage cameras")....'
+        placeholderKey: 'aiStudio.tools.architect.placeholder'
     },
     {
         id: 'Brainstormer',
-        title: 'Flow Engine',
-        description: 'Generate structured flows and actionable features for any objective.',
+        titleKey: 'aiStudio.tools.brainstormer.title',
+        descriptionKey: 'aiStudio.tools.brainstormer.description',
         icon: 'lightbulb',
         color: 'amber',
-        placeholder: 'What are we exploring today? (e.g. "Flows for a productivity app")....'
+        placeholderKey: 'aiStudio.tools.brainstormer.placeholder'
     },
     {
         id: 'RiskScout',
-        title: 'Risk Scout',
-        description: 'Identify potential roadblocks and get strategic mitigation plans.',
+        titleKey: 'aiStudio.tools.riskscout.title',
+        descriptionKey: 'aiStudio.tools.riskscout.description',
         icon: 'shield',
         color: 'rose',
-        placeholder: 'Paste your project concept here for risk analysis...'
+        placeholderKey: 'aiStudio.tools.riskscout.placeholder'
     }
 ];
 
 export const Brainstorming = () => {
     const { showToast } = useToast();
+    const { t } = useLanguage();
     const [activeTool, setActiveTool] = useState<StudioTool>('Architect');
     const [prompt, setPrompt] = useState('');
     const [isGenerating, setIsGenerating] = useState(false);
@@ -49,6 +51,21 @@ export const Brainstorming = () => {
     const [ideas, setIdeas] = useState<Idea[]>([]);
     const [risks, setRisks] = useState<ProjectRisk[]>([]);
     const [aiUsage, setAiUsage] = useState<AIUsage | null>(null);
+
+    const toolLabels = useMemo(() => ({
+        Architect: t('aiStudio.tools.architect.label'),
+        Brainstormer: t('aiStudio.tools.brainstormer.label'),
+        RiskScout: t('aiStudio.tools.riskscout.label'),
+    }), [t]);
+
+    const tools = useMemo(() => TOOL_CONFIGS.map(tool => ({
+        ...tool,
+        title: t(tool.titleKey),
+        description: t(tool.descriptionKey),
+        placeholder: t(tool.placeholderKey),
+    })), [t]);
+
+    const activeToolLabel = toolLabels[activeTool] || activeTool;
 
     const fetchUsage = async () => {
         const user = auth.currentUser;
@@ -87,11 +104,11 @@ export const Brainstorming = () => {
                 setRisks(result);
             }
 
-            showToast(`Studio: ${activeTool} analysis complete`, 'success');
+            showToast(t('aiStudio.toast.completed').replace('{tool}', activeToolLabel), 'success');
             fetchUsage(); // Refresh usage after success
         } catch (e) {
             console.error(e);
-            showToast(e instanceof Error ? e.message : 'Generation failed', 'error');
+            showToast(e instanceof Error ? e.message : t('aiStudio.errors.generate'), 'error');
         } finally {
             setIsGenerating(false);
         }
@@ -117,25 +134,25 @@ export const Brainstorming = () => {
             // Add milestones as tasks with High priority? Or just mention in desc?
             // For now, let's add them as tasks too but marked as milestones
             for (const ms of bp.milestones) {
-                await addTask(projectId, `Milestone: ${ms.title}`, undefined, undefined, 'High', {
+                await addTask(projectId, `${t('aiStudio.blueprint.milestonePrefix')} ${ms.title}`, undefined, undefined, 'High', {
                     description: ms.description,
                     category: ['Milestone']
                 });
             }
 
-            showToast(`Success! "${bp.title}" is now live.`, 'success');
+            showToast(t('aiStudio.toast.projectCreated').replace('{title}', bp.title), 'success');
             // Reset blueprint after conversion?
             setBlueprint(null);
             setPrompt('');
         } catch (e) {
             console.error(e);
-            showToast('Failed to convert blueprint to project.', 'error');
+            showToast(t('aiStudio.errors.convert'), 'error');
         } finally {
             setIsConverting(false);
         }
     };
 
-    const currentToolPlaceholder = TOOLS.find(t => t.id === activeTool)?.placeholder || "...";
+    const currentToolPlaceholder = tools.find(tool => tool.id === activeTool)?.placeholder || "...";
 
     return (
         <div className="max-w-[1200px] mx-auto px-4 md:px-6 lg:px-10 py-6 md:py-10 animate-fade-up space-y-12">
@@ -143,7 +160,7 @@ export const Brainstorming = () => {
 
             {/* Tool Selector */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {TOOLS.map((tool) => (
+                {tools.map((tool) => (
                     <StudioToolCard
                         key={tool.id}
                         tool={tool.id}
@@ -183,14 +200,14 @@ export const Brainstorming = () => {
                                     }`}>terminal</span>
                             </div>
                             <div>
-                                <h3 className="text-lg font-display font-bold text-zinc-900 dark:text-white">Studio Command</h3>
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400">Describe your vision</p>
+                                <h3 className="text-lg font-display font-bold text-zinc-900 dark:text-white">{t('aiStudio.command.title')}</h3>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400">{t('aiStudio.command.subtitle')}</p>
                             </div>
                         </div>
 
                         {aiUsage && (
                             <div className="flex items-center gap-3 text-xs">
-                                <span className="text-zinc-500 dark:text-zinc-400 font-medium">Usage</span>
+                                <span className="text-zinc-500 dark:text-zinc-400 font-medium">{t('aiStudio.usage.label')}</span>
                                 <div className="w-20 h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
                                     <div
                                         className={`h-full rounded-full transition-all duration-500 ${aiUsage.tokensUsed >= aiUsage.tokenLimit * 0.9
@@ -229,7 +246,7 @@ export const Brainstorming = () => {
                         }`}>
                         <p className="text-sm text-zinc-500 dark:text-zinc-400">
                             <span className="material-symbols-outlined text-[16px] align-middle mr-1">info</span>
-                            Be specific for better results
+                            {t('aiStudio.hint.specific')}
                         </p>
 
                         <button
@@ -251,7 +268,7 @@ export const Brainstorming = () => {
                             <span className={`material-symbols-outlined text-[18px] ${isGenerating ? 'animate-spin' : ''}`}>
                                 {isGenerating ? 'refresh' : 'play_arrow'}
                             </span>
-                            <span>{isGenerating ? 'Generating...' : `Execute ${activeTool}`}</span>
+                            <span>{isGenerating ? t('aiStudio.actions.generating') : t('aiStudio.actions.execute').replace('{tool}', activeToolLabel)}</span>
                         </button>
                     </div>
                 </div>
@@ -262,7 +279,7 @@ export const Brainstorming = () => {
                 <div className="pt-12 border-t border-line dark:border-white/5 space-y-10">
                     <div className="flex items-center gap-3">
                         <span className="material-symbols-outlined text-indigo-500">output</span>
-                        <h3 className="text-2xl font-display font-bold">Studio Results</h3>
+                        <h3 className="text-2xl font-display font-bold">{t('aiStudio.results.title')}</h3>
                     </div>
 
                     {activeTool === 'Architect' && blueprint && (

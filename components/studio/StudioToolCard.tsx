@@ -1,5 +1,6 @@
 import React from 'react';
 import { StudioTool } from '../../types';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface StudioToolCardProps {
     tool: StudioTool;
@@ -14,6 +15,8 @@ interface StudioToolCardProps {
 export const StudioToolCard: React.FC<StudioToolCardProps> = ({
     tool, title, description, icon, active, onClick, color
 }) => {
+    const { t } = useLanguage();
+
     return (
         <button
             onClick={onClick}
@@ -52,7 +55,7 @@ export const StudioToolCard: React.FC<StudioToolCardProps> = ({
             {active && (
                 <div className="mt-6 flex items-center gap-2 text-[10px] uppercase tracking-wider font-bold text-indigo-500 dark:text-indigo-400 animate-fade-in">
                     <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                    <span>Currently Selected</span>
+                    <span>{t('aiStudio.tools.selected')}</span>
                 </div>
             )}
         </button>

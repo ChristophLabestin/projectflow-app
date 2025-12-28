@@ -28,12 +28,12 @@ import { format } from 'date-fns';
 import { getUserProfile, linkWithGithub } from '../services/dataService';
 import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
 
-type SettingsTab = 'general' | 'preferences' | 'members' | 'billing' | 'security' | 'email' | 'api' | 'account';
+type SettingsTab = 'account' | 'preferences' | 'security' | 'general' | 'billing' | 'email' | 'integrations';
 
 import { DateFormat, useLanguage } from '../context/LanguageContext';
 
 export const Settings = () => {
-    const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+    const [activeTab, setActiveTab] = useState<SettingsTab>('account');
     const { language, setLanguage, dateFormat, setDateFormat, t } = useLanguage();
     const [tenant, setTenant] = useState<Partial<Tenant>>({});
     const [loading, setLoading] = useState(true);
@@ -140,10 +140,10 @@ export const Settings = () => {
             await updateUserData(user.uid, { githubToken: token });
             setGithubLinked(true);
             setProviders(user.providerData.map(p => p.providerId));
-            showSuccess("GitHub connected!");
+            showSuccess(t('settings.account.github.connected'));
         } catch (e: any) {
             console.error('Failed to link GitHub', e);
-            showError(e.message || "Failed to connect GitHub");
+            showError(e.message || t('settings.account.github.error'));
         } finally {
             setConnectingGithub(false);
         }
@@ -171,10 +171,10 @@ export const Settings = () => {
                 }
             }
             setProviders(user.providerData.map(p => p.providerId));
-            showSuccess("Google account connected!");
+            showSuccess(t('settings.account.google.connected'));
         } catch (e: any) {
             console.error('Failed to link Google', e);
-            showError(e.message || "Failed to connect Google");
+            showError(e.message || t('settings.account.google.error'));
         } finally {
             setConnectingGoogle(false);
         }
@@ -184,11 +184,11 @@ export const Settings = () => {
         const user = auth.currentUser;
         if (!user || !newPassword) return;
         if (newPassword !== confirmPassword) {
-            showError("Passwords do not match");
+            showError(t('settings.account.password.errors.mismatch'));
             return;
         }
         if (newPassword.length < 6) {
-            showError("Password must be at least 6 characters");
+            showError(t('settings.account.password.errors.tooShort'));
             return;
         }
 
@@ -218,7 +218,7 @@ export const Settings = () => {
                 }
             } else {
                 if (!user.email) {
-                    showError("Your account does not have an email associated with it. Please add an email to your profile first.");
+                    showError(t('settings.account.password.errors.noEmail'));
                     return;
                 }
                 const credential = EmailAuthProvider.credential(user.email, newPassword);
@@ -244,13 +244,15 @@ export const Settings = () => {
             setIsChangingPassword(false);
             setNewPassword('');
             setConfirmPassword('');
-            showSuccess(isChangingPassword ? "Password updated successfully!" : "Password set successfully! You can now sign in with your email and password.");
+            showSuccess(isChangingPassword
+                ? t('settings.account.password.success.updated')
+                : t('settings.account.password.success.set'));
         } catch (e: any) {
             console.error('Failed to update password', e);
             if (e.code === 'auth/requires-recent-login' && isChangingPassword && !providers.some(p => p.includes('google') || p.includes('github'))) {
-                showError("For security, please sign out and sign back in to change your password.");
+                showError(t('settings.account.password.errors.reauth'));
             } else {
-                showError(e.message || "Failed to update password");
+                showError(e.message || t('settings.account.password.errors.updateFailed'));
             }
         } finally {
             setSettingPassword(false);
@@ -271,16 +273,17 @@ export const Settings = () => {
             }) as any;
 
             if (result.data.success) {
-                showSuccess("Connection Successful: " + result.data.message);
+                showSuccess(t('settings.email.smtp.test.success').replace('{message}', result.data.message));
                 setConnectionStatus('success');
                 await saveVerifiedStatus(true);
             } else {
-                showError("Connection Failed: " + (result.data.error || "Unknown error"));
+                const errorMessage = result.data.error || t('settings.email.smtp.test.unknownError');
+                showError(t('settings.email.smtp.test.failed').replace('{error}', errorMessage));
                 setConnectionStatus('error');
             }
         } catch (error: any) {
             console.error(error);
-            showError("Test Failed: " + error.message);
+            showError(t('settings.email.smtp.test.failed').replace('{error}', error.message));
             setConnectionStatus('error');
         } finally {
             setTestingConnection(false);
@@ -401,7 +404,7 @@ export const Settings = () => {
 
     const handleCreateToken = async () => {
         if (!newTokenName.trim()) {
-            showError('Please enter a token name');
+            showError(t('settings.api.errors.tokenNameRequired'));
             return;
         }
         setCreatingToken(true);
@@ -416,7 +419,7 @@ export const Settings = () => {
             await loadAPITokens();
         } catch (error: any) {
             console.error('Failed to create token', error);
-            showError(error.message || 'Failed to create token');
+            showError(error.message || t('settings.api.errors.createFailed'));
         } finally {
             setCreatingToken(false);
         }
@@ -424,17 +427,17 @@ export const Settings = () => {
 
     const handleDeleteToken = async (tokenId: string, tokenName: string) => {
         const confirmed = await confirm(
-            'Delete API Token',
-            `Are you sure you want to delete the token "${tokenName}"? This action cannot be undone.`
+            t('settings.api.confirm.deleteTitle'),
+            t('settings.api.confirm.deleteMessage').replace('{name}', tokenName)
         );
         if (!confirmed) return;
 
         try {
             await deleteAPIToken(tokenId);
-            showSuccess('Token deleted');
+            showSuccess(t('settings.api.toast.deleted'));
             await loadAPITokens();
         } catch (error) {
-            showError('Failed to delete token');
+            showError(t('settings.api.errors.deleteFailed'));
         }
     };
 
@@ -444,7 +447,7 @@ export const Settings = () => {
             setCopiedToken(true);
             setTimeout(() => setCopiedToken(false), 2000);
         } catch (error) {
-            showError('Failed to copy');
+            showError(t('settings.api.errors.copyFailed'));
         }
     };
 
@@ -469,10 +472,10 @@ export const Settings = () => {
                 fromEmail: smtpFromEmail
             });
 
-            showSuccess("Settings saved successfully!");
+            showSuccess(t('settings.general.toast.saved'));
         } catch (error) {
             console.error("Failed to save settings", error);
-            showError("Failed to save settings. Please try again.");
+            showError(t('settings.general.errors.saveFailed'));
         } finally {
             setSaving(false);
         }
@@ -481,12 +484,12 @@ export const Settings = () => {
     const handleRestartOnboarding = async () => {
         const user = auth.currentUser;
         if (!user) {
-            showError('You must be signed in to restart onboarding.');
+            showError(t('settings.general.onboarding.errors.authRequired'));
             return;
         }
         const approved = await confirm(
-            'Restart dashboard onboarding?',
-            'We will show the welcome tour again the next time you visit the dashboard.'
+            t('settings.general.onboarding.confirm.title'),
+            t('settings.general.onboarding.confirm.message')
         );
         if (!approved) return;
 
@@ -499,10 +502,10 @@ export const Settings = () => {
             } catch {
                 // Ignore storage failures
             }
-            showSuccess('Dashboard onboarding will show again on your next visit.');
+            showSuccess(t('settings.general.onboarding.toast.restarted'));
         } catch (error) {
             console.error('Failed to reset onboarding', error);
-            showError('Failed to restart onboarding. Please try again.');
+            showError(t('settings.general.onboarding.errors.restartFailed'));
         }
     };
     const handleSendVerification = async () => {
@@ -510,7 +513,7 @@ export const Settings = () => {
         setSendingVerification(true);
         try {
             await sendEmailVerification(auth.currentUser);
-            showSuccess('Verification email sent!');
+            showSuccess(t('settings.account.emailVerification.sent'));
         } catch (error: any) {
             showError(error.message);
         } finally {
@@ -525,9 +528,9 @@ export const Settings = () => {
             await auth.currentUser.reload();
             setEmailVerified(auth.currentUser.emailVerified);
             if (auth.currentUser.emailVerified) {
-                showSuccess('Email verified!');
+                showSuccess(t('settings.account.emailVerification.verified'));
             } else {
-                showError('Email still unverified. Please check your inbox.');
+                showError(t('settings.account.emailVerification.stillUnverified'));
             }
         } catch (error: any) {
             showError(error.message);
@@ -537,7 +540,7 @@ export const Settings = () => {
     };
 
     if (loading) {
-        return <div className="h-full flex items-center justify-center text-[var(--color-text-muted)]">Loading settings...</div>;
+        return <div className="h-full flex items-center justify-center text-[var(--color-text-muted)]">{t('settings.loading')}</div>;
     }
 
     const renderContent = () => {
@@ -546,15 +549,15 @@ export const Settings = () => {
                 return (
                     <div className="space-y-6 animate-fade-in">
                         <div>
-                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">Preferences</h2>
-                            <p className="text-[var(--color-text-muted)] text-sm">Customize your ProjectFlow experience.</p>
+                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">{t('settings.preferences.title')}</h2>
+                            <p className="text-[var(--color-text-muted)] text-sm">{t('settings.preferences.subtitle')}</p>
                         </div>
 
                         <Card className="p-6 space-y-6 max-w-2xl">
                             {/* Language Settings */}
                             <div className="space-y-3">
                                 <label className="text-sm font-bold text-[var(--color-text-main)] block">
-                                    Language / Sprache
+                                    {t('settings.preferences.language.label')}
                                 </label>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <button
@@ -570,8 +573,8 @@ export const Settings = () => {
                                             EN
                                         </div>
                                         <div>
-                                            <div className={`font-medium ${language === 'en' ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}>English</div>
-                                            <div className="text-xs text-[var(--color-text-muted)]">Default</div>
+                                            <div className={`font-medium ${language === 'en' ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}>{t('language.english')}</div>
+                                            <div className="text-xs text-[var(--color-text-muted)]">{t('settings.preferences.language.englishTag')}</div>
                                         </div>
                                         {language === 'en' && (
                                             <span className="material-symbols-outlined text-[var(--color-primary)] ml-auto">check_circle</span>
@@ -591,8 +594,8 @@ export const Settings = () => {
                                             DE
                                         </div>
                                         <div>
-                                            <div className={`font-medium ${language === 'de' ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}>Deutsch</div>
-                                            <div className="text-xs text-[var(--color-text-muted)]">German</div>
+                                            <div className={`font-medium ${language === 'de' ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}>{t('language.german')}</div>
+                                            <div className="text-xs text-[var(--color-text-muted)]">{t('settings.preferences.language.germanTag')}</div>
                                         </div>
                                         {language === 'de' && (
                                             <span className="material-symbols-outlined text-[var(--color-primary)] ml-auto">check_circle</span>
@@ -606,7 +609,7 @@ export const Settings = () => {
                             {/* Date Format Settings */}
                             <div className="space-y-3">
                                 <Select
-                                    label="Date Format"
+                                    label={t('settings.preferences.dateFormat.label')}
                                     value={dateFormat}
                                     onChange={(e) => setDateFormat(e.target.value as DateFormat)}
                                     className="max-w-md"
@@ -628,7 +631,7 @@ export const Settings = () => {
                                     ))}
                                 </Select>
                                 <p className="text-[10px] text-[var(--color-text-muted)] ml-1">
-                                    Choose how dates are displayed across the application.
+                                    {t('settings.preferences.dateFormat.helper')}
                                 </p>
                             </div>
                         </Card>
@@ -638,54 +641,69 @@ export const Settings = () => {
                 return (
                     <div className="space-y-6 animate-fade-in">
                         <div>
-                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">General Settings</h2>
-                            <p className="text-[var(--color-text-muted)] text-sm">Manage your workspace's public profile and details.</p>
+                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">{t('settings.general.title')}</h2>
+                            <p className="text-[var(--color-text-muted)] text-sm">{t('settings.general.subtitle')}</p>
                         </div>
                         <Card className="p-6 space-y-4 max-w-2xl">
                             <Input
-                                label="Team Name"
+                                label={t('settings.general.fields.teamName')}
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                placeholder="e.g. Acme Corp"
+                                placeholder={t('settings.general.fields.teamNamePlaceholder')}
                             />
                             <Textarea
-                                label="Description"
+                                label={t('settings.general.fields.description')}
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                placeholder="What does your team do?"
+                                placeholder={t('settings.general.fields.descriptionPlaceholder')}
                                 rows={3}
                             />
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <Input
-                                    label="Website"
+                                    label={t('settings.general.fields.website')}
                                     value={website}
                                     onChange={(e) => setWebsite(e.target.value)}
-                                    placeholder="https://example.com"
+                                    placeholder={t('settings.general.fields.websitePlaceholder')}
                                 />
                                 <Input
-                                    label="Contact Email"
+                                    label={t('settings.general.fields.contactEmail')}
                                     value={contactEmail}
                                     onChange={(e) => setContactEmail(e.target.value)}
-                                    placeholder="admin@example.com"
+                                    placeholder={t('settings.general.fields.contactEmailPlaceholder')}
                                 />
                             </div>
                             <div className="pt-4 flex justify-end border-t border-[var(--color-surface-border)]">
                                 <Button onClick={handleSave} loading={saving}>
-                                    Save Changes
+                                    {t('common.saveChanges')}
                                 </Button>
                             </div>
                         </Card>
                         <Card className="p-6 max-w-2xl">
                             <div className="flex items-start justify-between gap-6">
                                 <div className="space-y-2">
-                                    <div className="text-sm font-bold text-[var(--color-text-main)]">Onboarding</div>
+                                    <div className="text-sm font-bold text-[var(--color-text-main)]">{t('settings.general.onboarding.title')}</div>
                                     <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
-                                        Restart the dashboard tour to revisit each feature and walkthrough step.
+                                        {t('settings.general.onboarding.description')}
                                     </p>
                                 </div>
                                 <Button variant="secondary" onClick={handleRestartOnboarding}>
-                                    Restart onboarding
+                                    {t('settings.general.onboarding.action')}
                                 </Button>
+                            </div>
+                        </Card>
+                        <Card className="p-6 max-w-2xl">
+                            <div className="flex items-start justify-between gap-6">
+                                <div className="space-y-2">
+                                    <div className="text-sm font-bold text-[var(--color-text-main)]">{t('settings.general.team.title')}</div>
+                                    <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
+                                        {t('settings.general.team.description')}
+                                    </p>
+                                </div>
+                                <Link to="/team">
+                                    <Button variant="secondary">
+                                        {t('settings.general.team.action')}
+                                    </Button>
+                                </Link>
                             </div>
                         </Card>
                     </div>
@@ -694,22 +712,22 @@ export const Settings = () => {
                 return (
                     <div className="space-y-6 animate-fade-in">
                         <div>
-                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">Billing & Plans</h2>
-                            <p className="text-[var(--color-text-muted)] text-sm">Manage subscription and billing details.</p>
+                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">{t('settings.billing.title')}</h2>
+                            <p className="text-[var(--color-text-muted)] text-sm">{t('settings.billing.subtitle')}</p>
                         </div>
                         <Card className="p-8 flex flex-col items-center justify-center text-center space-y-4 border-dashed">
                             <div className="size-16 bg-blue-50 dark:bg-blue-900/20 rounded-full flex items-center justify-center text-blue-500 mb-2">
                                 <span className="material-symbols-outlined text-3xl">credit_card</span>
                             </div>
-                            <h3 className="text-lg font-bold">Personal License</h3>
-                            <p className="text-[var(--color-text-muted)] max-w-sm">You are currently on the Personal plan (€29.99/month). Enjoy full access to AI Studio and advanced project features.</p>
+                            <h3 className="text-lg font-bold">{t('settings.billing.plan.title')}</h3>
+                            <p className="text-[var(--color-text-muted)] max-w-sm">{t('settings.billing.plan.description')}</p>
 
                             {aiUsage && (
                                 <div className="w-full max-w-md pt-6 border-t border-[var(--color-surface-border)] mt-4">
                                     <div className="flex items-center justify-between mb-2">
                                         <div className="flex items-center gap-2 font-semibold text-sm">
                                             <span className="material-symbols-outlined text-[18px] text-[var(--color-primary)]">auto_awesome</span>
-                                            AI Usage this month
+                                            {t('settings.billing.aiUsage.title')}
                                         </div>
                                         <span className="text-xs font-mono font-bold">
                                             {aiUsage.tokensUsed.toLocaleString()} / {aiUsage.tokenLimit.toLocaleString()}
@@ -723,14 +741,14 @@ export const Settings = () => {
                                         />
                                     </div>
                                     <p className="text-[10px] text-[var(--color-text-muted)] mt-2 italic mb-4">
-                                        Token usage resets at the beginning of each calendar month.
+                                        {t('settings.billing.aiUsage.resetNotice')}
                                     </p>
 
                                     {/* Image Usage */}
                                     <div className="flex items-center justify-between mb-2">
                                         <div className="flex items-center gap-2 font-semibold text-sm">
                                             <span className="material-symbols-outlined text-[18px] text-amber-500">image</span>
-                                            Image Generations
+                                            {t('settings.billing.imageUsage.title')}
                                         </div>
                                         <span className="text-xs font-mono font-bold">
                                             {/* Default to 0/50 if undefined */}
@@ -744,13 +762,13 @@ export const Settings = () => {
                                         />
                                     </div>
                                     <p className="text-[10px] text-[var(--color-text-muted)] mt-2 italic">
-                                        Image generation limit resets monthly.
+                                        {t('settings.billing.imageUsage.resetNotice')}
                                     </p>
                                 </div>
                             )}
 
                             <div className="pt-4">
-                                <Button disabled className="opacity-50">Manage Subscription</Button>
+                                <Button disabled className="opacity-50">{t('settings.billing.actions.manage')}</Button>
                             </div>
                         </Card>
                     </div>
@@ -759,41 +777,41 @@ export const Settings = () => {
                 return (
                     <div className="space-y-6 animate-fade-in">
                         <div>
-                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">Security</h2>
-                            <p className="text-[var(--color-text-muted)] text-sm">Audit logs and security controls.</p>
+                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">{t('settings.security.title')}</h2>
+                            <p className="text-[var(--color-text-muted)] text-sm">{t('settings.security.subtitle')}</p>
                         </div>
                         <Card className="divide-y divide-[var(--color-surface-border)]">
                             <div className="p-4 flex items-center justify-between">
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <p className="font-semibold text-[var(--color-text-main)]">Two-Factor Authentication</p>
+                                        <p className="font-semibold text-[var(--color-text-main)]">{t('settings.security.twoFactor.title')}</p>
                                         {twoFactorEnabled && (
                                             <span className="text-xs font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-0.5 rounded-full flex items-center gap-1">
-                                                <span className="material-symbols-outlined text-[12px]">check</span> Enabled
+                                                <span className="material-symbols-outlined text-[12px]">check</span> {t('settings.security.twoFactor.enabled')}
                                             </span>
                                         )}
                                     </div>
-                                    <p className="text-xs text-[var(--color-text-muted)]">Secure your account with an authenticator app.</p>
+                                    <p className="text-xs text-[var(--color-text-muted)]">{t('settings.security.twoFactor.description')}</p>
                                 </div>
                                 <div>
                                     {!twoFactorEnabled ? (
                                         <Button size="sm" onClick={() => setShowTwoFactorModal(true)}>
-                                            Enable 2FA
+                                            {t('settings.security.twoFactor.actions.enable')}
                                         </Button>
                                     ) : (
-                                        <Button variant="outline" size="sm" disabled title="Disabling 2FA is currently managed via support">
-                                            Manage
+                                        <Button variant="outline" size="sm" disabled title={t('settings.security.twoFactor.manageDisabledTitle')}>
+                                            {t('settings.security.twoFactor.actions.manage')}
                                         </Button>
                                     )}
                                 </div>
                             </div>
                             <div className="p-4 flex items-center justify-between">
                                 <div>
-                                    <p className="font-semibold text-[var(--color-text-main)]">Single Sign-On (SSO)</p>
-                                    <p className="text-xs text-[var(--color-text-muted)]">Enable SAML/OIDC authentication.</p>
+                                    <p className="font-semibold text-[var(--color-text-main)]">{t('settings.security.sso.title')}</p>
+                                    <p className="text-xs text-[var(--color-text-muted)]">{t('settings.security.sso.description')}</p>
                                 </div>
                                 <div className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-[10px] font-bold uppercase text-gray-500">
-                                    Enterprise
+                                    {t('settings.security.sso.badge')}
                                 </div>
                             </div>
                         </Card>
@@ -803,14 +821,14 @@ export const Settings = () => {
                 return (
                     <div className="space-y-6 animate-fade-in">
                         <div>
-                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">Email Settings</h2>
-                            <p className="text-[var(--color-text-muted)] text-sm">Configure how system emails and campaigns are sent.</p>
+                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">{t('settings.email.title')}</h2>
+                            <p className="text-[var(--color-text-muted)] text-sm">{t('settings.email.subtitle')}</p>
                         </div>
                         <Card className="p-6 space-y-6 max-w-2xl">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <div className="flex items-center gap-3">
-                                        <h3 className="font-bold text-[var(--color-text-main)]">Custom SMTP Server</h3>
+                                        <h3 className="font-bold text-[var(--color-text-main)]">{t('settings.email.smtp.title')}</h3>
                                         {useCustomSmtp && (
                                             <div className="flex items-center gap-2">
                                                 <div className={`size-2.5 rounded-full shrink-0 ${connectionStatus === 'success' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' :
@@ -819,15 +837,15 @@ export const Settings = () => {
                                                             'bg-zinc-300 dark:bg-zinc-600'
                                                     }`} />
                                                 <span className="text-xs text-[var(--color-text-muted)] font-medium">
-                                                    {connectionStatus === 'success' ? 'Verified' :
-                                                        connectionStatus === 'error' ? 'Failed' :
-                                                            (smtpHost || smtpUser || smtpPass) ? 'Not Verified' :
-                                                                'No Config'}
+                                                    {connectionStatus === 'success' ? t('settings.email.smtp.status.verified') :
+                                                        connectionStatus === 'error' ? t('settings.email.smtp.status.failed') :
+                                                            (smtpHost || smtpUser || smtpPass) ? t('settings.email.smtp.status.notVerified') :
+                                                                t('settings.email.smtp.status.noConfig')}
                                                 </span>
                                             </div>
                                         )}
                                     </div>
-                                    <p className="text-sm text-[var(--color-text-muted)]">Use your own mail server instead of ProjectFlow's default.</p>
+                                    <p className="text-sm text-[var(--color-text-muted)]">{t('settings.email.smtp.description')}</p>
                                 </div>
                                 <div
                                     className={`switch-track ${useCustomSmtp ? 'active' : ''}`}
@@ -846,37 +864,37 @@ export const Settings = () => {
                                     <div className="space-y-4 animate-fade-in">
                                         <div className="grid grid-cols-2 gap-4">
                                             <Input
-                                                label="SMTP Host"
+                                                label={t('settings.email.smtp.fields.host')}
                                                 value={smtpHost}
                                                 onChange={(e) => setSmtpHost(e.target.value)}
-                                                placeholder="smtp.example.com"
+                                                placeholder={t('settings.email.smtp.fields.hostPlaceholder')}
                                             />
                                             <Input
-                                                label="Port"
+                                                label={t('settings.email.smtp.fields.port')}
                                                 type="number"
                                                 value={smtpPort}
                                                 onChange={(e) => setSmtpPort(Number(e.target.value))}
-                                                placeholder="587"
+                                                placeholder={t('settings.email.smtp.fields.portPlaceholder')}
                                             />
                                         </div>
                                         <Input
-                                            label="Username"
+                                            label={t('settings.email.smtp.fields.username')}
                                             value={smtpUser}
                                             onChange={(e) => setSmtpUser(e.target.value)}
-                                            placeholder="user@example.com"
+                                            placeholder={t('settings.email.smtp.fields.usernamePlaceholder')}
                                         />
                                         <Input
-                                            label="Password"
+                                            label={t('settings.email.smtp.fields.password')}
                                             type="password"
                                             value={smtpPass}
                                             onChange={(e) => setSmtpPass(e.target.value)}
-                                            placeholder="••••••••"
+                                            placeholder={t('settings.email.smtp.fields.passwordPlaceholder')}
                                         />
                                         <Input
-                                            label="From Email Address"
+                                            label={t('settings.email.smtp.fields.fromEmail')}
                                             value={smtpFromEmail}
                                             onChange={(e) => setSmtpFromEmail(e.target.value)}
-                                            placeholder="marketing@example.com"
+                                            placeholder={t('settings.email.smtp.fields.fromEmailPlaceholder')}
                                         />
                                     </div>
                                 )
@@ -886,7 +904,7 @@ export const Settings = () => {
                                 !useCustomSmtp && (
                                     <div className="bg-[var(--color-surface-hover)] p-4 rounded-lg flex gap-3 text-sm text-[var(--color-text-muted)]">
                                         <span className="material-symbols-outlined text-[var(--color-primary)]">info</span>
-                                        <p>Emails will be sent using ProjectFlow's high-reputation delivery servers. A generic "via projectflow.io" signer might appear.</p>
+                                        <p>{t('settings.email.smtp.defaultInfo')}</p>
                                     </div>
                                 )
                             }
@@ -898,66 +916,54 @@ export const Settings = () => {
                                         isLoading={testingConnection}
                                         className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-6 shadow-sm hover:shadow active:scale-95 transition-all"
                                     >
-                                        Test Connection
+                                        {t('settings.email.smtp.actions.test')}
                                     </Button>
                                 ) : <div />}
                                 <Button onClick={handleSave} loading={saving}>
-                                    Save Email Settings
+                                    {t('settings.email.actions.save')}
                                 </Button>
                             </div>
                         </Card >
                     </div >
                 );
-            case 'members':
+
+            case 'integrations':
                 return (
                     <div className="space-y-6 animate-fade-in">
                         <div>
-                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">Team Members</h2>
-                            <p className="text-[var(--color-text-muted)] text-sm">Manage access and roles.</p>
-                        </div>
-                        <Card className="p-8 text-center text-[var(--color-text-muted)]">
-                            <p>Members management is located in the dedicated Team page.</p>
-                            <Link to="/team" className="text-[var(--color-primary)] font-bold mt-2 inline-block hover:underline">Go to Team Page</Link>
-                        </Card>
-                    </div>
-                );
-            case 'api':
-                return (
-                    <div className="space-y-6 animate-fade-in">
-                        <div>
-                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">API & Integrations</h2>
-                            <p className="text-[var(--color-text-muted)] text-sm">Generate API tokens for newsletter signups and external integrations.</p>
+                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">{t('settings.api.title')}</h2>
+                            <p className="text-[var(--color-text-muted)] text-sm">{t('settings.api.subtitle')}</p>
                         </div>
 
                         {/* Token Generation */}
                         <Card className="p-6 space-y-4">
                             <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[var(--color-primary)]">key</span>
-                                API Tokens
+                                {t('settings.api.tokens.title')}
                             </h3>
                             <p className="text-sm text-[var(--color-text-muted)]">
-                                Create tokens to authenticate newsletter signup forms and external API integrations.
+                                {t('settings.api.tokens.description')}
                             </p>
 
                             {/* Create Token */}
                             <div className="flex gap-3">
                                 <Input
-                                    placeholder="Token name (e.g., Website Newsletter)"
+                                    placeholder={t('settings.api.tokens.placeholder')}
                                     value={newTokenName}
                                     onChange={(e) => setNewTokenName(e.target.value)}
                                     className="flex-1"
                                 />
                                 <Button onClick={handleCreateToken} loading={creatingToken} className="whitespace-nowrap">
-                                    Generate Token
+                                    {t('settings.api.tokens.actions.generate')}
                                 </Button>
                             </div>
 
                             {/* Token List */}
                             <div className="border-t border-[var(--color-surface-border)] pt-4 mt-4">
                                 {loadingTokens ? (
-                                    <p className="text-sm text-[var(--color-text-muted)]">Loading tokens...</p>
+                                    <p className="text-sm text-[var(--color-text-muted)]">{t('settings.api.tokens.loading')}</p>
                                 ) : apiTokens.length === 0 ? (
-                                    <p className="text-sm text-[var(--color-text-muted)] italic">No API tokens created yet.</p>
+                                    <p className="text-sm text-[var(--color-text-muted)] italic">{t('settings.api.tokens.empty')}</p>
                                 ) : (
                                     <div className="space-y-3">
                                         {apiTokens.map(token => (
@@ -988,15 +994,15 @@ export const Settings = () => {
                 return (
                     <div className="space-y-6 animate-fade-in">
                         <div>
-                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">Account Settings</h2>
-                            <p className="text-[var(--color-text-muted)] text-sm">Manage your authentication and sign-in methods.</p>
+                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">{t('settings.account.title')}</h2>
+                            <p className="text-[var(--color-text-muted)] text-sm">{t('settings.account.subtitle')}</p>
                         </div>
 
                         <Card className="divide-y divide-[var(--color-surface-border)]">
                             <div className="p-6 space-y-4">
                                 <div>
-                                    <h3 className="font-semibold text-[var(--color-text-main)]">Sign-in Methods</h3>
-                                    <p className="text-xs text-[var(--color-text-muted)] mt-1">Configure how you access your account.</p>
+                                    <h3 className="font-semibold text-[var(--color-text-main)]">{t('settings.account.signIn.title')}</h3>
+                                    <p className="text-xs text-[var(--color-text-muted)] mt-1">{t('settings.account.signIn.subtitle')}</p>
                                 </div>
 
                                 <div className="space-y-3">
@@ -1008,11 +1014,11 @@ export const Settings = () => {
                                             </div>
                                             <div className="flex flex-col">
                                                 <div className="flex items-center gap-1.5">
-                                                    <p className="text-sm font-medium text-[var(--color-text-main)]">Email & Password</p>
+                                                    <p className="text-sm font-medium text-[var(--color-text-main)]">{t('settings.account.emailPassword.title')}</p>
                                                     {emailVerified ? (
-                                                        <span className="material-symbols-outlined text-[14px] text-emerald-500" title="Verified Account">verified</span>
+                                                        <span className="material-symbols-outlined text-[14px] text-emerald-500" title={t('settings.account.emailVerification.verifiedTitle')}>verified</span>
                                                     ) : (
-                                                        <span className="material-symbols-outlined text-[14px] text-amber-500" title="Email Unverified">warning</span>
+                                                        <span className="material-symbols-outlined text-[14px] text-amber-500" title={t('settings.account.emailVerification.unverifiedTitle')}>warning</span>
                                                     )}
                                                 </div>
                                                 <p className="text-[10px] text-[var(--color-text-muted)]">{auth.currentUser?.email}</p>
@@ -1027,21 +1033,21 @@ export const Settings = () => {
                                                     isLoading={sendingVerification}
                                                     className="text-amber-600 border-amber-200 hover:bg-amber-50"
                                                 >
-                                                    Resend Verification
+                                                    {t('settings.account.emailVerification.resend')}
                                                 </Button>
                                             )}
                                             {providers.includes('password') ? (
                                                 <>
                                                     <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-1 rounded-full flex items-center gap-1">
-                                                        <span className="material-symbols-outlined text-[12px]">check</span> Linked
+                                                        <span className="material-symbols-outlined text-[12px]">check</span> {t('settings.account.methods.linked')}
                                                     </span>
                                                     <Button size="sm" variant="ghost" onClick={() => { setShowSetPassword(!showSetPassword); setIsChangingPassword(true); }}>
-                                                        {showSetPassword ? 'Cancel' : 'Change'}
+                                                        {showSetPassword ? t('settings.account.password.actions.cancel') : t('settings.account.password.actions.change')}
                                                     </Button>
                                                 </>
                                             ) : (
                                                 <Button size="sm" variant="outline" onClick={() => { setShowSetPassword(!showSetPassword); setIsChangingPassword(false); }}>
-                                                    {showSetPassword ? 'Cancel' : 'Set Password'}
+                                                    {showSetPassword ? t('settings.account.password.actions.cancel') : t('settings.account.password.actions.set')}
                                                 </Button>
                                             )}
                                         </div>
@@ -1052,22 +1058,22 @@ export const Settings = () => {
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                                 <Input
                                                     type="password"
-                                                    label={isChangingPassword ? "New Password" : "Set Password"}
+                                                    label={isChangingPassword ? t('settings.account.password.fields.new') : t('settings.account.password.fields.set')}
                                                     value={newPassword}
                                                     onChange={(e) => setNewPassword(e.target.value)}
-                                                    placeholder="••••••••"
+                                                    placeholder={t('settings.account.password.fields.placeholder')}
                                                 />
                                                 <Input
                                                     type="password"
-                                                    label="Confirm Password"
+                                                    label={t('settings.account.password.fields.confirm')}
                                                     value={confirmPassword}
                                                     onChange={(e) => setConfirmPassword(e.target.value)}
-                                                    placeholder="••••••••"
+                                                    placeholder={t('settings.account.password.fields.placeholder')}
                                                 />
                                             </div>
                                             <div className="flex justify-end">
                                                 <Button size="sm" onClick={handleUpdatePassword} isLoading={settingPassword} disabled={!newPassword || newPassword !== confirmPassword}>
-                                                    {isChangingPassword ? 'Update Password' : 'Set Account Password'}
+                                                    {isChangingPassword ? t('settings.account.password.actions.update') : t('settings.account.password.actions.setAccount')}
                                                 </Button>
                                             </div>
                                         </div>
@@ -1080,17 +1086,17 @@ export const Settings = () => {
                                                 <img src="https://www.svgrepo.com/show/512317/github-142.svg" className="w-6 h-6 dark:invert" alt="GitHub" />
                                             </div>
                                             <div>
-                                                <p className="text-sm font-medium text-[var(--color-text-main)]">GitHub</p>
-                                                <p className="text-[10px] text-[var(--color-text-muted)]">OAuth Integration</p>
+                                                <p className="text-sm font-medium text-[var(--color-text-main)]">{t('settings.account.github.title')}</p>
+                                                <p className="text-[10px] text-[var(--color-text-muted)]">{t('settings.account.oauth')}</p>
                                             </div>
                                         </div>
                                         {providers.includes('github.com') ? (
                                             <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-1 rounded-full flex items-center gap-1">
-                                                <span className="material-symbols-outlined text-[12px]">check</span> Linked
+                                                <span className="material-symbols-outlined text-[12px]">check</span> {t('settings.account.methods.linked')}
                                             </span>
                                         ) : (
                                             <Button size="sm" variant="outline" onClick={handleConnectGithub} isLoading={connectingGithub}>
-                                                Connect GitHub
+                                                {t('settings.account.github.connect')}
                                             </Button>
                                         )}
                                     </div>
@@ -1102,17 +1108,17 @@ export const Settings = () => {
                                                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-6 h-6" alt="Google" />
                                             </div>
                                             <div>
-                                                <p className="text-sm font-medium text-[var(--color-text-main)]">Google</p>
-                                                <p className="text-[10px] text-[var(--color-text-muted)]">OAuth Integration</p>
+                                                <p className="text-sm font-medium text-[var(--color-text-main)]">{t('settings.account.google.title')}</p>
+                                                <p className="text-[10px] text-[var(--color-text-muted)]">{t('settings.account.oauth')}</p>
                                             </div>
                                         </div>
                                         {providers.includes('google.com') ? (
                                             <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-1 rounded-full flex items-center gap-1">
-                                                <span className="material-symbols-outlined text-[12px]">check</span> Linked
+                                                <span className="material-symbols-outlined text-[12px]">check</span> {t('settings.account.methods.linked')}
                                             </span>
                                         ) : (
                                             <Button size="sm" variant="outline" onClick={handleConnectGoogle} isLoading={connectingGoogle}>
-                                                Connect Google
+                                                {t('settings.account.google.connect')}
                                             </Button>
                                         )}
                                     </div>
@@ -1122,8 +1128,7 @@ export const Settings = () => {
                                     <div className="flex gap-3">
                                         <span className="material-symbols-outlined text-blue-500 text-[20px]">info</span>
                                         <p className="text-xs text-blue-700 dark:text-blue-300">
-                                            Linking social accounts (GitHub/Google) will <strong>not</strong> remove your existing password.
-                                            You will still be able to sign in using your email and password as long as they are linked.
+                                            {t('settings.account.linkedAccounts.notePrefix')} <strong>{t('settings.account.linkedAccounts.noteEmphasis')}</strong> {t('settings.account.linkedAccounts.noteSuffix')}
                                         </p>
                                     </div>
                                 </div>
@@ -1152,15 +1157,24 @@ export const Settings = () => {
             <div className="flex flex-col md:flex-row gap-8 items-start">
                 {/* Sidebar */}
                 <aside className="w-full md:w-64 shrink-0 space-y-1">
-                    <h1 className="text-2xl font-display font-bold text-[var(--color-text-main)] px-2 mb-6">Settings</h1>
-                    <NavItem id="general" label="General" icon="settings" />
-                    <NavItem id="preferences" label="Preferences" icon="tune" />
-                    <NavItem id="members" label="Members" icon="group" />
-                    <NavItem id="billing" label="Billing" icon="credit_card" />
-                    <NavItem id="email" label="Email" icon="mail" />
-                    <NavItem id="api" label="API" icon="key" />
-                    <NavItem id="security" label="Security" icon="security" />
-                    <NavItem id="account" label="Account" icon="account_circle" />
+                    <h1 className="text-2xl font-display font-bold text-[var(--color-text-main)] px-2 mb-6">{t('settings.title')}</h1>
+
+                    {/* Personal Settings */}
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-subtle)] px-3 pt-2 pb-2">
+                        {t('settings.sections.personal')}
+                    </div>
+                    <NavItem id="account" label={t('settings.tabs.account')} icon="account_circle" />
+                    <NavItem id="preferences" label={t('settings.tabs.preferences')} icon="tune" />
+                    <NavItem id="security" label={t('settings.tabs.security')} icon="security" />
+
+                    {/* Workspace Settings */}
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-subtle)] px-3 pt-6 pb-2">
+                        {t('settings.sections.workspace')}
+                    </div>
+                    <NavItem id="general" label={t('settings.tabs.general')} icon="settings" />
+                    <NavItem id="billing" label={t('settings.tabs.billing')} icon="credit_card" />
+                    <NavItem id="email" label={t('settings.tabs.email')} icon="mail" />
+                    <NavItem id="integrations" label={t('settings.tabs.integrations')} icon="key" />
                 </aside>
 
                 {/* Content */}
@@ -1172,9 +1186,9 @@ export const Settings = () => {
                                     <span className="material-symbols-outlined">mark_email_unread</span>
                                 </div>
                                 <div>
-                                    <h4 className="text-sm font-bold text-[var(--color-text-main)]">Email not verified</h4>
+                                    <h4 className="text-sm font-bold text-[var(--color-text-main)]">{t('settings.account.emailVerification.bannerTitle')}</h4>
                                     <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                                        Please verify your email address to access all security features.
+                                        {t('settings.account.emailVerification.bannerSubtitle')}
                                     </p>
                                 </div>
                             </div>
@@ -1185,7 +1199,7 @@ export const Settings = () => {
                                     onClick={handleSendVerification}
                                     isLoading={sendingVerification}
                                 >
-                                    Resend Verification
+                                    {t('settings.account.emailVerification.resend')}
                                 </Button>
                                 <Button
                                     size="sm"
@@ -1193,7 +1207,7 @@ export const Settings = () => {
                                     onClick={handleCheckVerification}
                                     isLoading={loading}
                                 >
-                                    I've Verified
+                                    {t('settings.account.emailVerification.actions.verified')}
                                 </Button>
                             </div>
                         </div>
@@ -1217,11 +1231,11 @@ export const Settings = () => {
                     <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl max-w-xl w-full p-6 relative border border-[var(--color-surface-border)]">
                         <div className="flex items-center gap-3 text-emerald-500 mb-4">
                             <span className="material-symbols-outlined text-3xl">check_circle</span>
-                            <h3 className="text-xl font-bold text-[var(--color-text-main)]">Token Created!</h3>
+                            <h3 className="text-xl font-bold text-[var(--color-text-main)]">{t('settings.api.tokens.modal.title')}</h3>
                         </div>
                         <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 p-4 rounded-lg mb-6">
                             <p className="text-sm text-amber-700 dark:text-amber-300 font-medium mb-2">
-                                ⚠️ Copy this token now. You won't be able to see it again!
+                                {t('settings.api.tokens.modal.warning')}
                             </p>
                             <div className="flex items-center gap-2">
                                 <code className="flex-1 bg-white dark:bg-zinc-800 px-3 py-2 rounded text-sm font-mono break-all border border-[var(--color-surface-border)]">
@@ -1246,7 +1260,7 @@ export const Settings = () => {
                                     setGeneratedToken(null);
                                 }}
                             >
-                                Done
+                                {t('settings.api.tokens.modal.done')}
                             </Button>
                         </div>
                     </div>

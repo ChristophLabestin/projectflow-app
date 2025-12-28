@@ -1,6 +1,9 @@
 import React from 'react';
+import { useLanguage } from '../../context/LanguageContext';
 
 export const AIStudioHero = () => {
+    const { t } = useLanguage();
+
     return (
         <div className="relative overflow-hidden rounded-3xl bg-ink p-8 md:p-12 mb-10 border border-white/5">
             {/* Background decorative elements */}
@@ -10,15 +13,16 @@ export const AIStudioHero = () => {
             <div className="relative z-10 max-w-2xl">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/80 text-xs font-bold uppercase tracking-wider mb-6">
                     <span className="material-symbols-outlined text-[14px] text-indigo-400">auto_awesome</span>
-                    ProjectFlow AI Studio
+                    {t('aiStudio.hero.badge')}
                 </div>
 
                 <h1 className="text-4xl md:text-5xl lg:text-6xl font-display font-bold text-white mb-6 leading-tight">
-                    From Spark to <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-white to-indigo-400 animate-gradient-xy">Blueprint</span>.
+                    {t('aiStudio.hero.titlePrefix')}{' '}
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-white to-indigo-400 animate-gradient-xy">{t('aiStudio.hero.titleHighlight')}</span>.
                 </h1>
 
                 <p className="text-white/60 text-lg md:text-xl leading-relaxed mb-0">
-                    Harness the power of Gemini 2.0 to architect projects, map out risks, and brainstorm breakthrough ideas in seconds.
+                    {t('aiStudio.hero.subtitle')}
                 </p>
             </div>
 

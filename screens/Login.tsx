@@ -95,7 +95,7 @@ export const Login = () => {
 
         try {
             const hint = mfaResolver.hints[0];
-            const assertion = TotpMultiFactorGenerator.assertion(hint.uid, mfaCode);
+            const assertion = TotpMultiFactorGenerator.assertionForSignIn(hint.uid, mfaCode);
             await mfaResolver.resolveSignIn(assertion);
             await bootstrapTenantForCurrentUser();
             await handleAuthSuccess();

@@ -1,5 +1,6 @@
 import React from 'react';
 import { ProjectBlueprint } from '../../types';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface BlueprintResultProps {
     blueprint: ProjectBlueprint;
@@ -10,11 +11,13 @@ interface BlueprintResultProps {
 export const BlueprintResult: React.FC<BlueprintResultProps> = ({
     blueprint, onConvert, isConverting
 }) => {
+    const { t } = useLanguage();
+
     return (
         <div className="space-y-8 animate-fade-in">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div className="space-y-2">
-                    <span className="text-xs font-bold text-indigo-500 uppercase tracking-widest">Project Concept</span>
+                    <span className="text-xs font-bold text-indigo-500 uppercase tracking-widest">{t('aiStudio.blueprint.conceptLabel')}</span>
                     <h2 className="text-3xl font-display font-bold text-ink dark:text-white">{blueprint.title}</h2>
                 </div>
                 <button
@@ -25,7 +28,7 @@ export const BlueprintResult: React.FC<BlueprintResultProps> = ({
                     <span className={`material-symbols-outlined transition-transform ${isConverting ? 'animate-spin' : 'group-hover:translate-x-1'}`}>
                         {isConverting ? 'autorenew' : 'rocket_launch'}
                     </span>
-                    <span>{isConverting ? 'Launching...' : 'Convert to Live Project'}</span>
+                    <span>{isConverting ? t('aiStudio.blueprint.launching') : t('aiStudio.blueprint.convert')}</span>
                 </button>
             </div>
 
@@ -35,12 +38,12 @@ export const BlueprintResult: React.FC<BlueprintResultProps> = ({
                     <div className="app-panel p-6 space-y-4">
                         <h3 className="text-lg font-bold flex items-center gap-2">
                             <span className="material-symbols-outlined text-indigo-500">description</span>
-                            Strategic Vision
+                            {t('aiStudio.blueprint.vision')}
                         </h3>
                         <p className="text-muted leading-relaxed">{blueprint.description}</p>
 
                         <div className="pt-4 border-t border-line dark:border-white/5">
-                            <h4 className="text-sm font-bold text-ink/60 dark:text-white/60 mb-2 uppercase tracking-tight">Target Audience</h4>
+                            <h4 className="text-sm font-bold text-ink/60 dark:text-white/60 mb-2 uppercase tracking-tight">{t('aiStudio.blueprint.audience')}</h4>
                             <p className="text-sm text-muted">{blueprint.targetAudience}</p>
                         </div>
                     </div>
@@ -48,7 +51,7 @@ export const BlueprintResult: React.FC<BlueprintResultProps> = ({
                     <div className="space-y-4">
                         <h3 className="text-lg font-bold flex items-center gap-2">
                             <span className="material-symbols-outlined text-indigo-500">flag</span>
-                            Milestones
+                            {t('aiStudio.blueprint.milestones')}
                         </h3>
                         <div className="space-y-4">
                             {blueprint.milestones.map((ms, idx) => (
@@ -66,7 +69,7 @@ export const BlueprintResult: React.FC<BlueprintResultProps> = ({
                 <div className="space-y-8">
                     <div className="app-panel p-6 space-y-4 bg-zinc-50 dark:bg-white/5 border-dashed">
                         <h4 className="text-sm font-bold flex items-center gap-2 uppercase tracking-widest text-ink/40 dark:text-white/40">
-                            Build Backlog
+                            {t('aiStudio.blueprint.backlog')}
                         </h4>
                         <div className="space-y-3">
                             {blueprint.initialTasks.map((task, idx) => (
@@ -82,7 +85,7 @@ export const BlueprintResult: React.FC<BlueprintResultProps> = ({
 
                     {blueprint.suggestedTechStack && (
                         <div className="app-panel p-6 space-y-4">
-                            <h4 className="text-sm font-bold uppercase tracking-widest text-ink/40 dark:text-white/40">Suggested Stack</h4>
+                            <h4 className="text-sm font-bold uppercase tracking-widest text-ink/40 dark:text-white/40">{t('aiStudio.blueprint.stack')}</h4>
                             <div className="flex flex-wrap gap-2">
                                 {blueprint.suggestedTechStack.map((tech, idx) => (
                                     <span key={idx} className="px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-xs font-bold border border-indigo-100 dark:border-indigo-900/30">

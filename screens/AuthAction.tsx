@@ -21,6 +21,10 @@ export const AuthAction = () => {
 
     const [status, setStatus] = useState<Status>('loading');
     const [message, setMessage] = useState('Processing your request...');
+
+    useEffect(() => {
+        console.log('AuthAction Component Mounted', { mode, oobCode, pathname: window.location.pathname });
+    }, [mode, oobCode]);
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [processing, setProcessing] = useState(false);
@@ -33,48 +37,63 @@ export const AuthAction = () => {
         }
 
         const handleAction = async () => {
+            console.log('Starting auth action:', { mode, oobCode });
             try {
-                // First check what this code is for
-                const info = await checkActionCode(auth, oobCode);
-                const operation = info.operation;
-                const email = info.data.email;
+                let email = '';
+                let finalMode = mode;
 
-                // If the URL mode is different from what Firebase says, respect Firebase but prefer URLs for UI
-                const finalMode = mode === 'action' ? (
-                    operation === 'VERIFY_EMAIL' ? 'verifyEmail' :
-                        operation === 'PASSWORD_RESET' ? 'resetPassword' :
-                            operation === 'RECOVER_EMAIL' ? 'recoverEmail' : mode
-                ) : mode;
+                try {
+                    // First check what this code is for
+                    const info = await checkActionCode(auth, oobCode!);
+                    const operation = info.operation;
+                    email = info.data.email || '';
+                    console.log('Action code info:', info);
+
+                    // If the URL mode is generic, use the operation from Firebase
+                    if (mode === 'action' || !mode) {
+                        finalMode = operation === 'VERIFY_EMAIL' ? 'verifyEmail' :
+                            operation === 'PASSWORD_RESET' ? 'resetPassword' :
+                                operation === 'RECOVER_EMAIL' ? 'recoverEmail' : mode;
+                    }
+                } catch (checkError: any) {
+                    console.error('checkActionCode failed:', checkError);
+                    // If checkActionCode fails, we might still want to try applyActionCode if mode is verifyEmail
+                    if (mode !== 'verifyEmail') throw checkError;
+                }
 
                 switch (finalMode) {
                     case 'verifyEmail':
-                        await applyActionCode(auth, oobCode);
+                        console.log('Applying verifyEmail...');
+                        await applyActionCode(auth, oobCode!);
                         setStatus('success');
-                        setMessage(`The email address ${email} has been verified successfully. You can now access all features of ProjectFlow.`);
+                        setMessage(email ? `The email address ${email} has been verified successfully.` : 'Your email address has been verified successfully.');
                         showSuccess('Email verified successfully!');
                         break;
                     case 'resetPassword':
                         setStatus('reset-password');
-                        setMessage(`Updating password for ${email}`);
+                        setMessage(email ? `Updating password for ${email}` : 'Update your password below.');
                         break;
                     case 'recoverEmail':
-                        await applyActionCode(auth, oobCode);
+                        console.log('Applying recoverEmail...');
+                        await applyActionCode(auth, oobCode!);
                         setStatus('success');
-                        setMessage(`The email address ${email} has been recovered successfully.`);
+                        setMessage(email ? `The email address ${email} has been recovered successfully.` : 'Your email address has been recovered successfully.');
                         break;
                     default:
                         setStatus('error');
                         setMessage('This action is not supported or the link has expired.');
                 }
             } catch (error: any) {
-                console.error('Auth Action Error:', error);
+                console.error('Final Auth Action Error:', error);
+                setStatus('error');
 
-                // Special handling for already verified or custom errors
-                if (error.code === 'auth/invalid-action-code' || error.code === 'auth/action-code-expired') {
-                    setStatus('error');
-                    setMessage('This link has already been used or has expired. Please request a new one from your settings.');
+                if (error.code === 'auth/invalid-action-code') {
+                    setMessage('This link has already been used or is invalid. Please check if your email is already verified in your settings.');
+                } else if (error.code === 'auth/action-code-expired') {
+                    setMessage('This link has expired. Please request a new verification email from your settings.');
+                } else if (error.code === 'auth/user-not-found') {
+                    setMessage('The user associated with this link could not be found.');
                 } else {
-                    setStatus('error');
                     setMessage(error.message || 'An error occurred while processing your request.');
                 }
             }

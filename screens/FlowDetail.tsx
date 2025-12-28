@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
@@ -34,6 +34,7 @@ import { SocialCampaignApprovedView } from '../components/flows/stages/SocialCam
 import { Idea, SocialCampaign } from '../types';
 import { useConfirm } from '../context/UIContext';
 import { PIPELINE_CONFIGS } from '../components/flows/constants';
+import { useLanguage } from '../context/LanguageContext';
 
 
 
@@ -41,6 +42,7 @@ export const FlowDetail = () => {
     const { id: projectId, flowId } = useParams<{ id: string; flowId: string }>();
     const navigate = useNavigate();
     const confirm = useConfirm();
+    const { t } = useLanguage();
 
     const [idea, setIdea] = useState<Idea | null>(null);
     const [loading, setLoading] = useState(true);
@@ -190,6 +192,54 @@ export const FlowDetail = () => {
         // Blocker will intercept this if changes exist
         navigate(`/project/${projectId}/flows`);
     };
+
+    const stageLabels = useMemo(() => ({
+        Brainstorm: t('flows.stage.brainstorm'),
+        Refining: t('flows.stage.refining'),
+        Concept: t('flows.stage.concept'),
+        Review: t('flows.stage.inReview'),
+        Approved: t('flows.stage.approved'),
+        Discovery: t('flows.stage.discovery'),
+        Definition: t('flows.stage.definition'),
+        Development: t('flows.stage.development'),
+        Launch: t('flows.stage.launch'),
+        Strategy: t('flows.stage.strategy'),
+        Planning: t('flows.stage.planning'),
+        Execution: t('flows.stage.execution'),
+        Analysis: t('flows.stage.analysis'),
+        CreativeLab: t('flows.stage.creativeLab'),
+        Studio: t('flows.stage.studio'),
+        Distribution: t('flows.stage.distribution'),
+        Submit: t('flows.stage.submit'),
+        Rejected: t('flows.stage.rejected'),
+        Feasibility: t('flows.stage.feasibility'),
+        Prototype: t('flows.stage.prototype'),
+        Greenlight: t('flows.stage.greenlight'),
+        Proposal: t('flows.stage.proposal'),
+        Benchmark: t('flows.stage.benchmark'),
+        Implementation: t('flows.stage.implementation'),
+        Implemented: t('flows.stage.implemented'),
+        Archived: t('flows.stage.archived'),
+    }), [t]);
+
+    const socialCampaignStageLabels = useMemo(() => ({
+        Concept: t('flows.stage.concept'),
+        Strategy: t('flows.stage.strategy'),
+        Planning: t('flows.stage.planning'),
+        Submit: t('flows.stage.submit'),
+        Approved: t('flows.stage.liveIntegrated'),
+        Rejected: t('flows.stage.rejected'),
+    }), [t]);
+
+    const flowTypeLabels = useMemo(() => ({
+        Feature: t('flows.type.feature'),
+        Product: t('flows.type.product'),
+        Marketing: t('flows.type.marketing'),
+        Social: t('flows.type.social'),
+        Moonshot: t('flows.type.moonshot'),
+        Optimization: t('flows.type.optimization'),
+        SocialCampaign: t('flows.type.socialCampaign'),
+    }), [t]);
 
 
 
@@ -410,10 +460,10 @@ export const FlowDetail = () => {
 
                     <div className="h-6 w-px bg-[var(--color-surface-border)] shrink-0" />
 
-                    <div className="flex items-center gap-2 max-w-[200px] shrink-0">
-                        <h1 className="text-sm font-bold text-[var(--color-text-main)] truncate" title={idea.title}>{idea.title}</h1>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] font-medium shrink-0">{idea.type}</span>
-                    </div>
+                <div className="flex items-center gap-2 max-w-[200px] shrink-0">
+                    <h1 className="text-sm font-bold text-[var(--color-text-main)] truncate" title={idea.title}>{idea.title}</h1>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] font-medium shrink-0">{flowTypeLabels[idea.type] || idea.type}</span>
+                </div>
 
                     <div className="h-6 w-px bg-[var(--color-surface-border)] shrink-0" />
 
@@ -428,7 +478,9 @@ export const FlowDetail = () => {
                                     }`}
                             >
                                 <span className={`material-symbols-outlined text-[16px] ${activeTab === step.id ? 'filled' : ''}`}>{step.icon}</span>
-                                {step.title}
+                                {(idea.type === 'Social' && idea.socialType === 'campaign')
+                                    ? (socialCampaignStageLabels[step.id] || step.title)
+                                    : (stageLabels[step.id] || step.title)}
                             </button>
                         ))}
                     </div>
@@ -445,29 +497,33 @@ export const FlowDetail = () => {
                         className="w-28 h-8 text-xs bg-transparent hover:bg-[var(--color-surface-hover)] border-none font-semibold focus:ring-0 cursor-pointer text-right"
                     >
                         {pipelineStages.map(stage => (
-                            <option key={stage.id} value={stage.id}>{stage.title}</option>
+                            <option key={stage.id} value={stage.id}>
+                                {(idea.type === 'Social' && idea.socialType === 'campaign')
+                                    ? (socialCampaignStageLabels[stage.id] || stage.title)
+                                    : (stageLabels[stage.id] || stage.title)}
+                            </option>
                         ))}
-                        <option value="Implemented">Implemented</option>
-                        <option value="Archived">Archived</option>
+                        <option value="Implemented">{stageLabels.Implemented}</option>
+                        <option value="Archived">{stageLabels.Archived}</option>
                     </Select>
 
                     <div className="flex items-center gap-2 px-3">
                         {saveStatus === 'saving' && (
                             <span className="text-[10px] text-[var(--color-text-muted)] animate-pulse flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[12px] animate-spin">sync</span>
-                                Saving...
+                                {t('flows.save.saving')}
                             </span>
                         )}
                         {saveStatus === 'saved' && (
                             <span className="text-[10px] text-emerald-500 font-bold flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[14px]">cloud_done</span>
-                                Saved
+                                {t('flows.save.saved')}
                             </span>
                         )}
                         {saveStatus === 'error' && (
                             <span className="text-[10px] text-rose-500 font-bold flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[14px]">error</span>
-                                Error
+                                {t('flows.save.error')}
                             </span>
                         )}
                     </div>

@@ -591,6 +591,51 @@ export const ProjectOverview = () => {
         enabled: !loading && !unauthorized && !!project
     });
 
+    const priorityMap: Record<string, number> = { Urgent: 4, High: 3, Medium: 2, Low: 1 };
+    const projectStatusLabels = useMemo(() => ({
+        Active: t('dashboard.projectStatus.active'),
+        Planning: t('dashboard.projectStatus.planning'),
+        'On Hold': t('dashboard.projectStatus.onHold'),
+        Completed: t('dashboard.projectStatus.completed'),
+        Brainstorming: t('dashboard.projectStatus.brainstorming'),
+        Review: t('projectOverview.status.review')
+    }), [t]);
+    const priorityLabels = useMemo(() => ({
+        Urgent: t('tasks.priority.urgent'),
+        High: t('tasks.priority.high'),
+        Medium: t('tasks.priority.medium'),
+        Low: t('tasks.priority.low')
+    }), [t]);
+    const issueStatusLabels = useMemo(() => ({
+        Open: t('projectIssues.status.open'),
+        'In Progress': t('projectIssues.status.inProgress'),
+        Resolved: t('projectIssues.status.resolved'),
+        Closed: t('projectIssues.status.closed')
+    }), [t]);
+    const taskStatusLabels = useMemo(() => ({
+        Done: t('tasks.status.done'),
+        'In Progress': t('tasks.status.inProgress'),
+        Review: t('tasks.status.review'),
+        Open: t('tasks.status.open'),
+        Todo: t('tasks.status.todo'),
+        Backlog: t('tasks.status.backlog'),
+        'On Hold': t('tasks.status.onHold'),
+        Blocked: t('tasks.status.blocked')
+    }), [t]);
+    const healthStatusLabels = useMemo(() => ({
+        excellent: t('status.excellent'),
+        healthy: t('status.healthy'),
+        warning: t('status.warning'),
+        critical: t('status.critical'),
+        normal: t('status.normal')
+    }), [t]);
+    const roleLabels = useMemo(() => ({
+        Owner: t('projectOverview.team.roles.owner'),
+        Editor: t('projectOverview.team.roles.editor'),
+        Viewer: t('projectOverview.team.roles.viewer'),
+        Member: t('projectOverview.team.roles.member')
+    }), [t]);
+
     if (loading) return (
         <div className="flex items-center justify-center p-12">
             <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-3xl">progress_activity</span>
@@ -638,50 +683,6 @@ export const ProjectOverview = () => {
     const urgentCount = tasks.filter(t => t.priority === 'Urgent').length;
     const upcomingDeadlines = tasks.filter(t => t.dueDate && new Date(t.dueDate) > new Date() && !t.isCompleted).sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime()).slice(0, 3);
 
-    const priorityMap: Record<string, number> = { Urgent: 4, High: 3, Medium: 2, Low: 1 };
-    const projectStatusLabels = useMemo(() => ({
-        Active: t('dashboard.projectStatus.active'),
-        Planning: t('dashboard.projectStatus.planning'),
-        'On Hold': t('dashboard.projectStatus.onHold'),
-        Completed: t('dashboard.projectStatus.completed'),
-        Brainstorming: t('dashboard.projectStatus.brainstorming'),
-        Review: t('projectOverview.status.review')
-    }), [t]);
-    const priorityLabels = useMemo(() => ({
-        Urgent: t('tasks.priority.urgent'),
-        High: t('tasks.priority.high'),
-        Medium: t('tasks.priority.medium'),
-        Low: t('tasks.priority.low')
-    }), [t]);
-    const issueStatusLabels = useMemo(() => ({
-        Open: t('projectIssues.status.open'),
-        'In Progress': t('projectIssues.status.inProgress'),
-        Resolved: t('projectIssues.status.resolved'),
-        Closed: t('projectIssues.status.closed')
-    }), [t]);
-    const taskStatusLabels = useMemo(() => ({
-        Done: t('tasks.status.done'),
-        'In Progress': t('tasks.status.inProgress'),
-        Review: t('tasks.status.review'),
-        Open: t('tasks.status.open'),
-        Todo: t('tasks.status.todo'),
-        Backlog: t('tasks.status.backlog'),
-        'On Hold': t('tasks.status.onHold'),
-        Blocked: t('tasks.status.blocked')
-    }), [t]);
-    const healthStatusLabels = useMemo(() => ({
-        excellent: t('status.excellent'),
-        healthy: t('status.healthy'),
-        warning: t('status.warning'),
-        critical: t('status.critical'),
-        normal: t('status.normal')
-    }), [t]);
-    const roleLabels = useMemo(() => ({
-        Owner: t('projectOverview.team.roles.owner'),
-        Editor: t('projectOverview.team.roles.editor'),
-        Viewer: t('projectOverview.team.roles.viewer'),
-        Member: t('projectOverview.team.roles.member')
-    }), [t]);
 
     const recentTasks = tasks
         .filter(t => !t.isCompleted && t.status !== 'Done' && !t.convertedIdeaId)
@@ -856,15 +857,6 @@ export const ProjectOverview = () => {
                                         {t('projectOverview.actions.newTask')}
                                     </Button>
                                 )}
-                                <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    onClick={() => setShowReportModal(true)}
-                                    title={t('projectOverview.actions.openIntelligence')}
-                                    className="text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300"
-                                >
-                                    <span className="material-symbols-outlined">auto_awesome</span>
-                                </Button>
                                 {can('canInvite') && (
                                     <Button variant="secondary" onClick={handleInvite} icon={<span className="material-symbols-outlined">person_add</span>}>
                                         {t('projectOverview.actions.invite')}
@@ -1362,6 +1354,13 @@ export const ProjectOverview = () => {
 
                                                                         return null;
                                                                     })()}
+                                                                    {/* Smart Scheduled Date - always show if present */}
+                                                                    {task.scheduledDate && (
+                                                                        <span className="flex items-center gap-1 text-[10px] text-indigo-500 font-medium">
+                                                                            <span className="material-symbols-outlined text-[12px]">event_available</span>
+                                                                            {format(new Date(task.scheduledDate), dateFormat, { locale: dateLocale })}
+                                                                        </span>
+                                                                    )}
                                                                     {task.assignedGroupIds && task.assignedGroupIds.length > 0 && (
                                                                         <div className="flex -space-x-1.5 overflow-hidden ml-1">
                                                                             {task.assignedGroupIds.map(gid => {
@@ -1591,16 +1590,16 @@ export const ProjectOverview = () => {
                                                                                 // Due date only
                                                                                 if (hasDue && dueDate) {
                                                                                     return (
-                                                                                            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border ${isOverdue ? 'border-rose-500/30 bg-rose-500/10 text-rose-500' : 'border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] text-[var(--color-text-main)]'}`}>
-                                                                                                <span className="material-symbols-outlined text-[14px]">event</span>
-                                                                                                <div className="flex flex-col">
-                                                                                                    <span className="text-[8px] font-black uppercase tracking-[0.15em] opacity-70">
-                                                                                                        {isOverdue ? t('projectOverview.execution.overdue') : t('projectOverview.execution.due')}
-                                                                                                    </span>
-                                                                                                    <span className="text-[10px] font-semibold">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
-                                                                                                </div>
+                                                                                        <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border ${isOverdue ? 'border-rose-500/30 bg-rose-500/10 text-rose-500' : 'border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] text-[var(--color-text-main)]'}`}>
+                                                                                            <span className="material-symbols-outlined text-[14px]">event</span>
+                                                                                            <div className="flex flex-col">
+                                                                                                <span className="text-[8px] font-black uppercase tracking-[0.15em] opacity-70">
+                                                                                                    {isOverdue ? t('projectOverview.execution.overdue') : t('projectOverview.execution.due')}
+                                                                                                </span>
+                                                                                                <span className="text-[10px] font-semibold">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
                                                                                             </div>
-                                                                                        );
+                                                                                        </div>
+                                                                                    );
                                                                                 }
 
                                                                                 return null;
@@ -2010,34 +2009,6 @@ export const ProjectOverview = () => {
                             </div>
 
                             <div className="xl:col-span-1 space-y-6">
-                                {showInsight && (
-                                    <div data-onboarding-id="project-overview-insight" className="relative overflow-hidden rounded-2xl p-5 bg-gradient-to-br from-indigo-600 to-violet-600 shadow-md text-white">
-                                        <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-                                            <span className="material-symbols-outlined text-8xl">auto_awesome</span>
-                                        </div>
-                                        <div className="relative z-10 space-y-3">
-                                            <div className="flex items-center gap-3">
-                                                <div className="bg-white/20 backdrop-blur-sm p-2 rounded-lg">
-                                                    <span className="material-symbols-outlined text-xl text-white">auto_awesome</span>
-                                                </div>
-                                                <h3 className="font-bold">{t('projectOverview.insight.title')}</h3>
-                                            </div>
-                                            <p className="text-indigo-100 leading-relaxed text-sm selection:bg-white/30">
-                                                {t('projectOverview.insight.description')}
-                                            </p>
-                                            <div className="flex gap-2 pt-1">
-                                                <Button
-                                                    size="sm"
-                                                    className="bg-white text-indigo-600 hover:bg-indigo-50 border-none shadow-sm w-full justify-center"
-                                                    onClick={() => setShowReportModal(true)}
-                                                    icon={<span className="material-symbols-outlined">analytics</span>}
-                                                >
-                                                    {t('projectOverview.insight.open')}
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
                                 <Card data-onboarding-id="project-overview-planning" className="flex flex-col">
                                     <div className="flex items-center gap-3">
                                         <div className="size-9 rounded-full bg-[var(--color-surface-hover)] text-[var(--color-text-subtle)] flex items-center justify-center shrink-0">
@@ -2190,6 +2161,29 @@ export const ProjectOverview = () => {
                                         <span className="material-symbols-outlined text-[120px]">flag</span>
                                     </div>
                                 </Card>
+
+                                {/* AI Intelligence Card - Compact */}
+                                <div
+                                    className="relative overflow-hidden rounded-xl p-4 bg-gradient-to-br from-indigo-500 to-violet-600 text-white cursor-pointer hover:shadow-lg transition-shadow"
+                                    onClick={() => setShowReportModal(true)}
+                                >
+                                    <div className="absolute -top-2 -right-2 opacity-10 pointer-events-none">
+                                        <span className="material-symbols-outlined text-[60px]">auto_awesome</span>
+                                    </div>
+                                    <div className="relative z-10 flex items-center gap-3">
+                                        <div className="size-10 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
+                                            <span className="material-symbols-outlined text-xl">psychology</span>
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="text-sm font-bold">AI Intelligence</h3>
+                                            <p className="text-[10px] text-indigo-100 truncate">
+                                                {pinnedReport ? `Updated ${timeAgo(pinnedReport.createdAt)}` : 'Generate project analysis'}
+                                            </p>
+                                        </div>
+                                        <span className="material-symbols-outlined text-white/70">arrow_forward</span>
+                                    </div>
+                                </div>
+
                                 <Card className="flex flex-col">
                                     <div className="flex items-center justify-between mb-4">
                                         <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2">

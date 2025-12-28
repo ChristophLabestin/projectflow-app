@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { saveIdea } from '../../services/dataService';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface CreateFlowModalProps {
     isOpen: boolean;
@@ -13,18 +14,19 @@ interface CreateFlowModalProps {
 import { PIPELINE_CONFIGS } from './constants';
 
 const FLOW_TYPES = [
-    { id: 'Feature', label: 'Feature', icon: 'stars', bg: 'from-slate-900 via-indigo-950 to-slate-900' },
-    { id: 'Product', label: 'Product', icon: 'inventory_2', bg: 'from-slate-900 via-rose-950 to-slate-900' },
-    { id: 'Moonshot', label: 'Moonshot', icon: 'rocket_launch', bg: 'from-slate-900 via-purple-950 to-slate-900' },
-    { id: 'Optimization', label: 'Optimization', icon: 'speed', bg: 'from-slate-900 via-emerald-950 to-slate-900' },
-    { id: 'Marketing', label: 'Marketing', icon: 'campaign', bg: 'from-slate-900 via-orange-950 to-slate-900' },
-    { id: 'Social', label: 'Social Media', icon: 'share', bg: 'from-slate-900 via-pink-950 to-slate-900' },
+    { id: 'Feature', labelKey: 'flows.type.feature', icon: 'stars', bg: 'from-slate-900 via-indigo-950 to-slate-900' },
+    { id: 'Product', labelKey: 'flows.type.product', icon: 'inventory_2', bg: 'from-slate-900 via-rose-950 to-slate-900' },
+    { id: 'Moonshot', labelKey: 'flows.type.moonshot', icon: 'rocket_launch', bg: 'from-slate-900 via-purple-950 to-slate-900' },
+    { id: 'Optimization', labelKey: 'flows.type.optimization', icon: 'speed', bg: 'from-slate-900 via-emerald-950 to-slate-900' },
+    { id: 'Marketing', labelKey: 'flows.type.marketing', icon: 'campaign', bg: 'from-slate-900 via-orange-950 to-slate-900' },
+    { id: 'Social', labelKey: 'flows.type.social', icon: 'share', bg: 'from-slate-900 via-pink-950 to-slate-900' },
 ];
 
 export const CreateFlowModal: React.FC<CreateFlowModalProps> = ({ isOpen, onClose, projectId, onCreated }) => {
     const [title, setTitle] = useState('');
     const [type, setType] = useState('Feature');
     const [loading, setLoading] = useState(false);
+    const { t } = useLanguage();
 
     const selectedType = FLOW_TYPES.find(t => t.id === type) || FLOW_TYPES[0];
 
@@ -157,31 +159,31 @@ export const CreateFlowModal: React.FC<CreateFlowModalProps> = ({ isOpen, onClos
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder="What's your next flow?"
+                            placeholder={t('flows.create.placeholder')}
                             autoFocus
                             className="w-full text-3xl font-bold bg-transparent border-none outline-none text-white placeholder:text-white/40 text-center"
                         />
                         <p className="text-sm text-white/50 text-center">
-                            Press <kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-xs">Enter</kbd> to create
+                            {t('flows.create.helper').replace('{key}', 'Enter')}
                         </p>
                     </div>
 
                     {/* Type Selector - Pills */}
                     <div className="flex items-center justify-center gap-2 flex-wrap">
-                        {FLOW_TYPES.map(t => (
+                        {FLOW_TYPES.map(flowType => (
                             <button
-                                key={t.id}
-                                onClick={() => setType(t.id)}
+                                key={flowType.id}
+                                onClick={() => setType(flowType.id)}
                                 className={`
                                     flex items-center gap-2 px-4 py-2.5 rounded-full text-sm font-medium transition-all duration-300
-                                    ${type === t.id
+                                    ${type === flowType.id
                                         ? 'bg-white text-slate-800 shadow-xl scale-105'
                                         : 'bg-white/10 text-white/80 hover:bg-white/20 hover:text-white border border-white/10'
                                     }
                                 `}
                             >
-                                <span className="material-symbols-outlined text-[18px]">{t.icon}</span>
-                                {t.label}
+                                <span className="material-symbols-outlined text-[18px]">{flowType.icon}</span>
+                                {t(flowType.labelKey)}
                             </button>
                         ))}
                     </div>
@@ -192,7 +194,7 @@ export const CreateFlowModal: React.FC<CreateFlowModalProps> = ({ isOpen, onClos
                             onClick={handleClose}
                             className="px-6 py-2.5 text-sm text-white/60 hover:text-white transition-colors rounded-xl hover:bg-white/10"
                         >
-                            Cancel
+                            {t('common.cancel')}
                         </button>
                         <Button
                             onClick={handleSave}
@@ -201,7 +203,7 @@ export const CreateFlowModal: React.FC<CreateFlowModalProps> = ({ isOpen, onClos
                             className="bg-white hover:bg-white/90 text-slate-800 border-0 shadow-xl px-8 font-semibold"
                             icon={<span className="material-symbols-outlined">lightbulb</span>}
                         >
-                            Create Flow
+                            {t('flows.create.actions.create')}
                         </Button>
                     </div>
                 </div>

@@ -22,7 +22,7 @@ export const PersonalTaskDetailPage = () => {
     const navigate = useNavigate();
     const confirm = useConfirm();
     const { showSuccess, showError } = useToast();
-    const { dateFormat, dateLocale } = useLanguage();
+    const { t, dateFormat, dateLocale } = useLanguage();
 
     const [task, setTask] = useState<PersonalTask | null>(null);
     const [projects, setProjects] = useState<Project[]>([]);
@@ -33,6 +33,20 @@ export const PersonalTaskDetailPage = () => {
     const [moving, setMoving] = useState(false);
     const [editingDescription, setEditingDescription] = useState(false);
     const [descValue, setDescValue] = useState('');
+
+    const statusLabels: Record<string, string> = {
+        Open: t('tasks.status.open'),
+        'In Progress': t('tasks.status.inProgress'),
+        'On Hold': t('tasks.status.onHold'),
+        Done: t('tasks.status.done')
+    };
+
+    const priorityLabels: Record<string, string> = {
+        Urgent: t('tasks.priority.urgent'),
+        High: t('tasks.priority.high'),
+        Medium: t('tasks.priority.medium'),
+        Low: t('tasks.priority.low')
+    };
 
     useEffect(() => {
         loadData();
@@ -98,11 +112,11 @@ export const PersonalTaskDetailPage = () => {
         try {
             const newTaskId = await movePersonalTaskToProject(task.id, projectId);
             const project = projects.find(p => p.id === projectId);
-            showSuccess(`Task moved to "${project?.title || 'project'}"`);
+            showSuccess(t('personalTaskDetail.move.success').replace('{project}', project?.title || t('personalTaskDetail.move.projectFallback')));
             navigate(`/project/${projectId}/tasks/${newTaskId}`);
         } catch (error: any) {
             console.error('Failed to move task', error);
-            showError(`Failed to move task: ${error.message}`);
+            showError(t('personalTaskDetail.move.error').replace('{error}', error?.message || t('personalTaskDetail.move.unknownError')));
             setMoving(false);
         }
     };
@@ -118,8 +132,8 @@ export const PersonalTaskDetailPage = () => {
     if (!task) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
-                <h3 className="text-xl font-bold text-[var(--color-text-main)]">Task not found</h3>
-                <Link to="/personal-tasks" className="btn-secondary">Return to Personal Tasks</Link>
+                <h3 className="text-xl font-bold text-[var(--color-text-main)]">{t('personalTaskDetail.notFound.title')}</h3>
+                <Link to="/personal-tasks" className="btn-secondary">{t('personalTaskDetail.notFound.action')}</Link>
             </div>
         );
     }
@@ -131,13 +145,13 @@ export const PersonalTaskDetailPage = () => {
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
                     <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-[var(--color-surface-border)]">
                         <div className="space-y-4 text-center">
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">Delete Task?</h3>
+                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('personalTaskDetail.delete.title')}</h3>
                             <p className="text-sm text-[var(--color-text-muted)]">
-                                Are you sure you want to delete <strong>"{task.title}"</strong>?
+                                {t('personalTaskDetail.delete.message').replace('{title}', task.title)}
                             </p>
                             <div className="grid grid-cols-2 gap-3">
-                                <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
-                                <Button variant="danger" onClick={handleDeleteTask} isLoading={deleting}>Delete</Button>
+                                <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)}>{t('personalTaskDetail.delete.cancel')}</Button>
+                                <Button variant="danger" onClick={handleDeleteTask} isLoading={deleting}>{t('personalTaskDetail.delete.confirm')}</Button>
                             </div>
                         </div>
                     </div>
@@ -156,7 +170,7 @@ export const PersonalTaskDetailPage = () => {
                                 {/* Personal Task Badge */}
                                 <Link to="/personal-tasks" className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 transition-all group">
                                     <span className="material-symbols-outlined text-[14px] text-indigo-500">person</span>
-                                    <span className="text-xs font-bold text-indigo-500 uppercase tracking-wide">Personal</span>
+                                    <span className="text-xs font-bold text-indigo-500 uppercase tracking-wide">{t('personalTaskDetail.badge.personal')}</span>
                                 </Link>
 
                                 {/* Status Badge */}
@@ -167,7 +181,7 @@ export const PersonalTaskDetailPage = () => {
                                     <span className="material-symbols-outlined text-[14px] leading-none">
                                         {task.status === 'Done' ? 'check_circle' : 'radio_button_unchecked'}
                                     </span>
-                                    {task.status || 'Open'}
+                                    {statusLabels[task.status || 'Open'] || task.status || t('tasks.status.open')}
                                 </span>
 
                                 {/* Priority Badge */}
@@ -177,7 +191,7 @@ export const PersonalTaskDetailPage = () => {
                                             task.priority === 'Medium' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
                                                 'bg-slate-500/10 text-slate-500 border-slate-500/20'
                                         }`}>
-                                        {task.priority}
+                                        {priorityLabels[task.priority] || task.priority}
                                     </span>
                                 )}
                             </div>
@@ -189,13 +203,13 @@ export const PersonalTaskDetailPage = () => {
                             <div className="flex flex-wrap items-center gap-4 text-sm">
                                 {task.dueDate && (
                                     <div className="flex items-center gap-2.5 px-4 py-2 bg-[var(--color-surface-hover)] rounded-xl border border-[var(--color-surface-border)]">
-                                        <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">calendar_today</span>
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] leading-none uppercase font-bold text-[var(--color-text-subtle)] mb-0.5">Due Date</span>
-                                            <span className="text-[var(--color-text-main)] font-semibold whitespace-nowrap">
-                                                {format(new Date(task.dueDate), dateFormat, { locale: dateLocale })}
-                                            </span>
-                                        </div>
+                                            <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">calendar_today</span>
+                                            <div className="flex flex-col">
+                                            <span className="text-[10px] leading-none uppercase font-bold text-[var(--color-text-subtle)] mb-0.5">{t('personalTaskDetail.labels.dueDate')}</span>
+                                                <span className="text-[var(--color-text-main)] font-semibold whitespace-nowrap">
+                                                    {format(new Date(task.dueDate), dateFormat, { locale: dateLocale })}
+                                                </span>
+                                            </div>
                                     </div>
                                 )}
                             </div>
@@ -217,7 +231,7 @@ export const PersonalTaskDetailPage = () => {
                                             <span className="material-symbols-outlined text-[20px]">drive_file_move</span>
                                         }
                                     >
-                                        Move to Project
+                                        {t('personalTaskDetail.actions.moveToProject')}
                                     </Button>
 
                                     {showMoveDropdown && (
@@ -225,12 +239,12 @@ export const PersonalTaskDetailPage = () => {
                                             <div className="fixed inset-0 z-40" onClick={() => setShowMoveDropdown(false)} />
                                             <div className="absolute right-0 top-full mt-2 z-50 w-64 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-xl overflow-hidden animate-scale-up origin-top-right">
                                                 <div className="px-3 py-2 border-b border-[var(--color-surface-border)] text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
-                                                    Select Project
+                                                    {t('personalTaskDetail.actions.selectProject')}
                                                 </div>
                                                 <div className="max-h-60 overflow-y-auto">
                                                     {projects.length === 0 ? (
                                                         <div className="px-3 py-4 text-sm text-[var(--color-text-muted)] text-center">
-                                                            No projects available
+                                                            {t('personalTaskDetail.actions.noProjects')}
                                                         </div>
                                                     ) : (
                                                         projects.map(project => (
@@ -268,7 +282,7 @@ export const PersonalTaskDetailPage = () => {
                                 className="shadow-lg shadow-primary/10 w-full lg:w-fit"
                                 icon={<span className="material-symbols-outlined">{task.isCompleted ? 'check_circle' : 'check'}</span>}
                             >
-                                {task.isCompleted ? 'Completed' : 'Mark as Done'}
+                                {task.isCompleted ? t('personalTaskDetail.actions.completed') : t('personalTaskDetail.actions.markDone')}
                             </Button>
                         </div>
                     </div>
@@ -282,7 +296,7 @@ export const PersonalTaskDetailPage = () => {
                     <div>
                         <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-3 flex items-center gap-2 tracking-wider">
                             <span className="material-symbols-outlined text-[16px]">description</span>
-                            Description
+                            {t('personalTaskDetail.sections.description')}
                         </h3>
                         <div className="app-card p-6 min-h-[120px]">
                             {editingDescription ? (
@@ -291,15 +305,15 @@ export const PersonalTaskDetailPage = () => {
                                         value={descValue}
                                         onChange={(e) => setDescValue(e.target.value)}
                                         className="w-full h-32 p-3 text-sm bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl focus:ring-2 focus:ring-[var(--color-primary)]/20 outline-none resize-none text-[var(--color-text-main)]"
-                                        placeholder="Add a description..."
+                                        placeholder={t('personalTaskDetail.description.placeholder')}
                                         autoFocus
                                     />
                                     <div className="flex justify-end gap-2">
                                         <Button variant="ghost" size="sm" onClick={() => { setEditingDescription(false); setDescValue(task.description || ''); }}>
-                                            Cancel
+                                            {t('personalTaskDetail.description.cancel')}
                                         </Button>
                                         <Button variant="primary" size="sm" onClick={handleSaveDescription}>
-                                            Save
+                                            {t('personalTaskDetail.description.save')}
                                         </Button>
                                     </div>
                                 </div>
@@ -313,7 +327,7 @@ export const PersonalTaskDetailPage = () => {
                                             <p className="whitespace-pre-wrap leading-relaxed">{task.description}</p>
                                         </div>
                                     ) : (
-                                        <p className="text-[var(--color-text-muted)] italic">Click to add a description...</p>
+                                        <p className="text-[var(--color-text-muted)] italic">{t('personalTaskDetail.description.emptyHint')}</p>
                                     )}
                                     <span className="material-symbols-outlined text-[14px] text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 absolute top-3 right-3">edit</span>
                                 </div>
@@ -326,7 +340,7 @@ export const PersonalTaskDetailPage = () => {
                 <div className="lg:col-span-4 space-y-6">
                     {/* Status Card */}
                     <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">Status</h3>
+                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">{t('personalTaskDetail.sections.status')}</h3>
                         <Select
                             value={task.status || 'Open'}
                             onChange={(e) => {
@@ -337,22 +351,22 @@ export const PersonalTaskDetailPage = () => {
                             }}
                             className="w-full"
                         >
-                            <option value="Open">Open</option>
-                            <option value="In Progress">In Progress</option>
-                            <option value="On Hold">On Hold</option>
-                            <option value="Done">Done</option>
+                            <option value="Open">{statusLabels.Open}</option>
+                            <option value="In Progress">{statusLabels['In Progress']}</option>
+                            <option value="On Hold">{statusLabels['On Hold']}</option>
+                            <option value="Done">{statusLabels.Done}</option>
                         </Select>
                     </div>
 
                     {/* Schedule Card */}
                     <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">Schedule</h3>
+                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">{t('personalTaskDetail.sections.schedule')}</h3>
                         <div className="flex flex-col gap-1.5">
-                            <label className="text-[11px] font-medium text-[var(--color-text-subtle)] uppercase">Due Date</label>
+                            <label className="text-[11px] font-medium text-[var(--color-text-subtle)] uppercase">{t('personalTaskDetail.labels.dueDate')}</label>
                             <DatePicker
                                 value={task.dueDate || ''}
                                 onChange={(date) => handleUpdateField('dueDate', date)}
-                                placeholder="Set due date"
+                                placeholder={t('personalTaskDetail.labels.dueDatePlaceholder')}
                                 align="right"
                             />
                         </div>
@@ -360,7 +374,7 @@ export const PersonalTaskDetailPage = () => {
 
                     {/* Priority Card */}
                     <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">Priority</h3>
+                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">{t('personalTaskDetail.sections.priority')}</h3>
                         <div className="flex flex-col gap-1">
                             {(['Low', 'Medium', 'High', 'Urgent'] as const).map(p => (
                                 <button
@@ -379,7 +393,7 @@ export const PersonalTaskDetailPage = () => {
                                             p === 'High' ? 'bg-orange-500' :
                                                 p === 'Medium' ? 'bg-yellow-500' : 'bg-slate-400'
                                             }`} />
-                                        {p}
+                                        {priorityLabels[p] || p}
                                     </div>
                                     {task.priority === p && <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>}
                                 </button>
@@ -389,19 +403,19 @@ export const PersonalTaskDetailPage = () => {
 
                     {/* Task Details Card */}
                     <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-4">Task Details</h3>
+                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-4">{t('personalTaskDetail.sections.details')}</h3>
                         <div className="space-y-4">
                             <div className="flex flex-col gap-1">
-                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">Task ID</span>
+                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">{t('personalTaskDetail.labels.taskId')}</span>
                                 <code className="text-[11px] font-mono text-[var(--color-text-main)] bg-[var(--color-surface-hover)] p-2 rounded-lg border border-[var(--color-surface-border)] break-all truncate">
                                     {task.id}
                                 </code>
                             </div>
 
                             <div className="pt-3 border-t border-[var(--color-surface-border)] flex items-center justify-between">
-                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">Completion</span>
+                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">{t('personalTaskDetail.labels.completion')}</span>
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${task.isCompleted ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'}`}>
-                                    {task.isCompleted ? 'Finished' : 'Active'}
+                                    {task.isCompleted ? t('personalTaskDetail.labels.finished') : t('personalTaskDetail.labels.active')}
                                 </span>
                             </div>
                         </div>

@@ -9,6 +9,7 @@ import { DatePicker } from './ui/DatePicker';
 import { MultiAssigneeSelector } from './MultiAssigneeSelector';
 import { usePinnedTasks, PinnedItem } from '../context/PinnedTasksContext';
 import { ProjectLabelsModal } from './ProjectLabelsModal';
+import { useLanguage } from '../context/LanguageContext';
 
 type Props = {
     projectId: string;
@@ -35,6 +36,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
     const [subtasks, setSubtasks] = useState<string[]>([]);
     const [newSubtask, setNewSubtask] = useState('');
     const [showLabelsModal, setShowLabelsModal] = useState(false);
+    const { t } = useLanguage();
 
     const handleTitleChange = useArrowReplacement((e) => setTitle(e.target.value));
     const handleDescriptionChange = useArrowReplacement((e) => setDescription(e.target.value));
@@ -127,7 +129,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
             onClose();
         } catch (err) {
             console.error('Failed to add task', err);
-            setError('Failed to add task. Please try again.');
+            setError(t('taskCreate.errors.createFailed'));
         } finally {
             setIsAdding(false);
         }
@@ -164,6 +166,22 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
         Low: { color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
     };
 
+    const priorityLabels: Record<string, string> = {
+        Urgent: t('tasks.priority.urgent'),
+        High: t('tasks.priority.high'),
+        Medium: t('tasks.priority.medium'),
+        Low: t('tasks.priority.low'),
+    };
+
+    const statusLabels: Record<string, string> = {
+        Backlog: t('tasks.status.backlog'),
+        Open: t('tasks.status.open'),
+        'In Progress': t('tasks.status.inProgress'),
+        'On Hold': t('tasks.status.onHold'),
+        Blocked: t('tasks.status.blocked'),
+        Done: t('tasks.status.done'),
+    };
+
     return createPortal(
         <div
             className="fixed inset-0 z-[9999] flex items-start justify-center pt-[12vh] bg-black/50 backdrop-blur-sm px-4 animate-fade-in"
@@ -180,7 +198,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                             type="text"
                             value={title}
                             onChange={handleTitleChange}
-                            placeholder="What needs to be done?"
+                            placeholder={t('tasks.quickAdd.placeholder')}
                             autoFocus
                             maxLength={100}
                             className="w-full text-2xl font-semibold bg-transparent border-none outline-none text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)]/50"
@@ -196,7 +214,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                                 className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-[var(--color-surface-hover)] ${priorityConfig[priority].color}`}
                             >
                                 <span className="material-symbols-outlined text-[16px]">flag</span>
-                                {priority}
+                                {priorityLabels[priority] || priority}
                                 <span className="material-symbols-outlined text-[14px] opacity-50">expand_more</span>
                             </button>
                             <div className="absolute left-0 top-full mt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-lg shadow-xl py-1 min-w-[120px] z-10">
@@ -208,7 +226,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                                         className={`w-full px-3 py-1.5 text-left text-xs font-medium flex items-center gap-2 hover:bg-[var(--color-surface-hover)] ${priority === p ? priorityConfig[p].color : 'text-[var(--color-text-main)]'}`}
                                     >
                                         <span className={`size-2 rounded-full ${priorityConfig[p].bg} ${priorityConfig[p].color.replace('text-', 'bg-')}`} />
-                                        {p}
+                                        {priorityLabels[p] || p}
                                     </button>
                                 ))}
                             </div>
@@ -221,7 +239,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                                 className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]"
                             >
                                 <span className="material-symbols-outlined text-[16px]">radio_button_unchecked</span>
-                                {status}
+                                {statusLabels[status] || status}
                                 <span className="material-symbols-outlined text-[14px] opacity-50">expand_more</span>
                             </button>
                             <div className="absolute left-0 top-full mt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-lg shadow-xl py-1 min-w-[130px] z-10">
@@ -232,7 +250,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                                         onClick={() => setStatus(s)}
                                         className={`w-full px-3 py-1.5 text-left text-xs font-medium hover:bg-[var(--color-surface-hover)] ${status === s ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-main)]'}`}
                                     >
-                                        {s}
+                                        {statusLabels[s] || s}
                                     </button>
                                 ))}
                             </div>
@@ -270,7 +288,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                                 className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-colors"
                             >
                                 <span className="material-symbols-outlined text-[14px]">sell</span>
-                                Label
+                                {t('taskCreate.labels.button')}
                             </button>
                             <div className="absolute left-0 top-full mt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-lg shadow-xl py-1 min-w-[160px] z-10 max-h-[250px] overflow-y-auto">
                                 <div className="px-2 py-1 mb-1 border-b border-[var(--color-surface-border)]">
@@ -280,7 +298,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                                         className="w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-[10px] font-bold uppercase text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 transition-colors"
                                     >
                                         <span className="material-symbols-outlined text-[16px]">settings</span>
-                                        Manage Labels
+                                        {t('taskCreate.labels.manage')}
                                     </button>
                                 </div>
                                 {categoryOptions.filter(c => !selectedCategories.includes(c)).map(c => {
@@ -299,7 +317,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                                 })}
                                 {categoryOptions.filter(c => !selectedCategories.includes(c)).length === 0 && (
                                     <div className="px-3 py-2 text-[10px] text-[var(--color-text-muted)] italic text-center">
-                                        No more labels
+                                        {t('taskCreate.labels.empty')}
                                     </div>
                                 )}
                             </div>
@@ -311,7 +329,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                         <textarea
                             value={description}
                             onChange={handleDescriptionChange}
-                            placeholder="Add description..."
+                            placeholder={t('taskCreate.description.placeholder')}
                             rows={2}
                             className="w-full px-3 py-2.5 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] text-sm text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent)] transition-colors resize-none"
                         />
@@ -327,7 +345,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                                 ) : (
                                     <span className="material-symbols-outlined text-sm">auto_awesome</span>
                                 )}
-                                Generate with AI
+                                {t('taskCreate.description.generate')}
                             </button>
                         )}
                     </div>
@@ -335,7 +353,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                     {/* Subtasks Section */}
                     <div className="px-6 pb-4">
                         <div className="space-y-2">
-                            <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">Subtasks</label>
+                            <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">{t('taskCreate.subtasks.title')}</label>
 
                             {/* Existing subtasks */}
                             {subtasks.length > 0 && (
@@ -369,7 +387,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                                             handleAddSubtask();
                                         }
                                     }}
-                                    placeholder="Add subtask..."
+                                    placeholder={t('taskCreate.subtasks.placeholder')}
                                     className="flex-1 text-sm bg-transparent border-none outline-none text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)]"
                                 />
                                 {newSubtask && (
@@ -378,7 +396,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                                         onClick={handleAddSubtask}
                                         className="text-xs text-[var(--color-accent)] hover:underline"
                                     >
-                                        Add
+                                        {t('common.add')}
                                     </button>
                                 )}
                             </div>
@@ -388,15 +406,15 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                     {/* Due Date & Assignees - 2 Columns */}
                     <div className="px-6 pb-4 grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                            <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">Due Date</label>
+                            <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">{t('taskCreate.dueDate.label')}</label>
                             <DatePicker
                                 value={dueDate}
                                 onChange={setDueDate}
-                                placeholder="Set due date"
+                                placeholder={t('taskCreate.dueDate.placeholder')}
                             />
                         </div>
                         <div className="space-y-2">
-                            <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">Assignees</label>
+                            <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">{t('taskCreate.assignees.label')}</label>
                             <MultiAssigneeSelector
                                 projectId={projectId}
                                 assigneeIds={assigneeIds}
@@ -420,11 +438,11 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                             <kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface-hover)] font-mono text-[10px]">⌘</kbd>
                             <span>+</span>
                             <kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface-hover)] font-mono text-[10px]">↵</kbd>
-                            <span className="ml-1">to Create</span>
+                            <span className="ml-1">{t('taskCreate.footer.toCreate')}</span>
                         </span>
                         <div className="flex items-center gap-3">
                             <Button type="button" variant="ghost" size="sm" onClick={onClose}>
-                                Cancel
+                                {t('common.cancel')}
                             </Button>
 
                             {/* Pin on Create Toggle */}
@@ -437,11 +455,11 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                                     }`}
                             >
                                 <span className="material-symbols-outlined text-[16px]">{pinOnCreate ? 'keep' : 'keep_off'}</span>
-                                Pin on Create
+                                {t('taskCreate.pin.label')}
                             </button>
 
                             <Button type="submit" size="sm" isLoading={isAdding} disabled={!title.trim()}>
-                                Create Task
+                                {t('taskCreate.actions.create')}
                             </Button>
                         </div>
                     </div>
