@@ -455,7 +455,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                                     }`}
                             >
                                 <span className="material-symbols-outlined text-[16px]">{pinOnCreate ? 'keep' : 'keep_off'}</span>
-                                {t('taskCreate.pin.label')}
+                                
                             </button>
 
                             <Button type="submit" size="sm" isLoading={isAdding} disabled={!title.trim()}>

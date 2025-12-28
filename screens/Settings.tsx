@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
+import { remove } from 'firebase/database';
+import { collection, query, getDocs, deleteDoc, doc } from 'firebase/firestore';
 import ReactDOM from 'react-dom';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
@@ -8,7 +10,7 @@ import { Select } from '../components/ui/Select';
 import { Textarea } from '../components/ui/Textarea';
 import { useToast, useConfirm } from '../context/UIContext';
 import { getActiveTenantId, getTenant, updateTenant, getAIUsage, getTenantSecret, updateTenantSecret, createAPIToken, getAPITokens, deleteAPIToken, updateUserData } from '../services/dataService';
-import { auth, functions } from '../services/firebase';
+import { auth, functions, db } from '../services/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { Tenant, AIUsage, APITokenPermission } from '../types';
 
@@ -27,6 +29,7 @@ import {
 import { format } from 'date-fns';
 import { getUserProfile, linkWithGithub } from '../services/dataService';
 import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
+import { registerPasskey } from '../services/passkeyService';
 
 type SettingsTab = 'account' | 'preferences' | 'security' | 'general' | 'billing' | 'email' | 'integrations';
 
@@ -77,6 +80,8 @@ export const Settings = () => {
     // Security State
     const [showTwoFactorModal, setShowTwoFactorModal] = useState(false);
     const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+    const [passkeys, setPasskeys] = useState<any[]>([]);
+    const [registeringPasskey, setRegisteringPasskey] = useState(false);
 
     // Account Management State
     const [githubLinked, setGithubLinked] = useState(false);
@@ -399,6 +404,57 @@ export const Settings = () => {
             console.error('Failed to load API tokens', error);
         } finally {
             setLoadingTokens(false);
+        }
+    };
+
+    useEffect(() => {
+        const loadPasskeys = async () => {
+            const user = auth.currentUser;
+            if (!user) return;
+            try {
+                const q = query(collection(db, 'users', user.uid, 'passkeys'));
+                const snapshot = await getDocs(q);
+                setPasskeys(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            } catch (e) {
+                console.error("Failed to load passkeys", e);
+            }
+        };
+
+        if (activeTab === 'security') {
+            loadPasskeys();
+        }
+    }, [activeTab]);
+
+    const handleRegisterPasskey = async () => {
+        setRegisteringPasskey(true);
+        try {
+            await registerPasskey();
+            showSuccess('Passkey added successfully');
+            // Reload
+            const user = auth.currentUser;
+            if (user) {
+                const q = query(collection(db, 'users', user.uid, 'passkeys'));
+                const snapshot = await getDocs(q);
+                setPasskeys(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            }
+        } catch (e: any) {
+            showError(e.message || 'Failed to register passkey');
+        } finally {
+            setRegisteringPasskey(false);
+        }
+    };
+
+    const handleDeletePasskey = async (id: string, label: string) => {
+        if (!await confirm('Delete Passkey', `Are you sure you want to remove the passkey "${label || 'Unknown'}"?`)) return;
+        try {
+            const user = auth.currentUser;
+            if (!user) return;
+            await deleteDoc(doc(db, 'users', user.uid, 'passkeys', id));
+            setPasskeys(prev => prev.filter(p => p.id !== id));
+            showSuccess('Passkey deleted');
+        } catch (e) {
+            console.error(e);
+            showError('Failed to delete passkey');
         }
     };
 
@@ -813,6 +869,51 @@ export const Settings = () => {
                                 <div className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-[10px] font-bold uppercase text-gray-500">
                                     {t('settings.security.sso.badge')}
                                 </div>
+                            </div>
+
+                            {/* Passkeys Section */}
+                            <div className="p-4 space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <p className="font-semibold text-[var(--color-text-main)]">Passkeys</p>
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-1.5 py-0.5 rounded">Beta</span>
+                                        </div>
+                                        <p className="text-xs text-[var(--color-text-muted)]">Sign in securely with FaceID, TouchID, or Windows Hello.</p>
+                                    </div>
+                                    <Button size="sm" onClick={handleRegisterPasskey} isLoading={registeringPasskey}>
+                                        <span className="material-symbols-outlined text-[18px] mr-1">fingerprint</span>
+                                        Add Passkey
+                                    </Button>
+                                </div>
+
+                                {passkeys.length > 0 && (
+                                    <div className="space-y-2 pt-2">
+                                        {passkeys.map(passkey => (
+                                            <div key={passkey.id} className="flex items-center justify-between p-3 bg-[var(--color-surface-hover)] rounded-lg">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="size-8 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center text-[var(--color-primary)]">
+                                                        <span className="material-symbols-outlined text-[18px]">fingerprint</span>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-medium text-[var(--color-text-main)]">{passkey.label || 'Passkey'}</p>
+                                                        <p className="text-[10px] text-[var(--color-text-muted)]">
+                                                            Added {passkey.createdAt ? format(passkey.createdAt.toDate(), dateFormat) : 'Unknown'}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <Button
+                                                    size="icon"
+                                                    variant="ghost"
+                                                    onClick={() => handleDeletePasskey(passkey.id, passkey.label)}
+                                                    className="text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                                >
+                                                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </Card>
                     </div>

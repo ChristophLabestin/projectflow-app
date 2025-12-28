@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, updateProfile, getMultiFactorResolver, TotpMultiFactorGenerator } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, updateProfile, getMultiFactorResolver, TotpMultiFactorGenerator, signInWithCustomToken } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { bootstrapTenantForCurrentUser, getActiveTenantId } from '../services/dataService';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { useLanguage } from '../context/LanguageContext';
+import { loginWithPasskey } from '../services/passkeyService';
 
 export const Login = () => {
     const { t } = useLanguage();
@@ -128,6 +129,23 @@ export const Login = () => {
         } catch (err) {
             console.error(err);
             setError(t('login.error.github'));
+        }
+    };
+
+
+    const handlePasskeySignIn = async () => {
+        setIsLoading(true);
+        setError('');
+        try {
+            const token = await loginWithPasskey(email);
+            await signInWithCustomToken(auth, token);
+            await bootstrapTenantForCurrentUser();
+            await handleAuthSuccess();
+        } catch (e: any) {
+            console.error(e);
+            setError(e.message || 'Failed to sign in with passkey');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -264,6 +282,19 @@ export const Login = () => {
                         <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-[var(--color-surface-border)]"></div></div>
                         <div className="relative bg-[var(--color-surface-bg)] px-4 text-xs font-semibold text-[var(--color-text-subtle)] uppercase tracking-widest">{t('login.divider.orContinue')}</div>
                     </div>
+
+                    {!isRegister && (
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            className="w-full h-12 mb-4"
+                            onClick={handlePasskeySignIn}
+                            disabled={isLoading}
+                        >
+                            <span className="material-symbols-outlined mr-2">fingerprint</span>
+                            Sign in with Passkey
+                        </Button>
+                    )}
 
                     <div className="grid grid-cols-2 gap-4">
                         <button onClick={handleGoogleSignIn} className="flex items-center justify-center gap-2 h-12 rounded-xl border border-[var(--color-surface-border)] hover:border-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-all font-medium text-sm text-[var(--color-text-main)]">

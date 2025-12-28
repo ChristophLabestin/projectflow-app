@@ -2,6 +2,7 @@ import React from 'react';
 import { Button } from '../../ui/Button';
 import { Idea } from '../../../types';
 import { generateSocialCampaignConceptAI } from '../../../services/geminiService';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface SocialCampaignConceptViewProps {
     idea: Idea;
@@ -18,6 +19,7 @@ interface CampaignConcept {
 }
 
 export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps> = ({ idea, onUpdate, isChangeReq }) => {
+    const { t } = useLanguage();
     // Parse concept data
     const conceptData: CampaignConcept = React.useMemo(() => {
         try {
@@ -90,7 +92,15 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
         updateConcept({ themes: newThemes });
     };
 
-    const MOODS = ['Energetic', 'Professional', 'Minimalist', 'Playful', 'Luxurious', 'Gritty', 'Authentic'];
+    const MOODS = [
+        { id: 'Energetic', label: t('flowStages.socialCampaignConcept.moods.energetic') },
+        { id: 'Professional', label: t('flowStages.socialCampaignConcept.moods.professional') },
+        { id: 'Minimalist', label: t('flowStages.socialCampaignConcept.moods.minimalist') },
+        { id: 'Playful', label: t('flowStages.socialCampaignConcept.moods.playful') },
+        { id: 'Luxurious', label: t('flowStages.socialCampaignConcept.moods.luxurious') },
+        { id: 'Gritty', label: t('flowStages.socialCampaignConcept.moods.gritty') },
+        { id: 'Authentic', label: t('flowStages.socialCampaignConcept.moods.authentic') },
+    ];
 
     return (
         <div className="h-full overflow-y-auto">
@@ -104,16 +114,16 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
                         <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
                             <div className="flex items-center gap-2 shrink-0">
                                 <div className="px-3 py-1 bg-violet-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-violet-200 dark:shadow-none">
-                                    Concept Phase
+                                    {t('flowStages.socialCampaignConcept.hero.badge')}
                                 </div>
                                 <div className="h-[1px] w-8 bg-violet-200 dark:bg-violet-800 rounded-full" />
                             </div>
                             <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-                                Campaign North Star
+                                {t('flowStages.socialCampaignConcept.hero.title')}
                             </h1>
                         </div>
                         <p className="text-sm text-slate-600 dark:text-slate-400 font-medium max-w-2xl leading-relaxed">
-                            Define the creative soul of your campaign. What is the core flow? How should it feel? This sets the direction for everything that follows.
+                            {t('flowStages.socialCampaignConcept.hero.subtitle')}
                         </p>
                     </div>
                     {/* AI Action */}
@@ -126,7 +136,7 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
                             <span className={`material-symbols-outlined text-[18px] ${generating ? 'animate-spin' : ''}`}>
                                 {generating ? 'progress_activity' : 'auto_awesome'}
                             </span>
-                            {generating ? 'Dreaming...' : 'AI Super Suggest'}
+                            {generating ? t('flowStages.socialCampaignConcept.actions.dreaming') : t('flowStages.socialCampaignConcept.actions.aiSuggest')}
                         </Button>
                     </div>
                 </div>
@@ -139,14 +149,14 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
                                 <span className="material-symbols-outlined text-amber-600 dark:text-amber-400">edit_note</span>
                             </div>
                             <div className="flex-1">
-                                <h3 className="font-bold text-amber-900 dark:text-amber-100 text-lg mb-1">Changes Requested</h3>
+                                <h3 className="font-bold text-amber-900 dark:text-amber-100 text-lg mb-1">{t('flowStages.socialCampaignConcept.changes.title')}</h3>
                                 <p className="text-sm font-medium text-amber-800/80 dark:text-amber-200/80 leading-relaxed">
-                                    {idea.lastRejectionReason || "Please review the feedback and update your concept."}
+                                    {idea.lastRejectionReason || t('flowStages.socialCampaignConcept.changes.default')}
                                 </p>
                                 <div className="mt-3 flex items-center gap-2">
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-900/60 dark:text-amber-300/60">Action Required</span>
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-900/60 dark:text-amber-300/60">{t('flowStages.socialCampaignConcept.changes.action')}</span>
                                     <span className="h-px w-8 bg-amber-200 dark:bg-amber-700"></span>
-                                    <span className="text-[10px] font-bold text-amber-800 dark:text-amber-200">Update Concept & Re-submit</span>
+                                    <span className="text-[10px] font-bold text-amber-800 dark:text-amber-200">{t('flowStages.socialCampaignConcept.changes.actionHint')}</span>
                                 </div>
                             </div>
                         </div>
@@ -163,13 +173,13 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
                                     <span className="material-symbols-outlined text-xl">auto_awesome</span>
                                 </div>
                                 <div>
-                                    <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">The Core Flow</h3>
-                                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">What is the core message?</p>
+                                    <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">{t('flowStages.socialCampaignConcept.core.title')}</h3>
+                                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">{t('flowStages.socialCampaignConcept.core.subtitle')}</p>
                                 </div>
                             </div>
                             <textarea
                                 className="w-full min-h-[160px] bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-800 rounded-2xl p-5 text-base md:text-lg font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 transition-all resize-none leading-relaxed"
-                                placeholder="e.g. A 4-week journey showing how our product transforms morning routines, featuring real user stories..."
+                                placeholder={t('flowStages.socialCampaignConcept.core.placeholder')}
                                 value={conceptData.bigIdea}
                                 onChange={(e) => updateConcept({ bigIdea: e.target.value })}
                             />
@@ -182,34 +192,34 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
                                     <span className="material-symbols-outlined text-xl">palette</span>
                                 </div>
                                 <div>
-                                    <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">Visual Direction</h3>
-                                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Look & Feel</p>
+                                    <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">{t('flowStages.socialCampaignConcept.visual.title')}</h3>
+                                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">{t('flowStages.socialCampaignConcept.visual.subtitle')}</p>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-3 block opacity-70">Aesthetic Description</label>
+                                    <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-3 block opacity-70">{t('flowStages.socialCampaignConcept.visual.descriptionLabel')}</label>
                                     <textarea
                                         className="w-full h-32 bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-800 rounded-2xl p-4 text-sm font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-fuchsia-500 focus:ring-4 focus:ring-fuchsia-500/10 transition-all resize-none leading-relaxed"
-                                        placeholder="e.g. High contrast, neon accents, fast-paced cuts, urban environments..."
+                                        placeholder={t('flowStages.socialCampaignConcept.visual.descriptionPlaceholder')}
                                         value={conceptData.visualDirection}
                                         onChange={(e) => updateConcept({ visualDirection: e.target.value })}
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-3 block opacity-70">Primary Mood</label>
+                                    <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-3 block opacity-70">{t('flowStages.socialCampaignConcept.visual.moodLabel')}</label>
                                     <div className="flex flex-wrap gap-2">
-                                        {MOODS.map(m => (
+                                        {MOODS.map((mood) => (
                                             <button
-                                                key={m}
-                                                onClick={() => updateConcept({ mood: m })}
-                                                className={`px-3 py-2 text-[10px] font-black rounded-xl border-2 transition-all ${conceptData.mood === m
+                                                key={mood.id}
+                                                onClick={() => updateConcept({ mood: mood.id })}
+                                                className={`px-3 py-2 text-[10px] font-black rounded-xl border-2 transition-all ${conceptData.mood === mood.id
                                                     ? 'bg-fuchsia-600 text-white border-fuchsia-600 shadow-lg shadow-fuchsia-200 dark:shadow-none'
                                                     : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-500 hover:border-fuchsia-200'
                                                     }`}
                                             >
-                                                {m}
+                                                {mood.label}
                                             </button>
                                         ))}
                                     </div>
@@ -224,11 +234,11 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
                         <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
                             <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest mb-4 opacity-50 flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[16px]">anchor</span>
-                                The Hook
+                                {t('flowStages.socialCampaignConcept.hook.title')}
                             </h3>
                             <textarea
                                 className="w-full h-24 bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-800 rounded-xl p-3 text-xs md:text-sm font-bold text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all resize-none leading-snug"
-                                placeholder="One sentence that sells it..."
+                                placeholder={t('flowStages.socialCampaignConcept.hook.placeholder')}
                                 value={conceptData.hook}
                                 onChange={(e) => updateConcept({ hook: e.target.value })}
                             />
@@ -239,7 +249,7 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
                             <div className="flex items-center justify-between mb-4">
                                 <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest opacity-50 flex items-center gap-2">
                                     <span className="material-symbols-outlined text-[16px]">view_column</span>
-                                    Key Themes
+                                    {t('flowStages.socialCampaignConcept.themes.title')}
                                 </h3>
                                 <button onClick={addTheme} className="size-6 bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 text-slate-500 hover:text-violet-600 rounded-full flex items-center justify-center transition-all">
                                     <span className="material-symbols-outlined text-[16px]">add</span>
@@ -249,7 +259,7 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
                             <div className="space-y-3">
                                 {conceptData.themes.length === 0 && (
                                     <div className="text-center py-6 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-xl">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase">No themes added</p>
+                                        <p className="text-[10px] font-bold text-slate-400 uppercase">{t('flowStages.socialCampaignConcept.themes.empty')}</p>
                                     </div>
                                 )}
                                 {conceptData.themes.map((theme, i) => (
@@ -260,7 +270,7 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
                                             value={theme}
                                             onChange={(e) => updateTheme(i, e.target.value)}
                                             className="flex-1 bg-slate-50 dark:bg-slate-800 border-b-2 border-slate-100 dark:border-slate-700 hover:border-violet-200 focus:border-violet-500 px-2 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none transition-all rounded-t-md"
-                                            placeholder={`Theme ${i + 1}`}
+                                            placeholder={t('flowStages.socialCampaignConcept.themes.placeholder').replace('{index}', `${i + 1}`)}
                                         />
                                         <button onClick={() => removeTheme(i)} className="text-slate-300 hover:text-rose-500 transition-colors">
                                             <span className="material-symbols-outlined text-[16px]">close</span>
@@ -276,7 +286,7 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
                                 className="w-full h-12 rounded-xl bg-slate-900 dark:bg-white hover:bg-violet-600 dark:hover:bg-violet-500 text-white dark:text-slate-900 hover:text-white font-black text-xs uppercase tracking-[.2em] shadow-lg shadow-slate-200 dark:shadow-none transition-all flex items-center justify-center gap-2 group"
                                 onClick={() => onUpdate({ stage: 'Strategy' })}
                             >
-                                Define Strategy
+                                {t('flowStages.socialCampaignConcept.actions.advance')}
                                 <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
                             </Button>
                         </div>

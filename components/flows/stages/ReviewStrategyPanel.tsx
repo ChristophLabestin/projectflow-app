@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { SocialPlatform } from '../../../types';
 import { PlatformIcon } from '../../../screens/social/components/PlatformIcon';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface ReviewStrategyPanelProps {
     campaignData: any;
@@ -15,13 +16,41 @@ const PHASE_COLORS = [
     { bg: 'from-violet-500 to-purple-600', light: 'bg-violet-50 dark:bg-violet-900/20', text: 'text-violet-600 dark:text-violet-400', border: 'border-violet-200 dark:border-violet-800' },
 ];
 
-const GOALS = ['Brand Awareness', 'Engagement', 'Traffic / Link', 'Sales / Promo', 'Community Building', 'Education'];
-const PILLARS = ['Educational', 'Promotional', 'Entertainment', 'Inspirational', 'Community', 'Behind the Scenes'];
+const GOALS = [
+    { id: 'Brand Awareness', labelKey: 'flowStages.socialCampaignStrategy.goals.brandAwareness' },
+    { id: 'Engagement', labelKey: 'flowStages.socialCampaignStrategy.goals.engagement' },
+    { id: 'Traffic / Link', labelKey: 'flowStages.socialCampaignStrategy.goals.traffic' },
+    { id: 'Sales / Promo', labelKey: 'flowStages.socialCampaignStrategy.goals.sales' },
+    { id: 'Community Building', labelKey: 'flowStages.socialCampaignStrategy.goals.community' },
+    { id: 'Education', labelKey: 'flowStages.socialCampaignStrategy.goals.education' },
+];
+const PILLARS = [
+    { id: 'Educational', labelKey: 'flowStages.socialCampaignStrategy.pillars.educational' },
+    { id: 'Promotional', labelKey: 'flowStages.socialCampaignStrategy.pillars.promotional' },
+    { id: 'Entertainment', labelKey: 'flowStages.socialCampaignStrategy.pillars.entertainment' },
+    { id: 'Inspirational', labelKey: 'flowStages.socialCampaignStrategy.pillars.inspirational' },
+    { id: 'Community', labelKey: 'flowStages.socialCampaignStrategy.pillars.community' },
+    { id: 'Behind the Scenes', labelKey: 'flowStages.socialCampaignStrategy.pillars.behindScenes' },
+];
 
 export const ReviewStrategyPanel: React.FC<ReviewStrategyPanelProps> = ({ campaignData, onUpdate }) => {
+    const { t } = useLanguage();
     const [editingAudienceIndex, setEditingAudienceIndex] = useState<number | null>(null);
     const [editingPlatformId, setEditingPlatformId] = useState<string | null>(null);
     const [expandedPlatformId, setExpandedPlatformId] = useState<string | null>(null);
+    const frequencyUnitLabels: Record<string, string> = {
+        'Posts/Day': t('flowStages.socialCampaignStrategy.tactics.frequency.units.day'),
+        'Posts/Week': t('flowStages.socialCampaignStrategy.tactics.frequency.units.week'),
+        'Posts/Month': t('flowStages.socialCampaignStrategy.tactics.frequency.units.month'),
+    };
+    const frequencyUnitShortLabels: Record<string, string> = {
+        'Posts/Day': t('flowStages.socialCampaignStrategy.tactics.frequency.units.shortDay'),
+        'Posts/Week': t('flowStages.socialCampaignStrategy.tactics.frequency.units.shortWeek'),
+        'Posts/Month': t('flowStages.socialCampaignStrategy.tactics.frequency.units.shortMonth'),
+    };
+
+    const formatFrequencyUnitShort = (unit?: string) =>
+        frequencyUnitShortLabels[unit || ''] || unit?.replace('Posts/', '') || '';
 
     // Helpers to update specific parts of the campaign data
     const updateStrategy = (updates: any) => {
@@ -66,46 +95,46 @@ export const ReviewStrategyPanel: React.FC<ReviewStrategyPanelProps> = ({ campai
                 <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
                     <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest mb-6 opacity-50 flex items-center gap-2">
                         <span className="material-symbols-outlined text-sm">flag</span>
-                        Campaign Core
+                        {t('flowStages.reviewStrategyPanel.core.title')}
                     </h3>
 
                     <div className="space-y-5">
                         {/* Primary Goal */}
                         <div>
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-[.15em] mb-2 block opacity-70">Primary Goal</label>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-[.15em] mb-2 block opacity-70">{t('flowStages.reviewStrategyPanel.core.primaryGoal')}</label>
                             <select
                                 value={campaignData.campaignType || ''}
                                 onChange={(e) => updateStrategy({ campaignType: e.target.value })}
                                 className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800/50 rounded-xl px-3 py-2 text-[11px] font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all"
                             >
-                                <option value="">Select Goal...</option>
-                                {GOALS.map(g => <option key={g} value={g}>{g}</option>)}
+                                <option value="">{t('flowStages.reviewStrategyPanel.core.selectGoal')}</option>
+                                {GOALS.map(g => <option key={g.id} value={g.id}>{t(g.labelKey)}</option>)}
                             </select>
                         </div>
 
                         {/* Secondary KPI */}
                         <div>
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-[.15em] mb-2 block opacity-70">KPI Target</label>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-[.15em] mb-2 block opacity-70">{t('flowStages.reviewStrategyPanel.core.kpiTarget')}</label>
                             <select
                                 value={campaignData.subGoal || ''}
                                 onChange={(e) => updateStrategy({ subGoal: e.target.value })}
                                 className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800/50 rounded-xl px-3 py-2 text-[11px] font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:border-rose-500 transition-all"
                             >
-                                <option value="">Select KPI...</option>
-                                {GOALS.filter(g => g !== campaignData.campaignType).map(g => <option key={g} value={g}>{g}</option>)}
+                                <option value="">{t('flowStages.reviewStrategyPanel.core.selectKpi')}</option>
+                                {GOALS.filter(g => g.id !== campaignData.campaignType).map(g => <option key={g.id} value={g.id}>{t(g.labelKey)}</option>)}
                             </select>
                         </div>
 
                         {/* Content Pillar */}
                         <div>
-                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-[.15em] mb-2 block opacity-70">Core Pillar</label>
+                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-[.15em] mb-2 block opacity-70">{t('flowStages.reviewStrategyPanel.core.pillar')}</label>
                             <select
                                 value={campaignData.pillar || ''}
                                 onChange={(e) => updateStrategy({ pillar: e.target.value })}
                                 className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800/50 rounded-xl px-3 py-2 text-[11px] font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:border-rose-500 transition-all"
                             >
-                                <option value="">Select Pillar...</option>
-                                {PILLARS.map(p => <option key={p} value={p}>{p}</option>)}
+                                <option value="">{t('flowStages.reviewStrategyPanel.core.selectPillar')}</option>
+                                {PILLARS.map(p => <option key={p.id} value={p.id}>{t(p.labelKey)}</option>)}
                             </select>
                         </div>
                     </div>
@@ -116,7 +145,7 @@ export const ReviewStrategyPanel: React.FC<ReviewStrategyPanelProps> = ({ campai
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest opacity-50 flex items-center gap-2">
                             <span className="material-symbols-outlined text-sm">groups</span>
-                            Target Audience
+                            {t('flowStages.socialCampaignStrategy.audience.title')}
                         </h3>
                         <button
                             onClick={() => {
@@ -151,7 +180,7 @@ export const ReviewStrategyPanel: React.FC<ReviewStrategyPanelProps> = ({ campai
                                                     newSegs[i] = e.target.value;
                                                     updateStrategy({ audienceSegments: newSegs });
                                                 }}
-                                                placeholder="Describe segment..."
+                                                placeholder={t('flowStages.reviewStrategyPanel.audience.placeholder')}
                                                 autoFocus
                                                 onBlur={() => {
                                                     // If empty on blur, remove it? keeping it simple for now
@@ -163,20 +192,20 @@ export const ReviewStrategyPanel: React.FC<ReviewStrategyPanelProps> = ({ campai
                                                     onClick={(e) => { e.stopPropagation(); updateStrategy({ audienceSegments: campaignData.audienceSegments.filter((_: any, idx: number) => idx !== i) }); setEditingAudienceIndex(null); }}
                                                     className="text-[9px] font-black text-red-500 hover:text-red-700 uppercase tracking-widest flex items-center gap-1"
                                                 >
-                                                    Remove
+                                                    {t('flowStages.socialCampaignStrategy.audience.remove')}
                                                 </button>
                                                 <button
                                                     onClick={(e) => { e.stopPropagation(); setEditingAudienceIndex(null); }}
                                                     className="text-[9px] font-black text-emerald-600 hover:text-emerald-700 uppercase tracking-widest"
                                                 >
-                                                    Save
+                                                    {t('flowStages.socialCampaignStrategy.audience.save')}
                                                 </button>
                                             </div>
                                         </div>
                                     ) : (
                                         <div className="flex items-start justify-between gap-3">
                                             <p className="text-[11px] font-bold text-slate-600 dark:text-slate-400 leading-snug line-clamp-2">
-                                                {segText || <span className="text-slate-400 italic">New segment...</span>}
+                                                {segText || <span className="text-slate-400 italic">{t('flowStages.socialCampaignStrategy.audience.emptySegment')}</span>}
                                             </p>
                                             <div className="opacity-0 group-hover:opacity-100 transition-all shrink-0">
                                                 <span className="material-symbols-outlined text-[14px] text-slate-400">edit</span>
@@ -188,7 +217,7 @@ export const ReviewStrategyPanel: React.FC<ReviewStrategyPanelProps> = ({ campai
                         })}
                         {(campaignData.audienceSegments || []).length === 0 && (
                             <div className="text-center py-4 text-[10px] text-slate-400 italic">
-                                No target audience defined.
+                                {t('flowStages.reviewStrategyPanel.audience.empty')}
                             </div>
                         )}
                     </div>
@@ -200,7 +229,7 @@ export const ReviewStrategyPanel: React.FC<ReviewStrategyPanelProps> = ({ campai
                 <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm h-full">
                     <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest mb-6 opacity-50 flex items-center gap-2">
                         <span className="material-symbols-outlined text-sm">hub</span>
-                        Channel Tactics
+                        {t('flowStages.socialCampaignStrategy.tactics.title')}
                     </h3>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -223,18 +252,18 @@ export const ReviewStrategyPanel: React.FC<ReviewStrategyPanelProps> = ({ campai
                                     {isEditing ? (
                                         <div className="space-y-4 animate-fadeIn">
                                             <div>
-                                                <label className="text-[9px] font-black text-rose-500 uppercase tracking-[.25em] mb-1.5 block opacity-80">Strategic Role</label>
+                                                <label className="text-[9px] font-black text-rose-500 uppercase tracking-[.25em] mb-1.5 block opacity-80">{t('flowStages.socialCampaignStrategy.tactics.role.label')}</label>
                                                 <textarea
                                                     value={platform.role}
                                                     onChange={(e) => updatePlatform(platform.id, { role: e.target.value })}
-                                                    placeholder="Role for this channel..."
+                                                    placeholder={t('flowStages.socialCampaignStrategy.tactics.role.placeholder')}
                                                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-[11px] font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-rose-500 h-16 resize-none"
                                                     autoFocus
                                                 />
                                             </div>
 
                                             <div>
-                                                <label className="text-[9px] font-black text-rose-500 uppercase tracking-[.25em] mb-1.5 block opacity-80">Frequency</label>
+                                                <label className="text-[9px] font-black text-rose-500 uppercase tracking-[.25em] mb-1.5 block opacity-80">{t('flowStages.socialCampaignStrategy.tactics.frequency.label')}</label>
                                                 <div className="flex gap-2">
                                                     <input
                                                         type="number"
@@ -248,9 +277,9 @@ export const ReviewStrategyPanel: React.FC<ReviewStrategyPanelProps> = ({ campai
                                                         onChange={(e) => updatePlatform(platform.id, { frequencyUnit: e.target.value })}
                                                         className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-[10px] font-black text-slate-700 dark:text-slate-300 focus:outline-none focus:border-rose-500"
                                                     >
-                                                        <option value="Posts/Day">/ Day</option>
-                                                        <option value="Posts/Week">/ Week</option>
-                                                        <option value="Posts/Month">/ Month</option>
+                                                        <option value="Posts/Day">{frequencyUnitLabels['Posts/Day']}</option>
+                                                        <option value="Posts/Week">{frequencyUnitLabels['Posts/Week']}</option>
+                                                        <option value="Posts/Month">{frequencyUnitLabels['Posts/Month']}</option>
                                                     </select>
                                                 </div>
 
@@ -261,7 +290,9 @@ export const ReviewStrategyPanel: React.FC<ReviewStrategyPanelProps> = ({ campai
                                                         className="flex items-center gap-1 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline"
                                                     >
                                                         <span className={`material-symbols-outlined text-[12px] transition-transform ${expandedPlatformId === platform.id ? 'rotate-180' : ''}`}>expand_more</span>
-                                                        {expandedPlatformId === platform.id ? 'Hide Phase Overrides' : 'Phase Frequency Overrides'}
+                                                        {expandedPlatformId === platform.id
+                                                            ? t('flowStages.reviewStrategyPanel.tactics.overrides.hide')
+                                                            : t('flowStages.reviewStrategyPanel.tactics.overrides.show')}
                                                     </button>
 
                                                     {expandedPlatformId === platform.id && (
@@ -277,7 +308,9 @@ export const ReviewStrategyPanel: React.FC<ReviewStrategyPanelProps> = ({ campai
                                                                     <div key={phase.id} className="flex items-center justify-between gap-2">
                                                                         <div className="flex items-center gap-1.5 min-w-0 flex-1">
                                                                             <div className={`size-1.5 rounded-full bg-gradient-to-r ${colors.bg}`} />
-                                                                            <span className="text-[10px] font-bold text-slate-500 truncate">{phase.name || `Phase ${idx + 1}`}</span>
+                                                                            <span className="text-[10px] font-bold text-slate-500 truncate">
+                                                                                {phase.name || t('flowStages.reviewStrategyPanel.tactics.phaseFallback').replace('{index}', `${idx + 1}`)}
+                                                                            </span>
                                                                         </div>
                                                                         <div className="flex items-center gap-1">
                                                                             <input
@@ -300,7 +333,7 @@ export const ReviewStrategyPanel: React.FC<ReviewStrategyPanelProps> = ({ campai
                                                     onClick={(e) => { e.stopPropagation(); setEditingPlatformId(null); }}
                                                     className="px-4 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-md"
                                                 >
-                                                    Done
+                                                    {t('flowStages.reviewStrategyPanel.tactics.done')}
                                                 </button>
                                             </div>
                                         </div>
@@ -308,12 +341,12 @@ export const ReviewStrategyPanel: React.FC<ReviewStrategyPanelProps> = ({ campai
                                         <div className="space-y-3">
                                             <div>
                                                 <p className="text-[10px] font-bold text-slate-600 dark:text-slate-400 leading-relaxed line-clamp-2 min-h-[2.5em]">
-                                                    {platform.role || 'No role defined'}
+                                                    {platform.role || t('flowStages.reviewStrategyPanel.tactics.emptyRole')}
                                                 </p>
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 <div className="px-2 py-1 bg-white dark:bg-slate-900 rounded-md border border-slate-100 dark:border-slate-700 text-[9px] font-black text-slate-500 uppercase">
-                                                    {platform.frequencyValue || 1} {platform.frequencyUnit?.replace('Posts/', '') || 'Week'}
+                                                    {platform.frequencyValue || 1} {formatFrequencyUnitShort(platform.frequencyUnit)}
                                                 </div>
                                             </div>
 
@@ -329,7 +362,7 @@ export const ReviewStrategyPanel: React.FC<ReviewStrategyPanelProps> = ({ campai
                         })}
                         {(campaignData.platforms || []).length === 0 && (
                             <div className="col-span-full py-8 text-center text-[11px] text-slate-400 italic">
-                                No platforms selected.
+                                {t('flowStages.reviewStrategyPanel.tactics.emptyPlatforms')}
                             </div>
                         )}
                     </div>

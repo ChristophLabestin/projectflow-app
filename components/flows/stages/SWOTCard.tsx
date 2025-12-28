@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '../../ui/Button';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface SWOTCardProps {
     title: string;
@@ -13,6 +14,7 @@ interface SWOTCardProps {
 }
 
 export const SWOTCard: React.FC<SWOTCardProps> = ({ title, icon, items, colorClass, onAdd, onEdit, onDelete, highlightedItems = [] }) => {
+    const { t } = useLanguage();
     const [newItem, setNewItem] = useState('');
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [editValue, setEditValue] = useState('');
@@ -107,7 +109,7 @@ export const SWOTCard: React.FC<SWOTCardProps> = ({ title, icon, items, colorCla
                         onChange={(e) => setNewItem(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
                         className={`flex-1 bg-transparent border-none focus:ring-0 p-0 text-sm ${colors.inputPlaceholder} text-[var(--color-text-main)] w-full`}
-                        placeholder={`Add ${title.toLowerCase().slice(0, -1)}...`}
+                        placeholder={t('flowStages.refinement.swot.addPlaceholder')}
                     />
                 </div>
 
@@ -124,7 +126,7 @@ export const SWOTCard: React.FC<SWOTCardProps> = ({ title, icon, items, colorCla
                             {/* AI Indicator */}
                             {isHighlighted && (
                                 <span className="absolute -left-1 -top-1 bg-indigo-500 text-white text-[8px] px-1 rounded-full shadow-sm z-10 font-bold scale-75 animate-bounce-short">
-                                    AI
+                                    {t('flowStages.refinement.swot.aiBadge')}
                                 </span>
                             )}
 

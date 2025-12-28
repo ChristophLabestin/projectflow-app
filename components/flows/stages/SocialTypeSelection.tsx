@@ -1,17 +1,19 @@
 import React from 'react';
-import { Idea } from '../../../types';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface SocialTypeSelectionProps {
     onSelect: (type: 'post' | 'campaign') => void;
 }
 
 export const SocialTypeSelection: React.FC<SocialTypeSelectionProps> = ({ onSelect }) => {
+    const { t } = useLanguage();
+
     return (
         <div className="flex flex-col items-center justify-center h-full max-w-4xl mx-auto p-6">
             <div className="text-center mb-12">
-                <h2 className="text-3xl font-bold text-[var(--color-text-main)] mb-4">What are you creating?</h2>
+                <h2 className="text-3xl font-bold text-[var(--color-text-main)] mb-4">{t('flowStages.socialType.title')}</h2>
                 <p className="text-[var(--color-text-muted)] text-lg max-w-2xl mx-auto">
-                    Choose how you want to structure this social media flow. This ensures you have the right tools for the job.
+                    {t('flowStages.socialType.subtitle')}
                 </p>
             </div>
 
@@ -24,27 +26,27 @@ export const SocialTypeSelection: React.FC<SocialTypeSelectionProps> = ({ onSele
                     <div className="size-14 rounded-xl bg-gradient-to-br from-indigo-500/10 to-indigo-600/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-200">
                         <span className="material-symbols-outlined text-3xl text-indigo-500">post_add</span>
                     </div>
-                    <h3 className="text-xl font-bold text-[var(--color-text-main)] mb-2">Single Post</h3>
+                    <h3 className="text-xl font-bold text-[var(--color-text-main)] mb-2">{t('flowStages.socialType.post.title')}</h3>
                     <p className="text-[var(--color-text-muted)] mb-6 leading-relaxed">
-                        Perfect for a one-off update, announcement, or quick thought. Focuses on content creation, formatting, and immediate scheduling.
+                        {t('flowStages.socialType.post.description')}
                     </p>
                     <div className="mt-auto">
                         <ul className="space-y-2 mb-6">
                             <li className="flex items-center gap-2 text-sm text-[var(--color-text-subtle)]">
                                 <span className="material-symbols-outlined text-[18px] text-green-500">check_circle</span>
-                                Quick creation flow
+                                {t('flowStages.socialType.post.feature1')}
                             </li>
                             <li className="flex items-center gap-2 text-sm text-[var(--color-text-subtle)]">
                                 <span className="material-symbols-outlined text-[18px] text-green-500">check_circle</span>
-                                Platform-specific previews
+                                {t('flowStages.socialType.post.feature2')}
                             </li>
                             <li className="flex items-center gap-2 text-sm text-[var(--color-text-subtle)]">
                                 <span className="material-symbols-outlined text-[18px] text-green-500">check_circle</span>
-                                Direct scheduling
+                                {t('flowStages.socialType.post.feature3')}
                             </li>
                         </ul>
                         <span className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)] group-hover:gap-3 transition-all">
-                            Select Single Post
+                            {t('flowStages.socialType.post.action')}
                             <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                         </span>
                     </div>
@@ -58,27 +60,27 @@ export const SocialTypeSelection: React.FC<SocialTypeSelectionProps> = ({ onSele
                     <div className="size-14 rounded-xl bg-gradient-to-br from-fuchsia-500/10 to-pink-600/10 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-200">
                         <span className="material-symbols-outlined text-3xl text-fuchsia-500">campaign</span>
                     </div>
-                    <h3 className="text-xl font-bold text-[var(--color-text-main)] mb-2">Social Campaign</h3>
+                    <h3 className="text-xl font-bold text-[var(--color-text-main)] mb-2">{t('flowStages.socialType.campaign.title')}</h3>
                     <p className="text-[var(--color-text-muted)] mb-6 leading-relaxed">
-                        Ideal for a series of connected posts, a product launch, or a themed week. Focuses on strategy, scheduling, and cohesive messaging over time.
+                        {t('flowStages.socialType.campaign.description')}
                     </p>
                     <div className="mt-auto">
                         <ul className="space-y-2 mb-6">
                             <li className="flex items-center gap-2 text-sm text-[var(--color-text-subtle)]">
                                 <span className="material-symbols-outlined text-[18px] text-green-500">check_circle</span>
-                                Multi-post management
+                                {t('flowStages.socialType.campaign.feature1')}
                             </li>
                             <li className="flex items-center gap-2 text-sm text-[var(--color-text-subtle)]">
                                 <span className="material-symbols-outlined text-[18px] text-green-500">check_circle</span>
-                                Calendar planning view
+                                {t('flowStages.socialType.campaign.feature2')}
                             </li>
                             <li className="flex items-center gap-2 text-sm text-[var(--color-text-subtle)]">
                                 <span className="material-symbols-outlined text-[18px] text-green-500">check_circle</span>
-                                Unified strategy & goals
+                                {t('flowStages.socialType.campaign.feature3')}
                             </li>
                         </ul>
                         <span className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--color-primary)] group-hover:gap-3 transition-all">
-                            Select Campaign
+                            {t('flowStages.socialType.campaign.action')}
                             <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                         </span>
                     </div>

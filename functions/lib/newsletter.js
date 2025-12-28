@@ -5,11 +5,7 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const cors = require("cors");
 const crypto = require("crypto");
-// Initialize Firebase Admin if not already initialized
-if (!admin.apps.length) {
-    admin.initializeApp();
-}
-const db = admin.firestore();
+const init_1 = require("./init");
 const CORS_ORIGIN = true; // Allow all origins - can be restricted in production
 const REGION = 'europe-west3'; // Frankfurt
 /**
@@ -25,9 +21,9 @@ const validateAPIToken = async (token, requiredPermission) => {
     try {
         const tokenHash = hashToken(token);
         // Search all tenants for the token (we could optimize this with a global tokens collection)
-        const tenantsSnapshot = await db.collection('tenants').get();
+        const tenantsSnapshot = await init_1.db.collection('tenants').get();
         for (const tenantDoc of tenantsSnapshot.docs) {
-            const tokensQuery = await db
+            const tokensQuery = await init_1.db
                 .collection('tenants')
                 .doc(tenantDoc.id)
                 .collection('api_tokens')
@@ -148,7 +144,7 @@ exports.newsletterSubscribe = functions.region(REGION).https.onRequest((req, res
         }
         try {
             // Check if recipient already exists
-            const recipientsRef = db
+            const recipientsRef = init_1.db
                 .collection('tenants')
                 .doc(tenantId)
                 .collection('projects')
@@ -298,7 +294,7 @@ exports.newsletterUnsubscribe = functions.region(REGION).https.onRequest((req, r
             if (!tenantId) {
                 // If no master token, we need to find the tenant by searching projects
                 // This is a bit expensive, but necessary for secure unsubscribes without master tokens
-                const tenantsSnapshot = await db.collection('tenants').get();
+                const tenantsSnapshot = await init_1.db.collection('tenants').get();
                 for (const tenantDoc of tenantsSnapshot.docs) {
                     const projectDoc = await tenantDoc.ref.collection('projects').doc(projectId).get();
                     if (projectDoc.exists) {
@@ -309,7 +305,7 @@ exports.newsletterUnsubscribe = functions.region(REGION).https.onRequest((req, r
             }
             if (!tenantId)
                 return handleError(404, 'Project not found');
-            const recipientsRef = db
+            const recipientsRef = init_1.db
                 .collection('tenants')
                 .doc(tenantId)
                 .collection('projects')

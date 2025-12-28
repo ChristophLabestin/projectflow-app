@@ -2,10 +2,7 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as cors from 'cors';
 
-// Initialize admin if not already done
-if (!admin.apps.length) {
-    admin.initializeApp();
-}
+
 
 const corsHandler = cors({ origin: true });
 

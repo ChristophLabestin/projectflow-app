@@ -3,6 +3,7 @@ import { Idea } from '../../../types';
 import { Button } from '../../ui/Button';
 import { generateProductLaunchAI, generateRiskWinAnalysis } from '../../../services/geminiService';
 import { AnalysisDashboard } from '../AnalysisDashboard';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface ProductLaunchViewProps {
     idea: Idea;
@@ -17,6 +18,7 @@ interface ChecklistCategory {
 }
 
 export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUpdate }) => {
+    const { t } = useLanguage();
     const [generating, setGenerating] = useState(false);
     const [viewMode, setViewMode] = useState<'execution' | 'analysis'>('execution');
     const [analyzing, setAnalyzing] = useState(false);
@@ -149,14 +151,14 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                 <div className="flex items-center gap-6">
                     <div>
                         <h2 className="text-xl font-bold text-[var(--color-text-main)] flex items-center gap-3">
-                            Launch Prep
+                            {t('flowStages.productLaunch.title')}
                             {totalChecks > 0 && (
                                 <span className={`text-xs px-2 py-0.5 rounded-full font-bold border ${progress === 100 ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-[var(--color-surface-hover)] border-[var(--color-surface-border)] text-[var(--color-text-muted)]'}`}>
-                                    {progress}% Ready
+                                    {t('flowStages.productLaunch.progressReady').replace('{progress}', `${progress}`)}
                                 </span>
                             )}
                         </h2>
-                        <p className="text-sm text-[var(--color-text-muted)]">Finalize release checklist and marketing assets.</p>
+                        <p className="text-sm text-[var(--color-text-muted)]">{t('flowStages.productLaunch.subtitle')}</p>
                     </div>
 
                     {/* View Switcher */}
@@ -166,14 +168,14 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'execution' ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
                         >
                             <span className="material-symbols-outlined text-[18px]">checklist_rtl</span>
-                            Checklist & Marketing
+                            {t('flowStages.productLaunch.views.execution')}
                         </button>
                         <button
                             onClick={() => setViewMode('analysis')}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'analysis' ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
                         >
                             <span className="material-symbols-outlined text-[18px]">analytics</span>
-                            Risk Analysis
+                            {t('flowStages.productLaunch.views.analysis')}
                         </button>
                     </div>
                 </div>
@@ -187,7 +189,7 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                         className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 border-none shadow-md !text-white"
                         icon={<span className="material-symbols-outlined">auto_awesome</span>}
                     >
-                        Draft Launch Plan
+                        {t('flowStages.productLaunch.actions.draftPlan')}
                     </Button>
                 )}
             </div>
@@ -201,15 +203,15 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                             <div className="p-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
                                 <div className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
                                     <span className="material-symbols-outlined text-[20px] text-emerald-500">checklist</span>
-                                    Pre-Flight Checks
+                                    {t('flowStages.productLaunch.checklist.title')}
                                 </div>
-                                <button onClick={addChecklistCategory} className="text-xs text-[var(--color-primary)] hover:underline">+ Add Category</button>
+                                <button onClick={addChecklistCategory} className="text-xs text-[var(--color-primary)] hover:underline">{t('flowStages.productLaunch.checklist.addCategory')}</button>
                             </div>
 
                             <div className="p-4 flex-1 overflow-y-auto space-y-4">
                                 {launchData.checklist.length === 0 && (
                                     <div className="text-center py-8 text-[var(--color-text-muted)] text-sm">
-                                        No checklist items. Draft with AI to get started.
+                                        {t('flowStages.productLaunch.checklist.empty')}
                                     </div>
                                 )}
                                 {launchData.checklist.map((cat, i: number) => {
@@ -227,13 +229,13 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                                             >
                                                 <div className="flex items-center justify-between">
                                                     <div className="flex items-center gap-2 flex-1">
-                                                        <input
-                                                            value={cat.category}
-                                                            onChange={(e) => updateChecklistCategory(cat.id, { category: e.target.value })}
-                                                            className="font-bold bg-transparent border-none p-0 focus:ring-0 text-[var(--color-text-main)] text-sm w-full"
-                                                            placeholder="Category Name"
-                                                        />
-                                                    </div>
+                                                            <input
+                                                                value={cat.category}
+                                                                onChange={(e) => updateChecklistCategory(cat.id, { category: e.target.value })}
+                                                                className="font-bold bg-transparent border-none p-0 focus:ring-0 text-[var(--color-text-main)] text-sm w-full"
+                                                                placeholder={t('flowStages.productLaunch.checklist.categoryPlaceholder')}
+                                                            />
+                                                        </div>
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums">{catDone}/{catTotal}</span>
                                                         <button onClick={() => removeChecklistCategory(cat.id)} className="text-[var(--color-text-muted)] hover:text-rose-500 opacity-0 group-hover/cat:opacity-100 transition-opacity">
@@ -258,7 +260,7 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                                                                 value={item.title}
                                                                 onChange={(e) => updateChecklistItem(cat.id, item.id, { title: e.target.value })}
                                                                 className={`flex-1 bg-transparent border-none p-0 text-sm focus:ring-0 ${item.done ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)]'}`}
-                                                                placeholder="Checklist item..."
+                                                                placeholder={t('flowStages.productLaunch.checklist.itemPlaceholder')}
                                                             />
                                                             <button onClick={() => removeChecklistItem(cat.id, item.id)} className="text-[var(--color-text-muted)] hover:text-rose-500 opacity-0 group-hover/item:opacity-100 transition-opacity">
                                                                 <span className="material-symbols-outlined text-[14px]">close</span>
@@ -269,7 +271,7 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                                                         onClick={() => addChecklistItem(cat.id)}
                                                         className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-primary)] flex items-center gap-1 pl-2 pt-1 transition-colors w-full text-left"
                                                     >
-                                                        <span className="material-symbols-outlined text-[14px]">add</span> Add Item
+                                                        <span className="material-symbols-outlined text-[14px]">add</span> {t('flowStages.productLaunch.checklist.addItem')}
                                                     </button>
                                                 </div>
                                             </div>
@@ -287,14 +289,14 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                         <div className="bg-[var(--color-surface-paper)] rounded-2xl border border-[var(--color-surface-border)] shadow-sm flex flex-col">
                             <div className="p-4 border-b border-[var(--color-surface-border)] flex items-center gap-2 font-bold text-[var(--color-text-main)]">
                                 <span className="material-symbols-outlined text-[20px] text-pink-500">campaign</span>
-                                Announcement Draft
+                                {t('flowStages.productLaunch.announcement.title')}
                             </div>
                             <div className="p-4">
                                 <textarea
                                     value={launchData.announcement}
                                     onChange={(e) => updateLaunchData({ announcement: e.target.value })}
                                     className="w-full h-32 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl p-3 text-sm text-[var(--color-text-main)] focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
-                                    placeholder="Write your hook/announcement here..."
+                                    placeholder={t('flowStages.productLaunch.announcement.placeholder')}
                                 />
                             </div>
                         </div>
@@ -304,9 +306,9 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                             <div className="p-4 border-b border-[var(--color-surface-border)] flex justify-between items-center">
                                 <div className="flex items-center gap-2 font-bold text-[var(--color-text-main)]">
                                     <span className="material-symbols-outlined text-[20px] text-cyan-500">hub</span>
-                                    Marketing Channels
+                                    {t('flowStages.productLaunch.channels.title')}
                                 </div>
-                                <button onClick={addChannel} className="text-xs text-[var(--color-primary)] hover:underline">+ Add Channel</button>
+                                <button onClick={addChannel} className="text-xs text-[var(--color-primary)] hover:underline">{t('flowStages.productLaunch.channels.addChannel')}</button>
                             </div>
                             <div className="p-4">
                                 <div className="flex flex-wrap gap-2">
@@ -316,7 +318,7 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                                                 value={channel}
                                                 onChange={(e) => updateChannel(i, e.target.value)}
                                                 className="bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-full pl-3 pr-8 py-1.5 text-sm font-medium text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] min-w-[100px] max-w-[160px] focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
-                                                placeholder="Channel..."
+                                                placeholder={t('flowStages.productLaunch.channels.placeholder')}
                                             />
                                             <button
                                                 onClick={() => removeChannel(i)}
@@ -330,7 +332,7 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                                         onClick={addChannel}
                                         className="bg-transparent border border-dashed border-[var(--color-text-muted)] rounded-full px-4 py-1.5 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-colors"
                                     >
-                                        + Add
+                                        {t('flowStages.productLaunch.channels.add')}
                                     </button>
                                 </div>
                             </div>
@@ -342,7 +344,7 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                             onClick={() => { /* Trigger Celebration or Archive */ }}
                         >
                             <span className="material-symbols-outlined mr-2">rocket_launch</span>
-                            Initialize Launch
+                            {t('flowStages.productLaunch.actions.initialize')}
                         </Button>
 
                     </div>

@@ -7,6 +7,7 @@ import { refineSocialContentAI } from '../../../services/geminiService';
 import { MediaLibrary } from '../../MediaLibrary/MediaLibraryModal';
 import { CaptionPresetPicker } from '../../../screens/social/components/CaptionPresetPicker';
 import { createPortal } from 'react-dom';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface SocialStudioViewProps {
     idea: Idea;
@@ -27,6 +28,7 @@ interface StudioData {
 }
 
 export const SocialStudioView: React.FC<SocialStudioViewProps> = ({ idea, onUpdate }) => {
+    const { t } = useLanguage();
     const [isRefining, setIsRefining] = useState(false);
     const [showMediaLibrary, setShowMediaLibrary] = useState(false);
 
@@ -124,16 +126,16 @@ export const SocialStudioView: React.FC<SocialStudioViewProps> = ({ idea, onUpda
                         <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
                             <div className="flex items-center gap-2 shrink-0">
                                 <div className="px-3 py-1 bg-violet-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-violet-200 dark:shadow-none">
-                                    Production
+                                    {t('flowStages.socialStudio.hero.badge')}
                                 </div>
                                 <div className="h-[1px] w-8 bg-violet-200 dark:bg-violet-800 rounded-full" />
                             </div>
                             <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-                                Content Studio
+                                {t('flowStages.socialStudio.hero.title')}
                             </h1>
                         </div>
                         <p className="text-sm text-slate-600 dark:text-slate-400 font-medium max-w-2xl leading-relaxed">
-                            Turn your concepts into reality. Edit captions, upload assets, and prepare your content for distribution.
+                            {t('flowStages.socialStudio.hero.subtitle')}
                         </p>
                     </div>
                     <div className="relative z-10 flex flex-col justify-end">
@@ -141,7 +143,7 @@ export const SocialStudioView: React.FC<SocialStudioViewProps> = ({ idea, onUpda
                             onClick={() => onUpdate({ stage: 'Distribution' })} // Maps to SocialPerformanceView
                             className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 shadow-lg shadow-slate-200 dark:shadow-none h-12 px-6 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-3"
                         >
-                            Enter Distribution
+                            {t('flowStages.socialStudio.actions.advance')}
                             <span className="material-symbols-outlined">arrow_forward</span>
                         </Button>
                     </div>
@@ -181,10 +183,10 @@ export const SocialStudioView: React.FC<SocialStudioViewProps> = ({ idea, onUpda
                                         <div>
                                             <h3 className="font-black text-slate-900 dark:text-white uppercase text-[12px] tracking-widest flex items-center gap-2">
                                                 <span className="material-symbols-outlined text-violet-500">edit_note</span>
-                                                {activePlatform} Draft
+                                                {activePlatform} {t('flowStages.socialStudio.editor.draftLabel')}
                                             </h3>
                                             <p className="text-[10px] text-slate-400 font-bold mt-1">
-                                                Format: {studioData.concepts[activePlatform]?.format}
+                                                {t('flowStages.socialStudio.editor.formatLabel')} {studioData.concepts[activePlatform]?.format}
                                             </p>
                                         </div>
                                         <div className="flex gap-2">
@@ -207,7 +209,7 @@ export const SocialStudioView: React.FC<SocialStudioViewProps> = ({ idea, onUpda
                                                 <span className={`material-symbols-outlined text-[14px] ${isRefining ? 'animate-spin' : ''}`}>
                                                     {isRefining ? 'progress_activity' : 'auto_awesome'}
                                                 </span>
-                                                Auto Refine
+                                                {t('flowStages.socialStudio.editor.autoRefine')}
                                             </button>
                                         </div>
                                     </div>
@@ -216,7 +218,7 @@ export const SocialStudioView: React.FC<SocialStudioViewProps> = ({ idea, onUpda
                                         {/* Text Column */}
                                         <div className="flex flex-col gap-4">
                                             <div className="p-4 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-800">
-                                                <div className="text-[9px] font-black text-rose-500 uppercase tracking-widest mb-2 opacity-80">Hook Direction</div>
+                                                <div className="text-[9px] font-black text-rose-500 uppercase tracking-widest mb-2 opacity-80">{t('flowStages.socialStudio.editor.hookLabel')}</div>
                                                 <p className="text-xs font-bold text-slate-700 dark:text-slate-300 leading-snug">
                                                     "{studioData.concepts[activePlatform]?.hook}"
                                                 </p>
@@ -226,14 +228,14 @@ export const SocialStudioView: React.FC<SocialStudioViewProps> = ({ idea, onUpda
                                                 className="flex-1 w-full bg-slate-50 dark:bg-slate-800/20 border-2 border-slate-100 dark:border-slate-800 rounded-xl p-4 text-sm font-medium text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 outline-none resize-none leading-relaxed transition-all"
                                                 value={activeDraft.copy}
                                                 onChange={(e) => handleUpdateDraft(e.target.value)}
-                                                placeholder="Caption or script..."
+                                                placeholder={t('flowStages.socialStudio.editor.copyPlaceholder')}
                                             />
                                         </div>
 
                                         {/* Asset Column */}
                                         <div className="flex flex-col gap-4 items-center">
                                             <div className="w-full p-4 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-100 dark:border-slate-800 text-center">
-                                                <div className="text-[9px] font-black text-rose-500 uppercase tracking-widest mb-1 opacity-80">Visual Cue</div>
+                                                <div className="text-[9px] font-black text-rose-500 uppercase tracking-widest mb-1 opacity-80">{t('flowStages.socialStudio.editor.visualCueLabel')}</div>
                                                 <p className="text-xs font-bold text-slate-500 italic">"{studioData.concepts[activePlatform]?.visualCue}"</p>
                                             </div>
 
@@ -245,7 +247,7 @@ export const SocialStudioView: React.FC<SocialStudioViewProps> = ({ idea, onUpda
                                                                 {url.match(/\.(mp4|mov|webm)$/i) ? (
                                                                     <video src={`${url}#t=0.001`} className="w-full h-full object-cover" muted />
                                                                 ) : (
-                                                                    <img src={url} alt="Asset" className="w-full h-full object-cover" />
+                                                                    <img src={url} alt={t('flowStages.socialStudio.editor.assetAlt')} className="w-full h-full object-cover" />
                                                                 )}
                                                                 <button
                                                                     onClick={() => handleUpdateAssets(activeDraft.assets.filter((_, idx) => idx !== i))}
@@ -271,7 +273,7 @@ export const SocialStudioView: React.FC<SocialStudioViewProps> = ({ idea, onUpda
                                                             onClick={() => setShowMediaLibrary(true)}
                                                             className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg text-xs font-bold transition-all shadow-md shadow-violet-200 dark:shadow-none"
                                                         >
-                                                            Upload Asset
+                                                            {t('flowStages.socialStudio.editor.upload')}
                                                         </button>
                                                     </div>
                                                 )}
@@ -282,7 +284,7 @@ export const SocialStudioView: React.FC<SocialStudioViewProps> = ({ idea, onUpda
                             ) : (
                                 <div className="flex-1 flex flex-col items-center justify-center text-slate-400">
                                     <span className="material-symbols-outlined text-4xl mb-4">movie_edit</span>
-                                    <p className="text-xs font-black uppercase tracking-widest">Select a platform draft to edit</p>
+                                    <p className="text-xs font-black uppercase tracking-widest">{t('flowStages.socialStudio.editor.empty')}</p>
                                 </div>
                             )}
                         </div>
@@ -293,7 +295,7 @@ export const SocialStudioView: React.FC<SocialStudioViewProps> = ({ idea, onUpda
                         <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm sticky top-6">
                             <h3 className="font-black text-slate-900 dark:text-white uppercase text-[12px] tracking-widest mb-6 flex items-center gap-2">
                                 <span className="material-symbols-outlined text-violet-500">queue_music</span>
-                                Production Queue
+                                {t('flowStages.socialStudio.queue.title')}
                             </h3>
                             <div className="space-y-3">
                                 {platforms.map(p => {
@@ -320,7 +322,7 @@ export const SocialStudioView: React.FC<SocialStudioViewProps> = ({ idea, onUpda
                                                 <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${ready ? 'bg-green-100 text-green-600' :
                                                         hasContent ? 'bg-amber-100 text-amber-600' : 'bg-slate-200 text-slate-500'
                                                     }`}>
-                                                    {ready ? 'Ready' : hasContent ? 'In Progress' : 'Empty'}
+                                                    {ready ? t('flowStages.socialStudio.queue.status.ready') : hasContent ? t('flowStages.socialStudio.queue.status.inProgress') : t('flowStages.socialStudio.queue.status.empty')}
                                                 </span>
 
                                                 {activePlatform === p && (
@@ -331,7 +333,7 @@ export const SocialStudioView: React.FC<SocialStudioViewProps> = ({ idea, onUpda
                                                         }}
                                                         className="text-[10px] font-bold text-violet-600 hover:text-violet-700 underline"
                                                     >
-                                                        {ready ? 'Mark Draft' : 'Mark Ready'}
+                                                        {ready ? t('flowStages.socialStudio.queue.actions.markDraft') : t('flowStages.socialStudio.queue.actions.markReady')}
                                                     </button>
                                                 )}
                                             </div>
@@ -342,7 +344,7 @@ export const SocialStudioView: React.FC<SocialStudioViewProps> = ({ idea, onUpda
 
                             <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
                                 <p className="text-[10px] text-slate-400 font-medium text-center">
-                                    Mark all items as "Ready" to proceed to Distribution.
+                                    {t('flowStages.socialStudio.queue.hint')}
                                 </p>
                             </div>
                         </div>

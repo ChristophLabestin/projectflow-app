@@ -6,6 +6,7 @@ import { getProjectMembers, getUserProfile, getSocialCampaign } from '../../../s
 import { PlatformIcon } from '../../../screens/social/components/PlatformIcon';
 import { format } from 'date-fns';
 import { dateLocale, dateFormat } from '../../../utils/activityHelpers';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface SocialCampaignApprovedViewProps {
     idea: Idea;
@@ -16,6 +17,7 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
     idea,
     onUpdate,
 }) => {
+    const { t } = useLanguage();
     const navigate = useNavigate();
     const [teamMembers, setTeamMembers] = useState<Array<{ id: string; displayName: string; photoURL?: string }>>([]);
     const [linkedCampaign, setLinkedCampaign] = useState<SocialCampaign | null>(null);
@@ -56,6 +58,11 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
     const analysis = idea.riskWinAnalysis;
 
     const approvedDate = idea.approvedAt ? format(new Date(idea.approvedAt), dateFormat, { locale: dateLocale }) : null;
+    const approvedSummaryTemplate = t('flowStages.socialCampaignApproved.hero.summary');
+    const [approvedSummaryBefore, approvedSummaryAfter] = approvedSummaryTemplate.split('{title}');
+    const approvedOn = approvedDate
+        ? t('flowStages.socialCampaignApproved.hero.approvedOn').replace('{date}', approvedDate)
+        : null;
 
     const getScoreColor = (score: number) => {
         if (score >= 8) return 'text-emerald-500';
@@ -78,18 +85,20 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
                                 <div className="flex items-center gap-2 shrink-0">
                                     <div className="px-3 py-1 bg-green-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-green-200 dark:shadow-none flex items-center gap-1.5">
                                         <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                                        Approved
+                                        {t('flowStages.socialCampaignApproved.hero.badge')}
                                     </div>
                                     <div className="h-[1px] w-8 bg-green-200 dark:bg-green-800 rounded-full" />
                                 </div>
                                 <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                                    Campaign Live
+                                    {t('flowStages.socialCampaignApproved.hero.title')}
                                 </h1>
                             </div>
                             <div className="max-w-3xl p-5 bg-white/70 dark:bg-slate-950/50 rounded-2xl border border-white dark:border-slate-800 shadow-lg shadow-green-100/50 dark:shadow-none backdrop-blur-md">
                                 <p className="text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
-                                    <span className="text-green-600 font-black">"{concept.bigIdea || idea.title}"</span> has been approved and integrated into the campaign pipeline.
-                                    {approvedDate && <span className="text-slate-500 ml-1">Approved on {approvedDate}.</span>}
+                                    {approvedSummaryBefore}
+                                    <span className="text-green-600 font-black">"{concept.bigIdea || idea.title}"</span>
+                                    {approvedSummaryAfter}
+                                    {approvedOn && <span className="text-slate-500 ml-1">{approvedOn}</span>}
                                 </p>
                             </div>
                         </div>
@@ -97,15 +106,15 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
                         <div className="flex gap-4">
                             <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 text-center border border-white/50 dark:border-slate-700/50 min-w-[80px]">
                                 <div className="text-2xl font-black text-green-600">{platforms.length}</div>
-                                <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Channels</div>
+                                <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{t('flowStages.socialCampaignApproved.hero.stats.channels')}</div>
                             </div>
                             <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 text-center border border-white/50 dark:border-slate-700/50 min-w-[80px]">
                                 <div className="text-2xl font-black text-green-600">{phases.length}</div>
-                                <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Phases</div>
+                                <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{t('flowStages.socialCampaignApproved.hero.stats.phases')}</div>
                             </div>
                             <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 text-center border border-white/50 dark:border-slate-700/50 min-w-[80px]">
                                 <div className="text-2xl font-black text-green-600">{kpis.length}</div>
-                                <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">KPIs</div>
+                                <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{t('flowStages.socialCampaignApproved.hero.stats.kpis')}</div>
                             </div>
                         </div>
                     </div>
@@ -123,8 +132,8 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
                                     <span className="material-symbols-outlined">description</span>
                                 </div>
                                 <div>
-                                    <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">Campaign Manifesto</h3>
-                                    <p className="text-[10px] text-slate-400 font-bold mt-1">Core creative direction</p>
+                                    <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialCampaignApproved.manifesto.title')}</h3>
+                                    <p className="text-[10px] text-slate-400 font-bold mt-1">{t('flowStages.socialCampaignApproved.manifesto.subtitle')}</p>
                                 </div>
                             </div>
                             <div className="space-y-6">
@@ -164,8 +173,8 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
                                         <span className="material-symbols-outlined">timeline</span>
                                     </div>
                                     <div>
-                                        <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">Campaign Phases</h3>
-                                        <p className="text-[10px] text-slate-400 font-bold mt-1">Execution timeline</p>
+                                        <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialCampaignApproved.phases.title')}</h3>
+                                        <p className="text-[10px] text-slate-400 font-bold mt-1">{t('flowStages.socialCampaignApproved.phases.subtitle')}</p>
                                     </div>
                                 </div>
                                 <div className="space-y-4">
@@ -202,8 +211,8 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
                                         <span className="material-symbols-outlined">trending_up</span>
                                     </div>
                                     <div>
-                                        <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">Campaign KPIs</h3>
-                                        <p className="text-[10px] text-slate-400 font-bold mt-1">Success metrics & targets</p>
+                                        <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialCampaignApproved.kpis.title')}</h3>
+                                        <p className="text-[10px] text-slate-400 font-bold mt-1">{t('flowStages.socialCampaignApproved.kpis.subtitle')}</p>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -213,7 +222,7 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
                                                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{kpi.name}</span>
                                                 {kpi.target && (
                                                     <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded">
-                                                        Target: {kpi.target}
+                                                        {t('flowStages.socialCampaignApproved.kpis.target').replace('{target}', kpi.target)}
                                                     </span>
                                                 )}
                                             </div>
@@ -234,25 +243,25 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
                                         <span className="material-symbols-outlined">psychology</span>
                                     </div>
                                     <div>
-                                        <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">AI Analysis Summary</h3>
-                                        <p className="text-[10px] text-slate-400 font-bold mt-1">Strategic assessment at approval</p>
+                                        <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialCampaignApproved.analysis.title')}</h3>
+                                        <p className="text-[10px] text-slate-400 font-bold mt-1">{t('flowStages.socialCampaignApproved.analysis.subtitle')}</p>
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-3 gap-4">
                                     <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 text-center border border-slate-100 dark:border-slate-700">
-                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Success Rate</div>
+                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('flowStages.socialCampaignApproved.analysis.successRate')}</div>
                                         <div className={`text-2xl font-black ${getScoreColor(analysis.successProbability / 10)}`}>
                                             {analysis.successProbability}%
                                         </div>
                                     </div>
                                     <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 text-center border border-slate-100 dark:border-slate-700">
-                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Market Fit</div>
+                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('flowStages.socialCampaignApproved.analysis.marketFit')}</div>
                                         <div className={`text-2xl font-black ${getScoreColor(analysis.marketFitScore)}`}>
                                             {analysis.marketFitScore}/10
                                         </div>
                                     </div>
                                     <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4 text-center border border-slate-100 dark:border-slate-700">
-                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Feasibility</div>
+                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('flowStages.socialCampaignApproved.analysis.feasibility')}</div>
                                         <div className={`text-2xl font-black ${getScoreColor(analysis.technicalFeasibilityScore)}`}>
                                             {analysis.technicalFeasibilityScore}/10
                                         </div>
@@ -260,7 +269,7 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
                                 </div>
                                 {analysis.recommendation && (
                                     <div className="mt-6 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
-                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">AI Recommendation</div>
+                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('flowStages.socialCampaignApproved.analysis.recommendation')}</div>
                                         <p className="text-sm font-medium text-slate-700 dark:text-slate-300 italic">"{analysis.recommendation}"</p>
                                     </div>
                                 )}
@@ -277,8 +286,8 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
                                 <div className="inline-flex size-16 bg-green-100 dark:bg-green-900/50 rounded-3xl items-center justify-center mb-4 text-green-600">
                                     <span className="material-symbols-outlined text-4xl">verified</span>
                                 </div>
-                                <h4 className="font-black text-green-900 dark:text-green-100 mb-2 text-lg">Campaign Approved</h4>
-                                <p className="text-sm text-green-700 dark:text-green-300 mb-6">Ready for execution and tracking.</p>
+                                <h4 className="font-black text-green-900 dark:text-green-100 mb-2 text-lg">{t('flowStages.socialCampaignApproved.status.title')}</h4>
+                                <p className="text-sm text-green-700 dark:text-green-300 mb-6">{t('flowStages.socialCampaignApproved.status.subtitle')}</p>
 
                                 {linkedCampaign && (
                                     <Button
@@ -286,7 +295,7 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
                                         className="w-full h-12 rounded-xl bg-green-600 hover:bg-green-500 text-white font-bold uppercase tracking-wider text-xs shadow-lg shadow-green-200 dark:shadow-none"
                                     >
                                         <span className="material-symbols-outlined text-lg mr-2">open_in_new</span>
-                                        View Campaign Dashboard
+                                        {t('flowStages.socialCampaignApproved.status.viewDashboard')}
                                     </Button>
                                 )}
                             </div>
@@ -295,8 +304,8 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
                         {/* Campaign Team */}
                         <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
                             <div className="flex items-center justify-between mb-6">
-                                <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">Campaign Team</h3>
-                                <span className="text-[10px] font-bold text-slate-400">{assignedMembers.length} members</span>
+                                <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialCampaignApproved.team.title')}</h3>
+                                <span className="text-[10px] font-bold text-slate-400">{t('flowStages.socialCampaignApproved.team.count').replace('{count}', `${assignedMembers.length}`)}</span>
                             </div>
                             <div className="space-y-3">
                                 {assignedMembers.length > 0 ? assignedMembers.map(m => (
@@ -307,7 +316,7 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
                                         <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{m.displayName}</span>
                                     </div>
                                 )) : (
-                                    <div className="text-center py-4 text-xs text-slate-400 italic">No team assigned</div>
+                                    <div className="text-center py-4 text-xs text-slate-400 italic">{t('flowStages.socialCampaignApproved.team.empty')}</div>
                                 )}
                             </div>
                         </div>
@@ -316,7 +325,7 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
                         {audienceSegments.length > 0 && (
                             <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
                                 <div className="flex items-center gap-4 mb-6">
-                                    <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">Target Audience</h3>
+                                    <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialCampaignApproved.audience.title')}</h3>
                                 </div>
                                 <div className="space-y-3">
                                     {audienceSegments.map((segment: any, index: number) => (
@@ -334,13 +343,13 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
                         {/* AI Token Usage */}
                         <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">AI Resources Used</h3>
+                                <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialCampaignApproved.aiResources.title')}</h3>
                                 <span className="material-symbols-outlined text-base text-violet-500">auto_awesome</span>
                             </div>
                             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4">
                                 <div className="flex items-end gap-2 mb-3">
                                     <span className="text-3xl font-black text-slate-900 dark:text-white">{(idea.aiTokensUsed || 0).toLocaleString()}</span>
-                                    <span className="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">tokens used</span>
+                                    <span className="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">{t('flowStages.socialCampaignApproved.aiResources.tokens')}</span>
                                 </div>
                                 <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                                     <div
@@ -353,7 +362,7 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
 
                         {/* Quick Actions */}
                         <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em] mb-4">Quick Actions</h3>
+                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em] mb-4">{t('flowStages.socialCampaignApproved.actions.title')}</h3>
                             <div className="space-y-3">
                                 <Button
                                     onClick={() => navigate('/social')}
@@ -361,7 +370,7 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
                                     variant="secondary"
                                 >
                                     <span className="material-symbols-outlined text-sm mr-2">arrow_back</span>
-                                    Back to Campaign Hub
+                                    {t('flowStages.socialCampaignApproved.actions.back')}
                                 </Button>
                                 {linkedCampaign && (
                                     <Button
@@ -370,7 +379,7 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
                                         variant="secondary"
                                     >
                                         <span className="material-symbols-outlined text-sm mr-2">calendar_month</span>
-                                        View Content Calendar
+                                        {t('flowStages.socialCampaignApproved.actions.calendar')}
                                     </Button>
                                 )}
                             </div>

@@ -8,6 +8,7 @@ import { generateRiskWinAnalysis } from '../../../services/geminiService';
 import { updateIdea } from '../../../services/dataService';
 import { Modal } from '../../ui/Modal';
 import { InitiativeConversionModal } from '../InitiativeConversionModal';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface ApprovalViewProps {
     idea: Idea;
@@ -19,6 +20,7 @@ interface ApprovalViewProps {
 
 export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onConvert, onReject, onRejectEntirely }) => {
     const navigate = useNavigate();
+    const { t } = useLanguage();
     const [viewMode, setViewMode] = useState<'analysis' | 'brief'>('analysis');
     const [analyzing, setAnalyzing] = useState(false);
     const [showConvertModal, setShowConvertModal] = useState(false);
@@ -74,19 +76,19 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
         if (isImplemented) return (
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-200 text-xs font-bold uppercase tracking-wider">
                 <span className="material-symbols-outlined text-sm">rocket_launch</span>
-                Implemented
+                {t('flows.stage.implemented')}
             </div>
         );
         if (isApproved) return (
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200 text-xs font-bold uppercase tracking-wider">
                 <span className="material-symbols-outlined text-sm">verified</span>
-                Approved
+                {t('flows.stage.approved')}
             </div>
         );
         return (
             <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200 text-xs font-bold uppercase tracking-wider">
                 <span className="material-symbols-outlined text-sm">pending_actions</span>
-                In Review
+                {t('flows.stage.inReview')}
             </div>
         );
     };
@@ -114,14 +116,14 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === 'analysis' ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
                         >
                             <span className="material-symbols-outlined text-[18px]">analytics</span>
-                            Analysis & Risks
+                            {t('flowStages.approval.views.analysis')}
                         </button>
                         <button
                             onClick={() => setViewMode('brief')}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === 'brief' ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
                         >
                             <span className="material-symbols-outlined text-[18px]">description</span>
-                            Concept Brief
+                            {t('flowStages.approval.views.brief')}
                         </button>
                     </div>
 
@@ -147,7 +149,7 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                             ) : (
                                 <div className="h-full flex flex-col items-center justify-center opacity-40 select-none py-20">
                                     <span className="material-symbols-outlined text-6xl mb-4">draft</span>
-                                    <p className="text-lg italic font-serif">No concept drafted yet.</p>
+                                    <p className="text-lg italic font-serif">{t('flowStages.approval.brief.empty')}</p>
                                 </div>
                             )}
                         </div>
@@ -160,26 +162,26 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
 
                 {/* 1. Meta Summary */}
                 <div className="bg-[var(--color-surface-paper)] p-5 rounded-2xl border border-[var(--color-surface-border)] shadow-sm space-y-4">
-                    <h3 className="text-sm font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">At a Glance</h3>
+                    <h3 className="text-sm font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">{t('flowStages.approval.summary.title')}</h3>
 
                     <div className="grid grid-cols-2 gap-3">
                         <div className="bg-[var(--color-surface-bg)] p-3 rounded-xl border border-[var(--color-surface-border)]">
-                            <span className="text-[10px] uppercase text-[var(--color-text-muted)] font-bold block mb-1">Impact</span>
+                            <span className="text-[10px] uppercase text-[var(--color-text-muted)] font-bold block mb-1">{t('flowStages.approval.summary.impact')}</span>
                             <span className={`font-bold ${idea.impact === 'High' ? 'text-green-600' : idea.impact === 'Low' ? 'text-slate-500' : 'text-blue-600'}`}>
-                                {idea.impact || 'N/A'}
+                                {idea.impact ? t(`flowStages.approval.level.${idea.impact.toLowerCase()}`) : t('flowStages.approval.na')}
                             </span>
                         </div>
                         <div className="bg-[var(--color-surface-bg)] p-3 rounded-xl border border-[var(--color-surface-border)]">
-                            <span className="text-[10px] uppercase text-[var(--color-text-muted)] font-bold block mb-1">Effort</span>
+                            <span className="text-[10px] uppercase text-[var(--color-text-muted)] font-bold block mb-1">{t('flowStages.approval.summary.effort')}</span>
                             <span className={`font-bold ${idea.effort === 'High' ? 'text-rose-600' : idea.effort === 'Low' ? 'text-green-600' : 'text-amber-600'}`}>
-                                {idea.effort || 'N/A'}
+                                {idea.effort ? t(`flowStages.approval.level.${idea.effort.toLowerCase()}`) : t('flowStages.approval.na')}
                             </span>
                         </div>
                     </div>
 
                     {(idea.analysis?.strengths?.length || 0) > 0 && (
                         <div className="bg-[var(--color-surface-bg)] p-3 rounded-xl border border-[var(--color-surface-border)]">
-                            <span className="text-[10px] uppercase text-[var(--color-text-muted)] font-bold block mb-2">Key Strength</span>
+                            <span className="text-[10px] uppercase text-[var(--color-text-muted)] font-bold block mb-2">{t('flowStages.approval.summary.keyStrength')}</span>
                             <div className="flex items-start gap-2">
                                 <span className="material-symbols-outlined text-emerald-500 text-sm mt-0.5">check_circle</span>
                                 <span className="text-xs text-[var(--color-text-main)] italic">"{idea.analysis!.strengths[0]}"</span>
@@ -190,7 +192,7 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
 
                 {/* 2. Checklist & Actions */}
                 <div className="bg-[var(--color-surface-paper)] p-5 rounded-2xl border border-[var(--color-surface-border)] shadow-sm flex-1 flex flex-col">
-                    <h3 className="text-sm font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mb-4">Decision</h3>
+                    <h3 className="text-sm font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mb-4">{t('flowStages.approval.decision.title')}</h3>
 
                     {!isApproved && (
                         <div className="space-y-3 mb-6">
@@ -215,10 +217,10 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                 </div>
                                 <div className="flex-1">
                                     <span className={`block text-sm font-bold mb-0.5 transition-colors ${checklist.conceptClear ? 'text-emerald-950 dark:text-emerald-100' : 'text-[var(--color-text-main)]'}`}>
-                                        Concept Validated
+                                        {t('flowStages.approval.checklist.concept.title')}
                                     </span>
                                     <span className={`block text-xs transition-colors ${checklist.conceptClear ? 'text-emerald-700 dark:text-emerald-300' : 'text-[var(--color-text-muted)]'}`}>
-                                        Scope is clear & documented
+                                        {t('flowStages.approval.checklist.concept.subtitle')}
                                     </span>
                                 </div>
                             </div>
@@ -244,10 +246,10 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                 </div>
                                 <div className="flex-1">
                                     <span className={`block text-sm font-bold mb-0.5 transition-colors ${checklist.feasibilityChecked ? 'text-emerald-950 dark:text-emerald-100' : 'text-[var(--color-text-main)]'}`}>
-                                        Risks Assessed
+                                        {t('flowStages.approval.checklist.risks.title')}
                                     </span>
                                     <span className={`block text-xs transition-colors ${checklist.feasibilityChecked ? 'text-emerald-700 dark:text-emerald-300' : 'text-[var(--color-text-muted)]'}`}>
-                                        SWOT analysis completed
+                                        {t('flowStages.approval.checklist.risks.subtitle')}
                                     </span>
                                 </div>
                             </div>
@@ -273,10 +275,10 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                 </div>
                                 <div className="flex-1">
                                     <span className={`block text-sm font-bold mb-0.5 transition-colors ${checklist.resourcesAvailable ? 'text-emerald-950 dark:text-emerald-100' : 'text-[var(--color-text-main)]'}`}>
-                                        Resourced
+                                        {t('flowStages.approval.checklist.resources.title')}
                                     </span>
                                     <span className={`block text-xs transition-colors ${checklist.resourcesAvailable ? 'text-emerald-700 dark:text-emerald-300' : 'text-[var(--color-text-muted)]'}`}>
-                                        Team available to execute
+                                        {t('flowStages.approval.checklist.resources.subtitle')}
                                     </span>
                                 </div>
                             </div>
@@ -303,10 +305,10 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                 </div>
                                 <div className="flex-1">
                                     <span className={`block text-sm font-bold mb-0.5 transition-colors ${checklist.timelineEstimated ? 'text-emerald-950 dark:text-emerald-100' : 'text-[var(--color-text-main)]'}`}>
-                                        Timeline Estimated
+                                        {t('flowStages.approval.checklist.timeline.title')}
                                     </span>
                                     <span className={`block text-xs transition-colors ${checklist.timelineEstimated ? 'text-emerald-700 dark:text-emerald-300' : 'text-[var(--color-text-muted)]'}`}>
-                                        Completion date set
+                                        {t('flowStages.approval.checklist.timeline.subtitle')}
                                     </span>
                                 </div>
                             </div>
@@ -318,8 +320,8 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                             <div className="size-12 bg-emerald-100 dark:bg-emerald-800 text-emerald-600 dark:text-emerald-200 rounded-full flex items-center justify-center mx-auto mb-2">
                                 <span className="material-symbols-outlined">thumb_up</span>
                             </div>
-                            <p className="text-sm font-bold text-emerald-900 dark:text-emerald-300">Flow Approved</p>
-                            <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">Ready for development</p>
+                            <p className="text-sm font-bold text-emerald-900 dark:text-emerald-300">{t('flowStages.approval.approved.title')}</p>
+                            <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">{t('flowStages.approval.approved.subtitle')}</p>
                         </div>
                     )}
 
@@ -332,7 +334,7 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                     className="w-full h-12 text-base border-none hover:bg-[var(--color-surface-hover)]"
                                     onClick={() => navigate(`/project/${idea.projectId}/flows`)}
                                 >
-                                    Decide Later
+                                    {t('flowStages.approval.actions.decideLater')}
                                 </Button>
 
                                 <div className="grid grid-cols-2 gap-3">
@@ -342,7 +344,7 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                         className="h-12 text-sm border-none bg-rose-50 hover:bg-rose-100 text-rose-700 dark:bg-rose-900/20 dark:hover:bg-rose-900/40 dark:text-rose-400"
                                         onClick={() => onRejectEntirely ? onRejectEntirely() : onUpdate({ stage: 'Rejected' })}
                                     >
-                                        Reject
+                                        {t('flowStages.approval.actions.reject')}
                                     </Button>
                                     <Button
                                         size="lg"
@@ -350,7 +352,7 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                         className="h-12 text-sm border-none bg-amber-50 hover:bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:hover:bg-amber-900/40 dark:text-amber-400"
                                         onClick={() => setShowRejectModal(true)}
                                     >
-                                        Request Changes
+                                        {t('flowStages.approval.actions.requestChanges')}
                                     </Button>
                                 </div>
                                 <Button
@@ -360,7 +362,7 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                     onClick={handleApprove}
                                     icon={<span className="material-symbols-outlined">check_circle</span>}
                                 >
-                                    Approve for Dev
+                                    {t('flowStages.approval.actions.approve')}
                                 </Button>
                             </div>
                         )}
@@ -371,7 +373,7 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                 className="w-full h-12 text-base shadow-lg bg-[var(--color-text-main)] text-[var(--color-surface-bg)] hover:bg-[var(--color-text-main)]/90 border-none"
                                 onClick={() => setShowConvertModal(true)}
                             >
-                                Convert to Initiative
+                                {t('flowStages.approval.actions.convert')}
                                 <span className="material-symbols-outlined ml-2 text-sm">arrow_forward</span>
                             </Button>
                         )}
@@ -383,7 +385,7 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                 className="w-full h-12"
                                 onClick={() => window.open(`/project/${idea.projectId}/tasks/${idea.convertedTaskId}`, '_blank')}
                             >
-                                View Linked Initiative
+                                {t('flowStages.approval.actions.viewInitiative')}
                                 <span className="material-symbols-outlined ml-2 text-sm">open_in_new</span>
                             </Button>
                         )}
@@ -394,22 +396,22 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
             <Modal
                 isOpen={showRejectModal}
                 onClose={() => setShowRejectModal(false)}
-                title="Request Changes"
+                title={t('flowStages.approval.feedback.title')}
                 size="md"
             >
                 <div className="space-y-4">
                     <p className="text-sm text-slate-600 dark:text-slate-400">
-                        Describe what needs to be changed before this flow can be approved. This feedback will be sent back to the flow refining stage.
+                        {t('flowStages.approval.feedback.description')}
                     </p>
                     <textarea
                         value={rejectionReason}
                         onChange={(e) => setRejectionReason(e.target.value)}
-                        placeholder="e.g. The scope is too large, please reduce..."
+                        placeholder={t('flowStages.approval.feedback.placeholder')}
                         className="w-full h-32 p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 outline-none resize-none text-sm"
                         autoFocus
                     />
                     <div className="flex justify-end gap-3 pt-2">
-                        <Button variant="ghost" onClick={() => setShowRejectModal(false)}>Cancel</Button>
+                        <Button variant="ghost" onClick={() => setShowRejectModal(false)}>{t('common.cancel')}</Button>
                         <Button
                             variant="primary"
                             className="bg-amber-600 hover:bg-amber-700 text-white border-none"
@@ -428,7 +430,7 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                             }}
                             disabled={!rejectionReason.trim()}
                         >
-                            Send Feedback
+                            {t('flowStages.approval.feedback.send')}
                         </Button>
                     </div>
                 </div>

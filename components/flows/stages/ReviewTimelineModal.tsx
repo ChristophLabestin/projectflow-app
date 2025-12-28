@@ -24,14 +24,15 @@ import { Modal } from '../../ui/Modal';
 import { Button } from '../../ui/Button';
 import { PlatformIcon } from '../../../screens/social/components/PlatformIcon';
 import { SocialPlatform } from '../../../types';
+import { useLanguage } from '../../../context/LanguageContext';
 
 // Matching constants
-const CONTENT_TYPES: { id: string; icon: string; label: string; color: string }[] = [
-    { id: 'Post', icon: 'image', label: 'Post', color: 'bg-blue-500' },
-    { id: 'Reel', icon: 'play_circle', label: 'Reel', color: 'bg-pink-500' },
-    { id: 'Story', icon: 'auto_stories', label: 'Story', color: 'bg-amber-500' },
-    { id: 'Carousel', icon: 'view_carousel', label: 'Carousel', color: 'bg-violet-500' },
-    { id: 'Short', icon: 'movie', label: 'Short', color: 'bg-red-500' },
+const CONTENT_TYPES: { id: string; icon: string; labelKey: string; color: string }[] = [
+    { id: 'Post', icon: 'image', labelKey: 'flowStages.socialCampaignPlanning.contentTypes.post', color: 'bg-blue-500' },
+    { id: 'Reel', icon: 'play_circle', labelKey: 'flowStages.socialCampaignPlanning.contentTypes.reel', color: 'bg-pink-500' },
+    { id: 'Story', icon: 'auto_stories', labelKey: 'flowStages.socialCampaignPlanning.contentTypes.story', color: 'bg-amber-500' },
+    { id: 'Carousel', icon: 'view_carousel', labelKey: 'flowStages.socialCampaignPlanning.contentTypes.carousel', color: 'bg-violet-500' },
+    { id: 'Short', icon: 'movie', labelKey: 'flowStages.socialCampaignPlanning.contentTypes.short', color: 'bg-red-500' },
 ];
 
 const PHASE_COLORS = [
@@ -69,6 +70,7 @@ interface ReviewTimelineModalProps {
 }
 
 const SortablePostItem = ({ post, onClick, onDelete, onEdit, isOverlay = false }: { post: Post; onClick?: () => void, onDelete?: () => void, onEdit?: () => void, isOverlay?: boolean }) => {
+    const { t } = useLanguage();
     const {
         attributes,
         listeners,
@@ -106,7 +108,7 @@ const SortablePostItem = ({ post, onClick, onDelete, onEdit, isOverlay = false }
                 </div>
                 <div className="flex items-center gap-1">
                     <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded-md ${typeInfo.color.replace('bg-', 'text-').replace('500', '600')} bg-opacity-10 dark:bg-opacity-20`}>
-                        {typeInfo.label}
+                        {t(typeInfo.labelKey)}
                     </span>
                     {!isOverlay && (
                         <div className="flex opacity-0 group-hover:opacity-100 transition-opacity">
@@ -127,13 +129,14 @@ const SortablePostItem = ({ post, onClick, onDelete, onEdit, isOverlay = false }
                 </div>
             </div>
             <div className="text-[10px] font-medium text-slate-700 dark:text-slate-200 line-clamp-2 leading-relaxed">
-                {post.title || post.hook || "Untitled Post"}
+                {post.title || post.hook || t('flowStages.reviewTimelineModal.post.untitled')}
             </div>
         </div>
     );
 };
 
 const DayColumn = ({ dayIndex, dayNum, phase, posts, onAddPost, onDeletePost, onEditPost }: { dayIndex: number; dayNum: number; phase: any; posts: Post[]; onAddPost: () => void; onDeletePost: (id: string) => void; onEditPost: (post: Post) => void }) => {
+    const { t } = useLanguage();
     const { setNodeRef } = useSortable({
         id: `day-${dayIndex}`,
         data: { type: 'Day', dayIndex }
@@ -149,7 +152,7 @@ const DayColumn = ({ dayIndex, dayNum, phase, posts, onAddPost, onDeletePost, on
             {/* Header matching Review View */}
             <div className={`p-3 border-b border-slate-100 dark:border-slate-800 ${phase ? phase.color.light : 'bg-slate-50 dark:bg-slate-800/30'}`}>
                 <div className="flex items-center justify-between mb-1">
-                    <span className="text-[9px] font-bold text-slate-400 uppercase">Day</span>
+                    <span className="text-[9px] font-bold text-slate-400 uppercase">{t('flowStages.reviewTimelineModal.dayLabel')}</span>
                     {phase && <div className={`size-2 rounded-full ${phase.color.dot}`} title={phase.name} />}
                 </div>
                 <div className="flex items-baseline justify-between">
@@ -182,7 +185,7 @@ const DayColumn = ({ dayIndex, dayNum, phase, posts, onAddPost, onDeletePost, on
                             <div className="size-6 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-300">
                                 <span className="material-symbols-outlined text-[12px]">add</span>
                             </div>
-                            <span className="text-[8px] font-bold text-slate-400 uppercase">Add Content</span>
+                            <span className="text-[8px] font-bold text-slate-400 uppercase">{t('flowStages.reviewTimelineModal.actions.add')}</span>
                         </div>
                     </div>
                 )}
@@ -192,6 +195,7 @@ const DayColumn = ({ dayIndex, dayNum, phase, posts, onAddPost, onDeletePost, on
 };
 
 const EditPostModal = ({ post, isOpen, onClose, onSave }: { post: Post | null, isOpen: boolean, onClose: () => void, onSave: (post: Post) => void }) => {
+    const { t } = useLanguage();
     const [editedPost, setEditedPost] = useState<Post | null>(null);
 
     useEffect(() => {
@@ -203,34 +207,34 @@ const EditPostModal = ({ post, isOpen, onClose, onSave }: { post: Post | null, i
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md p-6 shadow-2xl border border-slate-200 dark:border-slate-800">
-                <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4">Edit Content</h3>
+                <h3 className="text-lg font-black text-slate-900 dark:text-white mb-4">{t('flowStages.reviewTimelineModal.edit.title')}</h3>
 
                 <div className="space-y-4">
                     <div>
-                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Concept / Hook</label>
+                        <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('flowStages.reviewTimelineModal.edit.hookLabel')}</label>
                         <textarea
                             value={editedPost.hook || ''}
                             onChange={(e) => setEditedPost({ ...editedPost, hook: e.target.value })}
                             className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border-transparent focus:bg-white dark:focus:bg-slate-900 border focus:border-emerald-500 outline-none transition-all text-sm font-medium h-24 resize-none"
-                            placeholder="Describe the post content..."
+                            placeholder={t('flowStages.reviewTimelineModal.edit.hookPlaceholder')}
                         />
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Format</label>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('flowStages.reviewTimelineModal.edit.formatLabel')}</label>
                             <select
                                 value={editedPost.contentType}
                                 onChange={(e) => setEditedPost({ ...editedPost, contentType: e.target.value as any })}
                                 className="w-full p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border-transparent focus:bg-white dark:focus:bg-slate-900 border focus:border-emerald-500 outline-none text-sm font-bold"
                             >
-                                {CONTENT_TYPES.map(t => (
-                                    <option key={t.id} value={t.id}>{t.label}</option>
+                                {CONTENT_TYPES.map(type => (
+                                    <option key={type.id} value={type.id}>{t(type.labelKey)}</option>
                                 ))}
                             </select>
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Platform</label>
+                            <label className="block text-xs font-bold text-slate-500 uppercase mb-1">{t('flowStages.reviewTimelineModal.edit.platformLabel')}</label>
                             <select
                                 value={editedPost.platform}
                                 onChange={(e) => setEditedPost({ ...editedPost, platform: e.target.value, platforms: [e.target.value] })}
@@ -248,8 +252,8 @@ const EditPostModal = ({ post, isOpen, onClose, onSave }: { post: Post | null, i
                 </div>
 
                 <div className="flex gap-3 justify-end mt-6">
-                    <Button variant="secondary" onClick={onClose} size="sm">Cancel</Button>
-                    <Button onClick={() => onSave(editedPost)} size="sm" className="bg-emerald-600 text-white">Save Changes</Button>
+                    <Button variant="secondary" onClick={onClose} size="sm">{t('flowStages.reviewTimelineModal.edit.cancel')}</Button>
+                    <Button onClick={() => onSave(editedPost)} size="sm" className="bg-emerald-600 text-white">{t('flowStages.reviewTimelineModal.edit.save')}</Button>
                 </div>
             </div>
         </div>
@@ -263,6 +267,7 @@ export const ReviewTimelineModal: React.FC<ReviewTimelineModalProps> = ({
     campaignData,
     onUpdate
 }) => {
+    const { t } = useLanguage();
     const [posts, setPosts] = useState<Post[]>([]);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [weekOffset, setWeekOffset] = useState(0);
@@ -298,7 +303,7 @@ export const ReviewTimelineModal: React.FC<ReviewTimelineModalProps> = ({
     };
 
     const handleDeletePost = (id: string) => {
-        if (confirm('Are you sure you want to delete this post?')) {
+        if (confirm(t('flowStages.reviewTimelineModal.confirmDelete'))) {
             setPosts(prev => prev.filter(p => p.id !== id));
         }
     };
@@ -397,7 +402,7 @@ export const ReviewTimelineModal: React.FC<ReviewTimelineModalProps> = ({
         <Modal
             isOpen={isOpen}
             onClose={() => { onClose(); onUpdate(posts); }}
-            title="Campaign Timeline Editor"
+            title={t('flowStages.reviewTimelineModal.title')}
             size="full"
         >
             <div className="h-[80vh] flex flex-col bg-slate-50 dark:bg-slate-950">
@@ -413,7 +418,9 @@ export const ReviewTimelineModal: React.FC<ReviewTimelineModalProps> = ({
                                 <span className="material-symbols-outlined text-sm">chevron_left</span>
                             </button>
                             <div className="px-4 flex items-center text-sm font-bold text-slate-600 dark:text-slate-300">
-                                Week {weekOffset + 1} <span className="text-slate-400 font-normal ml-1">of {totalWeeks}</span>
+                                {t('flowStages.reviewTimelineModal.weekLabel')
+                                    .replace('{week}', `${weekOffset + 1}`)
+                                    .replace('{total}', `${totalWeeks}`)}
                             </div>
                             <button
                                 onClick={() => setWeekOffset(Math.min(totalWeeks - 1, weekOffset + 1))}
@@ -425,7 +432,9 @@ export const ReviewTimelineModal: React.FC<ReviewTimelineModalProps> = ({
                         </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-400 font-medium mr-2">{posts.length} Posts Total</span>
+                        <span className="text-xs text-slate-400 font-medium mr-2">
+                            {t('flowStages.reviewTimelineModal.postsTotal').replace('{count}', `${posts.length}`)}
+                        </span>
                     </div>
                 </div>
 
@@ -463,7 +472,7 @@ export const ReviewTimelineModal: React.FC<ReviewTimelineModalProps> = ({
                 <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900">
                     <div className="flex items-center gap-4 px-2">
                         <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider">
-                            Timeline Legend
+                            {t('flowStages.reviewTimelineModal.legend')}
                         </div>
                         {phasesWithColors.map((phase: any) => (
                             <div key={phase.id} className="flex items-center gap-2 text-[10px] font-bold text-slate-500">
@@ -477,13 +486,13 @@ export const ReviewTimelineModal: React.FC<ReviewTimelineModalProps> = ({
                             variant="secondary"
                             onClick={onClose}
                         >
-                            Cancel
+                            {t('flowStages.reviewTimelineModal.cancel')}
                         </Button>
                         <Button
                             onClick={() => { onUpdate(posts); onClose(); }}
                             className="bg-emerald-600 text-white hover:bg-emerald-500 shadow-md shadow-emerald-200 dark:shadow-none"
                         >
-                            Save Changes
+                            {t('flowStages.reviewTimelineModal.save')}
                         </Button>
                     </div>
                 </div>

@@ -8,6 +8,7 @@ import {
     generateSocialPlaybookAI
 } from '../../../services/geminiService';
 import { PlatformIcon } from '../../../screens/social/components/PlatformIcon';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface SocialStrategyViewProps {
     idea: Idea;
@@ -26,6 +27,7 @@ interface SocialStrategy {
 }
 
 export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, onUpdate }) => {
+    const { t } = useLanguage();
     const [projectStrategy, setProjectStrategy] = React.useState<SocialStrategyType | null>(null);
     const [availableCampaigns, setAvailableCampaigns] = React.useState<SocialCampaign[]>([]);
     const [generating, setGenerating] = React.useState(false);
@@ -123,24 +125,36 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
         }
     };
 
-    const GOALS = ['Brand Awareness', 'Engagement', 'Traffic / Link', 'Sales / Promo', 'Community Building', 'Education'];
+    const GOALS = [
+        { id: 'Brand Awareness', label: t('flowStages.socialStrategy.goals.brandAwareness') },
+        { id: 'Engagement', label: t('flowStages.socialStrategy.goals.engagement') },
+        { id: 'Traffic / Link', label: t('flowStages.socialStrategy.goals.traffic') },
+        { id: 'Sales / Promo', label: t('flowStages.socialStrategy.goals.sales') },
+        { id: 'Community Building', label: t('flowStages.socialStrategy.goals.community') },
+        { id: 'Education', label: t('flowStages.socialStrategy.goals.education') },
+    ];
     const ALL_CHANNELS: SocialPlatform[] = ['Instagram', 'Facebook', 'LinkedIn', 'TikTok', 'X', 'YouTube'];
     const COMMON_CHANNELS = projectStrategy?.defaultPlatforms && projectStrategy.defaultPlatforms.length > 0
         ? projectStrategy.defaultPlatforms
         : ALL_CHANNELS;
 
+    const getGoalLabel = (value?: string) => {
+        if (!value) return '';
+        return GOALS.find((goal) => goal.id === value)?.label || value;
+    };
+
     const missionText = (
         <div className="text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
-            "We are creating a <span className="text-rose-500 font-black">{strategy.scope === 'post' ? 'Single Post' : 'Multi-Channel Campaign'}</span>
+            "{t('flowStages.socialStrategy.mission.prefix')} <span className="text-rose-500 font-black">{strategy.scope === 'post' ? t('flowStages.socialStrategy.scope.post') : t('flowStages.socialStrategy.mission.campaign')}</span>
             {strategy.scope === 'post' && strategy.linkedCampaignId && availableCampaigns.find(c => c.id === strategy.linkedCampaignId) && (
-                <>{' '}for <span className="text-rose-500 font-black">{availableCampaigns.find(c => c.id === strategy.linkedCampaignId)?.name}</span></>
+                <>{' '}{t('flowStages.socialStrategy.mission.for')} <span className="text-rose-500 font-black">{availableCampaigns.find(c => c.id === strategy.linkedCampaignId)?.name}</span></>
             )}
-            {' '}targeting <span className="text-rose-500 font-black">{strategy.targetAudience || 'our core audience'}</span>
-            {' '}on <span className="text-rose-500 font-black">{strategy.channels.length > 0 ? strategy.channels.join(', ') : 'selected platforms'}</span>
-            {' '}to drive <span className="text-rose-500 font-black">
-                {strategy.campaignType || 'Impact'}
+            {' '}{t('flowStages.socialStrategy.mission.targeting')} <span className="text-rose-500 font-black">{strategy.targetAudience || t('flowStages.socialStrategy.mission.audienceFallback')}</span>
+            {' '}{t('flowStages.socialStrategy.mission.on')} <span className="text-rose-500 font-black">{strategy.channels.length > 0 ? strategy.channels.join(', ') : t('flowStages.socialStrategy.mission.channelFallback')}</span>
+            {' '}{t('flowStages.socialStrategy.mission.toDrive')} <span className="text-rose-500 font-black">
+                {getGoalLabel(strategy.campaignType) || t('flowStages.socialStrategy.mission.goalFallback')}
                 {strategy.subGoal && <span className="text-slate-400 font-normal px-1">&</span>}
-                {strategy.subGoal}
+                {strategy.subGoal ? getGoalLabel(strategy.subGoal) : ''}
             </span>."
         </div>
     );
@@ -157,12 +171,12 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
                         <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
                             <div className="flex items-center gap-2 shrink-0">
                                 <div className="px-3 py-1 bg-rose-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-rose-200 dark:shadow-none">
-                                    The Mission
+                                    {t('flowStages.socialStrategy.hero.badge')}
                                 </div>
                                 <div className="h-[1px] w-8 bg-rose-200 dark:bg-rose-800 rounded-full" />
                             </div>
                             <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-                                Strategic Social Playbook
+                                {t('flowStages.socialStrategy.hero.title')}
                             </h1>
                         </div>
                         <div className="max-w-3xl p-5 bg-white/70 dark:bg-slate-950/50 rounded-2xl border border-white dark:border-slate-800 shadow-lg shadow-rose-100/50 dark:shadow-none backdrop-blur-md">
@@ -176,21 +190,21 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
                     <div className="lg:col-span-4 space-y-5">
                         {/* Scope Selection */}
                         <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest mb-4 opacity-50">Project Scope</h3>
+                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest mb-4 opacity-50">{t('flowStages.socialStrategy.scope.title')}</h3>
                             <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
                                 <button
                                     onClick={() => updateStrategy({ scope: 'post' })}
                                     className={`flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${strategy.scope === 'post' ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
                                     <span className="material-symbols-outlined text-[16px]">sticky_note_2</span>
-                                    Single Post
+                                    {t('flowStages.socialStrategy.scope.post')}
                                 </button>
                                 <button
                                     onClick={() => updateStrategy({ scope: 'campaign' })}
                                     className={`flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${strategy.scope === 'campaign' ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
                                     <span className="material-symbols-outlined text-[16px]">layers</span>
-                                    Campaign
+                                    {t('flowStages.socialStrategy.scope.campaign')}
                                 </button>
                             </div>
 
@@ -199,7 +213,7 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
                                 <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2 duration-300">
                                     <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-2 block opacity-70 flex items-center gap-2">
                                         <span className="material-symbols-outlined text-[14px]">link</span>
-                                        Link to Campaign
+                                        {t('flowStages.socialStrategy.scope.linkLabel')}
                                     </label>
                                     <div className="relative">
                                         <select
@@ -207,7 +221,7 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
                                             onChange={(e) => updateStrategy({ linkedCampaignId: e.target.value || undefined })}
                                             className="w-full appearance-none bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-3 py-2 text-[11px] font-bold text-slate-700 dark:text-white focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all pr-8"
                                         >
-                                            <option value="">None (Standalone Post)</option>
+                                            <option value="">{t('flowStages.socialStrategy.scope.noneOption')}</option>
                                             {availableCampaigns.map(c => (
                                                 <option key={c.id} value={c.id}>{c.name}</option>
                                             ))}
@@ -222,7 +236,7 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
 
                         {/* Channel Selection */}
                         <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest mb-4 opacity-50">Social Channels</h3>
+                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest mb-4 opacity-50">{t('flowStages.socialStrategy.channels.title')}</h3>
                             <div className="grid grid-cols-2 gap-2">
                                 {COMMON_CHANNELS.map(c => (
                                     <button
@@ -250,7 +264,7 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
 
                         <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
                             <div className="flex items-center justify-between mb-6">
-                                <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest opacity-50">Base Strategy</h3>
+                                <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest opacity-50">{t('flowStages.socialStrategy.base.title')}</h3>
                                 <button
                                     onClick={async () => {
                                         setGenerating(true);
@@ -281,37 +295,37 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
                                     <span className={`material-symbols-outlined text-[12px] ${generating ? 'animate-spin' : ''}`}>
                                         {generating ? 'progress_activity' : 'auto_awesome'}
                                     </span>
-                                    AI SUPER SUGGEST
+                                    {t('flowStages.socialStrategy.base.aiSuggest')}
                                 </button>
                             </div>
 
                             <div className="space-y-6">
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-3 block opacity-70">Campaign Goal</label>
+                                    <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-3 block opacity-70">{t('flowStages.socialStrategy.base.goalLabel')}</label>
                                     <div className="grid grid-cols-2 gap-2">
-                                        {GOALS.map(g => (
+                                        {GOALS.map(goal => (
                                             <button
-                                                key={g}
-                                                onClick={() => updateStrategy({ campaignType: g })}
-                                                className={`px-2 py-2 text-[10px] font-black rounded-lg border-2 transition-all ${strategy.campaignType === g ? 'bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-200 dark:shadow-none' : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-800 text-slate-500 hover:border-rose-200'}`}
+                                                key={goal.id}
+                                                onClick={() => updateStrategy({ campaignType: goal.id })}
+                                                className={`px-2 py-2 text-[10px] font-black rounded-lg border-2 transition-all ${strategy.campaignType === goal.id ? 'bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-200 dark:shadow-none' : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-800 text-slate-500 hover:border-rose-200'}`}
                                             >
-                                                {g}
+                                                {goal.label}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-3 block opacity-70">Secondary Goal (KPI)</label>
+                                    <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-3 block opacity-70">{t('flowStages.socialStrategy.base.secondaryLabel')}</label>
                                     <div className="relative">
                                         <select
                                             value={strategy.subGoal}
                                             onChange={(e) => updateStrategy({ subGoal: e.target.value })}
                                             className="w-full appearance-none bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-3 text-[11px] font-black text-slate-700 dark:text-white focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all"
                                         >
-                                            <option value="">Select Secondary Goal...</option>
-                                            {GOALS.filter(g => g !== strategy.campaignType).map(g => (
-                                                <option key={g} value={g}>{g}</option>
+                                            <option value="">{t('flowStages.socialStrategy.base.secondaryPlaceholder')}</option>
+                                            {GOALS.filter(goal => goal.id !== strategy.campaignType).map(goal => (
+                                                <option key={goal.id} value={goal.id}>{goal.label}</option>
                                             ))}
                                         </select>
                                         <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
@@ -321,7 +335,7 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
                                 </div>
 
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-3 block opacity-70">Target Audience</label>
+                                    <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-3 block opacity-70">{t('flowStages.socialStrategy.base.audienceLabel')}</label>
                                     <textarea
                                         className="w-full text-xs font-bold bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none h-24 resize-none leading-snug tracking-tight text-slate-700 dark:text-slate-200"
                                         value={strategy.targetAudience}
@@ -339,7 +353,7 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
                                             }}
                                             className="text-[9px] font-black text-slate-500 hover:text-rose-600 flex items-center gap-1"
                                         >
-                                            <span className="material-symbols-outlined text-[12px]">auto_awesome</span> Suggest Alternatives
+                                            <span className="material-symbols-outlined text-[12px]">auto_awesome</span> {t('flowStages.socialStrategy.base.suggestAlternatives')}
                                         </button>
                                     </div>
                                     {audienceSuggestions.length > 0 && (
@@ -365,8 +379,8 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
                         <div className="flex-1 bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm min-h-[500px] flex flex-col">
                             <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
                                 <div>
-                                    <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">Strategic Blueprint</h3>
-                                    <p className="text-[10px] text-slate-500 font-bold mt-1 tracking-tight">Platform-specific winning plays powered by Gemini AI</p>
+                                    <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialStrategy.playbook.title')}</h3>
+                                    <p className="text-[10px] text-slate-500 font-bold mt-1 tracking-tight">{t('flowStages.socialStrategy.playbook.subtitle')}</p>
                                 </div>
                                 <Button
                                     onClick={handleGeneratePlaybook}
@@ -377,7 +391,7 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
                                     <span className={`material-symbols-outlined text-[20px] ${generating ? 'animate-spin' : ''}`}>
                                         {generating ? 'progress_activity' : 'bolt'}
                                     </span>
-                                    <span className="text-[11px] font-black uppercase tracking-widest">Generate Playbook</span>
+                                    <span className="text-[11px] font-black uppercase tracking-widest">{t('flowStages.socialStrategy.playbook.generate')}</span>
                                 </Button>
                             </div>
 
@@ -386,8 +400,8 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
                                     <div className="size-24 bg-white dark:bg-slate-900 rounded-3xl flex items-center justify-center shadow-xl border border-slate-100 dark:border-slate-800 mb-8">
                                         <span className="material-symbols-outlined text-5xl text-slate-300">ads_click</span>
                                     </div>
-                                    <h4 className="text-xl font-black text-slate-400 tracking-tight">Setup Pending</h4>
-                                    <p className="text-sm text-slate-400 font-bold max-w-[280px] mt-3 leading-relaxed opacity-60">Choose your distribution channels on the left to start building your tactical playbook.</p>
+                                    <h4 className="text-xl font-black text-slate-400 tracking-tight">{t('flowStages.socialStrategy.playbook.empty.title')}</h4>
+                                    <p className="text-sm text-slate-400 font-bold max-w-[280px] mt-3 leading-relaxed opacity-60">{t('flowStages.socialStrategy.playbook.empty.subtitle')}</p>
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -405,7 +419,7 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
                                                         onClick={(e) => { e.stopPropagation(); handleRegeneratePlatform(c); }}
                                                         disabled={!!regeneratingPlatform}
                                                         className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all opacity-0 group-hover:opacity-100"
-                                                        title="Regenerate this play"
+                                                        title={t('flowStages.socialStrategy.playbook.regenerate')}
                                                     >
                                                         <span className={`material-symbols-outlined text-[18px] ${regeneratingPlatform === c ? 'animate-spin text-rose-600' : ''}`}>
                                                             {regeneratingPlatform === c ? 'sync' : 'refresh'}
@@ -420,13 +434,13 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
                                             {strategy.plays[c] ? (
                                                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 flex-1">
                                                     <div>
-                                                        <div className="text-[9px] font-black text-rose-600 uppercase tracking-[.25em] mb-1.5 opacity-80">The Winning Play</div>
+                                                        <div className="text-[9px] font-black text-rose-600 uppercase tracking-[.25em] mb-1.5 opacity-80">{t('flowStages.socialStrategy.playbook.playTitle')}</div>
                                                         <h4 className="font-black text-base text-slate-900 dark:text-white leading-tight tracking-tight">
                                                             {strategy.plays[c].play}
                                                         </h4>
                                                     </div>
                                                     <div className="space-y-2.5 pr-1">
-                                                        <div className="text-[9px] font-black text-slate-400 uppercase tracking-[.25em] mb-1.5 opacity-80">Tactical Tips</div>
+                                                        <div className="text-[9px] font-black text-slate-400 uppercase tracking-[.25em] mb-1.5 opacity-80">{t('flowStages.socialStrategy.playbook.tipsTitle')}</div>
                                                         {strategy.plays[c].tips.map((tip, idx) => (
                                                             <div key={idx} className="flex gap-2.5 items-start">
                                                                 <div className="size-4 rounded-md bg-rose-600 text-white flex items-center justify-center text-[8px] font-black mt-0.5 shrink-0 shadow-sm">
@@ -442,7 +456,7 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
                                             ) : (
                                                 <div className="flex-1 flex flex-col items-center justify-center py-12 text-center opacity-40">
                                                     <div className="material-symbols-outlined text-slate-300 text-4xl mb-3 animate-pulse">hourglass_bottom</div>
-                                                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Tactical Play Pending...</p>
+                                                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{t('flowStages.socialStrategy.playbook.pending')}</p>
                                                 </div>
                                             )}
                                         </div>
@@ -457,7 +471,7 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
                                 className="h-14 px-10 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-[.2em] shadow-xl shadow-rose-200 dark:shadow-none hover:scale-105 active:scale-95 transition-all flex items-center gap-4 group"
                                 onClick={() => onUpdate({ stage: 'CreativeLab' })}
                             >
-                                Start Creative Lab
+                                {t('flowStages.socialStrategy.actions.advance')}
                                 <div className="size-7 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-2 transition-all">
                                     <span className="material-symbols-outlined text-[18px] font-black">science</span>
                                 </div>

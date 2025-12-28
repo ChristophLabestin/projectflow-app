@@ -4,6 +4,7 @@ type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
     variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
     size?: 'sm' | 'md' | 'lg' | 'icon';
     isLoading?: boolean;
+    loading?: boolean;
     icon?: React.ReactNode;
 };
 
@@ -13,10 +14,13 @@ export const Button = ({
     size = 'md',
     className = '',
     isLoading,
+    loading,
     icon,
     disabled,
     ...props
 }: ButtonProps) => {
+
+    const isButtonLoading = isLoading || loading;
 
     const baseStyles = "inline-flex items-center justify-center font-medium rounded-xl transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-primary/50 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer";
 
@@ -43,7 +47,7 @@ export const Button = ({
     return (
         <button
             className={`${baseStyles} ${variantClass} ${sizeClass} ${className}`}
-            disabled={isLoading || disabled}
+            disabled={isButtonLoading || disabled}
             style={{
                 // Fallback for dynamic colors if needed
                 backgroundColor: variant === 'primary' ? 'var(--color-primary)' : undefined,
@@ -52,11 +56,11 @@ export const Button = ({
             }}
             {...props}
         >
-            {isLoading && (
+            {isButtonLoading && (
                 <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
             )}
-            {!isLoading && icon && <span className="flex items-center">{icon}</span>}
-            {!isLoading && children}
+            {!isButtonLoading && icon && <span className="flex items-center">{icon}</span>}
+            {!isButtonLoading && children}
         </button>
     );
 };

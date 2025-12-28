@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Idea } from '../../../types';
 import { Button } from '../../ui/Button';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface MarketingAnalysisViewProps {
     idea: Idea;
@@ -17,6 +18,7 @@ interface AnalysisData {
 }
 
 export const MarketingAnalysisView: React.FC<MarketingAnalysisViewProps> = ({ idea, onUpdate }) => {
+    const { t } = useLanguage();
     const analysis: AnalysisData = (() => {
         try {
             if (idea.concept && idea.concept.startsWith('{')) {
@@ -48,43 +50,49 @@ export const MarketingAnalysisView: React.FC<MarketingAnalysisViewProps> = ({ id
     };
 
     const [isEditing, setIsEditing] = useState(false);
+    const metricLabels = {
+        impressions: t('flowStages.marketingAnalysis.metrics.impressions'),
+        clicks: t('flowStages.marketingAnalysis.metrics.clicks'),
+        conversions: t('flowStages.marketingAnalysis.metrics.conversions'),
+        cpa: t('flowStages.marketingAnalysis.metrics.cpa'),
+    };
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
             <div className="col-span-1 lg:col-span-2 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-[var(--color-surface-border)] shadow-sm p-6">
                 <div className="mb-6 flex items-center justify-between">
                     <div>
-                        <h2 className="text-xl font-extrabold text-[var(--color-text-main)] tracking-tight">Performance Report</h2>
-                        <p className="text-xs text-[var(--color-text-muted)] mt-1">Campaign Results</p>
+                        <h2 className="text-xl font-extrabold text-[var(--color-text-main)] tracking-tight">{t('flowStages.marketingAnalysis.title')}</h2>
+                        <p className="text-xs text-[var(--color-text-muted)] mt-1">{t('flowStages.marketingAnalysis.subtitle')}</p>
                     </div>
                     <Button size="sm" variant="ghost" onClick={() => setIsEditing(!isEditing)}>
-                        {isEditing ? 'Save Metrics' : 'Edit Metrics'}
+                        {isEditing ? t('flowStages.marketingAnalysis.actions.save') : t('flowStages.marketingAnalysis.actions.edit')}
                     </Button>
                 </div>
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                    <MetricCard label="Impressions" value={analysis.impressions} onChange={v => updateAnalysis({ impressions: v })} isEditing={isEditing} icon="visibility" color="blue" />
-                    <MetricCard label="Clicks (CTR)" value={analysis.clicks} onChange={v => updateAnalysis({ clicks: v })} isEditing={isEditing} icon="mouse" color="indigo" />
-                    <MetricCard label="Conversions" value={analysis.conversions} onChange={v => updateAnalysis({ conversions: v })} isEditing={isEditing} icon="shopping_cart" color="emerald" />
-                    <MetricCard label="CPA" value={analysis.costPerAcquisition} onChange={v => updateAnalysis({ costPerAcquisition: v })} isEditing={isEditing} icon="attach_money" color="amber" />
+                    <MetricCard label={metricLabels.impressions} value={analysis.impressions} onChange={v => updateAnalysis({ impressions: v })} isEditing={isEditing} icon="visibility" color="blue" />
+                    <MetricCard label={metricLabels.clicks} value={analysis.clicks} onChange={v => updateAnalysis({ clicks: v })} isEditing={isEditing} icon="mouse" color="indigo" />
+                    <MetricCard label={metricLabels.conversions} value={analysis.conversions} onChange={v => updateAnalysis({ conversions: v })} isEditing={isEditing} icon="shopping_cart" color="emerald" />
+                    <MetricCard label={metricLabels.cpa} value={analysis.costPerAcquisition} onChange={v => updateAnalysis({ costPerAcquisition: v })} isEditing={isEditing} icon="attach_money" color="amber" />
                 </div>
 
                 <div className="flex-1">
-                    <h3 className="font-bold text-[var(--color-text-main)] mb-2">Key Takeaways & Learnings</h3>
+                    <h3 className="font-bold text-[var(--color-text-main)] mb-2">{t('flowStages.marketingAnalysis.takeaways.title')}</h3>
                     <textarea
                         value={analysis.keyTakeaways}
                         onChange={(e) => updateAnalysis({ keyTakeaways: e.target.value })}
                         className="w-full h-40 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-4 py-3 focus:ring-1 focus:ring-green-500 outline-none text-sm leading-relaxed resize-none"
-                        placeholder="What worked? What didn't? Recommendations for next time..."
+                        placeholder={t('flowStages.marketingAnalysis.takeaways.placeholder')}
                     />
                 </div>
             </div>
 
             <div className="col-span-1 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-[var(--color-surface-border)] shadow-sm p-6 overflow-hidden">
-                <h3 className="font-bold text-[var(--color-text-main)] mb-4">Final Verdict</h3>
+                <h3 className="font-bold text-[var(--color-text-main)] mb-4">{t('flowStages.marketingAnalysis.verdict.title')}</h3>
 
                 <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 rounded-xl p-6 text-center mb-6">
-                    <div className="text-xs font-bold uppercase text-emerald-600 mb-2">ROI</div>
+                    <div className="text-xs font-bold uppercase text-emerald-600 mb-2">{t('flowStages.marketingAnalysis.verdict.roiLabel')}</div>
                     {isEditing ? (
                         <input
                             type="text"
@@ -99,7 +107,7 @@ export const MarketingAnalysisView: React.FC<MarketingAnalysisViewProps> = ({ id
                 </div>
 
                 <Button className="w-full justify-center bg-[var(--color-text-main)] text-[var(--color-surface-bg)] hover:opacity-90 mt-auto">
-                    Archive Campaign
+                    {t('flowStages.marketingAnalysis.actions.archive')}
                 </Button>
             </div>
         </div>

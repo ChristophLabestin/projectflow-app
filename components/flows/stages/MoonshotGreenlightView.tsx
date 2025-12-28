@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Idea } from '../../../types';
 import { Button } from '../../ui/Button';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface MoonshotGreenlightViewProps {
     idea: Idea;
@@ -18,6 +19,7 @@ interface GreenlightData {
 }
 
 export const MoonshotGreenlightView: React.FC<MoonshotGreenlightViewProps> = ({ idea, onUpdate }) => {
+    const { t } = useLanguage();
     const data: GreenlightData = (() => {
         try {
             if (idea.concept && idea.concept.startsWith('{')) {
@@ -56,48 +58,48 @@ export const MoonshotGreenlightView: React.FC<MoonshotGreenlightViewProps> = ({ 
             {/* Left Column: Summary & Resources */}
             <div className="col-span-1 lg:col-span-2 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-[var(--color-surface-border)] shadow-sm p-6">
                 <div className="mb-6">
-                    <h2 className="text-xl font-extrabold text-[var(--color-text-main)] tracking-tight">Greenlight Review</h2>
-                    <p className="text-xs text-[var(--color-text-muted)] mt-1">Final validation before full project launch</p>
+                    <h2 className="text-xl font-extrabold text-[var(--color-text-main)] tracking-tight">{t('flowStages.moonshotGreenlight.title')}</h2>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-1">{t('flowStages.moonshotGreenlight.subtitle')}</p>
                     <div className="h-1 w-10 bg-lime-500 rounded-full mt-3" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-8">
                     <div className="p-4 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] space-y-2">
-                        <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase">Budget Estimate</label>
+                        <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase">{t('flowStages.moonshotGreenlight.resources.budget')}</label>
                         <input
                             value={data.resourceReqs.budget}
                             onChange={(e) => updateResource('budget', e.target.value)}
-                            placeholder="$1M"
+                            placeholder={t('flowStages.moonshotGreenlight.resources.budgetPlaceholder')}
                             className="w-full bg-transparent border-none p-0 text-xl font-bold text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] focus:ring-0"
                         />
                     </div>
                     <div className="p-4 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] space-y-2">
-                        <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase">Team Size</label>
+                        <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase">{t('flowStages.moonshotGreenlight.resources.team')}</label>
                         <input
                             value={data.resourceReqs.personnel}
                             onChange={(e) => updateResource('personnel', e.target.value)}
-                            placeholder="5 Engineers"
+                            placeholder={t('flowStages.moonshotGreenlight.resources.teamPlaceholder')}
                             className="w-full bg-transparent border-none p-0 text-xl font-bold text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] focus:ring-0"
                         />
                     </div>
                     <div className="col-span-2 p-4 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] space-y-2">
-                        <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase">Expected Timeline</label>
+                        <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase">{t('flowStages.moonshotGreenlight.resources.timeline')}</label>
                         <input
                             value={data.resourceReqs.timeline}
                             onChange={(e) => updateResource('timeline', e.target.value)}
-                            placeholder="Q3 2026 Launch"
+                            placeholder={t('flowStages.moonshotGreenlight.resources.timelinePlaceholder')}
                             className="w-full bg-transparent border-none p-0 text-xl font-bold text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] focus:ring-0"
                         />
                     </div>
                 </div>
 
                 <div className="flex-1 flex flex-col">
-                    <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-2">Decision Rationale / Notes</label>
+                    <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-2">{t('flowStages.moonshotGreenlight.notes.label')}</label>
                     <textarea
                         value={data.decisionNotes}
                         onChange={(e) => updateData({ decisionNotes: e.target.value })}
                         className="flex-1 w-full bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl p-4 focus:ring-1 focus:ring-lime-500 outline-none resize-none leading-relaxed"
-                        placeholder="Why are we moving forward (or not)?"
+                        placeholder={t('flowStages.moonshotGreenlight.notes.placeholder')}
                     />
                 </div>
             </div>
@@ -110,7 +112,7 @@ export const MoonshotGreenlightView: React.FC<MoonshotGreenlightViewProps> = ({ 
                             data.decision === 'PIVOT' ? 'bg-amber-500' : 'bg-transparent'
                     }`} />
 
-                <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-8">What's the Verdict?</h3>
+                <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-8">{t('flowStages.moonshotGreenlight.verdict.title')}</h3>
 
                 <div className="flex flex-col gap-4 w-full max-w-xs relative z-10">
                     <button
@@ -121,8 +123,8 @@ export const MoonshotGreenlightView: React.FC<MoonshotGreenlightViewProps> = ({ 
                             }`}
                     >
                         <div className="text-left">
-                            <span className="block text-2xl font-black tracking-tight">GO</span>
-                            <span className="text-xs opacity-90">Project Approved</span>
+                            <span className="block text-2xl font-black tracking-tight">{t('flowStages.moonshotGreenlight.decision.go.label')}</span>
+                            <span className="text-xs opacity-90">{t('flowStages.moonshotGreenlight.decision.go.subtitle')}</span>
                         </div>
                         <span className="material-symbols-outlined text-4xl">check_circle</span>
                     </button>
@@ -135,8 +137,8 @@ export const MoonshotGreenlightView: React.FC<MoonshotGreenlightViewProps> = ({ 
                             }`}
                     >
                         <div className="text-left">
-                            <span className="block text-xl font-black tracking-tight">PIVOT</span>
-                            <span className="text-xs opacity-90">Change Direction</span>
+                            <span className="block text-xl font-black tracking-tight">{t('flowStages.moonshotGreenlight.decision.pivot.label')}</span>
+                            <span className="text-xs opacity-90">{t('flowStages.moonshotGreenlight.decision.pivot.subtitle')}</span>
                         </div>
                         <span className="material-symbols-outlined text-3xl">shuffle</span>
                     </button>
@@ -149,8 +151,8 @@ export const MoonshotGreenlightView: React.FC<MoonshotGreenlightViewProps> = ({ 
                             }`}
                     >
                         <div className="text-left">
-                            <span className="block text-xl font-black tracking-tight">NO-GO</span>
-                            <span className="text-xs opacity-90">Archive Flow</span>
+                            <span className="block text-xl font-black tracking-tight">{t('flowStages.moonshotGreenlight.decision.noGo.label')}</span>
+                            <span className="text-xs opacity-90">{t('flowStages.moonshotGreenlight.decision.noGo.subtitle')}</span>
                         </div>
                         <span className="material-symbols-outlined text-3xl">cancel</span>
                     </button>
@@ -163,7 +165,7 @@ export const MoonshotGreenlightView: React.FC<MoonshotGreenlightViewProps> = ({ 
                             // Handle convert logic here or pass up
                             onClick={() => onUpdate({ stage: 'Approved' })} // Assuming Approved is a subsequent state or mapped
                         >
-                            Initialize Project
+                            {t('flowStages.moonshotGreenlight.actions.initialize')}
                             <span className="material-symbols-outlined ml-2">rocket_launch</span>
                         </Button>
                     </div>

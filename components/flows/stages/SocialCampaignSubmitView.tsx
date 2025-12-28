@@ -6,6 +6,7 @@ import { Idea, SocialCampaign, ApprovalEvent, RiskWinAnalysis } from '../../../t
 import { getProjectMembers, getUserProfile, getSocialCampaign, updateCampaign } from '../../../services/dataService';
 import { generateRiskWinAnalysis } from '../../../services/geminiService';
 import { PlatformIcon } from '../../../screens/social/components/PlatformIcon';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface SocialCampaignSubmitViewProps {
     idea: Idea;
@@ -22,6 +23,7 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
     onSubmit,
     onRejectEntirely
 }) => {
+    const { t } = useLanguage();
     const navigate = useNavigate();
     const [teamMembers, setTeamMembers] = useState<Array<{ id: string; displayName: string; photoURL?: string }>>([]);
     const [campaignHistory, setCampaignHistory] = useState<ApprovalEvent[]>([]);
@@ -33,10 +35,10 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
 
     // Checklist
     const [checklist, setChecklist] = useState({
-        concept: { label: 'Concept & Creative Direction Approved', checked: false },
-        strategy: { label: 'Channel Strategy & Targets Aligned', checked: false },
-        legal: { label: 'Legal & Compliance Review Complete', checked: false },
-        brand: { label: 'Brand Voice & Tone Verified', checked: false },
+        concept: { labelKey: 'flowStages.socialCampaignSubmit.checklist.concept', checked: false },
+        strategy: { labelKey: 'flowStages.socialCampaignSubmit.checklist.strategy', checked: false },
+        legal: { labelKey: 'flowStages.socialCampaignSubmit.checklist.legal', checked: false },
+        brand: { labelKey: 'flowStages.socialCampaignSubmit.checklist.brand', checked: false },
     });
 
     // Data Loading
@@ -129,6 +131,11 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
         if (score >= 5) return 'bg-amber-500';
         return 'bg-red-500';
     };
+    const severityLabels: Record<string, string> = {
+        High: t('flowStages.socialCampaignSubmit.analysis.severity.high'),
+        Medium: t('flowStages.socialCampaignSubmit.analysis.severity.medium'),
+        Low: t('flowStages.socialCampaignSubmit.analysis.severity.low'),
+    };
 
     return (
         <div className="h-full overflow-y-auto">
@@ -143,40 +150,40 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
                         <div className="flex-1">
                             <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
                                 <div className="flex items-center gap-2 shrink-0">
-                                    <div className="px-3 py-1 bg-emerald-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-emerald-200 dark:shadow-none">
-                                        Submit Phase
-                                    </div>
-                                    <div className="h-[1px] w-8 bg-emerald-200 dark:bg-emerald-800 rounded-full" />
+                                <div className="px-3 py-1 bg-emerald-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-emerald-200 dark:shadow-none">
+                                        {t('flowStages.socialCampaignSubmit.hero.badge')}
                                 </div>
-                                <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                                    {isSubmitted ? 'Awaiting Approval' : 'Final Review'}
-                                </h1>
+                                <div className="h-[1px] w-8 bg-emerald-200 dark:bg-emerald-800 rounded-full" />
                             </div>
-                            <div className="max-w-3xl p-5 bg-white/70 dark:bg-slate-950/50 rounded-2xl border border-white dark:border-slate-800 shadow-lg shadow-emerald-100/50 dark:shadow-none backdrop-blur-md">
-                                <p className="text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
-                                    {isSubmitted
-                                        ? <>Campaign is <span className="text-emerald-600 font-black">locked for review</span>. Awaiting approval from the board.</>
-                                        : <>Verify <span className="text-emerald-600 font-black">all checkpoints</span> and run a strategic forecast before submitting for approval.</>}
-                                </p>
-                            </div>
+                            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                                    {isSubmitted ? t('flowStages.socialCampaignSubmit.hero.titleSubmitted') : t('flowStages.socialCampaignSubmit.hero.title')}
+                            </h1>
                         </div>
-                        {/* Quick Stats */}
-                        <div className="flex gap-4">
-                            <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 text-center border border-white/50 dark:border-slate-700/50 min-w-[80px]">
-                                <div className="text-2xl font-black text-emerald-600">{platforms.length}</div>
-                                <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Channels</div>
-                            </div>
-                            <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 text-center border border-white/50 dark:border-slate-700/50 min-w-[80px]">
-                                <div className="text-2xl font-black text-emerald-600">{phases.length}</div>
-                                <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Phases</div>
-                            </div>
-                            <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 text-center border border-white/50 dark:border-slate-700/50 min-w-[80px]">
-                                <div className="text-2xl font-black text-emerald-600">{kpis.length}</div>
-                                <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">KPIs</div>
-                            </div>
+                        <div className="max-w-3xl p-5 bg-white/70 dark:bg-slate-950/50 rounded-2xl border border-white dark:border-slate-800 shadow-lg shadow-emerald-100/50 dark:shadow-none backdrop-blur-md">
+                            <p className="text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
+                                {isSubmitted
+                                        ? <>{t('flowStages.socialCampaignSubmit.hero.submittedPrefix')} <span className="text-emerald-600 font-black">{t('flowStages.socialCampaignSubmit.hero.submittedEmphasis')}</span> {t('flowStages.socialCampaignSubmit.hero.submittedSuffix')}</>
+                                        : <>{t('flowStages.socialCampaignSubmit.hero.reviewPrefix')} <span className="text-emerald-600 font-black">{t('flowStages.socialCampaignSubmit.hero.reviewEmphasis')}</span> {t('flowStages.socialCampaignSubmit.hero.reviewSuffix')}</>}
+                            </p>
+                        </div>
+                    </div>
+                    {/* Quick Stats */}
+                    <div className="flex gap-4">
+                        <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 text-center border border-white/50 dark:border-slate-700/50 min-w-[80px]">
+                            <div className="text-2xl font-black text-emerald-600">{platforms.length}</div>
+                            <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{t('flowStages.socialCampaignSubmit.hero.stats.channels')}</div>
+                        </div>
+                        <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 text-center border border-white/50 dark:border-slate-700/50 min-w-[80px]">
+                            <div className="text-2xl font-black text-emerald-600">{phases.length}</div>
+                            <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{t('flowStages.socialCampaignSubmit.hero.stats.phases')}</div>
+                        </div>
+                        <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 text-center border border-white/50 dark:border-slate-700/50 min-w-[80px]">
+                            <div className="text-2xl font-black text-emerald-600">{kpis.length}</div>
+                            <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{t('flowStages.socialCampaignSubmit.hero.stats.kpis')}</div>
                         </div>
                     </div>
                 </div>
+            </div>
 
                 {/* Feedback Banner */}
                 {isChangesRequested && latestFeedback && (
@@ -185,7 +192,7 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
                             <span className="material-symbols-outlined text-2xl">feedback</span>
                         </div>
                         <div>
-                            <h3 className="font-black text-amber-900 dark:text-amber-100 text-sm uppercase tracking-wider mb-2">Changes Requested</h3>
+                            <h3 className="font-black text-amber-900 dark:text-amber-100 text-sm uppercase tracking-wider mb-2">{t('flowStages.socialCampaignSubmit.feedback.title')}</h3>
                             <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">"{latestFeedback.notes}"</p>
                         </div>
                     </div>
@@ -204,8 +211,8 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
                                         <span className="material-symbols-outlined">psychology</span>
                                     </div>
                                     <div>
-                                        <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">AI Intelligence Report</h3>
-                                        <p className="text-[10px] text-slate-400 font-bold mt-1">Strategic risk & opportunity analysis</p>
+                                        <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialCampaignSubmit.analysis.title')}</h3>
+                                        <p className="text-[10px] text-slate-400 font-bold mt-1">{t('flowStages.socialCampaignSubmit.analysis.subtitle')}</p>
                                     </div>
                                 </div>
                                 {!isSubmitted && (
@@ -217,7 +224,7 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
                                         <span className={`material-symbols-outlined text-[18px] ${analyzing ? 'animate-spin' : ''}`}>
                                             {analyzing ? 'progress_activity' : 'refresh'}
                                         </span>
-                                        {analyzing ? 'Analyzing...' : 'Refresh Analysis'}
+                                        {analyzing ? t('flowStages.socialCampaignSubmit.analysis.refreshing') : t('flowStages.socialCampaignSubmit.analysis.refresh')}
                                     </Button>
                                 )}
                             </div>
@@ -232,7 +239,7 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
                                                 <span className="material-symbols-outlined text-6xl">query_stats</span>
                                             </div>
                                             <div className="relative z-10">
-                                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Success Probability</div>
+                                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('flowStages.socialCampaignSubmit.analysis.successProbability')}</div>
                                                 <div className={`text-4xl font-black ${getScoreColor(analysis.successProbability / 10)} mb-3`}>
                                                     {analysis.successProbability}%
                                                 </div>
@@ -244,7 +251,7 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
 
                                         {/* Market Fit */}
                                         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-100 dark:border-slate-700/50 flex flex-col justify-between">
-                                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Market Fit Score</div>
+                                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('flowStages.socialCampaignSubmit.analysis.marketFit')}</div>
                                             <div className="flex items-end gap-2">
                                                 <span className={`text-3xl font-black ${getScoreColor(analysis.marketFitScore)}`}>{analysis.marketFitScore}</span>
                                                 <span className="text-sm font-bold text-slate-400 mb-1">/ 10</span>
@@ -253,7 +260,7 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
 
                                         {/* Technical Feasibility */}
                                         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-100 dark:border-slate-700/50 flex flex-col justify-between">
-                                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Technical Feasibility</div>
+                                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('flowStages.socialCampaignSubmit.analysis.feasibility')}</div>
                                             <div className="flex items-end gap-2">
                                                 <span className={`text-3xl font-black ${getScoreColor(analysis.technicalFeasibilityScore)}`}>{analysis.technicalFeasibilityScore}</span>
                                                 <span className="text-sm font-bold text-slate-400 mb-1">/ 10</span>
@@ -266,7 +273,7 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
                                         <div>
                                             <h4 className="flex items-center gap-2 text-[11px] font-black text-red-500 uppercase tracking-widest mb-4">
                                                 <span className="material-symbols-outlined text-lg">warning</span>
-                                                Identified Risks
+                                                {t('flowStages.socialCampaignSubmit.analysis.risks')}
                                             </h4>
                                             <div className="space-y-3">
                                                 {analysis.risks.map((risk, i) => (
@@ -274,11 +281,11 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
                                                         <div className="flex items-start justify-between gap-3 mb-2">
                                                             <div className="font-bold text-red-900 dark:text-red-100 text-sm">{risk.title}</div>
                                                             <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shrink-0 ${risk.severity === 'High' ? 'bg-red-500 text-white' : risk.severity === 'Medium' ? 'bg-amber-500 text-white' : 'bg-slate-500 text-white'}`}>
-                                                                {risk.severity}
+                                                                {severityLabels[risk.severity] || risk.severity}
                                                             </span>
                                                         </div>
                                                         <div className="text-xs text-red-800/80 dark:text-red-200/80 leading-relaxed">
-                                                            <span className="font-bold">Mitigation:</span> {risk.mitigation}
+                                                            <span className="font-bold">{t('flowStages.socialCampaignSubmit.analysis.mitigation')}:</span> {risk.mitigation}
                                                         </div>
                                                     </div>
                                                 ))}
@@ -289,7 +296,7 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
                                         <div>
                                             <h4 className="flex items-center gap-2 text-[11px] font-black text-emerald-500 uppercase tracking-widest mb-4">
                                                 <span className="material-symbols-outlined text-lg">verified</span>
-                                                Projected Wins
+                                                {t('flowStages.socialCampaignSubmit.analysis.wins')}
                                             </h4>
                                             <div className="space-y-3">
                                                 {analysis.wins.map((win, i) => (
@@ -297,14 +304,14 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
                                                         <div className="flex items-start justify-between gap-3 mb-1">
                                                             <div className="font-bold text-emerald-900 dark:text-emerald-100 text-sm">{win.title}</div>
                                                             <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shrink-0 bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300`}>
-                                                                {win.impact} Impact
+                                                                {(severityLabels[win.impact] || win.impact)} {t('flowStages.socialCampaignSubmit.analysis.impact')}
                                                             </span>
                                                         </div>
                                                     </div>
                                                 ))}
                                                 {analysis.recommendation && (
                                                     <div className="mt-6 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
-                                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">AI Recommendation</div>
+                                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('flowStages.socialCampaignSubmit.analysis.recommendation')}</div>
                                                         <p className="text-sm font-medium text-slate-700 dark:text-slate-300 italic">"{analysis.recommendation}"</p>
                                                     </div>
                                                 )}
@@ -317,18 +324,18 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
                                     <div className="size-20 rounded-3xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center mb-6 shadow-sm">
                                         <span className="material-symbols-outlined text-4xl text-slate-300">query_stats</span>
                                     </div>
-                                    <h4 className="text-lg font-black text-slate-900 dark:text-white mb-2">No Analysis Available</h4>
-                                    <p className="text-sm text-slate-500 max-w-sm mb-8 leading-relaxed">Run a comprehensive AI forecast to analyze risks, market fit, and potential wins before submitting.</p>
+                                    <h4 className="text-lg font-black text-slate-900 dark:text-white mb-2">{t('flowStages.socialCampaignSubmit.analysis.empty.title')}</h4>
+                                    <p className="text-sm text-slate-500 max-w-sm mb-8 leading-relaxed">{t('flowStages.socialCampaignSubmit.analysis.empty.subtitle')}</p>
                                     <Button onClick={handleRunAnalysis} disabled={analyzing} className="h-12 px-8 rounded-xl">
                                         {analyzing ? (
                                             <>
                                                 <span className="animate-spin material-symbols-outlined mr-2">progress_activity</span>
-                                                Analyzing Campaign...
+                                                {t('flowStages.socialCampaignSubmit.analysis.empty.loading')}
                                             </>
                                         ) : (
                                             <>
                                                 <span className="material-symbols-outlined mr-2">play_arrow</span>
-                                                Run AI Vision Analysis
+                                                {t('flowStages.socialCampaignSubmit.analysis.empty.action')}
                                             </>
                                         )}
                                     </Button>
@@ -343,8 +350,8 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
                                     <span className="material-symbols-outlined">description</span>
                                 </div>
                                 <div>
-                                    <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">Campaign Manifesto</h3>
-                                    <p className="text-[10px] text-slate-400 font-bold mt-1">Core creative direction</p>
+                                    <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialCampaignSubmit.manifesto.title')}</h3>
+                                    <p className="text-[10px] text-slate-400 font-bold mt-1">{t('flowStages.socialCampaignSubmit.manifesto.subtitle')}</p>
                                 </div>
                             </div>
                             <div className="space-y-6">
@@ -384,8 +391,8 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
                                         <span className="material-symbols-outlined">checklist</span>
                                     </div>
                                     <div>
-                                        <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">Pre-Flight Checklist</h3>
-                                        <p className="text-[10px] text-slate-400 font-bold mt-1">Complete all items to unlock submission</p>
+                                        <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialCampaignSubmit.checklist.title')}</h3>
+                                        <p className="text-[10px] text-slate-400 font-bold mt-1">{t('flowStages.socialCampaignSubmit.checklist.subtitle')}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
@@ -406,53 +413,53 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
                                                     ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-500/20 dark:border-emerald-500/30'
                                                     : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-emerald-200 dark:hover:border-emerald-800'}`}
                                             >
-                                                <div className={`size-6 rounded-lg border-2 flex items-center justify-center transition-all ${item.checked
-                                                    ? 'bg-emerald-500 border-emerald-500'
-                                                    : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 group-hover:border-emerald-400'}`}>
-                                                    {item.checked && <span className="material-symbols-outlined text-[16px] text-white">check</span>}
-                                                </div>
-                                                <span className={`text-sm font-bold ${item.checked ? 'text-emerald-800 dark:text-emerald-200' : 'text-slate-700 dark:text-slate-300'}`}>
-                                                    {item.label}
-                                                </span>
+                                            <div className={`size-6 rounded-lg border-2 flex items-center justify-center transition-all ${item.checked
+                                                ? 'bg-emerald-500 border-emerald-500'
+                                                : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 group-hover:border-emerald-400'}`}>
+                                                {item.checked && <span className="material-symbols-outlined text-[16px] text-white">check</span>}
                                             </div>
-                                        ))}
-                                    </div>
+                                            <span className={`text-sm font-bold ${item.checked ? 'text-emerald-800 dark:text-emerald-200' : 'text-slate-700 dark:text-slate-300'}`}>
+                                                {t(item.labelKey)}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
 
-                                    {/* Submit Button */}
-                                    <Button
-                                        onClick={onSubmit}
-                                        disabled={!allChecked}
-                                        className={`w-full h-16 rounded-2xl font-black uppercase tracking-[0.2em] text-sm flex items-center justify-center gap-3 transition-all ${allChecked
-                                            ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-xl shadow-emerald-200/50 dark:shadow-none hover:-translate-y-1'
-                                            : 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'}`}
-                                    >
-                                        <span className="material-symbols-outlined text-2xl">{allChecked ? 'rocket_launch' : 'lock'}</span>
-                                        {allChecked ? 'Submit for Review' : 'Complete Checklist to Submit'}
-                                    </Button>
+                                {/* Submit Button */}
+                                <Button
+                                    onClick={onSubmit}
+                                    disabled={!allChecked}
+                                    className={`w-full h-16 rounded-2xl font-black uppercase tracking-[0.2em] text-sm flex items-center justify-center gap-3 transition-all ${allChecked
+                                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-xl shadow-emerald-200/50 dark:shadow-none hover:-translate-y-1'
+                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'}`}
+                                >
+                                    <span className="material-symbols-outlined text-2xl">{allChecked ? 'rocket_launch' : 'lock'}</span>
+                                    {allChecked ? t('flowStages.socialCampaignSubmit.checklist.submit') : t('flowStages.socialCampaignSubmit.checklist.submitLocked')}
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="p-12 text-center">
+                                <div className="inline-flex size-16 bg-amber-50 dark:bg-amber-900/30 rounded-2xl items-center justify-center mb-6 text-amber-500">
+                                    <span className="material-symbols-outlined text-4xl">lock_clock</span>
                                 </div>
-                            ) : (
-                                <div className="p-12 text-center">
-                                    <div className="inline-flex size-16 bg-amber-50 dark:bg-amber-900/30 rounded-2xl items-center justify-center mb-6 text-amber-500">
-                                        <span className="material-symbols-outlined text-4xl">lock_clock</span>
-                                    </div>
-                                    <h4 className="font-bold text-slate-900 dark:text-white mb-2 text-lg">Locked for Review</h4>
-                                    <p className="text-sm text-slate-500 mb-8">Campaign is with the approval board.</p>
-                                    <Button onClick={() => navigate('/social')} className="h-12 w-full mb-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold uppercase tracking-wider text-xs">
-                                        Back to Pipeline
-                                    </Button>
-                                    <Button onClick={onRejectEntirely} variant="ghost" className="text-xs text-slate-500 hover:text-red-600">
-                                        <span className="material-symbols-outlined text-sm mr-2">undo</span>
-                                        Retract Submission
-                                    </Button>
-                                </div>
-                            )}
+                                <h4 className="font-bold text-slate-900 dark:text-white mb-2 text-lg">{t('flowStages.socialCampaignSubmit.locked.title')}</h4>
+                                <p className="text-sm text-slate-500 mb-8">{t('flowStages.socialCampaignSubmit.locked.subtitle')}</p>
+                                <Button onClick={() => navigate('/social')} className="h-12 w-full mb-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold uppercase tracking-wider text-xs">
+                                    {t('flowStages.socialCampaignSubmit.locked.back')}
+                                </Button>
+                                <Button onClick={onRejectEntirely} variant="ghost" className="text-xs text-slate-500 hover:text-red-600">
+                                    <span className="material-symbols-outlined text-sm mr-2">undo</span>
+                                    {t('flowStages.socialCampaignSubmit.locked.retract')}
+                                </Button>
+                            </div>
+                        )}
                         </div>
 
                         {/* Mission Team */}
                         <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
                             <div className="flex items-center justify-between mb-6">
-                                <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">Campaign Team</h3>
-                                <button className="text-[10px] font-bold text-indigo-500 hover:text-indigo-600 uppercase tracking-widest" onClick={handleOpenTeamModal}>Manage</button>
+                                <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialCampaignSubmit.team.title')}</h3>
+                                <button className="text-[10px] font-bold text-indigo-500 hover:text-indigo-600 uppercase tracking-widest" onClick={handleOpenTeamModal}>{t('flowStages.socialCampaignSubmit.team.manage')}</button>
                             </div>
                             <div className="space-y-3">
                                 {assignedMembers.length > 0 ? assignedMembers.map(m => (
@@ -463,14 +470,14 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
                                         <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{m.displayName}</span>
                                     </div>
                                 )) : (
-                                    <div className="text-center py-4 text-xs text-slate-400 italic">No team assigned</div>
+                                    <div className="text-center py-4 text-xs text-slate-400 italic">{t('flowStages.socialCampaignSubmit.team.empty')}</div>
                                 )}
                                 <button
                                     className="w-full py-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-600 hover:border-slate-300 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-wider transition-all"
                                     onClick={handleOpenTeamModal}
                                 >
                                     <span className="material-symbols-outlined text-sm">add</span>
-                                    Assign Member
+                                    {t('flowStages.socialCampaignSubmit.team.add')}
                                 </button>
                             </div>
                         </div>
@@ -478,13 +485,13 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
                         {/* AI Token Usage */}
                         <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">AI Resources</h3>
+                                <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialCampaignSubmit.aiResources.title')}</h3>
                                 <span className="material-symbols-outlined text-base text-violet-500">auto_awesome</span>
                             </div>
                             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4">
                                 <div className="flex items-end gap-2 mb-3">
                                     <span className="text-3xl font-black text-slate-900 dark:text-white">{(idea.aiTokensUsed || 0).toLocaleString()}</span>
-                                    <span className="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">tokens used</span>
+                                    <span className="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">{t('flowStages.socialCampaignSubmit.aiResources.tokens')}</span>
                                 </div>
                                 <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                                     <div
@@ -502,16 +509,16 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
                 <Modal
                     isOpen={isTeamModalOpen}
                     onClose={() => setIsTeamModalOpen(false)}
-                    title="Campaign Team"
+                    title={t('flowStages.socialCampaignSubmit.team.modal.title')}
                     footer={
                         <>
-                            <Button variant="ghost" onClick={() => setIsTeamModalOpen(false)}>Cancel</Button>
-                            <Button onClick={handleSaveTeam}>Save Team</Button>
+                            <Button variant="ghost" onClick={() => setIsTeamModalOpen(false)}>{t('flowStages.socialCampaignSubmit.team.modal.cancel')}</Button>
+                            <Button onClick={handleSaveTeam}>{t('flowStages.socialCampaignSubmit.team.modal.save')}</Button>
                         </>
                     }
                 >
                     <div className="space-y-4">
-                        <p className="text-sm text-slate-500 mb-4">Select team members responsible for this campaign.</p>
+                        <p className="text-sm text-slate-500 mb-4">{t('flowStages.socialCampaignSubmit.team.modal.subtitle')}</p>
                         <div className="max-h-[300px] overflow-y-auto space-y-2">
                             {teamMembers.map(member => {
                                 const isSelected = tempAssignedIds.includes(member.id);

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Idea } from '../../../types';
 import { Button } from '../../ui/Button';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface MoonshotFeasibilityViewProps {
     idea: Idea;
@@ -22,6 +23,7 @@ interface FeasibilityData {
 }
 
 export const MoonshotFeasibilityView: React.FC<MoonshotFeasibilityViewProps> = ({ idea, onUpdate }) => {
+    const { t } = useLanguage();
     const data: FeasibilityData = (() => {
         try {
             if (idea.concept && idea.concept.startsWith('{')) {
@@ -81,18 +83,18 @@ export const MoonshotFeasibilityView: React.FC<MoonshotFeasibilityViewProps> = (
                 </div>
                 <div className="flex flex-col h-full relative z-10">
                     <div className="mb-6">
-                        <h2 className="text-xl font-extrabold text-[var(--color-text-main)] tracking-tight">Feasibility Study</h2>
-                        <p className="text-xs text-[var(--color-text-muted)] mt-1">Define the core hypothesis</p>
+                        <h2 className="text-xl font-extrabold text-[var(--color-text-main)] tracking-tight">{t('flowStages.moonshotFeasibility.title')}</h2>
+                        <p className="text-xs text-[var(--color-text-muted)] mt-1">{t('flowStages.moonshotFeasibility.subtitle')}</p>
                         <div className="h-1 w-10 bg-indigo-500 rounded-full mt-3" />
                     </div>
 
                     <div className="flex-1 flex flex-col">
-                        <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-2 block">Core Hypothesis</label>
+                        <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-2 block">{t('flowStages.moonshotFeasibility.hypothesis.label')}</label>
                         <textarea
                             value={data.hypothesis}
                             onChange={(e) => updateData({ hypothesis: e.target.value })}
                             className="flex-1 w-full bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-4 py-3 focus:ring-1 focus:ring-indigo-500 outline-none text-sm resize-none leading-relaxed"
-                            placeholder="If we build [X], then [Y] will happen because [Z]..."
+                            placeholder={t('flowStages.moonshotFeasibility.hypothesis.placeholder')}
                         />
                     </div>
                 </div>
@@ -101,45 +103,45 @@ export const MoonshotFeasibilityView: React.FC<MoonshotFeasibilityViewProps> = (
             {/* Middle Column: Risk Matrix */}
             <div className="col-span-1 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-[var(--color-surface-border)] shadow-sm p-6 overflow-hidden">
                 <div className="mb-4">
-                    <h3 className="font-bold text-[var(--color-text-main)]">Risk Assessment</h3>
-                    <p className="text-xs text-[var(--color-text-muted)]">Identify potential blockers</p>
+                    <h3 className="font-bold text-[var(--color-text-main)]">{t('flowStages.moonshotFeasibility.risks.title')}</h3>
+                    <p className="text-xs text-[var(--color-text-muted)]">{t('flowStages.moonshotFeasibility.risks.subtitle')}</p>
                 </div>
 
                 <div className="space-y-4 overflow-y-auto pr-1">
                     <div>
                         <label className="text-xs font-bold text-rose-500 uppercase tracking-wider mb-1.5 block flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[14px]">memory</span> Technical Risks
+                            <span className="material-symbols-outlined text-[14px]">memory</span> {t('flowStages.moonshotFeasibility.risks.technical')}
                         </label>
                         <textarea
                             value={data.risks.technical}
                             onChange={(e) => updateRisk('technical', e.target.value)}
                             rows={3}
                             className="w-full text-sm bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-3 py-2 focus:ring-1 focus:ring-rose-500 outline-none resize-none"
-                            placeholder="Is it physically/digitally possible?"
+                            placeholder={t('flowStages.moonshotFeasibility.risks.technicalPlaceholder')}
                         />
                     </div>
                     <div>
                         <label className="text-xs font-bold text-amber-500 uppercase tracking-wider mb-1.5 block flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[14px]">storefront</span> Market Risks
+                            <span className="material-symbols-outlined text-[14px]">storefront</span> {t('flowStages.moonshotFeasibility.risks.market')}
                         </label>
                         <textarea
                             value={data.risks.market}
                             onChange={(e) => updateRisk('market', e.target.value)}
                             rows={3}
                             className="w-full text-sm bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-3 py-2 focus:ring-1 focus:ring-amber-500 outline-none resize-none"
-                            placeholder="Does anyone want this?"
+                            placeholder={t('flowStages.moonshotFeasibility.risks.marketPlaceholder')}
                         />
                     </div>
                     <div>
                         <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5 block flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[14px]">gavel</span> Regulatory / Legal
+                            <span className="material-symbols-outlined text-[14px]">gavel</span> {t('flowStages.moonshotFeasibility.risks.regulatory')}
                         </label>
                         <textarea
                             value={data.risks.regulatory}
                             onChange={(e) => updateRisk('regulatory', e.target.value)}
                             rows={3}
                             className="w-full text-sm bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-3 py-2 focus:ring-1 focus:ring-slate-500 outline-none resize-none"
-                            placeholder="Are there legal barriers?"
+                            placeholder={t('flowStages.moonshotFeasibility.risks.regulatoryPlaceholder')}
                         />
                     </div>
                 </div>
@@ -149,7 +151,7 @@ export const MoonshotFeasibilityView: React.FC<MoonshotFeasibilityViewProps> = (
                         className="w-full h-12 text-base justify-between group bg-[var(--color-text-main)] text-[var(--color-surface-bg)] hover:bg-[var(--color-text-main)]/90 shadow-lg hover:shadow-xl transition-all rounded-xl"
                         onClick={() => onUpdate({ stage: 'Prototype' })}
                     >
-                        <span className="font-bold pl-1">Move to Prototype</span>
+                        <span className="font-bold pl-1">{t('flowStages.moonshotFeasibility.actions.advance')}</span>
                         <div className="size-8 rounded-lg bg-white/20 flex items-center justify-center group-hover:translate-x-1 transition-transform">
                             <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                         </div>
@@ -161,8 +163,8 @@ export const MoonshotFeasibilityView: React.FC<MoonshotFeasibilityViewProps> = (
             <div className="col-span-1 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-[var(--color-surface-border)] shadow-sm p-6 overflow-hidden">
                 <div className="mb-4 flex items-center justify-between">
                     <div>
-                        <h3 className="font-bold text-[var(--color-text-main)]">Expert Validation</h3>
-                        <p className="text-xs text-[var(--color-text-muted)]">Consultations & Feedback</p>
+                        <h3 className="font-bold text-[var(--color-text-main)]">{t('flowStages.moonshotFeasibility.experts.title')}</h3>
+                        <p className="text-xs text-[var(--color-text-muted)]">{t('flowStages.moonshotFeasibility.experts.subtitle')}</p>
                     </div>
                     <button
                         onClick={addExpertReview}
@@ -176,7 +178,7 @@ export const MoonshotFeasibilityView: React.FC<MoonshotFeasibilityViewProps> = (
                     {data.expertReviews.length === 0 ? (
                         <div className="text-center py-12 border-2 border-dashed border-[var(--color-surface-border)] rounded-xl text-[var(--color-text-muted)]">
                             <span className="material-symbols-outlined text-4xl mb-2 opacity-50">person_check</span>
-                            <p className="text-sm">No reviews logged</p>
+                            <p className="text-sm">{t('flowStages.moonshotFeasibility.experts.empty')}</p>
                         </div>
                     ) : (
                         data.expertReviews.map((review, index) => (
@@ -186,7 +188,7 @@ export const MoonshotFeasibilityView: React.FC<MoonshotFeasibilityViewProps> = (
                                         type="text"
                                         value={review.expertName}
                                         onChange={(e) => updateReview(index, 'expertName', e.target.value)}
-                                        placeholder="Expert Name / Role"
+                                        placeholder={t('flowStages.moonshotFeasibility.experts.namePlaceholder')}
                                         className="font-bold text-sm bg-transparent border-none p-0 focus:ring-0 text-[var(--color-text-main)] w-full mr-2"
                                     />
                                     <button
@@ -199,7 +201,7 @@ export const MoonshotFeasibilityView: React.FC<MoonshotFeasibilityViewProps> = (
                                 <textarea
                                     value={review.feedback}
                                     onChange={(e) => updateReview(index, 'feedback', e.target.value)}
-                                    placeholder="Key insights..."
+                                    placeholder={t('flowStages.moonshotFeasibility.experts.feedbackPlaceholder')}
                                     rows={2}
                                     className="w-full text-xs bg-transparent border-none p-0 focus:ring-0 text-[var(--color-text-muted)] resize-none"
                                 />

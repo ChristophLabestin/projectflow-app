@@ -3,6 +3,7 @@ import { Button } from '../../ui/Button';
 import { Idea, SocialPlatform } from '../../../types';
 import { generatePlatformConceptsAI } from '../../../services/geminiService';
 import { PlatformIcon } from '../../../screens/social/components/PlatformIcon';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface SocialCreativeLabViewProps {
     idea: Idea;
@@ -25,6 +26,7 @@ interface CreativeLabData {
 }
 
 export const SocialCreativeLabView: React.FC<SocialCreativeLabViewProps> = ({ idea, onUpdate }) => {
+    const { t } = useLanguage();
     const [generating, setGenerating] = useState(false);
 
     // Parse Strategy & Lab Data
@@ -62,13 +64,22 @@ export const SocialCreativeLabView: React.FC<SocialCreativeLabViewProps> = ({ id
     const validChannels: SocialPlatform[] = strategy.channels || [];
     const hasConcepts = Object.keys(labData.concepts).length > 0;
 
-    const TONES = ['Professional', 'Witty', 'Bold', 'Educational', 'Authentic', 'High Energy', 'Minimalist'];
+    const TONES = [
+        { id: 'Professional', label: t('flowStages.socialCreativeLab.tones.professional') },
+        { id: 'Witty', label: t('flowStages.socialCreativeLab.tones.witty') },
+        { id: 'Bold', label: t('flowStages.socialCreativeLab.tones.bold') },
+        { id: 'Educational', label: t('flowStages.socialCreativeLab.tones.educational') },
+        { id: 'Authentic', label: t('flowStages.socialCreativeLab.tones.authentic') },
+        { id: 'High Energy', label: t('flowStages.socialCreativeLab.tones.highEnergy') },
+        { id: 'Minimalist', label: t('flowStages.socialCreativeLab.tones.minimalist') },
+    ];
+    const toneLabel = TONES.find((tone) => tone.id === labData.tone)?.label || labData.tone;
 
     const missionText = (
         <div className="text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
-            "We are transforming <span className="text-rose-500 font-black">{validChannels.length} Strategic Plays</span>
-            {' '}into concrete, <span className="text-rose-500 font-black">Platform-Native Creative Concepts</span>
-            {' '}that amplify the <span className="text-rose-500 font-black">{labData.tone}</span> voice."
+            "{t('flowStages.socialCreativeLab.mission.prefix')} <span className="text-rose-500 font-black">{t('flowStages.socialCreativeLab.mission.plays').replace('{count}', `${validChannels.length}`)}</span>
+            {' '}{t('flowStages.socialCreativeLab.mission.into')} <span className="text-rose-500 font-black">{t('flowStages.socialCreativeLab.mission.concepts')}</span>
+            {' '}{t('flowStages.socialCreativeLab.mission.amplify')} <span className="text-rose-500 font-black">{toneLabel}</span> {t('flowStages.socialCreativeLab.mission.voiceSuffix')}"
         </div>
     );
 
@@ -85,12 +96,12 @@ export const SocialCreativeLabView: React.FC<SocialCreativeLabViewProps> = ({ id
                         <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
                             <div className="flex items-center gap-2 shrink-0">
                                 <div className="px-3 py-1 bg-indigo-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-indigo-200 dark:shadow-none">
-                                    The Lab
+                                    {t('flowStages.socialCreativeLab.hero.badge')}
                                 </div>
                                 <div className="h-[1px] w-8 bg-indigo-200 dark:bg-indigo-800 rounded-full" />
                             </div>
                             <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-                                Content Experimentation
+                                {t('flowStages.socialCreativeLab.hero.title')}
                             </h1>
                         </div>
                         <div className="max-w-3xl p-5 bg-white/70 dark:bg-slate-950/50 rounded-2xl border border-white dark:border-slate-800 shadow-lg shadow-indigo-100/50 dark:shadow-none backdrop-blur-md">
@@ -106,19 +117,19 @@ export const SocialCreativeLabView: React.FC<SocialCreativeLabViewProps> = ({ id
 
                         {/* Strategy Recap Card */}
                         <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm relative overflow-hidden">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest mb-4 opacity-50 relative z-10">Active Ingredients</h3>
+                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest mb-4 opacity-50 relative z-10">{t('flowStages.socialCreativeLab.ingredients.title')}</h3>
                             <div className="absolute top-0 right-0 p-3 opacity-5 pointer-events-none">
                                 <span className="material-symbols-outlined text-8xl text-indigo-900 -rotate-12 translate-x-4 -translate-y-4">playlist_add_check</span>
                             </div>
 
                             {validChannels.length === 0 ? (
                                 <div className="text-center py-6">
-                                    <p className="text-xs text-slate-400 font-bold mb-2">No channels selected.</p>
+                                    <p className="text-xs text-slate-400 font-bold mb-2">{t('flowStages.socialCreativeLab.ingredients.empty')}</p>
                                     <Button
                                         onClick={() => onUpdate({ stage: 'Strategy' })}
                                         className="text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-600"
                                     >
-                                        Return to Strategy
+                                        {t('flowStages.socialCreativeLab.ingredients.return')}
                                     </Button>
                                 </div>
                             ) : (
@@ -131,7 +142,7 @@ export const SocialCreativeLabView: React.FC<SocialCreativeLabViewProps> = ({ id
                                             <div className="flex-1 min-w-0">
                                                 <div className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-0.5">{c}</div>
                                                 <div className="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate leading-tight">
-                                                    {strategy.plays?.[c]?.play || "Standard Post"}
+                                                    {strategy.plays?.[c]?.play || t('flowStages.socialCreativeLab.ingredients.defaultPlay')}
                                                 </div>
                                             </div>
                                         </div>
@@ -141,7 +152,7 @@ export const SocialCreativeLabView: React.FC<SocialCreativeLabViewProps> = ({ id
 
                             {idea.keywords && idea.keywords.length > 0 && (
                                 <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 relative z-10">
-                                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Core Themes</div>
+                                    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('flowStages.socialCreativeLab.ingredients.themes')}</div>
                                     <div className="flex flex-wrap gap-1.5">
                                         {idea.keywords.slice(0, 5).map(k => (
                                             <span key={k} className="px-2 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-300 rounded-md text-[10px] font-bold border border-indigo-100 dark:border-indigo-900/30">
@@ -155,18 +166,18 @@ export const SocialCreativeLabView: React.FC<SocialCreativeLabViewProps> = ({ id
 
                         {/* Tone Selector */}
                         <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest mb-4 opacity-50">Brand Voice</h3>
+                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest mb-4 opacity-50">{t('flowStages.socialCreativeLab.voice.title')}</h3>
                             <div className="flex flex-wrap gap-2">
-                                {TONES.map(t => (
+                                {TONES.map((tone) => (
                                     <button
-                                        key={t}
-                                        onClick={() => updateLabData({ tone: t })}
-                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all border ${labData.tone === t
+                                        key={tone.id}
+                                        onClick={() => updateLabData({ tone: tone.id })}
+                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all border ${labData.tone === tone.id
                                                 ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200 dark:shadow-none'
                                                 : 'bg-white dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700 hover:border-indigo-300'
                                             }`}
                                     >
-                                        {t}
+                                        {tone.label}
                                     </button>
                                 ))}
                             </div>
@@ -179,9 +190,9 @@ export const SocialCreativeLabView: React.FC<SocialCreativeLabViewProps> = ({ id
                                     {generating ? 'change_circle' : 'science'}
                                 </span>
                             </div>
-                            <h3 className="text-sm font-black text-slate-900 dark:text-white mb-1">Start The Reaction</h3>
+                            <h3 className="text-sm font-black text-slate-900 dark:text-white mb-1">{t('flowStages.socialCreativeLab.actions.title')}</h3>
                             <p className="text-[11px] text-slate-500 font-medium mb-4 leading-tight max-w-[200px]">
-                                Combine strategy, themes, and voice to generate unique creative concepts.
+                                {t('flowStages.socialCreativeLab.actions.subtitle')}
                             </p>
                             <Button
                                 onClick={handleGenerateConcepts}
@@ -189,7 +200,7 @@ export const SocialCreativeLabView: React.FC<SocialCreativeLabViewProps> = ({ id
                                 disabled={validChannels.length === 0}
                                 className="w-full h-10 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-[10px] uppercase tracking-[.2em] shadow-lg shadow-indigo-200 dark:shadow-none"
                             >
-                                {hasConcepts ? 'Regenerate Concepts' : 'Run Experiment'}
+                                {hasConcepts ? t('flowStages.socialCreativeLab.actions.regenerate') : t('flowStages.socialCreativeLab.actions.run')}
                             </Button>
                         </div>
                     </div>
@@ -200,12 +211,12 @@ export const SocialCreativeLabView: React.FC<SocialCreativeLabViewProps> = ({ id
 
                             <div className="flex items-center justify-between mb-8">
                                 <div>
-                                    <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">Lab Results</h3>
-                                    <p className="text-[10px] text-slate-500 font-bold mt-1 tracking-tight">Platform-native concepts generated from your strategy</p>
+                                    <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialCreativeLab.results.title')}</h3>
+                                    <p className="text-[10px] text-slate-500 font-bold mt-1 tracking-tight">{t('flowStages.socialCreativeLab.results.subtitle')}</p>
                                 </div>
                                 {hasConcepts && (
                                     <div className="px-3 py-1 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-full text-[10px] font-black uppercase tracking-wider border border-green-100 dark:border-green-900/30">
-                                        Reaction Successful
+                                        {t('flowStages.socialCreativeLab.results.success')}
                                     </div>
                                 )}
                             </div>
@@ -215,9 +226,9 @@ export const SocialCreativeLabView: React.FC<SocialCreativeLabViewProps> = ({ id
                                     <div className="size-24 bg-white dark:bg-slate-900 rounded-3xl flex items-center justify-center shadow-xl border border-indigo-50 dark:border-slate-800 mb-6">
                                         <span className="material-symbols-outlined text-5xl text-indigo-200 dark:text-indigo-900">experiment</span>
                                     </div>
-                                    <h4 className="text-xl font-black text-indigo-900/40 dark:text-indigo-100/40 tracking-tight">Ready to Experiment</h4>
+                                    <h4 className="text-xl font-black text-indigo-900/40 dark:text-indigo-100/40 tracking-tight">{t('flowStages.socialCreativeLab.results.empty.title')}</h4>
                                     <p className="text-sm text-indigo-900/30 dark:text-indigo-100/30 font-bold max-w-[280px] mt-2 leading-relaxed">
-                                        Configure your ingredients on the left and hit "Run Experiment" to generate concepts.
+                                        {t('flowStages.socialCreativeLab.results.empty.subtitle')}
                                     </p>
                                 </div>
                             ) : (
@@ -236,7 +247,7 @@ export const SocialCreativeLabView: React.FC<SocialCreativeLabViewProps> = ({ id
                                                             <PlatformIcon platform={platform} />
                                                         </div>
                                                         <div className="text-[10px] font-black uppercase text-slate-500 tracking-wider">
-                                                            {concept.format || 'Post'}
+                                                            {concept.format || t('flowStages.socialCreativeLab.results.formatFallback')}
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-1">
@@ -249,7 +260,7 @@ export const SocialCreativeLabView: React.FC<SocialCreativeLabViewProps> = ({ id
                                                 <div className="flex-1 space-y-4">
                                                     <div>
                                                         <div className="text-[9px] font-black text-rose-500 uppercase tracking-widest mb-1.5 opacity-80 flex items-center gap-1">
-                                                            <span className="material-symbols-outlined text-[12px]">phishing</span> The Hook
+                                                            <span className="material-symbols-outlined text-[12px]">phishing</span> {t('flowStages.socialCreativeLab.results.hook')}
                                                         </div>
                                                         <p className="text-sm font-bold text-slate-800 dark:text-slate-100 leading-snug">
                                                             "{concept.hook}"
@@ -257,14 +268,14 @@ export const SocialCreativeLabView: React.FC<SocialCreativeLabViewProps> = ({ id
                                                     </div>
 
                                                     <div className="bg-white dark:bg-slate-900/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                                                        <div className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-1.5 opacity-80">Content Outline</div>
+                                                        <div className="text-[9px] font-black text-indigo-500 uppercase tracking-widest mb-1.5 opacity-80">{t('flowStages.socialCreativeLab.results.contentOutline')}</div>
                                                         <p className="text-[11px] font-medium text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">
                                                             {concept.contentBody}
                                                         </p>
                                                     </div>
 
                                                     <div>
-                                                        <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 opacity-80">Visual Direction</div>
+                                                        <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1.5 opacity-80">{t('flowStages.socialCreativeLab.results.visualDirection')}</div>
                                                         <div className="flex items-start gap-2">
                                                             <span className="material-symbols-outlined text-[14px] text-slate-400 mt-0.5">videocam</span>
                                                             <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 leading-snug italic">
@@ -289,7 +300,7 @@ export const SocialCreativeLabView: React.FC<SocialCreativeLabViewProps> = ({ id
                                 onClick={() => onUpdate({ stage: 'Studio' })}
                                 disabled={!hasConcepts}
                             >
-                                Enter Content Studio
+                                {t('flowStages.socialCreativeLab.actions.advance')}
                                 <div className="size-7 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-2 transition-all">
                                     <span className="material-symbols-outlined text-[18px] font-black">movie_edit</span>
                                 </div>

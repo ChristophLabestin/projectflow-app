@@ -7,6 +7,7 @@ import {
     generateCampaignWeekPlanAI,
     PostPlaceholder
 } from '../../../services/geminiService';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface SocialCampaignPlanningViewProps {
     idea: Idea;
@@ -34,14 +35,14 @@ interface PlanningData {
     posts: PostPlaceholder[];
 }
 
-const CONTENT_TYPES: { id: SocialPostFormat; icon: string; label: string; color: string }[] = [
-    { id: 'Post', icon: 'image', label: 'Post', color: 'bg-blue-500' },
-    { id: 'Reel', icon: 'play_circle', label: 'Reel', color: 'bg-pink-500' },
-    { id: 'Story', icon: 'auto_stories', label: 'Story', color: 'bg-amber-500' },
-    { id: 'Carousel', icon: 'view_carousel', label: 'Carousel', color: 'bg-violet-500' },
-    { id: 'Short', icon: 'movie', label: 'Short', color: 'bg-red-500' },
-    { id: 'Video', icon: 'videocam', label: 'Video', color: 'bg-red-600' },
-    { id: 'Text', icon: 'text_fields', label: 'Text', color: 'bg-slate-500' },
+const CONTENT_TYPES: { id: SocialPostFormat; icon: string; labelKey: string; color: string }[] = [
+    { id: 'Post', icon: 'image', labelKey: 'flowStages.socialCampaignPlanning.contentTypes.post', color: 'bg-blue-500' },
+    { id: 'Reel', icon: 'play_circle', labelKey: 'flowStages.socialCampaignPlanning.contentTypes.reel', color: 'bg-pink-500' },
+    { id: 'Story', icon: 'auto_stories', labelKey: 'flowStages.socialCampaignPlanning.contentTypes.story', color: 'bg-amber-500' },
+    { id: 'Carousel', icon: 'view_carousel', labelKey: 'flowStages.socialCampaignPlanning.contentTypes.carousel', color: 'bg-violet-500' },
+    { id: 'Short', icon: 'movie', labelKey: 'flowStages.socialCampaignPlanning.contentTypes.short', color: 'bg-red-500' },
+    { id: 'Video', icon: 'videocam', labelKey: 'flowStages.socialCampaignPlanning.contentTypes.video', color: 'bg-red-600' },
+    { id: 'Text', icon: 'text_fields', labelKey: 'flowStages.socialCampaignPlanning.contentTypes.text', color: 'bg-slate-500' },
 ];
 
 // Helper to get base platform name for PLATFORM_FORMATS lookup
@@ -124,6 +125,7 @@ const calculatePlatformTargets = (platform: Platform, phases: Phase[]): { perWee
 };
 
 export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProps> = ({ idea, onUpdate }) => {
+    const { t } = useLanguage();
     const [generating, setGenerating] = useState(false);
     const [genProgress, setGenProgress] = useState(0);
     const [genStage, setGenStage] = useState('');
@@ -132,19 +134,27 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
     const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
     const [draggedPostId, setDraggedPostId] = useState<string | null>(null);
     const [dragOverDay, setDragOverDay] = useState<number | null>(null);
+    const contentTypes = useMemo(() => CONTENT_TYPES.map(type => ({ ...type, label: t(type.labelKey) })), [t]);
+    const contentTypeById = useMemo(() => new Map(contentTypes.map(type => [type.id, type])), [contentTypes]);
+    const frequencyUnitShortLabels: Record<string, string> = {
+        'Posts/Day': t('flowStages.socialCampaignPlanning.frequencyUnits.day'),
+        'Posts/Week': t('flowStages.socialCampaignPlanning.frequencyUnits.week'),
+        'Posts/Month': t('flowStages.socialCampaignPlanning.frequencyUnits.month'),
+    };
+    const formatFrequencyUnitShort = (unit?: string) => frequencyUnitShortLabels[unit || ''] || unit?.replace('Posts/', '') || '';
 
     // Progress animation during generation
     useEffect(() => {
         if (generating) {
             setGenProgress(0);
-            setGenStage('Analyzing strategy...');
+            setGenStage(t('flowStages.socialCampaignPlanning.generate.initial'));
             const stages = [
-                { at: 10, text: 'Reading campaign goals...' },
-                { at: 25, text: 'Analyzing platform frequencies...' },
-                { at: 40, text: 'Planning content themes...' },
-                { at: 55, text: 'Scheduling posts tactically...' },
-                { at: 70, text: 'Generating hooks & concepts...' },
-                { at: 85, text: 'Finalizing content calendar...' },
+                { at: 10, text: t('flowStages.socialCampaignPlanning.generate.readingGoals') },
+                { at: 25, text: t('flowStages.socialCampaignPlanning.generate.analyzingFrequencies') },
+                { at: 40, text: t('flowStages.socialCampaignPlanning.generate.planningThemes') },
+                { at: 55, text: t('flowStages.socialCampaignPlanning.generate.scheduling') },
+                { at: 70, text: t('flowStages.socialCampaignPlanning.generate.generatingHooks') },
+                { at: 85, text: t('flowStages.socialCampaignPlanning.generate.finalizing') },
             ];
             let progress = 0;
             progressRef.current = setInterval(() => {
@@ -161,7 +171,7 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
             }
             if (genProgress > 0) {
                 setGenProgress(100);
-                setGenStage('Done!');
+                setGenStage(t('flowStages.socialCampaignPlanning.generate.done'));
                 setTimeout(() => {
                     setGenProgress(0);
                     setGenStage('');
@@ -171,7 +181,7 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
         return () => {
             if (progressRef.current) clearInterval(progressRef.current);
         };
-    }, [generating]);
+    }, [generating, t]);
 
     // Parse strategy data
     const strategyData = useMemo(() => {
@@ -350,6 +360,12 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
 
     const selectedPost = planningData.posts.find(p => p.id === selectedPostId);
     const totalPlanned = planningData.posts.length;
+    const channelList = strategyData.platforms.map(p => p.id).join(', ') || t('flowStages.socialCampaignPlanning.hero.channelsFallback');
+    const missionPlanned = t('flowStages.socialCampaignPlanning.hero.mission.planned')
+        .replace('{planned}', `${totalPlanned}`)
+        .replace('{target}', `${campaignMetrics.totalTargetPosts}`);
+    const missionDays = t('flowStages.socialCampaignPlanning.hero.mission.days')
+        .replace('{days}', `${campaignMetrics.totalDays}`);
 
     return (
         <div className="h-full overflow-y-auto">
@@ -364,34 +380,34 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
                         <div className="flex-1">
                             <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
                                 <div className="flex items-center gap-2 shrink-0">
-                                    <div className="px-3 py-1 bg-cyan-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-cyan-200 dark:shadow-none">
-                                        Planning Phase
-                                    </div>
-                                    <div className="h-[1px] w-8 bg-cyan-200 dark:bg-cyan-800 rounded-full" />
+                                <div className="px-3 py-1 bg-cyan-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-cyan-200 dark:shadow-none">
+                                        {t('flowStages.socialCampaignPlanning.hero.badge')}
                                 </div>
-                                <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                                    Content Calendar
-                                </h1>
+                                <div className="h-[1px] w-8 bg-cyan-200 dark:bg-cyan-800 rounded-full" />
                             </div>
-                            <div className="max-w-3xl p-5 bg-white/70 dark:bg-slate-950/50 rounded-2xl border border-white dark:border-slate-800 shadow-lg shadow-cyan-100/50 dark:shadow-none backdrop-blur-md">
-                                <div className="text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
-                                    "Planning <span className="text-cyan-600 font-black">{totalPlanned} of {campaignMetrics.totalTargetPosts} posts</span>
-                                    {' '}across <span className="text-cyan-600 font-black">{strategyData.platforms.map(p => p.id).join(', ') || 'channels'}</span>
-                                    {' '}over <span className="text-cyan-600 font-black">{campaignMetrics.totalDays} days</span>."
-                                </div>
+                            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                                    {t('flowStages.socialCampaignPlanning.hero.title')}
+                            </h1>
+                        </div>
+                        <div className="max-w-3xl p-5 bg-white/70 dark:bg-slate-950/50 rounded-2xl border border-white dark:border-slate-800 shadow-lg shadow-cyan-100/50 dark:shadow-none backdrop-blur-md">
+                            <div className="text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
+                                    "{t('flowStages.socialCampaignPlanning.hero.mission.prefix')} <span className="text-cyan-600 font-black">{missionPlanned}</span>
+                                    {' '}{t('flowStages.socialCampaignPlanning.hero.mission.across')} <span className="text-cyan-600 font-black">{channelList}</span>
+                                    {' '}{t('flowStages.socialCampaignPlanning.hero.mission.over')} <span className="text-cyan-600 font-black">{missionDays}</span>."
                             </div>
                         </div>
-                        <div className="flex flex-col gap-3">
-                            <Button
-                                onClick={handleGeneratePlan}
-                                disabled={generating}
-                                className="h-10 px-5 rounded-xl bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm font-black text-[10px] uppercase tracking-[.2em] transition-all flex items-center gap-2"
-                            >
-                                <span className={`material-symbols-outlined text-[18px] ${generating ? 'animate-spin' : ''}`}>
-                                    {generating ? 'progress_activity' : 'auto_awesome'}
-                                </span>
-                                {generating ? 'Generating...' : 'AI Fill Campaign'}
-                            </Button>
+                    </div>
+                    <div className="flex flex-col gap-3">
+                        <Button
+                            onClick={handleGeneratePlan}
+                            disabled={generating}
+                            className="h-10 px-5 rounded-xl bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm font-black text-[10px] uppercase tracking-[.2em] transition-all flex items-center gap-2"
+                        >
+                            <span className={`material-symbols-outlined text-[18px] ${generating ? 'animate-spin' : ''}`}>
+                                {generating ? 'progress_activity' : 'auto_awesome'}
+                            </span>
+                                {generating ? t('flowStages.socialCampaignPlanning.actions.generating') : t('flowStages.socialCampaignPlanning.actions.aiFill')}
+                        </Button>
                             {/* Progress Bar */}
                             {(generating || genProgress > 0) && (
                                 <div className="w-48">
@@ -428,7 +444,7 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
                                     className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${isActive ? 'bg-cyan-600 text-white shadow-lg' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200'
                                         }`}
                                 >
-                                    Week {i + 1}
+                                    {t('flowStages.socialCampaignPlanning.weekLabel').replace('{week}', `${i + 1}`)}
                                     {weekPosts > 0 && (
                                         <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[9px] ${isActive ? 'bg-white/20' : 'bg-cyan-100 dark:bg-cyan-900/30 text-cyan-600'}`}>
                                             {weekPosts}
@@ -461,8 +477,8 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
                                 {/* Day Header */}
                                 <div className={`p-3 border-b border-slate-100 dark:border-slate-800 ${day.phase ? day.phase.color.light : ''} ${dragOverDay === day.dayOffset ? 'bg-cyan-100 dark:bg-cyan-900/50' : ''}`}>
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase">Day</span>
+                                    <div className="flex items-center gap-1.5">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase">{t('flowStages.socialCampaignPlanning.dayLabel')}</span>
                                             <span className="text-lg font-black text-slate-800 dark:text-white">{day.isInCampaign ? day.dayNum : '–'}</span>
                                         </div>
                                         {day.phase && (
@@ -474,7 +490,7 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
                                 {/* Posts */}
                                 <div className={`p-2 min-h-[200px] flex flex-col gap-2 transition-colors ${dragOverDay === day.dayOffset ? 'bg-cyan-50 dark:bg-cyan-900/20' : ''}`}>
                                     {day.posts.map(post => {
-                                        const tc = CONTENT_TYPES.find(t => t.id === post.contentType) || CONTENT_TYPES[0];
+                                        const tc = contentTypeById.get(post.contentType) || contentTypes[0];
                                         const isSelected = post.id === selectedPostId;
                                         const isDragging = post.id === draggedPostId;
                                         return (
@@ -495,10 +511,10 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
                                                             <PlatformIcon platform={p as SocialPlatform} />
                                                         </div>
                                                     ))}
-                                                    <div className={`ml-auto px-1.5 py-0.5 rounded text-[8px] font-bold ${isSelected ? 'bg-white/20' : tc.color + ' text-white'}`}>
-                                                        {post.contentType}
-                                                    </div>
+                                                <div className={`ml-auto px-1.5 py-0.5 rounded text-[8px] font-bold ${isSelected ? 'bg-white/20' : tc.color + ' text-white'}`}>
+                                                        {tc.label}
                                                 </div>
+                                            </div>
                                                 {post.hook && (
                                                     <p className={`text-[9px] line-clamp-2 leading-snug ${isSelected ? 'text-white/90' : 'text-slate-500 dark:text-slate-400'}`}>
                                                         {post.hook}
@@ -529,7 +545,11 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
                             <div key={i} className={`flex items-center gap-2 px-3 py-1.5 rounded-full ${r.color.light}`}>
                                 <div className={`size-2 rounded-full ${r.color.dot}`} />
                                 <span className={`text-[10px] font-bold ${r.color.text}`}>{r.phase.name}</span>
-                                <span className="text-[9px] text-slate-400">Day {r.startDay + 1}–{r.endDay + 1}</span>
+                                <span className="text-[9px] text-slate-400">
+                                    {t('flowStages.socialCampaignPlanning.dayRange')
+                                        .replace('{start}', `${r.startDay + 1}`)
+                                        .replace('{end}', `${r.endDay + 1}`)}
+                                </span>
                             </div>
                         ))}
                     </div>
@@ -539,7 +559,7 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     {/* Channel Targets */}
                     <div className="lg:col-span-8 bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-5">
-                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Channel Targets</h3>
+                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">{t('flowStages.socialCampaignPlanning.targets.title')}</h3>
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                             {campaignMetrics.platformTargets.map(p => {
                                 const planned = planningData.posts.filter(post => post.platforms?.includes(p.id)).length;
@@ -550,7 +570,7 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
                                             <div className="size-8 rounded-lg overflow-hidden"><PlatformIcon platform={p.id as SocialPlatform} /></div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="text-xs font-bold text-slate-800 dark:text-white truncate">{p.id}</div>
-                                                <div className="text-[9px] text-slate-400">{p.frequencyValue} {p.frequencyUnit?.replace('Posts/', '')}</div>
+                                                <div className="text-[9px] text-slate-400">{p.frequencyValue} {formatFrequencyUnitShort(p.frequencyUnit)}</div>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
@@ -570,22 +590,22 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
                         <div className="grid grid-cols-3 gap-3 flex-1">
                             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 text-center flex flex-col justify-center">
                                 <div className="text-2xl font-black text-cyan-600">{totalPlanned}</div>
-                                <div className="text-[9px] font-bold text-slate-400 uppercase">Planned</div>
+                                <div className="text-[9px] font-bold text-slate-400 uppercase">{t('flowStages.socialCampaignPlanning.stats.planned')}</div>
                             </div>
                             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 text-center flex flex-col justify-center">
                                 <div className="text-2xl font-black text-slate-900 dark:text-white">{campaignMetrics.totalTargetPosts}</div>
-                                <div className="text-[9px] font-bold text-slate-400 uppercase">Target</div>
+                                <div className="text-[9px] font-bold text-slate-400 uppercase">{t('flowStages.socialCampaignPlanning.stats.target')}</div>
                             </div>
                             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 text-center flex flex-col justify-center">
                                 <div className="text-2xl font-black text-slate-900 dark:text-white">{campaignMetrics.totalDays}</div>
-                                <div className="text-[9px] font-bold text-slate-400 uppercase">Days</div>
+                                <div className="text-[9px] font-bold text-slate-400 uppercase">{t('flowStages.socialCampaignPlanning.stats.days')}</div>
                             </div>
                         </div>
                         <Button
                             onClick={() => onUpdate({ stage: 'Submit' })}
                             className="w-full h-12 rounded-xl bg-slate-900 dark:bg-white hover:bg-cyan-600 dark:hover:bg-cyan-500 text-white dark:text-slate-900 hover:text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all group"
                         >
-                            Continue to Submit
+                            {t('flowStages.socialCampaignPlanning.actions.advance')}
                             <span className="material-symbols-outlined text-base group-hover:translate-x-1 transition-transform">arrow_forward</span>
                         </Button>
                     </div>
@@ -603,8 +623,8 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
                                     <span className="material-symbols-outlined text-cyan-600">edit</span>
                                 </div>
                                 <div>
-                                    <h2 className="text-lg font-black text-slate-900 dark:text-white">Edit Post</h2>
-                                    <p className="text-[10px] text-slate-400">Day {selectedPost.dayOffset + 1}</p>
+                                    <h2 className="text-lg font-black text-slate-900 dark:text-white">{t('flowStages.socialCampaignPlanning.editor.title')}</h2>
+                                    <p className="text-[10px] text-slate-400">{t('flowStages.socialCampaignPlanning.editor.day').replace('{day}', `${selectedPost.dayOffset + 1}`)}</p>
                                 </div>
                             </div>
                             <button
@@ -619,7 +639,7 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
                         <div className="flex-1 overflow-y-auto p-5 space-y-6">
                             {/* Platforms */}
                             <div>
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Platforms</label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">{t('flowStages.socialCampaignPlanning.editor.platforms')}</label>
                                 <div className="flex flex-wrap gap-2">
                                     {strategyData.platforms.map(p => (
                                         <button
@@ -640,7 +660,7 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
 
                             {/* Content Type - filtered by selected platforms */}
                             <div>
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Format</label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">{t('flowStages.socialCampaignPlanning.editor.format')}</label>
                                 {(() => {
                                     // Get valid formats for selected platforms
                                     const selectedPlatforms = selectedPost.platforms || [];
@@ -665,8 +685,8 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
 
                                     // Filter content types to only show valid ones
                                     const filteredTypes = validFormats.length > 0
-                                        ? CONTENT_TYPES.filter(t => validFormats.includes(t.id))
-                                        : CONTENT_TYPES;
+                                        ? contentTypes.filter(t => validFormats.includes(t.id))
+                                        : contentTypes;
 
                                     return (
                                         <div className={`grid gap-2`} style={{ gridTemplateColumns: `repeat(${Math.min(filteredTypes.length, 5)}, 1fr)` }}>
@@ -688,30 +708,30 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
 
                             {/* Hook */}
                             <div>
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">Hook / Concept</label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 block">{t('flowStages.socialCampaignPlanning.editor.hook')}</label>
                                 <textarea
                                     value={selectedPost.hook || ''}
                                     onChange={e => updatePost(selectedPost.id, { hook: e.target.value })}
-                                    placeholder="What's the main flow for this post?"
+                                    placeholder={t('flowStages.socialCampaignPlanning.editor.hookPlaceholder')}
                                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm h-32 resize-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
                                 />
                             </div>
 
                             {/* Post Preview */}
                             <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4">
-                                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Preview</div>
+                                <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('flowStages.socialCampaignPlanning.editor.preview')}</div>
                                 <div className="flex items-center gap-2 mb-2">
                                     {selectedPost.platforms?.map(p => (
                                         <div key={p} className="size-6 rounded overflow-hidden">
                                             <PlatformIcon platform={p as SocialPlatform} />
                                         </div>
                                     ))}
-                                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${CONTENT_TYPES.find(t => t.id === selectedPost.contentType)?.color} text-white`}>
-                                        {selectedPost.contentType}
+                                    <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${contentTypeById.get(selectedPost.contentType)?.color} text-white`}>
+                                        {contentTypeById.get(selectedPost.contentType)?.label || selectedPost.contentType}
                                     </span>
                                 </div>
                                 <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                    {selectedPost.hook || 'No hook defined yet...'}
+                                    {selectedPost.hook || t('flowStages.socialCampaignPlanning.editor.previewEmpty')}
                                 </p>
                             </div>
                         </div>
@@ -722,13 +742,13 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
                                 onClick={() => deletePost(selectedPost.id)}
                                 className="px-5 py-3 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl text-sm font-bold transition-all"
                             >
-                                Delete
+                                {t('flowStages.socialCampaignPlanning.editor.delete')}
                             </button>
                             <Button
                                 onClick={() => setSelectedPostId(null)}
                                 className="flex-1 h-12 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-sm font-black uppercase tracking-wider"
                             >
-                                Done
+                                {t('flowStages.socialCampaignPlanning.editor.done')}
                             </Button>
                         </div>
                     </div>

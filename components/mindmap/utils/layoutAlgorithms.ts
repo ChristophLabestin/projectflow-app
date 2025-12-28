@@ -128,18 +128,17 @@ export function applyForceDirectedLayout(nodes: MindmapNodeData[]): MindmapNodeD
 // Radial Layout
 // ============================================================================
 
+// ============================================================================
+// Radial Layout (Weighted Sector)
+// ============================================================================
+
 export function applyRadialLayout(nodes: MindmapNodeData[]): MindmapNodeData[] {
     if (nodes.length === 0) return nodes;
 
     const positions = new Map<string, { x: number; y: number }>();
     const projectNode = nodes.find(n => n.type === 'project');
 
-    // Project at center
-    if (projectNode) {
-        positions.set(projectNode.id, { x: CENTER, y: CENTER });
-    }
-
-    // Group nodes by parent
+    // Build hierarchy map
     const childrenOf = new Map<string, MindmapNodeData[]>();
     nodes.forEach(n => {
         if (n.parentId) {
@@ -148,72 +147,92 @@ export function applyRadialLayout(nodes: MindmapNodeData[]): MindmapNodeData[] {
         }
     });
 
-    // Place nodes in rings
-    const placeChildren = (parentId: string, ringRadius: number, startAngle: number, arcSpan: number) => {
-        const children = childrenOf.get(parentId) || [];
-        if (children.length === 0) return;
-
-        const parentPos = positions.get(parentId) || { x: CENTER, y: CENTER };
-        const angleStep = arcSpan / Math.max(children.length, 1);
-
-        children.forEach((child, idx) => {
-            const angle = startAngle + angleStep * (idx + 0.5);
-            const x = parentPos.x + Math.cos(angle) * ringRadius;
-            const y = parentPos.y + Math.sin(angle) * ringRadius;
-            positions.set(child.id, { x, y });
-
-            // Recurse for children
-            const childArcSpan = angleStep * 0.9;
-            placeChildren(child.id, ringRadius * 0.6, angle - childArcSpan / 2, childArcSpan);
-        });
+    // Calculate subtree weights (count of all descendants)
+    const weights = new Map<string, number>();
+    const getWeight = (nodeId: string): number => {
+        if (weights.has(nodeId)) return weights.get(nodeId)!;
+        const children = childrenOf.get(nodeId) || [];
+        const weight = 1 + children.reduce((sum, child) => sum + getWeight(child.id), 0);
+        weights.set(nodeId, weight);
+        return weight;
     };
 
-    // Start from project node
+    // Calculate max depth for variable radius
+    const depths = new Map<string, number>();
+    const getDepth = (nodeId: string, currentDepth: number = 0): number => {
+        depths.set(nodeId, currentDepth);
+        const children = childrenOf.get(nodeId) || [];
+        return children.reduce((max, child) => Math.max(max, getDepth(child.id, currentDepth + 1)), currentDepth);
+    };
+
     if (projectNode) {
-        const groups = nodes.filter(n => n.type === 'group');
-        const angleStep = (Math.PI * 2) / Math.max(groups.length, 1);
+        positions.set(projectNode.id, { x: CENTER, y: CENTER });
+        getWeight(projectNode.id); // Pre-calculate all weights
+        getDepth(projectNode.id);  // Pre-calculate depths
 
-        groups.forEach((group, idx) => {
-            const angle = -Math.PI / 2 + angleStep * idx;
-            const x = CENTER + Math.cos(angle) * 300;
-            const y = CENTER + Math.sin(angle) * 300;
-            positions.set(group.id, { x, y });
+        // Get top-level nodes (groups + direct orphans)
+        const groups = nodes.filter(n => n.parentId === projectNode.id || (!n.parentId && n.id !== projectNode.id));
+        const totalWeight = groups.reduce((sum, g) => sum + (weights.get(g.id) || 1), 0);
 
-            // Place group children
-            placeChildren(group.id, 180, angle - angleStep * 0.4, angleStep * 0.8);
-        });
+        // Base radius configs
+        const INITIAL_RADIUS = 350;
+        const LEVEL_RADIUS_INCREMENT = 280; // Distance between concentric rings
 
-        // Place ungrouped ideas directly around project
-        const ungrouped = nodes.filter(n => n.type === 'idea' && (!n.parentId || n.parentId === projectNode.id));
-        const ungroupedAngleStep = (Math.PI * 2) / Math.max(ungrouped.length, 1);
-        ungrouped.forEach((node, idx) => {
-            if (!positions.has(node.id)) {
-                const angle = ungroupedAngleStep * idx;
-                positions.set(node.id, {
-                    x: CENTER + Math.cos(angle) * 220,
-                    y: CENTER + Math.sin(angle) * 220,
+        let currentAngle = -Math.PI / 2; // Start from top
+
+        groups.forEach(group => {
+            const weight = weights.get(group.id) || 1;
+            // Allocate sector proportional to weight
+            // Ensure minimum angle for small groups
+            const sectorAngle = Math.max((weight / totalWeight) * Math.PI * 2, Math.PI / 6);
+            const centerAngle = currentAngle + sectorAngle / 2;
+
+            // Place top-level group
+            // Push groups further out if there are many of them to avoid crowding center
+            const groupRadius = Math.max(INITIAL_RADIUS, groups.length * 40);
+
+            positions.set(group.id, {
+                x: CENTER + Math.cos(centerAngle) * groupRadius,
+                y: CENTER + Math.sin(centerAngle) * groupRadius
+            });
+
+            // Recursively place children
+            const placeChildren = (parentId: string, startA: number, spanA: number, level: number) => {
+                const children = childrenOf.get(parentId) || [];
+                if (children.length === 0) return;
+
+                const parentWeight = weights.get(parentId)! - 1; // Exclude self
+                const radius = groupRadius + (level * LEVEL_RADIUS_INCREMENT);
+
+                let currentChildAngle = startA;
+
+                children.forEach(child => {
+                    const childWeight = weights.get(child.id) || 1;
+                    const childSpan = (childWeight / Math.max(parentWeight, 1)) * spanA;
+                    const childAngle = currentChildAngle + childSpan / 2;
+
+                    positions.set(child.id, {
+                        x: CENTER + Math.cos(childAngle) * radius,
+                        y: CENTER + Math.sin(childAngle) * radius
+                    });
+
+                    // Recurse
+                    placeChildren(child.id, currentChildAngle, childSpan, level + 1);
+                    currentChildAngle += childSpan;
                 });
-            }
+            };
+
+            placeChildren(group.id, currentAngle, sectorAngle, 1);
+            currentAngle += sectorAngle;
         });
     }
 
-    // Recursively place remaining nodes without positions
-    nodes.forEach(n => {
-        if (!positions.has(n.id) && n.parentId && positions.has(n.parentId)) {
-            const parentPos = positions.get(n.parentId)!;
-            positions.set(n.id, {
-                x: parentPos.x + (Math.random() - 0.5) * 150,
-                y: parentPos.y + (Math.random() - 0.5) * 150,
-            });
-        }
-    });
-
-    // Fallback for any remaining
+    // Fallback placement for unparented/disconnected nodes
     nodes.forEach(n => {
         if (!positions.has(n.id)) {
             positions.set(n.id, {
-                x: CENTER + (Math.random() - 0.5) * 600,
-                y: CENTER + (Math.random() - 0.5) * 600,
+                x: CENTER + (Math.random() - 0.5) * 800,
+                y: CENTER + (Math.random() - 0.5) * 800
             });
         }
     });
@@ -245,8 +264,8 @@ export function applyTreeVerticalLayout(nodes: MindmapNodeData[]): MindmapNodeDa
 
     // Calculate subtree widths
     const subtreeWidth = new Map<string, number>();
-    const nodeWidth = 180;
-    const levelHeight = 140;
+    const nodeWidth = 240; // Increased from 180
+    const levelHeight = 200; // Increased from 140
 
     const calcWidth = (nodeId: string): number => {
         const children = childrenOf.get(nodeId) || [];
@@ -283,8 +302,8 @@ export function applyTreeVerticalLayout(nodes: MindmapNodeData[]): MindmapNodeDa
     nodes.forEach(n => {
         if (!positions.has(n.id)) {
             positions.set(n.id, {
-                x: CENTER + (Math.random() - 0.5) * 400,
-                y: CENTER + (Math.random() - 0.5) * 400,
+                x: CENTER + (Math.random() - 0.5) * 600, // Increased spread
+                y: CENTER + (Math.random() - 0.5) * 600,
             });
         }
     });
@@ -314,8 +333,8 @@ export function applyTreeHorizontalLayout(nodes: MindmapNodeData[]): MindmapNode
         }
     });
 
-    const nodeHeight = 80;
-    const levelWidth = 220;
+    const nodeHeight = 120; // Increased from 80
+    const levelWidth = 300; // Increased from 220
 
     // Calculate subtree heights
     const subtreeHeight = new Map<string, number>();
@@ -436,13 +455,13 @@ export function applyLayout(nodes: MindmapNodeData[], layout: LayoutType): Mindm
 // Collision Resolution
 // ============================================================================
 
-export function resolveCollisions(nodes: MindmapNodeData[], padding: number = 60): MindmapNodeData[] { // Increased padding default
-    const nodeWidth = 220;  // Increased from 160
-    const nodeHeight = 100; // Increased from 60
+export function resolveCollisions(nodes: MindmapNodeData[], padding: number = 80): MindmapNodeData[] { // Increased padding default
+    const nodeWidth = 220;
+    const nodeHeight = 100;
 
     const positions = new Map(nodes.map(n => [n.id, { ...n.position }]));
 
-    for (let iteration = 0; iteration < 10; iteration++) {
+    for (let iteration = 0; iteration < 20; iteration++) { // Increased iterations
         let hasCollision = false;
 
         nodes.forEach((a) => {
@@ -465,13 +484,14 @@ export function resolveCollisions(nodes: MindmapNodeData[], padding: number = 60
                     hasCollision = true;
 
                     // Push apart along smallest overlap axis
+                    // Add some jitter to prevent perfect stacking
                     if (overlapX < overlapY) {
-                        const push = overlapX / 2;
+                        const push = (overlapX / 2) + 1;
                         const dir = dx >= 0 ? 1 : -1;
                         if (a.type !== 'project') posA.x += dir * push;
                         if (b.type !== 'project') posB.x -= dir * push;
                     } else {
-                        const push = overlapY / 2;
+                        const push = (overlapY / 2) + 1;
                         const dir = dy >= 0 ? 1 : -1;
                         if (a.type !== 'project') posA.y += dir * push;
                         if (b.type !== 'project') posB.y -= dir * push;

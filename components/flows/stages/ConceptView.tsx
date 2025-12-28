@@ -5,6 +5,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { Idea } from '../../../types';
 import { Button } from '../../ui/Button';
 import { generateIdeaConceptAI } from '../../../services/geminiService';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface ConceptViewProps {
     idea: Idea;
@@ -13,6 +14,7 @@ interface ConceptViewProps {
 }
 
 const MenuBar = ({ editor }: { editor: any }) => {
+    const { t } = useLanguage();
     if (!editor) return null;
 
     return (
@@ -21,7 +23,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
                 onClick={() => editor.chain().focus().toggleBold().run()}
                 disabled={!editor.can().chain().focus().toggleBold().run()}
                 className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] ${editor.isActive('bold') ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}
-                title="Bold"
+                title={t('flowStages.concept.toolbar.bold')}
             >
                 <span className="material-symbols-outlined text-[18px]">format_bold</span>
             </button>
@@ -29,7 +31,7 @@ const MenuBar = ({ editor }: { editor: any }) => {
                 onClick={() => editor.chain().focus().toggleItalic().run()}
                 disabled={!editor.can().chain().focus().toggleItalic().run()}
                 className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] ${editor.isActive('italic') ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}
-                title="Italic"
+                title={t('flowStages.concept.toolbar.italic')}
             >
                 <span className="material-symbols-outlined text-[18px]">format_italic</span>
             </button>
@@ -37,28 +39,28 @@ const MenuBar = ({ editor }: { editor: any }) => {
             <button
                 onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
                 className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] ${editor.isActive('heading', { level: 1 }) ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}
-                title="Heading 1"
+                title={t('flowStages.concept.toolbar.heading1')}
             >
                 <span className="material-symbols-outlined text-[18px]">format_h1</span>
             </button>
             <button
                 onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
                 className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] ${editor.isActive('heading', { level: 2 }) ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}
-                title="Heading 2"
+                title={t('flowStages.concept.toolbar.heading2')}
             >
                 <span className="material-symbols-outlined text-[18px]">format_h2</span>
             </button>
             <button
                 onClick={() => editor.chain().focus().toggleBulletList().run()}
                 className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] ${editor.isActive('bulletList') ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}
-                title="Bullet List"
+                title={t('flowStages.concept.toolbar.bullets')}
             >
                 <span className="material-symbols-outlined text-[18px]">format_list_bulleted</span>
             </button>
             <button
                 onClick={() => editor.chain().focus().toggleOrderedList().run()}
                 className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] ${editor.isActive('orderedList') ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}
-                title="Ordered List"
+                title={t('flowStages.concept.toolbar.numbered')}
             >
                 <span className="material-symbols-outlined text-[18px]">format_list_numbered</span>
             </button>
@@ -66,14 +68,14 @@ const MenuBar = ({ editor }: { editor: any }) => {
             <button
                 onClick={() => editor.chain().focus().toggleBlockquote().run()}
                 className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] ${editor.isActive('blockquote') ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}
-                title="Quote"
+                title={t('flowStages.concept.toolbar.quote')}
             >
                 <span className="material-symbols-outlined text-[18px]">format_quote</span>
             </button>
             <button
                 onClick={() => editor.chain().focus().setHorizontalRule().run()}
                 className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text-subtle)]`}
-                title="Divider"
+                title={t('flowStages.concept.toolbar.divider')}
             >
                 <span className="material-symbols-outlined text-[18px]">horizontal_rule</span>
             </button>
@@ -82,13 +84,14 @@ const MenuBar = ({ editor }: { editor: any }) => {
 };
 
 export const ConceptView: React.FC<ConceptViewProps> = ({ idea, onUpdate, chatHistoryRef }) => {
+    const { t } = useLanguage();
     const [generating, setGenerating] = useState(false);
 
     const editor = useEditor({
         extensions: [
             StarterKit,
             Placeholder.configure({
-                placeholder: 'Start writing your concept document or click "Draft with AI" to generate a starting point...',
+                placeholder: t('flowStages.concept.placeholder'),
             }),
         ],
         content: idea.concept || '',
@@ -133,7 +136,7 @@ export const ConceptView: React.FC<ConceptViewProps> = ({ idea, onUpdate, chatHi
 
                     {!idea.concept && (
                         <span className="text-xs text-[var(--color-text-muted)] animate-pulse hidden md:inline">
-                            Ready?
+                            {t('flowStages.concept.ready')}
                         </span>
                     )}
                     <Button
@@ -144,7 +147,7 @@ export const ConceptView: React.FC<ConceptViewProps> = ({ idea, onUpdate, chatHi
                         className="my-1.5 bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 !text-white border-none shadow-sm"
                         icon={<span className="material-symbols-outlined">auto_awesome</span>}
                     >
-                        Draft with AI
+                        {t('flowStages.concept.actions.draftAi')}
                     </Button>
                     <div className="w-px h-6 bg-[var(--color-surface-border)] mx-1" />
                     <Button
@@ -152,7 +155,7 @@ export const ConceptView: React.FC<ConceptViewProps> = ({ idea, onUpdate, chatHi
                         onClick={() => onUpdate({ stage: idea.type === 'Product' ? 'Launch' : 'Review' })}
                         className="bg-[var(--color-text-main)] text-[var(--color-surface-bg)] hover:bg-[var(--color-text-main)]/90 shadow-sm border-none"
                     >
-                        <span className="font-bold pl-1 mr-1">Advance</span>
+                        <span className="font-bold pl-1 mr-1">{t('flowStages.concept.actions.advance')}</span>
                         <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                     </Button>
                 </div>
@@ -174,7 +177,7 @@ export const ConceptView: React.FC<ConceptViewProps> = ({ idea, onUpdate, chatHi
                                     <span className="material-symbols-outlined text-2xl text-fuchsia-500 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 animate-pulse">auto_awesome</span>
                                 </div>
                                 <p className="text-sm font-bold bg-gradient-to-r from-violet-600 to-fuchsia-600 bg-clip-text text-transparent animate-pulse">
-                                    AI is drafting your concept...
+                                    {t('flowStages.concept.generating')}
                                 </p>
                             </div>
                         </div>
@@ -184,7 +187,7 @@ export const ConceptView: React.FC<ConceptViewProps> = ({ idea, onUpdate, chatHi
                     {(!editor || editor.isEmpty) && !generating && (
                         <div className="absolute top-20 left-0 right-0 flex flex-col items-center justify-center opacity-10 pointer-events-none select-none">
                             <span className="material-symbols-outlined text-6xl mb-2">article</span>
-                            <p className="font-serif text-xl italic">Product Requirements Document</p>
+                            <p className="font-serif text-xl italic">{t('flowStages.concept.empty')}</p>
                         </div>
                     )}
                 </div>
@@ -195,8 +198,8 @@ export const ConceptView: React.FC<ConceptViewProps> = ({ idea, onUpdate, chatHi
 
             {/* Status Footer */}
             <div className="bg-[var(--color-surface-bg)] border-t border-[var(--color-surface-border)] px-4 py-1.5 flex justify-between items-center text-[10px] text-[var(--color-text-subtle)] uppercase tracking-wider font-semibold select-none z-10">
-                <span>Markdown Supported</span>
-                <span>{editor?.storage.characterCount?.words() || 0} words</span>
+                <span>{t('flowStages.concept.footer.markdown')}</span>
+                <span>{t('flowStages.concept.footer.words').replace('{count}', String(editor?.storage.characterCount?.words() || 0))}</span>
             </div>
         </div>
     );

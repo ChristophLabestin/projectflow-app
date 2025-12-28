@@ -3,6 +3,7 @@ import { Idea } from '../../../types';
 import { Button } from '../../ui/Button';
 import { SWOTCard } from './SWOTCard';
 import { generateProductStrategyAI, generateSWOTAnalysisAI } from '../../../services/geminiService';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface ProductStrategyViewProps {
     idea: Idea;
@@ -10,6 +11,7 @@ interface ProductStrategyViewProps {
 }
 
 export const ProductStrategyView: React.FC<ProductStrategyViewProps> = ({ idea, onUpdate }) => {
+    const { t } = useLanguage();
     const [generating, setGenerating] = useState(false);
 
     // Default empty analysis if not present
@@ -68,8 +70,8 @@ export const ProductStrategyView: React.FC<ProductStrategyViewProps> = ({ idea, 
             {/* Header Area */}
             <div className="flex items-center justify-between shrink-0">
                 <div>
-                    <h2 className="text-xl font-bold text-[var(--color-text-main)]">Product Strategy</h2>
-                    <p className="text-sm text-[var(--color-text-muted)]">Define the core vision and strategic positioning.</p>
+                    <h2 className="text-xl font-bold text-[var(--color-text-main)]">{t('flowStages.productStrategy.title')}</h2>
+                    <p className="text-sm text-[var(--color-text-muted)]">{t('flowStages.productStrategy.subtitle')}</p>
                 </div>
                 <Button
                     variant="primary"
@@ -79,7 +81,7 @@ export const ProductStrategyView: React.FC<ProductStrategyViewProps> = ({ idea, 
                     className="bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 border-none shadow-md !text-white"
                     icon={<span className="material-symbols-outlined">auto_awesome</span>}
                 >
-                    Draft Strategy with AI
+                    {t('flowStages.productStrategy.actions.generate')}
                 </Button>
             </div>
 
@@ -92,13 +94,13 @@ export const ProductStrategyView: React.FC<ProductStrategyViewProps> = ({ idea, 
                     <div className="bg-[var(--color-surface-paper)] p-5 rounded-2xl border border-[var(--color-surface-border)] shadow-sm flex flex-col gap-3 min-h-[200px]">
                         <div className="flex items-center gap-2 text-[var(--color-text-main)] font-bold border-b border-[var(--color-surface-border)] pb-3">
                             <span className="material-symbols-outlined text-[20px] text-rose-500">visibility</span>
-                            Product Vision
+                            {t('flowStages.productStrategy.vision.title')}
                         </div>
                         <textarea
                             value={idea.description}
                             onChange={(e) => onUpdate({ description: e.target.value })}
                             className="flex-1 w-full bg-transparent border-none focus:ring-0 p-0 resize-none text-sm leading-relaxed text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] focus:outline-none"
-                            placeholder="Describe the long-term vision for this product. What problem does it solve? Who is it for?"
+                            placeholder={t('flowStages.productStrategy.vision.placeholder')}
                         />
                     </div>
 
@@ -111,13 +113,13 @@ export const ProductStrategyView: React.FC<ProductStrategyViewProps> = ({ idea, 
                     <div className="bg-[var(--color-surface-paper)] p-5 rounded-2xl border border-[var(--color-surface-border)] shadow-sm space-y-6">
                         <div className="flex items-center gap-2 text-[var(--color-text-main)] font-bold border-b border-[var(--color-surface-border)] pb-3">
                             <span className="material-symbols-outlined text-[20px] text-amber-500">ads_click</span>
-                            Market Fit Estimation
+                            {t('flowStages.productStrategy.marketFit.title')}
                         </div>
 
                         <div className="space-y-4">
                             <div>
                                 <div className="flex justify-between text-xs font-semibold mb-2 text-[var(--color-text-subtle)]">
-                                    <span>Market Demand</span>
+                                    <span>{t('flowStages.productStrategy.marketFit.demand')}</span>
                                     <span>{idea.riskWinAnalysis?.marketFitScore || 0}/10</span>
                                 </div>
                                 <input
@@ -140,7 +142,7 @@ export const ProductStrategyView: React.FC<ProductStrategyViewProps> = ({ idea, 
 
                             <div>
                                 <div className="flex justify-between text-xs font-semibold mb-2 text-[var(--color-text-subtle)]">
-                                    <span>Technical Feasibility</span>
+                                    <span>{t('flowStages.productStrategy.marketFit.feasibility')}</span>
                                     <span>{idea.riskWinAnalysis?.technicalFeasibilityScore || 0}/10</span>
                                 </div>
                                 <input
@@ -169,7 +171,7 @@ export const ProductStrategyView: React.FC<ProductStrategyViewProps> = ({ idea, 
                             className="w-full h-12 text-base justify-between group bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:opacity-90 shadow-lg hover:shadow-xl transition-all rounded-xl border-none"
                             onClick={() => onUpdate({ stage: 'Discovery' })}
                         >
-                            <span className="font-bold pl-1">Proceed to Discovery</span>
+                            <span className="font-bold pl-1">{t('flowStages.productStrategy.actions.advance')}</span>
                             <div className="size-8 rounded-lg bg-white/20 dark:bg-black/10 flex items-center justify-center group-hover:translate-x-1 transition-transform">
                                 <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                             </div>
@@ -183,7 +185,7 @@ export const ProductStrategyView: React.FC<ProductStrategyViewProps> = ({ idea, 
                     {/* SWOT Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
                         <SWOTCard
-                            title="Strengths"
+                            title={t('flowStages.refinement.swot.strengths')}
                             icon="check_circle"
                             items={analysis.strengths}
                             colorClass="emerald"
@@ -200,7 +202,7 @@ export const ProductStrategyView: React.FC<ProductStrategyViewProps> = ({ idea, 
                             }}
                         />
                         <SWOTCard
-                            title="Weaknesses"
+                            title={t('flowStages.refinement.swot.weaknesses')}
                             icon="warning"
                             items={analysis.weaknesses}
                             colorClass="rose"
@@ -217,7 +219,7 @@ export const ProductStrategyView: React.FC<ProductStrategyViewProps> = ({ idea, 
                             }}
                         />
                         <SWOTCard
-                            title="Opportunities"
+                            title={t('flowStages.refinement.swot.opportunities')}
                             icon="trending_up"
                             items={analysis.opportunities}
                             colorClass="indigo"
@@ -234,7 +236,7 @@ export const ProductStrategyView: React.FC<ProductStrategyViewProps> = ({ idea, 
                             }}
                         />
                         <SWOTCard
-                            title="Threats"
+                            title={t('flowStages.refinement.swot.threats')}
                             icon="security"
                             items={analysis.threats}
                             colorClass="amber"

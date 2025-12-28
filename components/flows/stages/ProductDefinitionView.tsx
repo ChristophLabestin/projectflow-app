@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Idea } from '../../../types';
 import { Button } from '../../ui/Button';
 import { generateProductDefinitionAI } from '../../../services/geminiService';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface ProductDefinitionViewProps {
     idea: Idea;
@@ -17,6 +18,7 @@ interface Requirement {
 
 
 export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ idea, onUpdate }) => {
+    const { t } = useLanguage();
     const [generating, setGenerating] = useState(false);
 
     // Store definition data in the idea's requirements field as JSON
@@ -123,8 +125,8 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
             {/* Header Area */}
             <div className="flex items-center justify-between shrink-0">
                 <div>
-                    <h2 className="text-xl font-bold text-[var(--color-text-main)]">Product Definition</h2>
-                    <p className="text-sm text-[var(--color-text-muted)]">Define detailed specs, scope boundaries, and prioritized requirements.</p>
+                    <h2 className="text-xl font-bold text-[var(--color-text-main)]">{t('flowStages.productDefinition.title')}</h2>
+                    <p className="text-sm text-[var(--color-text-muted)]">{t('flowStages.productDefinition.subtitle')}</p>
                 </div>
                 <Button
                     variant="primary"
@@ -134,7 +136,7 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                     className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 border-none shadow-md !text-white"
                     icon={<span className="material-symbols-outlined">auto_awesome</span>}
                 >
-                    Draft Definition with AI
+                    {t('flowStages.productDefinition.actions.generate')}
                 </Button>
             </div>
 
@@ -148,9 +150,9 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                         <div className="flex items-center justify-between text-[var(--color-text-main)] font-bold border-b border-[var(--color-surface-border)] pb-3">
                             <div className="flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[20px] text-emerald-500">check_circle</span>
-                                In Scope
+                                {t('flowStages.productDefinition.scope.in')}
                             </div>
-                            <button onClick={() => addListItem('scope')} className="text-xs text-[var(--color-primary)] hover:underline">+ Add</button>
+                            <button onClick={() => addListItem('scope')} className="text-xs text-[var(--color-primary)] hover:underline">{t('flowStages.productDefinition.actions.add')}</button>
                         </div>
                         <div className="space-y-2">
                             {scopeList.map((item: string, i: number) => (
@@ -160,14 +162,14 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                                         value={item}
                                         onChange={(e) => updateListItem('scope', i, e.target.value)}
                                         className="flex-1 bg-transparent border-none p-0 text-sm text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] focus:ring-0"
-                                        placeholder="Add scope item..."
+                                        placeholder={t('flowStages.productDefinition.scope.inPlaceholder')}
                                     />
                                     <button onClick={() => removeListItem('scope', i)} className="opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-rose-500">
                                         <span className="material-symbols-outlined text-[14px]">close</span>
                                     </button>
                                 </div>
                             ))}
-                            {scopeList.length === 0 && <span className="text-xs text-[var(--color-text-muted)] italic">No items defined</span>}
+                            {scopeList.length === 0 && <span className="text-xs text-[var(--color-text-muted)] italic">{t('flowStages.productDefinition.scope.empty')}</span>}
                         </div>
                     </div>
 
@@ -176,9 +178,9 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                         <div className="flex items-center justify-between text-[var(--color-text-main)] font-bold border-b border-[var(--color-surface-border)] pb-3">
                             <div className="flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[20px] text-rose-500">cancel</span>
-                                Out of Scope
+                                {t('flowStages.productDefinition.scope.out')}
                             </div>
-                            <button onClick={() => addListItem('outOfScope')} className="text-xs text-[var(--color-primary)] hover:underline">+ Add</button>
+                            <button onClick={() => addListItem('outOfScope')} className="text-xs text-[var(--color-primary)] hover:underline">{t('flowStages.productDefinition.actions.add')}</button>
                         </div>
                         <div className="space-y-2">
                             {outOfScopeList.map((item: string, i: number) => (
@@ -188,14 +190,14 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                                         value={item}
                                         onChange={(e) => updateListItem('outOfScope', i, e.target.value)}
                                         className="flex-1 bg-transparent border-none p-0 text-sm text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] focus:ring-0"
-                                        placeholder="Add exclusion..."
+                                        placeholder={t('flowStages.productDefinition.scope.outPlaceholder')}
                                     />
                                     <button onClick={() => removeListItem('outOfScope', i)} className="opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-rose-500">
                                         <span className="material-symbols-outlined text-[14px]">close</span>
                                     </button>
                                 </div>
                             ))}
-                            {outOfScopeList.length === 0 && <span className="text-xs text-[var(--color-text-muted)] italic">No items defined</span>}
+                            {outOfScopeList.length === 0 && <span className="text-xs text-[var(--color-text-muted)] italic">{t('flowStages.productDefinition.scope.empty')}</span>}
                         </div>
                     </div>
 
@@ -204,9 +206,9 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                         <div className="flex items-center justify-between text-[var(--color-text-main)] font-bold border-b border-[var(--color-surface-border)] pb-3">
                             <div className="flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[20px] text-amber-500">ads_click</span>
-                                Success Metrics
+                                {t('flowStages.productDefinition.success.title')}
                             </div>
-                            <button onClick={() => addListItem('successCriteria')} className="text-xs text-[var(--color-primary)] hover:underline">+ Add</button>
+                            <button onClick={() => addListItem('successCriteria')} className="text-xs text-[var(--color-primary)] hover:underline">{t('flowStages.productDefinition.actions.add')}</button>
                         </div>
                         <div className="space-y-2">
                             {successList.map((item: string, i: number) => (
@@ -216,7 +218,7 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                                         value={item}
                                         onChange={(e) => updateListItem('successCriteria', i, e.target.value)}
                                         className="flex-1 bg-transparent border-none p-0 text-sm text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] focus:ring-0 resize-none"
-                                        placeholder="Add metric..."
+                                        placeholder={t('flowStages.productDefinition.success.placeholder')}
                                         rows={2}
                                     />
                                     <button onClick={() => removeListItem('successCriteria', i)} className="opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-rose-500">
@@ -224,7 +226,7 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                                     </button>
                                 </div>
                             ))}
-                            {successList.length === 0 && <span className="text-xs text-[var(--color-text-muted)] italic">No metrics defined</span>}
+                            {successList.length === 0 && <span className="text-xs text-[var(--color-text-muted)] italic">{t('flowStages.productDefinition.success.empty')}</span>}
                         </div>
                     </div>
 
@@ -234,7 +236,7 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                             className="w-full h-12 text-base justify-between group bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:opacity-90 shadow-lg hover:shadow-xl transition-all rounded-xl border-none"
                             onClick={() => onUpdate({ stage: 'Development' })}
                         >
-                            <span className="font-bold pl-1">Proceed to Development</span>
+                            <span className="font-bold pl-1">{t('flowStages.productDefinition.actions.advance')}</span>
                             <div className="size-8 rounded-lg bg-white/20 dark:bg-black/10 flex items-center justify-center group-hover:translate-x-1 transition-transform">
                                 <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                             </div>
@@ -251,9 +253,9 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                         <div className="p-4 bg-rose-50 dark:bg-rose-900/10 border-b border-rose-100 dark:border-rose-900/20 flex justify-between items-center">
                             <div className="font-bold text-rose-700 dark:text-rose-400 flex items-center gap-2">
                                 <span className="material-symbols-outlined">priority_high</span>
-                                Must Have
+                                {t('flowStages.productDefinition.requirements.must')}
                             </div>
-                            <button onClick={() => addRequirement('must')} className="text-xs bg-white dark:bg-slate-800 border border-current rounded-full px-2 py-0.5 text-rose-600 hover:bg-rose-50">+ Add</button>
+                            <button onClick={() => addRequirement('must')} className="text-xs bg-white dark:bg-slate-800 border border-current rounded-full px-2 py-0.5 text-rose-600 hover:bg-rose-50">{t('flowStages.productDefinition.actions.add')}</button>
                         </div>
                         <div className="p-4 flex-1 overflow-y-auto space-y-3">
                             {groupedRequirements.must.map(req => (
@@ -267,9 +269,9 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                         <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border-b border-amber-100 dark:border-amber-900/20 flex justify-between items-center">
                             <div className="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-2">
                                 <span className="material-symbols-outlined">star</span>
-                                Should Have
+                                {t('flowStages.productDefinition.requirements.should')}
                             </div>
-                            <button onClick={() => addRequirement('should')} className="text-xs bg-white dark:bg-slate-800 border border-current rounded-full px-2 py-0.5 text-amber-600 hover:bg-amber-50">+ Add</button>
+                            <button onClick={() => addRequirement('should')} className="text-xs bg-white dark:bg-slate-800 border border-current rounded-full px-2 py-0.5 text-amber-600 hover:bg-amber-50">{t('flowStages.productDefinition.actions.add')}</button>
                         </div>
                         <div className="p-4 flex-1 overflow-y-auto space-y-3">
                             {groupedRequirements.should.map(req => (
@@ -283,9 +285,9 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                         <div className="p-4 bg-sky-50 dark:bg-sky-900/10 border-b border-sky-100 dark:border-sky-900/20 flex justify-between items-center">
                             <div className="font-bold text-sky-700 dark:text-sky-400 flex items-center gap-2">
                                 <span className="material-symbols-outlined">add_circle</span>
-                                Could Have
+                                {t('flowStages.productDefinition.requirements.could')}
                             </div>
-                            <button onClick={() => addRequirement('could')} className="text-xs bg-white dark:bg-slate-800 border border-current rounded-full px-2 py-0.5 text-sky-600 hover:bg-sky-50">+ Add</button>
+                            <button onClick={() => addRequirement('could')} className="text-xs bg-white dark:bg-slate-800 border border-current rounded-full px-2 py-0.5 text-sky-600 hover:bg-sky-50">{t('flowStages.productDefinition.actions.add')}</button>
                         </div>
                         <div className="p-4 flex-1 overflow-y-auto space-y-3">
                             {groupedRequirements.could.map(req => (
@@ -299,9 +301,9 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                         <div className="p-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
                             <div className="font-bold text-slate-600 dark:text-slate-400 flex items-center gap-2">
                                 <span className="material-symbols-outlined">do_not_disturb_on</span>
-                                Won't Have
+                                {t('flowStages.productDefinition.requirements.wont')}
                             </div>
-                            <button onClick={() => addRequirement('wont')} className="text-xs bg-white dark:bg-slate-800 border border-current rounded-full px-2 py-0.5 text-slate-500 hover:bg-slate-50">+ Add</button>
+                            <button onClick={() => addRequirement('wont')} className="text-xs bg-white dark:bg-slate-800 border border-current rounded-full px-2 py-0.5 text-slate-500 hover:bg-slate-50">{t('flowStages.productDefinition.actions.add')}</button>
                         </div>
                         <div className="p-4 flex-1 overflow-y-auto space-y-3">
                             {groupedRequirements.wont.map(req => (
@@ -317,25 +319,29 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
 };
 
 // Subcomponent for cleaner rendering
-const RequirementCard = ({ req, updateRequirement, removeRequirement }: { req: Requirement, updateRequirement: any, removeRequirement: any }) => (
-    <div className="p-3 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] hover:shadow-sm transition-all group">
-        <div className="flex items-start justify-between gap-2 mb-2">
-            <input
-                value={req.title}
-                onChange={(e) => updateRequirement(req.id, { title: e.target.value })}
-                className="font-semibold text-sm bg-transparent border-none p-0 focus:ring-0 text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] flex-1 min-w-0"
-                placeholder="Feature title..."
+const RequirementCard = ({ req, updateRequirement, removeRequirement }: { req: Requirement, updateRequirement: any, removeRequirement: any }) => {
+    const { t } = useLanguage();
+
+    return (
+        <div className="p-3 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] hover:shadow-sm transition-all group">
+            <div className="flex items-start justify-between gap-2 mb-2">
+                <input
+                    value={req.title}
+                    onChange={(e) => updateRequirement(req.id, { title: e.target.value })}
+                    className="font-semibold text-sm bg-transparent border-none p-0 focus:ring-0 text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] flex-1 min-w-0"
+                    placeholder={t('flowStages.productDefinition.requirements.titlePlaceholder')}
+                />
+                <button onClick={() => removeRequirement(req.id)} className="opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-rose-500">
+                    <span className="material-symbols-outlined text-[16px]">close</span>
+                </button>
+            </div>
+            <textarea
+                value={req.description}
+                onChange={(e) => updateRequirement(req.id, { description: e.target.value })}
+                className="w-full bg-transparent border-none p-0 text-xs text-[var(--color-text-muted)] placeholder-[var(--color-text-subtle)] focus:ring-0 resize-none"
+                placeholder={t('flowStages.productDefinition.requirements.detailsPlaceholder')}
+                rows={2}
             />
-            <button onClick={() => removeRequirement(req.id)} className="opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-rose-500">
-                <span className="material-symbols-outlined text-[16px]">close</span>
-            </button>
         </div>
-        <textarea
-            value={req.description}
-            onChange={(e) => updateRequirement(req.id, { description: e.target.value })}
-            className="w-full bg-transparent border-none p-0 text-xs text-[var(--color-text-muted)] placeholder-[var(--color-text-subtle)] focus:ring-0 resize-none"
-            placeholder="Add details..."
-            rows={2}
-        />
-    </div>
-);
+    );
+};

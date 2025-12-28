@@ -3,12 +3,10 @@ import * as admin from 'firebase-admin';
 import * as cors from 'cors';
 import * as crypto from 'crypto';
 
-// Initialize Firebase Admin if not already initialized
-if (!admin.apps.length) {
-    admin.initializeApp();
-}
 
-const db = admin.firestore();
+
+import { db } from './init';
+
 const CORS_ORIGIN = true; // Allow all origins - can be restricted in production
 const REGION = 'europe-west3'; // Frankfurt
 

@@ -4,10 +4,6 @@ exports.editImageWithVertexAI = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const cors = require("cors");
-// Initialize admin if not already done
-if (!admin.apps.length) {
-    admin.initializeApp();
-}
 const corsHandler = cors({ origin: true });
 // Vertex AI configuration
 const VERTEX_PROJECT = 'project-manager-9d0ad';

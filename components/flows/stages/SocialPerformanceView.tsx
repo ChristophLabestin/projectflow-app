@@ -5,6 +5,7 @@ import { Button } from '../../ui/Button';
 import { PlatformIcon } from '../../../screens/social/components/PlatformIcon';
 import { subscribeCampaigns, createSocialPost } from '../../../services/dataService';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface SocialPerformanceViewProps {
     idea: Idea;
@@ -26,6 +27,7 @@ interface StudioData {
 }
 
 export const SocialPerformanceView: React.FC<SocialPerformanceViewProps> = ({ idea, onUpdate }) => {
+    const { t } = useLanguage();
     const navigate = useNavigate();
     const [campaigns, setCampaigns] = useState<SocialCampaign[]>([]);
     const [isDistributing, setIsDistributing] = useState(false);
@@ -133,16 +135,16 @@ export const SocialPerformanceView: React.FC<SocialPerformanceViewProps> = ({ id
                         <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
                             <div className="flex items-center gap-2 shrink-0">
                                 <div className="px-3 py-1 bg-indigo-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-indigo-200 dark:shadow-none">
-                                    Distribution
+                                    {t('flowStages.socialPerformance.hero.badge')}
                                 </div>
                                 <div className="h-[1px] w-8 bg-indigo-200 dark:bg-indigo-800 rounded-full" />
                             </div>
                             <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-                                Launchpad Studio
+                                {t('flowStages.socialPerformance.hero.title')}
                             </h1>
                         </div>
                         <p className="text-sm text-slate-600 dark:text-slate-400 font-medium max-w-2xl leading-relaxed">
-                            Finalize your assets and send them to the Social Module. Assign to an active campaign or release as standalone concepts.
+                            {t('flowStages.socialPerformance.hero.subtitle')}
                         </p>
                     </div>
                 </div>
@@ -154,18 +156,18 @@ export const SocialPerformanceView: React.FC<SocialPerformanceViewProps> = ({ id
                         <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
                             <h3 className="font-black text-slate-900 dark:text-white uppercase text-[12px] tracking-widest mb-6 flex items-center gap-2">
                                 <span className="material-symbols-outlined text-indigo-500">inventory_2</span>
-                                Ready for Transmission
+                                {t('flowStages.socialPerformance.ready.title')}
                             </h3>
 
                             {platforms.length === 0 ? (
                                 <div className="text-center py-10 text-slate-400">
                                     <span className="material-symbols-outlined text-4xl mb-2">drafts</span>
-                                    <p className="text-sm font-medium">No drafts found. Go back to Studio to create content.</p>
+                                    <p className="text-sm font-medium">{t('flowStages.socialPerformance.ready.empty')}</p>
                                     <Button
                                         onClick={() => onUpdate({ stage: 'Studio' })}
                                         className="mt-4 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg px-4 py-2"
                                     >
-                                        Back to Studio
+                                        {t('flowStages.socialPerformance.ready.backToStudio')}
                                     </Button>
                                 </div>
                             ) : (
@@ -203,11 +205,11 @@ export const SocialPerformanceView: React.FC<SocialPerformanceViewProps> = ({ id
                                                         <div className="flex items-center justify-between mb-2">
                                                             <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">{p} • {concept?.format}</span>
                                                             <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${isReady ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
-                                                                {isReady ? 'Ready' : 'Draft'}
+                                                                {isReady ? t('flowStages.socialPerformance.ready.status.ready') : t('flowStages.socialPerformance.ready.status.draft')}
                                                             </span>
                                                         </div>
                                                         <p className="text-xs font-medium text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed">
-                                                            {draft.copy || <span className="italic opacity-50">No caption...</span>}
+                                                            {draft.copy || <span className="italic opacity-50">{t('flowStages.socialPerformance.ready.noCaption')}</span>}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -227,35 +229,35 @@ export const SocialPerformanceView: React.FC<SocialPerformanceViewProps> = ({ id
                                     <span className="material-symbols-outlined text-xl">rocket_launch</span>
                                 </div>
                                 <div>
-                                    <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">Transmission</h3>
-                                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">Setup & Send</p>
+                                    <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">{t('flowStages.socialPerformance.transmission.title')}</h3>
+                                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">{t('flowStages.socialPerformance.transmission.subtitle')}</p>
                                 </div>
                             </div>
 
                             <div className="space-y-6">
                                 <div>
                                     <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-3 block opacity-70">
-                                        Target Campaign
+                                        {t('flowStages.socialPerformance.transmission.target.label')}
                                     </label>
                                     <select
                                         value={studioData.selectedCampaignId || ''}
                                         onChange={(e) => updateStudioData({ selectedCampaignId: e.target.value })}
                                         className="w-full appearance-none bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-3 text-[11px] font-black text-slate-700 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
                                     >
-                                        <option value="">No Campaign (Standalone Concepts)</option>
+                                        <option value="">{t('flowStages.socialPerformance.transmission.target.noneOption')}</option>
                                         {campaigns.map(c => (
                                             <option key={c.id} value={c.id}>{c.name}</option>
                                         ))}
                                     </select>
                                     <p className="text-[10px] text-slate-400 font-medium mt-2 leading-snug">
-                                        Assigning a campaign will group these posts under it in the Social Module.
+                                        {t('flowStages.socialPerformance.transmission.target.hint')}
                                     </p>
                                 </div>
 
                                 <div className="h-px bg-slate-100 dark:bg-slate-800" />
 
                                 <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-400">
-                                    <span>Total Items</span>
+                                    <span>{t('flowStages.socialPerformance.transmission.total')}</span>
                                     <span>{platforms.length}</span>
                                 </div>
 
@@ -269,16 +271,16 @@ export const SocialPerformanceView: React.FC<SocialPerformanceViewProps> = ({ id
                                     {isDistributing ? (
                                         <>
                                             <span className="material-symbols-outlined animate-spin text-[18px]">sync</span>
-                                            Transmitting...
+                                            {t('flowStages.socialPerformance.transmission.sending')}
                                         </>
                                     ) : distributionResult === 'success' ? (
                                         <>
                                             <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                                            Sent to Module
+                                            {t('flowStages.socialPerformance.transmission.sent')}
                                         </>
                                     ) : (
                                         <>
-                                            Transmit to Social
+                                            {t('flowStages.socialPerformance.transmission.send')}
                                             <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">send</span>
                                         </>
                                     )}
@@ -286,13 +288,13 @@ export const SocialPerformanceView: React.FC<SocialPerformanceViewProps> = ({ id
 
                                 {distributionResult === 'success' && (
                                     <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-100 dark:border-green-800 text-center animate-fade-in">
-                                        <p className="text-xs font-bold text-green-700 dark:text-green-300 mb-2">Success!</p>
+                                        <p className="text-xs font-bold text-green-700 dark:text-green-300 mb-2">{t('flowStages.socialPerformance.transmission.success')}</p>
                                         <Button
                                             variant="secondary"
                                             className="text-xs w-full"
                                             onClick={() => navigate(`/project/${idea.projectId}/social/campaigns`)}
                                         >
-                                            View in Social Module
+                                            {t('flowStages.socialPerformance.transmission.viewModule')}
                                         </Button>
                                     </div>
                                 )}

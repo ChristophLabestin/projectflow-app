@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Idea } from '../../../types';
 import { Button } from '../../ui/Button';
 import { generateProductDevelopmentAI } from '../../../services/geminiService';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface ProductDevelopmentViewProps {
     idea: Idea;
@@ -23,6 +24,7 @@ interface Phase {
 }
 
 export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ idea, onUpdate }) => {
+    const { t } = useLanguage();
     const [generating, setGenerating] = useState(false);
 
     // Store development data in the idea's devPlan field as JSON
@@ -47,7 +49,7 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
     const addStackCategory = () => {
         const newCat: TechStackCategory = {
             id: Date.now().toString(),
-            category: 'New Category',
+            category: t('flowStages.productDevelopment.defaults.category'),
             items: []
         };
         updateDevData({ techStack: [...devData.techStack, newCat] });
@@ -93,8 +95,8 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
     const addPhase = () => {
         const newPhase: Phase = {
             id: Date.now().toString(),
-            name: 'New Phase',
-            weeks: '1 week',
+            name: t('flowStages.productDevelopment.defaults.phase'),
+            weeks: t('flowStages.productDevelopment.defaults.weeks'),
             tasks: [],
             isCollapsed: false
         };
@@ -175,14 +177,14 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
             <div className="flex items-center justify-between shrink-0">
                 <div>
                     <h2 className="text-xl font-bold text-[var(--color-text-main)] flex items-center gap-3">
-                        Development Plan
+                        {t('flowStages.productDevelopment.title')}
                         {totalTasks > 0 && (
                             <span className={`text-xs px-2 py-0.5 rounded-full font-bold border ${progress === 100 ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-[var(--color-surface-hover)] border-[var(--color-surface-border)] text-[var(--color-text-muted)]'}`}>
-                                {progress}% Velocity
+                                {t('flowStages.productDevelopment.velocity').replace('{value}', String(progress))}
                             </span>
                         )}
                     </h2>
-                    <p className="text-sm text-[var(--color-text-muted)]">Plan your tech stack and implementation roadmap.</p>
+                    <p className="text-sm text-[var(--color-text-muted)]">{t('flowStages.productDevelopment.subtitle')}</p>
                 </div>
                 <Button
                     variant="primary"
@@ -192,7 +194,7 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                     className="bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-sky-600 hover:to-indigo-600 border-none shadow-md !text-white"
                     icon={<span className="material-symbols-outlined">auto_awesome</span>}
                 >
-                    Draft Plan with AI
+                    {t('flowStages.productDevelopment.actions.generate')}
                 </Button>
             </div>
 
@@ -204,15 +206,15 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                         <div className="p-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
                             <div className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[20px] text-sky-500">dns</span>
-                                Tech Stack
+                                {t('flowStages.productDevelopment.stack.title')}
                             </div>
-                            <button onClick={addStackCategory} className="text-xs text-[var(--color-primary)] hover:underline">+ Add Category</button>
+                            <button onClick={addStackCategory} className="text-xs text-[var(--color-primary)] hover:underline">{t('flowStages.productDevelopment.stack.addCategory')}</button>
                         </div>
 
                         <div className="p-4 flex-1 overflow-y-auto space-y-6">
                             {devData.techStack.length === 0 && (
                                 <div className="text-center py-8 text-[var(--color-text-muted)] text-sm">
-                                    No stack defined. Draft with AI or add manually.
+                                    {t('flowStages.productDevelopment.stack.empty')}
                                 </div>
                             )}
                             {devData.techStack.map((stack, i: number) => (
@@ -222,7 +224,7 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                                             value={stack.category}
                                             onChange={(e) => updateStackCategory(stack.id, { category: e.target.value })}
                                             className="font-bold text-sm bg-transparent border-none p-0 focus:ring-0 text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)]"
-                                            placeholder="Category Name"
+                                            placeholder={t('flowStages.productDevelopment.stack.categoryPlaceholder')}
                                         />
                                         <button onClick={() => removeStackCategory(stack.id)} className="text-[var(--color-text-muted)] hover:text-rose-500 opacity-0 group-hover/cat:opacity-100 transition-opacity">
                                             <span className="material-symbols-outlined text-[14px]">delete</span>
@@ -235,7 +237,7 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                                                     value={item}
                                                     onChange={(e) => updateStackItem(stack.id, j, e.target.value)}
                                                     className="bg-[var(--color-surface-hover)] rounded-md pl-2 pr-6 py-1 text-xs font-medium text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] min-w-[60px] max-w-[120px] focus:ring-1 ring-[var(--color-primary)] border-none"
-                                                    placeholder="Tech..."
+                                                    placeholder={t('flowStages.productDevelopment.stack.itemPlaceholder')}
                                                 />
                                                 <button
                                                     onClick={() => removeStackItem(stack.id, j)}
@@ -249,7 +251,7 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                                             onClick={() => addItemToStack(stack.id)}
                                             className="bg-transparent border border-dashed border-[var(--color-text-muted)] rounded-md px-2 py-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-colors"
                                         >
-                                            + Add
+                                            {t('flowStages.productDevelopment.actions.add')}
                                         </button>
                                     </div>
                                 </div>
@@ -263,10 +265,10 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                     <div className="p-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center shrink-0">
                         <div className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
                             <span className="material-symbols-outlined text-[20px] text-indigo-500">calendar_view_week</span>
-                            Implementation Roadmap
+                            {t('flowStages.productDevelopment.roadmap.title')}
                         </div>
                         <button onClick={addPhase} className="text-xs bg-[var(--color-primary)] text-white px-3 py-1.5 rounded-lg hover:bg-[var(--color-primary)]/90 shadow-sm flex items-center gap-1">
-                            <span className="material-symbols-outlined text-[14px]">add</span> Add Phase
+                            <span className="material-symbols-outlined text-[14px]">add</span> {t('flowStages.productDevelopment.roadmap.addPhase')}
                         </button>
                     </div>
 
@@ -274,7 +276,7 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                         {devData.phases.length === 0 && (
                             <div className="text-center py-12 text-[var(--color-text-muted)]">
                                 <span className="material-symbols-outlined text-[40px] opacity-20 mb-2">splitscreen</span>
-                                <p className="text-sm">No phases defined. Start planning your build.</p>
+                                <p className="text-sm">{t('flowStages.productDevelopment.roadmap.empty')}</p>
                             </div>
                         )}
                         {devData.phases.map((phase, i) => {
@@ -301,7 +303,7 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                                                     value={phase.name}
                                                     onChange={(e) => updatePhase(phase.id, { name: e.target.value })}
                                                     className="font-bold bg-transparent border-none p-0 focus:ring-0 text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] w-full max-w-xs"
-                                                    placeholder="Phase Name"
+                                                    placeholder={t('flowStages.productDevelopment.roadmap.phasePlaceholder')}
                                                 />
                                                 <span className="text-xs text-[var(--color-text-muted)] bg-[var(--color-surface-hover)] px-2 py-0.5 rounded">
                                                     {phase.weeks}
@@ -339,7 +341,7 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                                                         value={task.title}
                                                         onChange={(e) => updateTask(phase.id, task.id, { title: e.target.value })}
                                                         className={`flex-1 bg-transparent border-none p-0 text-sm focus:ring-0 ${task.done ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)]'}`}
-                                                        placeholder="Task description..."
+                                                        placeholder={t('flowStages.productDevelopment.roadmap.taskPlaceholder')}
                                                     />
                                                     <button onClick={() => removeTask(phase.id, task.id)} className="text-[var(--color-text-muted)] hover:text-rose-500 opacity-0 group-hover/task:opacity-100 transition-opacity">
                                                         <span className="material-symbols-outlined text-[14px]">close</span>
@@ -351,11 +353,11 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                                                     onClick={() => addTaskToPhase(phase.id)}
                                                     className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-primary)] flex items-center gap-1 pl-2 transition-colors"
                                                 >
-                                                    <span className="material-symbols-outlined text-[14px]">add</span> Add Task
+                                                    <span className="material-symbols-outlined text-[14px]">add</span> {t('flowStages.productDevelopment.roadmap.addTask')}
                                                 </button>
                                                 <div className="flex-1"></div>
                                                 <button onClick={() => removePhase(phase.id)} className="text-xs text-rose-500/50 hover:text-rose-500 px-2 transition-colors">
-                                                    Delete Phase
+                                                    {t('flowStages.productDevelopment.roadmap.deletePhase')}
                                                 </button>
                                             </div>
                                         </div>
@@ -371,7 +373,7 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                             className="w-full h-12 text-base justify-between group bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:opacity-90 shadow-lg hover:shadow-xl transition-all rounded-xl border-none"
                             onClick={() => onUpdate({ stage: 'Concept' })}
                         >
-                            <span className="font-bold pl-1">Proceed to Concept</span>
+                            <span className="font-bold pl-1">{t('flowStages.productDevelopment.actions.advance')}</span>
                             <div className="size-8 rounded-lg bg-white/20 dark:bg-black/10 flex items-center justify-center group-hover:translate-x-1 transition-transform">
                                 <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
                             </div>
