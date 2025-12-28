@@ -9,6 +9,7 @@ import { Modal } from '../../components/ui/Modal';
 import { Textarea } from '../../components/ui/Textarea';
 import { PlatformIcon } from './components/PlatformIcon';
 import { generateRiskWinAnalysis } from '../../services/geminiService';
+import { useHelpCenter } from '../../context/HelpCenterContext';
 
 const PHASE_COLORS = [
     { dot: 'bg-rose-500', text: 'text-rose-600 dark:text-rose-300' },
@@ -36,6 +37,7 @@ const formatStatus = (value?: string) => {
 export const SocialCampaignReviewPage = () => {
     const { id: projectId, ideaId } = useParams<{ id: string; ideaId: string }>();
     const navigate = useNavigate();
+    const { openHelpCenter } = useHelpCenter();
     const [idea, setIdea] = useState<Idea | null>(null);
     const [linkedCampaign, setLinkedCampaign] = useState<SocialCampaign | null>(null);
     const [loading, setLoading] = useState(true);
@@ -275,14 +277,24 @@ export const SocialCampaignReviewPage = () => {
     return (
         <div className="min-h-full w-full pb-24">
             <div className="space-y-6">
-                <button
-                    type="button"
-                    onClick={() => navigate(`/project/${projectId}/social`)}
-                    className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
-                >
-                    <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-                    Back to Social
-                </button>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                    <button
+                        type="button"
+                        onClick={() => navigate(`/project/${projectId}/social`)}
+                        className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
+                    >
+                        <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+                        Back to Social
+                    </button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openHelpCenter({ pageId: 'social-studio', sectionId: 'campaign-review' })}
+                        icon={<span className="material-symbols-outlined text-[16px]">help</span>}
+                    >
+                        Review help
+                    </Button>
+                </div>
                 <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-8">
                     <aside className="space-y-4">
                         <Card className="space-y-4">

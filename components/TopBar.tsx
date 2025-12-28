@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Breadcrumbs } from './ui/Breadcrumbs';
 import { AISearchBar } from './AISearchBar';
 import { PinnedProjectPill } from './PinnedProjectPill';
@@ -7,6 +8,8 @@ import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { getSubTasks } from '../services/dataService';
 import { Project } from '../types';
 import { useUIState } from '../context/UIContext';
+import { useHelpCenter } from '../context/HelpCenterContext';
+import { getHelpTargetForPath } from './help/helpCenterContent';
 
 // --- Local Components (PinnedTasksToggle) ---
 const PinnedTasksToggle = () => {
@@ -76,6 +79,12 @@ interface TopBarProps {
 
 export const TopBar: React.FC<TopBarProps> = ({ project, breadcrumbs, onOpenNav }) => {
     const { openTaskCreateModal } = useUIState();
+    const location = useLocation();
+    const { openHelpCenter } = useHelpCenter();
+
+    const handleOpenHelp = () => {
+        openHelpCenter(getHelpTargetForPath(location.pathname));
+    };
 
     return (
         <header className="
@@ -116,6 +125,14 @@ export const TopBar: React.FC<TopBarProps> = ({ project, breadcrumbs, onOpenNav 
                 <div className="hidden md:block w-px h-4 bg-[var(--color-surface-border)] mx-1" />
 
                 <PinnedTasksToggle />
+
+                <button
+                    onClick={handleOpenHelp}
+                    className="flex items-center justify-center size-8 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)] transition-colors"
+                    title="Help Center"
+                >
+                    <span className="material-symbols-outlined text-[20px]">help</span>
+                </button>
 
                 <div className="pl-1">
                     <UserProfileDropdown />

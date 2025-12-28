@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import { ThemeProvider } from './context/ThemeContext';
 import { UIProvider } from './context/UIContext';
+import { HelpCenterProvider } from './context/HelpCenterContext';
 import { PinnedTasksProvider } from './context/PinnedTasksContext';
 import { PinnedProjectProvider } from './context/PinnedProjectContext';
 
@@ -18,7 +19,9 @@ root.render(
       <PinnedProjectProvider>
         <PinnedTasksProvider>
           <UIProvider>
-            <App />
+            <HelpCenterProvider>
+              <App />
+            </HelpCenterProvider>
           </UIProvider>
         </PinnedTasksProvider>
       </PinnedProjectProvider>

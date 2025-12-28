@@ -57,6 +57,8 @@ import { useUIState } from './context/UIContext';
 import { PinnedTasksModal } from './components/PinnedTasksModal';
 import { PinnedTasksProvider } from './context/PinnedTasksContext';
 import { ErrorPage } from './screens/ErrorPage';
+import { HelpCenterDrawer } from './components/help/HelpCenterDrawer';
+import { HelpCenterFloatingButton } from './components/help/HelpCenterFloatingButton';
 
 const RequireAuth = ({ children }: { children?: React.ReactNode }) => {
     const location = useLocation();
@@ -71,29 +73,16 @@ const RequireAuth = ({ children }: { children?: React.ReactNode }) => {
     return <>{children}</>;
 };
 
-// Dynamically import ReleaseToDosModal only in development (won't break build if file doesn't exist)
-const ReleaseToDosModal = React.lazy(() =>
-    import('./components/ReleaseToDosModal')
-        .then(module => ({ default: module.ReleaseToDosModal }))
-        .catch(() => ({ default: () => null }))
-);
-
 // Root Layout Component to host global modals dependent on Router
 const RootLayout = () => {
-    const { isReleaseModalOpen, setReleaseModalOpen } = useUIState();
-    const isLocalhost = window.location.hostname === 'localhost';
+    const location = useLocation();
+    const isPublicRoute = /^(\/login|\/invite|\/invite-project|\/join|\/join-workspace)/.test(location.pathname);
 
     return (
         <>
-            {isLocalhost && (
-                <React.Suspense fallback={null}>
-                    <ReleaseToDosModal
-                        isOpen={isReleaseModalOpen}
-                        onClose={() => setReleaseModalOpen(false)}
-                    />
-                </React.Suspense>
-            )}
             <PinnedTasksModal />
+            <HelpCenterDrawer />
+            {isPublicRoute && <HelpCenterFloatingButton />}
             <Outlet />
         </>
     );

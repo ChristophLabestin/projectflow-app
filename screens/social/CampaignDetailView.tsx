@@ -549,7 +549,7 @@ export const CampaignDetailView = () => {
                                 {/* Tabs */}
                                 <div className="flex items-center gap-8">
                                     {[
-                                        { id: 'dashboard', label: 'Dashboard', icon: 'space_dashboard' },
+                                        { id: 'dashboard', label: 'Overview', icon: 'space_dashboard' },
                                         { id: 'strategy', label: 'Strategy', icon: 'lightbulb' },
                                         { id: 'board', label: 'Production', icon: 'view_kanban', badge: posts.length },
                                         { id: 'calendar', label: 'Calendar', icon: 'calendar_month' },
@@ -558,8 +558,8 @@ export const CampaignDetailView = () => {
                                             key={tab.id}
                                             onClick={() => setActiveTab(tab.id as any)}
                                             className={`group relative pb-3 flex items-center gap-2 transition-colors ${activeTab === tab.id
-                                                    ? 'text-[var(--color-text-main)]'
-                                                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                                                ? 'text-[var(--color-text-main)]'
+                                                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
                                                 }`}
                                         >
                                             <span
@@ -595,8 +595,8 @@ export const CampaignDetailView = () => {
                                 <button
                                     onClick={() => setIsFocusMode(!isFocusMode)}
                                     className={`flex items-center gap-1.5 text-xs font-semibold transition-all px-3 py-1.5 rounded-lg ${isFocusMode
-                                            ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)]'
-                                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'
+                                        ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)]'
+                                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'
                                         }`}
                                 >
                                     <span className="material-symbols-outlined text-[16px]">

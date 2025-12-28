@@ -1472,11 +1472,31 @@ export const ProjectOverview = () => {
                                             const elapsed = now - start;
                                             pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
                                         }
+
+                                        // Status-based glow styling
+                                        const status = initiative.status?.toLowerCase() || '';
+                                        const isInProgress = status === 'in progress' || status === 'inprogress';
+                                        const isReview = status === 'review' || status === 'in review';
+                                        const isBlocked = status === 'blocked';
+
+                                        let glowClass = '';
+                                        if (isBlocked) {
+                                            glowClass = 'shadow-[0_0_20px_rgba(239,68,68,0.4)] animate-pulse';
+                                        } else if (isInProgress) {
+                                            glowClass = 'shadow-[0_0_15px_rgba(59,130,246,0.3)]';
+                                        } else if (isReview) {
+                                            glowClass = 'shadow-[0_0_15px_rgba(168,85,247,0.3)]';
+                                        }
+
                                         return (
                                             <div
                                                 key={initiative.id}
                                                 onClick={() => navigate(`/project/${id}/tasks/${initiative.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
-                                                className="group relative rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 hover:bg-[var(--color-surface-hover)] hover:border-indigo-500/30 transition-all cursor-pointer"
+                                                className={`group relative rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 hover:bg-[var(--color-surface-hover)] transition-all cursor-pointer ${glowClass} ${isBlocked ? 'border-rose-500/40' :
+                                                    isInProgress ? 'border-blue-500/30 hover:border-blue-500/50' :
+                                                        isReview ? 'border-purple-500/30 hover:border-purple-500/50' :
+                                                            'hover:border-indigo-500/30'
+                                                    }`}
                                             >
                                                 {/* Priority indicator */}
                                                 <div className={`absolute top-0 left-4 w-8 h-1 rounded-b-full ${initiative.priority === 'Urgent' ? 'bg-rose-500' :
@@ -1507,11 +1527,11 @@ export const ProjectOverview = () => {
                                                     )}
                                                     {initiative.priority && (
                                                         <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border
-                                                            ${initiative.priority === 'Urgent' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+                                                                ${initiative.priority === 'Urgent' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
                                                                 initiative.priority === 'High' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
                                                                     initiative.priority === 'Medium' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
                                                                         'bg-slate-500/10 text-slate-500 border-slate-500/20'}
-                                                        `}>
+                                                            `}>
                                                             <span className="material-symbols-outlined text-[10px]">
                                                                 {initiative.priority === 'Urgent' ? 'error' :
                                                                     initiative.priority === 'High' ? 'keyboard_double_arrow_up' :
@@ -1579,9 +1599,10 @@ export const ProjectOverview = () => {
                                                         </span>
                                                     </div>
                                                 )}
+                                                {/* Due Date Only */}
                                                 {!hasStart && hasDue && (
-                                                    <div className={`flex items-center gap-1.5 text-[10px] font-semibold ${isOverdue ? 'text-rose-500' : 'text-[var(--color-text-muted)]'}`}>
-                                                        <span className="material-symbols-outlined text-[12px]">event</span>
+                                                    <div className={`flex items-center gap-1.5 text-[9px] ${isOverdue ? 'text-rose-500 font-semibold' : 'text-[var(--color-text-muted)]'}`}>
+                                                        <span className="material-symbols-outlined text-[12px] fill-current">event</span>
                                                         Due {dueDate!.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                                                     </div>
                                                 )}
@@ -2149,10 +2170,10 @@ export const ProjectOverview = () => {
                         </Card>
                     )}
                 </div>
-            </div>
+            </div >
 
             {/* Gallery Modal */}
-            <Modal isOpen={showGalleryModal} onClose={() => setShowGalleryModal(false)} title="Project Gallery" size="xl">
+            < Modal isOpen={showGalleryModal} onClose={() => setShowGalleryModal(false)} title="Project Gallery" size="xl" >
                 <div className="space-y-4">
                     <div className="aspect-video w-full bg-black rounded-xl overflow-hidden flex items-center justify-center relative group">
                         {projectAssets[selectedImageIndex] ? (
@@ -2191,45 +2212,49 @@ export const ProjectOverview = () => {
                         ))}
                     </div>
                 </div>
-            </Modal>
+            </Modal >
 
             {/* Media Library Modal */}
-            {project && (
-                <MediaLibrary
-                    isOpen={showMediaLibrary}
-                    onClose={() => {
-                        setShowMediaLibrary(false);
-                        if (mediaPickerTarget === 'gallery') {
-                            fetchProjectAssets(); // Refresh assets if managing gallery
-                        }
-                        setMediaPickerTarget('gallery'); // Reset target
-                    }}
-                    projectId={project.id}
-                    tenantId={project.tenantId}
-                    onSelect={(asset) => {
-                        if (mediaPickerTarget === 'cover') {
-                            void handleUpdateField('coverImage', asset.url);
-                            setCoverRemoved(false);
+            {
+                project && (
+                    <MediaLibrary
+                        isOpen={showMediaLibrary}
+                        onClose={() => {
                             setShowMediaLibrary(false);
-                            setMediaPickerTarget('gallery');
-                        } else if (mediaPickerTarget === 'icon') {
-                            void handleUpdateField('squareIcon', asset.url);
-                            setIconRemoved(false);
-                            setShowMediaLibrary(false);
-                            setMediaPickerTarget('gallery');
-                        }
-                    }}
-                />
-            )}
+                            if (mediaPickerTarget === 'gallery') {
+                                fetchProjectAssets(); // Refresh assets if managing gallery
+                            }
+                            setMediaPickerTarget('gallery'); // Reset target
+                        }}
+                        projectId={project.id}
+                        tenantId={project.tenantId}
+                        onSelect={(asset) => {
+                            if (mediaPickerTarget === 'cover') {
+                                void handleUpdateField('coverImage', asset.url);
+                                setCoverRemoved(false);
+                                setShowMediaLibrary(false);
+                                setMediaPickerTarget('gallery');
+                            } else if (mediaPickerTarget === 'icon') {
+                                void handleUpdateField('squareIcon', asset.url);
+                                setIconRemoved(false);
+                                setShowMediaLibrary(false);
+                                setMediaPickerTarget('gallery');
+                            }
+                        }}
+                    />
+                )
+            }
 
-            {project && (
-                <ProjectEditModal
-                    isOpen={showEditModal}
-                    onClose={() => setShowEditModal(false)}
-                    project={project}
-                    onSave={handleSaveEdit}
-                />
-            )}
+            {
+                project && (
+                    <ProjectEditModal
+                        isOpen={showEditModal}
+                        onClose={() => setShowEditModal(false)}
+                        project={project}
+                        onSave={handleSaveEdit}
+                    />
+                )
+            }
 
             {/* Delete Modal */}
             <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="Delete Project"
