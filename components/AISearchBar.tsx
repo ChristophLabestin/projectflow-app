@@ -3,9 +3,70 @@ import { useNavigate } from 'react-router-dom';
 import { SearchResult } from '../types';
 import { searchProjectsAndTasks, answerQuestionWithContext, isQuestionQuery } from '../services/aiSearchService';
 import { useIsSafari } from '../hooks/useIsSafari';
+import { useHelpCenter } from '../context/HelpCenterContext';
+import { helpCenterPages } from './help/helpCenterContent';
+import { useLanguage } from '../context/LanguageContext';
+
+const buildHelpResults = (query: string): SearchResult[] => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (normalizedQuery.length < 2) return [];
+
+    const results: SearchResult[] = [];
+
+    const scoreText = (text: string | undefined, weight: number) => {
+        if (!text) return 0;
+        return text.toLowerCase().includes(normalizedQuery) ? weight : 0;
+    };
+
+    const scoreKeywords = (keywords: string[] | undefined, weight: number) => {
+        if (!keywords) return 0;
+        return keywords.some(keyword => keyword.toLowerCase().includes(normalizedQuery)) ? weight : 0;
+    };
+
+    helpCenterPages.forEach(page => {
+        const pageScore = scoreText(page.title, 10)
+            + scoreText(page.description, 6)
+            + scoreKeywords(page.keywords, 4);
+
+        if (pageScore > 0) {
+            results.push({
+                type: 'help_page',
+                id: `help-${page.id}`,
+                title: page.title,
+                description: page.description,
+                helpPageId: page.id,
+                helpPageTitle: page.title,
+                relevance: pageScore
+            });
+        }
+
+        page.sections.forEach(section => {
+            const sectionScore = scoreText(section.title, 10)
+                + scoreText(section.summary, 6)
+                + scoreText(section.content, 4)
+                + scoreKeywords(section.keywords, 3);
+
+            if (sectionScore > 0) {
+                results.push({
+                    type: 'help_section',
+                    id: `help-${page.id}-${section.id}`,
+                    title: section.title,
+                    description: section.summary || section.content,
+                    helpPageId: page.id,
+                    helpSectionId: section.id,
+                    helpPageTitle: page.title,
+                    relevance: sectionScore
+                });
+            }
+        });
+    });
+
+    return results.sort((a, b) => (b.relevance || 0) - (a.relevance || 0)).slice(0, 12);
+};
 
 export const AISearchBar = () => {
     const isSafari = useIsSafari();
+    const { t } = useLanguage();
     const [query, setQuery] = useState('');
     const [isOpen, setIsOpen] = useState(false);
     const [isFocused, setIsFocused] = useState(false);
@@ -17,6 +78,7 @@ export const AISearchBar = () => {
     const [selectedIndex, setSelectedIndex] = useState(-1); // Start with no selection
 
     const navigate = useNavigate();
+    const { openHelpCenter } = useHelpCenter();
     const searchRef = useRef<HTMLDivElement>(null);
     const inputRef = useRef<HTMLInputElement>(null);
     const debounceTimer = useRef<NodeJS.Timeout | null>(null);
@@ -65,15 +127,19 @@ export const AISearchBar = () => {
         // Don't clear error here immediately to avoid flickering if we just had one
 
         debounceTimer.current = setTimeout(async () => {
+            const helpResults = buildHelpResults(query);
             try {
                 // Only do local search here
                 const searchResults = await searchProjectsAndTasks(query);
-                setResults(searchResults);
+                setResults([...searchResults, ...helpResults]);
                 setIsOpen(true);
                 // Reset selected index when results change
                 setSelectedIndex(-1);
             } catch (err: any) {
                 console.error('Search error:', err);
+                setResults(helpResults);
+                setIsOpen(true);
+                setSelectedIndex(-1);
                 // For local search, we might not want to show a big error
             } finally {
                 setIsLoading(false);
@@ -106,7 +172,7 @@ export const AISearchBar = () => {
 
         } catch (err: any) {
             console.error('AI Search error:', err);
-            setError(err.message || 'AI Search failed');
+            setError(err.message || t('search.aiSearchFailed'));
         } finally {
             setIsAiLoading(false);
         }
@@ -184,7 +250,11 @@ export const AISearchBar = () => {
         } else if (result.type === 'issue') {
             navigate(`/project/${result.projectId}/issues?issue=${result.id}`);
         } else if (result.type === 'idea') {
-            navigate(`/project/${result.projectId}/ideas?idea=${result.id}`);
+            navigate(`/project/${result.projectId}/flows?idea=${result.id}`);
+        } else if (result.type === 'help_page') {
+            openHelpCenter({ pageId: result.helpPageId });
+        } else if (result.type === 'help_section') {
+            openHelpCenter({ pageId: result.helpPageId, sectionId: result.helpSectionId });
         }
 
         setQuery('');
@@ -196,7 +266,13 @@ export const AISearchBar = () => {
     const taskResults = results.filter(r => r.type === 'task');
     const issueResults = results.filter(r => r.type === 'issue');
     const ideaResults = results.filter(r => r.type === 'idea');
+    const helpResults = results.filter(r => r.type === 'help_page' || r.type === 'help_section');
     const isQuestion = isQuestionQuery(query);
+    const [askAiPromptPrefix, askAiPromptSuffix] = t('search.askAiPrompt').split('{query}');
+    const askAiHintParts = t('search.askAiHint').split('{key}');
+    const noResultsLabel = t('search.noResults').replace('{query}', query);
+    const [inProjectPrefix, inProjectSuffix] = t('search.inProject').split('{project}');
+    const helpSectionTemplate = t('search.helpSectionIn');
 
     return (
         // Root container: Acts as an anchor with fixed width.
@@ -260,7 +336,7 @@ export const AISearchBar = () => {
                 <input
                     ref={inputRef}
                     className="flex-1 bg-transparent border-none outline-none ring-0 focus:ring-0 focus:outline-none focus:border-none p-0 text-sm text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)]"
-                    placeholder="Search..."
+                    placeholder={t('search.placeholder')}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={handleKeyDown}
@@ -323,10 +399,14 @@ export const AISearchBar = () => {
                                     </div>
                                     <div className="flex-1">
                                         <p className="text-sm font-medium text-[var(--color-text-main)]">
-                                            Ask AI: <span className="text-[var(--color-text-muted)] font-normal">"{query}"</span>
+                                            {askAiPromptPrefix}
+                                            <span className="text-[var(--color-text-muted)] font-normal">{query}</span>
+                                            {askAiPromptSuffix}
                                         </p>
                                         <p className="text-xs text-[var(--color-text-subtle)] mt-0.5">
-                                            Press <kbd className="font-sans font-semibold text-[var(--color-text-main)]">Enter</kbd> to generate answer
+                                            {askAiHintParts[0]}
+                                            <kbd className="font-sans font-semibold text-[var(--color-text-main)]">Enter</kbd>
+                                            {askAiHintParts[1]}
                                         </p>
                                     </div>
                                     <span className="material-symbols-outlined text-[var(--color-text-subtle)] group-hover:text-indigo-500 transition-colors">
@@ -341,9 +421,9 @@ export const AISearchBar = () => {
                             <div className="p-6 text-center border-b border-[var(--color-surface-border)]">
                                 <div className="inline-flex items-center gap-2 mb-2">
                                     <span className="material-symbols-outlined text-xl animate-spin text-indigo-500">spark mode</span>
-                                    <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">Thinking...</span>
+                                    <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">{t('search.thinking')}</span>
                                 </div>
-                                <p className="text-xs text-[var(--color-text-subtle)]">Analyzing project data to answer your question</p>
+                                <p className="text-xs text-[var(--color-text-subtle)]">{t('search.aiAnalyzing')}</p>
                             </div>
                         )}
 
@@ -353,7 +433,7 @@ export const AISearchBar = () => {
                                 <div className="flex items-start gap-3">
                                     <span className="material-symbols-outlined text-red-500 text-[20px]">error</span>
                                     <div className="flex-1">
-                                        <p className="text-sm font-medium text-red-700 dark:text-red-400">Couldn't generate answer</p>
+                                        <p className="text-sm font-medium text-red-700 dark:text-red-400">{t('search.aiErrorTitle')}</p>
                                         <p className="text-xs text-red-600 dark:text-red-400/80 mt-1">{error}</p>
                                     </div>
                                 </div>
@@ -365,7 +445,7 @@ export const AISearchBar = () => {
                             <div className="p-4 bg-indigo-50/50 dark:bg-indigo-900/10 border-b border-[var(--color-surface-border)]">
                                 <div className="flex items-center gap-2 mb-3">
                                     <span className="material-symbols-outlined text-[18px] text-indigo-500">auto_awesome</span>
-                                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">AI Insight</span>
+                                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">{t('search.aiInsight')}</span>
                                 </div>
                                 <div className="prose prose-sm dark:prose-invert max-w-none">
                                     <p className="text-sm text-[var(--color-text-main)] leading-relaxed whitespace-pre-wrap">{aiAnswer}</p>
@@ -379,7 +459,7 @@ export const AISearchBar = () => {
                             {!isLoading && results.length === 0 && query.trim() && !aiAnswer && !isAiLoading && (
                                 <div className="px-4 py-8 text-center text-[var(--color-text-muted)]">
                                     <span className="material-symbols-outlined text-4xl mb-2 opacity-50">search_off</span>
-                                    <p className="text-sm">No tasks or projects found matching "{query}"</p>
+                                    <p className="text-sm">{noResultsLabel}</p>
                                 </div>
                             )}
 
@@ -387,7 +467,7 @@ export const AISearchBar = () => {
                             {projectResults.length > 0 && (
                                 <div className="mb-2">
                                     <div className="px-4 py-1.5">
-                                        <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Projects</span>
+                                        <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{t('nav.projects')}</span>
                                     </div>
                                     {projectResults.map((result, index) => {
                                         const isSelected = index === selectedIndex && results[index].type === 'project';
@@ -405,8 +485,8 @@ export const AISearchBar = () => {
                                                 ${selectedIndex === actualIndex ? 'bg-[var(--color-surface-hover)] border-l-2 border-indigo-500' : 'border-l-2 border-transparent'}
                                             `}
                                             >
-                                                <div className="p-1.5 rounded-lg bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 shrink-0">
-                                                    <span className="material-symbols-outlined text-[18px]">folder</span>
+                                                <div className="flex items-center justify-center p-1.5 rounded-lg bg-blue-50 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 shrink-0">
+                                                    <span className="material-symbols-outlined text-[18px] leading-none">folder</span>
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-medium text-[var(--color-text-main)] truncate">{result.title}</p>
@@ -424,7 +504,7 @@ export const AISearchBar = () => {
                             {taskResults.length > 0 && (
                                 <div>
                                     <div className="px-4 py-1.5 border-t border-[var(--color-surface-border)] mt-1 pt-3">
-                                        <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Tasks</span>
+                                        <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{t('nav.tasks')}</span>
                                     </div>
                                     {taskResults.map((result, index) => {
                                         const actualIndex = results.indexOf(result);
@@ -439,15 +519,63 @@ export const AISearchBar = () => {
                                                 ${selectedIndex === actualIndex ? 'bg-[var(--color-surface-hover)] border-l-2 border-emerald-500' : 'border-l-2 border-transparent'}
                                             `}
                                             >
-                                                <div className="p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0">
-                                                    <span className="material-symbols-outlined text-[18px]">task_alt</span>
+                                                <div className="flex items-center justify-center p-1.5 rounded-lg bg-emerald-50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0">
+                                                    <span className="material-symbols-outlined text-[18px] leading-none">task_alt</span>
                                                 </div>
                                                 <div className="flex-1 min-w-0">
                                                     <p className="text-sm font-medium text-[var(--color-text-main)] truncate">{result.title}</p>
-                                                    <p className="text-xs text-[var(--color-text-muted)] truncate">
-                                                        in <span className="text-[var(--color-text-main)]">{result.projectTitle}</span>
-                                                    </p>
+                                                        <p className="text-xs text-[var(--color-text-muted)] truncate">
+                                                            {inProjectPrefix}
+                                                            <span className="text-[var(--color-text-main)]">{result.projectTitle}</span>
+                                                            {inProjectSuffix}
+                                                        </p>
                                                 </div>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+
+                            {helpResults.length > 0 && (
+                                <div>
+                                    <div className="px-4 py-1.5 border-t border-[var(--color-surface-border)] mt-1 pt-3">
+                                        <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{t('topbar.helpCenter')}</span>
+                                    </div>
+                                    {helpResults.map((result) => {
+                                        const actualIndex = results.indexOf(result);
+                                        const isSection = result.type === 'help_section';
+                                        const detail = isSection
+                                            ? helpSectionTemplate.replace('{page}', result.helpPageTitle || '')
+                                            : result.description;
+
+                                        return (
+                                            <button
+                                                key={result.id}
+                                                onClick={() => handleSelectResult(result)}
+                                                onMouseEnter={() => setSelectedIndex(actualIndex)}
+                                                className={`
+                                                w-full text-left px-4 py-2 flex items-center gap-3 transition-colors
+                                                ${selectedIndex === actualIndex ? 'bg-[var(--color-surface-hover)] border-l-2 border-amber-500' : 'border-l-2 border-transparent'}
+                                            `}
+                                            >
+                                                <div className="flex items-center justify-center p-1.5 rounded-lg bg-amber-50 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 shrink-0">
+                                                    <span className="material-symbols-outlined text-[18px] leading-none">
+                                                        {isSection ? 'description' : 'menu_book'}
+                                                    </span>
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-sm font-medium text-[var(--color-text-main)] truncate">
+                                                        {result.title}
+                                                    </p>
+                                                    {detail && (
+                                                        <p className="text-xs text-[var(--color-text-muted)] truncate">
+                                                            {detail}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                                <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                                                    {isSection ? t('search.resultSection') : t('search.resultPage')}
+                                                </span>
                                             </button>
                                         );
                                     })}
@@ -460,15 +588,15 @@ export const AISearchBar = () => {
                             <div className="flex gap-3">
                                 <div className="flex items-center gap-1.5">
                                     <kbd className="h-5 px-1.5 rounded bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] text-[10px] text-[var(--color-text-muted)] font-sans">↑↓</kbd>
-                                    <span className="text-[10px] text-[var(--color-text-muted)]">Navigate</span>
+                                    <span className="text-[10px] text-[var(--color-text-muted)]">{t('search.footer.navigate')}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                     <kbd className="h-5 px-1.5 rounded bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] text-[10px] text-[var(--color-text-muted)] font-sans">Enter</kbd>
-                                    <span className="text-[10px] text-[var(--color-text-muted)]">Select / Ask AI</span>
+                                    <span className="text-[10px] text-[var(--color-text-muted)]">{t('search.footer.selectAskAi')}</span>
                                 </div>
                                 <div className="flex items-center gap-1.5">
                                     <kbd className="h-5 px-1.5 rounded bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] text-[10px] text-[var(--color-text-muted)] font-sans">Esc</kbd>
-                                    <span className="text-[10px] text-[var(--color-text-muted)]">Close</span>
+                                    <span className="text-[10px] text-[var(--color-text-muted)]">{t('search.footer.close')}</span>
                                 </div>
                             </div>
                         </div>

@@ -7,6 +7,7 @@ import { ProjectSwitcher } from './ProjectSwitcher';
 import { NotificationDropdown } from './NotificationDropdown';
 import { useUIState } from '../context/UIContext';
 import { WorkspaceTeamIndicator } from './WorkspaceTeamIndicator';
+import { useLanguage } from '../context/LanguageContext';
 
 type SidebarProps = {
     isDrawer?: boolean;
@@ -106,6 +107,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
     const user = auth.currentUser;
     const { theme } = useTheme();
     const { setReleaseModalOpen } = useUIState();
+    const { t } = useLanguage();
 
     // Data Loaders for badges
     const [taskCount, setTaskCount] = React.useState<number>(0);
@@ -178,7 +180,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                 >
                     <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                     <span className="material-symbols-outlined text-[20px]">add</span>
-                    <span className="tracking-tight">New Project</span>
+                    <span className="tracking-tight">{t('nav.newProject')}</span>
                 </Link>
             </div>
 
@@ -189,18 +191,18 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                 <div>
                     <div className="flex items-center gap-3 px-1 mb-3">
                         <span className="text-[11px] font-black uppercase tracking-[0.3em] text-[var(--color-text-muted)] opacity-50">
-                            Workspace
+                            {t('nav.workspace')}
                         </span>
                         <div className="flex-1 h-px bg-gradient-to-r from-[var(--color-surface-border)]/50 to-transparent" />
                     </div>
 
                     <div className="grid gap-1">
-                        <NavItem to="/" icon="space_dashboard" label="Dashboard" exact onClick={isDrawer ? onClose : undefined} />
-                        <NavItem to="/projects" icon="layers" label="Projects" onClick={isDrawer ? onClose : undefined} />
-                        <NavItem to="/tasks" icon="task_alt" label="My Tasks" badge={taskCount} onClick={isDrawer ? onClose : undefined} />
-                        <NavItem to="/calendar" icon="calendar_today" label="Calendar" onClick={isDrawer ? onClose : undefined} />
-                        <NavItem to="/brainstorm" icon="auto_awesome" label="AI Studio" badge={ideaCount} onClick={isDrawer ? onClose : undefined} />
-                        <NavItem to="/team" icon="group" label="Team" onClick={isDrawer ? onClose : undefined} />
+                        <NavItem to="/" icon="space_dashboard" label={t('nav.dashboard')} exact onClick={isDrawer ? onClose : undefined} />
+                        <NavItem to="/projects" icon="layers" label={t('nav.projects')} onClick={isDrawer ? onClose : undefined} />
+                        <NavItem to="/tasks" icon="task_alt" label={t('nav.myTasks')} badge={taskCount} onClick={isDrawer ? onClose : undefined} />
+                        <NavItem to="/calendar" icon="calendar_today" label={t('nav.calendar')} onClick={isDrawer ? onClose : undefined} />
+                        <NavItem to="/brainstorm" icon="auto_awesome" label={t('nav.aiStudio')} badge={ideaCount} onClick={isDrawer ? onClose : undefined} />
+                        <NavItem to="/team" icon="group" label={t('nav.team')} onClick={isDrawer ? onClose : undefined} />
                     </div>
                 </div>
 
@@ -209,7 +211,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                     <div className="animate-fade-in-down">
                         <div className="flex items-center gap-3 px-1 mb-3">
                             <span className="text-[11px] font-black uppercase tracking-[0.3em] text-[var(--color-text-muted)] opacity-50">
-                                Project Context
+                                {t('nav.projectContext')}
                             </span>
                             <div className="flex-1 h-px bg-gradient-to-r from-[var(--color-surface-border)]/50 to-transparent" />
                         </div>
@@ -218,15 +220,15 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                             {(() => {
                                 // Default nav item definitions
                                 const defaultNavItems = [
-                                    { id: 'overview', path: '', icon: 'grid_view', label: 'Overview', exact: true },
-                                    { id: 'tasks', path: '/tasks', icon: 'checklist', label: 'Tasks', moduleKey: 'tasks', badge: workspace.tasksCount },
-                                    { id: 'ideas', path: '/ideas', icon: 'emoji_objects', label: 'Ideas', moduleKey: 'ideas', badge: workspace.ideasCount },
-                                    { id: 'issues', path: '/issues', icon: 'medication', label: 'Issues', moduleKey: 'issues', badge: workspace.issuesCount },
-                                    { id: 'mindmap', path: '/mindmap', icon: 'hub', label: 'Mindmap', moduleKey: 'mindmap' },
-                                    { id: 'milestones', path: '/milestones', icon: 'outlined_flag', label: 'Milestones', moduleKey: 'milestones' },
-                                    { id: 'social', path: '/social', icon: 'campaign', label: 'Social', moduleKey: 'social' },
-                                    { id: 'marketing', path: '/marketing', icon: 'ads_click', label: 'Marketing', moduleKey: 'marketing' },
-                                    { id: 'activity', path: '/activity', icon: 'history', label: 'Activity', moduleKey: 'activity' },
+                                    { id: 'overview', path: '', icon: 'grid_view', label: t('nav.overview'), exact: true },
+                                    { id: 'tasks', path: '/tasks', icon: 'checklist', label: t('nav.tasks'), moduleKey: 'tasks', badge: workspace.tasksCount },
+                                    { id: 'ideas', path: '/flows', icon: 'emoji_objects', label: t('nav.flows'), moduleKey: 'ideas', badge: workspace.ideasCount },
+                                    { id: 'issues', path: '/issues', icon: 'medication', label: t('nav.issues'), moduleKey: 'issues', badge: workspace.issuesCount },
+
+                                    { id: 'milestones', path: '/milestones', icon: 'outlined_flag', label: t('nav.milestones'), moduleKey: 'milestones' },
+                                    { id: 'social', path: '/social', icon: 'campaign', label: t('nav.social'), moduleKey: 'social' },
+                                    { id: 'marketing', path: '/marketing', icon: 'ads_click', label: t('nav.marketing'), moduleKey: 'marketing' },
+                                    { id: 'activity', path: '/activity', icon: 'history', label: t('nav.activity'), moduleKey: 'activity' },
                                 ];
 
                                 // Get the order (custom or default)
@@ -278,7 +280,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                                 <div className="mt-5 space-y-1">
                                     <div className="flex items-center gap-3 px-1 mb-3">
                                         <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--color-text-muted)] opacity-50">
-                                            Resources
+                                            {t('sidebar.resources')}
                                         </span>
                                         <div className="flex-1 h-px bg-gradient-to-r from-[var(--color-surface-border)]/50 to-transparent" />
                                     </div>
@@ -320,7 +322,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                         className="w-full flex items-center gap-2.5 px-3 py-2 text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors text-[12px] font-bold uppercase tracking-wider"
                     >
                         <span className="material-symbols-outlined text-[18px]">list_alt</span>
-                        <span>Release To-Dos</span>
+                        <span>{t('sidebar.releaseTodos')}</span>
                     </button>
                 )}
 
@@ -343,6 +345,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
 
 const ThemeToggle = () => {
     const { theme, setTheme } = useTheme();
+    const { t } = useLanguage();
     return (
         <div className="inline-flex bg-[var(--color-surface-hover)] p-0.5 rounded-full border border-[var(--color-surface-border)]">
             <button
@@ -351,7 +354,7 @@ const ThemeToggle = () => {
                     }`}
             >
                 <span className="material-symbols-outlined text-[14px]">light_mode</span>
-                <span>Light</span>
+                <span>{t('theme.light')}</span>
             </button>
             <button
                 onClick={() => setTheme('dark')}
@@ -359,7 +362,7 @@ const ThemeToggle = () => {
                     }`}
             >
                 <span className="material-symbols-outlined text-[14px]">dark_mode</span>
-                <span>Dark</span>
+                <span>{t('theme.dark')}</span>
             </button>
         </div>
     );

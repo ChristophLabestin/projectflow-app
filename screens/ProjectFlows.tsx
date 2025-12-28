@@ -6,16 +6,18 @@ import { Idea, Project, Task } from '../types';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
-import { IdeaPipelineBoard } from '../components/ideas/IdeaPipelineBoard';
-import { CreateIdeaModal } from '../components/ideas/CreateIdeaModal';
+import { FlowPipelineBoard } from '../components/flows/FlowPipelineBoard';
+import { CreateFlowModal } from '../components/flows/CreateFlowModal';
 import { auth } from '../services/firebase';
 import { useConfirm } from '../context/UIContext';
-import { PIPELINE_CONFIGS, PipelineStageConfig, OVERVIEW_COLUMNS, TYPE_COLORS } from '../components/ideas/constants';
-import { PipelineSummary } from '../components/ideas/PipelineSummary';
+import { PIPELINE_CONFIGS, PipelineStageConfig, OVERVIEW_COLUMNS, TYPE_COLORS } from '../components/flows/constants';
+import { PipelineSummary } from '../components/flows/PipelineSummary';
+import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
+import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
 
 // ... (STAGE_CONFIG, TYPE_COLORS, OVERVIEW_COLUMNS constants remain unchanged)
 
-export const ProjectIdeas = () => {
+export const ProjectFlows = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const [ideas, setIdeas] = useState<Idea[]>([]);
@@ -209,14 +211,14 @@ export const ProjectIdeas = () => {
                 await updateIdea(ideaId, { stage: newStage }, id);
             }
         } catch (e) {
-            console.error("Failed to move idea", e);
+            console.error("Failed to move flow", e);
             setIdeas(previousIdeas); // Revert
             // No need to call loadData, we reverted state.
         }
     };
 
     const handleDelete = async (ideaId: string) => {
-        if (!await confirm("Delete Idea", "Are you sure you want to delete this idea?")) return;
+        if (!await confirm("Delete Flow", "Are you sure you want to delete this flow?")) return;
         try {
             await deleteIdea(ideaId, id);
             // Real-time listener handles update
@@ -230,7 +232,7 @@ export const ProjectIdeas = () => {
             // This allows users to triage new/raw ideas.
 
             return ideas.map(idea => {
-                // No, IdeaPipelineBoard expects grouped by 'stage'.
+                // FlowPipelineBoard expects grouped by 'stage'.
                 // If we pass OVERVIEW_COLUMNS (where id=Type), the Board will look for ideas where idea.stage === Type.
                 // We need to trick the board or map the data.
 
@@ -275,6 +277,41 @@ export const ProjectIdeas = () => {
 
     const activeColumns = activePipeline === 'Overview' ? OVERVIEW_COLUMNS : (PIPELINE_CONFIGS[activePipeline] || PIPELINE_CONFIGS['Feature']);
 
+    const onboardingSteps = useMemo<OnboardingStep[]>(() => ([
+        {
+            id: 'header',
+            targetId: 'project-flows-header',
+            title: 'Flow command bar',
+            description: 'Switch layouts, generate AI flows, or add a new Flow entry from the header.'
+        },
+        {
+            id: 'tabs',
+            targetId: 'project-flows-tabs',
+            title: 'Flow pipelines',
+            description: 'Jump between the triage overview and specialized pipelines for each Flow type.'
+        },
+        {
+            id: 'summary',
+            targetId: 'project-flows-summary',
+            title: 'Pipeline health',
+            description: 'The summary shows how flows are distributed across stages, so you can balance the funnel.'
+        },
+        {
+            id: 'board',
+            targetId: 'project-flows-board',
+            title: 'Flow workspace',
+            description: 'Drag, review, and advance flows as they move from concept to delivery.'
+        }
+    ]), []);
+
+    const {
+        onboardingActive,
+        stepIndex,
+        setStepIndex,
+        skip,
+        finish
+    } = useOnboardingTour('project_flows', { stepCount: onboardingSteps.length, autoStart: true, enabled: !loading });
+
     if (loading) return (
         <div className="flex items-center justify-center p-12">
             <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-3xl">rotate_right</span>
@@ -282,13 +319,14 @@ export const ProjectIdeas = () => {
     );
 
     return (
-        <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden fade-in px-6 pt-4 pb-0 gap-6">
+        <>
+            <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden fade-in px-6 pt-4 pb-0 gap-6">
             {/* Header - Reworked for Pipeline Variants */}
             <div className="flex flex-col gap-6 shrink-0 border-b border-[var(--color-surface-border)] pb-0">
-                <div className="flex items-center justify-between gap-4">
+                <div data-onboarding-id="project-flows-header" className="flex items-center justify-between gap-4">
                     <div className="flex flex-col gap-1">
                         <h1 className="text-2xl font-bold text-[var(--color-text-main)]">Innovation Pipeline</h1>
-                        <p className="text-sm text-[var(--color-text-muted)]">Manage and track ideas across all development stages</p>
+                        <p className="text-sm text-[var(--color-text-muted)]">Manage and track flows across all development stages</p>
                     </div>
 
                     <div className="flex items-center gap-3">
@@ -322,7 +360,7 @@ export const ProjectIdeas = () => {
                             isLoading={generating}
                             icon={<span className="material-symbols-outlined">auto_awesome</span>}
                         >
-                            Generate Ideas
+                            Generate Flows
                         </Button>
                         <Button
                             onClick={() => {
@@ -331,13 +369,13 @@ export const ProjectIdeas = () => {
                             }}
                             icon={<span className="material-symbols-outlined">add</span>}
                         >
-                            Add Idea
+                            Add Flow
                         </Button>
                     </div>
                 </div>
 
                 {/* Navigation Tabs - Scrollable */}
-                <div className="flex items-center gap-1 overflow-x-auto no-scrollbar -mb-px">
+                <div data-onboarding-id="project-flows-tabs" className="flex items-center gap-1 overflow-x-auto no-scrollbar -mb-px">
                     <button
                         onClick={() => setActivePipeline('Overview')}
                         className={`
@@ -373,117 +411,130 @@ export const ProjectIdeas = () => {
             <div className="flex-1 flex flex-col min-h-0">
 
                 {/* Summary Dashboard */}
-                <PipelineSummary
-                    stats={pipelineStats}
-                    stageConfigs={activeColumns}
-                    pipelineName={activePipeline}
-                />
+                <div data-onboarding-id="project-flows-summary">
+                    <PipelineSummary
+                        stats={pipelineStats}
+                        stageConfigs={activeColumns}
+                        pipelineName={activePipeline}
+                    />
+                </div>
 
-                {filteredIdeas.length === 0 && !loading && !generating ? (
-                    <div className="flex-1 flex items-center justify-center border-2 border-dashed border-[var(--color-surface-border)] rounded-2xl bg-[var(--color-surface-bg)]/50 m-1">
-                        <div className="text-center py-16 max-w-md">
-                            <div className="size-20 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 flex items-center justify-center mx-auto mb-6">
-                                <span className="material-symbols-outlined text-[40px] text-indigo-500">lightbulb</span>
-                            </div>
-                            <h3 className="text-xl font-bold text-[var(--color-text-main)] mb-2">No ideas here</h3>
-                            <p className="text-[var(--color-text-muted)] mb-6">
-                                The {activePipeline} pipeline is empty. Start brainstorming!
-                            </p>
-                            <div className="flex items-center justify-center gap-3">
-                                <Button variant="secondary" onClick={() => setShowCreateModal(true)}>
-                                    Add Manually
-                                </Button>
+                <div data-onboarding-id="project-flows-board" className="flex-1 flex flex-col min-h-0">
+                    {filteredIdeas.length === 0 && !loading && !generating ? (
+                        <div className="flex-1 flex items-center justify-center border-2 border-dashed border-[var(--color-surface-border)] rounded-2xl bg-[var(--color-surface-bg)]/50 m-1">
+                            <div className="text-center py-16 max-w-md">
+                                <div className="size-20 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 flex items-center justify-center mx-auto mb-6">
+                                    <span className="material-symbols-outlined text-[40px] text-indigo-500">lightbulb</span>
+                                </div>
+                                <h3 className="text-xl font-bold text-[var(--color-text-main)] mb-2">No flows here</h3>
+                                <p className="text-[var(--color-text-muted)] mb-6">
+                                    The {activePipeline} pipeline is empty. Start brainstorming!
+                                </p>
+                                <div className="flex items-center justify-center gap-3">
+                                    <Button variant="secondary" onClick={() => setShowCreateModal(true)}>
+                                        Add Manually
+                                    </Button>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ) : viewMode === 'board' ? (
-                    <div className="flex-1 min-h-0 overflow-hidden">
-                        <IdeaPipelineBoard
-                            ideas={filteredIdeas}
-                            columns={activeColumns}
-                            onIdeaMove={handleIdeaMove}
-                            onIdeaClick={(idea) => navigate(`/project/${id}/ideas/${idea.id}`)}
-                        />
-                    </div>
-                ) : (
-                    <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-8">
-                        <div className="grid grid-cols-1 gap-2">
-                            {filteredIdeas.map((idea) => {
-                                const activeStageConfig = activeColumns.find(c => c.id === idea.stage);
-                                const icon = activeStageConfig?.icon || 'circle';
-                                const bgColor = activeStageConfig?.color?.replace('bg-', 'text-') || 'text-slate-500';
-                                const bgClass = activeStageConfig?.color?.replace('500', '100 dark:bg-opacity-10') || 'bg-slate-100 dark:bg-slate-800';
-                                const typeColor = TYPE_COLORS[idea.type] || TYPE_COLORS['default'];
+                    ) : viewMode === 'board' ? (
+                        <div className="flex-1 min-h-0 overflow-hidden">
+                            <FlowPipelineBoard
+                                flows={filteredIdeas}
+                                columns={activeColumns}
+                                onFlowMove={handleIdeaMove}
+                                onFlowClick={(idea) => navigate(`/project/${id}/flows/${idea.id}`)}
+                            />
+                        </div>
+                    ) : (
+                        <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-8">
+                            <div className="grid grid-cols-1 gap-2">
+                                {filteredIdeas.map((idea) => {
+                                    const activeStageConfig = activeColumns.find(c => c.id === idea.stage);
+                                    const icon = activeStageConfig?.icon || 'circle';
+                                    const bgColor = activeStageConfig?.color?.replace('bg-', 'text-') || 'text-slate-500';
+                                    const bgClass = activeStageConfig?.color?.replace('500', '100 dark:bg-opacity-10') || 'bg-slate-100 dark:bg-slate-800';
+                                    const typeColor = TYPE_COLORS[idea.type] || TYPE_COLORS['default'];
 
-                                return (
-                                    <div
-                                        key={idea.id}
-                                        className="group bg-[var(--color-surface-paper)] border border-[var(--color-surface-border)] rounded-xl p-4 flex items-center gap-4 hover:shadow-md hover:border-[var(--color-surface-border)] cursor-pointer transition-all"
-                                        onClick={() => navigate(`/project/${id}/ideas/${idea.id}`)}
-                                    >
-                                        {/* Stage Icon */}
-                                        <div className={`size-10 rounded-xl ${bgClass} flex items-center justify-center shrink-0`}>
-                                            <span className={`material-symbols-outlined text-[20px] ${bgColor.replace('bg-', 'text-')}`}>{icon}</span>
-                                        </div>
+                                    return (
+                                        <div
+                                            key={idea.id}
+                                            className="group bg-[var(--color-surface-paper)] border border-[var(--color-surface-border)] rounded-xl p-4 flex items-center gap-4 hover:shadow-md hover:border-[var(--color-surface-border)] cursor-pointer transition-all"
+                                        onClick={() => navigate(`/project/${id}/flows/${idea.id}`)}
+                                        >
+                                            {/* Stage Icon */}
+                                            <div className={`size-10 rounded-xl ${bgClass} flex items-center justify-center shrink-0`}>
+                                                <span className={`material-symbols-outlined text-[20px] ${bgColor.replace('bg-', 'text-')}`}>{icon}</span>
+                                            </div>
 
-                                        {/* Content */}
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${typeColor}`}>
-                                                    {idea.type}
-                                                </span>
-                                                {idea.generated && (
-                                                    <span className="text-[10px] font-medium text-indigo-500 flex items-center gap-0.5">
-                                                        <span className="material-symbols-outlined text-[12px]">auto_awesome</span>
-                                                        AI
+                                            {/* Content */}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${typeColor}`}>
+                                                        {idea.type}
                                                     </span>
+                                                    {idea.generated && (
+                                                        <span className="text-[10px] font-medium text-indigo-500 flex items-center gap-0.5">
+                                                            <span className="material-symbols-outlined text-[12px]">auto_awesome</span>
+                                                            AI
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <h4 className="font-semibold text-[var(--color-text-main)] truncate group-hover:text-[var(--color-primary)] transition-colors">
+                                                    {idea.title}
+                                                </h4>
+                                                {idea.description && (
+                                                    <p className="text-sm text-[var(--color-text-muted)] truncate mt-0.5">{idea.description}</p>
                                                 )}
                                             </div>
-                                            <h4 className="font-semibold text-[var(--color-text-main)] truncate group-hover:text-[var(--color-primary)] transition-colors">
-                                                {idea.title}
-                                            </h4>
-                                            {idea.description && (
-                                                <p className="text-sm text-[var(--color-text-muted)] truncate mt-0.5">{idea.description}</p>
-                                            )}
-                                        </div>
 
-                                        {/* Meta */}
-                                        <div className="flex items-center gap-4 shrink-0">
-                                            <div className="flex items-center gap-3 text-[var(--color-text-subtle)]">
-                                                <span className="flex items-center gap-1 text-xs">
-                                                    <span className="material-symbols-outlined text-[14px]">thumb_up</span>
-                                                    {idea.votes || 0}
-                                                </span>
-                                                <span className="flex items-center gap-1 text-xs">
-                                                    <span className="material-symbols-outlined text-[14px]">chat_bubble</span>
-                                                    {idea.comments || 0}
-                                                </span>
+                                            {/* Meta */}
+                                            <div className="flex items-center gap-4 shrink-0">
+                                                <div className="flex items-center gap-3 text-[var(--color-text-subtle)]">
+                                                    <span className="flex items-center gap-1 text-xs">
+                                                        <span className="material-symbols-outlined text-[14px]">thumb_up</span>
+                                                        {idea.votes || 0}
+                                                    </span>
+                                                    <span className="flex items-center gap-1 text-xs">
+                                                        <span className="material-symbols-outlined text-[14px]">chat_bubble</span>
+                                                        {idea.comments || 0}
+                                                    </span>
+                                                </div>
+                                                <Badge size="sm" variant="outline" className={`${bgClass} border-0`}>
+                                                    {activeStageConfig?.title || idea.stage}
+                                                </Badge>
+                                                <button
+                                                    onClick={(e) => { e.stopPropagation(); handleDelete(idea.id); }}
+                                                    className="p-2 text-[var(--color-text-muted)] hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                >
+                                                    <span className="material-symbols-outlined text-[20px]">delete</span>
+                                                </button>
                                             </div>
-                                            <Badge size="sm" variant="outline" className={`${bgClass} border-0`}>
-                                                {activeStageConfig?.title || idea.stage}
-                                            </Badge>
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleDelete(idea.id); }}
-                                                className="p-2 text-[var(--color-text-muted)] hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                                            >
-                                                <span className="material-symbols-outlined text-[20px]">delete</span>
-                                            </button>
                                         </div>
-                                    </div>
-                                );
-                            })}
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
             </div>
 
             {/* Create Modal */}
-            <CreateIdeaModal
+            <CreateFlowModal
                 isOpen={showCreateModal}
                 onClose={() => setShowCreateModal(false)}
                 projectId={id || ''}
                 onCreated={() => { }}
             />
-        </div >
+            </div>
+            <OnboardingOverlay
+                isOpen={onboardingActive}
+                steps={onboardingSteps}
+                stepIndex={stepIndex}
+                onStepChange={setStepIndex}
+                onFinish={finish}
+                onSkip={skip}
+            />
+        </>
     );
 };

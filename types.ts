@@ -41,6 +41,7 @@ export interface RoleCapabilities {
     canManageIssues: boolean; // Create/edit/delete issues
     canComment: boolean; // Add comments
     canView: boolean; // View project
+    canManageGroups: boolean; // Create/edit/delete project groups
     originIdeaId?: string;
 }
 
@@ -117,6 +118,8 @@ export interface Project {
     githubToken?: string; // Personal Access Token
     githubIssueSync?: boolean; // Toggle for issue sync
     isPersonal?: boolean; // Hidden personal project
+    visibilityGroupIds?: string[]; // IDs of groups that can view this project
+    visibilityGroupId?: string; // @deprecated Use visibilityGroupIds instead
     originIdeaId?: string;
 }
 
@@ -176,6 +179,7 @@ export interface Task {
     dueDate?: string;
     startDate?: string;
     priority?: 'Low' | 'Medium' | 'High' | 'Urgent';
+    effort?: 'Low' | 'Medium' | 'High';
     assignee?: string; // Legacy: Display Name or URL
     assigneeId?: string; // User UID
     assigneeIds?: string[]; // New: Multiple User UIDs
@@ -192,6 +196,7 @@ export interface Task {
     completedBy?: string; // User UID
     completedAt?: any; // Firestore Timestamp
     originIdeaId?: string;
+    dependencies?: string[]; // IDs of tasks that this task depends on
 }
 
 export interface SubTask {
@@ -362,7 +367,7 @@ export interface MindmapGrouping {
     originIdeaId?: string;
 }
 
-export type TaskStatus = 'Backlog' | 'Open' | 'In Progress' | 'On Hold' | 'Blocked' | 'Done';
+export type TaskStatus = 'Backlog' | 'Todo' | 'Open' | 'In Progress' | 'Review' | 'On Hold' | 'Blocked' | 'Done';
 
 export interface TaskCategory {
     id: string;
@@ -423,12 +428,15 @@ export type StudioTool = 'Architect' | 'Brainstormer' | 'RiskScout' | 'Strategis
 
 // AI Search Types
 export interface SearchResult {
-    type: 'project' | 'task' | 'issue' | 'idea' | 'answer';
+    type: 'project' | 'task' | 'issue' | 'idea' | 'answer' | 'help_page' | 'help_section';
     id?: string;
     title: string;
     description?: string;
     projectId?: string;
     projectTitle?: string;
+    helpPageId?: string;
+    helpSectionId?: string;
+    helpPageTitle?: string;
     relevance?: number;
     status?: string;
     originIdeaId?: string;
@@ -656,7 +664,7 @@ export interface SocialPost {
     // Publishing Metadata
     externalId?: string; // ID from the platform (e.g. IG Media ID)
     error?: string; // Last error message if failed
-    platforms?: SocialPlatform[]; // For concepts/ideas that target multiple platforms
+    platforms?: SocialPlatform[]; // For concepts/flows that target multiple platforms
     originIdeaId?: string;
 }
 
@@ -978,4 +986,3 @@ export interface APIToken {
     expiresAt?: any;           // Optional expiration
     originIdeaId?: string;
 }
-

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Idea } from '../../types';
 import { getIdeaById } from '../../services/dataService';
 import { Button } from '../ui/Button';
-import { AnalysisDashboard } from '../ideas/AnalysisDashboard';
+import { AnalysisDashboard } from '../flows/AnalysisDashboard';
 
 interface TaskStrategicContextProps {
     projectId: string;
@@ -69,7 +69,7 @@ export const TaskStrategicContext: React.FC<TaskStrategicContextProps> = ({ proj
                     </div>
                     <div>
                         <h3 className="text-sm font-bold text-[var(--color-text-main)]">Strategic Context</h3>
-                        <p className="text-[10px] text-[var(--color-text-muted)]">Originating Idea logic & analysis</p>
+                        <p className="text-[10px] text-[var(--color-text-muted)]">Originating Flow logic & analysis</p>
                     </div>
                 </div>
 
@@ -92,10 +92,10 @@ export const TaskStrategicContext: React.FC<TaskStrategicContextProps> = ({ proj
                     <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => window.open(`/project/${projectId}/ideas/${idea.id}`, '_blank')}
+                        onClick={() => window.open(`/project/${projectId}/flows/${idea.id}`, '_blank')}
                         icon={<span className="material-symbols-outlined">open_in_new</span>}
                     >
-                        View Idea
+                        View Flow
                     </Button>
                 </div>
             </div>
@@ -111,7 +111,7 @@ export const TaskStrategicContext: React.FC<TaskStrategicContextProps> = ({ proj
                         />
                         {(!idea.riskWinAnalysis) && (
                             <div className="p-12 text-center text-[var(--color-text-muted)]">
-                                <p>No AI analysis available for this idea.</p>
+                                <p>No AI analysis available for this flow.</p>
                             </div>
                         )}
                     </div>

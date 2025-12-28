@@ -4,13 +4,13 @@ import { getIdeaComments, addIdeaComment } from '../../services/dataService';
 import { auth } from '../../services/firebase';
 import { Button } from '../ui/Button';
 
-interface IdeaCommentsProps {
+interface FlowCommentsProps {
     projectId: string;
-    ideaId: string;
+    flowId: string;
     compact?: boolean;
 }
 
-export const IdeaComments: React.FC<IdeaCommentsProps> = ({ projectId, ideaId, compact }) => {
+export const FlowComments: React.FC<FlowCommentsProps> = ({ projectId, flowId, compact }) => {
     const [comments, setComments] = useState<Comment[]>([]);
     const [newComment, setNewComment] = useState('');
     const [loading, setLoading] = useState(true);
@@ -18,11 +18,11 @@ export const IdeaComments: React.FC<IdeaCommentsProps> = ({ projectId, ideaId, c
 
     useEffect(() => {
         loadComments();
-    }, [projectId, ideaId]);
+    }, [projectId, flowId]);
 
     const loadComments = async () => {
         try {
-            const data = await getIdeaComments(projectId, ideaId);
+            const data = await getIdeaComments(projectId, flowId);
             setComments(data);
         } catch (e) {
             console.error("Failed to load comments", e);
@@ -37,7 +37,7 @@ export const IdeaComments: React.FC<IdeaCommentsProps> = ({ projectId, ideaId, c
 
         setSubmitting(true);
         try {
-            await addIdeaComment(projectId, ideaId, newComment.trim());
+            await addIdeaComment(projectId, flowId, newComment.trim());
             setNewComment('');
             // Reload comments to see new one
             await loadComments();

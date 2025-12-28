@@ -13,9 +13,12 @@ import { fetchCommitsReferencingIssue, GithubCommit } from '../services/githubSe
 import { toMillis, timeAgo } from '../utils/time';
 import { auth } from '../services/firebase';
 import { EditIssueModal } from '../components/EditIssueModal';
+import { format } from 'date-fns';
+import { useLanguage } from '../context/LanguageContext';
 
 export const ProjectIssueDetail = () => {
     const { id, issueId } = useParams<{ id: string; issueId: string }>();
+    const { dateFormat, dateLocale } = useLanguage();
     const navigate = useNavigate();
     const [issue, setIssue] = useState<Issue | null>(null);
     const [project, setProject] = useState<Project | null>(null);
@@ -321,7 +324,7 @@ export const ProjectIssueDetail = () => {
                                     <div className="flex flex-col">
                                         <span className="text-[10px] leading-none uppercase font-bold text-[var(--color-text-subtle)] mb-0.5">Reported</span>
                                         <span className="text-[var(--color-text-main)] font-semibold whitespace-nowrap">
-                                            {issue.createdAt ? new Date(toMillis(issue.createdAt)).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '-'}
+                                            {issue.createdAt ? format(new Date(toMillis(issue.createdAt)), dateFormat, { locale: dateLocale }) : '-'}
                                         </span>
                                     </div>
                                 </div>
@@ -441,6 +444,7 @@ export const ProjectIssueDetail = () => {
                             targetType="issue"
                             tenantId={project?.tenantId}
                             isProjectOwner={isProjectOwner}
+                            targetTitle={issue?.title}
                             hideHeader={true}
                             onCountChange={setCommentCount}
                         />
@@ -616,7 +620,7 @@ export const ProjectIssueDetail = () => {
                                     <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">Reported</span>
                                     <span className="text-xs font-semibold text-[var(--color-text-main)] flex items-center gap-1.5">
                                         <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">history</span>
-                                        {issue.createdAt ? new Date(toMillis(issue.createdAt)).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' }) : '-'}
+                                        {issue.createdAt ? format(new Date(toMillis(issue.createdAt)), dateFormat, { locale: dateLocale }) : '-'}
                                     </span>
                                 </div>
 
@@ -663,7 +667,7 @@ export const ProjectIssueDetail = () => {
                                             {issue.completedAt && (
                                                 <span className="text-xs font-semibold text-[var(--color-text-main)] flex items-center gap-1.5">
                                                     <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">event_available</span>
-                                                    {new Date(toMillis(issue.completedAt)).toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}
+                                                    {format(new Date(toMillis(issue.completedAt)), dateFormat, { locale: dateLocale })}
                                                 </span>
                                             )}
                                             {issue.completedBy && (

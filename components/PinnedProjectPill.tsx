@@ -6,10 +6,12 @@ import { useUIState } from '../context/UIContext';
 import { Project, Task, Issue, Milestone, Activity } from '../types';
 import { subscribeProjectTasks, subscribeProjectIssues, subscribeProjectMilestones, subscribeProjectActivity } from '../services/dataService';
 import { calculateProjectHealth, ProjectHealth } from '../services/healthService';
+import { useLanguage } from '../context/LanguageContext';
 
 export const PinnedProjectPill = () => {
     const { pinnedProject, isLoading } = usePinnedProject();
     const { openTaskCreateModal, openIdeaCreateModal, openIssueCreateModal } = useUIState();
+    const { t } = useLanguage();
     const navigate = useNavigate();
 
     const [isOpen, setIsOpen] = useState(false);
@@ -122,7 +124,7 @@ export const PinnedProjectPill = () => {
                         : 'bg-[var(--color-surface-bg)] border-transparent hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-surface-border)]'
                     }
                 `}
-                title={`Pinned Project: ${pinnedProject.title}`}
+                title={`${t('pinned.pinnedProject', 'Pinned Project')}: ${pinnedProject.title}`}
             >
                 {/* Project Icon */}
                 <div className={`
@@ -140,7 +142,7 @@ export const PinnedProjectPill = () => {
                 <div className="flex flex-col items-start leading-tight max-w-[120px] hidden sm:flex">
                     <span className="text-[12px] font-bold text-[var(--color-text-main)] truncate w-full">{pinnedProject.title}</span>
                     <span className="text-[10px] text-[var(--color-text-muted)] group-hover:text-[var(--color-text-subtle)] transition-colors">
-                        {health ? `${health.score} Health Score` : 'Loading...'}
+                        {health ? `${health.score} ${t('pinned.healthScore')}` : t('pinned.loading')}
                     </span>
                 </div>
 
@@ -176,12 +178,14 @@ export const PinnedProjectPill = () => {
                                 <h4 className="font-bold text-lg text-slate-900 dark:text-white line-clamp-1">{pinnedProject.title}</h4>
                                 <div className="flex items-center gap-2 mt-1">
                                     <Badge status={health?.status} />
-                                    <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">{health?.trend} trend</span>
+                                    <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">
+                                        {health ? `${t(`trend.${health.trend}`)} ${t('pinned.trend')}` : t('pinned.loading')}
+                                    </span>
                                 </div>
                             </div>
                             <div className="flex flex-col items-center justify-center size-14 rounded-full border-4 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm shrink-0">
                                 <span className={`text-lg font-black ${getHealthColor(health?.status)}`}>{health?.score || 0}</span>
-                                <span className="text-[8px] font-bold text-slate-400 uppercase">Score</span>
+                                <span className="text-[8px] font-bold text-slate-400 uppercase">{t('pinned.score')}</span>
                             </div>
                         </div>
 
@@ -209,7 +213,7 @@ export const PinnedProjectPill = () => {
                             <div className="size-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover/btn:scale-110 transition-transform">
                                 <span className="material-symbols-outlined text-[18px]">add_task</span>
                             </div>
-                            <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">New Task</span>
+                            <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">{t('quickActions.newTask')}</span>
                         </button>
 
                         {(modules.includes('ideas') || modules.length === 0) && (
@@ -220,7 +224,7 @@ export const PinnedProjectPill = () => {
                                 <div className="size-8 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover/btn:scale-110 transition-transform">
                                     <span className="material-symbols-outlined text-[18px]">lightbulb</span>
                                 </div>
-                                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">New Idea</span>
+                                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">{t('quickActions.newFlow')}</span>
                             </button>
                         )}
 
@@ -232,7 +236,7 @@ export const PinnedProjectPill = () => {
                                 <div className="size-8 rounded-full bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center group-hover/btn:scale-110 transition-transform">
                                     <span className="material-symbols-outlined text-[18px]">bug_report</span>
                                 </div>
-                                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">New Issue</span>
+                                <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">{t('quickActions.newIssue')}</span>
                             </button>
                         )}
                     </div>
@@ -244,14 +248,14 @@ export const PinnedProjectPill = () => {
                             className="flex-1 h-8 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-indigo-500 hover:text-indigo-500 text-xs font-semibold text-slate-600 dark:text-slate-300 transition-all shadow-sm flex items-center justify-center gap-2"
                         >
                             <span className="material-symbols-outlined text-[16px]">dashboard</span>
-                            Overview
+                            {t('quickActions.overview')}
                         </button>
                         <button
                             onClick={() => handleAction(() => navigate(`/project/${pinnedProject.id}/tasks`))}
                             className="flex-1 h-8 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-indigo-500 hover:text-indigo-500 text-xs font-semibold text-slate-600 dark:text-slate-300 transition-all shadow-sm flex items-center justify-center gap-2"
                         >
                             <span className="material-symbols-outlined text-[16px]">list_alt</span>
-                            Tasks
+                            {t('quickActions.tasks')}
                         </button>
                     </div>
                 </div>,
@@ -263,6 +267,7 @@ export const PinnedProjectPill = () => {
 
 // Mini Badge Component
 const Badge = ({ status }: { status?: string }) => {
+    const { t } = useLanguage();
     const getColor = (s?: string) => {
         switch (s) {
             case 'excellent': return 'bg-emerald-500 text-white';
@@ -274,9 +279,11 @@ const Badge = ({ status }: { status?: string }) => {
         }
     };
 
+    const statusLabel = status ? t(`status.${status}`, status) : t('pinned.unknown');
+
     return (
         <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${getColor(status)}`}>
-            {status || 'Unknown'}
+            {statusLabel}
         </span>
     );
 };

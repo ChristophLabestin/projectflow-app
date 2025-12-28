@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useArrowReplacement } from '../hooks/useArrowReplacement';
 import { addTask, getProjectCategories, getProjectTasks, createSubTask } from '../services/dataService';
 import { IdeaGroup, Task, TaskCategory, TaskStatus } from '../types';
 import { generateProjectDescription } from '../services/geminiService';
@@ -34,6 +35,10 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
     const [subtasks, setSubtasks] = useState<string[]>([]);
     const [newSubtask, setNewSubtask] = useState('');
     const [showLabelsModal, setShowLabelsModal] = useState(false);
+
+    const handleTitleChange = useArrowReplacement((e) => setTitle(e.target.value));
+    const handleDescriptionChange = useArrowReplacement((e) => setDescription(e.target.value));
+    const handleSubtaskChange = useArrowReplacement((e) => setNewSubtask(e.target.value));
 
     const { pinItem } = usePinnedTasks();
 
@@ -174,7 +179,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                         <input
                             type="text"
                             value={title}
-                            onChange={(e) => setTitle(e.target.value)}
+                            onChange={handleTitleChange}
                             placeholder="What needs to be done?"
                             autoFocus
                             maxLength={100}
@@ -305,7 +310,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                     <div className="px-6 pb-4">
                         <textarea
                             value={description}
-                            onChange={(e) => setDescription(e.target.value)}
+                            onChange={handleDescriptionChange}
                             placeholder="Add description..."
                             rows={2}
                             className="w-full px-3 py-2.5 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] text-sm text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent)] transition-colors resize-none"
@@ -357,7 +362,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                                 <input
                                     type="text"
                                     value={newSubtask}
-                                    onChange={(e) => setNewSubtask(e.target.value)}
+                                    onChange={handleSubtaskChange}
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter') {
                                             e.preventDefault();

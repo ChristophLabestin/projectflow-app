@@ -14,7 +14,9 @@ export const ROLE_CAPABILITIES: Record<ProjectRole, RoleCapabilities> = {
         canManageIdeas: true,
         canManageIssues: true,
         canComment: true,
+        canComment: true,
         canView: true,
+        canManageGroups: true,
     },
     Editor: {
         canEdit: false, // Cannot edit project settings
@@ -24,7 +26,9 @@ export const ROLE_CAPABILITIES: Record<ProjectRole, RoleCapabilities> = {
         canManageIdeas: true,
         canManageIssues: true,
         canComment: true,
+        canComment: true,
         canView: true,
+        canManageGroups: true,
     },
     Viewer: {
         canEdit: false,
@@ -35,6 +39,7 @@ export const ROLE_CAPABILITIES: Record<ProjectRole, RoleCapabilities> = {
         canManageIssues: false,
         canComment: true, // Can still add comments
         canView: true,
+        canManageGroups: false,
     },
 };
 
@@ -136,6 +141,7 @@ export function getUserCapabilities(project: Project | null, userId?: string): R
             canManageIssues: false,
             canComment: false,
             canView: false,
+            canManageGroups: false,
         };
     }
 

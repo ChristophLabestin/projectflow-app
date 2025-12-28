@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Project } from '../types';
 import { getUserProjects, getSharedProjects } from '../services/dataService';
 import { usePinnedProject } from '../context/PinnedProjectContext';
+import { useLanguage } from '../context/LanguageContext';
 import logo from '../assets/logo.svg';
 
 interface ProjectSwitcherProps {
@@ -19,6 +20,7 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
     const [loading, setLoading] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const { pinProject, unpinProject, pinnedProjectId } = usePinnedProject();
+    const { t } = useLanguage();
 
     // Fetch projects on mount to ensure we have icons for the active state
     useEffect(() => {
@@ -108,10 +110,10 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                     </div>
                     <div className="flex flex-col items-start min-w-0">
                         <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
-                            {currentProjectId ? 'Project' : 'Workspace'}
+                            {currentProjectId ? t('projectSwitcher.scope.project') : t('projectSwitcher.scope.workspace')}
                         </span>
                         <span className="text-sm font-bold text-[var(--color-text-main)] truncate max-w-[140px]">
-                            {currentProjectTitle || 'ProjectFlow'}
+                            {currentProjectTitle || t('app.brand')}
                         </span>
                     </div>
                 </div>
@@ -130,7 +132,7 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                                 <input
                                     type="text"
                                     autoFocus
-                                    placeholder="Find project..."
+                                    placeholder={t('projectSwitcher.searchPlaceholder')}
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="w-full pl-9 pr-3 py-1.5 text-sm bg-[var(--color-surface-bg)] text-[var(--color-text-main)] rounded-lg border border-[var(--color-surface-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent placeholder-[var(--color-text-muted)]"
@@ -150,7 +152,7 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                                     <span className="material-symbols-outlined text-[16px] text-[var(--color-text-main)]">grid_view</span>
                                 </div>
                                 <div className="flex-1">
-                                    <div className="text-sm font-medium text-[var(--color-text-main)]">Dashboard</div>
+                                    <div className="text-sm font-medium text-[var(--color-text-main)]">{t('nav.dashboard')}</div>
                                 </div>
                                 {!currentProjectId && (
                                     <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>
@@ -159,11 +161,11 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
 
                             <div className="h-px bg-[var(--color-surface-border)] my-1 mx-3" />
 
-                            <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-[var(--color-text-muted)]">Projects</div>
+                            <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-[var(--color-text-muted)]">{t('nav.projects')}</div>
 
                             {loading && filteredProjects.length === 0 ? (
                                 <div className="px-3 py-4 text-center text-sm text-[var(--color-text-muted)]">
-                                    Loading...
+                                    {t('projectSwitcher.loading')}
                                 </div>
                             ) : filteredProjects.length > 0 ? (
                                 filteredProjects.map(p => (
@@ -192,12 +194,12 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                                                 <span>{p.title ? p.title.substring(0, 1).toUpperCase() : 'P'}</span>
                                             )}
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="text-sm font-medium text-[var(--color-text-main)] truncate">{p.title}</div>
-                                            <div className="text-[10px] text-[var(--color-text-muted)] truncate">
-                                                {p.ownerId === p.id ? 'Owner' : 'Member'}
+                                            <div className="flex-1 min-w-0">
+                                                <div className="text-sm font-medium text-[var(--color-text-main)] truncate">{p.title}</div>
+                                                <div className="text-[10px] text-[var(--color-text-muted)] truncate">
+                                                    {p.ownerId === p.id ? t('projectSwitcher.role.owner') : t('projectSwitcher.role.member')}
+                                                </div>
                                             </div>
-                                        </div>
 
                                         {currentProjectId === p.id && (
                                             <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>
@@ -218,7 +220,7 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                                                     : 'text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-card)]'
                                                 }
                                             `}
-                                            title={pinnedProjectId === p.id ? "Unpin Project" : "Pin Project"}
+                                            title={pinnedProjectId === p.id ? t('projectSwitcher.unpinProject') : t('projectSwitcher.pinProject')}
                                         >
                                             <span className="material-symbols-outlined text-[16px]">{pinnedProjectId === p.id ? 'push_pin' : 'keep'}</span>
                                         </button>
@@ -226,7 +228,7 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                                 ))
                             ) : (
                                 <div className="px-3 py-4 text-center text-sm text-[var(--color-text-muted)]">
-                                    No projects found
+                                    {t('projectSwitcher.empty')}
                                 </div>
                             )}
                         </div>
@@ -241,7 +243,7 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                                 className="w-full py-1.5 flex items-center justify-center gap-2 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-lg transition-colors"
                             >
                                 <span className="material-symbols-outlined text-[14px]">add</span>
-                                Create New Project
+                                {t('projectSwitcher.createProject')}
                             </button>
                         </div>
                     </div>

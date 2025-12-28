@@ -1,6 +1,7 @@
 import React from 'react';
 import { SocialCampaign, SocialPost } from '../../../types';
-import { differenceInDays } from 'date-fns';
+import { differenceInDays, format } from 'date-fns';
+import { dateLocale, dateFormat } from '../../../utils/activityHelpers';
 import { SocialPostCard } from '../components/SocialPostCard';
 
 interface CampaignStrategyViewProps {
@@ -43,7 +44,7 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
     return (
         <div className="space-y-8 animate-fade-in max-w-6xl mx-auto py-4 px-2">
 
-            {/* 1. North Star / Big Idea */}
+            {/* 1. North Star / Core Flow */}
             <div className="bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] rounded-3xl p-8 border border-[var(--color-surface-border)] shadow-sm relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-12 opacity-5 scale-150 rotate-12 transition-transform group-hover:rotate-6">
                     <span className="material-symbols-outlined text-[120px]">auto_awesome</span>
@@ -97,7 +98,7 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
                                 icon="calendar_today"
                                 label="Duration"
                                 value={`${totalDays}d`}
-                                subtext={campaign.endDate ? `Ends ${new Date(campaign.endDate).toLocaleDateString()}` : 'Ongoing'}
+                                subtext={campaign.endDate ? `Ends ${format(new Date(campaign.endDate), dateFormat, { locale: dateLocale })}` : 'Ongoing'}
                             />
                             <StatCard
                                 icon="layers"

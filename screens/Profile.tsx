@@ -6,6 +6,8 @@ import { Card } from '../components/ui/Card';
 import { useToast } from '../context/UIContext';
 import { Activity, PrivacySettings, Project } from '../types';
 import { ProfileSettingsModal } from '../components/ProfileSettingsModal';
+import { useLanguage } from '../context/LanguageContext';
+import { format } from 'date-fns';
 
 export const Profile = () => {
     const user = auth.currentUser;
@@ -25,6 +27,7 @@ export const Profile = () => {
     const [showEditModal, setShowEditModal] = useState(false);
 
     const { showSuccess, showError } = useToast();
+    const { dateFormat, dateLocale } = useLanguage();
 
     useEffect(() => {
         if (!user) return;
@@ -265,7 +268,7 @@ export const Profile = () => {
                                                                 <span className="text-[var(--color-text-muted)]"> {activity.target}</span>
                                                             </p>
                                                             <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                                                                {activity.createdAt ? new Date(activity.createdAt.seconds * 1000).toLocaleDateString() : 'Just now'}
+                                                                {activity.createdAt ? format(new Date(activity.createdAt.seconds * 1000), dateFormat, { locale: dateLocale }) : 'Just now'}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -300,8 +303,8 @@ export const Profile = () => {
                                                     )}
                                                     <div className="absolute top-3 right-3">
                                                         <span className={`px-2 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider shadow-sm backdrop-blur-md ${project.status === 'Active' ? 'bg-green-100/90 text-green-700 dark:bg-green-900/60 dark:text-green-300' :
-                                                                project.status === 'Completed' ? 'bg-blue-100/90 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300' :
-                                                                    'bg-zinc-100/90 text-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-300'
+                                                            project.status === 'Completed' ? 'bg-blue-100/90 text-blue-700 dark:bg-blue-900/60 dark:text-blue-300' :
+                                                                'bg-zinc-100/90 text-zinc-700 dark:bg-zinc-800/60 dark:text-zinc-300'
                                                             }`}>
                                                             {project.status || 'Active'}
                                                         </span>
@@ -364,7 +367,7 @@ export const Profile = () => {
                                                     </div>
                                                     <div className="text-sm text-[var(--color-text-main)] mb-1">{activity.target}</div>
                                                     <div className="text-xs text-[var(--color-text-muted)]">
-                                                        {activity.createdAt ? new Date(activity.createdAt.seconds * 1000).toLocaleString() : ''}
+                                                        {activity.createdAt ? format(new Date(activity.createdAt.seconds * 1000), 'PP p', { locale: dateLocale }) : ''}
                                                     </div>
                                                 </div>
                                             </div>

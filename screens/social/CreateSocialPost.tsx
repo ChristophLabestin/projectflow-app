@@ -19,7 +19,7 @@ import { auth } from '../../services/firebase';
 import { format as formatDate } from 'date-fns';
 import { useConfirm } from '../../context/UIContext';
 
-import { PIPELINE_CONFIGS, PLATFORM_FORMATS } from '../../components/ideas/constants';
+import { PIPELINE_CONFIGS, PLATFORM_FORMATS } from '../../components/flows/constants';
 
 export const CreateSocialPost = () => {
     const { id: projectId, postId } = useParams<{ id: string; postId?: string }>();
@@ -90,6 +90,33 @@ export const CreateSocialPost = () => {
             setCampaignId(preselectedCampaignId);
         }
 
+        // Prefill from URL params (from Planned Content)
+        const paramPlatform = searchParams.get('platform');
+        const paramFormat = searchParams.get('format');
+        const paramCaption = searchParams.get('caption');
+        const paramVisual = searchParams.get('visualDirection');
+
+        if (paramPlatform) {
+            setPlatform(paramPlatform as SocialPlatform);
+        }
+
+        if (paramFormat) {
+            setFormat(paramFormat as SocialPostFormat);
+        }
+
+        if (paramCaption) {
+            setCaption(paramCaption);
+            // If it's YouTube, also prefill video title
+            if (paramPlatform === 'YouTube' || (paramPlatform && paramPlatform.toLowerCase() === 'youtube')) {
+                setVideoTitle(paramCaption);
+            }
+        }
+
+        if (paramVisual) {
+            setScriptOutline(prev => prev ? prev : `Visual Direction: ${paramVisual}`);
+            setThumbnailIdea(prev => prev ? prev : paramVisual);
+        }
+
         if (postId && projectId) {
             setLoading(true);
             getSocialPostById(projectId, postId).then(post => {
@@ -117,7 +144,7 @@ export const CreateSocialPost = () => {
                 }
             }).catch(console.error).finally(() => setLoading(false));
         }
-    }, [postId, projectId, defaultDate, preselectedCampaignId]);
+    }, [postId, projectId, defaultDate, preselectedCampaignId, searchParams]);
 
     const isYouTube = platform === 'YouTube';
 

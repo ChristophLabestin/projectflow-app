@@ -143,8 +143,8 @@ export const CampaignKanbanView: React.FC<CampaignKanbanViewProps> = ({ posts, o
     return (
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             <div className="h-full flex overflow-x-auto pb-4 gap-4 px-6 md:px-8">
-                {/* 1. Ideas / Backlog */}
-                <DroppableColumn id="Ideas" title="Ideas" icon="lightbulb" color="#6366f1" count={ideas.length} className="bg-indigo-50/30 dark:bg-indigo-900/10 rounded-xl p-2">
+                {/* 1. Flows / Backlog */}
+                <DroppableColumn id="Ideas" title="Flows" icon="lightbulb" color="#6366f1" count={ideas.length} className="bg-indigo-50/30 dark:bg-indigo-900/10 rounded-xl p-2">
                     {ideas.map(post => (
                         <DraggablePostCard key={post.id} post={post}>
                             <SocialPostCard

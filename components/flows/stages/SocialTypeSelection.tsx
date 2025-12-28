@@ -11,7 +11,7 @@ export const SocialTypeSelection: React.FC<SocialTypeSelectionProps> = ({ onSele
             <div className="text-center mb-12">
                 <h2 className="text-3xl font-bold text-[var(--color-text-main)] mb-4">What are you creating?</h2>
                 <p className="text-[var(--color-text-muted)] text-lg max-w-2xl mx-auto">
-                    Choose how you want to structure this social media idea. This ensures you have the right tools for the job.
+                    Choose how you want to structure this social media flow. This ensures you have the right tools for the job.
                 </p>
             </div>
 

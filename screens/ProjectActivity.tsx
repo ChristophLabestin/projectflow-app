@@ -4,6 +4,8 @@ import { getProjectActivity } from '../services/dataService';
 import { Activity } from '../types';
 import { toMillis } from '../utils/time';
 import { activityIcon, groupActivitiesByDate, filterActivities } from '../utils/activityHelpers';
+import { useLanguage } from '../context/LanguageContext';
+import { format } from 'date-fns';
 
 const cleanText = (value?: string | null) => (value || '').replace(/\*\*/g, '');
 
@@ -24,6 +26,7 @@ const FilterTab = ({ label, active, onClick, icon }: { label: string; active: bo
 
 export const ProjectActivity = () => {
     const { id } = useParams<{ id: string }>();
+    const { dateFormat, dateLocale } = useLanguage();
     const [activity, setActivity] = useState<Activity[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState('all');
@@ -43,8 +46,8 @@ export const ProjectActivity = () => {
         [activity, filter, searchTerm]);
 
     const groupedActivities = useMemo(() =>
-        groupActivitiesByDate(filteredActivities),
-        [filteredActivities]);
+        groupActivitiesByDate(filteredActivities, dateFormat, dateLocale),
+        [filteredActivities, dateFormat, dateLocale]);
 
     if (loading) return (
         <div className="flex items-center justify-center p-12">
@@ -147,7 +150,7 @@ export const ProjectActivity = () => {
                                                             </span>
                                                         </div>
                                                         <span className="text-[11px] font-bold text-[var(--color-text-subtle)] whitespace-nowrap pt-0.5">
-                                                            {new Date(toMillis(item.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                            {format(new Date(toMillis(item.createdAt)), 'p', { locale: dateLocale })}
                                                         </span>
                                                     </div>
 

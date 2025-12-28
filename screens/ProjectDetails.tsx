@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { getProjectById } from '../services/dataService';
 import { Project } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 
 export const ProjectDetails = () => {
+    const { t } = useLanguage();
     const { id } = useParams<{ id: string }>();
     const [project, setProject] = useState<Project | null>(null);
     const [loading, setLoading] = useState(true);
@@ -31,24 +33,39 @@ export const ProjectDetails = () => {
     }
 
     if (!project) {
-        return <div className="p-4">Project not found.</div>;
+        return <div className="p-4">{t('projectDetails.notFound')}</div>;
     }
+
+    const statusLabels: Record<string, string> = {
+        Active: t('dashboard.projectStatus.active'),
+        Completed: t('dashboard.projectStatus.completed'),
+        Planning: t('dashboard.projectStatus.planning'),
+        'On Hold': t('dashboard.projectStatus.onHold'),
+        Brainstorming: t('dashboard.projectStatus.brainstorming')
+    };
+
+    const priorityLabels: Record<string, string> = {
+        Urgent: t('tasks.priority.urgent'),
+        High: t('tasks.priority.high'),
+        Medium: t('tasks.priority.medium'),
+        Low: t('tasks.priority.low')
+    };
 
     return (
         <div className="max-w-[900px] mx-auto flex flex-col gap-6 animate-fade-up">
             <div>
-                <span className="app-pill w-fit">Details</span>
-                <h1 className="text-2xl font-display font-bold text-ink">Project Details</h1>
-                <p className="text-muted text-sm">Key metadata for this project.</p>
+                <span className="app-pill w-fit">{t('projectDetails.pill')}</span>
+                <h1 className="text-2xl font-display font-bold text-ink">{t('projectDetails.title')}</h1>
+                <p className="text-muted text-sm">{t('projectDetails.subtitle')}</p>
             </div>
 
             <div className="app-card p-6 space-y-5">
-                <DetailRow label="Title" value={project.title} />
-                <DetailRow label="Description" value={project.description || 'Not set'} />
-                <DetailRow label="Status" value={project.status || 'Unknown'} />
-                <DetailRow label="Priority" value={project.priority || 'Medium'} />
-                <DetailRow label="Start Date" value={project.startDate || 'Not set'} />
-                <DetailRow label="Due Date" value={project.dueDate || 'Not set'} />
+                <DetailRow label={t('projectDetails.fields.title')} value={project.title} />
+                <DetailRow label={t('projectDetails.fields.description')} value={project.description || t('projectDetails.notSet')} />
+                <DetailRow label={t('projectDetails.fields.status')} value={(project.status && statusLabels[project.status]) || project.status || t('projectDetails.unknown')} />
+                <DetailRow label={t('projectDetails.fields.priority')} value={(project.priority && priorityLabels[project.priority]) || project.priority || t('tasks.priority.medium')} />
+                <DetailRow label={t('projectDetails.fields.startDate')} value={project.startDate || t('projectDetails.notSet')} />
+                <DetailRow label={t('projectDetails.fields.dueDate')} value={project.dueDate || t('projectDetails.notSet')} />
             </div>
         </div>
     );

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useWorkspaceTeamPresence, useWorkspacePresence } from '../hooks/usePresence';
 import { auth } from '../services/firebase';
 import { Link } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext';
 
 interface WorkspaceTeamIndicatorProps {
     tenantId?: string;
@@ -15,6 +16,7 @@ interface WorkspaceTeamIndicatorProps {
 export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ tenantId, onClose }) => {
     const [isOpen, setIsOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
+    const { t } = useLanguage();
 
     // Track workspace presence (Removed: now handled globally in AppLayout.tsx)
     // useWorkspacePresence({ tenantId, enabled: true });
@@ -212,11 +214,11 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                                 )}
                             </div>
                             <span className="text-[13px] font-semibold text-[var(--color-text-main)]">
-                                {filteredTotalActiveCount} active
+                                {t('workspaceTeam.activeCount').replace('{count}', String(filteredTotalActiveCount))}
                             </span>
                         </div>
                         <span className="text-[10px] text-[var(--color-text-muted)] ml-3.5">
-                            {filteredTotalCount} team members
+                            {t('workspaceTeam.memberCount').replace('{count}', String(filteredTotalCount))}
                         </span>
                     </div>
                 </div>
@@ -257,8 +259,8 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                             <span className="material-symbols-outlined text-white text-[18px]">groups</span>
                         </div>
                         <div>
-                            <h4 className="text-sm font-bold text-[var(--color-text-main)]">Workspace Team</h4>
-                            <p className="text-[10px] text-[var(--color-text-muted)]">{filteredTotalCount} members</p>
+                            <h4 className="text-sm font-bold text-[var(--color-text-main)]">{t('workspaceTeam.title')}</h4>
+                            <p className="text-[10px] text-[var(--color-text-muted)]">{t('workspaceTeam.memberCount').replace('{count}', String(filteredTotalCount))}</p>
                         </div>
                     </div>
 
@@ -271,7 +273,7 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                             )}
                         </div>
                         <span className={`text-[10px] font-bold uppercase tracking-wider ${hasOnline ? 'text-emerald-500' : hasIdle ? 'text-amber-500' : hasBusy ? 'text-rose-500' : 'text-slate-500'}`}>
-                            {hasOnline ? 'Online' : hasIdle ? 'Away' : hasBusy ? 'Busy' : 'Live'}
+                            {hasOnline ? t('status.online') : hasIdle ? t('status.away') : hasBusy ? t('status.busy') : t('workspaceTeam.status.live')}
                         </span>
                     </div>
                 </div>
@@ -285,7 +287,7 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                             <div className="flex items-center gap-2 px-2 py-1.5">
                                 <span className="size-2 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50" />
                                 <span className="text-[10px] font-black uppercase tracking-widest text-emerald-600 dark:text-emerald-400">
-                                    Online Now
+                                    {t('workspaceTeam.section.onlineNow')}
                                 </span>
                                 <div className="flex-1 h-px bg-gradient-to-r from-emerald-500/30 to-transparent" />
                                 <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
@@ -311,7 +313,7 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                             <div className="flex items-center gap-2 px-2 py-1.5">
                                 <span className="size-2 rounded-full bg-amber-400" />
                                 <span className="text-[10px] font-black uppercase tracking-widest text-amber-600 dark:text-amber-400">
-                                    Away
+                                    {t('workspaceTeam.section.away')}
                                 </span>
                                 <div className="flex-1 h-px bg-gradient-to-r from-amber-400/30 to-transparent" />
                                 <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
@@ -337,7 +339,7 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                             <div className="flex items-center gap-2 px-2 py-1.5">
                                 <span className="size-2 rounded-full bg-rose-500 shadow-lg shadow-rose-500/50" />
                                 <span className="text-[10px] font-black uppercase tracking-widest text-rose-600 dark:text-rose-400">
-                                    Busy
+                                    {t('workspaceTeam.section.busy')}
                                 </span>
                                 <div className="flex-1 h-px bg-gradient-to-r from-rose-500/30 to-transparent" />
                                 <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400">
@@ -363,7 +365,7 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                             <div className="flex items-center gap-2 px-2 py-1.5">
                                 <span className="size-2 rounded-full bg-slate-400 dark:bg-slate-500" />
                                 <span className="text-[10px] font-black uppercase tracking-widest text-[var(--color-text-muted)]">
-                                    Offline
+                                    {t('workspaceTeam.section.offline')}
                                 </span>
                                 <div className="flex-1 h-px bg-gradient-to-r from-slate-300/30 dark:from-slate-600/30 to-transparent" />
                                 <span className="text-[10px] font-bold text-[var(--color-text-muted)]">
@@ -389,7 +391,7 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                             <span className="material-symbols-outlined text-4xl text-[var(--color-text-muted)] opacity-30 mb-2">
                                 group_off
                             </span>
-                            <p className="text-sm text-[var(--color-text-muted)]">No team members yet</p>
+                            <p className="text-sm text-[var(--color-text-muted)]">{t('workspaceTeam.empty')}</p>
                         </div>
                     )}
                 </div>
@@ -412,7 +414,7 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                         group
                     "
                 >
-                    <span className="text-xs font-bold tracking-wide">Manage Team</span>
+                    <span className="text-xs font-bold tracking-wide">{t('workspaceTeam.manage')}</span>
                     <span className="material-symbols-outlined text-[16px] transition-transform group-hover:translate-x-0.5">
                         arrow_forward
                     </span>
@@ -426,18 +428,22 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
 const MemberRow: React.FC<{
     member: { uid: string; displayName: string; photoURL?: string; role?: string };
     isCurrentUser: boolean;
-    status: 'online' | 'idle' | 'offline';
-}> = ({ member, isCurrentUser, status }) => (
-    <div className={`
-        flex items-center gap-3 px-2 py-2 rounded-xl 
-        transition-all duration-200 cursor-default
-        ${status === 'online'
-            ? 'hover:bg-emerald-500/5'
-            : status === 'idle'
-                ? 'hover:bg-amber-400/5'
-                : 'hover:bg-[var(--color-surface-hover)]/50'
-        }
-    `}>
+    status: 'online' | 'idle' | 'busy' | 'offline';
+}> = ({ member, isCurrentUser, status }) => {
+    const { t } = useLanguage();
+    return (
+        <div className={`
+            flex items-center gap-3 px-2 py-2 rounded-xl 
+            transition-all duration-200 cursor-default
+            ${status === 'online'
+                ? 'hover:bg-emerald-500/5'
+                : status === 'idle'
+                    ? 'hover:bg-amber-400/5'
+                    : status === 'busy'
+                        ? 'hover:bg-rose-500/5'
+                        : 'hover:bg-[var(--color-surface-hover)]/50'
+            }
+        `}>
         {/* Avatar with status ring */}
         <div className="relative shrink-0">
             {/* Glow for online */}
@@ -456,7 +462,9 @@ const MemberRow: React.FC<{
                             ? 'ring-emerald-500 shadow-lg shadow-emerald-500/20'
                             : status === 'idle'
                                 ? 'ring-amber-400'
-                                : 'ring-[var(--color-surface-border)] opacity-70 grayscale-[30%]'
+                                : status === 'busy'
+                                    ? 'ring-rose-500'
+                                    : 'ring-[var(--color-surface-border)] opacity-70 grayscale-[30%]'
                         }
                     `}
                 />
@@ -469,7 +477,9 @@ const MemberRow: React.FC<{
                         ? 'bg-gradient-to-br from-emerald-400 to-teal-500 ring-emerald-500 shadow-lg shadow-emerald-500/20'
                         : status === 'idle'
                             ? 'bg-gradient-to-br from-amber-400 to-orange-500 ring-amber-400'
-                            : 'bg-gradient-to-br from-slate-400 to-slate-500 ring-[var(--color-surface-border)] opacity-70'
+                            : status === 'busy'
+                                ? 'bg-gradient-to-br from-rose-500 to-pink-500 ring-rose-500'
+                                : 'bg-gradient-to-br from-slate-400 to-slate-500 ring-[var(--color-surface-border)] opacity-70'
                     }
                 `}>
                     {member.displayName?.charAt(0)?.toUpperCase() || '?'}
@@ -480,7 +490,7 @@ const MemberRow: React.FC<{
             <div className={`
                 absolute -bottom-0.5 -right-0.5 size-3 rounded-full 
                 border-2 border-[var(--color-surface-card)]
-                ${status === 'online' ? 'bg-emerald-500' : status === 'idle' ? 'bg-amber-400' : 'bg-slate-400'}
+                ${status === 'online' ? 'bg-emerald-500' : status === 'idle' ? 'bg-amber-400' : status === 'busy' ? 'bg-rose-500' : 'bg-slate-400'}
             `}>
                 {status === 'online' && (
                     <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75" />
@@ -499,7 +509,7 @@ const MemberRow: React.FC<{
                 </span>
                 {isCurrentUser && (
                     <span className="shrink-0 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider rounded bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
-                        You
+                        {t('workspaceTeam.you')}
                     </span>
                 )}
             </div>
@@ -509,10 +519,18 @@ const MemberRow: React.FC<{
                     ? 'text-emerald-600 dark:text-emerald-400'
                     : status === 'idle'
                         ? 'text-amber-600 dark:text-amber-400'
-                        : 'text-[var(--color-text-muted)]'
+                        : status === 'busy'
+                            ? 'text-rose-600 dark:text-rose-400'
+                            : 'text-[var(--color-text-muted)]'
                 }
             `}>
-                {status === 'online' ? 'Active now' : status === 'idle' ? 'Away' : 'Offline'}
+                {status === 'online'
+                    ? t('workspaceTeam.memberStatus.activeNow')
+                    : status === 'idle'
+                        ? t('workspaceTeam.memberStatus.away')
+                        : status === 'busy'
+                            ? t('workspaceTeam.memberStatus.busy')
+                            : t('workspaceTeam.memberStatus.offline')}
             </span>
         </div>
 
@@ -529,4 +547,5 @@ const MemberRow: React.FC<{
             </span>
         )}
     </div>
-);
+    );
+};

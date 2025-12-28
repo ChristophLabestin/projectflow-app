@@ -22,7 +22,7 @@ const PROJECT_ROLE_DESCRIPTIONS: Record<ProjectRole, { title: string; descriptio
     Editor: {
         title: 'Editor',
         description: 'Can create and manage content',
-        capabilities: ['Create/edit tasks, ideas, and issues', 'Add comments', 'Cannot edit project settings'],
+        capabilities: ['Create/edit tasks, flows, and issues', 'Add comments', 'Cannot edit project settings'],
     },
     Viewer: {
         title: 'Viewer',

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { WorkspaceHealth } from '../../services/healthService';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface WorkspaceHealthCardProps {
     health: WorkspaceHealth;
@@ -7,6 +8,15 @@ interface WorkspaceHealthCardProps {
 }
 
 export const WorkspaceHealthCard: React.FC<WorkspaceHealthCardProps> = ({ health, projectCount }) => {
+    const { t } = useLanguage();
+    const statusLabels = useMemo(() => ({
+        critical: t('status.critical'),
+        warning: t('status.warning'),
+        normal: t('status.normal'),
+        healthy: t('status.healthy'),
+        excellent: t('status.excellent'),
+        stalemate: t('dashboard.health.stalemate')
+    }), [t]);
 
     // Status color mapping
     const colorMap = {
@@ -33,11 +43,11 @@ export const WorkspaceHealthCard: React.FC<WorkspaceHealthCardProps> = ({ health
         <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-start justify-between mb-4">
                 <div>
-                    <h3 className="text-sm font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">Workspace Health</h3>
-                    <p className="text-[var(--color-text-muted)] text-xs mt-1">Aggregated project metrics</p>
+                    <h3 className="text-sm font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">{t('dashboard.health.title')}</h3>
+                    <p className="text-[var(--color-text-muted)] text-xs mt-1">{t('dashboard.health.subtitle')}</p>
                 </div>
                 <div className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border ${colorMap[health.status]}`}>
-                    {health.status}
+                    {statusLabels[health.status as keyof typeof statusLabels] || health.status}
                 </div>
             </div>
 
@@ -74,19 +84,19 @@ export const WorkspaceHealthCard: React.FC<WorkspaceHealthCardProps> = ({ health
                 <div className="flex-1 space-y-2">
                     <div className="flex items-center justify-between text-xs">
                         <span className="flex items-center gap-1.5 text-[var(--color-text-muted)] font-bold">
-                            <span className="size-2 rounded-full bg-rose-500"></span> Critical
+                            <span className="size-2 rounded-full bg-rose-500"></span> {t('status.critical')}
                         </span>
                         <span className="font-black text-[var(--color-text-main)]">{health.breakdown.critical}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
                         <span className="flex items-center gap-1.5 text-[var(--color-text-muted)] font-bold">
-                            <span className="size-2 rounded-full bg-amber-500"></span> Warning
+                            <span className="size-2 rounded-full bg-amber-500"></span> {t('status.warning')}
                         </span>
                         <span className="font-black text-[var(--color-text-main)]">{health.breakdown.warning}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
                         <span className="flex items-center gap-1.5 text-[var(--color-text-muted)] font-bold">
-                            <span className="size-2 rounded-full bg-emerald-500"></span> Healthy
+                            <span className="size-2 rounded-full bg-emerald-500"></span> {t('status.healthy')}
                         </span>
                         <span className="font-black text-[var(--color-text-main)]">{health.breakdown.healthy + health.breakdown.excellent}</span>
                     </div>
@@ -98,7 +108,7 @@ export const WorkspaceHealthCard: React.FC<WorkspaceHealthCardProps> = ({ health
                         ) : (
                             <span className="text-[var(--color-text-subtle)] material-symbols-outlined text-sm">trending_flat</span>
                         )}
-                        <span>{health.trend} Trend</span>
+                        <span>{t(`trend.${health.trend}`, health.trend)} {t('dashboard.health.trendSuffix')}</span>
                     </div>
                 </div>
             </div>

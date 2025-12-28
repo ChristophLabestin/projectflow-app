@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { generateProjectDescription, generateProjectBlueprint } from '../services/geminiService';
-import { createProject, getWorkspaceMembers, createMilestone, addTask, getUserProfile, linkWithGithub, updateUserData } from '../services/dataService';
+import { createProject, getWorkspaceMembers, createMilestone, addTask, getUserProfile, linkWithGithub, updateUserData, getWorkspaceGroups } from '../services/dataService';
 import { fetchUserRepositories, GithubRepo } from '../services/githubService';
 import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
+import { useArrowReplacement } from '../hooks/useArrowReplacement';
+import { useLanguage } from '../context/LanguageContext';
+import { format } from 'date-fns';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Textarea } from '../components/ui/Textarea';
 import { ImageCropper } from '../components/ui/ImageCropper';
 import { DatePicker } from '../components/ui/DatePicker';
-import { ProjectModule, ProjectBlueprint } from '../types';
+import { ProjectModule, ProjectBlueprint, WorkspaceGroup } from '../types';
 import { useToast } from '../context/UIContext';
 import { auth, storage } from '../services/firebase'; // Added storage for manual uploads if needed (though MediaLibrary handles it)
 import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
@@ -27,6 +30,7 @@ export const CreateProjectWizard = () => {
     const navigate = useNavigate();
     const { can } = useWorkspacePermissions();
     const { showToast } = useToast();
+    const { dateFormat, dateLocale } = useLanguage();
 
     const [currentStep, setCurrentStep] = useState(0);
     const [creationMode, setCreationMode] = useState<'scratch' | 'ai' | null>(null);
@@ -37,7 +41,9 @@ export const CreateProjectWizard = () => {
     const [projectType, setProjectType] = useState<'standard' | 'software' | 'creative'>('standard');
     const [modules, setModules] = useState<ProjectModule[]>(['tasks', 'ideas', 'activity']);
     const [availableMembers, setAvailableMembers] = useState<any[]>([]);
+    const [workspaceGroups, setWorkspaceGroups] = useState<WorkspaceGroup[]>([]);
     const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+    const [visibilityGroupIds, setVisibilityGroupIds] = useState<string[]>([]);
     const [startDate, setStartDate] = useState('');
     const [dueDate, setDueDate] = useState('');
     const [priority, setPriority] = useState('Medium');
@@ -71,10 +77,13 @@ export const CreateProjectWizard = () => {
     const [loadingGithub, setLoadingGithub] = useState(false);
     const [connectingGithub, setConnectingGithub] = useState(false);
 
+    const handleAiPromptChange = useArrowReplacement((e) => setAiPrompt(e.target.value));
+
     useEffect(() => {
         getWorkspaceMembers().then(members => {
             setAvailableMembers(members.filter(m => m.role !== 'Guest'));
         });
+        getWorkspaceGroups().then(setWorkspaceGroups).catch(console.error);
         // Load GitHub token
         const loadGithubData = async () => {
             const user = auth.currentUser;
@@ -198,7 +207,7 @@ export const CreateProjectWizard = () => {
                 links: links.filter(l => l.title && l.url),
                 externalResources: externalResources.filter(r => r.title && r.url),
                 ...(selectedGithubRepo && { githubRepo: selectedGithubRepo, githubIssueSync: true })
-            }, coverUrl || coverFile || undefined, squareIconUrl || squareIconFile || undefined, undefined, selectedMemberIds);
+            }, coverUrl || coverFile || undefined, squareIconUrl || squareIconFile || undefined, undefined, selectedMemberIds, undefined, visibilityGroupIds);
 
             if (blueprint) {
                 for (const ms of blueprint.milestones) {
@@ -331,7 +340,7 @@ export const CreateProjectWizard = () => {
                                         </div>
                                         <div className="flex-1">
                                             <div className="text-lg font-bold text-[var(--color-text-main)]">Use AI Architect</div>
-                                            <div className="text-sm text-[var(--color-text-subtle)] mt-1">Describe your idea and let AI generate a complete project blueprint.</div>
+                                            <div className="text-sm text-[var(--color-text-subtle)] mt-1">Describe your flow and let AI generate a complete project blueprint.</div>
                                         </div>
                                         <span className="material-symbols-outlined text-[var(--color-text-muted)] text-[28px] group-hover:translate-x-1 transition-transform">chevron_right</span>
                                     </button>
@@ -349,7 +358,7 @@ export const CreateProjectWizard = () => {
 
                                 <textarea
                                     value={aiPrompt}
-                                    onChange={e => setAiPrompt(e.target.value)}
+                                    onChange={handleAiPromptChange}
                                     placeholder="e.g. A mobile app for tracking personal fitness goals with social features..."
                                     className="w-full min-h-[200px] p-4 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl text-sm text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus:ring-2 focus:ring-zinc-500/20 focus:border-zinc-500 outline-none resize-none transition-all"
                                 />
@@ -436,7 +445,7 @@ export const CreateProjectWizard = () => {
                                     {[
                                         { id: 'tasks', label: 'Tasks', desc: 'Track work items', icon: 'check_circle' },
                                         { id: 'issues', label: 'Issues', desc: 'Bug tracking', icon: 'bug_report' },
-                                        { id: 'ideas', label: 'Ideas', desc: 'Brainstorming', icon: 'lightbulb' },
+                                        { id: 'ideas', label: 'Flows', desc: 'Brainstorming', icon: 'lightbulb' },
                                         { id: 'milestones', label: 'Milestones', desc: 'Key deadlines', icon: 'flag' },
                                         { id: 'social', label: 'Social', desc: 'Campaign Manager', icon: 'campaign' },
                                         { id: 'marketing', label: 'Marketing', desc: 'Ads & Email', icon: 'ads_click' },
@@ -507,6 +516,98 @@ export const CreateProjectWizard = () => {
                                         })}
                                     </div>
                                 )}
+
+                                {/* Project Visibility Section */}
+                                <div className="pt-6 mt-2 border-t border-[var(--color-surface-border)]">
+                                    <div className="space-y-2 mb-4">
+                                        <h3 className="text-lg font-bold text-[var(--color-text-main)]">Visibility</h3>
+                                        <p className="text-sm text-[var(--color-text-subtle)]">Who can see this project?</p>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button
+                                            onClick={() => setVisibilityGroupIds([])}
+                                            className={`p-4 rounded-xl flex flex-col items-start gap-2 transition-all hover:scale-[1.02] ${visibilityGroupIds.length === 0
+                                                ? 'bg-gradient-to-br from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 text-white dark:text-zinc-800 shadow-lg'
+                                                : 'bg-black/[0.03] dark:bg-white/[0.03] text-[var(--color-text-main)]'
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-[20px]">public</span>
+                                                <span className="text-sm font-bold">Everyone</span>
+                                            </div>
+                                            <span className={`text-[10px] ${visibilityGroupIds.length === 0 ? 'text-white/70 dark:text-zinc-600' : 'text-[var(--color-text-subtle)]'}`}>
+                                                Visible to all workspace members
+                                            </span>
+                                        </button>
+
+                                        <button
+                                            onClick={() => {
+                                                if (visibilityGroupIds.length === 0 && workspaceGroups.length > 0) {
+                                                    setVisibilityGroupIds([workspaceGroups[0].id]);
+                                                }
+                                            }}
+                                            disabled={workspaceGroups.length === 0}
+                                            className={`p-4 rounded-xl flex flex-col items-start gap-2 transition-all hover:scale-[1.02] ${visibilityGroupIds.length > 0
+                                                ? 'bg-gradient-to-br from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 text-white dark:text-zinc-800 shadow-lg'
+                                                : 'bg-black/[0.03] dark:bg-white/[0.03] text-[var(--color-text-main)]'
+                                                } ${workspaceGroups.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-[20px]">lock_person</span>
+                                                <span className="text-sm font-bold">Specific Groups</span>
+                                            </div>
+                                            <span className={`text-[10px] ${visibilityGroupIds.length > 0 ? 'text-white/70 dark:text-zinc-600' : 'text-[var(--color-text-subtle)]'}`}>
+                                                {workspaceGroups.length === 0 ? 'No groups available' : 'Restricted to selected groups'}
+                                            </span>
+                                        </button>
+                                    </div>
+
+                                    {/* Group Selector Dropdown */}
+                                    {visibilityGroupIds.length > 0 && workspaceGroups.length > 0 && (
+                                        <div className="mt-4 animate-fade-in">
+                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2 block">
+                                                Select Allowed Groups
+                                            </label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {workspaceGroups.map(group => {
+                                                    const isSelected = visibilityGroupIds.includes(group.id);
+                                                    return (
+                                                        <button
+                                                            key={group.id}
+                                                            onClick={() => {
+                                                                if (isSelected) {
+                                                                    // Don't allow deselecting the last one directly from here (keeps "Specific Group" active), 
+                                                                    // or maybe allow it but if empty switch back to "Everyone"? 
+                                                                    // Let's allow deselecting, and if empty it technically means "Specific Group" but none selected... 
+                                                                    // typically empty array means "Everyone" in my logic? 
+                                                                    // Actually, my logic says "visibilityGroupIds.length === 0" is Everyone.
+                                                                    // So if they deselect the last one, it becomes Public. That's fine.
+                                                                    setVisibilityGroupIds(prev => prev.filter(id => id !== group.id));
+                                                                } else {
+                                                                    setVisibilityGroupIds(prev => [...prev, group.id]);
+                                                                }
+                                                            }}
+                                                            className={`p-3 rounded-xl flex items-center gap-3 border transition-all ${isSelected
+                                                                ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]'
+                                                                : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:border-[var(--color-primary)]/50'
+                                                                }`}
+                                                        >
+                                                            <div
+                                                                className="size-3 rounded-full shrink-0"
+                                                                style={{ backgroundColor: group.color || '#9ca3af' }}
+                                                            />
+                                                            <span className="text-sm font-medium truncate">{group.name}</span>
+                                                            {isSelected && (
+                                                                <span className="material-symbols-outlined text-[16px] ml-auto">check</span>
+                                                            )}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                         )}
 
@@ -904,7 +1005,7 @@ export const CreateProjectWizard = () => {
                                     </div>
                                     <div className="space-y-1 text-right">
                                         <div className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Deadline</div>
-                                        <div className="text-sm font-bold text-[var(--color-text-main)]">{dueDate ? new Date(dueDate).toLocaleDateString() : '—'}</div>
+                                        <div className="text-sm font-bold text-[var(--color-text-main)]">{dueDate ? format(new Date(dueDate), dateFormat, { locale: dateLocale }) : '—'}</div>
                                     </div>
                                 </div>
 

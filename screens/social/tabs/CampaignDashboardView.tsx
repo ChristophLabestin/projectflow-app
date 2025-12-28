@@ -1,5 +1,7 @@
 import React from 'react';
 import { SocialCampaign, SocialPost, SocialPlatform } from '../../../types';
+import { format } from 'date-fns';
+import { dateLocale, dateFormat } from '../../../utils/activityHelpers';
 
 interface CampaignDashboardViewProps {
     campaign: SocialCampaign;
@@ -99,8 +101,8 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
                     </div>
                     <div className="space-y-2">
                         <div className="flex justify-between text-xs text-[var(--color-text-muted)]">
-                            <span>{new Date(campaign.startDate).toLocaleDateString()}</span>
-                            <span>{new Date(campaign.endDate).toLocaleDateString()}</span>
+                            <span>{format(new Date(campaign.startDate), dateFormat, { locale: dateLocale })}</span>
+                            <span>{format(new Date(campaign.endDate), dateFormat, { locale: dateLocale })}</span>
                         </div>
                         <div className="h-3 bg-[var(--color-surface-bg)] rounded-full overflow-hidden">
                             <div

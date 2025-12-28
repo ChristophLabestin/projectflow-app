@@ -2,280 +2,162 @@ import React from 'react';
 import type { HelpCenterPageProps, HelpCenterSectionIndex } from '../helpCenterTypes';
 
 export const mediaLibrarySections: HelpCenterSectionIndex[] = [
-    {
-        id: 'media-overview',
-        title: 'Media Library overview',
-        summary: 'A single place for uploads, stock, and AI assets.',
-        content: 'Manage all project media in one organized library.',
-        keywords: ['media', 'library', 'assets']
-    },
-    {
-        id: 'modal-entry',
-        title: 'Using the Media Library modal',
-        summary: 'Select, upload, and edit without leaving your workflow.',
-        content: 'The modal lets you pick assets from anywhere in the app.',
-        keywords: ['modal', 'picker', 'select']
-    },
-    {
-        id: 'upload-gallery',
-        title: 'Uploads and gallery',
-        summary: 'Bring in files and keep them organized.',
-        content: 'Upload files or browse existing assets in the gallery tab.',
-        keywords: ['upload', 'gallery', 'files']
-    },
-    {
-        id: 'stock-content',
-        title: 'Stock content',
-        summary: 'Search curated stock images.',
-        content: 'Use stock search when you need high-quality visuals fast.',
-        keywords: ['stock', 'unsplash', 'search']
-    },
-    {
-        id: 'ai-media',
-        title: 'AI image generation',
-        summary: 'Generate or rework visuals with AI.',
-        content: 'Create new assets or rework existing images directly in the modal.',
-        keywords: ['ai', 'images', 'generation']
-    },
-    {
-        id: 'editing-workflow',
-        title: 'Editing and cropping',
-        summary: 'Adjust images before you save or select.',
-        content: 'Crop, edit, and finalize visuals without leaving the library.',
-        keywords: ['edit', 'crop', 'image editor']
-    },
-    {
-        id: 'best-practices',
-        title: 'Best practices',
-        summary: 'Keep the library tidy and reusable.',
-        content: 'Use consistent naming and reuse assets across projects.',
-        keywords: ['best practices', 'organization']
-    }
+    { id: 'file-types', title: 'Supported file types', summary: 'Complete list of formats and limits.', content: 'All supported file types with size limits.', keywords: ['files', 'formats', 'types'] },
+    { id: 'upload-methods', title: 'Upload methods', summary: 'Ways to add media.', content: 'Drag & drop, file picker, URL import, AI generation.', keywords: ['upload', 'import'] },
+    { id: 'image-editor', title: 'Image editor', summary: 'Edit images in-app.', content: 'Crop, resize, rotate, and adjust images.', keywords: ['editor', 'crop', 'resize'] },
+    { id: 'stock-search', title: 'Stock photo search', summary: 'Find royalty-free images.', content: 'Search and use stock photos.', keywords: ['stock', 'photos', 'search'] },
+    { id: 'ai-generation', title: 'AI image generation', summary: 'Create with AI.', content: 'Generate images from prompts.', keywords: ['ai', 'generation', 'create'] },
+    { id: 'organization', title: 'Organization', summary: 'Keep assets organized.', content: 'Naming, folders, and tagging best practices.', keywords: ['organize', 'folders', 'tags'] }
 ];
 
-const SectionHeader = ({
-    eyebrow,
-    title,
-    icon
-}: {
-    eyebrow: string;
-    title: string;
-    icon: string;
-}) => (
-    <div className="flex items-start justify-between gap-4">
-        <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">
-                {eyebrow}
-            </div>
-            <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">{title}</h3>
+const FileTypeCard = ({ ext, icon, limit, description }: { ext: string; icon: string; limit: string; description: string }) => (
+    <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 flex items-start gap-3">
+        <div className="w-10 h-10 rounded-lg bg-[var(--color-primary)]/10 flex items-center justify-center flex-shrink-0">
+            <span className="material-symbols-outlined text-[20px] text-[var(--color-primary)]">{icon}</span>
         </div>
-        <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">
-            {icon}
-        </span>
-    </div>
-);
-
-const InfoCard = ({ children }: { children: React.ReactNode }) => (
-    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 text-sm text-[var(--color-text-muted)] leading-relaxed">
-        {children}
-    </div>
-);
-
-const Callout = ({ children }: { children: React.ReactNode }) => (
-    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-[13px] text-amber-900 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200">
-        <div className="flex items-start gap-2">
-            <span className="material-symbols-outlined text-[18px]">lightbulb</span>
-            <div>{children}</div>
+        <div className="flex-1">
+            <div className="flex items-center gap-2"><span className="text-sm font-bold text-[var(--color-text-main)]">{ext}</span><span className="px-2 py-0.5 rounded-full bg-[var(--color-surface-hover)] text-[10px] text-[var(--color-text-muted)]">{limit}</span></div>
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">{description}</p>
         </div>
     </div>
 );
 
-export const MediaLibraryPage = ({ sections, activeSectionId, onSectionSelect }: HelpCenterPageProps) => {
-    return (
-        <div className="px-6 py-6 space-y-10">
-            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_240px] gap-6">
-                <div className="rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">
-                        Media Library
-                    </div>
-                    <h2 className="text-3xl font-bold text-[var(--color-text-main)] mt-3">
-                        Manage every asset in one place
-                    </h2>
-                    <p className="text-sm text-[var(--color-text-muted)] mt-3 leading-relaxed">
-                        The Media Library centralizes uploads, stock imagery, and AI-generated assets. You can open it
-                        as a full page or use the modal picker anywhere you need to attach media.
-                    </p>
-                </div>
+const UploadCard = ({ icon, method, description, color }: { icon: string; method: string; description: string; color: string }) => (
+    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5 text-center">
+        <div className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center mx-auto`}><span className="material-symbols-outlined text-[24px] text-white">{icon}</span></div>
+        <div className="text-sm font-bold text-[var(--color-text-main)] mt-3">{method}</div>
+        <p className="text-xs text-[var(--color-text-muted)] mt-2 leading-relaxed">{description}</p>
+    </div>
+);
 
-                <aside className="space-y-4">
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4">
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
-                            In this guide
-                        </div>
-                        <div className="mt-3 space-y-2">
-                            {sections.map(section => (
-                                <button
-                                    key={section.id}
-                                    onClick={() => onSectionSelect(section.id)}
-                                    className={`w-full text-left text-sm font-medium transition-colors ${activeSectionId === section.id
-                                        ? 'text-[var(--color-primary)]'
-                                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
-                                        }`}
-                                >
-                                    {section.title}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-4 text-sm text-[var(--color-text-muted)]">
-                        Use the modal when you need to select a single image quickly. Use the full Media Library page
-                        when you are organizing assets in bulk.
-                    </div>
-                </aside>
-            </div>
+const EditorTool = ({ icon, name, description }: { icon: string; name: string; description: string }) => (
+    <div className="flex items-center gap-3 py-3 border-b border-[var(--color-surface-border)] last:border-0">
+        <span className="material-symbols-outlined text-[18px] text-[var(--color-primary)]">{icon}</span>
+        <div><div className="text-sm font-medium text-[var(--color-text-main)]">{name}</div><div className="text-xs text-[var(--color-text-muted)]">{description}</div></div>
+    </div>
+);
 
-            <section data-section-id="media-overview" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-5">
-                <SectionHeader eyebrow="Overview" title="Media Library overview" icon="photo_library" />
-                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                    The Media Library stores everything you upload or generate, including project covers, social
-                    assets, marketing imagery, and AI creations. All assets are centralized so teams can reuse and
-                    share visuals instead of uploading duplicates.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <InfoCard>
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Uploads</div>
-                        <p className="mt-2">
-                            Drag and drop files or browse to upload images and videos.
-                        </p>
-                    </InfoCard>
-                    <InfoCard>
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Stock</div>
-                        <p className="mt-2">
-                            Search curated stock images for fast, high-quality visuals.
-                        </p>
-                    </InfoCard>
-                    <InfoCard>
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">AI</div>
-                        <p className="mt-2">
-                            Generate or rework images without leaving the library.
-                        </p>
-                    </InfoCard>
-                </div>
-            </section>
-
-            <section data-section-id="modal-entry" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-5">
-                <SectionHeader eyebrow="Modal" title="Using the Media Library modal" icon="open_in_full" />
-                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                    The modal is the fastest way to attach media while you work. It appears in project settings,
-                    social posts, email builder, and profile editors so you can select or upload assets without
-                    navigating away.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InfoCard>
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Quick selection</div>
-                        <p className="mt-2">
-                            Open the modal, browse the gallery, and click any asset to attach it instantly.
-                        </p>
-                    </InfoCard>
-                    <InfoCard>
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Context aware</div>
-                        <p className="mt-2">
-                            The modal stays scoped to the active project or user so you see the right assets first.
-                        </p>
-                    </InfoCard>
-                </div>
-                <Callout>
-                    Use the modal for quick pick-and-go tasks. Use the full page when you want to clean up or
-                    reorganize your library.
-                </Callout>
-            </section>
-
-            <section data-section-id="upload-gallery" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-5">
-                <SectionHeader eyebrow="Library" title="Uploads and gallery" icon="cloud_upload" />
-                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                    Uploads are stored in the gallery so they can be reused across the project. Drag files into the
-                    upload area, or use the file picker if you are on a restricted device.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InfoCard>
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Supported files</div>
-                        <p className="mt-2">
-                            The library supports common image formats and video files. Large assets may take longer to
-                            upload depending on your connection.
-                        </p>
-                    </InfoCard>
-                    <InfoCard>
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Gallery view</div>
-                        <p className="mt-2">
-                            Gallery keeps assets visible in a grid for fast selection and visual scanning.
-                        </p>
-                    </InfoCard>
-                </div>
-            </section>
-
-            <section data-section-id="stock-content" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-5">
-                <SectionHeader eyebrow="Stock" title="Stock content" icon="collections" />
-                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                    Stock search is useful when you need strong visuals fast. Search by keyword, preview options, and
-                    save selected images directly into your library for reuse.
-                </p>
-                <InfoCard>
-                    Stock images are stored like uploads so you can reuse them across campaigns without repeating the
-                    search.
-                </InfoCard>
-            </section>
-
-            <section data-section-id="ai-media" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-5">
-                <SectionHeader eyebrow="AI" title="AI image generation" icon="auto_awesome" />
-                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                    The AI tab lets you generate new images from prompts or rework an existing asset with a new style.
-                    Use AI for exploration, then select the strongest result to keep in the library.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InfoCard>
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Generate</div>
-                        <p className="mt-2">
-                            Describe the scene, mood, and style. The more precise the prompt, the better the output.
-                        </p>
-                    </InfoCard>
-                    <InfoCard>
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Rework</div>
-                        <p className="mt-2">
-                            Select an existing image and apply a new style without rebuilding the entire asset.
-                        </p>
-                    </InfoCard>
-                </div>
-            </section>
-
-            <section data-section-id="editing-workflow" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-5">
-                <SectionHeader eyebrow="Editing" title="Editing and cropping" icon="crop" />
-                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                    The built-in editor lets you crop and adjust visuals before saving or selecting them. Use it to
-                    fit assets to the exact dimensions you need for a post, email, or cover.
-                </p>
-                <InfoCard>
-                    If you are using a circular crop (for avatars or icons), the editor will guide you with the
-                    correct shape so the final image looks clean.
-                </InfoCard>
-            </section>
-
-            <section data-section-id="best-practices" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-5">
-                <SectionHeader eyebrow="Guidance" title="Best practices" icon="check_circle" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InfoCard>
-                        Use descriptive file names so teammates can find assets quickly.
-                    </InfoCard>
-                    <InfoCard>
-                        Reuse strong assets across campaigns to keep a consistent visual identity.
-                    </InfoCard>
-                    <InfoCard>
-                        Archive outdated assets to keep the gallery clean.
-                    </InfoCard>
-                    <InfoCard>
-                        Use AI for exploration, then finalize with human review.
-                    </InfoCard>
-                </div>
-            </section>
-        </div>
-    );
+const Callout = ({ type, children }: { type: 'tip' | 'warning' | 'info'; children: React.ReactNode }) => {
+    const styles = { tip: 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200', warning: 'border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-800/40 dark:bg-rose-900/20 dark:text-rose-200', info: 'border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-800/40 dark:bg-sky-900/20 dark:text-sky-200' };
+    const icons = { tip: 'lightbulb', warning: 'warning', info: 'info' };
+    return <div className={`rounded-2xl border p-4 text-[13px] ${styles[type]}`}><div className="flex items-start gap-2"><span className="material-symbols-outlined text-[18px]">{icons[type]}</span><div>{children}</div></div></div>;
 };
+
+export const MediaLibraryPage = (_props: HelpCenterPageProps) => (
+    <div className="px-6 py-6 space-y-10">
+        <div className="rounded-[28px] border border-[var(--color-surface-border)] bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] p-6">
+            <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Media Library</div>
+            <h2 className="text-3xl font-bold text-[var(--color-text-main)] mt-3">Your Visual Asset Hub</h2>
+            <p className="text-sm text-[var(--color-text-muted)] mt-3 leading-relaxed max-w-2xl">Store, organize, and create visual assets. Upload files, search stock photos, generate AI images, and edit directly in the app.</p>
+            <div className="mt-6 flex flex-wrap gap-2">
+                {['Images', 'Videos', 'Documents', 'Stock', 'AI Generated'].map(t => <span key={t} className="px-3 py-1 rounded-full text-[10px] font-semibold bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]">{t}</span>)}
+            </div>
+        </div>
+
+        <section data-section-id="file-types" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Formats</div><h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Supported File Types</h3></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <FileTypeCard ext="JPG / JPEG" icon="image" limit="Max 25MB" description="Standard photo format, best for photos and complex images." />
+                <FileTypeCard ext="PNG" icon="image" limit="Max 25MB" description="Lossless format, ideal for graphics with transparency." />
+                <FileTypeCard ext="WEBP" icon="image" limit="Max 25MB" description="Modern format with excellent compression and quality." />
+                <FileTypeCard ext="GIF" icon="gif_box" limit="Max 10MB" description="Animated images and simple graphics." />
+                <FileTypeCard ext="SVG" icon="shapes" limit="Max 5MB" description="Vector graphics that scale without quality loss." />
+                <FileTypeCard ext="MP4" icon="movie" limit="Max 100MB" description="Standard video format for recordings and clips." />
+                <FileTypeCard ext="PDF" icon="description" limit="Max 50MB" description="Documents, presentations, and printable materials." />
+                <FileTypeCard ext="HEIC" icon="image" limit="Max 25MB" description="Apple's high-efficiency image format." />
+            </div>
+        </section>
+
+        <section data-section-id="upload-methods" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
+            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Add Media</div><h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Upload Methods</h3></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <UploadCard icon="upload_file" method="Drag & Drop" description="Drop files directly onto the library to upload instantly." color="bg-sky-500" />
+                <UploadCard icon="folder_open" method="File Picker" description="Click upload button to browse and select files." color="bg-emerald-500" />
+                <UploadCard icon="image_search" method="Stock Search" description="Search and add royalty-free stock photos." color="bg-amber-500" />
+                <UploadCard icon="auto_awesome" method="AI Generate" description="Create new images from text prompts using AI." color="bg-purple-500" />
+            </div>
+        </section>
+
+        <section data-section-id="image-editor" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Edit</div><h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Image Editor</h3><p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl">Edit images directly without external software.</p></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-3">Tools</div>
+                    <EditorTool icon="crop" name="Crop" description="Select and keep a portion of the image" />
+                    <EditorTool icon="aspect_ratio" name="Resize" description="Change dimensions with locked or free aspect ratio" />
+                    <EditorTool icon="rotate_right" name="Rotate" description="Rotate 90° or flip horizontally/vertically" />
+                    <EditorTool icon="tune" name="Adjust" description="Brightness, contrast, and saturation controls" />
+                </div>
+                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-3">Aspect Presets</div>
+                    <div className="space-y-2">{[['1:1', 'Square - Social posts, avatars'], ['16:9', 'Landscape - Video thumbnails, headers'], ['9:16', 'Portrait - Stories, vertical video'], ['4:3', 'Standard - Presentations, photos'], ['Original', 'Keep source aspect ratio']].map(([r, d]) => <div key={r} className="flex justify-between text-sm py-2 border-b border-[var(--color-surface-border)] last:border-0"><span className="font-medium text-[var(--color-text-main)]">{r}</span><span className="text-[var(--color-text-muted)]">{d}</span></div>)}</div>
+                </div>
+            </div>
+        </section>
+
+        <section data-section-id="stock-search" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
+            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Stock</div><h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Stock Photo Search</h3></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-3">Search Tips</div>
+                    <div className="space-y-3 text-sm text-[var(--color-text-muted)]">
+                        <div className="flex items-start gap-2"><span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>Use descriptive keywords: "team meeting office modern"</div>
+                        <div className="flex items-start gap-2"><span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>Add mood or style: "bright", "minimal", "professional"</div>
+                        <div className="flex items-start gap-2"><span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>Specify color when needed: "blue background"</div>
+                        <div className="flex items-start gap-2"><span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>Use filters to narrow by orientation</div>
+                    </div>
+                </div>
+                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-3">License Info</div>
+                    <div className="space-y-3 text-sm text-[var(--color-text-muted)]">
+                        <div className="flex items-center gap-2"><span className="material-symbols-outlined text-[16px] text-emerald-500">verified</span>All stock photos are royalty-free</div>
+                        <div className="flex items-center gap-2"><span className="material-symbols-outlined text-[16px] text-emerald-500">verified</span>Commercial use permitted</div>
+                        <div className="flex items-center gap-2"><span className="material-symbols-outlined text-[16px] text-emerald-500">verified</span>No attribution required</div>
+                        <div className="flex items-center gap-2"><span className="material-symbols-outlined text-[16px] text-amber-500">info</span>Check model release for recognizable faces</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section data-section-id="ai-generation" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Create</div><h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">AI Image Generation</h3></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-3">Prompt Structure</div>
+                    <div className="space-y-2 text-sm text-[var(--color-text-muted)]">
+                        <div><span className="font-semibold text-[var(--color-text-main)]">Subject:</span> What to generate</div>
+                        <div><span className="font-semibold text-[var(--color-text-main)]">Style:</span> Photo, illustration, 3D, etc.</div>
+                        <div><span className="font-semibold text-[var(--color-text-main)]">Mood:</span> Bright, moody, professional</div>
+                        <div><span className="font-semibold text-[var(--color-text-main)]">Details:</span> Lighting, colors, composition</div>
+                    </div>
+                </div>
+                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-3">Example Prompt</div>
+                    <div className="rounded-xl bg-[var(--color-surface-bg)] p-3 text-sm text-[var(--color-text-main)] italic border border-[var(--color-surface-border)]">"Professional photo of a diverse team collaborating around a modern conference table, bright natural lighting, glass office building, shallow depth of field, 16:9 aspect ratio"</div>
+                </div>
+            </div>
+            <Callout type="tip">Start simple and add details. It's easier to refine a working prompt than to debug a complex one.</Callout>
+        </section>
+
+        <section data-section-id="organization" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
+            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Manage</div><h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Organization Best Practices</h3></div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
+                    <div className="w-10 h-10 rounded-xl bg-sky-500/10 flex items-center justify-center mb-3"><span className="material-symbols-outlined text-[20px] text-sky-500">drive_file_rename_outline</span></div>
+                    <div className="text-sm font-bold text-[var(--color-text-main)]">Naming</div>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-2">Use descriptive names: project-hero-image.jpg beats IMG_4521.jpg</p>
+                </div>
+                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
+                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center mb-3"><span className="material-symbols-outlined text-[20px] text-amber-500">label</span></div>
+                    <div className="text-sm font-bold text-[var(--color-text-main)]">Tagging</div>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-2">Add tags for quick filtering: campaign, product, team, event</p>
+                </div>
+                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center mb-3"><span className="material-symbols-outlined text-[20px] text-emerald-500">delete_sweep</span></div>
+                    <div className="text-sm font-bold text-[var(--color-text-main)]">Cleanup</div>
+                    <p className="text-xs text-[var(--color-text-muted)] mt-2">Regularly archive unused assets to keep library browsable</p>
+                </div>
+            </div>
+        </section>
+    </div>
+);

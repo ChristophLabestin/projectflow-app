@@ -1,5 +1,11 @@
 import { Activity } from '../types';
 import { toMillis } from './time';
+import { format } from 'date-fns';
+import { Locale } from 'date-fns';
+import { enUS } from 'date-fns/locale';
+
+export const dateFormat = 'MMM d, yyyy';
+export const dateLocale = enUS;
 
 export const activityIcon = (type?: Activity['type'], actionText?: string) => {
     const action = (actionText || '').toLowerCase();
@@ -20,7 +26,7 @@ export const activityIcon = (type?: Activity['type'], actionText?: string) => {
     return { icon: 'more_horiz', color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-700/50' };
 };
 
-export const groupActivitiesByDate = (activities: Activity[]) => {
+export const groupActivitiesByDate = (activities: Activity[], dateFormat?: string, dateLocale?: Locale) => {
     const groups: { [key: string]: Activity[] } = {};
 
     activities.forEach(activity => {
@@ -36,7 +42,12 @@ export const groupActivitiesByDate = (activities: Activity[]) => {
         } else if (date.toDateString() === yesterday.toDateString()) {
             dateKey = 'Yesterday';
         } else {
-            dateKey = date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+            // Use provided format/locale or fallback
+            if (dateFormat && dateLocale) {
+                dateKey = format(date, 'MMMM d, yyyy', { locale: dateLocale });
+            } else {
+                dateKey = format(date, 'MMMM d, yyyy', { locale: enUS });
+            }
         }
 
         if (!groups[dateKey]) {

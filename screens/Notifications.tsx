@@ -13,6 +13,8 @@ import { respondToJoinRequest } from '../services/dataService';
 import { Button } from '../components/ui/Button';
 import { Notification } from '../types';
 import { useToast } from '../context/UIContext';
+import { useLanguage } from '../context/LanguageContext';
+import { format } from 'date-fns';
 
 export const Notifications = () => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -20,6 +22,7 @@ export const Notifications = () => {
     const [showClearConfirm, setShowClearConfirm] = useState(false);
     const navigate = useNavigate();
     const { showToast } = useToast();
+    const { dateFormat, dateLocale } = useLanguage();
 
     const user = auth.currentUser;
     const unreadCount = notifications.filter(n => !n.read).length;
@@ -79,7 +82,7 @@ export const Notifications = () => {
         if (minutes < 60) return `${minutes}m ago`;
         if (hours < 24) return `${hours}h ago`;
         if (days < 7) return `${days}d ago`;
-        return date.toLocaleDateString();
+        return format(date, dateFormat, { locale: dateLocale });
     };
 
     const getNotificationIcon = (type: string) => {
@@ -235,6 +238,7 @@ export const Notifications = () => {
                                 role="button"
                                 tabIndex={0}
                                 onClick={() => handleNotificationClick(notification)}
+                                onMouseEnter={() => !notification.read && markNotificationAsRead(notification.id)}
                                 className={`w-full text-left px-6 py-4 hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer group ${!notification.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''
                                     }`}
                             >

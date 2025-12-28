@@ -40,7 +40,6 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                 if (!m.includes(id)) m.push(id);
             });
 
-            console.log('[MultiAssigneeSelector] Members:', m);
             if (mounted) setMembers(m);
 
             // 2. Get the project to determine its tenant
@@ -48,7 +47,6 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
             const project = await getProjectById(projectId);
             if (project?.modules) setProjectModules(project.modules);
             const projectTenantId = project?.tenantId || getActiveTenantId() || auth.currentUser?.uid;
-            console.log('[MultiAssigneeSelector] Project tenantId:', projectTenantId);
 
             // 3. Fetch all member profiles
             const memberProfiles: Record<string, any> = {};
@@ -72,7 +70,6 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                     if (projectTenantId) {
                         const profileFromProjectTenant = await getUserProfile(uid, projectTenantId);
                         if (profileFromProjectTenant) {
-                            console.log(`[MultiAssigneeSelector] Found ${uid} in project tenant`);
                             memberProfiles[uid] = {
                                 displayName: profileFromProjectTenant.displayName || 'User',
                                 photoURL: profileFromProjectTenant.photoURL,
@@ -85,7 +82,6 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                     // Second try: User's personal tenant (uid = tenantId)
                     const profileFromPersonalTenant = await getUserProfile(uid, uid);
                     if (profileFromPersonalTenant) {
-                        console.log(`[MultiAssigneeSelector] Found ${uid} in personal tenant`);
                         memberProfiles[uid] = {
                             displayName: profileFromPersonalTenant.displayName || 'User',
                             photoURL: profileFromPersonalTenant.photoURL,
@@ -94,14 +90,13 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                         return;
                     }
 
-                    console.log(`[MultiAssigneeSelector] No profile found for ${uid}`);
+                    console.warn(`[MultiAssigneeSelector] No profile found for ${uid}`);
                 } catch (err) {
                     console.warn(`Failed to load profile for ${uid}`, err);
                 }
             }));
 
             // Update user map with fetched profiles
-            console.log('[MultiAssigneeSelector] Final memberProfiles:', memberProfiles);
             if (mounted) {
                 setUserMap({ ...memberProfiles });
                 setLoading(false);
@@ -233,7 +228,7 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
 
                 {/* Dropdown */}
                 {isOpen && (
-                    <div className="absolute z-50 top-full mt-2 left-0 w-full bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                    <div className="absolute z-50 top-full mt-2 left-1/2 -translate-x-1/2 min-w-full w-72 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
                         <div className="p-2 border-b border-[var(--color-surface-border)]">
                             <div className="px-2 py-1.5 bg-[var(--color-surface-bg)] rounded-lg">
                                 <Input
@@ -289,7 +284,7 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                                 })
                             )}
 
-                            {onGroupChange && filteredGroups.length > 0 && projectModules.includes('groups') && (
+                            {onGroupChange && filteredGroups.length > 0 && (
                                 <>
                                     <div className="px-2 py-1 text-xs font-bold text-[var(--color-text-muted)] uppercase mt-2">Groups</div>
                                     {filteredGroups.map(group => {

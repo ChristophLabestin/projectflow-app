@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { Idea, MindmapGrouping, Project, Task, ProjectBlueprint, ProjectRisk, SocialCampaign } from "../types";
+import { Idea, MindmapGrouping, Project, Task, ProjectBlueprint, ProjectRisk, SocialCampaign, Milestone, Issue, Activity, Member } from "../types";
 import { auth } from "./firebase";
 import { getAIUsage, incrementAIUsage, incrementIdeaAIUsage, incrementCampaignAIUsage } from "./dataService";
 
@@ -92,7 +92,7 @@ export const generateBrainstormIdeas = async (prompt: string): Promise<Idea[]> =
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
             model: "gemini-3-pro-preview",
-            contents: `Generate 4-6 specific, actionable project ideas based on this goal: "${prompt}". 
+            contents: `Generate 4-6 specific, actionable project flows based on this goal: "${prompt}". 
             Keep descriptions concise (under 20 words).`,
             config: {
                 responseMimeType: "application/json",
@@ -103,7 +103,7 @@ export const generateBrainstormIdeas = async (prompt: string): Promise<Idea[]> =
 
         const rawIdeas = JSON.parse(response.text || "[]");
         if (!Array.isArray(rawIdeas) || rawIdeas.length === 0) {
-            throw new Error("Gemini returned no ideas");
+            throw new Error("Gemini returned no flows");
         }
 
         // Transform to Idea type with mock counts
@@ -142,25 +142,79 @@ export const getGeminiInsight = async (): Promise<string> => {
     return "Gemini is analyzing your latest project activity. Generate a report to get tailored guidance.";
 };
 
-export const generateProjectReport = async (project: Project, tasks: Task[]): Promise<string> => {
+export const generateProjectReport = async (
+    project: Project,
+    tasks: Task[],
+    milestones: Milestone[],
+    issues: Issue[],
+    ideas: Idea[],
+    activity: Activity[],
+    members: any[]
+): Promise<string> => {
     try {
         const ai = getAiClient();
         const openTasks = tasks.filter(t => !t.isCompleted);
-        const completed = tasks.filter(t => t.isCompleted);
+        const completedTasks = tasks.filter(t => t.isCompleted);
+        const highPriorityTasks = openTasks.filter(t => t.priority === 'High' || t.priority === 'Urgent');
+
+        const pendingMilestones = milestones.filter(m => m.status !== 'Achieved');
+        const nextMilestone = pendingMilestones.sort((a, b) => new Date(a.dueDate || '9999').getTime() - new Date(b.dueDate || '9999').getTime())[0];
+
+        const openIssues = issues.filter(i => i.status !== 'Closed' && i.status !== 'Resolved');
+        const highPriorityIssues = openIssues.filter(i => i.priority === 'High' || i.priority === 'Urgent');
+
+        const recentActivity = activity.slice(0, 5).map(a => `${a.user} ${a.action} ${a.target}`).join('; ');
+
         const prompt = `
-        You are a project analyst. Create a concise status report (bullet points) for the project "${project.title}".
-        Description: ${project.description || "No description provided"}.
-        Status: ${project.status}. Priority: ${project.priority || "Medium"}.
-        Due date: ${project.dueDate || "Not set"}; Start date: ${project.startDate || "Not set"}.
-        Open tasks (${openTasks.length}): ${openTasks.map(t => t.title).join("; ") || "None"}.
-        Completed tasks (${completed.length}): ${completed.slice(0, 5).map(t => t.title).join("; ")}.
-        Assess whether the due date seems realistic given open tasks; explicitly say if it is at risk or on track and why.
-        Keep it under 180 words. Provide a short risk/next steps section.
+        You are an expert Project Manager AI. Create a comprehensive, professional status report for the project "${project.title}".
+        
+        **Project Context:**
+        - Description: ${project.description || "No description provided"}
+        - Status: ${project.status}
+        - Priority: ${project.priority || "Medium"}
+        - Phase/State: ${project.projectState || "Not specified"}
+        - Timeline: Start ${project.startDate || "N/A"}, Due ${project.dueDate || "N/A"}
+        - Team Size: ${members.length} members
+
+        **Key Metrics:**
+        - Tasks: ${openTasks.length} open (${highPriorityTasks.length} high priority), ${completedTasks.length} completed.
+        - Milestones: ${milestones.filter(m => m.status === 'Achieved').length}/${milestones.length} achieved. Next up: ${nextMilestone ? `${nextMilestone.title} (Due: ${nextMilestone.dueDate})` : "None"}.
+        - Issues/Bugs: ${openIssues.length} open (${highPriorityIssues.length} critical).
+        - Idea Pipeline: ${ideas.length} flows captured.
+
+        **Recent Activity:**
+        ${recentActivity}
+
+        **Instructions:**
+        Generate a structured Markdown report with the following sections:
+        
+        # 📊 Project Status Report: ${project.title}
+        
+        ## 🚨 Executive Summary
+        A brief 2-3 sentence overview of the project's health. Is it on track, at risk, or blocked? Mention the most critical blocker if any.
+
+        ## 📅 Timeline & Milestones
+        Assessment of the timeline. Are we hitting the next milestone? Any delays expected?
+
+        ## 🏗 Work in Progress
+        Highlight key high-priority tasks and recent progress. Do NOT list every task, just the strategic focus.
+
+        ## 🐛 Issues & Risks
+        Summary of open issues. If there are high-priority issues, flag them.
+
+        ## 💡 Recommendations
+        2-3 actionable next steps for the team to maintain momentum or fix problems.
+
+        Keep the tone professional yet encouraging. Use emojis sparingly for section headers only.
         `;
+
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
             model: "gemini-3-pro-preview",
             contents: prompt,
-            config: { temperature: 0.4 }
+            config: {
+                temperature: 0.4,
+                responseMimeType: "text/plain"
+            }
         }));
         return response.text || "Report unavailable.";
     } catch (error) {
@@ -187,18 +241,18 @@ export const generateProjectIdeasAI = async (project: Project, tasks: Task[], ty
         };
         let specificInstructions = "Balance quick wins and impactful improvements.";
         if (type === 'Product') {
-            specificInstructions = "Focus on standout product features, monetization opportunities, and market differentiators. Ideas should be commercially viable features or improvements to the product itself.";
+            specificInstructions = "Focus on standout product features, monetization opportunities, and market differentiators. Flows should be commercially viable features or improvements to the product itself.";
         } else if (type === 'Marketing') {
-            specificInstructions = "Focus strictly on marketing campaigns, promotional initiatives, and brand awareness strategies (e.g., Email blasts, Ad campaigns, Partnerships). Do NOT suggest product features. Ideas must be actionable marketing activities.";
+            specificInstructions = "Focus strictly on marketing campaigns, promotional initiatives, and brand awareness strategies (e.g., Email blasts, Ad campaigns, Partnerships). Do NOT suggest product features. Flows must be actionable marketing activities.";
         } else if (type === 'Social') {
-            specificInstructions = "Focus strictly on social media content (e.g., specific post ideas, reels/tiktok concepts, thread topics, viral hooks). Do NOT suggest product features. Ideas must be concrete content pieces or social campaigns.";
+            specificInstructions = "Focus strictly on social media content (e.g., specific post flows, reels/tiktok concepts, thread topics, viral hooks). Do NOT suggest product features. Flows must be concrete content pieces or social campaigns.";
         }
 
         const prompt = `
-        Suggest 4-6 ideas to advance the project "${project.title}".
+        Suggest 4-6 flows to advance the project "${project.title}".
         
-        Mandatory Type: ${type} (All ideas MUST be of this type).
-        ${categoryContext ? `Focus AREA: "${categoryContext}" (Ensure ideas relate to this category).` : ''}
+        Mandatory Type: ${type} (All flows MUST be of this type).
+        ${categoryContext ? `Focus AREA: "${categoryContext}" (Ensure flows relate to this category).` : ''}
         
         Project Description: ${project.description || "No description."}
         Current status: ${project.status}; priority: ${project.priority || "Medium"}; due: ${project.dueDate || "Not set"}.
@@ -218,7 +272,7 @@ export const generateProjectIdeasAI = async (project: Project, tasks: Task[], ty
         }));
         const rawIdeas = JSON.parse(response.text || "[]");
         if (!Array.isArray(rawIdeas) || rawIdeas.length === 0) {
-            throw new Error("Gemini returned no ideas");
+            throw new Error("Gemini returned no flows");
         }
         return rawIdeas.map((idea: any, index: number) => ({
             id: `gen - ${Date.now()} -${index} `,
@@ -231,7 +285,7 @@ export const generateProjectIdeasAI = async (project: Project, tasks: Task[], ty
             stage: 'Ideation'
         }));
     } catch (error) {
-        console.error("Gemini Project Ideas Error:", error);
+        console.error("Gemini Project Flows Error:", error);
         throw error;
     }
 };
@@ -262,13 +316,13 @@ export const suggestMindmapGrouping = async (project: Project, ideas: Idea[]): P
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
             model: "gemini-3-pro-preview",
-            contents: `You are an AI mind - mapping assistant.Group the provided project ideas into 3 - 6 concise branches with short names(1 - 2 words).
+            contents: `You are an AI mind - mapping assistant.Group the provided project flows into 3 - 6 concise branches with short names(1 - 2 words).
             Project: "${project.title}".
-                Ideas(id: title — description):
+                Flows (id: title — description):
 ${ideaList}
 Return JSON only.Each object must include:
         - group: the group name you propose(keep it short, eg. "UI", "Architecture", "Growth Ops")
-            - ideaIds: an array of idea ids from above that belong in that group
+            - ideaIds: an array of flow ids from above that belong in that group
                 - reason: optional one - line rationale`,
             config: {
                 responseMimeType: "application/json",
@@ -330,7 +384,7 @@ export const generateProjectBlueprint = async (prompt: string): Promise<ProjectB
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
             model: "gemini-3-pro-preview",
-            contents: `Create a comprehensive project blueprint for this idea: "${prompt}". 
+            contents: `Create a comprehensive project blueprint for this flow: "${prompt}". 
             Flesh out the name, a compelling description, identify the target audience,
             plan 3 - 5 major milestones, and list 5 - 8 initial setup and development tasks.`,
             config: {
@@ -407,7 +461,7 @@ export const generateSWOTAnalysisAI = async (idea: any): Promise<{ strengths: st
         const keywords = idea.keywords?.join(', ') || "None";
 
         const prompt = `
-        Perform a SWOT analysis for the following project idea. 
+        Perform a SWOT analysis for the following project flow. 
         Your goal is to provide ** ADDITIONAL ** unique points that are not already listed.Do NOT duplicate existing points.
 
             Context:
@@ -452,18 +506,18 @@ export const refineIdeaAI = async (idea: any, history: { role: string, content: 
         const ai = getAiClient();
         // Construct a prompt context based on the existing idea and chat history
         const context = `
-        You are an intelligent product strategist helping to refine a project idea.
-        The Idea: "${idea.title}"
+        You are an intelligent product strategist helping to refine a project flow.
+        The Flow: "${idea.title}"
         Description: "${idea.description}"
         Current Stage: ${idea.stage}
         
         Your goal is to ask clarifying questions, suggest improvements, or point out potential challenges.
-        Be concise, helpful, and conversational.Do not just list generic advice; be specific to this idea.
+        Be concise, helpful, and conversational.Do not just list generic advice; be specific to this flow.
         `;
 
         const contents = [
             { role: "user", parts: [{ text: context }] },
-            { role: "model", parts: [{ text: "Understood. I am ready to help refine this idea. What specific aspect would you like to discuss, or should I start with some initial thoughts?" }] },
+            { role: "model", parts: [{ text: "Understood. I am ready to help refine this flow. What specific aspect would you like to discuss, or should I start with some initial thoughts?" }] },
             ...history.map(msg => ({
                 role: msg.role === 'ai' ? 'model' : 'user',
                 parts: [{ text: msg.content }]
@@ -478,7 +532,7 @@ export const refineIdeaAI = async (idea: any, history: { role: string, content: 
 
         return response.text || "";
     } catch (error) {
-        console.error("Gemini Idea Refinement Error:", error);
+        console.error("Gemini Flow Refinement Error:", error);
         throw error;
     }
 };
@@ -500,7 +554,7 @@ SWOT Analysis:
 
         const prompt = `
 You are an expert Product Manager writing a Product Requirements Document(PRD).
-Create a detailed, professional concept document for the following idea:
+Create a detailed, professional concept document for the following flow:
 
             Title: ${idea.title}
         Description: ${idea.description}
@@ -512,7 +566,7 @@ Output the response in ** clean, semantic HTML ** format that is ready to be pas
 Do NOT use Markdown.Do NOT use \`\`\`html code blocks. Just return the raw HTML string.
 
 Use the following structure:
-<h1>${idea.title} Concept</h1>
+<h1>${idea.title} Flow Concept</h1>
 
 <h2>Executive Summary</h2>
 <p>(A concise paragraph summarizing the vision and value proposition)</p>
@@ -599,10 +653,10 @@ export const generateKeywordsAI = async (idea: Idea, existingKeywords: string[])
         };
 
         const prompt = `
-        Generate 6-8 relevant, specific keywords or short phrases (1-3 words max) for the following project idea.
-        The keywords should help visualize different aspects of the idea (e.g., technologies, user benefits, core features, challenges).
+        Generate 6-8 relevant, specific keywords or short phrases (1-3 words max) for the following project flow.
+        The keywords should help visualize different aspects of the flow (e.g., technologies, user benefits, core features, challenges).
         
-        Idea Title: "${idea.title}"
+        Flow Title: "${idea.title}"
         Existing Keywords: ${existingKeywords.join(', ') || "None"}
         
         Do NOT duplicate existing keywords. Return a flat JSON array of strings.
@@ -688,7 +742,7 @@ Content Plan: ${parsed.planningPosts?.length || 0} posts scheduled.
         } catch (e) { }
 
         const prompt = `
-        Analyze the following project idea effectively as a Venture Capitalist and Chief Technology Officer.
+        Analyze the following project flow effectively as a Venture Capitalist and Chief Technology Officer.
         
         Title: ${idea.title}
         Description: ${idea.description}
@@ -1008,7 +1062,7 @@ Market: ${parsed.marketSize || 'N/A'} / ${parsed.targetSegment || 'N/A'}
         })() : '';
 
         const prompt = `
-        Create a detailed Product Definition for the following idea.
+        Create a detailed Product Definition for the following flow.
 
     Context:
     Title: ${idea.title}
@@ -1100,7 +1154,7 @@ Scope: ${parsed.scope || 'N/A'}
         })() : '';
 
         const prompt = `
-        Create a practical Development Plan for the following idea.
+        Create a practical Development Plan for the following flow.
 
     Context:
     Title: ${idea.title}
@@ -1166,7 +1220,7 @@ export const generateProductLaunchAI = async (idea: Idea): Promise<{ checklist: 
         const strategyContext = idea.description ? `Vision: ${idea.description} ` : '';
 
         const prompt = `
-        Create a Go - to - Market Launch Plan for the following idea.
+        Create a Go - to - Market Launch Plan for the following flow.
 
     Context:
     Title: ${idea.title}
@@ -1291,7 +1345,7 @@ export const generateCampaignDescriptionAI = async (campaignData: {
 
 Campaign Name: ${campaignData.name}
 Goal: ${campaignData.goal || 'Not specified'}
-Big Idea: ${campaignData.bigIdea || 'Not specified'}
+Core Flow: ${campaignData.bigIdea || 'Not specified'}
 Hook: ${campaignData.hook || 'Not specified'}
 Platforms: ${campaignData.platforms || 'Not specified'}
 Target Audience: ${campaignData.targetAudience || 'Not specified'}
@@ -1369,7 +1423,7 @@ export const generateCampaignContentPlan = async (
         const focusContext = overrides?.focus ? `Main Focus / Theme for this week: "${overrides.focus}".` : '';
 
         const prompt = `
-        You are a social media manager.Create a 7 - day content plan for the following campaign.
+        You are a social media manager. Create a 7 - day content plan for the following campaign.
 
     Campaign: "${campaign.name}"
 Goal: ${campaign.goal || "Engagement"}
@@ -1387,7 +1441,7 @@ Requirements:
 1. Generate 7 - 10 high - quality content * concepts * spread over 7 days(offsets 0 - 6).
         2. Each concept should be suitable for ONE OR MORE of the target platforms(list them in "platforms").
         3. Include a mix of formats(Posts, Reels / Shorts, Stories).
-        4. "content" must be the actual caption / text ready to post, not just an idea.
+        4. "content" must be the actual caption / text ready to post, not just a flow.
         5. "imagePrompt" should describe a visual to accompany the text(NO text in image, just visual description).
         
         Return a JSON array of post drafts.
@@ -1491,7 +1545,7 @@ export const generateSocialCreativeAI = async (idea: Idea, strategy: any): Promi
         };
 
         const prompt = `
-        You are a Creative Director.Generate content ideas for:
+        You are a Creative Director. Generate content flow concepts for:
     "${idea.title}"
 Strategy: ${JSON.stringify(strategy)}
 
@@ -1558,7 +1612,7 @@ export const generateAudienceAlternativesAI = async (idea: Idea): Promise<string
         };
 
         const prompt = `
-        Analyze the following campaign idea and perform a brief research to identify 3 high-potential, non-obvious target audience segments.
+        Analyze the following campaign flow and perform a brief research to identify 3 high-potential, non-obvious target audience segments.
         Title: ${idea.title}
         Description: ${idea.description}
         
@@ -1721,7 +1775,7 @@ export const generateSocialPlaybookAI = async (idea: Idea, platforms: SocialPlat
         };
 
         const prompt = `
-        Create a high-impact "Winning Play" for each social platform based on this idea.
+        Create a high-impact "Winning Play" for each social platform based on this flow.
         The scope of this project is a: ${scope === 'post' ? 'Single Post (spread across platforms)' : 'Full Multi-Post Campaign'}.
         
         Title: ${idea.title}
@@ -1824,13 +1878,13 @@ export const refineCampaignConceptAI = async (
     try {
         const ai = getAiClient();
         const prompt = `
-        You are a Senior Creative Strategist. Refine the following Campaign Big Idea based on user feedback.
+        You are a Senior Creative Strategist. Refine the following Campaign Core Flow based on user feedback.
         
-        Current Big Idea: "${currentIdea}"
+        Current Core Flow: "${currentIdea}"
         User Feedback/Instruction: "${feedback}"
         Campaign Context: ${JSON.stringify(context)}
         
-        Provide a refined, more impactful version of the Big Idea. Keep it to max 3 sentences.
+        Provide a refined, more impactful version of the Core Flow. Keep it to max 3 sentences.
         Return ONLY the refined text.
         `;
 
@@ -1860,9 +1914,9 @@ export const generateCampaignHooksAI = async (
 
         const prompt = `
         You are a Copywriter specialized in viral social hooks.
-        Generate 5 high-converting, punchy campaign hooks/taglines based on this Big Idea and Themes.
+        Generate 5 high-converting, punchy campaign hooks/taglines based on this Core Flow and Themes.
         
-        Big Idea: "${bigIdea}"
+        Core Flow: "${bigIdea}"
         Themes: ${themes.join(', ')}
         
         Return exactly 5 unique options.
@@ -1908,7 +1962,7 @@ export const optimizeCampaignTimelineAI = async (
         const prompt = `
         You are a Campaign Growth Strategist. Review and optimize these campaign phases to maximize ROI for the goal "${goal}".
         
-        Campaign Idea: "${bigIdea}"
+        Campaign Flow: "${bigIdea}"
         Current Phases: ${JSON.stringify(phases)}
         
         Improve the phase names, suggest better durations, and refine the focus for each to create a high-performance rollout.
@@ -1962,9 +2016,9 @@ export const generateSocialCampaignConceptAI = async (idea: Idea): Promise<{
         Description: ${idea.description}
 
         Generate:
-        1. Big Idea: A compelling, creative core concept for a social media campaign (max 2 sentences).
+        1. Core Flow (bigIdea): A compelling, creative core concept for a social media campaign (max 2 sentences).
         2. Hook: A catchy, one-sentence elevator pitch or tagline.
-        3. Themes: 3-4 content pillars or themes that support the big idea (short phrases).
+        3. Themes: 3-4 content pillars or themes that support the core flow (short phrases).
         4. Mood: A single word describing the vibe (e.g., "Energetic", "Authentic", "Luxurious").
         5. Visual Direction: A concise description of the aesthetic and production style (max 2 sentences).
 
@@ -2065,7 +2119,7 @@ export const generateSocialCampaignStrategyAI = async (
         // Build rich context from concept data
         const conceptContext = conceptData ? `
         === CAMPAIGN CREATIVE CONCEPT ===
-        Big Idea: "${conceptData.bigIdea || 'Not defined'}"
+        Core Flow: "${conceptData.bigIdea || 'Not defined'}"
         Hook/Tagline: "${conceptData.hook || 'Not defined'}"
         Content Themes: ${Array.isArray(conceptData.themes) ? conceptData.themes.join(', ') : 'Not defined'}
         Mood/Vibe: "${conceptData.mood || 'Not defined'}"

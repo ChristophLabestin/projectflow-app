@@ -3,385 +3,689 @@ import type { HelpCenterPageProps, HelpCenterSectionIndex } from '../helpCenterT
 
 export const projectsSections: HelpCenterSectionIndex[] = [
     {
-        id: 'project-setup',
-        title: 'Set up a project',
-        summary: 'Create a project with clear outcomes, metadata, and ownership.',
-        content: 'Set a title, description, status, priority, and key dates so the team shares context.',
-        keywords: ['setup', 'metadata', 'status']
+        id: 'project-fields',
+        title: 'Project fields reference',
+        summary: 'Complete documentation of every project field and setting.',
+        content: 'All fields available when creating or editing projects, with descriptions and usage guidelines.',
+        keywords: ['fields', 'settings', 'metadata', 'configuration']
     },
     {
-        id: 'overview-hub',
-        title: 'Project overview hub',
-        summary: 'The live dashboard for health, workload, activity, and deadlines.',
-        content: 'Use the overview as the source of truth for project status and next actions.',
-        keywords: ['overview', 'dashboard', 'snapshot']
+        id: 'status-priority',
+        title: 'Status and priority',
+        summary: 'Understanding project status and priority levels.',
+        content: 'How to use status and priority to communicate project state and importance.',
+        keywords: ['status', 'priority', 'urgency', 'progress']
     },
     {
-        id: 'health-workload',
-        title: 'Health and workload',
-        summary: 'Signals that show risk, momentum, and capacity.',
-        content: 'Health blends tasks, milestones, issues, and activity to surface risks early.',
-        keywords: ['health', 'workload', 'risk']
+        id: 'health-signals',
+        title: 'Health and signals',
+        summary: 'How project health is calculated and what signals mean.',
+        content: 'The formula behind health scores and how to interpret warning signals.',
+        keywords: ['health', 'score', 'risk', 'signals', 'warning']
     },
     {
-        id: 'modules-navigation',
-        title: 'Modules and navigation',
-        summary: 'Enable only what the project needs and keep navigation focused.',
-        content: 'Modules define the workspaces inside a project, and counts show activity at a glance.',
-        keywords: ['modules', 'navigation', 'flows']
+        id: 'modules-catalog',
+        title: 'Modules catalog',
+        summary: 'Complete list of available project modules.',
+        content: 'Every module you can enable with descriptions and use cases.',
+        keywords: ['modules', 'tasks', 'flows', 'issues', 'milestones']
     },
     {
-        id: 'milestones-outcomes',
-        title: 'Milestones and outcomes',
-        summary: 'Keep delivery visible with clear checkpoints.',
-        content: 'Milestones anchor the timeline and align tasks with outcomes.',
-        keywords: ['milestones', 'outcomes', 'planning']
+        id: 'visibility-access',
+        title: 'Visibility and access',
+        summary: 'Control who can see and edit your project.',
+        content: 'Group visibility, team roles, and sharing options.',
+        keywords: ['visibility', 'access', 'permissions', 'sharing', 'groups']
     },
     {
-        id: 'activity-details',
-        title: 'Activity and details',
-        summary: 'Track updates and keep project metadata current.',
-        content: 'Activity shows what changed and who did it. Details keep timelines and priorities accurate.',
-        keywords: ['activity', 'details', 'timeline']
+        id: 'project-overview',
+        title: 'Project overview page',
+        summary: 'Your command center for project status.',
+        content: 'How to use the overview dashboard effectively.',
+        keywords: ['overview', 'dashboard', 'summary', 'hub']
     },
     {
-        id: 'weekly-review',
-        title: 'Weekly review routine',
-        summary: 'A repeatable cadence to keep projects healthy.',
-        content: 'Review health, update milestones, and confirm priorities every week.',
-        keywords: ['review', 'cadence', 'planning']
+        id: 'activity-tracking',
+        title: 'Activity and history',
+        summary: 'Track changes and understand project history.',
+        content: 'Activity logs, change tracking, and audit trails.',
+        keywords: ['activity', 'history', 'changes', 'audit', 'log']
     }
 ];
 
-const SectionHeader = ({
-    eyebrow,
-    title,
-    icon
-}: {
-    eyebrow: string;
-    title: string;
-    icon: string;
-}) => (
-    <div className="flex items-start justify-between gap-4">
-        <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">
-                {eyebrow}
-            </div>
-            <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">{title}</h3>
-        </div>
-        <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">
-            {icon}
-        </span>
-    </div>
-);
+/* ─────────────────────────────────────────────────────────────
+   LAYOUT COMPONENTS - Dashboard Style
+───────────────────────────────────────────────────────────── */
 
-const StepCard = ({
+const MetricCard = ({
     label,
-    title,
-    children
+    value,
+    icon,
+    color
 }: {
     label: string;
-    title: string;
-    children: React.ReactNode;
+    value: string;
+    icon: string;
+    color: 'blue' | 'green' | 'amber' | 'rose' | 'purple';
+}) => {
+    const colors = {
+        blue: 'bg-sky-500/10 text-sky-500 border-sky-200 dark:border-sky-800/40',
+        green: 'bg-emerald-500/10 text-emerald-500 border-emerald-200 dark:border-emerald-800/40',
+        amber: 'bg-amber-500/10 text-amber-500 border-amber-200 dark:border-amber-800/40',
+        rose: 'bg-rose-500/10 text-rose-500 border-rose-200 dark:border-rose-800/40',
+        purple: 'bg-purple-500/10 text-purple-500 border-purple-200 dark:border-purple-800/40'
+    };
+    return (
+        <div className={`rounded-2xl border p-4 ${colors[color]}`}>
+            <div className="flex items-center justify-between">
+                <span className="material-symbols-outlined text-[24px]">{icon}</span>
+                <span className="text-2xl font-bold">{value}</span>
+            </div>
+            <div className="text-xs font-medium mt-2 opacity-80">{label}</div>
+        </div>
+    );
+};
+
+const FieldRow = ({
+    field,
+    type,
+    required,
+    description
+}: {
+    field: string;
+    type: string;
+    required?: boolean;
+    description: string;
 }) => (
-    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{label}</div>
-        <div className="text-sm font-semibold text-[var(--color-text-main)] mt-2">{title}</div>
-        <div className="text-sm text-[var(--color-text-muted)] mt-2 leading-relaxed">{children}</div>
+    <div className="flex items-start gap-4 py-3 border-b border-[var(--color-surface-border)] last:border-0">
+        <div className="flex-shrink-0 w-[140px]">
+            <span className="text-sm font-semibold text-[var(--color-text-main)]">{field}</span>
+            {required && <span className="ml-1 text-rose-500 text-xs">*</span>}
+        </div>
+        <div className="flex-shrink-0 w-[80px]">
+            <span className="px-2 py-0.5 rounded-full bg-[var(--color-surface-hover)] text-[10px] font-medium text-[var(--color-text-muted)]">
+                {type}
+            </span>
+        </div>
+        <div className="flex-1 text-sm text-[var(--color-text-muted)]">{description}</div>
     </div>
 );
 
-const Callout = ({ children }: { children: React.ReactNode }) => (
-    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-[13px] text-amber-900 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200">
-        <div className="flex items-start gap-2">
-            <span className="material-symbols-outlined text-[18px]">lightbulb</span>
-            <div>{children}</div>
+const StatusBadge = ({
+    status,
+    color,
+    description
+}: {
+    status: string;
+    color: string;
+    description: string;
+}) => (
+    <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4">
+        <div className="flex items-center gap-2">
+            <span className={`w-3 h-3 rounded-full ${color}`} />
+            <span className="text-sm font-bold text-[var(--color-text-main)]">{status}</span>
+        </div>
+        <p className="text-sm text-[var(--color-text-muted)] mt-2 leading-relaxed">{description}</p>
+    </div>
+);
+
+const HealthGauge = ({
+    level,
+    color,
+    label,
+    triggers
+}: {
+    level: number;
+    color: string;
+    label: string;
+    triggers: string[];
+}) => (
+    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+        <div className="flex items-center justify-between mb-4">
+            <span className="text-sm font-bold text-[var(--color-text-main)]">{label}</span>
+            <span className={`px-2 py-1 rounded-full text-xs font-bold ${color}`}>{level}%</span>
+        </div>
+        <div className="w-full h-2 rounded-full bg-[var(--color-surface-hover)] overflow-hidden">
+            <div className={`h-full rounded-full ${color.replace('text-', 'bg-').replace('bg-', 'bg-')}`} style={{ width: `${level}%` }} />
+        </div>
+        <div className="mt-4 text-xs text-[var(--color-text-muted)]">
+            <div className="font-semibold mb-2">Triggered by:</div>
+            <ul className="space-y-1">
+                {triggers.map((t, i) => (
+                    <li key={i} className="flex items-center gap-2">
+                        <span className="w-1 h-1 rounded-full bg-[var(--color-text-subtle)]" />
+                        {t}
+                    </li>
+                ))}
+            </ul>
         </div>
     </div>
 );
 
-export const ProjectsPage = ({ sections, activeSectionId, onSectionSelect }: HelpCenterPageProps) => {
+const ModuleCard = ({
+    icon,
+    name,
+    description,
+    features
+}: {
+    icon: string;
+    name: string;
+    description: string;
+    features: string[];
+}) => (
+    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5 space-y-3">
+        <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[var(--color-primary)]/10 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px] text-[var(--color-primary)]">{icon}</span>
+            </div>
+            <div>
+                <div className="text-sm font-bold text-[var(--color-text-main)]">{name}</div>
+            </div>
+        </div>
+        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">{description}</p>
+        <div className="flex flex-wrap gap-2">
+            {features.map((f, i) => (
+                <span key={i} className="px-2 py-1 rounded-lg bg-[var(--color-surface-hover)] text-[10px] font-medium text-[var(--color-text-muted)]">
+                    {f}
+                </span>
+            ))}
+        </div>
+    </div>
+);
+
+const Callout = ({ type, children }: { type: 'tip' | 'warning' | 'info'; children: React.ReactNode }) => {
+    const styles = {
+        tip: 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200',
+        warning: 'border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-800/40 dark:bg-rose-900/20 dark:text-rose-200',
+        info: 'border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-800/40 dark:bg-sky-900/20 dark:text-sky-200'
+    };
+    const icons = { tip: 'lightbulb', warning: 'warning', info: 'info' };
+    return (
+        <div className={`rounded-2xl border p-4 text-[13px] ${styles[type]}`}>
+            <div className="flex items-start gap-2">
+                <span className="material-symbols-outlined text-[18px]">{icons[type]}</span>
+                <div>{children}</div>
+            </div>
+        </div>
+    );
+};
+
+const OverviewCard = ({
+    icon,
+    title,
+    items
+}: {
+    icon: string;
+    title: string;
+    items: { label: string; description: string }[];
+}) => (
+    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+        <div className="flex items-center gap-2 mb-4">
+            <span className="material-symbols-outlined text-[18px] text-[var(--color-primary)]">{icon}</span>
+            <span className="text-sm font-bold text-[var(--color-text-main)]">{title}</span>
+        </div>
+        <div className="space-y-3">
+            {items.map((item, i) => (
+                <div key={i}>
+                    <div className="text-xs font-semibold text-[var(--color-text-main)]">{item.label}</div>
+                    <div className="text-xs text-[var(--color-text-muted)] mt-1">{item.description}</div>
+                </div>
+            ))}
+        </div>
+    </div>
+);
+
+/* ─────────────────────────────────────────────────────────────
+   MAIN PAGE COMPONENT
+───────────────────────────────────────────────────────────── */
+
+export const ProjectsPage = (_props: HelpCenterPageProps) => {
     return (
         <div className="px-6 py-6 space-y-10">
-            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_260px] gap-6">
-                <div className="rounded-[28px] border border-[var(--color-surface-border)] bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] p-6">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">
-                        Projects
-                    </div>
-                    <h2 className="text-3xl font-bold text-[var(--color-text-main)] mt-3">
-                        Build clarity around outcomes
-                    </h2>
-                    <p className="text-sm text-[var(--color-text-muted)] mt-3 leading-relaxed">
-                        Projects are the center of execution. Each one is a focused workspace with its own modules,
-                        milestones, and activity history. When you open a project, the navigation shifts so everything
-                        you see is already scoped to that initiative.
-                    </p>
-                    <div className="mt-5 flex flex-wrap gap-2">
-                        <span className="px-3 py-1 rounded-full text-[10px] font-semibold bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]">
-                            Overview signals
-                        </span>
-                        <span className="px-3 py-1 rounded-full text-[10px] font-semibold bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]">
-                            Modules
-                        </span>
-                        <span className="px-3 py-1 rounded-full text-[10px] font-semibold bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]">
-                            Milestones
-                        </span>
-                        <span className="px-3 py-1 rounded-full text-[10px] font-semibold bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]">
-                            Weekly review
-                        </span>
-                    </div>
+            {/* Hero Section */}
+            <div className="rounded-[28px] border border-[var(--color-surface-border)] bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] p-6">
+                <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">
+                    Projects
                 </div>
-
-                <aside className="space-y-4">
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4">
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
-                            In this guide
-                        </div>
-                        <div className="mt-3 space-y-2">
-                            {sections.map(section => (
-                                <button
-                                    key={section.id}
-                                    onClick={() => onSectionSelect(section.id)}
-                                    className={`w-full text-left text-sm font-medium transition-colors ${activeSectionId === section.id
-                                        ? 'text-[var(--color-primary)]'
-                                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
-                                        }`}
-                                >
-                                    {section.title}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-4 text-sm text-[var(--color-text-muted)]">
-                        Projects stay healthy when the overview, milestones, and tasks are updated together. Treat the
-                        overview like a weekly check-in, not a dashboard you only open at the end.
-                    </div>
-                </aside>
-            </div>
-
-            <div className="flex flex-wrap gap-2 lg:hidden">
-                {sections.map(section => (
-                    <button
-                        key={section.id}
-                        onClick={() => onSectionSelect(section.id)}
-                        className={`px-3 py-1.5 rounded-full text-[11px] font-semibold border transition-colors ${activeSectionId === section.id
-                            ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-[var(--color-primary)]'
-                            : 'bg-[var(--color-surface-bg)] text-[var(--color-text-muted)] border-[var(--color-surface-border)] hover:text-[var(--color-text-main)]'
-                            }`}
-                    >
-                        {section.title}
-                    </button>
-                ))}
-            </div>
-
-            <section data-section-id="project-setup" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-5">
-                <SectionHeader eyebrow="Foundation" title="Set up a project" icon="settings" />
-                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                    A project should read like a short brief: what you are delivering, why it matters, and when it is
-                    due. Start by writing an outcome-focused title and a short description that frames the scope.
-                    Then set status, priority, and dates so the timeline is obvious to anyone who joins later.
+                <h2 className="text-3xl font-bold text-[var(--color-text-main)] mt-3">
+                    The Center of Execution
+                </h2>
+                <p className="text-sm text-[var(--color-text-muted)] mt-3 leading-relaxed max-w-2xl">
+                    Projects are focused initiatives with their own modules, timelines, teams, and health signals.
+                    This guide covers every field, setting, and feature available to help you organize and track delivery.
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <StepCard label="Step 1" title="Define the outcome">
-                        Write a title that describes the result, not the activity. This makes progress measurable and
-                        keeps the team aligned on why the work exists.
-                    </StepCard>
-                    <StepCard label="Step 2" title="Set timeline and priority">
-                        Add a start date and due date early. Priority tells the team how this project competes with
-                        other work in the workspace.
-                    </StepCard>
-                    <StepCard label="Step 3" title="Confirm ownership">
-                        Make sure the owner and core contributors are clear. Ownership helps decisions move without
-                        waiting for a meeting.
-                    </StepCard>
-                    <StepCard label="Step 4" title="Enable only the modules you need">
-                        Turn on Tasks, Flows, Issues, Milestones, or other modules based on how the project will be
-                        delivered. You can always add more later.
-                    </StepCard>
+
+                {/* Quick Stats Preview */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+                    <MetricCard label="Active Tasks" value="24" icon="checklist" color="blue" />
+                    <MetricCard label="Open Issues" value="3" icon="report_problem" color="amber" />
+                    <MetricCard label="Milestones" value="5" icon="flag" color="green" />
+                    <MetricCard label="Team Size" value="8" icon="group" color="purple" />
                 </div>
-                <Callout>
-                    Pin the project once it is created. Pinned projects keep global actions like task creation and
-                    quick shortcuts aligned with the work you are actually focused on.
+            </div>
+
+            {/* SECTION: Project Fields Reference */}
+            <section data-section-id="project-fields" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Reference</div>
+                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Project Fields Reference</h3>
+                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                            Complete documentation of every field available when creating or editing a project.
+                        </p>
+                    </div>
+                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">list_alt</span>
+                </div>
+
+                {/* Core Fields Table */}
+                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                        Core Fields
+                    </div>
+                    <div className="space-y-0">
+                        <FieldRow field="Title" type="Text" required description="The project name. Should describe the outcome, not the activity. Max 100 characters." />
+                        <FieldRow field="Description" type="Rich Text" description="Detailed context about the project's purpose, scope, and goals. Supports markdown formatting." />
+                        <FieldRow field="Status" type="Select" required description="Current state of the project. Options: Planning, Active, On Hold, Completed, Archived." />
+                        <FieldRow field="Priority" type="Select" description="Importance relative to other projects. Options: None, Low, Medium, High, Critical." />
+                        <FieldRow field="Owner" type="User" description="Primary responsible person who makes decisions and ensures progress." />
+                        <FieldRow field="Start Date" type="Date" description="When work on this project begins. Used for timeline visualization." />
+                        <FieldRow field="Due Date" type="Date" description="Target completion date. Triggers overdue warnings when passed." />
+                        <FieldRow field="Tags" type="Multi-select" description="Labels for categorization and filtering. Can be custom-defined per workspace." />
+                    </div>
+                </div>
+
+                {/* Settings Fields Table */}
+                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                        Settings & Configuration
+                    </div>
+                    <div className="space-y-0">
+                        <FieldRow field="Cover Image" type="Image" description="Visual header for the project. Displayed on project cards and overview page." />
+                        <FieldRow field="Color" type="Color" description="Accent color for visual identification in lists and calendars." />
+                        <FieldRow field="Visibility" type="Select" description="Who can see this project. Options: Workspace, Specific Groups, Team Only." />
+                        <FieldRow field="Enabled Modules" type="Multi-select" description="Which modules are active. Disabled modules are hidden from navigation." />
+                        <FieldRow field="Team Members" type="Users" description="People assigned to work on this project. Controls access and visibility." />
+                        <FieldRow field="GitHub Repo" type="URL" description="Linked repository for development tracking and PR integration." />
+                    </div>
+                </div>
+            </section>
+
+            {/* SECTION: Status and Priority */}
+            <section data-section-id="status-priority" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Signals</div>
+                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Status and Priority</h3>
+                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                            Status tells you where a project is in its lifecycle. Priority tells you how important it is relative to other work.
+                        </p>
+                    </div>
+                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">tune</span>
+                </div>
+
+                {/* Status Options */}
+                <div>
+                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">Project Statuses</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <StatusBadge
+                            status="Planning"
+                            color="bg-slate-400"
+                            description="Project is being scoped and defined. Work hasn't started yet."
+                        />
+                        <StatusBadge
+                            status="Active"
+                            color="bg-emerald-500"
+                            description="Project is in progress with ongoing work and deliverables."
+                        />
+                        <StatusBadge
+                            status="On Hold"
+                            color="bg-amber-500"
+                            description="Work is paused due to blockers, dependencies, or reprioritization."
+                        />
+                        <StatusBadge
+                            status="Completed"
+                            color="bg-sky-500"
+                            description="All objectives achieved. Project delivered successfully."
+                        />
+                        <StatusBadge
+                            status="Archived"
+                            color="bg-slate-300"
+                            description="Project is closed and no longer active. Hidden from default views."
+                        />
+                    </div>
+                </div>
+
+                {/* Priority Options */}
+                <div>
+                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">Priority Levels</div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                        <StatusBadge status="None" color="bg-slate-300" description="No priority set. Default for new projects." />
+                        <StatusBadge status="Low" color="bg-slate-400" description="Can be deferred. Complete when resources allow." />
+                        <StatusBadge status="Medium" color="bg-amber-400" description="Normal priority. Should be completed on schedule." />
+                        <StatusBadge status="High" color="bg-orange-500" description="Important work. Takes precedence over lower priorities." />
+                        <StatusBadge status="Critical" color="bg-rose-500" description="Must complete immediately. Blocks other work." />
+                    </div>
+                </div>
+
+                <Callout type="tip">
+                    Keep priority honest. If everything is critical, nothing is. Reserve high priorities for work that truly demands immediate attention.
                 </Callout>
             </section>
 
-            <section data-section-id="overview-hub" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-5">
-                <SectionHeader eyebrow="Dashboard" title="Project overview hub" icon="grid_view" />
-                <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] gap-5">
-                    <div className="space-y-4 text-sm text-[var(--color-text-muted)] leading-relaxed">
-                        <p>
-                            The overview is your command center. It brings health, workload, activity, and upcoming
-                            deadlines into one place so you can see the project state without digging through tabs.
-                        </p>
-                        <p>
-                            Use it as the first screen you open during planning. If a metric looks off, you already
-                            have the next click: jump to tasks, issues, or milestones from the same view.
+            {/* SECTION: Health and Signals */}
+            <section data-section-id="health-signals" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Analytics</div>
+                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Health and Signals</h3>
+                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                            Project health is a composite score calculated from multiple factors. Understanding these signals helps you identify risks early.
                         </p>
                     </div>
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 space-y-3">
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
-                            Snapshot map
-                        </div>
-                        <div className="space-y-3 text-sm text-[var(--color-text-muted)]">
-                            <div>
-                                <div className="text-xs font-semibold text-[var(--color-text-main)]">Health</div>
-                                <div>Shows risk level based on tasks, milestones, issues, and activity.</div>
-                            </div>
-                            <div>
-                                <div className="text-xs font-semibold text-[var(--color-text-main)]">Workload</div>
-                                <div>Summarizes open and urgent tasks so you can spot overload.</div>
-                            </div>
-                            <div>
-                                <div className="text-xs font-semibold text-[var(--color-text-main)]">Activity</div>
-                                <div>Highlights recent changes, comments, and progress.</div>
-                            </div>
-                            <div>
-                                <div className="text-xs font-semibold text-[var(--color-text-main)]">Upcoming</div>
-                                <div>Surfaces deadlines so they are visible before they hit.</div>
-                            </div>
-                        </div>
-                    </div>
+                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">health_and_safety</span>
                 </div>
-            </section>
 
-            <section data-section-id="health-workload" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-5">
-                <SectionHeader eyebrow="Signals" title="Health and workload" icon="health_and_safety" />
-                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                    Health is a composite signal. It blends open tasks, unresolved issues, milestone progress, and
-                    recent activity into a single view of risk. Workload complements it by showing how much is open
-                    and how much is urgent, so you can balance capacity.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-4">
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
-                            Health signals
-                        </div>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-3 leading-relaxed">
-                            A healthy project has steady activity and milestones moving forward. A warning usually
-                            means tasks are stuck or issues are piling up. A critical state means delivery is at risk
-                            and needs immediate attention.
-                        </p>
+                {/* Health Score Formula */}
+                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                        Health Score Formula
                     </div>
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-4">
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
-                            Workload cues
-                        </div>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-3 leading-relaxed">
-                            Open task count tells you volume, while urgent tasks show where the pressure is. If urgent
-                            work keeps climbing, adjust scope or reassign capacity before timelines slip.
-                        </p>
+                    <div className="flex flex-wrap items-center gap-3 text-sm">
+                        <span className="px-3 py-1.5 rounded-lg bg-sky-100 text-sky-700 font-medium dark:bg-sky-900/30 dark:text-sky-300">Task Progress (25%)</span>
+                        <span className="text-[var(--color-text-subtle)]">+</span>
+                        <span className="px-3 py-1.5 rounded-lg bg-rose-100 text-rose-700 font-medium dark:bg-rose-900/30 dark:text-rose-300">Issue Count (25%)</span>
+                        <span className="text-[var(--color-text-subtle)]">+</span>
+                        <span className="px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-700 font-medium dark:bg-emerald-900/30 dark:text-emerald-300">Milestone Health (25%)</span>
+                        <span className="text-[var(--color-text-subtle)]">+</span>
+                        <span className="px-3 py-1.5 rounded-lg bg-amber-100 text-amber-700 font-medium dark:bg-amber-900/30 dark:text-amber-300">Activity Recency (25%)</span>
                     </div>
                 </div>
-                <Callout>
-                    When health drops, open the issues list first. A single blocked dependency often explains the
-                    entire signal and is the fastest place to recover.
+
+                {/* Health Levels */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <HealthGauge
+                        level={85}
+                        color="text-emerald-500"
+                        label="Healthy"
+                        triggers={[
+                            'Tasks completing on schedule',
+                            'Few or no open issues',
+                            'Milestones on track',
+                            'Recent activity in last 3 days'
+                        ]}
+                    />
+                    <HealthGauge
+                        level={55}
+                        color="text-amber-500"
+                        label="Warning"
+                        triggers={[
+                            'Tasks overdue or stuck',
+                            'Multiple open issues',
+                            'Milestone at risk',
+                            'No activity in past week'
+                        ]}
+                    />
+                    <HealthGauge
+                        level={25}
+                        color="text-rose-500"
+                        label="Critical"
+                        triggers={[
+                            'Many overdue tasks',
+                            'Blocking issues unresolved',
+                            'Milestone missed',
+                            'No activity in 2+ weeks'
+                        ]}
+                    />
+                </div>
+
+                <Callout type="warning">
+                    When health drops to critical, focus on resolving blockers first. Often a single blocked dependency explains the entire health decline.
                 </Callout>
             </section>
 
-            <section data-section-id="modules-navigation" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-5">
-                <SectionHeader eyebrow="Structure" title="Modules and navigation" icon="category" />
-                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                    Modules are the working areas inside a project. Keep only the modules that support delivery so the
-                    sidebar remains focused. You can reorder and hide modules per project to match how your team
-                    operates.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 space-y-3">
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
-                            Core modules
+            {/* SECTION: Modules Catalog */}
+            <section data-section-id="modules-catalog" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Structure</div>
+                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Modules Catalog</h3>
+                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                            Modules are the feature areas within a project. Enable only what you need to keep navigation focused.
+                        </p>
+                    </div>
+                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">category</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <ModuleCard
+                        icon="checklist"
+                        name="Tasks"
+                        description="Track actionable work items with ownership, deadlines, and progress. The core execution module."
+                        features={['Kanban board', 'List view', 'Filters', 'Bulk actions', 'Checklists']}
+                    />
+                    <ModuleCard
+                        icon="report_problem"
+                        name="Issues"
+                        description="Log blockers, bugs, and risks that could delay delivery. Keep risks visible and assigned."
+                        features={['Priority levels', 'Resolution tracking', 'Link to tasks']}
+                    />
+                    <ModuleCard
+                        icon="flow_chart"
+                        name="Flows"
+                        description="Strategic work that progresses through stages. Captures intent before execution."
+                        features={['Stage pipeline', 'AI Studio', 'Approvals', 'Conversion']}
+                    />
+                    <ModuleCard
+                        icon="flag"
+                        name="Milestones"
+                        description="Delivery checkpoints with target dates. Visual timeline for major outcomes."
+                        features={['Timeline view', 'Progress tracking', 'Risk indicators']}
+                    />
+                    <ModuleCard
+                        icon="hub"
+                        name="Mindmap"
+                        description="Visual brainstorming and flow organization. Connect concepts and explore relationships."
+                        features={['Node connections', 'Drag and drop', 'Export']}
+                    />
+                    <ModuleCard
+                        icon="campaign"
+                        name="Social Studio"
+                        description="Plan and manage social media campaigns. Strategy, content creation, and scheduling."
+                        features={['Campaign planning', 'Post drafting', 'Calendar', 'Approvals']}
+                    />
+                    <ModuleCard
+                        icon="mail"
+                        name="Marketing"
+                        description="Email campaigns, recipient management, and paid ad tracking."
+                        features={['Email builder', 'Segments', 'Performance tracking']}
+                    />
+                    <ModuleCard
+                        icon="photo_library"
+                        name="Media"
+                        description="Centralized asset library for all project visuals and creative files."
+                        features={['Upload', 'Stock search', 'AI generation', 'Editor']}
+                    />
+                </div>
+            </section>
+
+            {/* SECTION: Visibility and Access */}
+            <section data-section-id="visibility-access" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Security</div>
+                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Visibility and Access</h3>
+                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                            Control who can see and interact with your project through visibility settings and team roles.
+                        </p>
+                    </div>
+                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">visibility</span>
+                </div>
+
+                {/* Visibility Levels */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+                        <div className="flex items-center gap-2 mb-3">
+                            <span className="material-symbols-outlined text-[18px] text-[var(--color-primary)]">public</span>
+                            <span className="text-sm font-bold text-[var(--color-text-main)]">Workspace</span>
                         </div>
                         <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                            Tasks, Flows (formerly Ideas), Issues, and Milestones are common across most projects.
-                            These modules represent execution, strategy, risks, and delivery checkpoints.
+                            Visible to everyone in the workspace. Best for company-wide initiatives or public projects.
                         </p>
                     </div>
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 space-y-3">
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
-                            Specialized modules
+                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+                        <div className="flex items-center gap-2 mb-3">
+                            <span className="material-symbols-outlined text-[18px] text-amber-500">groups</span>
+                            <span className="text-sm font-bold text-[var(--color-text-main)]">Specific Groups</span>
                         </div>
                         <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                            Mindmap, Social Studio, and Marketing are best when the project needs structured ideation,
-                            campaign planning, or content production. Hide them if you do not use them regularly.
+                            Visible only to selected groups. Use for department-specific or cross-functional projects.
                         </p>
                     </div>
-                </div>
-                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 text-sm text-[var(--color-text-muted)] leading-relaxed">
-                    Module counts in the sidebar are early warnings. A sudden spike in issues or tasks is usually a
-                    sign that scope or requirements changed.
-                </div>
-            </section>
-
-            <section data-section-id="milestones-outcomes" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-5">
-                <SectionHeader eyebrow="Delivery" title="Milestones and outcomes" icon="outlined_flag" />
-                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                    Milestones are outcome checkpoints that keep delivery visible. They are most effective when they
-                    describe a clear result, have a realistic date, and are owned by someone who can move the work.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900 dark:border-emerald-800/40 dark:bg-emerald-900/20 dark:text-emerald-200">
-                        <div className="text-xs font-bold uppercase tracking-wider">Good milestone</div>
-                        <p className="mt-2 leading-relaxed">
-                            "Beta launch ready for 50 testers by Oct 15." It is outcome-based, time-bound, and clearly
-                            measurable.
-                        </p>
-                    </div>
-                    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900 dark:border-rose-800/40 dark:bg-rose-900/20 dark:text-rose-200">
-                        <div className="text-xs font-bold uppercase tracking-wider">Weak milestone</div>
-                        <p className="mt-2 leading-relaxed">
-                            "Work on onboarding." It is vague and does not tell the team what success looks like.
-                        </p>
-                    </div>
-                </div>
-                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-4 text-sm text-[var(--color-text-muted)] leading-relaxed">
-                    Review milestones during weekly planning. If a milestone is at risk, link the tasks and issues
-                    that need attention so the team can respond quickly.
-                </div>
-            </section>
-
-            <section data-section-id="activity-details" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-5">
-                <SectionHeader eyebrow="Context" title="Activity and details" icon="history" />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-[var(--color-text-muted)]">
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4">
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
-                            Activity log
+                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+                        <div className="flex items-center gap-2 mb-3">
+                            <span className="material-symbols-outlined text-[18px] text-rose-500">lock</span>
+                            <span className="text-sm font-bold text-[var(--color-text-main)]">Team Only</span>
                         </div>
-                        <p className="mt-3 leading-relaxed">
-                            Activity shows who changed what and when. Use it to understand recent decisions, confirm
-                            momentum, and prepare updates for stakeholders.
+                        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+                            Visible only to assigned team members. Best for sensitive or confidential projects.
                         </p>
                     </div>
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4">
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
-                            Project details
-                        </div>
-                        <p className="mt-3 leading-relaxed">
-                            Details is where you keep status, priority, and dates accurate. When these fields are
-                            current, every report and dashboard reflects reality without extra work.
-                        </p>
+                </div>
+
+                {/* Team Roles */}
+                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                        Project Team Roles
+                    </div>
+                    <div className="space-y-0">
+                        <FieldRow field="Owner" type="Full" description="Full control including settings, team management, and deletion. Usually one person." />
+                        <FieldRow field="Admin" type="Full" description="Can edit all content and manage settings. Cannot delete project or transfer ownership." />
+                        <FieldRow field="Member" type="Edit" description="Can create and edit tasks, issues, flows. Cannot change project settings." />
+                        <FieldRow field="Viewer" type="Read" description="Can view all content but cannot make changes. Good for stakeholders and observers." />
                     </div>
                 </div>
             </section>
 
-            <section data-section-id="weekly-review" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-5">
-                <SectionHeader eyebrow="Cadence" title="Weekly review routine" icon="event" />
-                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                    A simple weekly routine keeps projects healthy without heavy process. The goal is to refresh the
-                    overview signals and make sure the team agrees on what changes next.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <StepCard label="Monday" title="Review health and workload">
-                        Start with the overview. If health has dropped, inspect tasks and issues to find the cause.
-                    </StepCard>
-                    <StepCard label="Midweek" title="Validate milestones">
-                        Check milestone status and confirm the team still has the capacity to hit the dates.
-                    </StepCard>
-                    <StepCard label="Thursday" title="Resolve blockers">
-                        Focus on the top two blockers and ensure owners and next steps are clear.
-                    </StepCard>
-                    <StepCard label="Friday" title="Summarize activity">
-                        Use the activity log to capture what moved and what needs attention next week.
-                    </StepCard>
+            {/* SECTION: Project Overview Page */}
+            <section data-section-id="project-overview" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Dashboard</div>
+                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Project Overview Page</h3>
+                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                            The overview is your command center. It brings health, workload, activity, and deadlines into one view.
+                        </p>
+                    </div>
+                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">dashboard</span>
                 </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <OverviewCard
+                        icon="health_and_safety"
+                        title="Health Card"
+                        items={[
+                            { label: 'Score', description: 'Composite health percentage with color indicator' },
+                            { label: 'Trend', description: 'Whether health is improving or declining' },
+                            { label: 'Top Issue', description: 'Primary factor affecting health' }
+                        ]}
+                    />
+                    <OverviewCard
+                        icon="work"
+                        title="Workload Card"
+                        items={[
+                            { label: 'Open Tasks', description: 'Count of tasks not yet completed' },
+                            { label: 'Urgent Tasks', description: 'High priority items needing attention' },
+                            { label: 'Overdue', description: 'Tasks past their due date' }
+                        ]}
+                    />
+                    <OverviewCard
+                        icon="flag"
+                        title="Milestones Card"
+                        items={[
+                            { label: 'Upcoming', description: 'Next milestones on timeline' },
+                            { label: 'At Risk', description: 'Milestones that may slip' },
+                            { label: 'Completed', description: 'Milestones achieved' }
+                        ]}
+                    />
+                    <OverviewCard
+                        icon="history"
+                        title="Activity Card"
+                        items={[
+                            { label: 'Recent', description: 'Latest changes and updates' },
+                            { label: 'Contributors', description: 'Who has been active' },
+                            { label: 'Velocity', description: 'Rate of progress' }
+                        ]}
+                    />
+                    <OverviewCard
+                        icon="report_problem"
+                        title="Issues Card"
+                        items={[
+                            { label: 'Open Count', description: 'Unresolved issues' },
+                            { label: 'Blockers', description: 'Critical blocking issues' },
+                            { label: 'Resolution Rate', description: 'How fast issues get resolved' }
+                        ]}
+                    />
+                    <OverviewCard
+                        icon="flow_chart"
+                        title="Flows Card"
+                        items={[
+                            { label: 'In Progress', description: 'Flows being developed' },
+                            { label: 'Pending Review', description: 'Awaiting approval' },
+                            { label: 'Ready', description: 'Approved and ready for conversion' }
+                        ]}
+                    />
+                </div>
+            </section>
+
+            {/* SECTION: Activity and History */}
+            <section data-section-id="activity-tracking" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Audit</div>
+                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Activity and History</h3>
+                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                            Every change is logged so you can understand what happened and when.
+                        </p>
+                    </div>
+                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">history</span>
+                </div>
+
+                {/* Activity Types */}
+                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                        Tracked Activities
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                        <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
+                            <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">add_circle</span>
+                            Items created
+                        </div>
+                        <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
+                            <span className="material-symbols-outlined text-[16px] text-sky-500">edit</span>
+                            Fields updated
+                        </div>
+                        <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
+                            <span className="material-symbols-outlined text-[16px] text-emerald-500">check_circle</span>
+                            Status changes
+                        </div>
+                        <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
+                            <span className="material-symbols-outlined text-[16px] text-amber-500">comment</span>
+                            Comments added
+                        </div>
+                        <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
+                            <span className="material-symbols-outlined text-[16px] text-purple-500">person_add</span>
+                            Assignments changed
+                        </div>
+                        <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
+                            <span className="material-symbols-outlined text-[16px] text-rose-500">delete</span>
+                            Items archived/deleted
+                        </div>
+                    </div>
+                </div>
+
+                <Callout type="info">
+                    Activity logs are retained for at least 90 days. Use them to prepare status updates, investigate issues, or understand project history.
+                </Callout>
             </section>
         </div>
     );

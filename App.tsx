@@ -14,11 +14,11 @@ import { ProjectDetails } from './screens/ProjectDetails';
 import { ProjectTaskDetail } from './screens/ProjectTaskDetail';
 import { ProjectIssueDetail } from './screens/ProjectIssueDetail';
 import { ProjectActivity } from './screens/ProjectActivity';
-import { ProjectIdeas } from './screens/ProjectIdeas';
-import { IdeaDetail } from './screens/IdeaDetail';
+import { ProjectFlows } from './screens/ProjectFlows';
+import { FlowDetail } from './screens/FlowDetail';
 import { ProjectIssues } from './screens/ProjectIssues';
-import { ProjectMindmap } from './screens/ProjectMindmap';
 import { ProjectMilestones } from './screens/ProjectMilestones';
+import { AuthAction } from './screens/AuthAction';
 import { Login } from './screens/Login';
 import { Calendar } from './screens/Calendar';
 import { Team } from './screens/Team';
@@ -59,12 +59,15 @@ import { PinnedTasksProvider } from './context/PinnedTasksContext';
 import { ErrorPage } from './screens/ErrorPage';
 import { HelpCenterDrawer } from './components/help/HelpCenterDrawer';
 import { HelpCenterFloatingButton } from './components/help/HelpCenterFloatingButton';
+import { LanguageSwitcher } from './components/LanguageSwitcher';
+import { useLanguage } from './context/LanguageContext';
 
 const RequireAuth = ({ children }: { children?: React.ReactNode }) => {
     const location = useLocation();
+    const { t } = useLanguage();
 
     if (!auth) {
-        return <div className="p-10 text-center">Firebase Authentication is not available.</div>;
+        return <div className="p-10 text-center">{t('app.error.authUnavailable')}</div>;
     }
 
     if (!auth.currentUser) {
@@ -76,12 +79,17 @@ const RequireAuth = ({ children }: { children?: React.ReactNode }) => {
 // Root Layout Component to host global modals dependent on Router
 const RootLayout = () => {
     const location = useLocation();
-    const isPublicRoute = /^(\/login|\/invite|\/invite-project|\/join|\/join-workspace)/.test(location.pathname);
+    const isPublicRoute = /^(\/login|\/invite|\/invite-project|\/join|\/join-workspace|\/auth\/action)/.test(location.pathname);
 
     return (
         <>
             <PinnedTasksModal />
             <HelpCenterDrawer />
+            {isPublicRoute && (
+                <div className="fixed top-4 right-4 z-[90]">
+                    <LanguageSwitcher />
+                </div>
+            )}
             {isPublicRoute && <HelpCenterFloatingButton />}
             <Outlet />
         </>
@@ -89,13 +97,14 @@ const RootLayout = () => {
 };
 
 const App = () => {
+    const { t } = useLanguage();
     const [user, setUser] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         if (!auth) {
-            setError("Firebase Configuration Error: Auth service failed to initialize.");
+            setError(t('app.error.authInit'));
             setLoading(false);
             return;
         }
@@ -108,17 +117,17 @@ const App = () => {
             return () => unsubscribe();
         } catch (err: any) {
             console.error("Auth State Change Error:", err);
-            setError(err.message || "Failed to connect to authentication service.");
+            setError(err.message || t('app.error.authConnection'));
             setLoading(false);
         }
-    }, []);
+    }, [t]);
 
     if (loading) {
         return (
             <div className="h-screen w-full flex items-center justify-center bg-[var(--color-surface-bg)]">
                 <div className="flex flex-col items-center gap-4">
                     <span className="material-symbols-outlined text-4xl animate-spin text-[var(--color-primary)]">progress_activity</span>
-                    <span className="text-sm font-semibold text-[var(--color-text-muted)]">Connecting to workspace...</span>
+                    <span className="text-sm font-semibold text-[var(--color-text-muted)]">{t('app.loading.connecting')}</span>
                 </div>
             </div>
         );
@@ -130,7 +139,7 @@ const App = () => {
                 <div className="p-6 text-center space-y-3 bg-white rounded-2xl shadow-xl border border-red-100 max-w-md">
                     <span className="material-symbols-outlined text-4xl text-rose-500">error</span>
                     <p className="text-rose-600 font-bold text-center">{error}</p>
-                    <p className="text-[var(--color-text-muted)] text-sm text-center">Please check the console for more details.</p>
+                    <p className="text-[var(--color-text-muted)] text-sm text-center">{t('app.error.checkConsole')}</p>
                 </div>
             </div>
         );
@@ -140,6 +149,7 @@ const App = () => {
         createRoutesFromElements(
             <Route element={<RootLayout />} errorElement={<ErrorPage />}>
                 <Route path="/login" element={<Login />} />
+                <Route path="/auth/action" element={<AuthAction />} />
                 <Route path="/invite/:tenantId" element={<InviteLanding />} />
                 <Route path="/invite-project/:projectId" element={<ProjectInviteLanding />} />
                 <Route path="/join/:inviteLinkId" element={<JoinProjectViaLink />} />
@@ -166,11 +176,12 @@ const App = () => {
                         <Route path="tasks/:taskId" element={<ProjectTaskDetail />} />
                         <Route path="details" element={<ProjectDetails />} />
                         <Route path="activity" element={<ProjectActivity />} />
-                        <Route path="ideas" element={<ProjectIdeas />} />
-                        <Route path="ideas/:ideaId" element={<IdeaDetail />} />
+                        <Route path="flows" element={<ProjectFlows />} />
+                        <Route path="flows/:flowId" element={<FlowDetail />} />
+                        <Route path="ideas" element={<ProjectFlows />} />
+                        <Route path="ideas/:flowId" element={<FlowDetail />} />
                         <Route path="issues" element={<ProjectIssues />} />
                         <Route path="issues/:issueId" element={<ProjectIssueDetail />} />
-                        <Route path="mindmap" element={<ProjectMindmap />} />
                         <Route path="milestones" element={<ProjectMilestones />} />
                         <Route path="social" element={<SocialLayout />}>
                             <Route index element={<SocialDashboard />} />

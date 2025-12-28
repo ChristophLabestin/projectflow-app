@@ -692,7 +692,7 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
                                 <textarea
                                     value={selectedPost.hook || ''}
                                     onChange={e => updatePost(selectedPost.id, { hook: e.target.value })}
-                                    placeholder="What's the main idea for this post?"
+                                    placeholder="What's the main flow for this post?"
                                     className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-sm h-32 resize-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
                                 />
                             </div>

@@ -4,41 +4,41 @@ import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
 import { deleteField } from 'firebase/firestore';
 import { getIdeaById, updateIdea, addTask, createSocialCampaign, getSocialCampaign, updateCampaign, deleteSocialCampaign, subscribeToIdea } from '../services/dataService';
-import { BrainstormView } from '../components/ideas/stages/BrainstormView';
-import { RefinementView } from '../components/ideas/stages/RefinementView';
-import { ConceptView } from '../components/ideas/stages/ConceptView';
-import { ApprovalView } from '../components/ideas/stages/ApprovalView';
-import { GenericStageView } from '../components/ideas/stages/GenericStageView';
-import { ProductStrategyView } from '../components/ideas/stages/ProductStrategyView';
-import { ProductDiscoveryView } from '../components/ideas/stages/ProductDiscoveryView';
-import { ProductDefinitionView } from '../components/ideas/stages/ProductDefinitionView';
-import { ProductDevelopmentView } from '../components/ideas/stages/ProductDevelopmentView';
-import { ProductLaunchView } from '../components/ideas/stages/ProductLaunchView';
-import { MarketingStrategyView } from '../components/ideas/stages/MarketingStrategyView';
-import { MarketingPlanningView } from '../components/ideas/stages/MarketingPlanningView';
-import { MarketingExecutionView } from '../components/ideas/stages/MarketingExecutionView';
-import { MarketingAnalysisView } from '../components/ideas/stages/MarketingAnalysisView';
-import { SocialStrategyView } from '../components/ideas/stages/SocialStrategyView';
-import { SocialCreativeLabView } from '../components/ideas/stages/SocialCreativeLabView';
-import { SocialStudioView } from '../components/ideas/stages/SocialStudioView';
-import { SocialPerformanceView } from '../components/ideas/stages/SocialPerformanceView';
-import { MoonshotFeasibilityView } from '../components/ideas/stages/MoonshotFeasibilityView';
-import { MoonshotPrototypeView } from '../components/ideas/stages/MoonshotPrototypeView';
-import { MoonshotGreenlightView } from '../components/ideas/stages/MoonshotGreenlightView';
-import { SocialTypeSelection } from '../components/ideas/stages/SocialTypeSelection';
-import { SocialCampaignConceptView } from '../components/ideas/stages/SocialCampaignConceptView';
-import { SocialCampaignStrategyView } from '../components/ideas/stages/SocialCampaignStrategyView';
-import { SocialCampaignPlanningView } from '../components/ideas/stages/SocialCampaignPlanningView';
-import { SocialCampaignSubmitView } from '../components/ideas/stages/SocialCampaignSubmitView';
-import { SocialCampaignApprovedView } from '../components/ideas/stages/SocialCampaignApprovedView';
+import { BrainstormView } from '../components/flows/stages/BrainstormView';
+import { RefinementView } from '../components/flows/stages/RefinementView';
+import { ConceptView } from '../components/flows/stages/ConceptView';
+import { ApprovalView } from '../components/flows/stages/ApprovalView';
+import { GenericStageView } from '../components/flows/stages/GenericStageView';
+import { ProductStrategyView } from '../components/flows/stages/ProductStrategyView';
+import { ProductDiscoveryView } from '../components/flows/stages/ProductDiscoveryView';
+import { ProductDefinitionView } from '../components/flows/stages/ProductDefinitionView';
+import { ProductDevelopmentView } from '../components/flows/stages/ProductDevelopmentView';
+import { ProductLaunchView } from '../components/flows/stages/ProductLaunchView';
+import { MarketingStrategyView } from '../components/flows/stages/MarketingStrategyView';
+import { MarketingPlanningView } from '../components/flows/stages/MarketingPlanningView';
+import { MarketingExecutionView } from '../components/flows/stages/MarketingExecutionView';
+import { MarketingAnalysisView } from '../components/flows/stages/MarketingAnalysisView';
+import { SocialStrategyView } from '../components/flows/stages/SocialStrategyView';
+import { SocialCreativeLabView } from '../components/flows/stages/SocialCreativeLabView';
+import { SocialStudioView } from '../components/flows/stages/SocialStudioView';
+import { SocialPerformanceView } from '../components/flows/stages/SocialPerformanceView';
+import { MoonshotFeasibilityView } from '../components/flows/stages/MoonshotFeasibilityView';
+import { MoonshotPrototypeView } from '../components/flows/stages/MoonshotPrototypeView';
+import { MoonshotGreenlightView } from '../components/flows/stages/MoonshotGreenlightView';
+import { SocialTypeSelection } from '../components/flows/stages/SocialTypeSelection';
+import { SocialCampaignConceptView } from '../components/flows/stages/SocialCampaignConceptView';
+import { SocialCampaignStrategyView } from '../components/flows/stages/SocialCampaignStrategyView';
+import { SocialCampaignPlanningView } from '../components/flows/stages/SocialCampaignPlanningView';
+import { SocialCampaignSubmitView } from '../components/flows/stages/SocialCampaignSubmitView';
+import { SocialCampaignApprovedView } from '../components/flows/stages/SocialCampaignApprovedView';
 import { Idea, SocialCampaign } from '../types';
 import { useConfirm } from '../context/UIContext';
-import { PIPELINE_CONFIGS } from '../components/ideas/constants';
+import { PIPELINE_CONFIGS } from '../components/flows/constants';
 
 
 
-export const IdeaDetail = () => {
-    const { id: projectId, ideaId } = useParams<{ id: string; ideaId: string }>();
+export const FlowDetail = () => {
+    const { id: projectId, flowId } = useParams<{ id: string; flowId: string }>();
     const navigate = useNavigate();
     const confirm = useConfirm();
 
@@ -65,10 +65,10 @@ export const IdeaDetail = () => {
     }, []);
 
     useEffect(() => {
-        if (!ideaId || !projectId) return;
+        if (!flowId || !projectId) return;
 
         setLoading(true);
-        const unsubscribe = subscribeToIdea(ideaId, projectId, (data) => {
+        const unsubscribe = subscribeToIdea(flowId, projectId, (data) => {
             setIdea(data);
             setLoading(false);
 
@@ -91,7 +91,7 @@ export const IdeaDetail = () => {
         });
 
         return () => unsubscribe();
-    }, [ideaId, projectId]);
+    }, [flowId, projectId]);
 
     // Fetch linked campaign if exists
     useEffect(() => {
@@ -188,7 +188,7 @@ export const IdeaDetail = () => {
 
     const handleBack = async () => {
         // Blocker will intercept this if changes exist
-        navigate(`/project/${projectId}/ideas`);
+        navigate(`/project/${projectId}/flows`);
     };
 
 

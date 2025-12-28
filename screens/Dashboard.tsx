@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { format } from 'date-fns';
 import { auth } from '../services/firebase';
 import { getUserProjects, getSharedProjects, getUserTasks, getUserIdeas, getUserIssues, saveIdea, getUserGlobalActivities, getUserProfile, updateUserData, getProjectMembers } from '../services/dataService';
 import { Project, Task, Idea, Issue, Activity, Member } from '../types';
@@ -13,15 +14,21 @@ import { ScheduledTasksCard } from '../components/dashboard/ScheduledTasksCard';
 import { LatestMilestoneCard } from '../components/dashboard/LatestMilestoneCard';
 import { calculateProjectHealth, calculateWorkspaceHealth, ProjectHealth } from '../services/healthService';
 import { WorkspaceHealthCard } from '../components/dashboard/WorkspaceHealthCard';
+import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
+import { OnboardingWelcomeModal } from '../components/onboarding/OnboardingWelcomeModal';
+import { useLanguage } from '../context/LanguageContext';
 
 
-const formatShortDate = (date: any) => {
+const formatShortDate = (date: any, dateFormat: string, dateLocale: any) => {
     const d = toDate(date);
     if (!d) return '';
-    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    return format(d, dateFormat, { locale: dateLocale });
 };
 
+const DASHBOARD_ONBOARDING_KEY = 'onboarding_dashboard_v1';
+
 const MemberAvatars: React.FC<{ projectId: string }> = ({ projectId }) => {
+    const { t } = useLanguage();
     const [members, setMembers] = useState<Member[]>([]);
 
     useEffect(() => {
@@ -46,13 +53,13 @@ const MemberAvatars: React.FC<{ projectId: string }> = ({ projectId }) => {
                 <div
                     key={member.uid || i}
                     className="size-7 rounded-full border-2 border-[var(--color-surface-paper)] overflow-hidden bg-[var(--color-surface-hover)] shadow-sm"
-                    title={member.displayName || 'Member'}
+                    title={member.displayName || t('dashboard.members.member')}
                 >
                     {member.photoURL ? (
                         <img src={member.photoURL} alt="" className="w-full h-full object-cover" />
                     ) : (
                         <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-[var(--color-text-muted)]">
-                            {((member.displayName || member.email || '?').charAt(0)).toUpperCase()}
+                            {((member.displayName || member.email || t('dashboard.members.unknown')).charAt(0)).toUpperCase()}
                         </div>
                     )}
                 </div>
@@ -67,8 +74,10 @@ const MemberAvatars: React.FC<{ projectId: string }> = ({ projectId }) => {
 };
 
 export const Dashboard = () => {
-    const [userName, setUserName] = useState<string>('there');
-    const [greeting, setGreeting] = useState<string>('Hello');
+    const { t, language, dateFormat, dateLocale } = useLanguage();
+    const locale = language === 'de' ? 'de-DE' : 'en-US';
+    const [userName, setUserName] = useState<string>('');
+    const [greeting, setGreeting] = useState<string>(() => t('dashboard.greeting.default'));
     const [stats, setStats] = useState({
         activeProjects: 0,
         completedProjects: 0,
@@ -90,10 +99,24 @@ export const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [hoverTrendIndex, setHoverTrendIndex] = useState<number | null>(null);
     const trendRef = useRef<SVGSVGElement | null>(null);
+    const [showOnboardingWelcome, setShowOnboardingWelcome] = useState(false);
+    const [onboardingActive, setOnboardingActive] = useState(false);
+    const [onboardingStepIndex, setOnboardingStepIndex] = useState(0);
 
     // Quick Add State
     const [quickIdeaText, setQuickIdeaText] = useState('');
     const [addingIdea, setAddingIdea] = useState(false);
+
+    useEffect(() => {
+        const hour = new Date().getHours();
+        if (hour < 12) {
+            setGreeting(t('dashboard.greeting.morning'));
+        } else if (hour < 18) {
+            setGreeting(t('dashboard.greeting.afternoon'));
+        } else {
+            setGreeting(t('dashboard.greeting.evening'));
+        }
+    }, [t]);
 
     const getWeekNumber = (d: Date) => {
         d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -155,6 +178,15 @@ export const Dashboard = () => {
                             setCalendarView(view);
                             localStorage.setItem('dashboard_calendar_view', view);
                         }
+                        const onboardingState = profile?.preferences?.onboarding?.dashboard;
+                        const onboardingDone = onboardingState?.status === 'completed' ||
+                            onboardingState?.status === 'skipped' ||
+                            onboardingState?.completed === true ||
+                            onboardingState === true;
+                        const localOnboarding = localStorage.getItem(DASHBOARD_ONBOARDING_KEY);
+                        if (!onboardingDone && !localOnboarding) {
+                            setShowOnboardingWelcome(true);
+                        }
                     }
                     setStats({
                         activeProjects: allProjects.filter(p => p.status === 'Active').length,
@@ -174,10 +206,6 @@ export const Dashboard = () => {
                         setUserName(auth.currentUser.displayName.split(' ')[0]);
                     }
 
-                    const hour = new Date().getHours();
-                    if (hour < 12) setGreeting('Good morning');
-                    else if (hour < 18) setGreeting('Good afternoon');
-                    else setGreeting('Good evening');
                 } catch (error) {
                     console.error('Dashboard load failed', error);
                 } finally {
@@ -196,6 +224,21 @@ export const Dashboard = () => {
     const issueTrend = useMemo(() => bucketByDay(issues), [issues]);
 
     const hasIssuesModule = useMemo(() => projects.some(p => p.modules?.includes('issues')), [projects]);
+    const hasMilestonesModule = useMemo(() => projects.some(p => p.modules?.includes('milestones')), [projects]);
+    const weekdays = useMemo(() => t('dashboard.calendar.weekdays').split(','), [t]);
+    const projectStatusLabels = useMemo(() => ({
+        Active: t('dashboard.projectStatus.active'),
+        Completed: t('dashboard.projectStatus.completed'),
+        Planning: t('dashboard.projectStatus.planning'),
+        'On Hold': t('dashboard.projectStatus.onHold'),
+        Brainstorming: t('dashboard.projectStatus.brainstorming')
+    }), [t]);
+    const taskPriorityLabels = useMemo(() => ({
+        Urgent: t('tasks.priority.urgent'),
+        High: t('tasks.priority.high'),
+        Medium: t('tasks.priority.medium'),
+        Low: t('tasks.priority.low')
+    }), [t]);
 
     // New Metrics for distribution
     const projectStatusDistribution = useMemo(() => {
@@ -206,12 +249,12 @@ export const Dashboard = () => {
 
         // Return structured for Donut
         return [
-            { name: 'Active', value: active, color: '#6366f1' }, // Indigo
-            { name: 'Completed', value: completed, color: '#10b981' }, // Emerald
-            { name: 'Planning', value: planning, color: '#f59e0b' }, // Amber
-            { name: 'On Hold', value: onHold, color: '#94a3b8' } // Slate
+            { name: projectStatusLabels.Active, value: active, color: '#6366f1' }, // Indigo
+            { name: projectStatusLabels.Completed, value: completed, color: '#10b981' }, // Emerald
+            { name: projectStatusLabels.Planning, value: planning, color: '#f59e0b' }, // Amber
+            { name: projectStatusLabels['On Hold'], value: onHold, color: '#94a3b8' } // Slate
         ].filter(d => d.value > 0);
-    }, [projects]);
+    }, [projects, projectStatusLabels]);
 
     const taskPriorityDistribution = useMemo(() => {
         const urgent = tasks.filter(t => !t.isCompleted && t.priority === 'Urgent').length;
@@ -220,12 +263,12 @@ export const Dashboard = () => {
         const low = tasks.filter(t => !t.isCompleted && t.priority === 'Low').length;
 
         return [
-            { name: 'Urgent', value: urgent, color: '#ef4444' },
-            { name: 'High', value: high, color: '#f97316' },
-            { name: 'Medium', value: medium, color: '#3b82f6' },
-            { name: 'Low', value: low, color: '#94a3b8' }
+            { name: taskPriorityLabels.Urgent, value: urgent, color: '#ef4444' },
+            { name: taskPriorityLabels.High, value: high, color: '#f97316' },
+            { name: taskPriorityLabels.Medium, value: medium, color: '#3b82f6' },
+            { name: taskPriorityLabels.Low, value: low, color: '#94a3b8' }
         ].filter(d => d.value > 0);
-    }, [tasks]);
+    }, [tasks, taskPriorityLabels]);
 
     const statusBreakdown = useMemo(() => {
         const active = stats.activeProjects;
@@ -267,50 +310,50 @@ export const Dashboard = () => {
         return calculateWorkspaceHealth(projects.filter(p => p.status !== 'Completed'), healthMap);
     }, [projects, tasks, issues]);
 
-    // Hybrid Activity Feed: Combine real activities with synthetic ones from tasks/ideas
+    // Hybrid Activity Feed: Combine real activities with synthetic ones from tasks/flows
     const displayActivities = useMemo(() => {
         const synthetic: Activity[] = [];
 
-        // Generate synthetic activities from recent tasks/ideas for immediate feedback
-        tasks.slice(0, 10).forEach(t => {
-            if (t.createdAt) {
+        // Generate synthetic activities from recent tasks/flows for immediate feedback
+        tasks.slice(0, 10).forEach(task => {
+            if (task.createdAt) {
                 synthetic.push({
-                    id: `syn-task-c-${t.id}`,
+                    id: `syn-task-c-${task.id}`,
                     type: 'task',
-                    action: 'created task',
-                    target: t.title,
-                    user: 'You', // In a real app we'd map ownerId to name, keeping simple for "My Dashboard"
+                    action: t('dashboard.activity.actions.createdTask'),
+                    target: task.title,
+                    user: t('dashboard.activity.you'),
                     userAvatar: auth.currentUser?.photoURL || '',
-                    createdAt: t.createdAt,
-                    projectId: t.projectId
+                    createdAt: task.createdAt,
+                    projectId: task.projectId
                 } as any);
             }
-            if (t.isCompleted) {
+            if (task.isCompleted) {
                 synthetic.push({
-                    id: `syn-task-d-${t.id}`,
+                    id: `syn-task-d-${task.id}`,
                     type: 'task',
-                    action: 'completed task',
-                    target: t.title,
-                    user: 'You',
+                    action: t('dashboard.activity.actions.completedTask'),
+                    target: task.title,
+                    user: t('dashboard.activity.you'),
                     userAvatar: auth.currentUser?.photoURL || '',
-                    createdAt: t.createdAt, // Ideally we'd have completedAt, but using createdAt as fallback or Date.now() if recently loaded... 
+                    createdAt: task.createdAt, // Ideally we'd have completedAt, but using createdAt as fallback or Date.now() if recently loaded... 
                     // Let's use createdAt for consistency or maybe just omit if old. For now, pushing.
-                    projectId: t.projectId
+                    projectId: task.projectId
                 } as any);
             }
         });
 
-        ideas.slice(0, 10).forEach(i => {
-            if (i.createdAt) {
+        ideas.slice(0, 10).forEach(idea => {
+            if (idea.createdAt) {
                 synthetic.push({
-                    id: `syn-idea-${i.id}`,
+                    id: `syn-idea-${idea.id}`,
                     type: 'idea',
-                    action: 'captured idea',
-                    target: i.title,
-                    user: 'You',
+                    action: t('dashboard.activity.actions.capturedFlow'),
+                    target: idea.title,
+                    user: t('dashboard.activity.you'),
                     userAvatar: auth.currentUser?.photoURL || '',
-                    createdAt: i.createdAt,
-                    projectId: i.projectId
+                    createdAt: idea.createdAt,
+                    projectId: idea.projectId
                 } as any);
             }
         });
@@ -323,7 +366,7 @@ export const Dashboard = () => {
         return all
             .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt))
             .slice(0, 6);
-    }, [activities, tasks, ideas]);
+    }, [activities, tasks, ideas, t]);
 
     const sparkPath = (data: { value: number }[], width = 120, height = 36) => {
         if (!data.length) return '';
@@ -457,47 +500,205 @@ export const Dashboard = () => {
     const trendLabel = (idx: number) => {
         const daysAgo = trendDays - idx - 1;
         const d = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
-        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        return format(d, dateFormat, { locale: dateLocale });
     };
 
     const kpiCards = [
         {
             key: 'active',
-            label: 'Active Projects',
+            label: t('dashboard.kpi.activeProjects'),
             value: stats.activeProjects,
             icon: 'folder_open',
             series: taskTrend,
             color: '#6366f1', // Indigo
-            caption: `${projects.length} total tracked`
+            caption: t('dashboard.kpi.caption.totalTracked').replace('{count}', String(projects.length))
         },
         {
             key: 'completed',
-            label: 'Completed',
+            label: t('dashboard.kpi.completed'),
             value: stats.completedProjects,
             icon: 'check_circle',
             series: ideaTrend,
             color: '#10b981', // Emerald
-            caption: `${statusBreakdown.completedPct}% completion rate`
+            caption: t('dashboard.kpi.caption.completionRate').replace('{rate}', String(statusBreakdown.completedPct))
         },
         {
             key: 'tasks',
-            label: 'Open Tasks',
+            label: t('dashboard.kpi.openTasks'),
             value: stats.openTasks,
             icon: 'check_box',
             series: taskTrend,
             color: '#f59e0b', // Amber
-            caption: `${dueSoonCount} due soon`
+            caption: t('dashboard.kpi.caption.dueSoon').replace('{count}', String(dueSoonCount))
         },
         {
             key: 'ideas',
-            label: 'Ideas Captured',
+            label: t('dashboard.kpi.flowsCaptured'),
             value: stats.ideas,
             icon: 'lightbulb',
             series: ideaTrend,
             color: '#3b82f6', // Blue
-            caption: `${ideasThisWeek} this week`
+            caption: t('dashboard.kpi.caption.thisWeek').replace('{count}', String(ideasThisWeek))
         }
     ];
+
+    const onboardingSteps = useMemo<OnboardingStep[]>(() => {
+        const steps: OnboardingStep[] = [
+            {
+                id: 'header',
+                targetId: 'dashboard-header',
+                title: t('onboarding.dashboard.steps.header.title'),
+                description: t('onboarding.dashboard.steps.header.description')
+            },
+            {
+                id: 'kpis',
+                targetId: 'dashboard-kpis',
+                title: t('onboarding.dashboard.steps.kpis.title'),
+                description: t('onboarding.dashboard.steps.kpis.description')
+            },
+            {
+                id: 'trends',
+                targetId: 'dashboard-trends',
+                title: t('onboarding.dashboard.steps.trends.title'),
+                description: t('onboarding.dashboard.steps.trends.description'),
+                placement: 'top'
+            },
+            {
+                id: 'health',
+                targetId: 'dashboard-health',
+                title: t('onboarding.dashboard.steps.health.title'),
+                description: t('onboarding.dashboard.steps.health.description'),
+                placement: 'top'
+            },
+            {
+                id: 'status',
+                targetId: 'dashboard-status',
+                title: t('onboarding.dashboard.steps.status.title'),
+                description: t('onboarding.dashboard.steps.status.description'),
+                placement: 'left'
+            },
+            {
+                id: 'workload',
+                targetId: 'dashboard-workload',
+                title: t('onboarding.dashboard.steps.workload.title'),
+                description: t('onboarding.dashboard.steps.workload.description'),
+                placement: 'top'
+            },
+            {
+                id: 'deadlines',
+                targetId: 'dashboard-deadlines',
+                title: t('onboarding.dashboard.steps.deadlines.title'),
+                description: t('onboarding.dashboard.steps.deadlines.description'),
+                placement: 'top'
+            },
+            {
+                id: 'projects',
+                targetId: 'dashboard-active-projects',
+                title: t('onboarding.dashboard.steps.projects.title'),
+                description: t('onboarding.dashboard.steps.projects.description')
+            },
+            {
+                id: 'calendar',
+                targetId: 'dashboard-calendar',
+                title: t('onboarding.dashboard.steps.calendar.title'),
+                description: t('onboarding.dashboard.steps.calendar.description'),
+                placement: 'left'
+            },
+            {
+                id: 'scheduled',
+                targetId: 'dashboard-scheduled',
+                title: t('onboarding.dashboard.steps.scheduled.title'),
+                description: t('onboarding.dashboard.steps.scheduled.description'),
+                placement: 'left'
+            }
+        ];
+
+        if (hasMilestonesModule) {
+            steps.push({
+                id: 'milestones',
+                targetId: 'dashboard-milestones',
+                title: t('onboarding.dashboard.steps.milestones.title'),
+                description: t('onboarding.dashboard.steps.milestones.description'),
+                placement: 'left'
+            });
+        }
+
+        steps.push(
+            {
+                id: 'activity',
+                targetId: 'dashboard-live-activity',
+                title: t('onboarding.dashboard.steps.activity.title'),
+                description: t('onboarding.dashboard.steps.activity.description'),
+                placement: 'left'
+            },
+            {
+                id: 'attention',
+                targetId: 'dashboard-attention',
+                title: t('onboarding.dashboard.steps.attention.title'),
+                description: t('onboarding.dashboard.steps.attention.description'),
+                placement: 'left'
+            },
+            {
+                id: 'recent',
+                targetId: 'dashboard-recent-tasks',
+                title: t('onboarding.dashboard.steps.recent.title'),
+                description: t('onboarding.dashboard.steps.recent.description'),
+                placement: 'left'
+            }
+        );
+
+        if (hasIssuesModule && issues.length > 0) {
+            steps.push({
+                id: 'issues',
+                targetId: 'dashboard-recent-issues',
+                title: t('onboarding.dashboard.steps.issues.title'),
+                description: t('onboarding.dashboard.steps.issues.description'),
+                placement: 'left'
+            });
+        }
+
+        return steps;
+    }, [hasIssuesModule, hasMilestonesModule, issues.length, t]);
+
+    const handleCompleteOnboarding = async (status: 'completed' | 'skipped') => {
+        setShowOnboardingWelcome(false);
+        setOnboardingActive(false);
+        setOnboardingStepIndex(0);
+        try {
+            localStorage.setItem(DASHBOARD_ONBOARDING_KEY, status);
+        } catch {
+            // Ignore storage failures
+        }
+        if (auth.currentUser?.uid) {
+            try {
+                await updateUserData(auth.currentUser.uid, {
+                    'preferences.onboarding.dashboard': {
+                        status,
+                        completedAt: new Date().toISOString()
+                    }
+                });
+            } catch (error) {
+                console.warn('Failed to update onboarding status', error);
+            }
+        }
+    };
+
+    const handleStartOnboarding = () => {
+        setShowOnboardingWelcome(false);
+        setOnboardingStepIndex(0);
+        setOnboardingActive(true);
+    };
+
+    useEffect(() => {
+        if (!onboardingActive) return;
+        if (onboardingSteps.length === 0) {
+            setOnboardingActive(false);
+            return;
+        }
+        if (onboardingStepIndex >= onboardingSteps.length) {
+            setOnboardingStepIndex(onboardingSteps.length - 1);
+        }
+    }, [onboardingActive, onboardingStepIndex, onboardingSteps.length]);
 
     if (loading) {
         return (
@@ -508,683 +709,804 @@ export const Dashboard = () => {
     }
 
     return (
-        <div className="space-y-6 pb-12 fade-in">
-            {/* Header - Greeting & Quick Stats */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-8 animate-fade-in">
-                <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-[var(--color-primary)] font-bold uppercase tracking-wider text-xs">
-                        <span className="material-symbols-outlined text-sm">calendar_today</span>
-                        {new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}
+        <>
+            <div className="space-y-6 pb-12 fade-in">
+                {/* Header - Greeting & Quick Stats */}
+                <div data-onboarding-id="dashboard-header" className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-8 animate-fade-in">
+                    <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-[var(--color-primary)] font-bold uppercase tracking-wider text-xs">
+                            <span className="material-symbols-outlined text-sm">calendar_today</span>
+                            {format(new Date(), dateFormat, { locale: dateLocale })}
+                        </div>
+                        <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-[var(--color-text-main)] tracking-tight">
+                            {greeting}, {userName || t('dashboard.userFallback')}.
+                        </h1>
+                        <p className="text-[var(--color-text-muted)] font-medium">
+                            {t('dashboard.header.subtitle')}
+                        </p>
                     </div>
-                    <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-[var(--color-text-main)] tracking-tight">
-                        {greeting}, {userName}.
-                    </h1>
-                    <p className="text-[var(--color-text-muted)] font-medium">
-                        Here's what's happening in your workspace today.
-                    </p>
+
+                    <div className="flex gap-4">
+                        <div className="flex-1 min-w-[100px] p-4 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-sm hover:shadow-md transition-shadow">
+                            <div className="text-3xl font-black text-[var(--color-text-main)]">{stats.activeProjects}</div>
+                            <div className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mt-1">{t('dashboard.header.stats.activeProjects')}</div>
+                        </div>
+                        <div className="flex-1 min-w-[100px] p-4 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-sm hover:shadow-md transition-shadow">
+                            <div className="text-3xl font-black text-amber-500">{dueSoonCount}</div>
+                            <div className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mt-1">{t('dashboard.header.stats.dueSoon')}</div>
+                        </div>
+                        <div className="flex-1 min-w-[100px] p-4 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-sm hover:shadow-md transition-shadow">
+                            <div className="text-3xl font-black text-emerald-500">{stats.completedProjects}</div>
+                            <div className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mt-1">{t('dashboard.header.stats.completed')}</div>
+                        </div>
+                    </div>
                 </div>
 
-                <div className="flex gap-4">
-                    <div className="flex-1 min-w-[100px] p-4 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-sm hover:shadow-md transition-shadow">
-                        <div className="text-3xl font-black text-[var(--color-text-main)]">{stats.activeProjects}</div>
-                        <div className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mt-1">Active Projects</div>
-                    </div>
-                    <div className="flex-1 min-w-[100px] p-4 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-sm hover:shadow-md transition-shadow">
-                        <div className="text-3xl font-black text-amber-500">{dueSoonCount}</div>
-                        <div className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mt-1">Due Soon</div>
-                    </div>
-                    <div className="flex-1 min-w-[100px] p-4 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-sm hover:shadow-md transition-shadow">
-                        <div className="text-3xl font-black text-emerald-500">{stats.completedProjects}</div>
-                        <div className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mt-1">Completed</div>
-                    </div>
-                </div>
-            </div>
+                {/* Main Dashboard Grid */}
+                <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
 
-            {/* Main Dashboard Grid */}
-            <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                    {/* Left Column: Metrics & Charts (3 cols wide on large screens) */}
+                    <div className="xl:col-span-3 space-y-6">
 
-                {/* Left Column: Metrics & Charts (3 cols wide on large screens) */}
-                <div className="xl:col-span-3 space-y-6">
-
-                    {/* New Widget Cards Row */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        {kpiCards.map((stat) => (
-                            <Card key={stat.key} padding="md" className="relative overflow-hidden group hover:shadow-lg transition-all border-l-4" style={{ borderLeftColor: stat.color }}>
-                                <div className="flex flex-col h-full justify-between">
-                                    <div className="flex justify-between items-start mb-2">
-                                        <div>
-                                            <p className="text-sm font-medium text-[var(--color-text-muted)] uppercase tracking-wide">{stat.label}</p>
-                                            <h3 className="text-3xl font-bold mt-1 text-[var(--color-text-main)]">{stat.value}</h3>
+                        {/* New Widget Cards Row */}
+                        <div data-onboarding-id="dashboard-kpis" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            {kpiCards.map((stat) => (
+                                <Card key={stat.key} padding="md" className="relative overflow-hidden group hover:shadow-lg transition-all border-l-4" style={{ borderLeftColor: stat.color }}>
+                                    <div className="flex flex-col h-full justify-between">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <p className="text-sm font-medium text-[var(--color-text-muted)] uppercase tracking-wide">{stat.label}</p>
+                                                <h3 className="text-3xl font-bold mt-1 text-[var(--color-text-main)]">{stat.value}</h3>
+                                            </div>
+                                            <div className={`p-2 rounded-lg bg-opacity-10`} style={{ backgroundColor: `${stat.color}20`, color: stat.color }}>
+                                                <span className="material-symbols-outlined">{stat.icon}</span>
+                                            </div>
                                         </div>
-                                        <div className={`p-2 rounded-lg bg-opacity-10`} style={{ backgroundColor: `${stat.color}20`, color: stat.color }}>
-                                            <span className="material-symbols-outlined">{stat.icon}</span>
+
+                                        <div className="mt-4">
+                                            <Sparkline
+                                                data={stat.series.map(s => s.value)}
+                                                width={140}
+                                                height={30}
+                                                color={stat.color}
+                                                fill={true}
+                                            />
+                                            <p className="text-xs text-[var(--color-text-subtle)] mt-2 font-medium">{stat.caption}</p>
+                                        </div>
+                                    </div>
+                                </Card>
+                            ))}
+                        </div>
+
+
+                        {/* Main Content Grid - 3 Columns */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+                            <Card data-onboarding-id="dashboard-trends" padding="none" className="lg:col-span-2 overflow-hidden bg-[var(--color-surface-card)] border-[var(--color-surface-border)] shadow-2xl flex flex-col min-h-[420px] group/chart-card">
+                                {/* Card Header Section */}
+                                <div className="p-6 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-paper)]/30 backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-10">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <div className="p-1.5 rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+                                                <span className="material-symbols-outlined text-sm">trending_up</span>
+                                            </div>
+                                            <h3 className="text-xl font-black tracking-tight text-[var(--color-text-main)]">{t('dashboard.trends.title')}</h3>
+                                        </div>
+                                        <p className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-[0.2em]">{t('dashboard.trends.subtitle')}</p>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 p-1 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)]">
+                                        <div className="px-3 py-1.5 rounded-lg bg-[var(--color-surface-card)] text-[var(--color-text-main)] text-[10px] font-bold shadow-sm border border-[var(--color-surface-border)]">{t('dashboard.trends.range.sevenDays')}</div>
+                                        <div className="px-3 py-1.5 rounded-lg text-[var(--color-text-subtle)] text-[10px] font-bold hover:bg-[var(--color-surface-hover)] cursor-not-allowed transition-colors">{t('dashboard.trends.range.thirtyDays')}</div>
+                                        <div className="px-3 py-1.5 rounded-lg text-[var(--color-text-subtle)] text-[10px] font-bold hover:bg-[var(--color-surface-hover)] cursor-not-allowed transition-colors">{t('dashboard.trends.range.all')}</div>
+                                    </div>
+                                </div>
+
+                                {/* Chart Body Section */}
+                                <div className="flex-1 relative bg-[var(--color-surface-paper)]/10 p-4">
+                                    {/* Decorative Mesh Background */}
+                                    <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+                                        <div className="absolute -top-1/2 -left-1/4 w-full h-full bg-blue-500/20 blur-[120px] rounded-full"></div>
+                                        <div className="absolute -bottom-1/2 -right-1/4 w-full h-full bg-amber-500/20 blur-[120px] rounded-full"></div>
+                                    </div>
+
+                                    {/* Legend Row */}
+                                    <div className="flex items-center justify-between mb-3 relative z-10">
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="size-2.5 rounded-full bg-amber-500"></div>
+                                                <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.tasks')}</span>
+                                            </div>
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="size-2.5 rounded-full bg-blue-500"></div>
+                                                <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.flows')}</span>
+                                            </div>
+                                            {hasIssuesModule && (
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className="size-2.5 rounded-full bg-rose-500"></div>
+                                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.issues')}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-[9px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wide">{t('dashboard.trends.peakLabel')}</span>
+                                            <span className="text-sm font-black text-[var(--color-text-main)]">{maxTrendValue}</span>
                                         </div>
                                     </div>
 
-                                    <div className="mt-4">
-                                        <Sparkline
-                                            data={stat.series.map(s => s.value)}
-                                            width={140}
-                                            height={30}
-                                            color={stat.color}
-                                            fill={true}
-                                        />
-                                        <p className="text-xs text-[var(--color-text-subtle)] mt-2 font-medium">{stat.caption}</p>
-                                    </div>
-                                </div>
-                            </Card>
-                        ))}
-                    </div>
+                                    <div className="h-[200px] relative">
+                                        <svg
+                                            ref={trendRef}
+                                            viewBox={`0 0 ${chartOuterWidth} ${chartOuterHeight}`}
+                                            className="w-full h-full select-none"
+                                            onMouseMove={handleTrendMove}
+                                            onMouseLeave={() => setHoverTrendIndex(null)}
+                                            preserveAspectRatio="xMidYMid meet"
+                                        >
+                                            <defs>
+                                                <linearGradient id="area-tasks" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.25" />
+                                                    <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
+                                                </linearGradient>
+                                                <linearGradient id="area-ideas" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
+                                                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+                                                </linearGradient>
+                                                <linearGradient id="area-issues" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.25" />
+                                                    <stop offset="100%" stopColor="#f43f5e" stopOpacity="0" />
+                                                </linearGradient>
+                                            </defs>
 
+                                            {/* Subtle Radial Polka Grid */}
+                                            <pattern id="dot-pattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+                                                <circle cx="2" cy="2" r="0.8" fill="var(--color-surface-border)" opacity="0.4" />
+                                            </pattern>
+                                            <rect width="100%" height="100%" fill="url(#dot-pattern)" />
 
-                    {/* Main Content Grid - 3 Columns */}
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                        {/* 1. Activity Trends (Span 2) */}
-                        <Card className="lg:col-span-2">
-                            <div className="flex items-center justify-between mb-6">
-                                <div>
-                                    <h3 className="h4">Activity Trends</h3>
-                                    <p className="text-xs text-[var(--color-text-muted)]">7-day performance</p>
-                                </div>
-                                <div className="flex items-center gap-4 text-xs font-medium">
-                                    <span className="flex items-center gap-1.5">
-                                        <span className="size-2 rounded-full bg-amber-500"></span> Tasks
-                                    </span>
-                                    <span className="flex items-center gap-1.5">
-                                        <span className="size-2 rounded-full bg-blue-500"></span> Ideas
-                                    </span>
-                                    {hasIssuesModule && (
-                                        <span className="flex items-center gap-1.5">
-                                            <span className="size-2 rounded-full bg-rose-500"></span> Issues
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-                            <div className="w-full relative aspect-[2/1] bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)] overflow-hidden">
-                                <svg
-                                    ref={trendRef}
-                                    viewBox={`0 0 ${chartOuterWidth} ${chartOuterHeight}`}
-                                    className="w-full h-full"
-                                    onMouseMove={handleTrendMove}
-                                    onMouseLeave={() => setHoverTrendIndex(null)}
-                                    preserveAspectRatio="none"
-                                >
-                                    <defs>
-                                        <linearGradient id="tasksGradient" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.2" />
-                                            <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
-                                        </linearGradient>
-                                        <linearGradient id="ideasGradient" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.2" />
-                                            <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-                                        </linearGradient>
-                                    </defs>
-                                    <g>
-                                        {/* Horizontal Grid & Y-Axis Labels */}
-                                        {[0, 0.25, 0.5, 0.75, 1].map((p) => {
-                                            const y = margin.top + innerHeight * p;
-                                            const val = Math.round(maxTrendValue * (1 - p));
-                                            return (
-                                                <g key={p}>
+                                            {/* Light Horizontal Grid */}
+                                            {[0, 0.25, 0.5, 0.75, 1].map((p) => {
+                                                const y = margin.top + innerHeight * p;
+                                                return (
                                                     <line
+                                                        key={p}
                                                         x1={margin.left}
                                                         x2={margin.left + innerWidth}
                                                         y1={y}
                                                         y2={y}
-                                                        stroke="rgba(0,0,0,0.05)"
+                                                        stroke="var(--color-surface-border)"
+                                                        strokeWidth="0.5"
+                                                        strokeDasharray="4 4"
+                                                        opacity="0.5"
                                                     />
-                                                    <text
-                                                        x={margin.left - 8}
-                                                        y={y + 3}
-                                                        textAnchor="end"
-                                                        fontSize="10"
-                                                        fill="var(--color-text-subtle)"
-                                                    >
-                                                        {val}
-                                                    </text>
-                                                </g>
-                                            );
-                                        })}
+                                                );
+                                            })}
 
-                                        {/* Vertical Grid & X-Axis Labels */}
-                                        {trendDays > 1 && Array.from({ length: trendDays }).map((_, i) => {
-                                            // Show fewer labels if too many
-                                            if (trendDays > 7 && i % 2 !== 0) return null;
+                                            {/* Axis Lines */}
+                                            <line x1={margin.left} x2={margin.left + innerWidth} y1={margin.top + innerHeight} y2={margin.top + innerHeight} stroke="var(--color-surface-border)" strokeWidth="1" />
+
+                                            {/* Area Fills */}
+                                            <path d={`${getSmoothPath(taskTrend)} L${margin.left + innerWidth},${margin.top + innerHeight} L${margin.left},${margin.top + innerHeight} Z`} fill="url(#area-tasks)" />
+                                            <path d={`${getSmoothPath(ideaTrend)} L${margin.left + innerWidth},${margin.top + innerHeight} L${margin.left},${margin.top + innerHeight} Z`} fill="url(#area-ideas)" />
+                                            {hasIssuesModule && <path d={`${getSmoothPath(issueTrend)} L${margin.left + innerWidth},${margin.top + innerHeight} L${margin.left},${margin.top + innerHeight} Z`} fill="url(#area-issues)" />}
+
+                                            {/* Main Trend Lines */}
+                                            <path d={getSmoothPath(ideaTrend)} stroke="#3b82f6" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                                            {hasIssuesModule && <path d={getSmoothPath(issueTrend)} stroke="#f43f5e" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />}
+                                            <path d={getSmoothPath(taskTrend)} stroke="#f59e0b" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+
+                                            {/* Interaction Elements */}
+                                            {hoverTrendIndex !== null && (() => {
+                                                const step = innerWidth / (trendDays - 1 || 1);
+                                                const x = margin.left + hoverTrendIndex * step;
+                                                const taskVal = taskTrend[hoverTrendIndex]?.value ?? 0;
+                                                const ideaVal = ideaTrend[hoverTrendIndex]?.value ?? 0;
+                                                const issueVal = hasIssuesModule ? (issueTrend[hoverTrendIndex]?.value ?? 0) : 0;
+
+                                                const yTask = margin.top + innerHeight - (taskVal / maxTrendValue) * innerHeight;
+                                                const yIdea = margin.top + innerHeight - (ideaVal / maxTrendValue) * innerHeight;
+                                                const yIssue = margin.top + innerHeight - (issueVal / maxTrendValue) * innerHeight;
+
+                                                return (
+                                                    <g>
+                                                        <line x1={x} x2={x} y1={margin.top} y2={margin.top + innerHeight} stroke="var(--color-primary)" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" />
+                                                        <circle cx={x} cy={yIdea} r={5} fill="#3b82f6" stroke="white" strokeWidth="2" />
+                                                        <circle cx={x} cy={yTask} r={5} fill="#f59e0b" stroke="white" strokeWidth="2" />
+                                                        {hasIssuesModule && <circle cx={x} cy={yIssue} r={5} fill="#f43f5e" stroke="white" strokeWidth={2} />}
+                                                    </g>
+                                                );
+                                            })()}
+                                        </svg>
+
+                                        {/* HTML Tooltip - positioned outside SVG for proper rendering */}
+                                        {hoverTrendIndex !== null && (() => {
                                             const step = innerWidth / (trendDays - 1 || 1);
-                                            const x = margin.left + i * step;
+                                            const xPct = (hoverTrendIndex / (trendDays - 1)) * 100;
+                                            const taskVal = taskTrend[hoverTrendIndex]?.value ?? 0;
+                                            const ideaVal = ideaTrend[hoverTrendIndex]?.value ?? 0;
+                                            const issueVal = hasIssuesModule ? (issueTrend[hoverTrendIndex]?.value ?? 0) : 0;
+                                            const isRight = xPct > 65;
+
                                             return (
-                                                <g key={i}>
-                                                    <line
-                                                        x1={x}
-                                                        x2={x}
-                                                        y1={margin.top}
-                                                        y2={margin.top + innerHeight}
-                                                        stroke="rgba(0,0,0,0.03)"
-                                                    />
-                                                    <text
-                                                        x={x}
-                                                        y={margin.top + innerHeight + 20}
-                                                        textAnchor="middle"
-                                                        fontSize="10"
-                                                        fill="#9ca3af"
-                                                    >
-                                                        {trendLabel(i)}
-                                                    </text>
-                                                </g>
+                                                <div
+                                                    className="absolute top-2 z-20 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl p-3 shadow-xl backdrop-blur-md min-w-[120px] pointer-events-none"
+                                                    style={{ left: isRight ? 'auto' : `calc(${xPct}% + 20px)`, right: isRight ? `calc(${100 - xPct}% + 20px)` : 'auto' }}
+                                                >
+                                                    <div className="text-[9px] font-black text-[var(--color-text-subtle)] uppercase tracking-widest mb-2 border-b border-[var(--color-surface-border)] pb-1.5">
+                                                        {trendLabel(hoverTrendIndex)}
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <div className="flex items-center justify-between gap-4">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <div className="size-2 rounded-full bg-amber-500"></div>
+                                                                <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.tasks')}</span>
+                                                            </div>
+                                                            <span className="text-xs font-black text-[var(--color-text-main)]">{taskVal}</span>
+                                                        </div>
+                                                        <div className="flex items-center justify-between gap-4">
+                                                            <div className="flex items-center gap-1.5">
+                                                                <div className="size-2 rounded-full bg-blue-500"></div>
+                                                                <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.flows')}</span>
+                                                            </div>
+                                                            <span className="text-xs font-black text-[var(--color-text-main)]">{ideaVal}</span>
+                                                        </div>
+                                                        {hasIssuesModule && (
+                                                            <div className="flex items-center justify-between gap-4">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <div className="size-2 rounded-full bg-rose-500"></div>
+                                                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.issues')}</span>
+                                                                </div>
+                                                                <span className="text-xs font-black text-[var(--color-text-main)]">{issueVal}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             );
-                                        })}
-                                    </g>
-                                    <path d={`${getSmoothPath(taskTrend)} L${margin.left + innerWidth},${margin.top + innerHeight} L${margin.left},${margin.top + innerHeight} Z`} fill="url(#tasksGradient)" />
-                                    <path d={`${getSmoothPath(ideaTrend)} L${margin.left + innerWidth},${margin.top + innerHeight} L${margin.left},${margin.top + innerHeight} Z`} fill="url(#ideasGradient)" />
-
-                                    <path d={getSmoothPath(ideaTrend)} stroke="#3b82f6" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                                    {hasIssuesModule && <path d={getSmoothPath(issueTrend)} stroke="#f43f5e" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />}
-                                    <path d={getSmoothPath(taskTrend)} stroke="#f59e0b" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-
-                                    {hoverTrendIndex !== null && (() => {
-                                        const step = innerWidth / (trendDays - 1 || 1);
-                                        const x = margin.left + hoverTrendIndex * step;
-                                        const taskVal = taskTrend[hoverTrendIndex]?.value ?? 0;
-                                        const ideaVal = ideaTrend[hoverTrendIndex]?.value ?? 0;
-                                        const issueVal = hasIssuesModule ? (issueTrend[hoverTrendIndex]?.value ?? 0) : 0;
-
-                                        const yTask = margin.top + innerHeight - (taskVal / maxTrendValue) * innerHeight;
-                                        const yIdea = margin.top + innerHeight - (ideaVal / maxTrendValue) * innerHeight;
-                                        const yIssue = margin.top + innerHeight - (issueVal / maxTrendValue) * innerHeight;
-                                        return (
-                                            <g>
-                                                <line x1={x} x2={x} y1={margin.top} y2={margin.top + innerHeight} stroke="currentColor" className="text-gray-400" strokeDasharray="4 4" />
-                                                <circle cx={x} cy={yIdea} r={5} className="fill-blue-500 stroke-white" strokeWidth={2} />
-                                                {hasIssuesModule && <circle cx={x} cy={yIssue} r={5} className="fill-rose-500 stroke-white" strokeWidth={2} />}
-                                                <circle cx={x} cy={yTask} r={5} className="fill-amber-500 stroke-white" strokeWidth={2} />
-                                                {/* Tooltipish */}
-                                                <rect x={x + 10} y={margin.top} width="100" height={hasIssuesModule ? "65" : "50"} rx="4" fill="var(--color-surface-paper)" stroke="var(--color-surface-border)" />
-                                                <text x={x + 20} y={margin.top + 15} fontSize="10" fill="var(--color-text-main)">Tasks: {taskVal}</text>
-                                                <text x={x + 20} y={margin.top + 30} fontSize="10" fill="var(--color-text-main)">Ideas: {ideaVal}</text>
-                                                {hasIssuesModule && <text x={x + 20} y={margin.top + 45} fontSize="10" fill="var(--color-text-main)">Issues: {issueVal}</text>}
-                                            </g>
-                                        );
-                                    })()}
-                                </svg>
-                            </div>
-                        </Card>
-
-                        {/* 2. Workspace Health & Project Status (Span 1, Stacked) */}
-                        <div className="lg:col-span-1 space-y-6">
-
-                            <WorkspaceHealthCard health={workspaceHealth} projectCount={projects.length} />
-
-                            <Card padding="md" className="flex flex-col items-center justify-center">
-                                <div className="relative flex items-center justify-center mb-6">
-                                    <DonutChart data={projectStatusDistribution} size={140} thickness={12} />
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                        <span className="text-2xl font-bold text-[var(--color-text-main)]">{projects.length}</span>
-                                        <span className="text-xs text-[var(--color-text-muted)] uppercase">Projects</span>
+                                        })()}
                                     </div>
                                 </div>
-                                <div className="w-full space-y-2">
-                                    <h3 className="h4 text-center mb-4">Status</h3>
-                                    {projectStatusDistribution.map((item) => (
-                                        <div key={item.name} className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors text-sm">
-                                            <div className="flex items-center gap-2">
-                                                <span className="size-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                                                <span className="font-medium text-[var(--color-text-main)]">{item.name}</span>
-                                            </div>
-                                            <span className="font-bold text-[var(--color-text-main)]">{item.value}</span>
+
+                                {/* Card Footer Section: Integrated Stats */}
+                                <div className="p-4 grid grid-cols-3 gap-2 bg-[var(--color-surface-bg)]/50 border-t border-[var(--color-surface-border)] rounded-b-2xl">
+                                    <div className="p-3 rounded-xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] hover:border-amber-500/30 transition-all group/stat">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-wider">{t('nav.tasks')}</span>
+                                            <span className="material-symbols-outlined text-[10px] text-amber-500 font-bold">check_circle</span>
                                         </div>
-                                    ))}
-                                    {projectStatusDistribution.length === 0 && <p className="text-sm text-[var(--color-text-muted)] text-center">No active projects.</p>}
-                                </div>
-                            </Card>
-                        </div>
-
-
-
-                        {/* 3. Row 3: Workload, Deadlines (2 Columns) - Attention moved to Sidebar */}
-                        <div className="lg:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-4">
-
-                            {/* 3a. Workload (1 Col) */}
-                            <Card padding="md" className="flex flex-col justify-between">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="h4">Workload</h3>
-                                    <span className="text-xs text-[var(--color-text-muted)]">{tasks.filter(t => !t.isCompleted).length} pending</span>
-                                </div>
-                                <div className="space-y-4">
-                                    {taskPriorityDistribution.map(item => (
-                                        <div key={item.name} className="space-y-1">
-                                            <div className="flex justify-between text-xs font-semibold">
-                                                <span style={{ color: item.color }}>{item.name}</span>
-                                                <span className="text-[var(--color-text-subtle)]">{item.value}</span>
-                                            </div>
-                                            <div className="h-2 w-full bg-[var(--color-surface-bg)] rounded-full overflow-hidden">
-                                                <div
-                                                    className="h-full rounded-full transition-all duration-700 ease-out"
-                                                    style={{ width: `${(item.value / (tasks.filter(t => !t.isCompleted).length || 1)) * 100}%`, backgroundColor: item.color }}
-                                                />
-                                            </div>
+                                        <div className="flex items-baseline gap-1.5">
+                                            <span className="text-lg font-black text-[var(--color-text-main)] tracking-tight">{taskTrend.reduce((a, b) => a + b.value, 0)}</span>
+                                            <span className="text-[9px] font-bold text-emerald-500 font-mono">+12%</span>
                                         </div>
-                                    ))}
-                                    {taskPriorityDistribution.length === 0 && <p className="text-sm text-[var(--color-text-muted)] text-center py-4">No pending tasks.</p>}
-                                </div>
-                                <div className="mt-4 pt-4 border-t border-[var(--color-surface-border)] flex justify-end">
-                                    <Link to="/tasks" className="text-sm font-bold text-[var(--color-primary)] hover:text-indigo-700 transition-colors flex items-center gap-1 group">
-                                        Manage Tasks <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                                    </Link>
+                                    </div>
+                                    <div className="p-3 rounded-xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] hover:border-blue-500/30 transition-all group/stat">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-wider">{t('nav.flows')}</span>
+                                            <span className="material-symbols-outlined text-[10px] text-blue-500 font-bold">lightbulb</span>
+                                        </div>
+                                        <div className="flex items-baseline gap-1.5">
+                                            <span className="text-lg font-black text-[var(--color-text-main)] tracking-tight">{ideaTrend.reduce((a, b) => a + b.value, 0)}</span>
+                                            <span className="text-[9px] font-bold text-emerald-500 font-mono">+5%</span>
+                                        </div>
+                                    </div>
+                                    <div className="p-3 rounded-xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] hover:border-rose-500/30 transition-all group/stat">
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-wider">{t('nav.issues')}</span>
+                                            <span className="material-symbols-outlined text-[10px] text-rose-500 font-bold">bug_report</span>
+                                        </div>
+                                        <div className="flex items-baseline gap-1.5">
+                                            <span className="text-lg font-black text-[var(--color-text-main)] tracking-tight">{hasIssuesModule ? issueTrend.reduce((a, b) => a + b.value, 0) : 0}</span>
+                                            <span className="text-[9px] font-bold text-[var(--color-text-subtle)] font-mono">0%</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </Card>
 
-                            {/* 3b. Upcoming Deadlines (1 Col) */}
-                            <Card padding="md" className="flex flex-col">
-                                <h3 className="h4 mb-4">Upcoming Deadlines</h3>
-                                <div className="flex-1 space-y-0 divide-y divide-[var(--color-surface-border)] -mx-2 px-2">
-                                    {focusTasks.slice(0, 4).map(task => { // Showing top 4
-                                        const priorityColor = task.priority === 'Urgent' ? 'text-red-500' : task.priority === 'High' ? 'text-orange-500' : 'text-blue-500';
-                                        const due = toDate(task.dueDate);
-                                        const isOverdue = due && due.getTime() < Date.now();
+                            {/* 2. Workspace Health & Project Status (Span 1, Stacked) */}
+                            <div className="lg:col-span-1 space-y-6">
 
-                                        return (
-                                            <Link key={task.id} to={`/project/${task.projectId}/tasks/${task.id}`} className="block py-3 first:pt-2 last:pb-2 hover:bg-[var(--color-surface-hover)] -mx-2 px-4 rounded-lg transition-colors group">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="min-w-0 flex-1 pr-3">
-                                                        <p className="text-sm font-medium text-[var(--color-text-main)] truncate group-hover:text-[var(--color-primary)] transition-colors">{task.title}</p>
-                                                        <div className="flex items-center gap-2 mt-0.5">
-                                                            <span className={`text-[10px] font-bold uppercase tracking-wider ${priorityColor}`}>{task.priority}</span>
-                                                            {due && (
-                                                                <span className={`text-[10px] ${isOverdue ? 'text-red-500 font-bold' : 'text-[var(--color-text-muted)]'}`}>
-                                                                    {due.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                    <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)] opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0">chevron_right</span>
+                                <div data-onboarding-id="dashboard-health">
+                                    <WorkspaceHealthCard health={workspaceHealth} projectCount={projects.length} />
+                                </div>
+
+                                <Card data-onboarding-id="dashboard-status" padding="md" className="flex flex-col items-center justify-center">
+                                    <div className="relative flex items-center justify-center mb-6">
+                                        <DonutChart data={projectStatusDistribution} size={140} thickness={12} />
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                                            <span className="text-2xl font-bold text-[var(--color-text-main)]">{projects.length}</span>
+                                            <span className="text-xs text-[var(--color-text-muted)] uppercase">{t('nav.projects')}</span>
+                                        </div>
+                                    </div>
+                                    <div className="w-full space-y-2">
+                                        <h3 className="h4 text-center mb-4">{t('dashboard.status.title')}</h3>
+                                        {projectStatusDistribution.map((item) => (
+                                            <div key={item.name} className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors text-sm">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="size-2.5 rounded-full" style={{ backgroundColor: item.color }} />
+                                                    <span className="font-medium text-[var(--color-text-main)]">{item.name}</span>
                                                 </div>
-                                            </Link>
-                                        );
-                                    })}
-                                    {focusTasks.length === 0 && (
-                                        <div className="py-8 text-center text-sm text-[var(--color-text-muted)]">
-                                            No upcoming tasks.
+                                                <span className="font-bold text-[var(--color-text-main)]">{item.value}</span>
+                                            </div>
+                                        ))}
+                                        {projectStatusDistribution.length === 0 && <p className="text-sm text-[var(--color-text-muted)] text-center">{t('dashboard.status.empty')}</p>}
+                                    </div>
+                                </Card>
+                            </div>
+
+
+
+                            {/* 3. Row 3: Workload, Deadlines (2 Columns) - Attention moved to Sidebar */}
+                            <div className="lg:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+                                {/* 3a. Workload (1 Col) */}
+                                <Card data-onboarding-id="dashboard-workload" padding="md" className="flex flex-col justify-between">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="h4">{t('dashboard.workload.title')}</h3>
+                                        <span className="text-xs text-[var(--color-text-muted)]">
+                                            {t('dashboard.workload.pending').replace('{count}', String(tasks.filter(t => !t.isCompleted).length))}
+                                        </span>
+                                    </div>
+                                    <div className="space-y-4">
+                                        {taskPriorityDistribution.map(item => (
+                                            <div key={item.name} className="space-y-1">
+                                                <div className="flex justify-between text-xs font-semibold">
+                                                    <span style={{ color: item.color }}>{item.name}</span>
+                                                    <span className="text-[var(--color-text-subtle)]">{item.value}</span>
+                                                </div>
+                                                <div className="h-2 w-full bg-[var(--color-surface-bg)] rounded-full overflow-hidden">
+                                                    <div
+                                                        className="h-full rounded-full transition-all duration-700 ease-out"
+                                                        style={{ width: `${(item.value / (tasks.filter(t => !t.isCompleted).length || 1)) * 100}%`, backgroundColor: item.color }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {taskPriorityDistribution.length === 0 && <p className="text-sm text-[var(--color-text-muted)] text-center py-4">{t('dashboard.workload.empty')}</p>}
+                                    </div>
+                                    <div className="mt-4 pt-4 border-t border-[var(--color-surface-border)] flex justify-end">
+                                        <Link to="/tasks" className="text-sm font-bold text-[var(--color-primary)] hover:text-indigo-700 transition-colors flex items-center gap-1 group">
+                                            {t('dashboard.workload.manage')} <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                                        </Link>
+                                    </div>
+                                </Card>
+
+                                {/* 3b. Upcoming Deadlines (1 Col) */}
+                                <Card data-onboarding-id="dashboard-deadlines" padding="md" className="flex flex-col">
+                                    <h3 className="h4 mb-4">{t('dashboard.deadlines.title')}</h3>
+                                    <div className="flex-1 space-y-0 divide-y divide-[var(--color-surface-border)] -mx-2 px-2">
+                                        {focusTasks.slice(0, 4).map(task => { // Showing top 4
+                                            const priorityColor = task.priority === 'Urgent' ? 'text-red-500' : task.priority === 'High' ? 'text-orange-500' : 'text-blue-500';
+                                            const due = toDate(task.dueDate);
+                                            const isOverdue = due && due.getTime() < Date.now();
+
+                                            return (
+                                                <Link key={task.id} to={`/project/${task.projectId}/tasks/${task.id}`} className="block py-3 first:pt-2 last:pb-2 hover:bg-[var(--color-surface-hover)] -mx-2 px-4 rounded-lg transition-colors group">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="min-w-0 flex-1 pr-3">
+                                                            <p className="text-sm font-medium text-[var(--color-text-main)] truncate group-hover:text-[var(--color-primary)] transition-colors">{task.title}</p>
+                                                            <div className="flex items-center gap-2 mt-0.5">
+                                                                <span className={`text-[10px] font-bold uppercase tracking-wider ${priorityColor}`}>
+                                                                    {(task.priority && taskPriorityLabels[task.priority]) || task.priority || t('tasks.priority.medium')}
+                                                                </span>
+                                                                {due && (
+                                                                    <span className={`text-[10px] ${isOverdue ? 'text-red-500 font-bold' : 'text-[var(--color-text-muted)]'}`}>
+                                                                        {format(due, 'MMM d', { locale: dateLocale })}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                        <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)] opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0">chevron_right</span>
+                                                    </div>
+                                                </Link>
+                                            );
+                                        })}
+                                        {focusTasks.length === 0 && (
+                                            <div className="py-8 text-center text-sm text-[var(--color-text-muted)]">
+                                                {t('dashboard.deadlines.empty')}
+                                            </div>
+                                        )}
+                                    </div>
+                                </Card>
+
+                            </div>
+
+                            {/* 4. Recent Projects (Full Row - Span 3) */}
+                            <div data-onboarding-id="dashboard-active-projects" className="lg:col-span-3">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400">
+                                            <span className="material-symbols-outlined">folder_open</span>
                                         </div>
+                                        <h3 className="h3">{t('dashboard.projects.title')}</h3>
+                                    </div>
+                                    <div className="flex justify-end gap-4">
+                                        <Link to="/projects" className="text-sm font-bold text-[var(--color-primary)] hover:text-indigo-700 transition-colors flex items-center gap-1 group">
+                                            {t('dashboard.projects.viewAll')} <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                                        </Link>
+                                        <Link to="/create">
+                                            <Button
+                                                size="md"
+                                                className="rounded-xl px-6 font-bold shadow-lg shadow-indigo-500/20 bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:opacity-90 border-none"
+                                                icon={<span className="material-symbols-outlined">add</span>}
+                                            >
+                                                {t('dashboard.projects.newProject')}
+                                            </Button>
+                                        </Link>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {recentProjects.length === 0 ? (
+                                        <div className="col-span-3 p-12 text-center text-[var(--color-text-subtle)] border-2 border-dashed border-[var(--color-surface-border)] rounded-2xl bg-[var(--color-surface-bg)]/50">
+                                            <div className="mb-4 inline-flex p-4 rounded-full bg-[var(--color-surface-hover)]">
+                                                <span className="material-symbols-outlined text-4xl opacity-50">post_add</span>
+                                            </div>
+                                            <p className="text-lg font-medium">{t('dashboard.projects.empty.title')}</p>
+                                            <p className="text-sm mt-1">{t('dashboard.projects.empty.description')}</p>
+                                        </div>
+                                    ) : (
+                                        recentProjects.slice(0, 3).map((proj) => {
+                                            const projTasks = tasks.filter((t) => t.projectId === proj.id);
+                                            const completed = projTasks.filter((t) => t.isCompleted).length;
+                                            const total = projTasks.length;
+                                            const pct = total > 0 ? Math.round((completed / total) * 100) : (proj.progress || 0);
+
+                                            const isBrainstorming = proj.status === 'Brainstorming' || proj.status === 'Planning';
+                                            const isCompleted = proj.status === 'Completed';
+
+                                            let icon = 'folder';
+                                            let iconClass = 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border-indigo-100 dark:border-indigo-500/20';
+                                            let progressColor = 'bg-indigo-500';
+
+                                            if (isBrainstorming) {
+                                                icon = 'lightbulb';
+                                                iconClass = 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20';
+                                                progressColor = 'bg-amber-500';
+                                            } else if (isCompleted) {
+                                                icon = 'check_circle';
+                                                iconClass = 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20';
+                                                progressColor = 'bg-emerald-500';
+                                            }
+
+                                            return (
+                                                <Link key={proj.id} to={`/project/${proj.id}`} className="group block h-full">
+                                                    <Card padding="none" hoverable className="h-full flex flex-col relative overflow-hidden transition-all duration-300 group-hover:shadow-2xl border-[var(--color-surface-border)] hover:border-[var(--color-primary)]/50 bg-[var(--color-surface-paper)]">
+
+                                                        {/* Cover Image Area - Tall for impact */}
+                                                        <div className="h-28 w-full relative overflow-hidden bg-gray-100 dark:bg-gray-800">
+                                                            {proj.coverImage ? (
+                                                                <>
+                                                                    <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-surface-paper)]/90 via-transparent to-transparent z-10" />
+                                                                    <img src={proj.coverImage} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="" />
+                                                                </>
+                                                            ) : (
+                                                                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-500/20" />
+                                                            )}
+
+                                                            <div className="absolute top-3 right-3 z-20">
+                                                                <Badge variant={isCompleted ? 'success' : isBrainstorming ? 'secondary' : 'primary'} className="backdrop-blur-md bg-white/90 dark:bg-black/50 shadow-sm border-0">
+                                                                    {projectStatusLabels[proj.status as keyof typeof projectStatusLabels] || proj.status}
+                                                                </Badge>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="px-5 pb-5 flex flex-col flex-1 relative z-20">
+                                                            {/* Floating Icon */}
+                                                            <div className="-mt-8 mb-3">
+                                                                {proj.squareIcon ? (
+                                                                    <div className="size-14 rounded-2xl overflow-hidden border-4 border-[var(--color-surface-paper)] bg-white shadow-md">
+                                                                        <img src={proj.squareIcon} alt="" className="w-full h-full object-cover" />
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className={`size-14 rounded-2xl flex items-center justify-center border-4 border-[var(--color-surface-paper)] shadow-md ${iconClass} bg-[var(--color-surface-paper)]`}>
+                                                                        <span className="material-symbols-outlined text-2xl">{icon}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            <div className="flex-1 space-y-1 mb-4">
+                                                                <h3 className="text-lg font-bold text-[var(--color-text-main)] group-hover:text-[var(--color-primary)] transition-colors line-clamp-1">
+                                                                    {proj.title}
+                                                                </h3>
+                                                                {proj.description && (
+                                                                    <p className="text-xs text-[var(--color-text-muted)] line-clamp-2 leading-relaxed">
+                                                                        {proj.description}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+
+                                                            {/* Progress */}
+                                                            <div className="space-y-2 mb-4">
+                                                                <div className="flex items-center justify-between text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">
+                                                                    <span>{t('dashboard.projects.progress')}</span>
+                                                                    <span>{pct}%</span>
+                                                                </div>
+                                                                <div className="w-full bg-[var(--color-surface-border)] rounded-full h-1.5 overflow-hidden">
+                                                                    <div
+                                                                        className={`h-full rounded-full transition-all duration-700 ease-out ${progressColor}`}
+                                                                        style={{ width: `${pct}%` }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Footer members */}
+                                                            <div className="flex items-center justify-between mt-auto pt-4 border-t border-[var(--color-surface-border)]">
+                                                                <MemberAvatars projectId={proj.id} />
+                                                                <span className="material-symbols-outlined text-[var(--color-text-subtle)] group-hover:text-[var(--color-primary)] group-hover:translate-x-1 transition-all">arrow_forward</span>
+                                                            </div>
+                                                        </div>
+                                                    </Card>
+                                                </Link>
+                                            );
+                                        })
                                     )}
                                 </div>
-                            </Card>
-
-                        </div>
-
-                        {/* 4. Recent Projects (Full Row - Span 3) */}
-                        <div className="lg:col-span-3">
-                            <div className="flex items-center justify-between mb-6">
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400">
-                                        <span className="material-symbols-outlined">folder_open</span>
-                                    </div>
-                                    <h3 className="h3">Active Projects</h3>
-                                </div>
-                                <div className="flex justify-end gap-4">
-                                    <Link to="/projects" className="text-sm font-bold text-[var(--color-primary)] hover:text-indigo-700 transition-colors flex items-center gap-1 group">
-                                        View All <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                                    </Link>
-                                    <Link to="/create">
-                                        <Button
-                                            size="md"
-                                            className="rounded-xl px-6 font-bold shadow-lg shadow-indigo-500/20 bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:opacity-90 border-none"
-                                            icon={<span className="material-symbols-outlined">add</span>}
-                                        >
-                                            New Project
-                                        </Button>
-                                    </Link>
-                                </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                {recentProjects.length === 0 ? (
-                                    <div className="col-span-3 p-12 text-center text-[var(--color-text-subtle)] border-2 border-dashed border-[var(--color-surface-border)] rounded-2xl bg-[var(--color-surface-bg)]/50">
-                                        <div className="mb-4 inline-flex p-4 rounded-full bg-[var(--color-surface-hover)]">
-                                            <span className="material-symbols-outlined text-4xl opacity-50">post_add</span>
-                                        </div>
-                                        <p className="text-lg font-medium">No projects yet</p>
-                                        <p className="text-sm mt-1">Create your first project to get started.</p>
-                                    </div>
-                                ) : (
-                                    recentProjects.slice(0, 3).map((proj) => {
-                                        const projTasks = tasks.filter((t) => t.projectId === proj.id);
-                                        const completed = projTasks.filter((t) => t.isCompleted).length;
-                                        const total = projTasks.length;
-                                        const pct = total > 0 ? Math.round((completed / total) * 100) : (proj.progress || 0);
 
-                                        const isBrainstorming = proj.status === 'Brainstorming' || proj.status === 'Planning';
-                                        const isCompleted = proj.status === 'Completed';
-
-                                        let icon = 'folder';
-                                        let iconClass = 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border-indigo-100 dark:border-indigo-500/20';
-                                        let progressColor = 'bg-indigo-500';
-
-                                        if (isBrainstorming) {
-                                            icon = 'lightbulb';
-                                            iconClass = 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20';
-                                            progressColor = 'bg-amber-500';
-                                        } else if (isCompleted) {
-                                            icon = 'check_circle';
-                                            iconClass = 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20';
-                                            progressColor = 'bg-emerald-500';
-                                        }
-
-                                        return (
-                                            <Link key={proj.id} to={`/project/${proj.id}`} className="group block h-full">
-                                                <Card padding="none" hoverable className="h-full flex flex-col relative overflow-hidden transition-all duration-300 group-hover:shadow-2xl border-[var(--color-surface-border)] hover:border-[var(--color-primary)]/50 bg-[var(--color-surface-paper)]">
-
-                                                    {/* Cover Image Area - Tall for impact */}
-                                                    <div className="h-28 w-full relative overflow-hidden bg-gray-100 dark:bg-gray-800">
-                                                        {proj.coverImage ? (
-                                                            <>
-                                                                <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-surface-paper)]/90 via-transparent to-transparent z-10" />
-                                                                <img src={proj.coverImage} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="" />
-                                                            </>
-                                                        ) : (
-                                                            <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-500/20" />
-                                                        )}
-
-                                                        <div className="absolute top-3 right-3 z-20">
-                                                            <Badge variant={isCompleted ? 'success' : isBrainstorming ? 'secondary' : 'primary'} className="backdrop-blur-md bg-white/90 dark:bg-black/50 shadow-sm border-0">
-                                                                {proj.status}
-                                                            </Badge>
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="px-5 pb-5 flex flex-col flex-1 relative z-20">
-                                                        {/* Floating Icon */}
-                                                        <div className="-mt-8 mb-3">
-                                                            {proj.squareIcon ? (
-                                                                <div className="size-14 rounded-2xl overflow-hidden border-4 border-[var(--color-surface-paper)] bg-white shadow-md">
-                                                                    <img src={proj.squareIcon} alt="" className="w-full h-full object-cover" />
-                                                                </div>
-                                                            ) : (
-                                                                <div className={`size-14 rounded-2xl flex items-center justify-center border-4 border-[var(--color-surface-paper)] shadow-md ${iconClass} bg-[var(--color-surface-paper)]`}>
-                                                                    <span className="material-symbols-outlined text-2xl">{icon}</span>
-                                                                </div>
-                                                            )}
-                                                        </div>
-
-                                                        <div className="flex-1 space-y-1 mb-4">
-                                                            <h3 className="text-lg font-bold text-[var(--color-text-main)] group-hover:text-[var(--color-primary)] transition-colors line-clamp-1">
-                                                                {proj.title}
-                                                            </h3>
-                                                            {proj.description && (
-                                                                <p className="text-xs text-[var(--color-text-muted)] line-clamp-2 leading-relaxed">
-                                                                    {proj.description}
-                                                                </p>
-                                                            )}
-                                                        </div>
-
-                                                        {/* Progress */}
-                                                        <div className="space-y-2 mb-4">
-                                                            <div className="flex items-center justify-between text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">
-                                                                <span>Progress</span>
-                                                                <span>{pct}%</span>
-                                                            </div>
-                                                            <div className="w-full bg-[var(--color-surface-border)] rounded-full h-1.5 overflow-hidden">
-                                                                <div
-                                                                    className={`h-full rounded-full transition-all duration-700 ease-out ${progressColor}`}
-                                                                    style={{ width: `${pct}%` }}
-                                                                />
-                                                            </div>
-                                                        </div>
-
-                                                        {/* Footer members */}
-                                                        <div className="flex items-center justify-between mt-auto pt-4 border-t border-[var(--color-surface-border)]">
-                                                            <MemberAvatars projectId={proj.id} />
-                                                            <span className="material-symbols-outlined text-[var(--color-text-subtle)] group-hover:text-[var(--color-primary)] group-hover:translate-x-1 transition-all">arrow_forward</span>
-                                                        </div>
-                                                    </div>
-                                                </Card>
-                                            </Link>
-                                        );
-                                    })
-                                )}
-                            </div>
                         </div>
 
                     </div>
 
-                </div>
 
+                    {/* Right Column: Sidebar Widgets */}
+                    <div className="space-y-6">
 
-                {/* Right Column: Sidebar Widgets */}
-                <div className="space-y-6">
-
-                    {/* 1. Mini Calendar with View Toggle */}
-                    <Card padding="md">
-                        <div className="flex flex-col gap-3 mb-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="font-bold text-base text-[var(--color-text-main)]">
-                                    {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-                                    <span className="ml-2 text-[10px] text-[var(--color-text-subtle)] font-normal bg-[var(--color-surface-hover)] px-1.5 py-0.5 rounded-full">
-                                        {calendarView === 'month' ? (
-                                            <>
-                                                W{getWeekNumber(new Date(currentDate.getFullYear(), currentDate.getMonth(), 1))}
-                                                -
-                                                {getWeekNumber(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0))}
-                                            </>
-                                        ) : (
-                                            <>W{getWeekNumber(currentDate)}</>
-                                        )}
-                                    </span>
-                                </h3>
-                                <div className="flex gap-1">
-                                    <button
-                                        onClick={handlePrevDate}
-                                        className="p-1 hover:bg-[var(--color-surface-hover)] rounded-md text-[var(--color-text-subtle)]"
-                                    >
-                                        <span className="material-symbols-outlined text-[18px]">chevron_left</span>
-                                    </button>
-                                    <button
-                                        onClick={handleNextDate}
-                                        className="p-1 hover:bg-[var(--color-surface-hover)] rounded-md text-[var(--color-text-subtle)]"
-                                    >
-                                        <span className="material-symbols-outlined text-[18px]">chevron_right</span>
-                                    </button>
-                                </div>
-                            </div>
-
-                        </div>
-
-                        <div className="grid grid-cols-7 gap-1 text-center mb-2">
-                            {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((d, i) => (
-                                <div key={`${d}-${i}`} className="text-[10px] font-semibold text-[var(--color-text-subtle)] uppercase">{d}</div>
-                            ))}
-                        </div>
-                        <div className="grid grid-cols-7 gap-1 text-center">
-                            {(() => {
-                                const todayFull = new Date();
-                                const currentDay = currentDate.getDate();
-
-                                let days = [];
-
-                                if (calendarView === 'month') {
-                                    const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-                                    const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay() || 7; // Mon=1
-                                    const emptyDays = firstDay - 1;
-
-                                    for (let i = 0; i < emptyDays; i++) days.push(<div key={`empty-${i}`} />);
-                                    for (let i = 1; i <= daysInMonth; i++) {
-                                        // Check if this specific day is *actually* today
-                                        const thisDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
-                                        const isToday = thisDate.toDateString() === todayFull.toDateString();
-
-                                        days.push(
-                                            <div key={i} className={`size-8 mx-auto flex items-center justify-center text-xs rounded-full cursor-pointer transition-colors ${isToday ? 'bg-emerald-500 text-white font-bold shadow-md' : 'text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}`}>
-                                                {i}
-                                            </div>
-                                        );
-                                    }
-                                } else {
-                                    // Week view: Show week surrounding currentDate
-                                    const currentDayOfWeek = currentDate.getDay() || 7; // Mon=1
-                                    const mondayDate = new Date(currentDate);
-                                    mondayDate.setDate(currentDate.getDate() - currentDayOfWeek + 1);
-
-                                    for (let i = 0; i < 7; i++) {
-                                        const d = new Date(mondayDate);
-                                        d.setDate(mondayDate.getDate() + i);
-                                        const dayNum = d.getDate();
-                                        const isToday = d.toDateString() === todayFull.toDateString();
-
-                                        days.push(
-                                            <div key={`week-${i}`} className={`size-8 mx-auto flex items-center justify-center text-xs rounded-full cursor-pointer transition-colors ${isToday ? 'bg-emerald-500 text-white font-bold shadow-md' : 'text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}`}>
-                                                {dayNum}
-                                            </div>
-                                        );
-                                    }
-                                }
-                                return days;
-                            })()}
-                        </div>
-
-                        {/* Segmented Control for View Switch - Moved Bottom & Taller */}
-                        <div className="flex p-0.5 bg-[var(--color-surface-hover)] rounded-md mt-2">
-                            <button
-                                onClick={() => calendarView !== 'month' && toggleCalendarView()}
-                                className={`flex-1 py-[5px] text-[9px] font-bold uppercase tracking-wider rounded transition-all ${calendarView === 'month' ? 'bg-[var(--color-surface-paper)] text-[var(--color-text-main)] shadow-sm' : 'text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)]'}`}
-                            >
-                                Month
-                            </button>
-                            <button
-                                onClick={() => calendarView !== 'week' && toggleCalendarView()}
-                                className={`flex-1 py-[5px] text-[9px] font-bold uppercase tracking-wider rounded transition-all ${calendarView === 'week' ? 'bg-[var(--color-surface-paper)] text-[var(--color-text-main)] shadow-sm' : 'text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)]'}`}
-                            >
-                                Week
-                            </button>
-                        </div>
-                    </Card>
-
-                    <ScheduledTasksCard tasks={tasks} issues={issues} />
-
-                    {/* Latest Milestone (if any project has milestones module) */}
-                    <LatestMilestoneCard projects={projects} />
-
-                    {/* 2. Enhanced Live Activity (Hybrid Data) */}
-                    <Card padding="none" className="max-h-[400px] flex flex-col">
-                        <div className="p-4 border-b border-[var(--color-surface-border)] flex justify-between items-center">
-                            <h3 className="h5">Live Activity</h3>
-                            <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                            </span>
-                        </div>
-                        <div className="overflow-y-auto p-2 space-y-1">
-                            {displayActivities.length === 0 ? (
-                                <div className="p-8 text-center text-sm text-[var(--color-text-subtle)]">No recent activity</div>
-                            ) : (
-                                displayActivities.map(item => (
-                                    <div key={item.id} className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors group">
-                                        <div className="mt-0.5">
-                                            {item.userAvatar ? (
-                                                <img src={item.userAvatar} alt="" className="size-8 rounded-full border border-[var(--color-surface-border)] object-cover" />
+                        {/* 1. Mini Calendar with View Toggle */}
+                        <Card data-onboarding-id="dashboard-calendar" padding="md">
+                            <div className="flex flex-col gap-3 mb-4">
+                                <div className="flex items-center justify-between">
+                                    <h3 className="font-bold text-base text-[var(--color-text-main)]">
+                                        {format(currentDate, 'MMMM yyyy', { locale: dateLocale })}
+                                        <span className="ml-2 text-[10px] text-[var(--color-text-subtle)] font-normal bg-[var(--color-surface-hover)] px-1.5 py-0.5 rounded-full">
+                                            {calendarView === 'month' ? (
+                                                <>
+                                                    W{getWeekNumber(new Date(currentDate.getFullYear(), currentDate.getMonth(), 1))}
+                                                    -
+                                                    {getWeekNumber(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0))}
+                                                </>
                                             ) : (
-                                                <div className="size-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-xs font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
-                                                    {(item.user || 'U').charAt(0)}
-                                                </div>
+                                                <>W{getWeekNumber(currentDate)}</>
                                             )}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <p className="text-sm text-[var(--color-text-main)] leading-snug">
-                                                <span className="font-semibold">{item.user}</span> <span className="text-[var(--color-text-muted)]">
-                                                    {item.action || 'performed action on'}
-                                                </span> <br />
-                                                <span className="font-medium text-[var(--color-text-main)] group-hover:text-[var(--color-primary)] transition-colors">{item.target}</span>
-                                            </p>
-                                            <p className="text-[10px] text-[var(--color-text-subtle)] mt-1">
-                                                {item.createdAt ? new Date(toMillis(item.createdAt)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
-                                            </p>
-                                        </div>
+                                        </span>
+                                    </h3>
+                                    <div className="flex gap-1">
+                                        <button
+                                            onClick={handlePrevDate}
+                                            className="p-1 hover:bg-[var(--color-surface-hover)] rounded-md text-[var(--color-text-subtle)]"
+                                        >
+                                            <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                                        </button>
+                                        <button
+                                            onClick={handleNextDate}
+                                            className="p-1 hover:bg-[var(--color-surface-hover)] rounded-md text-[var(--color-text-subtle)]"
+                                        >
+                                            <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                                        </button>
                                     </div>
-                                ))
-                            )}
-                        </div>
-                    </Card>
+                                </div>
 
-                    {/* 3. Attention Needed (Moved Here) */}
-                    <Card padding="md" className="flex flex-col border-l-4 border-l-rose-500">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="h5 text-rose-600 dark:text-rose-400">Attention Needed</h3>
-                            <span className="material-symbols-outlined text-rose-500 text-[20px]">warning</span>
-                        </div>
-                        <div className="flex-1 overflow-y-auto pr-1 space-y-3">
-                            {(() => {
-                                const blockedTasks = tasks.filter(t => t.status === 'Blocked');
-                                const urgentTasks = tasks.filter(t => t.priority === 'Urgent' && !t.isCompleted);
-                                const attentionItems = [...blockedTasks, ...urgentTasks].slice(0, 5);
-
-                                if (attentionItems.length === 0) {
-                                    return (
-                                        <div className="flex flex-col items-center justify-center text-center py-4 opacity-70">
-                                            <span className="material-symbols-outlined text-3xl text-emerald-500 mb-2">check_circle</span>
-                                            <p className="text-xs text-[var(--color-text-muted)]">All clear!</p>
-                                        </div>
-                                    );
-                                }
-
-                                return attentionItems.map(item => (
-                                    <Link key={item.id} to={`/project/${item.projectId}/tasks/${item.id}`} className="block p-3 rounded-lg bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/30 hover:shadow-sm transition-shadow">
-                                        <p className="text-[10px] font-bold text-rose-700 dark:text-rose-300 mb-0.5 uppercase">{item.status === 'Blocked' ? 'BLOCKED' : 'URGENT'}</p>
-                                        <p className="text-sm font-medium text-[var(--color-text-main)] line-clamp-2">{item.title}</p>
-                                    </Link>
-                                ));
-                            })()}
-                        </div>
-                    </Card>
-
-                    {/* 4. Recently Added Tasks (Restored) */}
-                    <Card padding="md">
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className="h5">Recently Added</h3>
-                            <Link to="/tasks" className="text-xs font-bold text-[var(--color-primary)] hover:underline">View All</Link>
-                        </div>
-                        <div className="space-y-3">
-                            {tasks
-                                .sort((a, b) => (toMillis(b.createdAt) || 0) - (toMillis(a.createdAt) || 0))
-                                .slice(0, 5)
-                                .map(task => (
-                                    <Link key={task.id} to={`/project/${task.projectId}/tasks/${task.id}`} className="flex items-start gap-3 group">
-                                        <div className={`mt-1 size-2 rounded-full flex-shrink-0 ${task.priority === 'Urgent' ? 'bg-red-500' : task.priority === 'High' ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-sm font-medium text-[var(--color-text-main)] line-clamp-1 group-hover:text-[var(--color-primary)] transition-colors">{task.title}</p>
-                                            <p className="text-xs text-[var(--color-text-muted)]">
-                                                {formatShortDate(new Date(toMillis(task.createdAt)))}
-                                            </p>
-                                        </div>
-                                    </Link>
-                                ))}
-                            {tasks.length === 0 && <p className="text-sm text-[var(--color-text-muted)] text-center py-4">No recent tasks.</p>}
-                        </div>
-                    </Card>
-
-                    {/* Recent Issues (Conditional) */}
-                    {hasIssuesModule && issues.length > 0 && (
-                        <Card padding="none">
-                            <div className="p-4 border-b border-[var(--color-surface-border)] flex justify-between items-center">
-                                <h3 className="h5">Recent Issues</h3>
                             </div>
-                            <div className="divide-y divide-[var(--color-surface-border)]">
-                                {issues.slice(0, 4).map((issue) => (
-                                    <div key={issue.id} className="p-3">
-                                        <div className="flex items-start gap-2">
-                                            <span className={`material-symbols-outlined text-[18px] ${issue.status === 'Resolved' ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                                {issue.status === 'Resolved' ? 'check_circle' : 'error'}
-                                            </span>
-                                            <div className="min-w-0">
-                                                <p className="text-sm font-medium truncate text-[var(--color-text-main)]">{issue.title}</p>
-                                                <p className="text-xs text-[var(--color-text-muted)] truncate">{projectById.get(issue.projectId) || 'Unknown Project'}</p>
-                                            </div>
-                                        </div>
-                                    </div>
+
+                            <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                                {weekdays.map((d, i) => (
+                                    <div key={`${d}-${i}`} className="text-[10px] font-semibold text-[var(--color-text-subtle)] uppercase">{d}</div>
                                 ))}
+                            </div>
+                            <div className="grid grid-cols-7 gap-1 text-center">
+                                {(() => {
+                                    const todayFull = new Date();
+                                    const currentDay = currentDate.getDate();
+
+                                    let days = [];
+
+                                    if (calendarView === 'month') {
+                                        const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+                                        const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay() || 7; // Mon=1
+                                        const emptyDays = firstDay - 1;
+
+                                        for (let i = 0; i < emptyDays; i++) days.push(<div key={`empty-${i}`} />);
+                                        for (let i = 1; i <= daysInMonth; i++) {
+                                            // Check if this specific day is *actually* today
+                                            const thisDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
+                                            const isToday = thisDate.toDateString() === todayFull.toDateString();
+
+                                            days.push(
+                                                <div key={i} className={`size-8 mx-auto flex items-center justify-center text-xs rounded-full cursor-pointer transition-colors ${isToday ? 'bg-emerald-500 text-white font-bold shadow-md' : 'text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}`}>
+                                                    {i}
+                                                </div>
+                                            );
+                                        }
+                                    } else {
+                                        // Week view: Show week surrounding currentDate
+                                        const currentDayOfWeek = currentDate.getDay() || 7; // Mon=1
+                                        const mondayDate = new Date(currentDate);
+                                        mondayDate.setDate(currentDate.getDate() - currentDayOfWeek + 1);
+
+                                        for (let i = 0; i < 7; i++) {
+                                            const d = new Date(mondayDate);
+                                            d.setDate(mondayDate.getDate() + i);
+                                            const dayNum = d.getDate();
+                                            const isToday = d.toDateString() === todayFull.toDateString();
+
+                                            days.push(
+                                                <div key={`week-${i}`} className={`size-8 mx-auto flex items-center justify-center text-xs rounded-full cursor-pointer transition-colors ${isToday ? 'bg-emerald-500 text-white font-bold shadow-md' : 'text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}`}>
+                                                    {dayNum}
+                                                </div>
+                                            );
+                                        }
+                                    }
+                                    return days;
+                                })()}
+                            </div>
+
+                            {/* Segmented Control for View Switch - Moved Bottom & Taller */}
+                            <div className="flex p-0.5 bg-[var(--color-surface-hover)] rounded-md mt-2">
+                                <button
+                                    onClick={() => calendarView !== 'month' && toggleCalendarView()}
+                                    className={`flex-1 py-[5px] text-[9px] font-bold uppercase tracking-wider rounded transition-all ${calendarView === 'month' ? 'bg-[var(--color-surface-paper)] text-[var(--color-text-main)] shadow-sm' : 'text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)]'}`}
+                                >
+                                    {t('dashboard.calendar.month')}
+                                </button>
+                                <button
+                                    onClick={() => calendarView !== 'week' && toggleCalendarView()}
+                                    className={`flex-1 py-[5px] text-[9px] font-bold uppercase tracking-wider rounded transition-all ${calendarView === 'week' ? 'bg-[var(--color-surface-paper)] text-[var(--color-text-main)] shadow-sm' : 'text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)]'}`}
+                                >
+                                    {t('dashboard.calendar.week')}
+                                </button>
                             </div>
                         </Card>
-                    )}
 
+                        <div data-onboarding-id="dashboard-scheduled">
+                            <ScheduledTasksCard tasks={tasks} issues={issues} />
+                        </div>
+
+                        {/* Latest Milestone (if any project has milestones module) */}
+                        {hasMilestonesModule && (
+                            <div data-onboarding-id="dashboard-milestones">
+                                <LatestMilestoneCard projects={projects} />
+                            </div>
+                        )}
+
+                        {/* 2. Enhanced Live Activity (Hybrid Data) */}
+                        <Card data-onboarding-id="dashboard-live-activity" padding="none" className="max-h-[400px] flex flex-col">
+                            <div className="p-4 border-b border-[var(--color-surface-border)] flex justify-between items-center">
+                                <h3 className="h5">{t('dashboard.activity.title')}</h3>
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                                </span>
+                            </div>
+                            <div className="overflow-y-auto p-2 space-y-1">
+                                {displayActivities.length === 0 ? (
+                                    <div className="p-8 text-center text-sm text-[var(--color-text-subtle)]">{t('dashboard.activity.empty')}</div>
+                                ) : (
+                                    displayActivities.map(item => (
+                                        <div key={item.id} className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors group">
+                                            <div className="mt-0.5">
+                                                {item.userAvatar ? (
+                                                    <img src={item.userAvatar} alt="" className="size-8 rounded-full border border-[var(--color-surface-border)] object-cover" />
+                                                ) : (
+                                                    <div className="size-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-xs font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                                                        {(item.user || t('dashboard.activity.userFallback')).charAt(0)}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm text-[var(--color-text-main)] leading-snug">
+                                                    <span className="font-semibold">{item.user}</span> <span className="text-[var(--color-text-muted)]">
+                                                        {item.action || t('dashboard.activity.fallbackAction')}
+                                                    </span> <br />
+                                                    <span className="font-medium text-[var(--color-text-main)] group-hover:text-[var(--color-primary)] transition-colors">{item.target}</span>
+                                                </p>
+                                                <p className="text-[10px] text-[var(--color-text-subtle)] mt-1">
+                                                    {item.createdAt
+                                                        ? format(new Date(toMillis(item.createdAt)), 'p', { locale: dateLocale })
+                                                        : t('dashboard.activity.justNow')}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </Card>
+
+                        {/* 3. Attention Needed (Moved Here) */}
+                        <Card data-onboarding-id="dashboard-attention" padding="md" className="flex flex-col border-l-4 border-l-rose-500">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="h5 text-rose-600 dark:text-rose-400">{t('dashboard.attention.title')}</h3>
+                                <span className="material-symbols-outlined text-rose-500 text-[20px]">warning</span>
+                            </div>
+                            <div className="flex-1 overflow-y-auto pr-1 space-y-3">
+                                {(() => {
+                                    const blockedTasks = tasks.filter(t => t.status === 'Blocked');
+                                    const urgentTasks = tasks.filter(t => t.priority === 'Urgent' && !t.isCompleted);
+                                    const attentionItems = [...blockedTasks, ...urgentTasks].slice(0, 5);
+
+                                    if (attentionItems.length === 0) {
+                                        return (
+                                            <div className="flex flex-col items-center justify-center text-center py-4 opacity-70">
+                                                <span className="material-symbols-outlined text-3xl text-emerald-500 mb-2">check_circle</span>
+                                                <p className="text-xs text-[var(--color-text-muted)]">{t('dashboard.attention.allClear')}</p>
+                                            </div>
+                                        );
+                                    }
+
+                                    return attentionItems.map(item => (
+                                        <Link key={item.id} to={`/project/${item.projectId}/tasks/${item.id}`} className="block p-3 rounded-lg bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/30 hover:shadow-sm transition-shadow">
+                                            <p className="text-[10px] font-bold text-rose-700 dark:text-rose-300 mb-0.5 uppercase">
+                                                {item.status === 'Blocked' ? t('dashboard.attention.blocked') : t('dashboard.attention.urgent')}
+                                            </p>
+                                            <p className="text-sm font-medium text-[var(--color-text-main)] line-clamp-2">{item.title}</p>
+                                        </Link>
+                                    ));
+                                })()}
+                            </div>
+                        </Card>
+
+                        {/* 4. Recently Added Tasks (Restored) */}
+                        <Card data-onboarding-id="dashboard-recent-tasks" padding="md">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="h5">{t('dashboard.recent.title')}</h3>
+                                <Link to="/tasks" className="text-xs font-bold text-[var(--color-primary)] hover:underline">{t('dashboard.recent.viewAll')}</Link>
+                            </div>
+                            <div className="space-y-3">
+                                {tasks
+                                    .sort((a, b) => (toMillis(b.createdAt) || 0) - (toMillis(a.createdAt) || 0))
+                                    .slice(0, 5)
+                                    .map(task => (
+                                        <Link key={task.id} to={`/project/${task.projectId}/tasks/${task.id}`} className="flex items-start gap-3 group">
+                                            <div className={`mt-1 size-2 rounded-full flex-shrink-0 ${task.priority === 'Urgent' ? 'bg-red-500' : task.priority === 'High' ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-medium text-[var(--color-text-main)] line-clamp-1 group-hover:text-[var(--color-primary)] transition-colors">{task.title}</p>
+                                                <p className="text-xs text-[var(--color-text-muted)]">
+                                                    {formatShortDate(new Date(toMillis(task.createdAt)), dateFormat, dateLocale)}
+                                                </p>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                {tasks.length === 0 && <p className="text-sm text-[var(--color-text-muted)] text-center py-4">{t('dashboard.recent.empty')}</p>}
+                            </div>
+                        </Card>
+
+                        {/* Recent Issues (Conditional) */}
+                        {hasIssuesModule && issues.length > 0 && (
+                            <Card data-onboarding-id="dashboard-recent-issues" padding="none">
+                                <div className="p-4 border-b border-[var(--color-surface-border)] flex justify-between items-center">
+                                    <h3 className="h5">{t('dashboard.issues.title')}</h3>
+                                </div>
+                                <div className="divide-y divide-[var(--color-surface-border)]">
+                                    {issues.slice(0, 4).map((issue) => (
+                                        <div key={issue.id} className="p-3">
+                                            <div className="flex items-start gap-2">
+                                                <span className={`material-symbols-outlined text-[18px] ${issue.status === 'Resolved' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                    {issue.status === 'Resolved' ? 'check_circle' : 'error'}
+                                                </span>
+                                                <div className="min-w-0">
+                                                    <p className="text-sm font-medium truncate text-[var(--color-text-main)]">{issue.title}</p>
+                                                    <p className="text-xs text-[var(--color-text-muted)] truncate">{projectById.get(issue.projectId) || t('dashboard.issues.unknownProject')}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </Card>
+                        )}
+
+                    </div>
                 </div>
             </div>
-        </div>
+            <OnboardingWelcomeModal
+                isOpen={showOnboardingWelcome}
+                title={t('onboarding.dashboard.welcome.title')}
+                description={t('onboarding.dashboard.welcome.description')}
+                onStart={handleStartOnboarding}
+                onSkip={() => handleCompleteOnboarding('skipped')}
+            />
+            <OnboardingOverlay
+                isOpen={onboardingActive}
+                steps={onboardingSteps}
+                stepIndex={onboardingStepIndex}
+                onStepChange={setOnboardingStepIndex}
+                onFinish={() => handleCompleteOnboarding('completed')}
+                onSkip={() => handleCompleteOnboarding('skipped')}
+            />
+        </>
     );
 };

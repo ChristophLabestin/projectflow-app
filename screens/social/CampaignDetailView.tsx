@@ -6,12 +6,15 @@ import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { useConfirm, useToast } from '../../context/UIContext';
 import { generateCampaignContentPlan, SocialPostDraft } from '../../services/geminiService';
+import { format } from 'date-fns';
+import { dateLocale, dateFormat } from '../../utils/activityHelpers';
 import { CampaignStrategyView } from './tabs/CampaignStrategyView';
 import { CampaignKanbanView } from './tabs/CampaignKanbanView';
 import { CampaignCalendarView } from './tabs/CampaignCalendarView';
 import { CampaignDashboardView } from './tabs/CampaignDashboardView';
 import { CampaignHeader } from './components/CampaignHeader';
-import { SocialCampaignReviewView } from '../../components/ideas/stages/SocialCampaignReviewView';
+import { SocialCampaignReviewView } from '../../components/flows/stages/SocialCampaignReviewView';
+import { PlannedPostsSelectModal } from './components/PlannedPostsSelectModal';
 
 export const CampaignDetailView = () => {
     const { id: projectId, campaignId } = useParams<{ id: string; campaignId: string }>();
@@ -26,6 +29,7 @@ export const CampaignDetailView = () => {
     const [generating, setGenerating] = useState(false);
     const [generatedPlan, setGeneratedPlan] = useState<SocialPostDraft[]>([]);
     const [showPlanModal, setShowPlanModal] = useState(false);
+    const [showPlannedContentModal, setShowPlannedContentModal] = useState(false);
     const [isFocusMode, setIsFocusMode] = useState(false);
 
     // Config Modal State
@@ -190,6 +194,98 @@ export const CampaignDetailView = () => {
         navigate(`/project/${projectId}/social/create?campaignId=${campaignId}`);
     };
 
+    const handleViewPlannedContent = () => {
+        setShowPlannedContentModal(true);
+    };
+
+    const handleDebugSyncPlan = async () => {
+        if (!campaign || !projectId || !campaign.originIdeaId) {
+            showError("No linked flow found");
+            return;
+        }
+
+        try {
+            const idea = await getIdeaById(campaign.originIdeaId, projectId);
+            if (!idea || !idea.concept) {
+                showError("Flow has no concept data");
+                return;
+            }
+
+            const conceptData = JSON.parse(idea.concept);
+            if (!conceptData.planningPosts || !Array.isArray(conceptData.planningPosts)) {
+                showError("No planned posts found in concept");
+                return;
+            }
+
+            await updateCampaign(projectId, campaign.id, {
+                plannedContent: conceptData.planningPosts
+            });
+
+            showSuccess(`Synced ${conceptData.planningPosts.length} planned items`);
+            // The subscription will auto-update the UI
+        } catch (error) {
+            console.error(error);
+            showError("Failed to sync plan");
+        }
+    };
+
+    const handleSelectPlannedPost = async (post: any) => {
+        if (!projectId || !campaignId) return;
+
+        const confirmed = await confirm(
+            'Create this planned post?',
+            `Do you want to create a new post draft based on "${post.hook || post.visualDirection || 'this planned item'}"?`
+        );
+
+        if (confirmed) {
+            setShowPlannedContentModal(false);
+
+            // Determine Platform and Format
+            let platformParam = post.platform;
+            let formatParam = post.contentType || post.format || 'Post'; // Default
+
+            // Handle array of platforms (take first)
+            if (Array.isArray(post.platforms) && post.platforms.length > 0) {
+                platformParam = post.platforms[0];
+            } else if (!platformParam && Array.isArray(post.channel) && post.channel.length > 0) {
+                // Fallback if 'channel' property is used
+                platformParam = post.channel[0];
+            }
+
+            // Normalizing YouTube logic
+            if (typeof platformParam === 'string' && platformParam.toLowerCase().includes('youtube')) {
+                platformParam = 'YouTube';
+
+                // If content type explicitly says Short or Video, respect it.
+                // Otherwise default to Video if not specified.
+                if (formatParam !== 'Short' && formatParam !== 'Video') {
+                    formatParam = 'Video';
+                }
+            }
+
+            // Construct Query Params
+            const params = new URLSearchParams();
+            params.set('campaignId', campaignId);
+            if (platformParam) params.set('platform', platformParam);
+            if (formatParam) params.set('format', formatParam);
+
+            // Prefill content
+            // We use 'caption' for normal posts, or 'title' for video/youtube if available
+            // but CreateSocialPost usually looks for caption or title in its state init logic?
+            // Wait, CreateSocialPost reads: defaultDate, preselectedCampaignId.
+            // It DOES NOT read 'caption', 'platform', 'format' from URL params currently in the useEffect.
+            // WE NEED TO UPDATE CreateSocialPost TO READ THESE PARAMS.
+            // For now, let's pass them and I will accept the Task 7 to update CreateSocialPost.
+
+            if (post.hook) params.set('caption', post.hook);
+            // If visual direction exists, maybe append to caption or separate param?
+            // Let's passed it as visualDirection for context if needed, though CreateSocialPost might not use it yet.
+            if (post.visualDirection) params.set('visualDirection', post.visualDirection);
+
+            navigate(`/project/${projectId}/social/create?${params.toString()}`);
+        }
+    };
+
     const handleEditPost = (post: SocialPost) => {
         navigate(`/project/${projectId}/social/edit/${post.id}?campaignId=${campaignId}`);
     };
@@ -218,7 +314,7 @@ export const CampaignDetailView = () => {
                 scheduledFor: date ? date.toISOString() : '', // Assuming empty string clears it in DB adapt
                 isConcept: false
             });
-            showSuccess(date ? `Scheduled for ${date.toLocaleDateString()}` : 'Unscheduled');
+            showSuccess(date ? `Scheduled for ${format(date, dateFormat, { locale: dateLocale })}` : 'Unscheduled');
         } catch (error) {
             console.error("Failed to schedule post", error);
             showError("Failed to update schedule");
@@ -496,7 +592,7 @@ export const CampaignDetailView = () => {
                                     // This overrides any potential side-effects from updateIdea
                                     await updateCampaign(projectId, campaignId, { status: 'Concept' });
 
-                                    showSuccess("Changes Requested. Feedback sent to Idea Concept.");
+                                    showSuccess("Changes Requested. Feedback sent to Flow Concept.");
                                     navigate(`../campaigns`);
                                 }}
                                 onRejectEntirely={async () => {
@@ -536,6 +632,7 @@ export const CampaignDetailView = () => {
                                 posts={posts}
                                 onEdit={() => navigate(`/project/${projectId}/social/campaigns/edit/${campaignId}`)}
                                 onAIPlan={handleOpenConfig}
+                                onViewPlannedContent={campaign.plannedContent && campaign.plannedContent.length > 0 ? handleViewPlannedContent : undefined}
                                 onAddContent={handleCreatePost}
                                 onBack={() => navigate('../campaigns')}
                                 brandColor={brandColor}
@@ -741,7 +838,7 @@ export const CampaignDetailView = () => {
                                 </div>
                                 <p className="text-sm text-[var(--color-text-main)] mb-3 line-clamp-4">{draft.content}</p>
                                 <div className="text-xs text-[var(--color-text-muted)] bg-[var(--color-surface-card)] p-2 rounded mb-2">
-                                    <strong className="text-[var(--color-text-main)]">Visual Idea:</strong> {draft.imagePrompt || 'No specific visual'}
+                                    <strong className="text-[var(--color-text-main)]">Visual Flow:</strong> {draft.imagePrompt || 'No specific visual'}
                                 </div>
                                 <div className="flex flex-wrap gap-1">
                                     {draft.hashtags.map(tag => (
@@ -760,6 +857,15 @@ export const CampaignDetailView = () => {
                     </div>
                 </div>
             </Modal>
+            {/* Planned Content Modal */}
+            {campaign && (
+                <PlannedPostsSelectModal
+                    isOpen={showPlannedContentModal}
+                    onClose={() => setShowPlannedContentModal(false)}
+                    plannedContent={campaign.plannedContent || []}
+                    onSelect={handleSelectPlannedPost}
+                />
+            )}
         </div >
     );
 };

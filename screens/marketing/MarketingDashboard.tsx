@@ -132,7 +132,7 @@ export const MarketingDashboard = () => {
                                 {c.status}
                             </div>
                             {c.originIdeaId && (
-                                <Link to={`/project/${projectId}/ideas/${c.originIdeaId}`} className="text-purple-400 hover:text-purple-600 ml-1" title="View Source Idea">
+                                <Link to={`/project/${projectId}/flows/${c.originIdeaId}`} className="text-purple-400 hover:text-purple-600 ml-1" title="View Source Flow">
                                     <span className="material-symbols-outlined text-[18px]">lightbulb</span>
                                 </Link>
                             )}

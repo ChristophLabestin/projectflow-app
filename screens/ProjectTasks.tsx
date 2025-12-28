@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
+import { useLanguage } from '../context/LanguageContext';
 import { getProjectById, subscribeProjectTasks, toggleTaskStatus, updateTaskFields, deleteTask, getSubTasks, getProjectCategories } from '../services/dataService';
 import { subscribeProjectGroups } from '../services/projectGroupService';
 import { Task, Project, TaskCategory, ProjectGroup } from '../types';
@@ -9,8 +11,12 @@ import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Input } from '../components/ui/Input';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
+import { useArrowReplacement } from '../hooks/useArrowReplacement';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { useConfirm } from '../context/UIContext';
+import { ProjectBoard } from '../components/ProjectBoard';
+import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
+import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
 
 export const ProjectTasks = () => {
     const { id } = useParams<{ id: string }>();
@@ -25,7 +31,7 @@ export const ProjectTasks = () => {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [subtaskStats, setSubtaskStats] = useState<Record<string, { done: number; total: number }>>({});
     const [view, setView] = useState<'list' | 'board'>('list');
-    const [sortBy, setSortBy] = useState<'priority' | 'dueDate' | 'title' | 'createdAt'>('priority');
+    const [sortBy, setSortBy] = useState<'priority' | 'dueDate' | 'title' | 'createdAt'>('dueDate');
     const [allCategories, setAllCategories] = useState<TaskCategory[]>([]);
     const [projectGroups, setProjectGroups] = useState<ProjectGroup[]>([]);
     const location = useLocation();
@@ -34,6 +40,9 @@ export const ProjectTasks = () => {
     // Permissions
     const { can } = useProjectPermissions(project);
     const { pinItem, unpinItem, isPinned, focusItemId, setFocusItem } = usePinnedTasks();
+    const { dateFormat, dateLocale, t } = useLanguage();
+
+    const handleSearchChange = useArrowReplacement((e) => setSearch(e.target.value));
 
     useEffect(() => {
         if (!id) return;
@@ -113,16 +122,47 @@ export const ProjectTasks = () => {
 
     const handleDelete = async (taskId: string) => {
         if (!can('canManageTasks')) return;
-        if (!await confirm("Delete Task", "Are you sure you want to delete this task?")) return;
+        if (!await confirm(t('projectTasks.confirm.delete.title'), t('projectTasks.confirm.delete.body'))) return;
         try {
             await deleteTask(taskId);
         } catch (e) {
             console.error(e);
-            setError('Failed to delete task.');
+            setError(t('projectTasks.error.delete'));
         }
     };
 
     const priorityMap: Record<string, number> = { Urgent: 4, High: 3, Medium: 2, Low: 1 };
+    const priorityLabels = useMemo(() => ({
+        Urgent: t('tasks.priority.urgent'),
+        High: t('tasks.priority.high'),
+        Medium: t('tasks.priority.medium'),
+        Low: t('tasks.priority.low')
+    }), [t]);
+    const statusLabels = useMemo(() => ({
+        Done: t('tasks.status.done'),
+        'In Progress': t('tasks.status.inProgress'),
+        Review: t('tasks.status.review'),
+        Open: t('tasks.status.open'),
+        Todo: t('tasks.status.todo'),
+        Backlog: t('tasks.status.backlog'),
+        'On Hold': t('tasks.status.onHold'),
+        Blocked: t('tasks.status.blocked')
+    }), [t]);
+    const filterLabels = useMemo(() => ({
+        active: t('projectTasks.filters.active'),
+        completed: t('projectTasks.filters.completed'),
+        all: t('projectTasks.filters.all')
+    }), [t]);
+    const viewLabels = useMemo(() => ({
+        list: t('projectTasks.view.list'),
+        board: t('projectTasks.view.board')
+    }), [t]);
+    const sortLabels = useMemo(() => ({
+        priority: t('projectTasks.sort.priority'),
+        dueDate: t('projectTasks.sort.dueDate'),
+        title: t('projectTasks.sort.title'),
+        createdAt: t('projectTasks.sort.created')
+    }), [t]);
 
     const filteredTasks = useMemo(() => {
         const filtered = tasks.filter(t => {
@@ -176,13 +216,16 @@ export const ProjectTasks = () => {
     const handleBulkDelete = async () => {
         if (!selectedIds.size) return;
         if (!can('canManageTasks')) return;
-        if (!await confirm("Delete Tasks", `Delete ${selectedIds.size} tasks?`)) return;
+        if (!await confirm(
+            t('projectTasks.confirm.bulkDelete.title'),
+            t('projectTasks.confirm.bulkDelete.body').replace('{count}', String(selectedIds.size))
+        )) return;
         try {
             await Promise.all(Array.from(selectedIds).map((id: string) => deleteTask(id)));
             setSelectedIds(new Set());
         } catch (e) {
             console.error(e);
-            setError('Failed to delete tasks.');
+            setError(t('projectTasks.error.bulkDelete'));
         }
     };
 
@@ -196,6 +239,43 @@ export const ProjectTasks = () => {
         return { total, open, completed, urgent, high, progress };
     }, [tasks]);
 
+    const onboardingSteps = useMemo<OnboardingStep[]>(() => ([
+        {
+            id: 'header',
+            targetId: 'project-tasks-header',
+            title: t('projectTasks.onboarding.header.title'),
+            description: t('projectTasks.onboarding.header.description')
+        },
+        {
+            id: 'stats',
+            targetId: 'project-tasks-stats',
+            title: t('projectTasks.onboarding.stats.title'),
+            description: t('projectTasks.onboarding.stats.description'),
+            placement: 'top'
+        },
+        {
+            id: 'controls',
+            targetId: 'project-tasks-controls',
+            title: t('projectTasks.onboarding.controls.title'),
+            description: t('projectTasks.onboarding.controls.description'),
+            placement: 'top'
+        },
+        {
+            id: 'tasks',
+            targetId: 'project-tasks-view',
+            title: t('projectTasks.onboarding.tasks.title'),
+            description: t('projectTasks.onboarding.tasks.description')
+        }
+    ]), [t]);
+
+    const {
+        onboardingActive,
+        stepIndex,
+        setStepIndex,
+        skip,
+        finish
+    } = useOnboardingTour('project_tasks', { stepCount: onboardingSteps.length, autoStart: true, enabled: !loading });
+
     const TaskCard = ({ task, isBoard = false }: { task: Task; isBoard?: boolean }) => {
         const isStrategic = Boolean(task.convertedIdeaId);
         const hasStart = Boolean(task.startDate);
@@ -206,6 +286,19 @@ export const ProjectTasks = () => {
         const showStrategicDue = isStrategic && !hasStart && hasDue && !task.isCompleted;
         const dueDate = task.dueDate ? new Date(task.dueDate) : null;
         const isOverdue = !!dueDate && dueDate < new Date() && !task.isCompleted;
+        const priorityLabel = task.priority ? (priorityLabels[task.priority] || task.priority) : '';
+        const statusLabel = task.status ? (statusLabels[task.status] || task.status) : '';
+        const dependencyCount = task.dependencies?.length || 0;
+        const dependencyLabel = dependencyCount === 1
+            ? t('projectTasks.badge.dependency')
+            : t('projectTasks.badge.dependencies');
+
+        // Check if blocked by dependencies
+        // Ideally we would check if the dependencies are completed, but we only have `tasks` array.
+        // We can do a lookup in `tasks` array as it contains all project tasks (subscribed).
+        const dependentTasks = task.dependencies?.map(depId => tasks.find(t => t.id === depId)).filter(Boolean) as Task[] || [];
+        const blockedBy = dependentTasks.filter(t => !t.isCompleted);
+        const isBlocked = blockedBy.length > 0;
 
         return (
             <div
@@ -214,9 +307,11 @@ export const ProjectTasks = () => {
                     group relative flex ${isBoard ? 'flex-col' : 'flex-col md:flex-row md:items-center'} gap-4 p-5 rounded-[24px] border transition-all duration-300 cursor-pointer
                     ${task.isCompleted
                         ? 'bg-slate-50/50 dark:bg-white/[0.01] border-slate-100 dark:border-white/5 opacity-80'
-                        : task.convertedIdeaId
-                            ? 'bg-gradient-to-r from-indigo-50/50 to-white dark:from-indigo-950/10 dark:to-transparent border-indigo-100 dark:border-indigo-500/20 hover:shadow-xl hover:shadow-indigo-500/10'
-                            : 'bg-white dark:bg-white/[0.03] border-black/5 dark:border-white/5 hover:border-[var(--color-primary)]/30 hover:shadow-xl hover:shadow-black/5 hover:-translate-y-0.5'
+                        : isBlocked
+                            ? 'bg-orange-50/30 dark:bg-orange-500/5 border-orange-200 dark:border-orange-500/20' // Blocked style
+                            : task.convertedIdeaId
+                                ? 'bg-gradient-to-r from-indigo-50/50 to-white dark:from-indigo-950/10 dark:to-transparent border-indigo-100 dark:border-indigo-500/20 hover:shadow-xl hover:shadow-indigo-500/10'
+                                : 'bg-white dark:bg-white/[0.03] border-black/5 dark:border-white/5 hover:border-[var(--color-primary)]/30 hover:shadow-xl hover:shadow-black/5 hover:-translate-y-0.5'
                     }
                 `}
             >
@@ -244,7 +339,7 @@ export const ProjectTasks = () => {
                             {task.convertedIdeaId && (
                                 <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-indigo-500 text-white shadow-sm shadow-indigo-500/20">
                                     <span className="material-symbols-outlined text-[12px]">auto_awesome</span>
-                                    Strategic
+                                    {t('projectTasks.badge.strategic')}
                                 </div>
                             )}
                             {task.priority && (
@@ -261,7 +356,37 @@ export const ProjectTasks = () => {
                                                 task.priority === 'Medium' ? 'drag_handle' :
                                                     'keyboard_arrow_down'}
                                     </span>
-                                    {task.priority}
+                                    {priorityLabel}
+                                </div>
+                            )}
+
+                            {/* Blocked Indicator */}
+                            {isBlocked && (
+                                <div className="relative group/blocked flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20 animate-pulse">
+                                    <span className="material-symbols-outlined text-[14px]">link_off</span>
+                                    {t('projectTasks.badge.blocked')}
+                                    {/* Tooltip */}
+                                    <div className="absolute left-0 top-full mt-2 w-48 p-3 bg-white dark:bg-[#1E1E1E] rounded-xl border border-orange-200 dark:border-orange-500/20 shadow-xl opacity-0 invisible group-hover/blocked:opacity-100 group-hover/blocked:visible transition-all z-50">
+                                        <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest mb-2">{t('projectTasks.badge.blockedBy')}</p>
+                                        <div className="flex flex-col gap-1.5">
+                                            {blockedBy.map(t => (
+                                                <div key={t.id} className="flex items-center gap-2">
+                                                    <span className="material-symbols-outlined text-[12px] text-orange-400">lock</span>
+                                                    <span className="text-xs font-medium truncate text-[var(--color-text-main)] w-full">
+                                                        {t.title}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Dependency Count (if not blocked but has deps) */}
+                            {!isBlocked && (task.dependencies?.length || 0) > 0 && (
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border bg-indigo-500/5 text-indigo-500 border-indigo-500/10">
+                                    <span className="material-symbols-outlined text-[14px]">link</span>
+                                    {dependencyCount} {dependencyLabel}
                                 </div>
                             )}
                         </div>
@@ -289,7 +414,7 @@ export const ProjectTasks = () => {
                                                                 task.status === 'Blocked' ? 'dangerous' :
                                                                     'circle'}
                                     </span>
-                                    {task.status}
+                                    {statusLabel || t('tasks.status.unknown')}
                                 </div>
                             )}
                             {subtaskStats[task.id]?.total > 0 && (
@@ -331,7 +456,7 @@ export const ProjectTasks = () => {
                                             key={gid}
                                             className="size-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-[#1E1E1E]"
                                             style={{ backgroundColor: group.color }}
-                                            title={`Group: ${group.name}`}
+                                            title={t('projectTasks.groupLabel').replace('{name}', group.name)}
                                         >
                                             {group.name.substring(0, 2).toUpperCase()}
                                         </div>
@@ -350,7 +475,7 @@ export const ProjectTasks = () => {
                             <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.18em] text-indigo-600 dark:text-indigo-300">
                                 <span className="flex items-center gap-1.5">
                                     <span className="material-symbols-outlined text-[14px]">timeline</span>
-                                    Strategic Timeline
+                                    {t('projectTasks.timeline.strategic')}
                                 </span>
                                 {(() => {
                                     const start = new Date(task.startDate!).getTime();
@@ -379,9 +504,9 @@ export const ProjectTasks = () => {
                                 })()}
                             </div>
                             <div className="flex justify-between text-[10px] font-semibold text-indigo-600/80 dark:text-indigo-200/80">
-                                <span>Start {new Date(task.startDate!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                <span>{t('projectTasks.timeline.start')} {format(new Date(task.startDate!), dateFormat, { locale: dateLocale })}</span>
                                 <span className={new Date(task.dueDate!) < new Date() ? 'text-rose-500' : ''}>
-                                    Due {new Date(task.dueDate!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                    {t('projectTasks.timeline.due')} {format(new Date(task.dueDate!), dateFormat, { locale: dateLocale })}
                                 </span>
                             </div>
                         </div>
@@ -405,9 +530,9 @@ export const ProjectTasks = () => {
                                 })()}
                             </div>
                             <div className="flex justify-between text-[9px] font-black uppercase tracking-tighter opacity-50">
-                                <span>{new Date(task.startDate!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                <span>{format(new Date(task.startDate!), dateFormat, { locale: dateLocale })}</span>
                                 <span className={new Date(task.dueDate!) < new Date() ? 'text-rose-500' : ''}>
-                                    {new Date(task.dueDate!).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                    {format(new Date(task.dueDate!), dateFormat, { locale: dateLocale })}
                                 </span>
                             </div>
                         </div>
@@ -418,8 +543,8 @@ export const ProjectTasks = () => {
                             <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-sm ${isOverdue ? 'border-rose-500/30 bg-rose-500/10 text-rose-500' : 'border-indigo-500/20 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300'}`}>
                                 <span className="material-symbols-outlined text-[18px]">event</span>
                                 <div className="flex flex-col">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-70">Strategic Due</span>
-                                    <span className="text-sm font-semibold">{dueDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-70">{t('projectTasks.timeline.strategicDue')}</span>
+                                    <span className="text-sm font-semibold">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
                                 </div>
                             </div>
                         </div>
@@ -430,8 +555,8 @@ export const ProjectTasks = () => {
                             <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${isOverdue ? 'border-rose-500/30 bg-rose-500/10 text-rose-500' : 'border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] text-[var(--color-text-main)]'}`}>
                                 <span className="material-symbols-outlined text-[16px]">event</span>
                                 <div className="flex flex-col">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-70">Due</span>
-                                    <span className="text-xs font-semibold">{dueDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-70">{t('projectTasks.timeline.due')}</span>
+                                    <span className="text-xs font-semibold">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
                                 </div>
                             </div>
                         </div>
@@ -472,7 +597,7 @@ export const ProjectTasks = () => {
                             bg-slate-100 dark:bg-white/5
                             ${isPinned(task.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 shadow-sm'}
                         `}
-                            title={isPinned(task.id) ? 'Unpin (Right-click to focus)' : 'Pin (Right-click to focus)'}
+                            title={isPinned(task.id) ? t('projectTasks.actions.unpinTitle') : t('projectTasks.actions.pinTitle')}
                         >
                             <span className={`material-symbols-outlined text-xl transition-colors duration-300 ${focusItemId === task.id ? 'text-amber-500' : 'text-white'}`}>
                                 push_pin
@@ -483,7 +608,7 @@ export const ProjectTasks = () => {
                         </div>
                     </div>
                 </div>
-            </div>
+            </div >
         );
     };
 
@@ -494,210 +619,200 @@ export const ProjectTasks = () => {
     );
 
     return (
-        <div className="flex flex-col gap-8 fade-in max-w-6xl mx-auto pb-20 px-4 md:px-0">
+        <>
+            <div className="flex flex-col gap-8 fade-in max-w-6xl mx-auto pb-20 px-4 md:px-0">
 
-            {/* Premium Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
-                <div>
-                    <h1 className="text-4xl font-black text-[var(--color-text-main)] tracking-tight mb-2">
-                        Project <span className="text-[var(--color-primary)]">Tasks</span>
-                    </h1>
-                    <p className="text-[var(--color-text-muted)] text-lg font-medium opacity-80">
-                        {project?.name ? `Managing work for ${project.name}` : 'Track and prioritize your project work.'}
-                    </p>
+                {/* Premium Header */}
+                <div data-onboarding-id="project-tasks-header" className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
+                    <div>
+                        <h1 className="text-4xl font-black text-[var(--color-text-main)] tracking-tight mb-2">
+                            {t('projectTasks.header.title')} <span className="text-[var(--color-primary)]">{t('projectTasks.header.titleEmphasis')}</span>
+                        </h1>
+                        <p className="text-[var(--color-text-muted)] text-lg font-medium opacity-80">
+                            {project?.name
+                                ? t('projectTasks.header.subtitleWithProject').replace('{project}', project.name)
+                                : t('projectTasks.header.subtitleFallback')}
+                        </p>
+                    </div>
+                    {can('canManageTasks') && (
+                        <Button
+                            onClick={() => setShowCreateModal(true)}
+                            icon={<span className="material-symbols-outlined font-bold">add</span>}
+                            variant="primary"
+                            size="lg"
+                            className="shadow-2xl shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all px-8 py-4 rounded-2xl"
+                        >
+                            {t('projectTasks.actions.newTask')}
+                        </Button>
+                    )}
                 </div>
-                {can('canManageTasks') && (
-                    <Button
-                        onClick={() => setShowCreateModal(true)}
-                        icon={<span className="material-symbols-outlined font-bold">add</span>}
-                        variant="primary"
-                        size="lg"
-                        className="shadow-2xl shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all px-8 py-4 rounded-2xl"
-                    >
-                        New Task
-                    </Button>
-                )}
-            </div>
 
-            {/* Stats Row - Kept as requested but refined */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {[
-                    { label: 'Open Tasks', val: stats.open, icon: 'list_alt', color: 'indigo' },
-                    { label: 'Completed', val: stats.completed, icon: 'check_circle', color: 'emerald', progress: stats.progress },
-                    { label: 'High Priority', val: stats.high, icon: 'priority_high', color: 'amber' },
-                    { label: 'Urgent', val: stats.urgent, icon: 'warning', color: 'rose' }
-                ].map((stat, idx) => (
-                    <div key={idx} className={`p-6 rounded-2xl bg-white dark:bg-white/[0.03] border border-${stat.color}-100 dark:border-${stat.color}-500/20 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300`}>
-                        <div className="absolute -right-2 -top-2 p-4 opacity-[0.05] group-hover:opacity-[0.15] group-hover:scale-110 transition-all duration-500">
-                            <span className={`material-symbols-outlined text-8xl text-${stat.color}-500`}>{stat.icon}</span>
-                        </div>
-                        <div className="relative z-10">
-                            <p className={`text-xs font-bold text-${stat.color}-600 dark:text-${stat.color}-400 uppercase tracking-[0.1em] mb-2`}>{stat.label}</p>
-                            <div className="flex items-baseline gap-3">
-                                <p className="text-4xl font-black text-[var(--color-text-main)]">{stat.val}</p>
-                                {stat.progress !== undefined && (
-                                    <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30">
-                                        {stat.progress}%
-                                    </span>
-                                )}
+                {/* Stats Row - Kept as requested but refined */}
+                <div data-onboarding-id="project-tasks-stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {[
+                        { label: t('projectTasks.stats.open'), val: stats.open, icon: 'list_alt', color: 'indigo' },
+                        { label: t('projectTasks.stats.completed'), val: stats.completed, icon: 'check_circle', color: 'emerald', progress: stats.progress },
+                        { label: t('projectTasks.stats.highPriority'), val: stats.high, icon: 'priority_high', color: 'amber' },
+                        { label: t('projectTasks.stats.urgent'), val: stats.urgent, icon: 'warning', color: 'rose' }
+                    ].map((stat, idx) => (
+                        <div key={idx} className={`p-6 rounded-2xl bg-white dark:bg-white/[0.03] border border-${stat.color}-100 dark:border-${stat.color}-500/20 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300`}>
+                            <div className="absolute -right-2 -top-2 p-4 opacity-[0.05] group-hover:opacity-[0.15] group-hover:scale-110 transition-all duration-500">
+                                <span className={`material-symbols-outlined text-8xl text-${stat.color}-500`}>{stat.icon}</span>
+                            </div>
+                            <div className="relative z-10">
+                                <p className={`text-xs font-bold text-${stat.color}-600 dark:text-${stat.color}-400 uppercase tracking-[0.1em] mb-2`}>{stat.label}</p>
+                                <div className="flex items-baseline gap-3">
+                                    <p className="text-4xl font-black text-[var(--color-text-main)]">{stat.val}</p>
+                                    {stat.progress !== undefined && (
+                                        <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30">
+                                            {stat.progress}%
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                ))}
-            </div>
+                    ))}
+                </div>
 
-            {/* Interactive Controls Bar */}
-            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 sticky top-6 z-20">
-                <div className="flex flex-wrap gap-2">
-                    <div className="flex bg-white/60 dark:bg-black/40 backdrop-blur-2xl p-1.5 rounded-2xl border border-white/20 dark:border-white/10 shadow-xl shadow-black/5 ring-1 ring-black/5">
-                        {(['active', 'completed', 'all'] as const).map((f) => (
-                            <button
-                                key={f}
-                                onClick={() => setFilter(f)}
-                                className={`
+                {/* Interactive Controls Bar */}
+                <div data-onboarding-id="project-tasks-controls" className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 sticky top-0 z-20 py-4 bg-slate-50/80 dark:bg-[#0B0B0B]/80 backdrop-blur-xl -mx-4 px-4 md:mx-0 md:px-0 md:rounded-b-2xl transition-all duration-300">
+                    <div className="flex flex-wrap gap-2">
+                        <div className="flex bg-white/60 dark:bg-white/5 backdrop-blur-md p-1.5 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm">
+                            {(['active', 'completed', 'all'] as const).map((f) => (
+                                <button
+                                    key={f}
+                                    onClick={() => setFilter(f)}
+                                    className={`
                                     relative flex-1 lg:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all capitalize z-10
                                     ${filter === f
-                                        ? 'text-[var(--color-primary)]'
-                                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}
+                                            ? 'text-[var(--color-primary)] bg-white dark:bg-white/10 shadow-sm'
+                                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}
                                 `}
-                            >
-                                {filter === f && (
-                                    <div className="absolute inset-0 bg-white dark:bg-white/10 rounded-xl shadow-sm z-[-1] fade-in" />
-                                )}
-                                {f}
-                            </button>
-                        ))}
-                    </div>
-
-                    <div className="flex bg-white/60 dark:bg-black/40 backdrop-blur-2xl p-1.5 rounded-2xl border border-white/20 dark:border-white/10 shadow-xl shadow-black/5 ring-1 ring-black/5">
-                        {(['list', 'board'] as const).map((v) => (
-                            <button
-                                key={v}
-                                onClick={() => setView(v)}
-                                className={`
-                                    relative flex-1 lg:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all capitalize z-10 flex items-center gap-2
-                                    ${view === v
-                                        ? 'text-[var(--color-primary)]'
-                                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}
-                                `}
-                            >
-                                {view === v && (
-                                    <div className="absolute inset-0 bg-white dark:bg-white/10 rounded-xl shadow-sm z-[-1] fade-in" />
-                                )}
-                                <span className="material-symbols-outlined text-lg">{v === 'list' ? 'format_list_bulleted' : 'dashboard'}</span>
-                                {v}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Sort Dropdown */}
-                    <div className="relative group/sort">
-                        <button className="flex items-center gap-2 bg-white/60 dark:bg-black/40 backdrop-blur-2xl px-4 py-2.5 rounded-2xl border border-white/20 dark:border-white/10 shadow-xl shadow-black/5 ring-1 ring-black/5 text-sm font-bold text-[var(--color-text-main)] hover:ring-[var(--color-primary)] transition-all">
-                            <span className="material-symbols-outlined text-lg">sort</span>
-                            <span className="hidden sm:inline">Sort by:</span>
-                            <span className="text-[var(--color-primary)] capitalize">
-                                {sortBy === 'dueDate' ? 'Due Date' : sortBy === 'createdAt' ? 'Created' : sortBy}
-                            </span>
-                            <span className="material-symbols-outlined text-sm opacity-50">expand_more</span>
-                        </button>
-                        <div className="absolute top-full left-0 mt-2 opacity-0 invisible group-hover/sort:opacity-100 group-hover/sort:visible transition-all bg-white dark:bg-[#1E1E1E] border border-[var(--color-surface-border)] rounded-xl shadow-2xl py-2 min-w-[160px] z-50">
-                            {([
-                                { value: 'priority', label: 'Priority', icon: 'flag' },
-                                { value: 'dueDate', label: 'Due Date', icon: 'event' },
-                                { value: 'title', label: 'Title', icon: 'sort_by_alpha' },
-                                { value: 'createdAt', label: 'Created', icon: 'schedule' }
-                            ] as const).map(opt => (
-                                <button
-                                    key={opt.value}
-                                    onClick={() => setSortBy(opt.value)}
-                                    className={`w-full px-4 py-2 text-left text-sm font-medium flex items-center gap-3 hover:bg-[var(--color-surface-hover)] transition-colors ${sortBy === opt.value ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/5' : 'text-[var(--color-text-main)]'}`}
                                 >
-                                    <span className="material-symbols-outlined text-lg">{opt.icon}</span>
-                                    {opt.label}
-                                    {sortBy === opt.value && (
-                                        <span className="material-symbols-outlined text-sm ml-auto">check</span>
-                                    )}
+                                    {filterLabels[f]}
                                 </button>
                             ))}
                         </div>
-                    </div>
-                </div>
 
-                <div className="relative group w-full lg:w-96 shadow-xl shadow-black/5">
-                    <input
-                        type="text"
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search project tasks..."
-                        className="w-full bg-white/60 dark:bg-black/40 backdrop-blur-2xl border-none ring-1 ring-black/5 dark:ring-white/10 focus:ring-2 focus:ring-[var(--color-primary)] rounded-2xl pl-12 pr-6 py-4 text-sm font-medium transition-all outline-none"
-                    />
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] group-focus-within:text-[var(--color-primary)] transition-colors">search</span>
-                </div>
-            </div>
-
-            {/* Enhanced View Area */}
-            <div className="flex flex-col gap-4 min-h-[400px]">
-                {filteredTasks.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-white/30 dark:bg-white/[0.02] border-2 border-dashed border-black/5 dark:border-white/5 rounded-[32px] fade-in">
-                        <div className="size-24 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-full flex items-center justify-center mb-6 ring-8 ring-indigo-500/5">
-                            <span className="material-symbols-outlined text-5xl text-indigo-500 animate-pulse">explore_off</span>
+                        <div className="flex bg-white/60 dark:bg-white/5 backdrop-blur-md p-1.5 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm">
+                            {(['list', 'board'] as const).map((v) => (
+                                <button
+                                    key={v}
+                                    onClick={() => setView(v)}
+                                    className={`
+                                    relative flex-1 lg:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all capitalize z-10 flex items-center gap-2
+                                    ${view === v
+                                            ? 'text-[var(--color-primary)] bg-white dark:bg-white/10 shadow-sm'
+                                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}
+                                `}
+                                >
+                                    <span className="material-symbols-outlined text-lg">{v === 'list' ? 'format_list_bulleted' : 'dashboard'}</span>
+                                    {viewLabels[v]}
+                                </button>
+                            ))}
                         </div>
-                        <h3 className="text-2xl font-bold text-[var(--color-text-main)] mb-2">No tasks matching your criteria</h3>
-                        <p className="text-[var(--color-text-muted)] max-w-sm font-medium opacity-70">
-                            Try adjusting your search terms or filters to find what you're looking for.
-                        </p>
-                        {can('canManageTasks') && (
-                            <Button
-                                variant="secondary"
-                                className="mt-8 rounded-xl px-10"
-                                onClick={() => setShowCreateModal(true)}
-                            >
-                                Create New Task
-                            </Button>
-                        )}
-                    </div>
-                ) : view === 'list' ? (
-                    <div className="grid grid-cols-1 gap-3">
-                        {filteredTasks.map(task => (
-                            <TaskCard key={task.id} task={task} />
-                        ))}
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {(['Todo', 'In Progress', 'Done'] as const).map(columnStatus => (
-                            <div key={columnStatus} className="flex flex-col gap-4">
-                                <div className="flex items-center justify-between px-4 py-2 bg-slate-100/50 dark:bg-white/5 rounded-2xl border border-black/5 dark:border-white/5">
-                                    <h3 className="text-sm font-black uppercase tracking-widest text-[var(--color-text-muted)]">
-                                        {columnStatus}
-                                    </h3>
-                                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-white dark:bg-white/10 text-[var(--color-text-main)]">
-                                        {filteredTasks.filter(t => t.status === columnStatus || (!t.status && columnStatus === 'Todo')).length}
-                                    </span>
-                                </div>
-                                <div className="flex flex-col gap-3">
-                                    {filteredTasks
-                                        .filter(t => t.status === columnStatus || (!t.status && columnStatus === 'Todo'))
-                                        .map(task => (
-                                            <TaskCard key={task.id} task={task} isBoard />
-                                        ))}
-                                </div>
+
+                        {/* Sort Dropdown */}
+                        <div className="relative group/sort">
+                            <button className="flex items-center gap-2 bg-white/60 dark:bg-white/5 backdrop-blur-md px-4 py-4 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm text-sm font-bold text-[var(--color-text-main)] hover:border-[var(--color-primary)]/30 transition-all">
+                                <span className="material-symbols-outlined text-lg">sort</span>
+                                <span className="hidden sm:inline">{t('projectTasks.sort.label')}</span>
+                                <span className="text-[var(--color-primary)] capitalize">
+                                    {sortLabels[sortBy]}
+                                </span>
+                                <span className="material-symbols-outlined text-sm opacity-50">expand_more</span>
+                            </button>
+                            <div className="absolute top-full left-0 mt-2 opacity-0 invisible group-hover/sort:opacity-100 group-hover/sort:visible transition-all bg-white dark:bg-[#1E1E1E] border border-[var(--color-surface-border)] rounded-xl shadow-2xl py-2 min-w-[160px] z-50">
+                                {([
+                                    { value: 'priority', label: t('projectTasks.sort.priority'), icon: 'flag' },
+                                    { value: 'dueDate', label: t('projectTasks.sort.dueDate'), icon: 'event' },
+                                    { value: 'title', label: t('projectTasks.sort.title'), icon: 'sort_by_alpha' },
+                                    { value: 'createdAt', label: t('projectTasks.sort.created'), icon: 'schedule' }
+                                ] as const).map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => setSortBy(opt.value)}
+                                        className={`w-full px-4 py-2 text-left text-sm font-medium flex items-center gap-3 hover:bg-[var(--color-surface-hover)] transition-colors ${sortBy === opt.value ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/5' : 'text-[var(--color-text-main)]'}`}
+                                    >
+                                        <span className="material-symbols-outlined text-lg">{opt.icon}</span>
+                                        {opt.label}
+                                        {sortBy === opt.value && (
+                                            <span className="material-symbols-outlined text-sm ml-auto">check</span>
+                                        )}
+                                    </button>
+                                ))}
                             </div>
-                        ))}
+                        </div>
                     </div>
+
+                    <div className="relative group w-full lg:w-96">
+                        <input
+                            type="text"
+                            value={search}
+                            onChange={handleSearchChange}
+                            placeholder={t('projectTasks.search.placeholder')}
+                            className="w-full bg-white/60 dark:bg-white/5 backdrop-blur-md border-black/5 dark:border-white/5 ring-1 ring-black/5 dark:ring-white/10 focus:ring-2 focus:ring-[var(--color-primary)] rounded-2xl pl-12 pr-6 py-4 text-sm font-medium transition-all outline-none"
+                        />
+                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] group-focus-within:text-[var(--color-primary)] transition-colors">search</span>
+                    </div>
+                </div>
+
+                {/* Enhanced View Area */}
+                <div data-onboarding-id="project-tasks-view" className="flex flex-col gap-4 min-h-[400px]">
+                    {filteredTasks.length === 0 ? (
+                        <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-white/30 dark:bg-white/[0.02] border-2 border-dashed border-black/5 dark:border-white/5 rounded-[32px] fade-in">
+                            <div className="size-24 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-full flex items-center justify-center mb-6 ring-8 ring-indigo-500/5">
+                                <span className="material-symbols-outlined text-5xl text-indigo-500 animate-pulse">explore_off</span>
+                            </div>
+                            <h3 className="text-2xl font-bold text-[var(--color-text-main)] mb-2">{t('projectTasks.empty.title')}</h3>
+                            <p className="text-[var(--color-text-muted)] max-w-sm font-medium opacity-70">
+                                {t('projectTasks.empty.description')}
+                            </p>
+                            {can('canManageTasks') && (
+                                <Button
+                                    variant="secondary"
+                                    className="mt-8 rounded-xl px-10"
+                                    onClick={() => setShowCreateModal(true)}
+                                >
+                                    {t('projectTasks.actions.createTask')}
+                                </Button>
+                            )}
+                        </div>
+                    ) : view === 'list' ? (
+                        <div className="grid grid-cols-1 gap-3">
+                            {filteredTasks.map(task => (
+                                <TaskCard key={task.id} task={task} />
+                            ))}
+                        </div>
+                    ) : (
+                        <ProjectBoard
+                            tasks={filteredTasks}
+                            renderTask={(task) => <TaskCard task={task} isBoard />}
+                            stickyOffset="85px"
+                        />
+                    )}
+                </div>
+
+                {/* Check permission before showing modal */}
+                {showCreateModal && id && can('canManageTasks') && (
+                    <TaskCreateModal
+                        projectId={id}
+                        onClose={() => setShowCreateModal(false)}
+                        onCreated={(updated) => {
+                            setTasks(updated);
+                            setShowCreateModal(false);
+                        }}
+                    />
                 )}
             </div>
-
-            {/* Check permission before showing modal */}
-            {showCreateModal && id && can('canManageTasks') && (
-                <TaskCreateModal
-                    projectId={id}
-                    onClose={() => setShowCreateModal(false)}
-                    onCreated={(updated) => {
-                        setTasks(updated);
-                        setShowCreateModal(false);
-                    }}
-                />
-            )}
-        </div>
+            <OnboardingOverlay
+                isOpen={onboardingActive}
+                steps={onboardingSteps}
+                stepIndex={stepIndex}
+                onStepChange={setStepIndex}
+                onFinish={finish}
+                onSkip={skip}
+            />
+        </>
     );
 };

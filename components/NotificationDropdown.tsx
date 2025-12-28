@@ -10,6 +10,8 @@ import { respondToJoinRequest } from '../services/dataService';
 import { Button } from './ui/Button';
 import { Notification } from '../types';
 import { useToast } from '../context/UIContext';
+import { useLanguage } from '../context/LanguageContext';
+import { format } from 'date-fns';
 
 interface NotificationDropdownProps {
     position?: 'topbar' | 'sidebar';
@@ -22,6 +24,7 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
     const dropdownRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
     const { showToast } = useToast();
+    const { dateFormat, dateLocale, t } = useLanguage();
 
     const user = auth.currentUser;
     const unreadCount = notifications.filter(n => !n.read).length;
@@ -29,9 +32,12 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
     // Subscribe to notifications
     useEffect(() => {
         if (!user) {
+            console.warn('[Notifications] No user logged in');
             setLoading(false);
             return;
         }
+
+        console.warn('[Notifications] Subscribing for User ID:', user.uid);
 
         const unsubscribe = subscribeToNotifications(user.uid, (notifs) => {
             setNotifications(notifs);
@@ -94,11 +100,11 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
         const hours = Math.floor(diff / 3600000);
         const days = Math.floor(diff / 86400000);
 
-        if (minutes < 1) return 'Just now';
-        if (minutes < 60) return `${minutes}m ago`;
-        if (hours < 24) return `${hours}h ago`;
-        if (days < 7) return `${days}d ago`;
-        return date.toLocaleDateString();
+        if (minutes < 1) return t('notifications.time.justNow');
+        if (minutes < 60) return t('notifications.time.minutesAgo').replace('{count}', String(minutes));
+        if (hours < 24) return t('notifications.time.hoursAgo').replace('{count}', String(hours));
+        if (days < 7) return t('notifications.time.daysAgo').replace('{count}', String(days));
+        return format(date, dateFormat, { locale: dateLocale });
     };
 
     const getNotificationIcon = (type: string) => {
@@ -137,7 +143,8 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
             );
         } catch (error) {
             console.error(error);
-            showToast(`Failed to respond: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+            const errorMessage = error instanceof Error ? error.message : t('notifications.error.unknown');
+            showToast(t('notifications.error.respond').replace('{error}', errorMessage), 'error');
         }
     };
 
@@ -202,10 +209,12 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                                 </div>
                                 <div>
                                     <h3 className="text-[15px] font-bold text-[var(--color-text-main)]">
-                                        Notifications
+                                        {t('notifications.title')}
                                     </h3>
                                     <p className="text-[11px] text-[var(--color-text-muted)]">
-                                        {unreadCount > 0 ? `${unreadCount} unread` : 'All caught up!'}
+                                        {unreadCount > 0
+                                            ? t('notifications.subtitle.unread').replace('{count}', String(unreadCount))
+                                            : t('notifications.subtitle.allCaughtUp')}
                                     </p>
                                 </div>
                             </div>
@@ -214,7 +223,7 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                                     onClick={handleMarkAllAsRead}
                                     className="text-[11px] font-bold text-indigo-500 hover:text-indigo-600 dark:text-indigo-400 dark:hover:text-indigo-300 transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
                                 >
-                                    Mark all read
+                                    {t('notifications.actions.markAllRead')}
                                 </button>
                             )}
                         </div>
@@ -225,7 +234,7 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                         {loading ? (
                             <div className="flex flex-col items-center justify-center py-12 gap-3">
                                 <div className="size-10 rounded-full border-2 border-indigo-500/30 border-t-indigo-500 animate-spin"></div>
-                                <p className="text-xs text-[var(--color-text-muted)]">Loading notifications...</p>
+                                <p className="text-xs text-[var(--color-text-muted)]">{t('notifications.loading')}</p>
                             </div>
                         ) : notifications.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
@@ -234,9 +243,9 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                                         inbox
                                     </span>
                                 </div>
-                                <h4 className="text-sm font-bold text-[var(--color-text-main)] mb-1">You're all caught up!</h4>
+                                <h4 className="text-sm font-bold text-[var(--color-text-main)] mb-1">{t('notifications.empty.title')}</h4>
                                 <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
-                                    No new notifications. We'll let you know when something needs your attention.
+                                    {t('notifications.empty.description')}
                                 </p>
                             </div>
                         ) : (
@@ -247,6 +256,7 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                                         role="button"
                                         tabIndex={0}
                                         onClick={() => handleNotificationClick(notification)}
+                                        onMouseEnter={() => !notification.read && markNotificationAsRead(notification.id)}
                                         className={`
                                             group relative mx-2 mb-1 px-3 py-3 rounded-xl cursor-pointer transition-all duration-200
                                             ${!notification.read
@@ -298,14 +308,14 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                                                             className="flex-1 flex items-center justify-center gap-1.5 h-8 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-xs font-bold rounded-lg hover:shadow-lg hover:shadow-emerald-500/25 transition-all duration-200 hover:scale-[1.02]"
                                                         >
                                                             <span className="material-symbols-outlined text-[14px]">check</span>
-                                                            Accept
+                                                            {t('notifications.actions.accept')}
                                                         </button>
                                                         <button
                                                             onClick={(e) => handleJoinResponse(e, notification, false)}
                                                             className="flex-1 flex items-center justify-center gap-1.5 h-8 bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] text-xs font-bold rounded-lg hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20 dark:hover:text-rose-400 transition-all duration-200"
                                                         >
                                                             <span className="material-symbols-outlined text-[14px]">close</span>
-                                                            Decline
+                                                            {t('notifications.actions.decline')}
                                                         </button>
                                                     </div>
                                                 )}
@@ -327,7 +337,7 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                                 }}
                                 className="w-full flex items-center justify-center gap-2 text-xs font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors py-1.5 rounded-lg hover:bg-[var(--color-surface-hover)]"
                             >
-                                View all notifications
+                                {t('notifications.actions.viewAll')}
                                 <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
                             </button>
                         </div>

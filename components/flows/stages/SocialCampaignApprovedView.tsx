@@ -4,6 +4,8 @@ import { Button } from '../../ui/Button';
 import { Idea, SocialCampaign } from '../../../types';
 import { getProjectMembers, getUserProfile, getSocialCampaign } from '../../../services/dataService';
 import { PlatformIcon } from '../../../screens/social/components/PlatformIcon';
+import { format } from 'date-fns';
+import { dateLocale, dateFormat } from '../../../utils/activityHelpers';
 
 interface SocialCampaignApprovedViewProps {
     idea: Idea;
@@ -53,9 +55,7 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
     const assignedMembers = teamMembers.filter(m => (idea.assignedUserIds || []).includes(m.id));
     const analysis = idea.riskWinAnalysis;
 
-    const approvedDate = idea.approvedAt ? new Date(idea.approvedAt).toLocaleDateString('en-US', {
-        month: 'short', day: 'numeric', year: 'numeric'
-    }) : null;
+    const approvedDate = idea.approvedAt ? format(new Date(idea.approvedAt), dateFormat, { locale: dateLocale }) : null;
 
     const getScoreColor = (score: number) => {
         if (score >= 8) return 'text-emerald-500';
@@ -182,9 +182,9 @@ export const SocialCampaignApprovedView: React.FC<SocialCampaignApprovedViewProp
                                                 {(phase.startDate || phase.endDate) && (
                                                     <div className="flex items-center gap-2 mt-2 text-[10px] text-slate-400">
                                                         <span className="material-symbols-outlined text-sm">calendar_month</span>
-                                                        {phase.startDate && new Date(phase.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                        {phase.startDate && format(new Date(phase.startDate), 'MMM d', { locale: dateLocale })}
                                                         {phase.startDate && phase.endDate && ' → '}
-                                                        {phase.endDate && new Date(phase.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                                        {phase.endDate && format(new Date(phase.endDate), 'MMM d', { locale: dateLocale })}
                                                     </div>
                                                 )}
                                             </div>

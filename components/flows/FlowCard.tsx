@@ -6,12 +6,12 @@ import { toggleIdeaLike, toggleIdeaDislike } from '../../services/dataService';
 import { auth } from '../../services/firebase';
 import { useState, useEffect } from 'react';
 import { Portal } from '../ui/Portal';
-import { IdeaComments } from './IdeaComments'; // Reuse, or we can make a lighter version. Let's make a customized lighter version inline or styling prop.
+import { FlowComments } from './FlowComments';
 import { useRef } from 'react';
 
-interface IdeaCardProps {
-    idea: Idea;
-    onClick: (idea: Idea) => void;
+interface FlowCardProps {
+    flow: Idea;
+    onClick: (flow: Idea) => void;
     isOverlay?: boolean;
 }
 
@@ -30,7 +30,7 @@ const TYPE_COLORS: Record<string, string> = {
     'default': 'bg-[var(--color-primary)]/10 text-[var(--color-text-main)]',
 };
 
-export const IdeaCard: React.FC<IdeaCardProps> = ({ idea, onClick, isOverlay }) => {
+export const FlowCard: React.FC<FlowCardProps> = ({ flow, onClick, isOverlay }) => {
     const {
         attributes,
         listeners,
@@ -38,7 +38,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({ idea, onClick, isOverlay }) 
         transform,
         transition,
         isDragging
-    } = useSortable({ id: idea.id });
+    } = useSortable({ id: flow.id });
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -47,14 +47,14 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({ idea, onClick, isOverlay }) 
     };
 
     // Compact type colors
-    const typeColor = TYPE_COLORS[idea.type] || TYPE_COLORS['default'];
+    const typeColor = TYPE_COLORS[flow.type] || TYPE_COLORS['default'];
 
     // --- Optimistic UI State ---
     const user = auth.currentUser;
-    const initialLiked = (idea.likedBy || []).includes(user?.uid || '');
-    const initialDisliked = (idea.dislikedBy || []).includes(user?.uid || '');
-    const initialLikeCount = (idea.likedBy || []).length;
-    const initialDislikeCount = (idea.dislikedBy || []).length;
+    const initialLiked = (flow.likedBy || []).includes(user?.uid || '');
+    const initialDisliked = (flow.dislikedBy || []).includes(user?.uid || '');
+    const initialLikeCount = (flow.likedBy || []).length;
+    const initialDislikeCount = (flow.dislikedBy || []).length;
 
     const [liked, setLiked] = useState(initialLiked);
     const [disliked, setDisliked] = useState(initialDisliked);
@@ -63,11 +63,11 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({ idea, onClick, isOverlay }) 
 
     // Sync if prop changes (e.g. from manual refresh)
     useEffect(() => {
-        setLiked((idea.likedBy || []).includes(user?.uid || ''));
-        setDisliked((idea.dislikedBy || []).includes(user?.uid || ''));
-        setLikeCount((idea.likedBy || []).length);
-        setDislikeCount((idea.dislikedBy || []).length);
-    }, [idea.likedBy, idea.dislikedBy, user?.uid]);
+        setLiked((flow.likedBy || []).includes(user?.uid || ''));
+        setDisliked((flow.dislikedBy || []).includes(user?.uid || ''));
+        setLikeCount((flow.likedBy || []).length);
+        setDislikeCount((flow.dislikedBy || []).length);
+    }, [flow.likedBy, flow.dislikedBy, user?.uid]);
 
     // --- Comment Popover State ---
     const [showComments, setShowComments] = useState(false);
@@ -76,7 +76,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({ idea, onClick, isOverlay }) 
 
     const handleLike = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!idea.projectId) return;
+        if (!flow.projectId) return;
 
         const wasLiked = liked;
         const wasDisliked = disliked;
@@ -97,12 +97,12 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({ idea, onClick, isOverlay }) 
             setDislikeCount(prev => Math.max(0, prev - 1));
         }
 
-        toggleIdeaLike(idea.id, idea.projectId);
+        toggleIdeaLike(flow.id, flow.projectId);
     };
 
     const handleDislike = (e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!idea.projectId) return;
+        if (!flow.projectId) return;
 
         const wasDisliked = disliked;
         const wasLiked = liked;
@@ -123,7 +123,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({ idea, onClick, isOverlay }) 
             setLikeCount(prev => Math.max(0, prev - 1));
         }
 
-        toggleIdeaDislike(idea.id, idea.projectId);
+        toggleIdeaDislike(flow.id, flow.projectId);
     };
 
     const handleCommentClick = (e: React.MouseEvent) => {
@@ -156,7 +156,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({ idea, onClick, isOverlay }) 
             // For now, let's look for a specific class or assume any click outside the button closes it.
             // actually, if we click IN the popover we shouldn't close.
             const target = e.target as Element;
-            if (target.closest('.idea-comment-popover')) return;
+            if (target.closest('.flow-comment-popover')) return;
             if (target.closest('.comment-trigger-btn')) return; // Check button ref
             setShowComments(false);
         };
@@ -173,7 +173,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({ idea, onClick, isOverlay }) 
                 {...listeners}
                 className="touch-none group/card block" /* Changed to block to simplify */
                 onClick={(e) => {
-                    if (!isDragging) onClick(idea);
+                    if (!isDragging) onClick(flow);
                 }}
             >
                 <div className={`
@@ -192,11 +192,11 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({ idea, onClick, isOverlay }) 
                                 {/* Tags Row */}
                                 <div className="flex items-center gap-1.5 mb-1.5">
                                     <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${typeColor}`}>
-                                        {idea.type === 'Social'
-                                            ? (idea.socialType === 'campaign' ? 'Campaign' : 'Post')
-                                            : idea.type}
+                                        {flow.type === 'Social'
+                                            ? (flow.socialType === 'campaign' ? 'Campaign' : 'Post')
+                                            : flow.type}
                                     </span>
-                                    {idea.generated && (
+                                    {flow.generated && (
                                         <span className="text-[9px] font-medium text-indigo-500 bg-indigo-500/5 px-1.5 py-0.5 rounded flex items-center gap-0.5">
                                             <span className="material-symbols-outlined text-[10px]">auto_awesome</span>
                                             AI
@@ -204,15 +204,15 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({ idea, onClick, isOverlay }) 
                                     )}
                                 </div>
                                 <h4 className="font-semibold text-[var(--color-text-main)] text-sm leading-snug line-clamp-2 group-hover/card:text-[var(--color-primary)] transition-colors">
-                                    {idea.title}
+                                    {flow.title}
                                 </h4>
                             </div>
                         </div>
 
                         {/* Description */}
-                        {idea.description && (
+                        {flow.description && (
                             <p className="text-xs text-[var(--color-text-muted)] line-clamp-2 leading-relaxed">
-                                {idea.description}
+                                {flow.description}
                             </p>
                         )}
 
@@ -261,29 +261,29 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({ idea, onClick, isOverlay }) 
                                     onPointerDown={(e) => e.stopPropagation()}
                                 >
                                     <span className={`material-symbols-outlined text-[14px] ${showComments ? 'filled' : ''}`}>chat_bubble</span>
-                                    {(idea.comments || 0) > 0 && (
-                                        <span className="text-[10px] font-medium">{idea.comments}</span>
+                                    {(flow.comments || 0) > 0 && (
+                                        <span className="text-[10px] font-medium">{flow.comments}</span>
                                     )}
                                 </button>
                             </div>
 
                             {/* Impact/Effort */}
-                            {(idea.impact || idea.effort) && (
+                            {(flow.impact || flow.effort) && (
                                 <div className="flex items-center gap-1">
-                                    {idea.impact && (
-                                        <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-md ${idea.impact === 'High' ? 'bg-emerald-500/10 text-emerald-600' :
-                                            idea.impact === 'Medium' ? 'bg-amber-500/10 text-amber-600' :
+                                    {flow.impact && (
+                                        <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-md ${flow.impact === 'High' ? 'bg-emerald-500/10 text-emerald-600' :
+                                            flow.impact === 'Medium' ? 'bg-amber-500/10 text-amber-600' :
                                                 'bg-slate-500/10 text-slate-500'
                                             }`}>
-                                            I:{idea.impact[0]}
+                                            I:{flow.impact[0]}
                                         </span>
                                     )}
-                                    {idea.effort && (
-                                        <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-md ${idea.effort === 'High' ? 'bg-rose-500/10 text-rose-600' :
-                                            idea.effort === 'Medium' ? 'bg-amber-500/10 text-amber-600' :
+                                    {flow.effort && (
+                                        <span className={`text-[9px] font-medium px-1.5 py-0.5 rounded-md ${flow.effort === 'High' ? 'bg-rose-500/10 text-rose-600' :
+                                            flow.effort === 'Medium' ? 'bg-amber-500/10 text-amber-600' :
                                                 'bg-emerald-500/10 text-emerald-600'
                                             }`}>
-                                            E:{idea.effort[0]}
+                                            E:{flow.effort[0]}
                                         </span>
                                     )}
                                 </div>
@@ -297,7 +297,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({ idea, onClick, isOverlay }) 
             {showComments && (
                 <Portal>
                     <div
-                        className="idea-comment-popover fixed z-50 w-80 bg-[var(--color-surface-paper)] rounded-xl border border-[var(--color-surface-border)] shadow-xl animate-in fade-in zoom-in-95 duration-100 p-4"
+                        className="flow-comment-popover fixed z-50 w-80 bg-[var(--color-surface-paper)] rounded-xl border border-[var(--color-surface-border)] shadow-xl animate-in fade-in zoom-in-95 duration-100 p-4"
                         style={{
                             top: popoverPosition.top,
                             left: popoverPosition.left,
@@ -313,13 +313,9 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({ idea, onClick, isOverlay }) 
                             </button>
                         </div>
 
-                        {/* We can re-use the full component but it might be too big. Let's use a wrapper with scroll. 
-                           Or better, pass a "compact" prop to IdeaComments?
-                           Let's instantiate it but wrap in max-height. 
-                           Note: IdeaComments fetches its own data.
-                        */}
+                        {/* Use the compact comments view inside a scrollable container. */}
                         <div className="max-h-64 overflow-y-auto">
-                            <IdeaComments projectId={idea.projectId || ''} ideaId={idea.id} compact />
+                            <FlowComments projectId={flow.projectId || ''} flowId={flow.id} compact />
                         </div>
                     </div>
                 </Portal>

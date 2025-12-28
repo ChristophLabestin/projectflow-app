@@ -339,7 +339,7 @@ export const MarketingPlanningView: React.FC<MarketingPlanningViewProps> = ({ id
                         </div>
                         <div>
                             <h4 className="font-bold text-green-800 dark:text-green-200">Campaign Created</h4>
-                            <p className="text-sm text-green-600 dark:text-green-300">This idea has been converted to a live marketing campaign.</p>
+                            <p className="text-sm text-green-600 dark:text-green-300">This flow has been converted to a live marketing campaign.</p>
                         </div>
                     </div>
                     <Button

@@ -14,6 +14,8 @@ import { toMillis } from '../utils/time';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { useConfirm, useToast } from '../context/UIContext';
+import { format } from 'date-fns';
+import { dateLocale } from '../utils/activityHelpers';
 
 export const PersonalTasksPage = () => {
     const [tasks, setTasks] = useState<PersonalTask[]>([]);
@@ -266,7 +268,7 @@ export const PersonalTasksPage = () => {
                                 {task.dueDate && (
                                     <div className="flex items-center gap-1 mt-2 text-xs text-[var(--color-text-muted)]">
                                         <span className="material-symbols-outlined text-[14px]">event</span>
-                                        {new Date(task.dueDate).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+                                        {format(new Date(task.dueDate), 'EEE, MMM d', { locale: dateLocale })}
                                     </div>
                                 )}
                             </div>

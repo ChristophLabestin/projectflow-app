@@ -1,5 +1,6 @@
 import React from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
+import { Extension, InputRule } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 
@@ -16,6 +17,17 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange,
             StarterKit,
             Placeholder.configure({
                 placeholder: placeholder || 'Write something...',
+            }),
+            Extension.create({
+                name: 'arrowReplacement',
+                addInputRules() {
+                    return [
+                        new InputRule({
+                            find: /-->$/,
+                            replace: '→',
+                        }),
+                    ];
+                },
             }),
         ],
         content: value,

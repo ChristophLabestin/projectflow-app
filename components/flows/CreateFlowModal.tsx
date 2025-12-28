@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
-import { Idea } from '../../types';
 import { saveIdea } from '../../services/dataService';
 
-interface CreateIdeaModalProps {
+interface CreateFlowModalProps {
     isOpen: boolean;
     onClose: () => void;
     projectId: string;
@@ -13,7 +12,7 @@ interface CreateIdeaModalProps {
 
 import { PIPELINE_CONFIGS } from './constants';
 
-const IDEA_TYPES = [
+const FLOW_TYPES = [
     { id: 'Feature', label: 'Feature', icon: 'stars', bg: 'from-slate-900 via-indigo-950 to-slate-900' },
     { id: 'Product', label: 'Product', icon: 'inventory_2', bg: 'from-slate-900 via-rose-950 to-slate-900' },
     { id: 'Moonshot', label: 'Moonshot', icon: 'rocket_launch', bg: 'from-slate-900 via-purple-950 to-slate-900' },
@@ -22,12 +21,12 @@ const IDEA_TYPES = [
     { id: 'Social', label: 'Social Media', icon: 'share', bg: 'from-slate-900 via-pink-950 to-slate-900' },
 ];
 
-export const CreateIdeaModal: React.FC<CreateIdeaModalProps> = ({ isOpen, onClose, projectId, onCreated }) => {
+export const CreateFlowModal: React.FC<CreateFlowModalProps> = ({ isOpen, onClose, projectId, onCreated }) => {
     const [title, setTitle] = useState('');
     const [type, setType] = useState('Feature');
     const [loading, setLoading] = useState(false);
 
-    const selectedType = IDEA_TYPES.find(t => t.id === type) || IDEA_TYPES[0];
+    const selectedType = FLOW_TYPES.find(t => t.id === type) || FLOW_TYPES[0];
 
     // ... inside component ...
     const handleSave = async () => {
@@ -158,7 +157,7 @@ export const CreateIdeaModal: React.FC<CreateIdeaModalProps> = ({ isOpen, onClos
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            placeholder="What's your big idea?"
+                            placeholder="What's your next flow?"
                             autoFocus
                             className="w-full text-3xl font-bold bg-transparent border-none outline-none text-white placeholder:text-white/40 text-center"
                         />
@@ -169,7 +168,7 @@ export const CreateIdeaModal: React.FC<CreateIdeaModalProps> = ({ isOpen, onClos
 
                     {/* Type Selector - Pills */}
                     <div className="flex items-center justify-center gap-2 flex-wrap">
-                        {IDEA_TYPES.map(t => (
+                        {FLOW_TYPES.map(t => (
                             <button
                                 key={t.id}
                                 onClick={() => setType(t.id)}
@@ -202,7 +201,7 @@ export const CreateIdeaModal: React.FC<CreateIdeaModalProps> = ({ isOpen, onClos
                             className="bg-white hover:bg-white/90 text-slate-800 border-0 shadow-xl px-8 font-semibold"
                             icon={<span className="material-symbols-outlined">lightbulb</span>}
                         >
-                            Create Idea
+                            Create Flow
                         </Button>
                     </div>
                 </div>

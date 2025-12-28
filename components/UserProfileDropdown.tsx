@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { auth } from '../services/firebase';
 import { signOut } from 'firebase/auth';
 import { subscribeUserStatusPreference, updateUserStatusPreference } from '../services/dataService';
+import { useLanguage } from '../context/LanguageContext';
 
 /**
  * User Profile Dropdown for the Topbar
@@ -16,6 +17,7 @@ export const UserProfileDropdown: React.FC = () => {
     const statusSelectorRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
     const user = auth.currentUser;
+    const { t } = useLanguage();
 
     // Subscribe to status preference
     useEffect(() => {
@@ -69,11 +71,11 @@ export const UserProfileDropdown: React.FC = () => {
 
     const getStatusInfo = (status: 'online' | 'busy' | 'idle' | 'offline') => {
         switch (status) {
-            case 'online': return { color: 'bg-emerald-500', label: 'Online', icon: 'check_circle' };
-            case 'busy': return { color: 'bg-rose-500', label: 'Busy', icon: 'do_not_disturb_on' };
-            case 'idle': return { color: 'bg-amber-400', label: 'Away', icon: 'schedule' };
-            case 'offline': return { color: 'bg-slate-400', label: 'Appear Offline', icon: 'visibility_off' };
-            default: return { color: 'bg-emerald-500', label: 'Online', icon: 'check_circle' };
+            case 'online': return { color: 'bg-emerald-500', label: t('status.online'), icon: 'check_circle' };
+            case 'busy': return { color: 'bg-rose-500', label: t('status.busy'), icon: 'do_not_disturb_on' };
+            case 'idle': return { color: 'bg-amber-400', label: t('status.away'), icon: 'schedule' };
+            case 'offline': return { color: 'bg-slate-400', label: t('status.offline'), icon: 'visibility_off' };
+            default: return { color: 'bg-emerald-500', label: t('status.online'), icon: 'check_circle' };
         }
     };
 
@@ -96,12 +98,12 @@ export const UserProfileDropdown: React.FC = () => {
                 {user?.photoURL ? (
                     <img
                         src={user.photoURL}
-                        alt={user.displayName || 'Profile'}
+                        alt={user.displayName || t('user.profileAlt')}
                         className="size-10 rounded-full object-cover"
                     />
                 ) : (
                     <div className="size-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
-                        {user?.displayName?.charAt(0)?.toUpperCase() || 'U'}
+                        {user?.displayName?.charAt(0)?.toUpperCase() || t('user.fallbackInitial')}
                     </div>
                 )}
 
@@ -127,17 +129,17 @@ export const UserProfileDropdown: React.FC = () => {
                             {user?.photoURL ? (
                                 <img
                                     src={user.photoURL}
-                                    alt={user.displayName || 'Profile'}
+                                    alt={user.displayName || t('user.profileAlt')}
                                     className="size-12 rounded-full object-cover ring-2 ring-[var(--color-surface-border)]"
                                 />
                             ) : (
                                 <div className="size-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg ring-2 ring-[var(--color-surface-border)]">
-                                    {user?.displayName?.charAt(0)?.toUpperCase() || 'U'}
+                                    {user?.displayName?.charAt(0)?.toUpperCase() || t('user.fallbackInitial')}
                                 </div>
                             )}
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-bold text-[var(--color-text-main)] truncate">
-                                    {user?.displayName || 'User'}
+                                    {user?.displayName || t('user.fallbackName')}
                                 </p>
                                 <div className="flex items-center gap-1.5 mt-0.5">
                                     <span className={`size-1.5 rounded-full ${currentStatus.color}`} />
@@ -218,7 +220,7 @@ export const UserProfileDropdown: React.FC = () => {
                             className="flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)] transition-colors"
                         >
                             <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">person</span>
-                            <span className="text-sm font-medium">View Profile</span>
+                            <span className="text-sm font-medium">{t('user.viewProfile')}</span>
                         </Link>
                         <Link
                             to="/settings"
@@ -226,7 +228,7 @@ export const UserProfileDropdown: React.FC = () => {
                             className="flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)] transition-colors"
                         >
                             <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">settings</span>
-                            <span className="text-sm font-medium">Settings</span>
+                            <span className="text-sm font-medium">{t('user.settings')}</span>
                         </Link>
                         <Link
                             to="/media"
@@ -234,7 +236,7 @@ export const UserProfileDropdown: React.FC = () => {
                             className="flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)] transition-colors"
                         >
                             <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">perm_media</span>
-                            <span className="text-sm font-medium">Media Library</span>
+                            <span className="text-sm font-medium">{t('user.mediaLibrary')}</span>
                         </Link>
                         <Link
                             to="/personal-tasks"
@@ -242,7 +244,7 @@ export const UserProfileDropdown: React.FC = () => {
                             className="flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)] transition-colors"
                         >
                             <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">task_alt</span>
-                            <span className="text-sm font-medium">Personal Tasks</span>
+                            <span className="text-sm font-medium">{t('user.personalTasks')}</span>
                         </Link>
                     </div>
 
@@ -253,7 +255,7 @@ export const UserProfileDropdown: React.FC = () => {
                             className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-rose-50 dark:hover:bg-rose-900/10 text-rose-600 dark:text-rose-400 transition-colors text-left"
                         >
                             <span className="material-symbols-outlined text-[20px]">logout</span>
-                            <span className="text-sm font-medium">Sign out</span>
+                            <span className="text-sm font-medium">{t('user.signOut')}</span>
                         </button>
                     </div>
                 </div>

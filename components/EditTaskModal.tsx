@@ -40,7 +40,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
                 title,
                 description,
                 assigneeIds,
-                assignedGroupIds
+                assignedGroupIds,
             }, task.projectId);
             onUpdate();
             onClose();
@@ -100,6 +100,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
                                 onGroupChange={setAssignedGroupIds}
                             />
                         </div>
+
                     </div>
 
                     <div className="flex justify-end gap-2 mt-8 pt-4 border-t border-[var(--color-surface-border)]">
@@ -107,8 +108,8 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
                         <Button type="submit" isLoading={loading} disabled={!title.trim()}>Save Changes</Button>
                     </div>
                 </form>
-            </div>
-        </div>,
+            </div >
+        </div >,
         document.body
     );
 };

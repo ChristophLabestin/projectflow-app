@@ -2,12 +2,15 @@ import React from 'react';
 import { SocialCampaign, SocialPost } from '../../../types';
 import { Button } from '../../../components/ui/Button';
 import { PlatformIcon } from './PlatformIcon';
+import { format } from 'date-fns';
+import { dateLocale } from '../../../utils/activityHelpers';
 
 interface CampaignHeaderProps {
     campaign: SocialCampaign;
     posts: SocialPost[]; // For calculating stats
     onEdit: () => void;
     onAIPlan: () => void;
+    onViewPlannedContent?: () => void;
     onAddContent: () => void;
     onBack: () => void;
     brandColor?: string;
@@ -19,6 +22,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
     posts,
     onEdit,
     onAIPlan,
+    onViewPlannedContent,
     onAddContent,
     onBack,
     brandColor = '#E1306C',
@@ -27,8 +31,9 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
     // Calculate simple stats
     // const publishedCount = posts.filter(p => p.status === 'Published').length;
 
-    const startDate = campaign.startDate ? new Date(campaign.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'TBD';
-    const endDate = campaign.endDate ? new Date(campaign.endDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'TBD';
+    // Using date-fns for formatting
+    const startDate = campaign.startDate ? format(new Date(campaign.startDate), 'MMM d', { locale: dateLocale }) : 'TBD';
+    const endDate = campaign.endDate ? format(new Date(campaign.endDate), 'MMM d, yyyy', { locale: dateLocale }) : 'TBD';
 
     return (
         <div className="relative shrink-0 border-b border-[var(--color-surface-border)] bg-[var(--color-bg-base)]">
@@ -82,6 +87,16 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
                             >
                                 AI Plan
                             </Button>
+                            {onViewPlannedContent && (
+                                <Button
+                                    variant="secondary"
+                                    onClick={onViewPlannedContent}
+                                    icon={<span className="material-symbols-outlined text-[16px]">table_chart</span>}
+                                    className="bg-[var(--color-surface-bg)] h-8 text-xs px-3 border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]"
+                                >
+                                    View Planned
+                                </Button>
+                            )}
                             <Button
                                 variant="primary"
                                 onClick={onAddContent}

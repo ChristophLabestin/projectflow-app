@@ -591,6 +591,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                                     targetType="issue"
                                     tenantId={project?.tenantId}
                                     isProjectOwner={project?.ownerId === auth.currentUser?.uid}
+                                    targetTitle={item?.title}
                                     hideHeader={true}
                                     onCountChange={setCommentCount}
                                 />

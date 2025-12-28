@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { Task, Issue } from '../../types';
 import { Card } from '../ui/Card';
 import { toMillis, toDate } from '../../utils/time';
+import { useLanguage } from '../../context/LanguageContext';
+import { format } from 'date-fns';
 
 interface ScheduledTasksCardProps {
     tasks: Task[];
@@ -11,6 +13,14 @@ interface ScheduledTasksCardProps {
 
 
 export const ScheduledTasksCard: React.FC<ScheduledTasksCardProps> = ({ tasks, issues = [] }) => {
+    const { t, language, dateFormat, dateLocale } = useLanguage();
+    const locale = language === 'de' ? 'de-DE' : 'en-US';
+    const priorityLabels = useMemo(() => ({
+        Urgent: t('tasks.priority.urgent'),
+        High: t('tasks.priority.high'),
+        Medium: t('tasks.priority.medium'),
+        Low: t('tasks.priority.low')
+    }), [t]);
     const { displayItems, isToday } = useMemo(() => {
         const now = new Date();
         const todayStr = now.toDateString();
@@ -72,11 +82,11 @@ export const ScheduledTasksCard: React.FC<ScheduledTasksCardProps> = ({ tasks, i
         return (
             <Card padding="md" className="flex flex-col">
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="h5">Scheduled Tasks</h3>
+                    <h3 className="h5">{t('dashboard.scheduled.title')}</h3>
                     <span className="material-symbols-outlined text-[var(--color-text-subtle)]">event</span>
                 </div>
                 <div className="p-4 text-center text-sm text-[var(--color-text-muted)]">
-                    No scheduled tasks.
+                    {t('dashboard.scheduled.empty')}
                 </div>
             </Card>
         );
@@ -85,7 +95,7 @@ export const ScheduledTasksCard: React.FC<ScheduledTasksCardProps> = ({ tasks, i
     return (
         <Card padding="md" className="flex flex-col">
             <div className="flex items-center justify-between mb-4">
-                <h3 className="h5">{isToday ? "Scheduled for Today" : "Upcoming Tasks"}</h3>
+                <h3 className="h5">{isToday ? t('dashboard.scheduled.today') : t('dashboard.scheduled.upcoming')}</h3>
                 <span className={`material-symbols-outlined ${isToday ? 'text-emerald-500' : 'text-[var(--color-primary)]'}`}>
                     {isToday ? 'today' : 'event_upcoming'}
                 </span>
@@ -108,13 +118,15 @@ export const ScheduledTasksCard: React.FC<ScheduledTasksCardProps> = ({ tasks, i
                                     <div className="flex items-center gap-2 mt-0.5">
 
                                         {item.priority && (
-                                            <span className={`text-[10px] font-bold uppercase tracking-wider ${priorityColor}`}>{item.priority}</span>
+                                            <span className={`text-[10px] font-bold uppercase tracking-wider ${priorityColor}`}>
+                                                {priorityLabels[item.priority as keyof typeof priorityLabels] || item.priority}
+                                            </span>
                                         )}
 
                                         {!isToday && date && (
                                             <span className="text-[10px] text-[var(--color-text-muted)] flex items-center gap-1">
                                                 <span className="size-1 rounded-full bg-[var(--color-text-muted)]"></span>
-                                                {date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', weekday: 'short' })}
+                                                {format(date, dateFormat, { locale: dateLocale })}
                                             </span>
                                         )}
                                     </div>

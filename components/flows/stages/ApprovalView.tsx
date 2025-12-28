@@ -318,7 +318,7 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                             <div className="size-12 bg-emerald-100 dark:bg-emerald-800 text-emerald-600 dark:text-emerald-200 rounded-full flex items-center justify-center mx-auto mb-2">
                                 <span className="material-symbols-outlined">thumb_up</span>
                             </div>
-                            <p className="text-sm font-bold text-emerald-900 dark:text-emerald-300">Idea Approved</p>
+                            <p className="text-sm font-bold text-emerald-900 dark:text-emerald-300">Flow Approved</p>
                             <p className="text-xs text-emerald-700 dark:text-emerald-400 mt-1">Ready for development</p>
                         </div>
                     )}
@@ -330,7 +330,7 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                     size="lg"
                                     variant="secondary"
                                     className="w-full h-12 text-base border-none hover:bg-[var(--color-surface-hover)]"
-                                    onClick={() => navigate(`/project/${idea.projectId}/ideas`)}
+                                    onClick={() => navigate(`/project/${idea.projectId}/flows`)}
                                 >
                                     Decide Later
                                 </Button>
@@ -399,7 +399,7 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
             >
                 <div className="space-y-4">
                     <p className="text-sm text-slate-600 dark:text-slate-400">
-                        Describe what needs to be changed before this idea can be approved. This feedback will be sent back to the idea refining stage.
+                        Describe what needs to be changed before this flow can be approved. This feedback will be sent back to the flow refining stage.
                     </p>
                     <textarea
                         value={rejectionReason}

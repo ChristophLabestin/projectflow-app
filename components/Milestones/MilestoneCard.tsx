@@ -2,9 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Milestone } from '../../types';
 import { subscribeProjectMilestones } from '../../services/dataService';
+import { useLanguage } from '../../context/LanguageContext';
+import { format } from 'date-fns';
 
 export const MilestoneCard = ({ projectId }: { projectId: string }) => {
     const navigate = useNavigate();
+    const { dateFormat, dateLocale } = useLanguage();
     const [milestones, setMilestones] = useState<Milestone[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -98,7 +101,7 @@ export const MilestoneCard = ({ projectId }: { projectId: string }) => {
                         <p className="text-sm font-bold text-[var(--color-text-main)] line-clamp-1">{nextMilestone.title}</p>
                         {nextMilestone.dueDate && (
                             <p className={`text-xs mt-0.5 ${isOverdue ? 'text-red-500 font-bold' : 'text-[var(--color-text-muted)]'}`}>
-                                Due {new Date(nextMilestone.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                Due {format(new Date(nextMilestone.dueDate), dateFormat, { locale: dateLocale })}
                             </p>
                         )}
                     </div>

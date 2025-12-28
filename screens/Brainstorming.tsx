@@ -21,11 +21,11 @@ const TOOLS: { id: StudioTool; title: string; description: string; icon: string;
     },
     {
         id: 'Brainstormer',
-        title: 'Idea Engine',
-        description: 'Generate specific, actionable ideas and features for any objective.',
+        title: 'Flow Engine',
+        description: 'Generate structured flows and actionable features for any objective.',
         icon: 'lightbulb',
         color: 'amber',
-        placeholder: 'What are we brainstorming today? (e.g. "Features for a productivity app")....'
+        placeholder: 'What are we exploring today? (e.g. "Flows for a productivity app")....'
     },
     {
         id: 'RiskScout',

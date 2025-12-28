@@ -33,7 +33,7 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
                 };
             }
         } catch { }
-        // Fallback or if it's just a string, treat string as Big Idea
+        // Fallback or if it's just a string, treat string as Core Flow
         return {
             bigIdea: (!idea.concept || idea.concept.startsWith('{')) ? '' : idea.concept,
             hook: '',
@@ -113,7 +113,7 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
                             </h1>
                         </div>
                         <p className="text-sm text-slate-600 dark:text-slate-400 font-medium max-w-2xl leading-relaxed">
-                            Define the creative soul of your campaign. What is the big idea? How should it feel? This sets the direction for everything that follows.
+                            Define the creative soul of your campaign. What is the core flow? How should it feel? This sets the direction for everything that follows.
                         </p>
                     </div>
                     {/* AI Action */}
@@ -156,14 +156,14 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     {/* Left Column: Core Definition */}
                     <div className="lg:col-span-8 space-y-6">
-                        {/* The Big Idea */}
+                        {/* The Core Flow */}
                         <div className="bg-white dark:bg-slate-900/50 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md hover:border-violet-300 dark:hover:border-violet-800">
                             <div className="flex items-center gap-3 mb-6">
                                 <div className="size-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center text-violet-600 dark:text-violet-400">
                                     <span className="material-symbols-outlined text-xl">auto_awesome</span>
                                 </div>
                                 <div>
-                                    <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">The Big Idea</h3>
+                                    <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">The Core Flow</h3>
                                     <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">What is the core message?</p>
                                 </div>
                             </div>

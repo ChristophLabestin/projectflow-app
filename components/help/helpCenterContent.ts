@@ -41,9 +41,9 @@ export const helpCenterPages: HelpCenterPageDefinition[] = [
     {
         id: 'ideas-ai',
         title: 'Flows and AI Studio',
-        description: 'Develop ideas into structured flows and execution-ready plans.',
+        description: 'Develop flows into structured, execution-ready plans.',
         category: 'Workflows',
-        keywords: ['flows', 'ideas', 'ai', 'briefs'],
+        keywords: ['flows', 'ai', 'briefs', 'pipeline'],
         sections: flowsSections,
         component: FlowsPage
     },
@@ -112,7 +112,7 @@ export const getHelpTargetForPath = (pathname: string): HelpCenterTarget => {
     if (path.includes('/brainstorm')) {
         return { pageId: 'ai-features' };
     }
-    if (path.includes('/ideas')) {
+    if (path.includes('/flows') || path.includes('/ideas')) {
         return { pageId: 'ideas-ai' };
     }
     if (path.includes('/tasks') || path.includes('/issues')) {

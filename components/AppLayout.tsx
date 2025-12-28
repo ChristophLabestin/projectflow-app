@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { Outlet, useLocation, useParams, useNavigate, Link } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { TaskCreateModal } from './TaskCreateModal';
-import { CreateIdeaModal } from './ideas/CreateIdeaModal';
+import { CreateFlowModal } from './flows/CreateFlowModal';
 import { CreateIssueModal } from './CreateIssueModal';
 import { useUIState } from '../context/UIContext';
 import { useTheme } from '../context/ThemeContext';
@@ -11,6 +11,7 @@ import { getProjectById, getProjectIdeas, getProjectTasks, getUserProjects, subs
 import { Project } from '../types';
 import { useWorkspacePresence } from '../hooks/usePresence';
 import { SubTask } from '../types';
+import { useLanguage } from '../context/LanguageContext';
 
 
 import { TopBar } from './TopBar';
@@ -47,6 +48,7 @@ export const AppLayout = () => {
 
     const user = auth?.currentUser;
     const navigate = useNavigate();
+    const { t } = useLanguage();
 
     // Close nav on route change
     useEffect(() => {
@@ -187,15 +189,15 @@ export const AppLayout = () => {
 
         // Handle Projects Route
         if (parts[0] === 'projects') {
-            rawItems.push({ label: 'Projects', to: '/projects' });
+            rawItems.push({ label: t('breadcrumbs.projects'), to: '/projects' });
         }
 
         // Handle Individual Project Routes
         else if (parts[0] === 'project' && parts[1]) {
-            rawItems.push({ label: 'Projects', to: '/projects' });
+            rawItems.push({ label: t('breadcrumbs.projects'), to: '/projects' });
 
             // Project Title (or loading state)
-            const pTitle = project?.title || 'Loading...';
+            const pTitle = project?.title || t('breadcrumbs.loading');
             rawItems.push({ label: pTitle, to: `/project/${parts[1]}` });
 
             // Project Sub-pages
@@ -203,29 +205,30 @@ export const AppLayout = () => {
                 const sub = parts[2];
                 switch (sub) {
                     case 'tasks':
-                        rawItems.push({ label: 'Tasks', to: `/project/${parts[1]}/tasks` });
-                        if (parts[3]) rawItems.push({ label: taskTitle || 'Task Details' });
+                        rawItems.push({ label: t('breadcrumbs.tasks'), to: `/project/${parts[1]}/tasks` });
+                        if (parts[3]) rawItems.push({ label: taskTitle || t('breadcrumbs.taskDetails') });
                         break;
+                    case 'flows':
                     case 'ideas':
-                        rawItems.push({ label: 'Ideas', to: `/project/${parts[1]}/ideas` });
+                        rawItems.push({ label: t('breadcrumbs.flows'), to: `/project/${parts[1]}/flows` });
                         break;
                     case 'issues':
-                        rawItems.push({ label: 'Issues', to: `/project/${parts[1]}/issues` });
+                        rawItems.push({ label: t('breadcrumbs.issues'), to: `/project/${parts[1]}/issues` });
                         break;
                     case 'activity':
-                        rawItems.push({ label: 'Activity', to: `/project/${parts[1]}/activity` });
+                        rawItems.push({ label: t('breadcrumbs.activity'), to: `/project/${parts[1]}/activity` });
                         break;
                     case 'social':
-                        rawItems.push({ label: 'Social Studio', to: `/project/${parts[1]}/social` });
+                        rawItems.push({ label: t('breadcrumbs.socialStudio'), to: `/project/${parts[1]}/social` });
                         // Handle social sub-menus
                         if (parts[3]) {
                             const socialSub = parts[3];
                             const socialLabels: Record<string, string> = {
-                                'calendar': 'Calendar',
-                                'campaigns': 'Campaigns',
-                                'posts': 'Posts',
-                                'assets': 'Assets',
-                                'settings': 'Settings'
+                                'calendar': t('breadcrumbs.calendar'),
+                                'campaigns': t('breadcrumbs.campaigns'),
+                                'posts': t('breadcrumbs.posts'),
+                                'assets': t('breadcrumbs.assets'),
+                                'settings': t('breadcrumbs.settings')
                             };
 
                             // Check for campaignId in query params (for create/edit pages)
@@ -234,19 +237,19 @@ export const AppLayout = () => {
 
                             // Check if we're on a campaign detail page (has campaignId at parts[4])
                             if (socialSub === 'campaigns' && parts[4]) {
-                                rawItems.push({ label: 'Campaigns', to: `/project/${parts[1]}/social/campaigns` });
-                                rawItems.push({ label: campaignName || 'Loading...' });
+                                rawItems.push({ label: t('breadcrumbs.campaigns'), to: `/project/${parts[1]}/social/campaigns` });
+                                rawItems.push({ label: campaignName || t('breadcrumbs.loading') });
                             } else if ((socialSub === 'create' || socialSub === 'edit') && queryCampaignId && campaignName) {
                                 // Creating or editing a post within a campaign context
-                                rawItems.push({ label: 'Campaigns', to: `/project/${parts[1]}/social/campaigns` });
+                                rawItems.push({ label: t('breadcrumbs.campaigns'), to: `/project/${parts[1]}/social/campaigns` });
                                 rawItems.push({ label: campaignName, to: `/project/${parts[1]}/social/campaigns/${queryCampaignId}` });
-                                rawItems.push({ label: socialSub === 'create' ? 'New Post' : 'Edit Post' });
+                                rawItems.push({ label: socialSub === 'create' ? t('breadcrumbs.newPost') : t('breadcrumbs.editPost') });
                             } else {
                                 rawItems.push({ label: socialLabels[socialSub] || socialSub.charAt(0).toUpperCase() + socialSub.slice(1) });
                             }
                         } else {
                             // Default is Dashboard when no sub-path
-                            rawItems.push({ label: 'Dashboard' });
+                            rawItems.push({ label: t('breadcrumbs.dashboard') });
                         }
                         break;
                     default:
@@ -257,19 +260,19 @@ export const AppLayout = () => {
 
         // Handle Other Top-Level Routes
         else if (parts[0] === 'tasks') {
-            rawItems.push({ label: 'My Tasks' });
+            rawItems.push({ label: t('breadcrumbs.myTasks') });
         } else if (parts[0] === 'brainstorm') {
-            rawItems.push({ label: 'AI Studio' });
+            rawItems.push({ label: t('breadcrumbs.aiStudio') });
         } else if (parts[0] === 'team') {
-            rawItems.push({ label: 'Team' });
+            rawItems.push({ label: t('breadcrumbs.team') });
         } else if (parts[0] === 'calendar') {
-            rawItems.push({ label: 'Calendar' });
+            rawItems.push({ label: t('breadcrumbs.calendar') });
         } else if (parts[0] === 'settings') {
-            rawItems.push({ label: 'Settings' });
+            rawItems.push({ label: t('breadcrumbs.settings') });
         } else if (parts[0] === 'create') {
-            rawItems.push({ label: 'New Project' });
+            rawItems.push({ label: t('breadcrumbs.newProject') });
         } else if (parts[0] === 'profile') {
-            rawItems.push({ label: 'Profile' });
+            rawItems.push({ label: t('breadcrumbs.profile') });
         }
 
         // Finalize: Remove link from the last item
@@ -280,7 +283,7 @@ export const AppLayout = () => {
             }
             return item;
         });
-    }, [location.pathname, project, taskTitle, campaignName]);
+    }, [location.pathname, project, taskTitle, campaignName, t]);
 
     return (
         <div className="flex h-screen w-full bg-[var(--color-surface-bg)] overflow-hidden">
@@ -339,8 +342,8 @@ export const AppLayout = () => {
                 />
 
                 {/* Main Scroll Area */}
-                <main className={`flex-1 w-full dotted-bg ${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/ideas') || location.pathname.includes('/activity') ? 'p-0 overflow-hidden' : 'overflow-y-auto p-4 sm:p-6 lg:p-8'}`}>
-                    <div className={`${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/ideas') || location.pathname.includes('/activity') ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}`}>
+                <main className={`flex-1 w-full dotted-bg ${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/flows') || location.pathname.includes('/activity') ? 'p-0 overflow-hidden' : 'overflow-y-auto p-4 sm:p-6 lg:p-8'}`}>
+                    <div className={`${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/flows') || location.pathname.includes('/activity') ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}`}>
                         <Outlet context={{ setTaskTitle, statusPreference }} />
                     </div>
                 </main>
@@ -354,9 +357,9 @@ export const AppLayout = () => {
                 />
             )}
 
-            {/* Global Idea Create Modal */}
+            {/* Global Flow Create Modal */}
             {isIdeaCreateModalOpen && ideaCreateProjectId && (
-                <CreateIdeaModal
+                <CreateFlowModal
                     isOpen={isIdeaCreateModalOpen}
                     onClose={closeIdeaCreateModal}
                     projectId={ideaCreateProjectId}

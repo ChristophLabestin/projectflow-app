@@ -1,4 +1,5 @@
 import React from 'react';
+import { useArrowReplacement } from '../../hooks/useArrowReplacement';
 
 type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
     label?: string;
@@ -7,7 +8,8 @@ type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
 };
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-    ({ label, error, icon, className = '', ...props }, ref) => {
+    ({ label, error, icon, className = '', onChange, ...props }, ref) => {
+        const handleChange = useArrowReplacement(onChange);
         return (
             <div className="flex flex-col gap-1.5 w-full">
                 {label && (
@@ -23,6 +25,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
                     )}
                     <input
                         ref={ref}
+                        onChange={handleChange}
                         className={`
                             w-full 
                             bg-[var(--color-surface-bg)] 

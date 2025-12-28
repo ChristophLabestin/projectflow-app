@@ -183,9 +183,9 @@ export const CreateProjectForm = () => {
                 <div className="space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {[
-                            { id: 'default', title: 'Standard', desc: 'Tasks, Ideas & Activity', modules: ['tasks', 'ideas', 'activity'] },
+                            { id: 'default', title: 'Standard', desc: 'Tasks, Flows & Activity', modules: ['tasks', 'ideas', 'activity'] },
                             { id: 'software', title: 'Software', desc: 'Tasks, Issues & Activity', modules: ['tasks', 'issues', 'activity'] },
-                            { id: 'creative', title: 'Creative', desc: 'Ideas, Mindmap & Activity', modules: ['ideas', 'mindmap', 'activity'] },
+                            { id: 'creative', title: 'Creative', desc: 'Flows, Mindmap & Activity', modules: ['ideas', 'mindmap', 'activity'] },
                         ].map((tmpl) => (
                             <div
                                 key={tmpl.id}
@@ -223,7 +223,7 @@ export const CreateProjectForm = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {[
                                 { id: 'tasks', label: 'Tasks', desc: 'Manage todos and milestones' },
-                                { id: 'ideas', label: 'Ideas', desc: 'Brainstorming and concepts' },
+                                { id: 'ideas', label: 'Flows', desc: 'Brainstorming and concepts' },
                                 { id: 'mindmap', label: 'Mindmap', desc: 'Visual planning board' },
                                 { id: 'activity', label: 'Activity', desc: 'Track project history' },
                                 { id: 'issues', label: 'Issues', desc: 'Bug tracking and tickets' },

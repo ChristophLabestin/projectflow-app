@@ -149,7 +149,7 @@ export const subscribeAudiences = (projectId: string, onUpdate: (data: Marketing
 
 // --- Analytics ---
 
-// --- Idea Conversion Utilities ---
+// --- Flow Conversion Utilities ---
 
 export const createEmailCampaignFromIdea = async (
     projectId: string,
@@ -162,7 +162,7 @@ export const createEmailCampaignFromIdea = async (
             conceptData = JSON.parse(idea.concept);
         }
     } catch (e) {
-        console.warn("Failed to parse idea concept for conversion", e);
+        console.warn("Failed to parse flow concept for conversion", e);
     }
 
     const campaignData: Omit<EmailCampaign, 'id'> = {
@@ -197,7 +197,7 @@ export const createAdCampaignFromIdea = async (
             conceptData = JSON.parse(idea.concept);
         }
     } catch (e) {
-        console.warn("Failed to parse idea concept for conversion", e);
+        console.warn("Failed to parse flow concept for conversion", e);
     }
 
     const campaignData: Omit<AdCampaign, 'id'> = {
@@ -236,7 +236,7 @@ export const createSocialPostFromIdea = async (
             conceptData = JSON.parse(idea.concept);
         }
     } catch (e) {
-        console.warn("Failed to parse idea concept for conversion", e);
+        console.warn("Failed to parse flow concept for conversion", e);
     }
 
     // Map fields from SocialDraftingView/SocialIdeationView
@@ -269,7 +269,7 @@ export const createSocialCampaignFromIdea = async (
             conceptData = JSON.parse(idea.concept);
         }
     } catch (e) {
-        console.warn("Failed to parse idea concept for conversion", e);
+        console.warn("Failed to parse flow concept for conversion", e);
     }
 
     const campaignData: Omit<SocialCampaign, 'id' | 'createdAt' | 'updatedAt'> = {

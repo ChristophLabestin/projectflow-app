@@ -5,7 +5,7 @@ import { subscribeSocialPosts, subscribeCampaigns, subscribeProjectIdeas } from 
 import { SocialPost, SocialCampaign, Idea } from '../../types';
 import { subDays, format, isSameDay, differenceInDays } from 'date-fns';
 import { PlatformIcon } from './components/PlatformIcon';
-import { DashboardIdeationCard } from './components/DashboardIdeationCard'; // Import restored
+import { DashboardFlowCard } from './components/DashboardFlowCard';
 
 export const SocialDashboard = () => {
     const { id: projectId } = useParams<{ id: string }>();
@@ -70,6 +70,14 @@ export const SocialDashboard = () => {
     // Raw Ideas (Ideation/Drafting)
     const rawIdeas = ideas.filter(i => i.stage === 'Ideation' || i.stage === 'Drafting').slice(0, 4);
 
+    // Filter Posts missing assets (Approved/Scheduled but no assets)
+    const missingAssetsPosts = posts.filter(p =>
+        (p.status === 'Approved' || p.status === 'Scheduled') &&
+        p.scheduledFor &&
+        (!p.assets || p.assets.length === 0) &&
+        p.format !== 'Text'
+    ).sort((a, b) => new Date(a.scheduledFor!).getTime() - new Date(b.scheduledFor!).getTime());
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full">
@@ -89,11 +97,11 @@ export const SocialDashboard = () => {
                 </div>
                 <div className="flex items-center gap-3">
                     <button
-                        onClick={() => navigate(`/project/${projectId}/ideas?pipeline=Social`)}
+                        onClick={() => navigate(`/project/${projectId}/flows?pipeline=Social`)}
                         className="flex items-center gap-2 px-4 py-2.5 bg-[var(--color-surface-hover)] text-[var(--color-text-main)] hover:bg-[var(--color-surface-card)] rounded-xl text-sm font-bold transition-all border border-[var(--color-surface-border)]"
                     >
                         <span className="material-symbols-outlined text-[18px]">lightbulb</span>
-                        Ideas Pipeline
+                        Flows Pipeline
                     </button>
                     <button
                         onClick={() => navigate(`/project/${projectId}/social/create`)}
@@ -110,6 +118,62 @@ export const SocialDashboard = () => {
 
                 {/* Left Column: Pipelines & Content (Span 8) */}
                 <div className="xl:col-span-8 space-y-10">
+
+                    {/* SECTION 0: ALERTS (Missing Assets) */}
+                    {missingAssetsPosts.length > 0 && (
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-2 pb-2 border-b border-[var(--color-surface-border)]">
+                                <span className="material-symbols-outlined text-rose-500 animate-pulse">warning</span>
+                                <h2 className="text-lg font-black text-[var(--color-text-main)] uppercase tracking-wide">Action Required</h2>
+                            </div>
+
+                            <div className="bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/30 rounded-2xl overflow-hidden">
+                                <div className="px-6 py-4 border-b border-rose-100 dark:border-rose-900/30 flex items-center justify-between">
+                                    <div>
+                                        <h3 className="font-bold text-rose-700 dark:text-rose-400">Missing Assets</h3>
+                                        <p className="text-xs text-rose-600/80 dark:text-rose-400/80 font-medium">
+                                            {missingAssetsPosts.length} scheduled posts need visual content.
+                                        </p>
+                                    </div>
+                                    <span className="material-symbols-outlined text-rose-400 text-3xl opacity-50">perm_media</span>
+                                </div>
+                                <div className="divide-y divide-rose-100 dark:divide-rose-900/30">
+                                    {missingAssetsPosts.map(post => (
+                                        <div key={post.id} className="p-4 flex items-center justify-between hover:bg-rose-100/50 dark:hover:bg-rose-900/20 transition-colors group">
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex flex-col items-center justify-center w-12 h-12 bg-[var(--color-surface-card)] rounded-xl border border-rose-200 dark:border-rose-900/50 shrink-0">
+                                                    <span className="text-lg font-black text-[var(--color-text-main)] leading-none">
+                                                        {post.scheduledFor ? format(new Date(post.scheduledFor), 'd') : '?'}
+                                                    </span>
+                                                    <span className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase">
+                                                        {post.scheduledFor ? format(new Date(post.scheduledFor), 'MMM') : 'TBD'}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <PlatformIcon platform={post.platform} className="size-3.5" />
+                                                        <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase px-1.5 py-0.5 rounded bg-[var(--color-surface-card)] border border-[var(--color-surface-border)]">
+                                                            {post.format}
+                                                        </span>
+                                                    </div>
+                                                    <h4 className="font-bold text-[var(--color-text-main)] line-clamp-1">
+                                                        {post.videoConcept?.title || post.content.caption || "Untitled Post"}
+                                                    </h4>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => navigate(`/project/${projectId}/social/edit/${post.id}`)}
+                                                className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-surface-card)] hover:bg-white dark:hover:bg-slate-700 text-rose-600 text-xs font-bold rounded-lg border border-rose-200 dark:border-rose-900/50 shadow-sm transition-all group-hover:scale-105"
+                                            >
+                                                <span className="material-symbols-outlined text-[16px]">upload</span>
+                                                Upload
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* SECTION 1: APPROVALS & REVIEW (High Priority) */}
                     {(pendingReviewIdeas.length > 0 || stats.inReview > 0) && (
@@ -168,14 +232,14 @@ export const SocialDashboard = () => {
                         </div>
                     )}
 
-                    {/* SECTION 2: RAW IDEAS (Backlog/Ideation) */}
+                    {/* SECTION 2: RAW FLOWS (Backlog/Ideation) */}
                     <div className="space-y-4">
                         <div className="flex items-center justify-between pb-2 border-b border-[var(--color-surface-border)]">
                             <div className="flex items-center gap-2">
                                 <span className="material-symbols-outlined text-purple-500">tips_and_updates</span>
-                                <h2 className="text-lg font-black text-[var(--color-text-main)] uppercase tracking-wide">Ideation Pipeline</h2>
+                                <h2 className="text-lg font-black text-[var(--color-text-main)] uppercase tracking-wide">Flow Pipeline</h2>
                             </div>
-                            <Link to={`/project/${projectId}/ideas?pipeline=Social`} className="text-xs font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1">
+                            <Link to={`/project/${projectId}/flows?pipeline=Social`} className="text-xs font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1">
                                 View Full Pipeline <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
                             </Link>
                         </div>
@@ -183,12 +247,12 @@ export const SocialDashboard = () => {
                         {rawIdeas.length === 0 ? (
                             <div className="p-8 text-center bg-[var(--color-surface-card)] rounded-2xl border-2 border-dashed border-[var(--color-surface-border)]">
                                 <span className="material-symbols-outlined text-4xl text-[var(--color-text-muted)] opacity-50 mb-2">lightbulb</span>
-                                <p className="text-sm font-medium text-[var(--color-text-muted)]">No active ideas. Start brainstorming!</p>
+                                <p className="text-sm font-medium text-[var(--color-text-muted)]">No active flows. Start brainstorming!</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {rawIdeas.map(idea => (
-                                    <DashboardIdeationCard key={idea.id} idea={idea} projectId={projectId!} />
+                                    <DashboardFlowCard key={idea.id} idea={idea} projectId={projectId!} />
                                 ))}
                             </div>
                         )}

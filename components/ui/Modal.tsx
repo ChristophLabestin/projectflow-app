@@ -48,7 +48,7 @@ export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', c
     };
 
     return createPortal(
-        <div className={`fixed inset-0 flex items-center justify-center p-4 sm:p-6 ${className || 'z-50'}`}>
+        <div className={`fixed inset-0 flex items-center justify-center p-4 sm:p-6 z-50 ${className}`}>
             <div
                 ref={overlayRef}
                 className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
@@ -73,7 +73,7 @@ export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', c
                     </div>
                 )}
 
-                <div className={noPadding ? '' : 'p-6 overflow-y-auto'}>
+                <div className={noPadding ? 'flex-1 overflow-hidden flex flex-col' : 'p-6 overflow-y-auto flex-1'}>
                     {children}
                 </div>
 

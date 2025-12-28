@@ -25,7 +25,7 @@ interface ProfileSettingsModalProps {
     onUpdate: (newData: any) => void;
 }
 
-type TabId = 'general' | 'privacy' | 'integrations' | 'skills' | 'account';
+type TabId = 'general' | 'privacy' | 'skills';
 
 const SCOPES: { value: PrivacyScope; label: string; icon: string; description: string }[] = [
     { value: 'public', label: 'Public', icon: 'public', description: 'Visible to everyone' },
@@ -62,10 +62,6 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
     const [showMediaLibrary, setShowMediaLibrary] = useState(false);
     const [mediaTarget, setMediaTarget] = useState<'avatar' | 'cover' | null>(null);
 
-    // Integrations State
-    const [githubLinked, setGithubLinked] = useState(false);
-    const [connectingGithub, setConnectingGithub] = useState(false);
-    const [githubToken, setGithubToken] = useState<string | null>(null);
 
     useEffect(() => {
         if (isOpen) {
@@ -80,22 +76,6 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                 setPrivacySettings(initialData.privacySettings);
             }
 
-            // Fetch latest GitHub status
-            const loadGithubStatus = async () => {
-                const user = auth.currentUser;
-                if (user) {
-                    try {
-                        const profile = await getUserProfile(user.uid);
-                        if (profile?.githubToken) {
-                            setGithubToken(profile.githubToken);
-                            setGithubLinked(true);
-                        }
-                    } catch (e) {
-                        console.error("Failed to load profile for GitHub status", e);
-                    }
-                }
-            };
-            loadGithubStatus();
         }
     }, [isOpen, initialData]);
 
@@ -134,23 +114,6 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
         }
     };
 
-    const handleConnectGithub = async () => {
-        const user = auth.currentUser;
-        if (!user) return;
-        setConnectingGithub(true);
-        try {
-            const token = await linkWithGithub();
-            await updateUserData(user.uid, { githubToken: token });
-            setGithubToken(token);
-            setGithubLinked(true);
-            showSuccess("GitHub connected!");
-        } catch (e: any) {
-            console.error('Failed to link GitHub', e);
-            showError(e.message || "Failed to connect GitHub");
-        } finally {
-            setConnectingGithub(false);
-        }
-    };
 
     const addSkill = () => {
         if (newSkill.trim() && !skills.includes(newSkill.trim())) {
@@ -168,11 +131,9 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
     };
 
     const tabs: { id: TabId; label: string; icon: string }[] = [
-        { id: 'general', label: 'General', icon: 'person' },
-        { id: 'privacy', label: 'Privacy', icon: 'shield' },
-        { id: 'integrations', label: 'Integrations', icon: 'extension' },
+        { id: 'general', label: 'General Info', icon: 'person' },
+        { id: 'privacy', label: 'Privacy', icon: 'lock' },
         { id: 'skills', label: 'Skills & Focus', icon: 'psychology' },
-        { id: 'account', label: 'Media & Account', icon: 'monochrome_photos' },
     ];
 
     const PrivacySelect = ({ label, value, onChange }: { label: string, value: PrivacyScope, onChange: (val: PrivacyScope) => void }) => (
@@ -199,9 +160,62 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                     <div className="space-y-6 animate-in fade-in duration-300">
                         <div>
                             <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-1">General Information</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">Update your profile details and contact information.</p>
+                            <p className="text-sm text-[var(--color-text-muted)]">Update your profile details and visual assets.</p>
                         </div>
                         <div className="space-y-4">
+                            {/* Visual Assets Section */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-[var(--color-surface-border)]">
+                                {/* Profile Picture */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-[var(--color-text-main)]">Profile Picture</label>
+                                    <div className="flex items-center gap-4">
+                                        <div
+                                            className="size-20 rounded-full overflow-hidden border-2 border-[var(--color-surface-border)] shadow-sm bg-[var(--color-surface-hover)] flex items-center justify-center cursor-pointer group relative"
+                                            onClick={() => { setMediaTarget('avatar'); setShowMediaLibrary(true); }}
+                                        >
+                                            {photoURL ? (
+                                                <>
+                                                    <img src={photoURL} className="w-full h-full object-cover" alt="Avatar" />
+                                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        <span className="material-symbols-outlined text-white text-[20px]">edit</span>
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <span className="material-symbols-outlined text-3xl text-[var(--color-text-muted)]">person</span>
+                                            )}
+                                        </div>
+                                        <Button variant="ghost" size="sm" onClick={() => { setMediaTarget('avatar'); setShowMediaLibrary(true); }}>
+                                            Change Photo
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                {/* Cover Image */}
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium text-[var(--color-text-main)]">Cover Image</label>
+                                    <div
+                                        className="h-20 w-full rounded-xl overflow-hidden border border-[var(--color-surface-border)] shadow-sm bg-[var(--color-surface-hover)] flex items-center justify-center relative cursor-pointer group"
+                                        onClick={() => { setMediaTarget('cover'); setShowMediaLibrary(true); }}
+                                    >
+                                        {coverURL ? (
+                                            <>
+                                                <img src={coverURL} className="w-full h-full object-cover" alt="Cover" />
+                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <span className="text-white text-xs font-medium flex items-center gap-1">
+                                                        <span className="material-symbols-outlined text-[16px]">edit</span> Change
+                                                    </span>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="flex flex-col items-center gap-1 text-[var(--color-text-muted)] scale-75">
+                                                <span className="material-symbols-outlined text-2xl">image</span>
+                                                <span className="text-xs">Upload Cover</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <Input
                                     label="Display Name"
@@ -228,7 +242,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                                 value={bio}
                                 onChange={(e) => setBio(e.target.value)}
                                 placeholder="Tell the world about yourself..."
-                                rows={5}
+                                rows={4}
                             />
                         </div>
                     </div>
@@ -274,60 +288,6 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                         </div>
                     </div>
                 );
-            case 'integrations':
-                return (
-                    <div className="space-y-6 animate-in fade-in duration-300">
-                        <div>
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-1">Integrations</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">Connect your favorite tools to your profile.</p>
-                        </div>
-                        <div className="pt-2">
-                            <div className="border border-[var(--color-surface-border)] rounded-xl p-4 bg-[var(--color-surface-paper)]/50">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="size-10 bg-black rounded-full flex items-center justify-center text-white">
-                                        <span className="material-symbols-outlined">terminal</span>
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className="font-bold text-[var(--color-text-main)]">GitHub</h3>
-                                        <p className="text-xs text-[var(--color-text-muted)]">Showcase your contributions and sync activity.</p>
-                                    </div>
-
-                                </div>
-                                {!githubLinked ? (
-                                    <button
-                                        onClick={handleConnectGithub}
-                                        disabled={connectingGithub}
-                                        className="w-full p-3 rounded-lg bg-black/[0.05] dark:bg-white/[0.05] hover:bg-black/[0.1] dark:hover:bg-white/[0.1] transition-colors flex items-center justify-center gap-2 text-sm font-medium text-[var(--color-text-main)]"
-                                    >
-                                        {connectingGithub ? (
-                                            <><span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span> Connecting...</>
-                                        ) : (
-                                            <>Connect GitHub Account</>
-                                        )}
-                                    </button>
-                                ) : (
-                                    <div className="flex items-center gap-2 p-3 bg-green-500/10 text-green-600 rounded-lg justify-center font-medium text-sm">
-                                        <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                                        Connected
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="mt-4 border border-[var(--color-surface-border)] rounded-xl p-4 bg-[var(--color-surface-paper)]/50 opacity-60">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <div className="size-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
-                                        <span className="font-bold italic">f</span>
-                                    </div>
-                                    <div className="flex-1">
-                                        <h3 className="font-bold text-[var(--color-text-main)]">Figma</h3>
-                                        <p className="text-xs text-[var(--color-text-muted)]">Display your design portfolio.</p>
-                                    </div>
-                                </div>
-                                <Button disabled className="w-full bg-transparent border border-[var(--color-surface-border)] text-[var(--color-text-muted)]">Coming Soon</Button>
-                            </div>
-                        </div>
-                    </div>
-                );
             case 'skills':
                 return (
                     <div className="space-y-6 animate-in fade-in duration-300">
@@ -360,67 +320,6 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                         </div>
                     </div>
                 );
-            case 'account':
-                return (
-                    <div className="space-y-6 animate-in fade-in duration-300">
-                        <div>
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-1">Media Assets</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">Manage your profile visibility and visual assets.</p>
-                        </div>
-
-                        <div className="grid grid-cols-1 gap-6">
-                            {/* Profile Picture */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-[var(--color-text-main)]">Profile Picture</label>
-                                <div className="flex items-center gap-6">
-                                    <div
-                                        className="size-24 rounded-full overflow-hidden border-2 border-[var(--color-surface-border)] shadow-sm bg-[var(--color-surface-hover)] flex items-center justify-center cursor-pointer group relative"
-                                        onClick={() => { setMediaTarget('avatar'); setShowMediaLibrary(true); }}
-                                    >
-                                        {photoURL ? (
-                                            <>
-                                                <img src={photoURL} className="w-full h-full object-cover" alt="Avatar" />
-                                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <span className="material-symbols-outlined text-white">edit</span>
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <span className="material-symbols-outlined text-4xl text-[var(--color-text-muted)]">person</span>
-                                        )}
-                                    </div>
-                                    <Button variant="secondary" size="sm" onClick={() => { setMediaTarget('avatar'); setShowMediaLibrary(true); }}>
-                                        Change Photo
-                                    </Button>
-                                </div>
-                            </div>
-
-                            {/* Cover Image */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-[var(--color-text-main)]">Cover Image</label>
-                                <div
-                                    className="h-40 w-full rounded-xl overflow-hidden border border-[var(--color-surface-border)] shadow-sm bg-[var(--color-surface-hover)] flex items-center justify-center relative cursor-pointer group"
-                                    onClick={() => { setMediaTarget('cover'); setShowMediaLibrary(true); }}
-                                >
-                                    {coverURL ? (
-                                        <>
-                                            <img src={coverURL} className="w-full h-full object-cover" alt="Cover" />
-                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <span className="text-white font-medium flex items-center gap-2">
-                                                    <span className="material-symbols-outlined">edit</span> Change Cover
-                                                </span>
-                                            </div>
-                                        </>
-                                    ) : (
-                                        <div className="flex flex-col items-center gap-2 text-[var(--color-text-muted)]">
-                                            <span className="material-symbols-outlined text-4xl">image</span>
-                                            <span className="text-sm">Upload Cover Image</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                );
         }
     };
 
@@ -435,11 +334,11 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id)}
                                 className={`
-                                    flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
-                                    ${activeTab === tab.id
+                                        flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                                        ${activeTab === tab.id
                                         ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
                                         : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'}
-                                `}
+                                    `}
                             >
                                 <span className={`material-symbols-outlined text-[20px] ${activeTab === tab.id ? 'fill' : ''}`}>{tab.icon}</span>
                                 {tab.label}
@@ -461,14 +360,13 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                 </div>
             </Modal>
 
-            {/* Media Library Picker */}
             <MediaLibrary
                 isOpen={showMediaLibrary}
                 onClose={() => setShowMediaLibrary(false)}
-                projectId="uncategorized" // Not used for user assets really
+                projectId="uncategorized"
                 collectionType="user"
                 userId={auth.currentUser?.uid}
-                tenantId={auth.currentUser?.uid} // Fallback or pass actual tenant if available
+                tenantId={auth.currentUser?.uid}
                 onSelect={(asset) => {
                     if (mediaTarget === 'avatar') {
                         setPhotoURL(asset.url);

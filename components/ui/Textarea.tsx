@@ -1,4 +1,5 @@
 import React from 'react';
+import { useArrowReplacement } from '../../hooks/useArrowReplacement';
 
 type TextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
     label?: string;
@@ -6,7 +7,8 @@ type TextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
 };
 
 export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-    ({ label, error, className = '', ...props }, ref) => {
+    ({ label, error, className = '', onChange, ...props }, ref) => {
+        const handleChange = useArrowReplacement(onChange);
         return (
             <div className="flex flex-col gap-1.5 w-full">
                 {label && (
@@ -16,6 +18,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
                 )}
                 <textarea
                     ref={ref}
+                    onChange={handleChange}
                     className={`
                         w-full 
                         bg-[var(--color-surface-bg)] 

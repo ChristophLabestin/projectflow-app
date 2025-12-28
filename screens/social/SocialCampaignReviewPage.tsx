@@ -74,8 +74,21 @@ export const SocialCampaignReviewPage = () => {
     const handleApprove = async () => {
         if (!idea || !projectId) return;
 
+        // Re-parse concept to ensure we have the absolute latest data at moment of approval
+        let currentConcept: any = {};
+        try {
+            if (idea.concept && idea.concept.startsWith('{')) {
+                currentConcept = JSON.parse(idea.concept);
+            }
+        } catch (e) { console.error("Failed to parse concept during approval", e); }
+
+        const currentPlanningPosts = Array.isArray(currentConcept.planningPosts) ? currentConcept.planningPosts : [];
+        const currentPhases = Array.isArray(currentConcept.phases) ? currentConcept.phases : [];
+        const currentKpis = Array.isArray(currentConcept.kpis) ? currentConcept.kpis : [];
+        const currentAudiences = Array.isArray(currentConcept.audienceSegments) ? currentConcept.audienceSegments : [];
+
         // Prepare rich data
-        const richPlatforms = Array.isArray(concept.platforms) ? concept.platforms : [];
+        const richPlatforms = Array.isArray(currentConcept.platforms) ? currentConcept.platforms : [];
         const rawPlatformNames = richPlatforms.map((p: any) => p.id || p.platform);
 
         // Normalize YouTube variants (YouTube Shorts, YouTube Video) to just YouTube
@@ -97,15 +110,15 @@ export const SocialCampaignReviewPage = () => {
             // Rich Data Transfer
             platforms: platformNames.length > 0 ? platformNames : ['Instagram'],
             channelStrategy: richPlatforms,
-            bigIdea: concept.bigIdea,
-            hook: concept.hook,
-            visualDirection: concept.visualDirection,
-            mood: concept.mood,
-            phases: phases,
-            kpis: kpis,
-            audienceSegments: audienceSegments,
-            targetAudience: Array.isArray(audienceSegments) ? audienceSegments.join(', ') : concept.targetAudience,
-            plannedContent: planningPosts,
+            bigIdea: currentConcept.bigIdea,
+            hook: currentConcept.hook,
+            visualDirection: currentConcept.visualDirection,
+            mood: currentConcept.mood,
+            phases: currentPhases,
+            kpis: currentKpis,
+            audienceSegments: currentAudiences,
+            targetAudience: Array.isArray(currentAudiences) ? currentAudiences.join(', ') : currentConcept.targetAudience,
+            plannedContent: currentPlanningPosts,
 
             // AI Analysis Data
             risks: idea.riskWinAnalysis?.risks?.map((r: any) => ({
@@ -402,9 +415,9 @@ export const SocialCampaignReviewPage = () => {
                         <Card className="space-y-6">
                             <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Strategic Intent</div>
                             <div className="space-y-2">
-                                <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Core Idea</div>
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Core Flow</div>
                                 <h2 className="text-2xl md:text-3xl font-bold text-[var(--color-text-main)]">
-                                    "{concept.bigIdea || idea.description || 'No core idea defined'}"
+                                    "{concept.bigIdea || idea.description || 'No core flow defined'}"
                                 </h2>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-[var(--color-surface-border)]">
@@ -510,7 +523,23 @@ export const SocialCampaignReviewPage = () => {
                                                     <div className="mt-4 pt-3 border-t border-[var(--color-surface-border)] grid grid-cols-2 gap-3 text-xs text-[var(--color-text-muted)]">
                                                         <div className="space-y-1">
                                                             <div className="text-[10px] uppercase tracking-wider">Frequency</div>
-                                                            <div className="text-sm font-semibold text-[var(--color-text-main)]">{frequencyLabel}</div>
+                                                            {!isString && Array.isArray(p.phaseFrequencies) && p.phaseFrequencies.length > 0 ? (
+                                                                <div className="space-y-1 mt-1">
+                                                                    {p.phaseFrequencies.map((pf: any, i: number) => {
+                                                                        const phaseName = phases.find((ph: any) => ph.id === pf.phaseId)?.name || `Phase ${i + 1}`;
+                                                                        return (
+                                                                            <div key={i} className="flex justify-between items-center text-[10px] gap-2">
+                                                                                <span className="text-[var(--color-text-muted)] truncate max-w-[80px]" title={phaseName}>{phaseName}</span>
+                                                                                <span className="font-semibold text-[var(--color-text-main)]">
+                                                                                    {pf.frequencyValue}/{pf.frequencyUnit?.replace('Posts/', '') || 'Wk'}
+                                                                                </span>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            ) : (
+                                                                <div className="text-sm font-semibold text-[var(--color-text-main)]">{frequencyLabel}</div>
+                                                            )}
                                                         </div>
                                                         <div className="space-y-1 text-right">
                                                             <div className="text-[10px] uppercase tracking-wider">Format</div>
@@ -847,7 +876,7 @@ export const SocialCampaignReviewPage = () => {
                         <p className="text-sm text-[var(--color-text-muted)]">
                             {rejectType === 'changes'
                                 ? "This will return the campaign to the creator with your feedback."
-                                : "This will permanently reject the campaign idea."}
+                                : "This will permanently reject the campaign flow."}
                         </p>
                     </div>
 

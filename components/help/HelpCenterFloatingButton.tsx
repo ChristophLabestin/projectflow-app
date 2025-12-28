@@ -2,10 +2,12 @@ import React from 'react';
 import { useLocation } from 'react-router-dom';
 import { useHelpCenter } from '../../context/HelpCenterContext';
 import { getHelpTargetForPath } from './helpCenterContent';
+import { useLanguage } from '../../context/LanguageContext';
 
 export const HelpCenterFloatingButton = () => {
     const location = useLocation();
     const { openHelpCenter } = useHelpCenter();
+    const { t } = useLanguage();
 
     const handleOpen = () => {
         openHelpCenter(getHelpTargetForPath(location.pathname));
@@ -21,10 +23,10 @@ export const HelpCenterFloatingButton = () => {
                 bg-[var(--color-primary)] text-[var(--color-primary-text)]
                 shadow-lg hover:opacity-90 transition-opacity
             "
-            aria-label="Open help center"
+            aria-label={t('help.openAria')}
         >
             <span className="material-symbols-outlined text-[18px]">help</span>
-            <span className="text-xs font-semibold tracking-wide">Help</span>
+            <span className="text-xs font-semibold tracking-wide">{t('help.open')}</span>
         </button>
     );
 };

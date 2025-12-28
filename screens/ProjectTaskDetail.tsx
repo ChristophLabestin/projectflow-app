@@ -9,6 +9,7 @@ import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
 import { EditTaskModal } from '../components/EditTaskModal';
 import { MultiAssigneeSelector } from '../components/MultiAssigneeSelector';
+import { TaskDependenciesCard } from '../components/TaskDependenciesCard';
 import { TaskCreateModal } from '../components/TaskCreateModal';
 import { ProjectLabelsModal } from '../components/ProjectLabelsModal';
 import { toMillis, timeAgo } from '../utils/time';
@@ -16,6 +17,8 @@ import { auth } from '../services/firebase';
 import { DatePicker } from '../components/ui/DatePicker';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { TaskStrategicContext } from '../components/tasks/TaskStrategicContext';
+import { useLanguage } from '../context/LanguageContext';
+import { format } from 'date-fns';
 
 const activityIcon = (type?: Activity['type'], actionText?: string) => {
     const action = (actionText || '').toLowerCase();
@@ -69,6 +72,7 @@ export const ProjectTaskDetail = () => {
     const [searchParams] = useSearchParams();
     const tenantId = searchParams.get('tenant') || undefined;
     const navigate = useNavigate();
+    const { dateFormat, dateLocale } = useLanguage();
     const [task, setTask] = useState<Task | null>(null);
     const [subTasks, setSubTasks] = useState<SubTask[]>([]);
     const [idea, setIdea] = useState<any | null>(null); // Store original idea
@@ -95,6 +99,10 @@ export const ProjectTaskDetail = () => {
     const [milestones, setMilestones] = useState<Milestone[]>([]);
     const [activeMilestoneMenu, setActiveMilestoneMenu] = useState(false);
     const statusMenuRef = useRef<HTMLDivElement | null>(null);
+    const [priorityMenuOpen, setPriorityMenuOpen] = useState(false);
+    const priorityMenuRef = useRef<HTMLDivElement | null>(null);
+    const [effortMenuOpen, setEffortMenuOpen] = useState(false);
+    const effortMenuRef = useRef<HTMLDivElement | null>(null);
     const { pinItem, unpinItem, isPinned, focusItemId, setFocusItem } = usePinnedTasks();
 
     const isProjectOwner = useMemo(() => {
@@ -136,7 +144,7 @@ export const ProjectTaskDetail = () => {
 
             // Fetch linked idea if it exists
             if (t?.convertedIdeaId && id) {
-                getIdeaById(t.convertedIdeaId, id).then(setIdea).catch(e => console.error("Failed to load strategic idea", e));
+                getIdeaById(t.convertedIdeaId, id).then(setIdea).catch(e => console.error("Failed to load strategic flow", e));
             }
 
             const subs = await getSubTasks(taskId, id, tenantId);
@@ -163,15 +171,21 @@ export const ProjectTaskDetail = () => {
     }, [taskId, id]);
 
     useEffect(() => {
-        if (!statusMenuOpen) return;
+        if (!statusMenuOpen && !priorityMenuOpen && !effortMenuOpen) return;
         const handleClick = (event: MouseEvent) => {
-            if (!statusMenuRef.current?.contains(event.target as Node)) {
+            if (statusMenuOpen && !statusMenuRef.current?.contains(event.target as Node)) {
                 setStatusMenuOpen(false);
+            }
+            if (priorityMenuOpen && !priorityMenuRef.current?.contains(event.target as Node)) {
+                setPriorityMenuOpen(false);
+            }
+            if (effortMenuOpen && !effortMenuRef.current?.contains(event.target as Node)) {
+                setEffortMenuOpen(false);
             }
         };
         document.addEventListener('mousedown', handleClick);
         return () => document.removeEventListener('mousedown', handleClick);
-    }, [statusMenuOpen]);
+    }, [statusMenuOpen, priorityMenuOpen, effortMenuOpen]);
 
     // Subscribe to workspace users once we have the task's tenantId
     useEffect(() => {
@@ -308,6 +322,18 @@ export const ProjectTaskDetail = () => {
         };
         setTask(prev => prev ? { ...prev, ...updates } : null);
         await updateTaskFields(task.id, updates, id);
+    };
+
+    const handleUpdateAssignedGroups = async (groupIds: string[]) => {
+        if (!task || !id) return;
+        setTask(prev => prev ? { ...prev, assignedGroupIds: groupIds } : null);
+        await updateTaskFields(task.id, { assignedGroupIds: groupIds }, id);
+    };
+
+    const handleUpdateDependencies = async (dependencyIds: string[]) => {
+        if (!task || !id) return;
+        setTask(prev => prev ? { ...prev, dependencies: dependencyIds } : null);
+        await updateTaskFields(task.id, { dependencies: dependencyIds }, id);
     };
 
     const handleLinkMilestone = async (milestoneId: string) => {
@@ -510,12 +536,12 @@ export const ProjectTaskDetail = () => {
                                         <span className="text-[var(--color-text-main)] font-semibold whitespace-nowrap">
                                             {task.startDate ? (
                                                 <>
-                                                    {new Date(task.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                    {format(new Date(task.startDate), dateFormat, { locale: dateLocale })}
                                                     {' - '}
-                                                    {task.dueDate ? new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '...'}
+                                                    {task.dueDate ? format(new Date(task.dueDate), dateFormat, { locale: dateLocale }) : '...'}
                                                 </>
                                             ) : (
-                                                task.dueDate ? new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'No due date'
+                                                task.dueDate ? format(new Date(task.dueDate), dateFormat, { locale: dateLocale }) : 'No due date'
                                             )}
                                         </span>
                                     </div>
@@ -543,7 +569,7 @@ export const ProjectTaskDetail = () => {
                                         <div className="flex flex-col">
                                             <span className="text-[10px] leading-none uppercase font-bold text-[var(--color-text-subtle)] mb-0.5">Smart Scheduled</span>
                                             <span className="text-[var(--color-text-main)] font-semibold">
-                                                {new Date(task.scheduledDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                                {format(new Date(task.scheduledDate), dateFormat, { locale: dateLocale })}
                                             </span>
                                         </div>
                                     </div>
@@ -662,8 +688,8 @@ export const ProjectTaskDetail = () => {
                     {task.startDate && task.dueDate && (
                         <div className="mt-8 relative pt-4">
                             <div className="flex justify-between text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mb-2">
-                                <span>{new Date(task.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
-                                <span>{new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                                <span>{format(new Date(task.startDate), dateFormat, { locale: dateLocale })}</span>
+                                <span>{format(new Date(task.dueDate), dateFormat, { locale: dateLocale })}</span>
                             </div>
                             <div className="h-2 bg-[var(--color-surface-border)] rounded-full overflow-hidden relative">
                                 {/* Visual calculation for progress based on today vs start/end */}
@@ -692,6 +718,228 @@ export const ProjectTaskDetail = () => {
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
                 {/* Main Content */}
                 <div className="xl:col-span-9 space-y-8">
+
+                    {/* Top Meta Cards: Priority, Status, Assignee */}
+                    {/* Top Meta Cards: Priority, Status, Effort, Assignee */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                        {/* Priority Card - Compact with Custom Dropdown */}
+                        <div className="app-card p-4 h-full flex flex-col">
+                            <div className="flex items-center gap-2 mb-3">
+                                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]">flag</span>
+                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">Priority</span>
+                            </div>
+                            <div className="flex-1 flex items-center">
+                                <div ref={priorityMenuRef} className="relative w-full">
+                                    <button
+                                        type="button"
+                                        onClick={() => setPriorityMenuOpen((open) => !open)}
+                                        className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl border transition-all hover:brightness-110 ${(() => {
+                                            const p = task.priority || 'Low';
+                                            const activeStyles: Record<string, string> = {
+                                                'Low': 'bg-slate-500/10 text-slate-500 border-slate-500/20 shadow-sm',
+                                                'Medium': 'bg-blue-500/10 text-blue-500 border-blue-500/20 shadow-sm',
+                                                'High': 'bg-orange-500/10 text-orange-500 border-orange-500/20 shadow-sm',
+                                                'Urgent': 'bg-rose-500/10 text-rose-500 border-rose-500/20 shadow-sm'
+                                            };
+                                            return activeStyles[p] || activeStyles['Low'];
+                                        })()}`}
+                                    >
+                                        <span className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-wide truncate">
+                                            <PriorityIcon priority={task.priority || 'Low'} />
+                                            {task.priority || 'Low'}
+                                        </span>
+                                        <span className={`material-symbols-outlined text-[18px] text-current opacity-70 transition-transform ${priorityMenuOpen ? 'rotate-180' : ''}`}>
+                                            expand_more
+                                        </span>
+                                    </button>
+
+                                    {priorityMenuOpen && (
+                                        <div className="absolute left-0 top-full mt-2 w-full rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] shadow-lg p-2 space-y-1 z-20">
+                                            {(['Low', 'Medium', 'High', 'Urgent'] as const).map((p) => {
+                                                const activeStyles: Record<string, string> = {
+                                                    'Low': 'bg-slate-500/10 text-slate-500 border-slate-500/20 shadow-sm',
+                                                    'Medium': 'bg-blue-500/10 text-blue-500 border-blue-500/20 shadow-sm',
+                                                    'High': 'bg-orange-500/10 text-orange-500 border-orange-500/20 shadow-sm',
+                                                    'Urgent': 'bg-rose-500/10 text-rose-500 border-rose-500/20 shadow-sm'
+                                                };
+                                                const isSelected = task.priority === p;
+
+                                                return (
+                                                    <button
+                                                        key={p}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setPriorityMenuOpen(false);
+                                                            handleUpdateField('priority', p);
+                                                        }}
+                                                        className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wide transition-all ${isSelected ? 'ring-1 ring-[var(--color-primary)]/30' : 'hover:brightness-110 border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'
+                                                            } ${isSelected ? activeStyles[p] : 'text-[var(--color-text-muted)]'}`}
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            <PriorityIcon priority={p} />
+                                                            {p}
+                                                        </span>
+                                                        {isSelected && (
+                                                            <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Status Card */}
+                        <div className="app-card p-4 h-full flex flex-col">
+                            <div className="flex items-center gap-2 mb-3">
+                                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]">timelapse</span>
+                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">Status</span>
+                            </div>
+                            <div className="flex-1 flex items-center">
+                                <div ref={statusMenuRef} className="relative w-full">
+                                    <button
+                                        type="button"
+                                        onClick={() => setStatusMenuOpen((open) => !open)}
+                                        className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl border transition-all hover:brightness-110 ${getTaskStatusStyle(currentStatus)}`}
+                                    >
+                                        <span className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-wide truncate">
+                                            <span className="material-symbols-outlined text-[16px]">
+                                                {getTaskStatusIcon(currentStatus)}
+                                            </span>
+                                            {currentStatus}
+                                        </span>
+                                        <span className={`material-symbols-outlined text-[18px] text-current opacity-70 transition-transform ${statusMenuOpen ? 'rotate-180' : ''}`}>
+                                            expand_more
+                                        </span>
+                                    </button>
+                                    {statusMenuOpen && (
+                                        <div className="absolute left-0 top-full mt-2 w-full rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] shadow-lg p-2 space-y-1 z-20">
+                                            {TASK_STATUS_OPTIONS.map((status) => (
+                                                <button
+                                                    key={status}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setStatusMenuOpen(false);
+                                                        const isDone = status === 'Done';
+                                                        setTask(prev => prev ? ({ ...prev, status: status as any, isCompleted: isDone }) : null);
+                                                        updateTaskFields(task.id, { status: status as any, isCompleted: isDone }, id);
+                                                    }}
+                                                    className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wide transition-all ${status === currentStatus
+                                                        ? 'ring-1 ring-[var(--color-primary)]/30'
+                                                        : 'hover:brightness-110'
+                                                        } ${getTaskStatusStyle(status)}`}
+                                                >
+                                                    <span className="flex items-center gap-2">
+                                                        <span className="material-symbols-outlined text-[14px]">
+                                                            {getTaskStatusIcon(status)}
+                                                        </span>
+                                                        {status}
+                                                    </span>
+                                                    {status === currentStatus && (
+                                                        <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>
+                                                    )}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Effort Card (New) */}
+                        <div className="app-card p-4 h-full flex flex-col">
+                            <div className="flex items-center gap-2 mb-3">
+                                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]">fitness_center</span>
+                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">Effort</span>
+                            </div>
+                            <div className="flex-1 flex items-center">
+                                <div ref={effortMenuRef} className="relative w-full">
+                                    <button
+                                        type="button"
+                                        onClick={() => setEffortMenuOpen((open) => !open)}
+                                        className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl border transition-all hover:brightness-110 ${(() => {
+                                            const e = task.effort || 'None';
+                                            const activeStyles: Record<string, string> = {
+                                                'None': 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]',
+                                                'Low': 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-sm',
+                                                'Medium': 'bg-blue-500/10 text-blue-500 border-blue-500/20 shadow-sm',
+                                                'High': 'bg-violet-500/10 text-violet-500 border-violet-500/20 shadow-sm'
+                                            };
+                                            return activeStyles[e] || activeStyles['None'];
+                                        })()}`}
+                                    >
+                                        <span className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-wide truncate">
+                                            {task.effort ? (
+                                                <>
+                                                    <EffortIcon effort={task.effort} />
+                                                    {task.effort}
+                                                </>
+                                            ) : (
+                                                <span className="text-[var(--color-text-muted)] italic text-[11px]">Set Effort...</span>
+                                            )}
+                                        </span>
+                                        <span className={`material-symbols-outlined text-[18px] text-current opacity-70 transition-transform ${effortMenuOpen ? 'rotate-180' : ''}`}>
+                                            expand_more
+                                        </span>
+                                    </button>
+
+                                    {effortMenuOpen && (
+                                        <div className="absolute left-0 top-full mt-2 w-full rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] shadow-lg p-2 space-y-1 z-20">
+                                            {(['Low', 'Medium', 'High'] as const).map((e) => {
+                                                const activeStyles: Record<string, string> = {
+                                                    'Low': 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-sm',
+                                                    'Medium': 'bg-blue-500/10 text-blue-500 border-blue-500/20 shadow-sm',
+                                                    'High': 'bg-violet-500/10 text-violet-500 border-violet-500/20 shadow-sm'
+                                                };
+                                                const isSelected = task.effort === e;
+
+                                                return (
+                                                    <button
+                                                        key={e}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setEffortMenuOpen(false);
+                                                            handleUpdateField('effort', e);
+                                                        }}
+                                                        className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wide transition-all ${isSelected ? 'ring-1 ring-[var(--color-primary)]/30' : 'hover:brightness-110 border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'
+                                                            } ${isSelected ? activeStyles[e] : 'text-[var(--color-text-muted)]'}`}
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            <EffortIcon effort={e} />
+                                                            {e}
+                                                        </span>
+                                                        {isSelected && (
+                                                            <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Assignees Card */}
+                        <div className="app-card p-4 h-full flex flex-col">
+                            <div className="flex items-center gap-2 mb-3">
+                                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]">group</span>
+                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">Assignees & Groups</span>
+                            </div>
+                            <div className="flex-1 flex items-center justify-start">
+                                <MultiAssigneeSelector
+                                    projectId={id!}
+                                    assigneeIds={task.assigneeIds || (task.assigneeId ? [task.assigneeId] : [])}
+                                    assignedGroupIds={task.assignedGroupIds || []}
+                                    onChange={handleUpdateAssignees}
+                                    onGroupChange={handleUpdateAssignedGroups}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Description */}
                     <div className="p-0">
                         <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-3 flex items-center gap-2 tracking-wider">
@@ -854,6 +1102,7 @@ export const ProjectTaskDetail = () => {
                         </div>
                     </div>
 
+
                     {/* Strategic Context (Moved here) */}
                     {task.convertedIdeaId && (
                         <div className="animate-fade-in-up">
@@ -873,6 +1122,7 @@ export const ProjectTaskDetail = () => {
                             targetType="task"
                             tenantId={task?.tenantId}
                             isProjectOwner={isProjectOwner}
+                            targetTitle={task?.title}
                             hideHeader={true}
                             onCountChange={setCommentCount}
                         />
@@ -884,91 +1134,6 @@ export const ProjectTaskDetail = () => {
                 <div className="xl:col-span-3 space-y-6">
                     {/* Controls Card */}
                     <div className="space-y-4">
-                        {/* Status Card */}
-                        <div className="app-card p-4">
-                            <div className="flex items-center justify-between mb-3">
-                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">Status</span>
-                            </div>
-                            <div ref={statusMenuRef} className="relative">
-                                <button
-                                    type="button"
-                                    onClick={() => setStatusMenuOpen((open) => !open)}
-                                    className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-2xl border shadow-inner transition-all hover:brightness-110 ${getTaskStatusStyle(currentStatus)}`}
-                                >
-                                    <span className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.18em]">
-                                        <span className="material-symbols-outlined text-[14px]">
-                                            {getTaskStatusIcon(currentStatus)}
-                                        </span>
-                                        {currentStatus}
-                                    </span>
-                                    <span className={`material-symbols-outlined text-[18px] text-current opacity-70 transition-transform ${statusMenuOpen ? 'rotate-180' : ''}`}>
-                                        expand_more
-                                    </span>
-                                </button>
-                                {statusMenuOpen && (
-                                    <div className="absolute left-0 top-full mt-2 w-full rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] shadow-lg p-2 space-y-2 z-20">
-                                        {TASK_STATUS_OPTIONS.map((status) => (
-                                            <button
-                                                key={status}
-                                                type="button"
-                                                onClick={() => {
-                                                    setStatusMenuOpen(false);
-                                                    const isDone = status === 'Done';
-                                                    setTask(prev => prev ? ({ ...prev, status: status as any, isCompleted: isDone }) : null);
-                                                    updateTaskFields(task.id, { status: status as any, isCompleted: isDone }, id);
-                                                }}
-                                                className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl border text-[10px] font-black uppercase tracking-[0.18em] transition-all ${status === currentStatus
-                                                    ? 'ring-1 ring-[var(--color-primary)]/30'
-                                                    : 'hover:brightness-110'
-                                                    } ${getTaskStatusStyle(status)}`}
-                                            >
-                                                <span className="flex items-center gap-2">
-                                                    <span className="material-symbols-outlined text-[12px]">
-                                                        {getTaskStatusIcon(status)}
-                                                    </span>
-                                                    {status}
-                                                </span>
-                                                {status === currentStatus && (
-                                                    <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>
-                                                )}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Priority Card */}
-                        <div className="app-card p-4">
-                            <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider block mb-3">Priority</span>
-                            <div className="grid grid-cols-2 gap-2">
-                                {(['Low', 'Medium', 'High', 'Urgent'] as const).map(p => {
-                                    const activeStyles: Record<string, string> = {
-                                        'Low': 'bg-slate-500/10 text-slate-500 border-slate-500/20 shadow-sm',
-                                        'Medium': 'bg-blue-500/10 text-blue-500 border-blue-500/20 shadow-sm',
-                                        'High': 'bg-orange-500/10 text-orange-500 border-orange-500/20 shadow-sm',
-                                        'Urgent': 'bg-rose-500/10 text-rose-500 border-rose-500/20 shadow-sm'
-                                    };
-                                    return (
-                                        <button
-                                            key={p}
-                                            onClick={() => handleUpdateField('priority', p)}
-                                            className={`
-                                                px-3 py-2 rounded-xl text-[10px] font-bold transition-all border flex flex-col items-center gap-1
-                                                ${task.priority === p
-                                                    ? activeStyles[p]
-                                                    : 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'
-                                                }
-                                            `}
-                                            title={p}
-                                        >
-                                            <PriorityIcon priority={p} />
-                                            <span>{p}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
 
                         {/* Timeline Card */}
                         <div className="app-card p-4">
@@ -998,20 +1163,14 @@ export const ProjectTaskDetail = () => {
                             </div>
                         </div>
 
-                        {/* Assignees Card */}
-                        <div className="app-card p-4">
-                            <div className="flex items-center justify-between mb-3">
-                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">Assignees</span>
-                                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]">group</span>
-                            </div>
-                            <div className="flex justify-start">
-                                <MultiAssigneeSelector
-                                    projectId={id!}
-                                    assigneeIds={task.assigneeIds || (task.assigneeId ? [task.assigneeId] : [])}
-                                    onChange={handleUpdateAssignees}
-                                />
-                            </div>
-                        </div>
+
+                        {/* Dependencies Card */}
+                        <TaskDependenciesCard
+                            projectId={id!}
+                            currentTaskId={task.id}
+                            dependencies={task.dependencies || []}
+                            onUpdate={handleUpdateDependencies}
+                        />
 
                         {/* Labels Card */}
                         <div className="app-card p-4">
@@ -1172,7 +1331,7 @@ export const ProjectTaskDetail = () => {
                                                 <span className="block text-xs font-bold text-emerald-900 dark:text-emerald-100 truncate">{linkedMilestone.title}</span>
                                                 {linkedMilestone.dueDate && (
                                                     <span className="block text-[10px] text-emerald-600 dark:text-emerald-400">
-                                                        Due {new Date(linkedMilestone.dueDate).toLocaleDateString()}
+                                                        Due {format(new Date(linkedMilestone.dueDate), dateFormat, { locale: dateLocale })}
                                                     </span>
                                                 )}
                                             </div>
@@ -1210,7 +1369,7 @@ export const ProjectTaskDetail = () => {
                                                             >
                                                                 <span className="material-symbols-outlined text-[14px] text-[var(--color-text-subtle)]">flag</span>
                                                                 <span className="truncate flex-1">{m.title}</span>
-                                                                {m.dueDate && <span className="text-[10px] text-[var(--color-text-muted)]">{new Date(m.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>}
+                                                                {m.dueDate && <span className="text-[10px] text-[var(--color-text-muted)]">{format(new Date(m.dueDate), 'MMM d', { locale: dateLocale })}</span>}
                                                             </button>
                                                         ))
                                                     )}
@@ -1226,14 +1385,14 @@ export const ProjectTaskDetail = () => {
                                 <div className="pt-3 border-t border-[var(--color-surface-border)]">
                                     <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase block mb-2">Origin</span>
                                     <Link
-                                        to={`/project/${id}/ideas/${task.convertedIdeaId}`}
+                                        to={`/project/${id}/flows/${task.convertedIdeaId}`}
                                         className="flex items-center gap-2 p-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 group hover:border-indigo-200 dark:hover:border-indigo-500/40 transition-all"
                                     >
                                         <div className="size-6 rounded bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
                                             <span className="material-symbols-outlined text-[14px]">lightbulb</span>
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <span className="block text-xs font-bold text-indigo-900 dark:text-indigo-100 truncate">Strategic Idea</span>
+                                            <span className="block text-xs font-bold text-indigo-900 dark:text-indigo-100 truncate">Strategic Flow</span>
                                             <span className="block text-[10px] text-indigo-600 dark:text-indigo-400">View source</span>
                                         </div>
                                         <span className="material-symbols-outlined text-[16px] text-indigo-400 -ml-1 opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
@@ -1267,7 +1426,7 @@ export const ProjectTaskDetail = () => {
                                     <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">Created</span>
                                     <div className="text-right">
                                         <span className="block text-xs font-medium text-[var(--color-text-main)]">
-                                            {task.createdAt ? new Date(toMillis(task.createdAt)).toLocaleDateString() : '-'}
+                                            {task.createdAt ? format(new Date(toMillis(task.createdAt)), dateFormat, { locale: dateLocale }) : '-'}
                                         </span>
                                         {task.createdBy && (
                                             <span className="text-[10px] text-[var(--color-text-muted)] flex items-center justify-end gap-1">
@@ -1282,7 +1441,7 @@ export const ProjectTaskDetail = () => {
                                         <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">Completed</span>
                                         <div className="text-right">
                                             <span className="block text-xs font-medium text-[var(--color-text-main)]">
-                                                {task.completedAt ? new Date(toMillis(task.completedAt)).toLocaleDateString() : 'Just now'}
+                                                {task.completedAt ? format(new Date(toMillis(task.completedAt)), dateFormat, { locale: dateLocale }) : 'Just now'}
                                             </span>
                                             {task.completedBy && (
                                                 <span className="text-[10px] text-[var(--color-text-muted)] flex items-center justify-end gap-1">
@@ -1364,6 +1523,20 @@ const PriorityIcon = ({ priority }: { priority: string }) => {
         'Low': 'text-slate-500',
     };
     return <span className={`material-symbols-outlined text-[18px] ${colors[priority]}`}>{icons[priority]}</span>;
+}
+
+const EffortIcon = ({ effort }: { effort: string }) => {
+    const icons: Record<string, string> = {
+        'High': 'fitness_center',
+        'Medium': 'bolt',
+        'Low': 'spa',
+    };
+    const colors: Record<string, string> = {
+        'High': 'text-violet-500',
+        'Medium': 'text-blue-500',
+        'Low': 'text-emerald-500',
+    };
+    return <span className={`material-symbols-outlined text-[18px] ${colors[effort] || 'text-[var(--color-text-muted)]'}`}>{icons[effort] || 'circle'}</span>;
 }
 
 const PriorityBadge = ({ priority }: { priority: string }) => {

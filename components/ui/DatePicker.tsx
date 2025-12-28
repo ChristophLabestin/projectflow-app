@@ -26,7 +26,10 @@ interface DatePickerProps {
     label?: string;
 }
 
+import { useLanguage } from '../../context/LanguageContext';
+
 export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, placeholder = "Select date", className = "", align = 'left', disabled = false, label }) => {
+    const { dateFormat, dateLocale } = useLanguage();
     const [isOpen, setIsOpen] = useState(false);
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [popoverPosition, setPopoverPosition] = useState({ top: 0, left: 0 });
@@ -154,7 +157,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, placeho
                     <span className="material-symbols-outlined text-[20px]">chevron_left</span>
                 </button>
                 <span className="font-bold text-sm text-[var(--color-text-main)]">
-                    {format(currentMonth, 'MMMM yyyy')}
+                    {format(currentMonth, 'MMMM yyyy', { locale: dateLocale })}
                 </span>
                 <button onClick={handleNextMonth} className="p-1 hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors text-[var(--color-text-main)]">
                     <span className="material-symbols-outlined text-[20px]">chevron_right</span>
@@ -163,9 +166,12 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, placeho
 
             {/* Weekday Labels */}
             <div className="grid grid-cols-7 mb-2">
-                {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(day => (
-                    <div key={day} className="text-center text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
-                        {day}
+                {eachDayOfInterval({
+                    start: startOfWeek(new Date(), { weekStartsOn: 1 }),
+                    end: endOfWeek(new Date(), { weekStartsOn: 1 })
+                }).map(day => (
+                    <div key={day.toString()} className="text-center text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
+                        {format(day, 'EEEEEE', { locale: dateLocale })}
                     </div>
                 ))}
             </div>
@@ -228,7 +234,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, placeho
                 <div className="flex items-center gap-2 overflow-hidden">
                     <span className="material-symbols-outlined text-[20px] leading-none text-[var(--color-text-subtle)] flex-shrink-0">calendar_today</span>
                     {value && isValid(parseISO(value)) ? (
-                        <span className="truncate">{format(parseISO(value), 'MMM d, yyyy')}</span>
+                        <span className="truncate">{format(parseISO(value), dateFormat, { locale: dateLocale })}</span>
                     ) : (
                         <span className="text-[var(--color-text-subtle)] truncate">{placeholder}</span>
                     )}

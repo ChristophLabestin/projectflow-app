@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
 import { Idea } from '../../types';
 import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { IdeaCard } from './IdeaCard';
-import { IdeaColumn } from './IdeaColumn';
+import { FlowCard } from './FlowCard';
+import { FlowColumn } from './FlowColumn';
 import { createPortal } from 'react-dom';
 import { PipelineStageConfig } from './constants';
 
-interface IdeaPipelineBoardProps {
-    ideas: Idea[];
+interface FlowPipelineBoardProps {
+    flows: Idea[];
     columns: PipelineStageConfig[];
-    onIdeaMove: (ideaId: string, newStage: Idea['stage']) => void;
-    onIdeaClick: (idea: Idea) => void;
+    onFlowMove: (flowId: string, newStage: Idea['stage']) => void;
+    onFlowClick: (flow: Idea) => void;
 }
 
-export const IdeaPipelineBoard: React.FC<IdeaPipelineBoardProps> = ({ ideas, columns, onIdeaMove, onIdeaClick }) => {
+export const FlowPipelineBoard: React.FC<FlowPipelineBoardProps> = ({ flows, columns, onFlowMove, onFlowClick }) => {
     const [activeId, setActiveId] = useState<string | null>(null);
 
     const sensors = useSensors(
@@ -34,7 +34,7 @@ export const IdeaPipelineBoard: React.FC<IdeaPipelineBoardProps> = ({ ideas, col
 
         if (!over) return;
 
-        const activeIdea = ideas.find((i) => i.id === active.id);
+        const activeFlow = flows.find((flow) => flow.id === active.id);
         const overId = over.id as string;
 
         // Determine target stage
@@ -42,19 +42,19 @@ export const IdeaPipelineBoard: React.FC<IdeaPipelineBoardProps> = ({ ideas, col
 
         // If dropped on another item, find that item's stage
         if (!columns.some(c => c.id === overId)) {
-            const overIdea = ideas.find((i) => i.id === overId);
-            if (overIdea) {
-                newStage = overIdea.stage;
+            const overFlow = flows.find((flow) => flow.id === overId);
+            if (overFlow) {
+                newStage = overFlow.stage;
             }
         }
 
         // Safety check if stage is valid
-        if (activeIdea && activeIdea.stage !== newStage && columns.some(c => c.id === newStage)) {
-            onIdeaMove(active.id as string, newStage);
+        if (activeFlow && activeFlow.stage !== newStage && columns.some(c => c.id === newStage)) {
+            onFlowMove(active.id as string, newStage);
         }
     };
 
-    const activeIdea = activeId ? ideas.find((i) => i.id === activeId) : null;
+    const activeFlow = activeId ? flows.find((flow) => flow.id === activeId) : null;
 
     return (
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -63,10 +63,10 @@ export const IdeaPipelineBoard: React.FC<IdeaPipelineBoardProps> = ({ ideas, col
                     <div key={column.id} className="snap-start shrink-0 h-full flex flex-col w-80">
 
 
-                        <IdeaColumn
+                        <FlowColumn
                             column={column}
-                            ideas={ideas.filter((i) => (i.stage || columns[0].id) === column.id)}
-                            onIdeaClick={onIdeaClick}
+                            flows={flows.filter((flow) => (flow.stage || columns[0].id) === column.id)}
+                            onFlowClick={onFlowClick}
                         />
                     </div>
                 ))}
@@ -74,9 +74,9 @@ export const IdeaPipelineBoard: React.FC<IdeaPipelineBoardProps> = ({ ideas, col
 
             {createPortal(
                 <DragOverlay>
-                    {activeIdea ? (
+                    {activeFlow ? (
                         <div className="transform rotate-3 opacity-95 cursor-grabbing">
-                            <IdeaCard idea={activeIdea} onClick={() => { }} isOverlay />
+                            <FlowCard flow={activeFlow} onClick={() => { }} isOverlay />
                         </div>
                     ) : null}
                 </DragOverlay>,

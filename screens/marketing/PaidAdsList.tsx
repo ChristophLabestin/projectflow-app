@@ -88,7 +88,7 @@ export const PaidAdsList = () => {
                                             <>
                                                 <span>•</span>
                                                 <Link
-                                                    to={`/project/${projectId}/ideas/${campaign.originIdeaId}`}
+                                                    to={`/project/${projectId}/flows/${campaign.originIdeaId}`}
                                                     className="flex items-center gap-1 text-purple-600 hover:text-purple-800 transition-colors"
                                                     onClick={(e) => e.stopPropagation()}
                                                 >

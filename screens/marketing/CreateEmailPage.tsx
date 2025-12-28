@@ -4,6 +4,8 @@ import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { db, auth } from '../../services/firebase';
 import { EMAIL_TEMPLATES, getProjectTemplates } from '../../services/dataService';
 import { createEmailCampaign } from '../../services/marketingService';
+import { format } from 'date-fns';
+import { dateLocale } from '../../utils/activityHelpers';
 import { EmailTemplate, EmailBlock, TemplateVariable } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { BlockRenderer } from './components/email-builder/BlockRenderer';
@@ -207,7 +209,7 @@ export const CreateEmailPage = () => {
                                                 className={`text-left p-4 rounded-xl border transition-all hover:shadow-md w-full ${selectedTemplate?.id === tpl.id ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 ring-1 ring-[var(--color-primary)]' : 'border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] hover:border-[var(--color-primary)]/50'}`}
                                             >
                                                 <div className="font-bold text-[var(--color-text-main)]">{tpl.name}</div>
-                                                <div className="text-xs text-[var(--color-text-muted)] mt-1">Edited {new Date(tpl.updatedAt?.seconds * 1000 || Date.now()).toLocaleDateString()}</div>
+                                                <div className="text-xs text-[var(--color-text-muted)] mt-1">Edited {format(new Date(tpl.updatedAt?.seconds * 1000 || Date.now()), 'MMM d, yyyy', { locale: dateLocale })}</div>
                                             </button>
                                         ))
                                     )}

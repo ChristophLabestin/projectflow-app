@@ -19,7 +19,7 @@ export const GenericStageView: React.FC<GenericStageViewProps> = ({ idea, stageI
                     {stageId} View
                 </h3>
                 <p className="text-[var(--color-text-muted)] max-w-md mx-auto">
-                    This stage view for <strong>{idea.type}</strong> ideas is currently under construction.
+                    This stage view for <strong>{idea.type}</strong> flows is currently under construction.
                 </p>
             </div>
 

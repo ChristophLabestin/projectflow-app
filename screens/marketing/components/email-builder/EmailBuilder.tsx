@@ -25,6 +25,8 @@ import {
 import { EmailBlock, EmailBlockType, EmailComponent, TemplateVariable, EmailTemplate } from '../../../types';
 import { saveEmailComponent, getEmailComponents, deleteEmailComponent } from '../../../../services/dataService';
 import { useToast, useConfirm } from '../../../../context/UIContext';
+import { format } from 'date-fns';
+import { dateLocale } from '../../../../utils/activityHelpers';
 
 // Imported Components
 import { BlockRenderer } from './BlockRenderer';
@@ -1115,7 +1117,7 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                                                             <div className="flex items-center gap-1 text-[var(--color-text-muted)] opacity-60">
                                                                 <span className="material-symbols-outlined text-[11px]">calendar_today</span>
                                                                 <span className="text-[9px] font-bold uppercase tracking-tight">
-                                                                    {draft.updatedAt?.toDate ? draft.updatedAt.toDate().toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'Today'}
+                                                                    {draft.updatedAt?.toDate ? format(draft.updatedAt.toDate(), 'MMM d', { locale: dateLocale }) : 'Today'}
                                                                 </span>
                                                             </div>
                                                         </div>

@@ -10,10 +10,13 @@ import { toMillis } from '../utils/time';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
+import { format } from 'date-fns';
+import { useLanguage } from '../context/LanguageContext';
 
 export const ProjectMilestones = () => {
     const { id: projectId } = useParams<{ id: string }>();
     const { setTaskTitle } = useOutletContext<{ setTaskTitle: (t: string | null) => void }>();
+    const { dateLocale } = useLanguage();
     const [milestones, setMilestones] = useState<Milestone[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -43,7 +46,7 @@ export const ProjectMilestones = () => {
                 });
                 setIdeaLookup(lookup);
             } catch (e) {
-                console.error("Failed to fetch idea lookup", e);
+                console.error("Failed to fetch flow lookup", e);
             }
         };
         fetchIdeas();
@@ -367,7 +370,7 @@ export const ProjectMilestones = () => {
                                                         {milestone.dueDate ? (
                                                             <>
                                                                 <span className="text-xs uppercase font-bold tracking-wider opacity-70">
-                                                                    {new Date(milestone.dueDate).toLocaleDateString(undefined, { month: 'short' })}
+                                                                    {format(new Date(milestone.dueDate), 'MMM', { locale: dateLocale })}
                                                                 </span>
                                                                 <span className="text-xl font-bold leading-none">
                                                                     {new Date(milestone.dueDate).getDate()}

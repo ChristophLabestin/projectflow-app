@@ -6,11 +6,13 @@ import { Textarea } from '../ui/Textarea';
 import { Select } from '../ui/Select';
 import { Checkbox } from '../ui/Checkbox';
 import { Badge } from '../ui/Badge';
-import { Project } from '../../types';
+import { Project, WorkspaceGroup } from '../../types';
 import { MediaLibrary } from '../MediaLibrary/MediaLibraryModal';
 import { ProjectGroupManager } from './ProjectGroupManager';
 import { ProjectTeamManager } from './ProjectTeamManager';
 import { useProjectPermissions } from '../../hooks/useProjectPermissions';
+import { useWorkspacePermissions } from '../../hooks/useWorkspacePermissions';
+import { getWorkspaceGroups } from '../../services/dataService';
 
 import { auth } from '../../services/firebase';
 import { getUserProfile, linkWithGithub, updateUserData, getUserProjectNavPrefs, setUserProjectNavPrefs, ProjectNavPrefs } from '../../services/dataService';
@@ -48,6 +50,12 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     const [githubIssueSync, setGithubIssueSync] = useState(project.githubIssueSync || false);
     const [links, setLinks] = useState(project.links || []);
     const [externalResources, setExternalResources] = useState(project.externalResources || []);
+    const [visibilityGroupIds, setVisibilityGroupIds] = useState<string[]>(project.visibilityGroupIds || (project.visibilityGroupId ? [project.visibilityGroupId] : []));
+    const [workspaceGroups, setWorkspaceGroups] = useState<WorkspaceGroup[]>([]);
+
+    // Permission check for visibility settings
+    const { isOwner, role: workspaceRole } = useWorkspacePermissions();
+    const canChangeVisibility = isOwner && (workspaceRole === 'Owner' || workspaceRole === 'Admin' || workspaceRole === 'Member');
 
     // GitHub State
     const [githubToken, setGithubToken] = useState<string | null>(null);
@@ -68,7 +76,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     const defaultNavItems = [
         { id: 'overview', icon: 'grid_view', label: 'Overview', canHide: false },
         { id: 'tasks', icon: 'checklist', label: 'Tasks', moduleKey: 'tasks' },
-        { id: 'ideas', icon: 'emoji_objects', label: 'Ideas', moduleKey: 'ideas' },
+        { id: 'ideas', icon: 'emoji_objects', label: 'Flows', moduleKey: 'ideas' },
         { id: 'issues', icon: 'medication', label: 'Issues', moduleKey: 'issues' },
         { id: 'mindmap', icon: 'hub', label: 'Mindmap', moduleKey: 'mindmap' },
         { id: 'milestones', icon: 'outlined_flag', label: 'Milestones', moduleKey: 'milestones' },
@@ -92,7 +100,10 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             setGithubIssueSync(project.githubIssueSync || false);
             setLinks(project.links || []);
             setExternalResources(project.externalResources || []);
+            setVisibilityGroupIds(project.visibilityGroupIds || (project.visibilityGroupId ? [project.visibilityGroupId] : []));
             setActiveTab('general');
+
+            getWorkspaceGroups().then(setWorkspaceGroups).catch(console.error);
 
             // Load GitHub Data
             const loadGithubData = async () => {
@@ -132,7 +143,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             };
             loadNavPrefs();
         }
-    }, [isOpen, project]);
+    }, [isOpen]); // Only reset when modal opens, avoid resetting on background project updates
 
     const handleConnectGithub = async () => {
         const user = auth.currentUser;
@@ -167,7 +178,9 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 githubRepo,
                 githubIssueSync,
                 links,
-                externalResources
+                externalResources,
+                visibilityGroupIds: visibilityGroupIds && visibilityGroupIds.length > 0 ? visibilityGroupIds : undefined,
+                visibilityGroupId: visibilityGroupIds && visibilityGroupIds.length > 0 ? visibilityGroupIds[0] : null // Maintain backward compat for now
             });
 
             // Save user's nav preferences (user-specific, not project-wide)
@@ -253,7 +266,90 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                 <option value="released">Released</option>
                             </Select>
                         </div>
-                    </div>
+
+                        {/* Visibility Settings - Only for Owners/Internal Members */}
+                        {
+                            canChangeVisibility && workspaceGroups.length > 0 && (
+                                <div className="pt-4 mt-4 border-t border-[var(--color-surface-border)]">
+                                    <label className="text-sm font-medium text-[var(--color-text-main)] mb-2 block">Project Visibility</label>
+                                    <div className="grid grid-cols-2 gap-3 mb-3">
+                                        <button
+                                            type="button"
+                                            onClick={() => setVisibilityGroupIds([])}
+                                            className={`p-3 rounded-xl border text-left transition-all ${visibilityGroupIds.length === 0
+                                                ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500'
+                                                : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:border-[var(--color-surface-border-hover)]'
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className={`material-symbols-outlined text-lg ${visibilityGroupIds.length === 0 ? 'text-emerald-600' : 'text-[var(--color-text-subtle)]'}`}>public</span>
+                                                <span className={`text-sm font-bold ${visibilityGroupIds.length === 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-[var(--color-text-main)]'}`}>Everyone</span>
+                                            </div>
+                                            <p className="text-xs text-[var(--color-text-muted)]">Visible to all workspace members</p>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (workspaceGroups.length > 0 && visibilityGroupIds.length === 0) {
+                                                    setVisibilityGroupIds([workspaceGroups[0].id]);
+                                                }
+                                            }}
+                                            className={`p-3 rounded-xl border text-left transition-all ${visibilityGroupIds.length > 0
+                                                ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]'
+                                                : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:border-[var(--color-surface-border-hover)]'
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className={`material-symbols-outlined text-lg ${visibilityGroupIds.length > 0 ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}>lock_person</span>
+                                                <span className={`text-sm font-bold ${visibilityGroupIds.length > 0 ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}>Specific Group</span>
+                                            </div>
+                                            <p className="text-xs text-[var(--color-text-muted)]">Restricted to selected groups</p>
+                                        </button>
+                                    </div>
+
+                                    {visibilityGroupIds.length > 0 && (
+                                        <div className="animate-fade-in bg-[var(--color-surface-hover)] rounded-xl p-3 border border-[var(--color-surface-border)]">
+                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2 block">
+                                                Select Allowed Groups
+                                            </label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                {workspaceGroups.map(group => {
+                                                    const isSelected = visibilityGroupIds.includes(group.id);
+                                                    return (
+                                                        <button
+                                                            key={group.id}
+                                                            type="button"
+                                                            onClick={() => {
+                                                                if (isSelected) {
+                                                                    setVisibilityGroupIds(prev => prev.filter(id => id !== group.id));
+                                                                } else {
+                                                                    setVisibilityGroupIds(prev => [...prev, group.id]);
+                                                                }
+                                                            }}
+                                                            className={`p-2 rounded-lg flex items-center gap-2 border transition-all ${isSelected
+                                                                ? 'bg-white dark:bg-black/20 border-[var(--color-primary)] shadow-sm'
+                                                                : 'border-transparent hover:bg-black/5 dark:hover:bg-white/5'
+                                                                }`}
+                                                        >
+                                                            <div
+                                                                className="size-2.5 rounded-full shrink-0"
+                                                                style={{ backgroundColor: group.color || '#9ca3af' }}
+                                                            />
+                                                            <span className="text-sm font-medium truncate">{group.name}</span>
+                                                            {isSelected && (
+                                                                <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)] ml-auto">check</span>
+                                                            )}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            )
+                        }
+                    </div >
                 );
             case 'team':
                 return (
@@ -592,7 +688,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                 value={link.title}
                                                 onChange={(e) => {
                                                     const newLinks = [...links];
-                                                    newLinks[idx].title = e.target.value;
+                                                    newLinks[idx] = { ...newLinks[idx], title: e.target.value };
                                                     setLinks(newLinks);
                                                 }}
                                             />
@@ -601,7 +697,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                 value={link.url}
                                                 onChange={(e) => {
                                                     const newLinks = [...links];
-                                                    newLinks[idx].url = e.target.value;
+                                                    newLinks[idx] = { ...newLinks[idx], url: e.target.value };
                                                     setLinks(newLinks);
                                                 }}
                                             />
@@ -632,7 +728,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                 value={res.title}
                                                 onChange={(e) => {
                                                     const newRes = [...externalResources];
-                                                    newRes[idx].title = e.target.value;
+                                                    newRes[idx] = { ...newRes[idx], title: e.target.value };
                                                     setExternalResources(newRes);
                                                 }}
                                             />
@@ -641,7 +737,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                 value={res.url}
                                                 onChange={(e) => {
                                                     const newRes = [...externalResources];
-                                                    newRes[idx].url = e.target.value;
+                                                    newRes[idx] = { ...newRes[idx], url: e.target.value };
                                                     setExternalResources(newRes);
                                                 }}
                                             />

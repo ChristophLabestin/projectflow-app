@@ -14,12 +14,15 @@ import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
 import { DatePicker } from '../components/ui/DatePicker';
 import { useConfirm, useToast } from '../context/UIContext';
+import { useLanguage } from '../context/LanguageContext';
+import { format } from 'date-fns';
 
 export const PersonalTaskDetailPage = () => {
     const { taskId } = useParams<{ taskId: string }>();
     const navigate = useNavigate();
     const confirm = useConfirm();
     const { showSuccess, showError } = useToast();
+    const { dateFormat, dateLocale } = useLanguage();
 
     const [task, setTask] = useState<PersonalTask | null>(null);
     const [projects, setProjects] = useState<Project[]>([]);
@@ -158,8 +161,8 @@ export const PersonalTaskDetailPage = () => {
 
                                 {/* Status Badge */}
                                 <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border ${task.status === 'Done' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                        task.status === 'In Progress' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                            'bg-slate-500/10 text-slate-500 border-slate-500/20'
+                                    task.status === 'In Progress' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
+                                        'bg-slate-500/10 text-slate-500 border-slate-500/20'
                                     }`}>
                                     <span className="material-symbols-outlined text-[14px] leading-none">
                                         {task.status === 'Done' ? 'check_circle' : 'radio_button_unchecked'}
@@ -170,9 +173,9 @@ export const PersonalTaskDetailPage = () => {
                                 {/* Priority Badge */}
                                 {task.priority && (
                                     <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border ${task.priority === 'Urgent' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
-                                            task.priority === 'High' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
-                                                task.priority === 'Medium' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
-                                                    'bg-slate-500/10 text-slate-500 border-slate-500/20'
+                                        task.priority === 'High' ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
+                                            task.priority === 'Medium' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' :
+                                                'bg-slate-500/10 text-slate-500 border-slate-500/20'
                                         }`}>
                                         {task.priority}
                                     </span>
@@ -190,7 +193,7 @@ export const PersonalTaskDetailPage = () => {
                                         <div className="flex flex-col">
                                             <span className="text-[10px] leading-none uppercase font-bold text-[var(--color-text-subtle)] mb-0.5">Due Date</span>
                                             <span className="text-[var(--color-text-main)] font-semibold whitespace-nowrap">
-                                                {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                                {format(new Date(task.dueDate), dateFormat, { locale: dateLocale })}
                                             </span>
                                         </div>
                                     </div>
@@ -373,8 +376,8 @@ export const PersonalTaskDetailPage = () => {
                                 >
                                     <div className="flex items-center gap-2">
                                         <span className={`size-2 rounded-full ${p === 'Urgent' ? 'bg-rose-500' :
-                                                p === 'High' ? 'bg-orange-500' :
-                                                    p === 'Medium' ? 'bg-yellow-500' : 'bg-slate-400'
+                                            p === 'High' ? 'bg-orange-500' :
+                                                p === 'Medium' ? 'bg-yellow-500' : 'bg-slate-400'
                                             }`} />
                                         {p}
                                     </div>

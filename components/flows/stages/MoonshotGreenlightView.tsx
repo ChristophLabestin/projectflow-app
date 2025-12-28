@@ -150,7 +150,7 @@ export const MoonshotGreenlightView: React.FC<MoonshotGreenlightViewProps> = ({ 
                     >
                         <div className="text-left">
                             <span className="block text-xl font-black tracking-tight">NO-GO</span>
-                            <span className="text-xs opacity-90">Archive Idea</span>
+                            <span className="text-xs opacity-90">Archive Flow</span>
                         </div>
                         <span className="material-symbols-outlined text-3xl">cancel</span>
                     </button>

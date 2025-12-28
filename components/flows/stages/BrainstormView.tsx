@@ -140,7 +140,7 @@ export const BrainstormView: React.FC<BrainstormViewProps> = ({ idea, onUpdate }
     const missionText = (
         <div className="text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
             "We are exploring <span className="text-rose-500 font-black">Creative Concepts</span>
-            {' '}for <span className="text-rose-500 font-black">{idea.title || 'Untitled Idea'}</span>
+            {' '}for <span className="text-rose-500 font-black">{idea.title || 'Untitled Flow'}</span>
             {' '}expand by <span className="text-rose-500 font-black">{keywords.length} Core Keywords</span>
             {' '}and associations to unlock <span className="text-rose-500 font-black">
                 Insightful Angles
@@ -185,7 +185,7 @@ export const BrainstormView: React.FC<BrainstormViewProps> = ({ idea, onUpdate }
                                     value={idea.title}
                                     onChange={(e) => onUpdate({ title: e.target.value })}
                                     className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 dark:text-white focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all placeholder:text-slate-400"
-                                    placeholder="What's the big idea?"
+                                    placeholder="What's the core flow?"
                                 />
                                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                                     <span className="material-symbols-outlined text-[18px]">edit</span>
@@ -284,13 +284,13 @@ export const BrainstormView: React.FC<BrainstormViewProps> = ({ idea, onUpdate }
 
                             {/* Visualizer Content */}
                             <div className="absolute inset-0 flex items-center justify-center">
-                                {/* Center Node: Main Idea */}
+                                {/* Center Node: Main Flow */}
                                 <div className="relative z-20 size-32 md:size-40 rounded-full bg-white dark:bg-slate-900 border-4 border-rose-100 dark:border-rose-900/30 shadow-2xl shadow-rose-200/50 dark:shadow-none flex flex-col items-center justify-center p-4 text-center group transition-all duration-500 hover:scale-105 hover:border-rose-200">
                                     <div className="absolute inset-0 rounded-full border border-dashed border-rose-200 dark:border-rose-800 animate-[spin_60s_linear_infinite]" />
 
                                     <span className="material-symbols-outlined text-3xl md:text-4xl text-rose-500 mb-2 drop-shadow-sm group-hover:scale-110 transition-transform">lightbulb</span>
                                     <span className="font-black text-slate-800 dark:text-white text-xs md:text-sm line-clamp-2 leading-tight px-2 tracking-tight">
-                                        {idea.title || 'Untitled Idea'}
+                                        {idea.title || 'Untitled Flow'}
                                     </span>
                                 </div>
 

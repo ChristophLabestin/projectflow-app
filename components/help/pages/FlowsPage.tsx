@@ -3,285 +3,546 @@ import type { HelpCenterPageProps, HelpCenterSectionIndex } from '../helpCenterT
 
 export const flowsSections: HelpCenterSectionIndex[] = [
     {
-        id: 'flows-overview',
-        title: 'Flows overview',
-        summary: 'Flows capture ideas and strategy before execution.',
-        content: 'Flows organize creative and strategic thinking so it can become actionable work.',
-        keywords: ['flows', 'strategy', 'context']
+        id: 'flow-types',
+        title: 'Flow types',
+        summary: 'Different flow types for different work.',
+        content: 'Product flows, campaign flows, and custom flows for various use cases.',
+        keywords: ['types', 'product', 'campaign', 'custom']
     },
     {
-        id: 'flow-stages',
-        title: 'Flow stages',
-        summary: 'Move from concept to approval with structure.',
-        content: 'Stages help you gather context, plan direction, and confirm readiness.',
-        keywords: ['stages', 'alignment', 'planning']
+        id: 'stage-pipeline',
+        title: 'Stage pipeline',
+        summary: 'How flows progress through stages.',
+        content: 'The visual pipeline from concept to approval.',
+        keywords: ['stages', 'pipeline', 'progress', 'lifecycle']
     },
     {
-        id: 'ai-studio',
-        title: 'AI Studio',
-        summary: 'Use AI to expand, analyze, and refine.',
-        content: 'AI Studio supports briefs, analysis, and creative exploration.',
-        keywords: ['ai', 'analysis', 'briefs']
+        id: 'ai-studio-tools',
+        title: 'AI Studio tools',
+        summary: 'AI-powered analysis and generation.',
+        content: 'All AI tools available within flows.',
+        keywords: ['ai', 'studio', 'analysis', 'generation']
     },
     {
-        id: 'conversion',
+        id: 'flow-fields',
+        title: 'Flow fields reference',
+        summary: 'Complete field documentation for flows.',
+        content: 'Every field available when creating flows.',
+        keywords: ['fields', 'metadata', 'configuration']
+    },
+    {
+        id: 'approval-workflow',
+        title: 'Approval workflow',
+        summary: 'Review and approval process.',
+        content: 'How approval decisions work and what they trigger.',
+        keywords: ['approval', 'review', 'decision', 'workflow']
+    },
+    {
+        id: 'conversion-options',
         title: 'Conversion to execution',
-        summary: 'Turn approved work into tasks or campaigns.',
-        content: 'Conversions maintain traceability from strategy to execution.',
-        keywords: ['conversion', 'tasks', 'campaigns']
-    },
-    {
-        id: 'review-feedback',
-        title: 'Review and feedback',
-        summary: 'Keep iteration clear before approval.',
-        content: 'Use review steps to request changes and track decisions.',
-        keywords: ['review', 'feedback', 'approval']
+        summary: 'Turn approved flows into action.',
+        content: 'Converting flows to tasks, campaigns, and more.',
+        keywords: ['conversion', 'tasks', 'campaigns', 'execution']
     }
 ];
 
-const SectionHeader = ({
-    eyebrow,
+/* ─────────────────────────────────────────────────────────────
+   LAYOUT COMPONENTS - Pipeline/Funnel Style
+───────────────────────────────────────────────────────────── */
+
+const PipelineStage = ({
+    stage,
     title,
+    description,
+    isActive
+}: {
+    stage: number;
+    title: string;
+    description: string;
+    isActive?: boolean;
+}) => (
+    <div className={`flex-1 rounded-2xl border p-4 transition-all ${isActive
+        ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10'
+        : 'border-[var(--color-surface-border)] bg-[var(--color-surface-card)]'
+        }`}>
+        <div className="flex items-center gap-3 mb-2">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${isActive
+                ? 'bg-[var(--color-primary)] text-white'
+                : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'
+                }`}>
+                {stage}
+            </div>
+            <span className={`text-sm font-bold ${isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}>
+                {title}
+            </span>
+        </div>
+        <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">{description}</p>
+    </div>
+);
+
+const FlowTypeCard = ({
+    icon,
+    type,
+    description,
+    stages,
+    color
+}: {
+    icon: string;
+    type: string;
+    description: string;
+    stages: string[];
+    color: string;
+}) => (
+    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5 space-y-4">
+        <div className="flex items-center gap-3">
+            <div className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center`}>
+                <span className="material-symbols-outlined text-[24px] text-white">{icon}</span>
+            </div>
+            <div>
+                <div className="text-base font-bold text-[var(--color-text-main)]">{type}</div>
+                <div className="text-xs text-[var(--color-text-muted)]">{stages.length} stages</div>
+            </div>
+        </div>
+        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">{description}</p>
+        <div className="flex flex-wrap gap-2">
+            {stages.map((s, i) => (
+                <span key={i} className="px-2 py-1 rounded-lg bg-[var(--color-surface-hover)] text-[10px] font-medium text-[var(--color-text-muted)]">
+                    {i + 1}. {s}
+                </span>
+            ))}
+        </div>
+    </div>
+);
+
+const AIToolCard = ({
+    icon,
+    name,
+    description,
+    outputs
+}: {
+    icon: string;
+    name: string;
+    description: string;
+    outputs: string[];
+}) => (
+    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5 space-y-3">
+        <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px] text-white">{icon}</span>
+            </div>
+            <span className="text-sm font-bold text-[var(--color-text-main)]">{name}</span>
+        </div>
+        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">{description}</p>
+        <div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-2">Outputs</div>
+            <div className="flex flex-wrap gap-2">
+                {outputs.map((o, i) => (
+                    <span key={i} className="px-2 py-1 rounded-lg bg-purple-100 text-[10px] font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
+                        {o}
+                    </span>
+                ))}
+            </div>
+        </div>
+    </div>
+);
+
+const FieldRow = ({
+    field,
+    type,
+    required,
+    description
+}: {
+    field: string;
+    type: string;
+    required?: boolean;
+    description: string;
+}) => (
+    <div className="flex items-start gap-4 py-3 border-b border-[var(--color-surface-border)] last:border-0">
+        <div className="flex-shrink-0 w-[120px]">
+            <span className="text-sm font-semibold text-[var(--color-text-main)]">{field}</span>
+            {required && <span className="ml-1 text-rose-500 text-xs">*</span>}
+        </div>
+        <div className="flex-shrink-0 w-[80px]">
+            <span className="px-2 py-0.5 rounded-full bg-[var(--color-surface-hover)] text-[10px] font-medium text-[var(--color-text-muted)]">
+                {type}
+            </span>
+        </div>
+        <div className="flex-1 text-sm text-[var(--color-text-muted)]">{description}</div>
+    </div>
+);
+
+const ConversionPath = ({
+    from,
+    to,
+    description,
     icon
 }: {
-    eyebrow: string;
-    title: string;
+    from: string;
+    to: string;
+    description: string;
     icon: string;
 }) => (
-    <div className="flex items-start justify-between gap-4">
-        <div>
-            <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">
-                {eyebrow}
+    <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 flex items-start gap-3">
+        <span className="material-symbols-outlined text-[18px] text-[var(--color-primary)]">{icon}</span>
+        <div className="flex-1">
+            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-text-main)]">
+                <span>{from}</span>
+                <span className="material-symbols-outlined text-[14px] text-[var(--color-text-subtle)]">arrow_forward</span>
+                <span>{to}</span>
             </div>
-            <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">{title}</h3>
-        </div>
-        <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">
-            {icon}
-        </span>
-    </div>
-);
-
-const InfoCard = ({ children }: { children: React.ReactNode }) => (
-    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 text-sm text-[var(--color-text-muted)] leading-relaxed">
-        {children}
-    </div>
-);
-
-const Callout = ({ children }: { children: React.ReactNode }) => (
-    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-[13px] text-amber-900 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200">
-        <div className="flex items-start gap-2">
-            <span className="material-symbols-outlined text-[18px]">lightbulb</span>
-            <div>{children}</div>
+            <p className="text-xs text-[var(--color-text-muted)] mt-1">{description}</p>
         </div>
     </div>
 );
 
-const StepCard = ({
-    label,
-    title,
-    children
-}: {
-    label: string;
-    title: string;
-    children: React.ReactNode;
-}) => (
-    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4">
-        <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{label}</div>
-        <div className="text-sm font-semibold text-[var(--color-text-main)] mt-2">{title}</div>
-        <div className="text-sm text-[var(--color-text-muted)] mt-2 leading-relaxed">{children}</div>
-    </div>
-);
+const Callout = ({ type, children }: { type: 'tip' | 'warning' | 'info'; children: React.ReactNode }) => {
+    const styles = {
+        tip: 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200',
+        warning: 'border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-800/40 dark:bg-rose-900/20 dark:text-rose-200',
+        info: 'border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-800/40 dark:bg-sky-900/20 dark:text-sky-200'
+    };
+    const icons = { tip: 'lightbulb', warning: 'warning', info: 'info' };
+    return (
+        <div className={`rounded-2xl border p-4 text-[13px] ${styles[type]}`}>
+            <div className="flex items-start gap-2">
+                <span className="material-symbols-outlined text-[18px]">{icons[type]}</span>
+                <div>{children}</div>
+            </div>
+        </div>
+    );
+};
 
-export const FlowsPage = ({ sections, activeSectionId, onSectionSelect }: HelpCenterPageProps) => {
+/* ─────────────────────────────────────────────────────────────
+   MAIN PAGE COMPONENT
+───────────────────────────────────────────────────────────── */
+
+export const FlowsPage = (_props: HelpCenterPageProps) => {
     return (
         <div className="px-6 py-6 space-y-10">
-            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_240px] gap-6">
-                <div className="rounded-[28px] border border-[var(--color-surface-border)] bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] p-6">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">
-                        Flows and AI Studio
-                    </div>
-                    <h2 className="text-3xl font-bold text-[var(--color-text-main)] mt-3">
-                        Shape strategy before execution
-                    </h2>
-                    <p className="text-sm text-[var(--color-text-muted)] mt-3 leading-relaxed">
-                        Flows (formerly Ideas) are the strategic layer between raw inspiration and delivery. They
-                        capture intent, research, and decisions so execution teams can move fast without re-litigating
-                        the why.
-                    </p>
-                    <div className="mt-5 flex flex-wrap gap-2">
-                        <span className="px-3 py-1 rounded-full text-[10px] font-semibold bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]">
-                            Strategy
-                        </span>
-                        <span className="px-3 py-1 rounded-full text-[10px] font-semibold bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]">
-                            AI Studio
-                        </span>
-                        <span className="px-3 py-1 rounded-full text-[10px] font-semibold bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]">
-                            Conversion
-                        </span>
-                    </div>
+            {/* Hero with Pipeline Preview */}
+            <div className="rounded-[28px] border border-[var(--color-surface-border)] bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] p-6">
+                <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">
+                    Flows and AI Studio
                 </div>
+                <h2 className="text-3xl font-bold text-[var(--color-text-main)] mt-3">
+                    Shape Strategy Before Execution
+                </h2>
+                <p className="text-sm text-[var(--color-text-muted)] mt-3 leading-relaxed max-w-2xl">
+                    Flows capture intent, research, and decisions so execution teams can move fast. They progress through
+                    stages, get enhanced by AI, and convert into actionable work.
+                </p>
 
-                <aside className="space-y-4">
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4">
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
-                            In this guide
-                        </div>
-                        <div className="mt-3 space-y-2">
-                            {sections.map(section => (
-                                <button
-                                    key={section.id}
-                                    onClick={() => onSectionSelect(section.id)}
-                                    className={`w-full text-left text-sm font-medium transition-colors ${activeSectionId === section.id
-                                        ? 'text-[var(--color-primary)]'
-                                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
-                                        }`}
-                                >
-                                    {section.title}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-4 text-sm text-[var(--color-text-muted)]">
-                        Flows are most effective when assumptions are explicit and decisions are easy to trace later.
-                    </div>
-                </aside>
+                {/* Pipeline Preview */}
+                <div className="mt-6 flex items-center gap-3 overflow-x-auto pb-2">
+                    <PipelineStage stage={1} title="Concept" description="Initial flow capture" />
+                    <span className="material-symbols-outlined text-[var(--color-text-subtle)]">chevron_right</span>
+                    <PipelineStage stage={2} title="Strategy" description="Define approach" isActive />
+                    <span className="material-symbols-outlined text-[var(--color-text-subtle)]">chevron_right</span>
+                    <PipelineStage stage={3} title="Planning" description="Detail the plan" />
+                    <span className="material-symbols-outlined text-[var(--color-text-subtle)]">chevron_right</span>
+                    <PipelineStage stage={4} title="Review" description="Get approval" />
+                </div>
             </div>
 
-            <section data-section-id="flows-overview" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-5">
-                <SectionHeader eyebrow="Foundation" title="Flows overview" icon="emoji_objects" />
-                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                    A Flow gathers the intent behind a project, campaign, or product change. It holds context that
-                    tasks alone cannot capture, such as target audience, messaging, constraints, and the definition
-                    of success. When a Flow is strong, the team can execute without guesswork.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <InfoCard>
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Outcome</div>
-                        <p className="mt-2">
-                            Describe the result you want, not just the activity you plan to do.
+            {/* SECTION: Flow Types */}
+            <section data-section-id="flow-types" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Categories</div>
+                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Flow Types</h3>
+                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                            Different flow types for different kinds of strategic work. Each type has tailored stages and AI tools.
                         </p>
-                    </InfoCard>
-                    <InfoCard>
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Audience</div>
-                        <p className="mt-2">
-                            Identify who the work is for and why it matters to them.
-                        </p>
-                    </InfoCard>
-                    <InfoCard>
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Success</div>
-                        <p className="mt-2">
-                            Define how you will know this Flow worked, even if results come later.
-                        </p>
-                    </InfoCard>
+                    </div>
+                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">category</span>
                 </div>
-                <Callout>
-                    A Flow is not a task list. It is the story behind the work so the task list makes sense later.
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FlowTypeCard
+                        icon="inventory_2"
+                        type="Product Flow"
+                        description="For new features, enhancements, or product initiatives. Covers discovery through launch planning."
+                        stages={['Discovery', 'Strategy', 'Development', 'Launch']}
+                        color="bg-sky-500"
+                    />
+                    <FlowTypeCard
+                        icon="campaign"
+                        type="Social Campaign Flow"
+                        description="For social media campaigns. Covers concept through content planning and approval."
+                        stages={['Concept', 'Strategy', 'Planning', 'Review', 'Submit']}
+                        color="bg-pink-500"
+                    />
+                    <FlowTypeCard
+                        icon="rocket_launch"
+                        type="Launch Flow"
+                        description="For launches and announcements. Coordinate timing, messaging, and channels."
+                        stages={['Brief', 'Planning', 'Assets', 'Review']}
+                        color="bg-orange-500"
+                    />
+                    <FlowTypeCard
+                        icon="extension"
+                        type="Custom Flow"
+                        description="Define your own stages for unique workflows. Full flexibility for any use case."
+                        stages={['Customizable', 'Stages', '...', 'Approval']}
+                        color="bg-slate-500"
+                    />
+                </div>
+            </section>
+
+            {/* SECTION: Stage Pipeline */}
+            <section data-section-id="stage-pipeline" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Lifecycle</div>
+                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Stage Pipeline</h3>
+                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                            Flows progress through stages, each with specific purpose and outputs. Understanding the pipeline helps you create better strategy.
+                        </p>
+                    </div>
+                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">timeline</span>
+                </div>
+
+                {/* Stage Details */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-8 h-8 rounded-full bg-slate-400 flex items-center justify-center text-white text-sm font-bold">1</div>
+                            <span className="text-sm font-bold text-[var(--color-text-main)]">Concept / Discovery</span>
+                        </div>
+                        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed mb-3">
+                            Capture the initial flow concept, problem statement, and opportunity. Document early assumptions and constraints.
+                        </p>
+                        <div className="text-xs text-[var(--color-text-subtle)]">
+                            <strong>Key outputs:</strong> Problem statement, target audience, success criteria
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-8 h-8 rounded-full bg-sky-500 flex items-center justify-center text-white text-sm font-bold">2</div>
+                            <span className="text-sm font-bold text-[var(--color-text-main)]">Strategy</span>
+                        </div>
+                        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed mb-3">
+                            Define the approach, positioning, and key decisions. Use AI analysis to validate assumptions.
+                        </p>
+                        <div className="text-xs text-[var(--color-text-subtle)]">
+                            <strong>Key outputs:</strong> Strategic direction, positioning, channel strategy
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white text-sm font-bold">3</div>
+                            <span className="text-sm font-bold text-[var(--color-text-main)]">Planning</span>
+                        </div>
+                        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed mb-3">
+                            Detail the execution path, timelines, resources, and KPIs. Break strategy into actionable phases.
+                        </p>
+                        <div className="text-xs text-[var(--color-text-subtle)]">
+                            <strong>Key outputs:</strong> Timeline, phases, KPIs, resource requirements
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
+                        <div className="flex items-center gap-3 mb-3">
+                            <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white text-sm font-bold">4</div>
+                            <span className="text-sm font-bold text-[var(--color-text-main)]">Review / Approval</span>
+                        </div>
+                        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed mb-3">
+                            Submit for stakeholder review. Get approval to proceed or iterate based on feedback.
+                        </p>
+                        <div className="text-xs text-[var(--color-text-subtle)]">
+                            <strong>Key outputs:</strong> Approval decision, feedback notes, conversion trigger
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* SECTION: AI Studio Tools */}
+            <section data-section-id="ai-studio-tools" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">AI Powered</div>
+                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">AI Studio Tools</h3>
+                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                            AI Studio provides analysis, generation, and validation tools within each flow stage. Use them to accelerate thinking and surface blind spots.
+                        </p>
+                    </div>
+                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">auto_awesome</span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <AIToolCard
+                        icon="analytics"
+                        name="SWOT Analysis"
+                        description="Generate comprehensive strengths, weaknesses, opportunities, and threats analysis."
+                        outputs={['Strengths', 'Weaknesses', 'Opportunities', 'Threats']}
+                    />
+                    <AIToolCard
+                        icon="architecture"
+                        name="Blueprint"
+                        description="Create structured execution plans with phases, milestones, and dependencies."
+                        outputs={['Phases', 'Milestones', 'Timeline', 'Dependencies']}
+                    />
+                    <AIToolCard
+                        icon="warning"
+                        name="Risk Analysis"
+                        description="Identify potential risks and mitigation strategies before they become problems."
+                        outputs={['Risk factors', 'Probability', 'Impact', 'Mitigations']}
+                    />
+                    <AIToolCard
+                        icon="explore"
+                        name="Discovery"
+                        description="Explore the problem space and generate insights about audience and market."
+                        outputs={['Market insights', 'User needs', 'Opportunities']}
+                    />
+                    <AIToolCard
+                        icon="strategy"
+                        name="Strategy"
+                        description="Generate strategic approaches and positioning recommendations."
+                        outputs={['Positioning', 'Differentiators', 'Channels']}
+                    />
+                    <AIToolCard
+                        icon="rocket_launch"
+                        name="Launch Planning"
+                        description="Create comprehensive launch timelines and coordination plans."
+                        outputs={['Timeline', 'Channels', 'Messaging', 'Metrics']}
+                    />
+                </div>
+
+                <Callout type="tip">
+                    AI outputs are starting points. Always validate with your team's expertise and real data before making final decisions.
                 </Callout>
             </section>
 
-            <section data-section-id="flow-stages" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-5">
-                <SectionHeader eyebrow="Structure" title="Flow stages" icon="timeline" />
-                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                    Stages turn a raw concept into an executable plan. Use them to gather context, test assumptions,
-                    and align on direction before you commit delivery time.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <StepCard label="Stage 1" title="Explore the problem">
-                        Capture the opportunity, constraints, and the reason this matters now. This is where you
-                        document early assumptions instead of hiding them.
-                    </StepCard>
-                    <StepCard label="Stage 2" title="Define the direction">
-                        Summarize the target audience, positioning, and the strategic approach. Keep it concise so it
-                        can be reviewed quickly.
-                    </StepCard>
-                    <StepCard label="Stage 3" title="Plan the execution path">
-                        Outline what needs to happen, the timeline shape, and the risks that could slow delivery.
-                    </StepCard>
-                    <StepCard label="Stage 4" title="Align and approve">
-                        Use review to request changes or approve the plan. Approval signals the work is ready to
-                        convert into execution.
-                    </StepCard>
+            {/* SECTION: Flow Fields Reference */}
+            <section data-section-id="flow-fields" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Reference</div>
+                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Flow Fields Reference</h3>
+                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                            Complete documentation of every field available when creating or editing a flow.
+                        </p>
+                    </div>
+                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">list_alt</span>
+                </div>
+
+                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                        Core Fields
+                    </div>
+                    <div className="space-y-0">
+                        <FieldRow field="Title" type="Text" required description="Short, descriptive name for the flow. Should capture the main initiative." />
+                        <FieldRow field="Type" type="Select" required description="Flow type determines available stages. Options: Product, Campaign, Launch, Custom." />
+                        <FieldRow field="Description" type="Rich Text" description="Detailed context, objectives, and background information." />
+                        <FieldRow field="Stage" type="Select" description="Current stage in the pipeline. Advances as work progresses." />
+                        <FieldRow field="Owner" type="User" description="Person responsible for driving this flow to completion." />
+                        <FieldRow field="Target Audience" type="Text" description="Who this flow is designed for. Critical for strategy development." />
+                        <FieldRow field="Success Metrics" type="Text" description="How you'll measure if this flow achieves its goals." />
+                        <FieldRow field="Tags" type="Multi-select" description="Labels for categorization and filtering." />
+                        <FieldRow field="AI Tokens Used" type="Number" description="Tracked AI usage for this flow. Auto-calculated." />
+                    </div>
                 </div>
             </section>
 
-            <section data-section-id="ai-studio" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-5">
-                <SectionHeader eyebrow="Acceleration" title="AI Studio" icon="auto_awesome" />
-                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                    AI Studio helps expand briefs, generate alternatives, and surface risks. It works best when your
-                    inputs are specific and grounded in real constraints.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InfoCard>
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Strong inputs</div>
-                        <p className="mt-2">
-                            Provide audience, tone, goals, and constraints. The more grounded the input, the more
-                            useful the output.
+            {/* SECTION: Approval Workflow */}
+            <section data-section-id="approval-workflow" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Decisions</div>
+                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Approval Workflow</h3>
+                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                            The review stage is a decision gate. Understand the approval options and what each triggers.
                         </p>
-                    </InfoCard>
-                    <InfoCard>
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Validation</div>
-                        <p className="mt-2">
-                            Treat AI output as a draft. Validate facts, adjust tone, and align with your strategy
-                            before sharing.
-                        </p>
-                    </InfoCard>
+                    </div>
+                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">fact_check</span>
                 </div>
-                <Callout>
-                    AI is best for exploration and framing. Final decisions should come from your team and goals.
-                </Callout>
-            </section>
 
-            <section data-section-id="conversion" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-5">
-                <SectionHeader eyebrow="Delivery" title="Conversion to execution" icon="swap_horiz" />
-                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                    Conversion turns a Flow into execution modules without losing context. It keeps the origin link so
-                    teams can trace tasks, campaigns, or assets back to the strategy that created them.
-                </p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <InfoCard>
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Tasks</div>
-                        <p className="mt-2">
-                            Convert when you are ready to break work into ownership and deadlines.
+                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5 dark:border-emerald-800/40 dark:bg-emerald-900/20">
+                        <div className="flex items-center gap-2 mb-3">
+                            <span className="material-symbols-outlined text-[24px] text-emerald-600 dark:text-emerald-400">check_circle</span>
+                            <span className="text-base font-bold text-emerald-700 dark:text-emerald-300">Approve</span>
+                        </div>
+                        <p className="text-sm text-emerald-800 dark:text-emerald-200 leading-relaxed mb-3">
+                            Flow is ready for execution. Strategy is sound, plan is realistic, and resources are available.
                         </p>
-                    </InfoCard>
-                    <InfoCard>
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Campaigns</div>
-                        <p className="mt-2">
-                            Social or marketing flows can become campaigns with phases and planned content.
+                        <div className="text-xs text-emerald-700 dark:text-emerald-300">
+                            <strong>Triggers:</strong> Flow moves to Approved, conversion becomes available
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-800/40 dark:bg-amber-900/20">
+                        <div className="flex items-center gap-2 mb-3">
+                            <span className="material-symbols-outlined text-[24px] text-amber-600 dark:text-amber-400">edit</span>
+                            <span className="text-base font-bold text-amber-700 dark:text-amber-300">Request Changes</span>
+                        </div>
+                        <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed mb-3">
+                            Flow needs iteration. Strategy has gaps, assumptions need validation, or plan needs refinement.
                         </p>
-                    </InfoCard>
-                    <InfoCard>
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Traceability</div>
-                        <p className="mt-2">
-                            Conversion preserves the source so review decisions remain visible later.
+                        <div className="text-xs text-amber-700 dark:text-amber-300">
+                            <strong>Triggers:</strong> Flow returns to previous stage with feedback notes
+                        </div>
+                    </div>
+
+                    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-5 dark:border-rose-800/40 dark:bg-rose-900/20">
+                        <div className="flex items-center gap-2 mb-3">
+                            <span className="material-symbols-outlined text-[24px] text-rose-600 dark:text-rose-400">cancel</span>
+                            <span className="text-base font-bold text-rose-700 dark:text-rose-300">Reject</span>
+                        </div>
+                        <p className="text-sm text-rose-800 dark:text-rose-200 leading-relaxed mb-3">
+                            Flow should not proceed. Fundamental issues with concept, timing, or strategic fit.
                         </p>
-                    </InfoCard>
+                        <div className="text-xs text-rose-700 dark:text-rose-300">
+                            <strong>Triggers:</strong> Flow moves to Rejected status, archived from active view
+                        </div>
+                    </div>
                 </div>
             </section>
 
-            <section data-section-id="review-feedback" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-5">
-                <SectionHeader eyebrow="Alignment" title="Review and feedback" icon="fact_check" />
-                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                    Reviews are a decision gate. Use them to request changes when assumptions are weak, or approve
-                    when the Flow is ready for execution. Keep feedback specific so the next iteration is clear.
-                </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-[var(--color-text-muted)]">
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800/40 dark:bg-emerald-900/20 dark:text-emerald-200">
-                        <div className="text-xs font-bold uppercase tracking-wider">Approve when</div>
-                        <p className="mt-2 leading-relaxed">
-                            The outcome is clear, the audience is defined, and the execution path is realistic for the
-                            timeline.
+            {/* SECTION: Conversion Options */}
+            <section data-section-id="conversion-options" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
+                <div className="flex items-start justify-between">
+                    <div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Execution</div>
+                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Conversion to Execution</h3>
+                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                            Once approved, flows can convert into executable items while maintaining traceability to their strategic origin.
                         </p>
                     </div>
-                    <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 dark:border-rose-800/40 dark:bg-rose-900/20 dark:text-rose-200">
-                        <div className="text-xs font-bold uppercase tracking-wider">Request changes when</div>
-                        <p className="mt-2 leading-relaxed">
-                            Key assumptions are missing, risks are unresolved, or the plan is too vague to execute.
-                        </p>
-                    </div>
+                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">swap_horiz</span>
                 </div>
-                <Callout>
-                    A good review comment includes the missing context and a suggestion for what to clarify next.
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <ConversionPath
+                        from="Product Flow"
+                        to="Tasks"
+                        description="Convert into individual tasks with ownership and deadlines. Great for feature implementation."
+                        icon="checklist"
+                    />
+                    <ConversionPath
+                        from="Campaign Flow"
+                        to="Social Campaign"
+                        description="Create a full social campaign with phases, content calendar, and post scheduling."
+                        icon="campaign"
+                    />
+                    <ConversionPath
+                        from="Any Flow"
+                        to="Project"
+                        description="Spin off a new project from the flow for larger initiatives that need their own space."
+                        icon="folder"
+                    />
+                    <ConversionPath
+                        from="Any Flow"
+                        to="Milestone"
+                        description="Create a project milestone to track this flow's delivery as a key checkpoint."
+                        icon="flag"
+                    />
+                </div>
+
+                <Callout type="info">
+                    Conversion maintains a link back to the original flow. You can always trace execution items back to the strategy that created them.
                 </Callout>
             </section>
         </div>

@@ -16,6 +16,8 @@ import {
 import { auth, db } from '../../services/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { useConfirm } from '../../context/UIContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { format } from 'date-fns';
 
 interface ProjectTeamManagerProps {
     project: Project;
@@ -36,6 +38,7 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
     const [generatedLink, setGeneratedLink] = useState<string>('');
     const [isGenerating, setIsGenerating] = useState(false);
     const confirm = useConfirm();
+    const { dateFormat, dateLocale } = useLanguage();
 
     // Subscribe to project updates to get real-time member list
     useEffect(() => {
@@ -266,7 +269,7 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
                                         <div className="flex items-center gap-3">
                                             <Badge variant="outline">{link.role}</Badge>
                                             <div className="flex flex-col">
-                                                <span className="text-xs text-[var(--color-text-muted)]">Expires {new Date(link.expiresAt.toDate ? link.expiresAt.toDate() : link.expiresAt).toLocaleDateString()}</span>
+                                                <span className="text-xs text-[var(--color-text-muted)]">Expires {format(new Date(link.expiresAt.toDate ? link.expiresAt.toDate() : link.expiresAt), dateFormat, { locale: dateLocale })}</span>
                                                 <span className="text-xs text-[var(--color-text-subtle)]">Created by you</span>
                                             </div>
                                         </div>

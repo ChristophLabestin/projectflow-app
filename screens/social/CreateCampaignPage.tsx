@@ -12,6 +12,8 @@ import { updateCampaign, createSocialCampaign, getSocialCampaign, updateIdea } f
 import { auth, db } from '../../services/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { generateCampaignDetailsAI, generateCampaignDescriptionAI } from '../../services/geminiService';
+import { format } from 'date-fns';
+import { dateLocale, dateFormat } from '../../utils/activityHelpers';
 
 const ALL_PLATFORMS: SocialPlatform[] = ['Instagram', 'Facebook', 'LinkedIn', 'TikTok', 'X', 'YouTube'];
 
@@ -152,7 +154,7 @@ export const CreateCampaignPage = () => {
                         setOriginIdeaId(ideaId);
                     }
                 } catch (e) {
-                    console.error("Failed to fetch idea", e);
+                    console.error("Failed to fetch flow", e);
                 } finally {
                     setLoading(false);
                 }
@@ -558,7 +560,7 @@ export const CreateCampaignPage = () => {
                                     </h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <Input
-                                            label="Big Idea / Concept"
+                                            label="Core Flow / Concept"
                                             value={bigIdea}
                                             onChange={e => setBigIdea(e.target.value)}
                                             placeholder="The core message or theme..."
@@ -759,7 +761,7 @@ export const CreateCampaignPage = () => {
                             <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
                                 <span className="material-symbols-outlined text-[16px]">calendar_today</span>
                                 <span>
-                                    {startDate ? new Date(startDate).toLocaleDateString() : 'Start Date'} - {endDate ? new Date(endDate).toLocaleDateString() : 'End Date'}
+                                    {startDate ? format(new Date(startDate), dateFormat, { locale: dateLocale }) : 'Start Date'} - {endDate ? format(new Date(endDate), dateFormat, { locale: dateLocale }) : 'End Date'}
                                 </span>
                             </div>
 
@@ -775,7 +777,7 @@ export const CreateCampaignPage = () => {
                     <div className="mt-8 relative z-10">
                         <h4 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-2">Strategy Tips</h4>
                         <ul className="text-xs text-[var(--color-text-subtle)] space-y-2 list-disc pl-4">
-                            <li><strong>Big Idea:</strong> Make it single-minded.</li>
+                            <li><strong>Core Flow:</strong> Make it single-minded.</li>
                             <li><strong>Hook:</strong> Ensure it stops the scroll.</li>
                             <li><strong>Visuals:</strong> Keep it consistent.</li>
                         </ul>

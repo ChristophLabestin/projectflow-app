@@ -1,6 +1,8 @@
 import React from 'react';
 import { SocialPost } from '../../../types';
 import { PlatformIcon } from './PlatformIcon';
+import { format } from 'date-fns';
+import { dateLocale } from '../../../utils/activityHelpers';
 
 interface SocialPostCardProps {
     post: SocialPost;
@@ -78,7 +80,7 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({
                 {/* Content: Title/Concept */}
                 <div className="flex-1 space-y-2 mb-2">
                     <h3 className="font-semibold text-yellow-900 dark:text-yellow-100/90 text-sm leading-snug">
-                        {post.videoConcept?.title || (post.content.caption ? (post.content.caption.length > 30 ? post.content.caption.slice(0, 30) + '...' : post.content.caption) : 'Untitled Idea')}
+                        {post.videoConcept?.title || (post.content.caption ? (post.content.caption.length > 30 ? post.content.caption.slice(0, 30) + '...' : post.content.caption) : 'Untitled Flow')}
                     </h3>
                     {post.content.caption && (
                         <p className="text-xs text-yellow-800/80 dark:text-yellow-200/70 line-clamp-4 font-sans leading-relaxed">
@@ -168,7 +170,7 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({
                         {/* Date */}
                         <div className="flex items-center gap-1 text-[10px] text-[var(--color-text-muted)] font-medium">
                             <span className="material-symbols-outlined text-[12px]">event</span>
-                            {post.scheduledFor ? new Date(post.scheduledFor).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Unscheduled'}
+                            {post.scheduledFor ? format(new Date(post.scheduledFor), 'MMM d', { locale: dateLocale }) : 'Unscheduled'}
                         </div>
 
                         {/* Badges */}

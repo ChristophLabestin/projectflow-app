@@ -2,6 +2,8 @@ import React from 'react';
 import { SocialCampaign, SocialPost } from '../../../types';
 import { Link } from 'react-router-dom';
 import { PlatformIcon } from './PlatformIcon';
+import { format } from 'date-fns';
+import { dateLocale, dateFormat } from '../../../utils/activityHelpers';
 
 interface DashboardCampaignCardProps {
     campaign: SocialCampaign;
@@ -31,8 +33,8 @@ export const DashboardCampaignCard: React.FC<DashboardCampaignCardProps> = ({ ca
                         </p>
                     </div>
                     <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${campaign.status === 'Active' ? 'bg-green-100 text-green-700' :
-                            campaign.status === 'Planning' ? 'bg-blue-100 text-blue-700' :
-                                'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'
+                        campaign.status === 'Planning' ? 'bg-blue-100 text-blue-700' :
+                            'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'
                         }`}>
                         {campaign.status}
                     </span>
@@ -72,7 +74,7 @@ export const DashboardCampaignCard: React.FC<DashboardCampaignCardProps> = ({ ca
                 <div className="flex items-center justify-between mt-5 pt-4 border-t border-[var(--color-surface-border)]">
                     <div className="flex items-center gap-2 text-[10px] text-[var(--color-text-muted)]">
                         <span className="material-symbols-outlined text-[14px]">calendar_today</span>
-                        <span>Ends {new Date(campaign.endDate || '').toLocaleDateString()}</span>
+                        <span>Ends {campaign.endDate ? format(new Date(campaign.endDate), dateFormat, { locale: dateLocale }) : ''}</span>
                     </div>
                     <Link
                         to={`/project/${projectId}/social/campaigns/${campaign.id}`}

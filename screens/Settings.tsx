@@ -4,17 +4,37 @@ import ReactDOM from 'react-dom';
 import { Card } from '../components/ui/Card';
 import { Input } from '../components/ui/Input';
 import { Button } from '../components/ui/Button';
+import { Select } from '../components/ui/Select';
 import { Textarea } from '../components/ui/Textarea';
 import { useToast, useConfirm } from '../context/UIContext';
-import { getActiveTenantId, getTenant, updateTenant, getAIUsage, getTenantSecret, updateTenantSecret, createAPIToken, getAPITokens, deleteAPIToken } from '../services/dataService';
+import { getActiveTenantId, getTenant, updateTenant, getAIUsage, getTenantSecret, updateTenantSecret, createAPIToken, getAPITokens, deleteAPIToken, updateUserData } from '../services/dataService';
 import { auth, functions } from '../services/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { Tenant, AIUsage, APITokenPermission } from '../types';
 
-type SettingsTab = 'general' | 'members' | 'billing' | 'security' | 'email' | 'api';
+import { TwoFactorSetupModal } from '../components/modals/TwoFactorSetupModal';
+import {
+    multiFactor,
+    EmailAuthProvider,
+    updatePassword,
+    linkWithCredential,
+    reauthenticateWithPopup,
+    GithubAuthProvider,
+    GoogleAuthProvider,
+    linkWithPopup,
+    sendEmailVerification
+} from 'firebase/auth';
+import { format } from 'date-fns';
+import { getUserProfile, linkWithGithub } from '../services/dataService';
+import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
+
+type SettingsTab = 'general' | 'preferences' | 'members' | 'billing' | 'security' | 'email' | 'api' | 'account';
+
+import { DateFormat, useLanguage } from '../context/LanguageContext';
 
 export const Settings = () => {
     const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+    const { language, setLanguage, dateFormat, setDateFormat, t } = useLanguage();
     const [tenant, setTenant] = useState<Partial<Tenant>>({});
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -54,6 +74,23 @@ export const Settings = () => {
     const [generatedToken, setGeneratedToken] = useState<string | null>(null);
     const [copiedToken, setCopiedToken] = useState(false);
 
+    // Security State
+    const [showTwoFactorModal, setShowTwoFactorModal] = useState(false);
+    const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+
+    // Account Management State
+    const [githubLinked, setGithubLinked] = useState(false);
+    const [connectingGithub, setConnectingGithub] = useState(false);
+    const [connectingGoogle, setConnectingGoogle] = useState(false);
+    const [providers, setProviders] = useState<string[]>([]);
+    const [showSetPassword, setShowSetPassword] = useState(false);
+    const [isChangingPassword, setIsChangingPassword] = useState(false);
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [settingPassword, setSettingPassword] = useState(false);
+    const [emailVerified, setEmailVerified] = useState(true);
+    const [sendingVerification, setSendingVerification] = useState(false);
+
     // Derived status for indicator
     // Blank: (!useCustomSmtp || (!smtpHost && !smtpUser && !smtpPass))
     // Orange: (hasCredentials && connectionStatus === null)
@@ -74,6 +111,151 @@ export const Settings = () => {
             }
         }
     }, [smtpHost, smtpPort, smtpUser, smtpPass, smtpFromEmail, savedSmtpConfig]);
+
+    useEffect(() => {
+        const loadAccountStatus = async () => {
+            const user = auth.currentUser;
+            if (user) {
+                setProviders(user.providerData.map(p => p.providerId));
+                setEmailVerified(user.emailVerified);
+                try {
+                    const profile = await getUserProfile(user.uid);
+                    if (profile?.githubToken) {
+                        setGithubLinked(true);
+                    }
+                } catch (e) {
+                    console.error("Failed to load account status", e);
+                }
+            }
+        };
+        loadAccountStatus();
+    }, [activeTab]);
+
+    const handleConnectGithub = async () => {
+        const user = auth.currentUser;
+        if (!user) return;
+        setConnectingGithub(true);
+        try {
+            const token = await linkWithGithub();
+            await updateUserData(user.uid, { githubToken: token });
+            setGithubLinked(true);
+            setProviders(user.providerData.map(p => p.providerId));
+            showSuccess("GitHub connected!");
+        } catch (e: any) {
+            console.error('Failed to link GitHub', e);
+            showError(e.message || "Failed to connect GitHub");
+        } finally {
+            setConnectingGithub(false);
+        }
+    };
+
+    const handleConnectGoogle = async () => {
+        const user = auth.currentUser;
+        if (!user) return;
+        setConnectingGoogle(true);
+        try {
+            const currentProviders = user.providerData.map(p => p.providerId);
+            try {
+                const provider = new GoogleAuthProvider();
+                await linkWithPopup(user, provider);
+            } catch (linkError: any) {
+                if (linkError.code === 'auth/requires-recent-login') {
+                    if (currentProviders.includes('github.com')) {
+                        await reauthenticateWithPopup(user, new GithubAuthProvider());
+                    } else if (currentProviders.includes('google.com')) {
+                        await reauthenticateWithPopup(user, new GoogleAuthProvider());
+                    }
+                    await linkWithPopup(user, new GoogleAuthProvider());
+                } else {
+                    throw linkError;
+                }
+            }
+            setProviders(user.providerData.map(p => p.providerId));
+            showSuccess("Google account connected!");
+        } catch (e: any) {
+            console.error('Failed to link Google', e);
+            showError(e.message || "Failed to connect Google");
+        } finally {
+            setConnectingGoogle(false);
+        }
+    };
+
+    const handleUpdatePassword = async () => {
+        const user = auth.currentUser;
+        if (!user || !newPassword) return;
+        if (newPassword !== confirmPassword) {
+            showError("Passwords do not match");
+            return;
+        }
+        if (newPassword.length < 6) {
+            showError("Password must be at least 6 characters");
+            return;
+        }
+
+        setSettingPassword(true);
+        try {
+            if (isChangingPassword) {
+                // User already has a password, use updatePassword
+                try {
+                    await updatePassword(user, newPassword);
+                } catch (updateError: any) {
+                    if (updateError.code === 'auth/requires-recent-login') {
+                        // Re-authenticate with OAuth providers if available
+                        const currentProviders = user.providerData.map(p => p.providerId);
+                        if (currentProviders.includes('github.com')) {
+                            await reauthenticateWithPopup(user, new GithubAuthProvider());
+                        } else if (currentProviders.includes('google.com')) {
+                            await reauthenticateWithPopup(user, new GoogleAuthProvider());
+                        } else {
+                            // If they only have password, they'd need to re-auth with password
+                            // For now we'll throw, as we don't have an "old password" field yet
+                            throw updateError;
+                        }
+                        await updatePassword(user, newPassword);
+                    } else {
+                        throw updateError;
+                    }
+                }
+            } else {
+                if (!user.email) {
+                    showError("Your account does not have an email associated with it. Please add an email to your profile first.");
+                    return;
+                }
+                const credential = EmailAuthProvider.credential(user.email, newPassword);
+                try {
+                    await linkWithCredential(user, credential);
+                } catch (linkError: any) {
+                    if (linkError.code === 'auth/requires-recent-login') {
+                        const currentProviders = user.providerData.map(p => p.providerId);
+                        if (currentProviders.includes('github.com')) {
+                            await reauthenticateWithPopup(user, new GithubAuthProvider());
+                        } else if (currentProviders.includes('google.com')) {
+                            await reauthenticateWithPopup(user, new GoogleAuthProvider());
+                        }
+                        await linkWithCredential(user, credential);
+                    } else {
+                        throw linkError;
+                    }
+                }
+            }
+
+            setProviders(user.providerData.map(p => p.providerId));
+            setShowSetPassword(false);
+            setIsChangingPassword(false);
+            setNewPassword('');
+            setConfirmPassword('');
+            showSuccess(isChangingPassword ? "Password updated successfully!" : "Password set successfully! You can now sign in with your email and password.");
+        } catch (e: any) {
+            console.error('Failed to update password', e);
+            if (e.code === 'auth/requires-recent-login' && isChangingPassword && !providers.some(p => p.includes('google') || p.includes('github'))) {
+                showError("For security, please sign out and sign back in to change your password.");
+            } else {
+                showError(e.message || "Failed to update password");
+            }
+        } finally {
+            setSettingPassword(false);
+        }
+    };
 
     const handleTestConnection = async () => {
         setTestingConnection(true);
@@ -185,8 +367,17 @@ export const Settings = () => {
             }
         };
 
+        const load2FAStatus = () => {
+            const user = auth.currentUser;
+            if (user) {
+                const enrolledFactors = multiFactor(user).enrolledFactors;
+                setTwoFactorEnabled(enrolledFactors.length > 0);
+            }
+        };
+
         loadSettings();
         loadAIUsage();
+        load2FAStatus();
     }, []);
 
     // Load API tokens when API tab is active
@@ -287,12 +478,162 @@ export const Settings = () => {
         }
     };
 
+    const handleRestartOnboarding = async () => {
+        const user = auth.currentUser;
+        if (!user) {
+            showError('You must be signed in to restart onboarding.');
+            return;
+        }
+        const approved = await confirm(
+            'Restart dashboard onboarding?',
+            'We will show the welcome tour again the next time you visit the dashboard.'
+        );
+        if (!approved) return;
+
+        try {
+            await updateUserData(user.uid, {
+                'preferences.onboarding.dashboard': null
+            });
+            try {
+                localStorage.removeItem('onboarding_dashboard_v1');
+            } catch {
+                // Ignore storage failures
+            }
+            showSuccess('Dashboard onboarding will show again on your next visit.');
+        } catch (error) {
+            console.error('Failed to reset onboarding', error);
+            showError('Failed to restart onboarding. Please try again.');
+        }
+    };
+    const handleSendVerification = async () => {
+        if (!auth.currentUser) return;
+        setSendingVerification(true);
+        try {
+            await sendEmailVerification(auth.currentUser);
+            showSuccess('Verification email sent!');
+        } catch (error: any) {
+            showError(error.message);
+        } finally {
+            setSendingVerification(false);
+        }
+    };
+
+    const handleCheckVerification = async () => {
+        if (!auth.currentUser) return;
+        setLoading(true);
+        try {
+            await auth.currentUser.reload();
+            setEmailVerified(auth.currentUser.emailVerified);
+            if (auth.currentUser.emailVerified) {
+                showSuccess('Email verified!');
+            } else {
+                showError('Email still unverified. Please check your inbox.');
+            }
+        } catch (error: any) {
+            showError(error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     if (loading) {
         return <div className="h-full flex items-center justify-center text-[var(--color-text-muted)]">Loading settings...</div>;
     }
 
     const renderContent = () => {
         switch (activeTab) {
+            case 'preferences':
+                return (
+                    <div className="space-y-6 animate-fade-in">
+                        <div>
+                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">Preferences</h2>
+                            <p className="text-[var(--color-text-muted)] text-sm">Customize your ProjectFlow experience.</p>
+                        </div>
+
+                        <Card className="p-6 space-y-6 max-w-2xl">
+                            {/* Language Settings */}
+                            <div className="space-y-3">
+                                <label className="text-sm font-bold text-[var(--color-text-main)] block">
+                                    Language / Sprache
+                                </label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <button
+                                        onClick={() => setLanguage('en')}
+                                        className={`
+                                            flex items-center gap-3 p-3 rounded-xl border text-left transition-all
+                                            ${language === 'en'
+                                                ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]'
+                                                : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'}
+                                        `}
+                                    >
+                                        <div className="size-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xs shrink-0">
+                                            EN
+                                        </div>
+                                        <div>
+                                            <div className={`font-medium ${language === 'en' ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}>English</div>
+                                            <div className="text-xs text-[var(--color-text-muted)]">Default</div>
+                                        </div>
+                                        {language === 'en' && (
+                                            <span className="material-symbols-outlined text-[var(--color-primary)] ml-auto">check_circle</span>
+                                        )}
+                                    </button>
+
+                                    <button
+                                        onClick={() => setLanguage('de')}
+                                        className={`
+                                            flex items-center gap-3 p-3 rounded-xl border text-left transition-all
+                                            ${language === 'de'
+                                                ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]'
+                                                : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'}
+                                        `}
+                                    >
+                                        <div className="size-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-xs shrink-0">
+                                            DE
+                                        </div>
+                                        <div>
+                                            <div className={`font-medium ${language === 'de' ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}>Deutsch</div>
+                                            <div className="text-xs text-[var(--color-text-muted)]">German</div>
+                                        </div>
+                                        {language === 'de' && (
+                                            <span className="material-symbols-outlined text-[var(--color-primary)] ml-auto">check_circle</span>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <hr className="border-[var(--color-surface-border)]" />
+
+                            {/* Date Format Settings */}
+                            <div className="space-y-3">
+                                <Select
+                                    label="Date Format"
+                                    value={dateFormat}
+                                    onChange={(e) => setDateFormat(e.target.value as DateFormat)}
+                                    className="max-w-md"
+                                >
+                                    {[
+                                        'MM/dd/yyyy',
+                                        'dd/MM/yyyy',
+                                        'dd.MM.yyyy',
+                                        'yyyy-MM-dd',
+                                        'yyyy/MM/dd',
+                                        'd. MMM yyyy',
+                                        'MMM d, yyyy',
+                                        'MMMM d, yyyy',
+                                        'd MMMM yyyy'
+                                    ].map((fmt) => (
+                                        <option key={fmt} value={fmt}>
+                                            {fmt} — ({format(new Date(2025, 11, 28), fmt)})
+                                        </option>
+                                    ))}
+                                </Select>
+                                <p className="text-[10px] text-[var(--color-text-muted)] ml-1">
+                                    Choose how dates are displayed across the application.
+                                </p>
+                            </div>
+                        </Card>
+                    </div>
+                );
             case 'general':
                 return (
                     <div className="space-y-6 animate-fade-in">
@@ -331,6 +672,19 @@ export const Settings = () => {
                             <div className="pt-4 flex justify-end border-t border-[var(--color-surface-border)]">
                                 <Button onClick={handleSave} loading={saving}>
                                     Save Changes
+                                </Button>
+                            </div>
+                        </Card>
+                        <Card className="p-6 max-w-2xl">
+                            <div className="flex items-start justify-between gap-6">
+                                <div className="space-y-2">
+                                    <div className="text-sm font-bold text-[var(--color-text-main)]">Onboarding</div>
+                                    <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
+                                        Restart the dashboard tour to revisit each feature and walkthrough step.
+                                    </p>
+                                </div>
+                                <Button variant="secondary" onClick={handleRestartOnboarding}>
+                                    Restart onboarding
                                 </Button>
                             </div>
                         </Card>
@@ -411,11 +765,26 @@ export const Settings = () => {
                         <Card className="divide-y divide-[var(--color-surface-border)]">
                             <div className="p-4 flex items-center justify-between">
                                 <div>
-                                    <p className="font-semibold text-[var(--color-text-main)]">Two-Factor Authentication</p>
-                                    <p className="text-xs text-[var(--color-text-muted)]">Require 2FA for all team members.</p>
+                                    <div className="flex items-center gap-2">
+                                        <p className="font-semibold text-[var(--color-text-main)]">Two-Factor Authentication</p>
+                                        {twoFactorEnabled && (
+                                            <span className="text-xs font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                <span className="material-symbols-outlined text-[12px]">check</span> Enabled
+                                            </span>
+                                        )}
+                                    </div>
+                                    <p className="text-xs text-[var(--color-text-muted)]">Secure your account with an authenticator app.</p>
                                 </div>
-                                <div className="w-10 h-6 bg-[var(--color-surface-hover)] rounded-full border border-[var(--color-surface-border)] relative cursor-not-allowed">
-                                    <div className="absolute left-1 top-1 size-4 bg-[var(--color-text-muted)] rounded-full opacity-50"></div>
+                                <div>
+                                    {!twoFactorEnabled ? (
+                                        <Button size="sm" onClick={() => setShowTwoFactorModal(true)}>
+                                            Enable 2FA
+                                        </Button>
+                                    ) : (
+                                        <Button variant="outline" size="sm" disabled title="Disabling 2FA is currently managed via support">
+                                            Manage
+                                        </Button>
+                                    )}
                                 </div>
                             </div>
                             <div className="p-4 flex items-center justify-between">
@@ -615,6 +984,153 @@ export const Settings = () => {
                         </Card>
                     </div>
                 );
+            case 'account':
+                return (
+                    <div className="space-y-6 animate-fade-in">
+                        <div>
+                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">Account Settings</h2>
+                            <p className="text-[var(--color-text-muted)] text-sm">Manage your authentication and sign-in methods.</p>
+                        </div>
+
+                        <Card className="divide-y divide-[var(--color-surface-border)]">
+                            <div className="p-6 space-y-4">
+                                <div>
+                                    <h3 className="font-semibold text-[var(--color-text-main)]">Sign-in Methods</h3>
+                                    <p className="text-xs text-[var(--color-text-muted)] mt-1">Configure how you access your account.</p>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {/* Email/Password */}
+                                    <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-paper)]/30">
+                                        <div className="flex items-center gap-3">
+                                            <div className="size-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400">
+                                                <span className="material-symbols-outlined text-[24px]">mail</span>
+                                            </div>
+                                            <div className="flex flex-col">
+                                                <div className="flex items-center gap-1.5">
+                                                    <p className="text-sm font-medium text-[var(--color-text-main)]">Email & Password</p>
+                                                    {emailVerified ? (
+                                                        <span className="material-symbols-outlined text-[14px] text-emerald-500" title="Verified Account">verified</span>
+                                                    ) : (
+                                                        <span className="material-symbols-outlined text-[14px] text-amber-500" title="Email Unverified">warning</span>
+                                                    )}
+                                                </div>
+                                                <p className="text-[10px] text-[var(--color-text-muted)]">{auth.currentUser?.email}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {!emailVerified && (
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={handleSendVerification}
+                                                    isLoading={sendingVerification}
+                                                    className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                                                >
+                                                    Resend Verification
+                                                </Button>
+                                            )}
+                                            {providers.includes('password') ? (
+                                                <>
+                                                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-1 rounded-full flex items-center gap-1">
+                                                        <span className="material-symbols-outlined text-[12px]">check</span> Linked
+                                                    </span>
+                                                    <Button size="sm" variant="ghost" onClick={() => { setShowSetPassword(!showSetPassword); setIsChangingPassword(true); }}>
+                                                        {showSetPassword ? 'Cancel' : 'Change'}
+                                                    </Button>
+                                                </>
+                                            ) : (
+                                                <Button size="sm" variant="outline" onClick={() => { setShowSetPassword(!showSetPassword); setIsChangingPassword(false); }}>
+                                                    {showSetPassword ? 'Cancel' : 'Set Password'}
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {showSetPassword && (
+                                        <div className="p-4 rounded-xl border border-[var(--color-primary)]/20 bg-[var(--color-primary)]/5 space-y-4 animate-in slide-in-from-top-2 duration-200">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <Input
+                                                    type="password"
+                                                    label={isChangingPassword ? "New Password" : "Set Password"}
+                                                    value={newPassword}
+                                                    onChange={(e) => setNewPassword(e.target.value)}
+                                                    placeholder="••••••••"
+                                                />
+                                                <Input
+                                                    type="password"
+                                                    label="Confirm Password"
+                                                    value={confirmPassword}
+                                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                                    placeholder="••••••••"
+                                                />
+                                            </div>
+                                            <div className="flex justify-end">
+                                                <Button size="sm" onClick={handleUpdatePassword} isLoading={settingPassword} disabled={!newPassword || newPassword !== confirmPassword}>
+                                                    {isChangingPassword ? 'Update Password' : 'Set Account Password'}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* GitHub */}
+                                    <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-paper)]/30">
+                                        <div className="flex items-center gap-3">
+                                            <div className="size-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                                                <img src="https://www.svgrepo.com/show/512317/github-142.svg" className="w-6 h-6 dark:invert" alt="GitHub" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium text-[var(--color-text-main)]">GitHub</p>
+                                                <p className="text-[10px] text-[var(--color-text-muted)]">OAuth Integration</p>
+                                            </div>
+                                        </div>
+                                        {providers.includes('github.com') ? (
+                                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-1 rounded-full flex items-center gap-1">
+                                                <span className="material-symbols-outlined text-[12px]">check</span> Linked
+                                            </span>
+                                        ) : (
+                                            <Button size="sm" variant="outline" onClick={handleConnectGithub} isLoading={connectingGithub}>
+                                                Connect GitHub
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    {/* Google */}
+                                    <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-paper)]/30">
+                                        <div className="flex items-center gap-3">
+                                            <div className="size-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                                                <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-6 h-6" alt="Google" />
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-medium text-[var(--color-text-main)]">Google</p>
+                                                <p className="text-[10px] text-[var(--color-text-muted)]">OAuth Integration</p>
+                                            </div>
+                                        </div>
+                                        {providers.includes('google.com') ? (
+                                            <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-1 rounded-full flex items-center gap-1">
+                                                <span className="material-symbols-outlined text-[12px]">check</span> Linked
+                                            </span>
+                                        ) : (
+                                            <Button size="sm" variant="outline" onClick={handleConnectGoogle} isLoading={connectingGoogle}>
+                                                Connect Google
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="p-4 bg-blue-50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-900/20 rounded-xl mt-4">
+                                    <div className="flex gap-3">
+                                        <span className="material-symbols-outlined text-blue-500 text-[20px]">info</span>
+                                        <p className="text-xs text-blue-700 dark:text-blue-300">
+                                            Linking social accounts (GitHub/Google) will <strong>not</strong> remove your existing password.
+                                            You will still be able to sign in using your email and password as long as they are linked.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        </Card>
+                    </div>
+                );
         }
     };
 
@@ -638,15 +1154,50 @@ export const Settings = () => {
                 <aside className="w-full md:w-64 shrink-0 space-y-1">
                     <h1 className="text-2xl font-display font-bold text-[var(--color-text-main)] px-2 mb-6">Settings</h1>
                     <NavItem id="general" label="General" icon="settings" />
+                    <NavItem id="preferences" label="Preferences" icon="tune" />
                     <NavItem id="members" label="Members" icon="group" />
                     <NavItem id="billing" label="Billing" icon="credit_card" />
                     <NavItem id="email" label="Email" icon="mail" />
                     <NavItem id="api" label="API" icon="key" />
                     <NavItem id="security" label="Security" icon="security" />
+                    <NavItem id="account" label="Account" icon="account_circle" />
                 </aside>
 
                 {/* Content */}
                 <main className="flex-1 w-full min-w-0">
+                    {!emailVerified && (
+                        <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl flex items-center justify-between gap-4 animate-in slide-in-from-top duration-300">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-amber-100 dark:bg-amber-800 rounded-lg text-amber-600 dark:text-amber-300">
+                                    <span className="material-symbols-outlined">mark_email_unread</span>
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold text-[var(--color-text-main)]">Email not verified</h4>
+                                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                                        Please verify your email address to access all security features.
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleSendVerification}
+                                    isLoading={sendingVerification}
+                                >
+                                    Resend Verification
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={handleCheckVerification}
+                                    isLoading={loading}
+                                >
+                                    I've Verified
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                     {renderContent()}
                 </main>
             </div>
@@ -702,6 +1253,18 @@ export const Settings = () => {
                 </div>,
                 document.body
             )}
+
+            <TwoFactorSetupModal
+                isOpen={showTwoFactorModal}
+                onClose={() => {
+                    setShowTwoFactorModal(false);
+                    // Refresh 2FA Status
+                    if (auth.currentUser) {
+                        const enrolledFactors = multiFactor(auth.currentUser).enrolledFactors;
+                        setTwoFactorEnabled(enrolledFactors.length > 0);
+                    }
+                }}
+            />
         </div>
     );
 };

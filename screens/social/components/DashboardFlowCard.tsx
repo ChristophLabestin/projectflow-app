@@ -2,12 +2,12 @@ import React from 'react';
 import { Idea } from '../../../types';
 import { Link } from 'react-router-dom';
 
-interface DashboardIdeationCardProps {
+interface DashboardFlowCardProps {
     idea: Idea;
     projectId: string;
 }
 
-export const DashboardIdeationCard: React.FC<DashboardIdeationCardProps> = ({ idea, projectId }) => {
+export const DashboardFlowCard: React.FC<DashboardFlowCardProps> = ({ idea, projectId }) => {
     // Parse social strategy from concept if it exists
     const strategy = (() => {
         try {
@@ -67,10 +67,10 @@ export const DashboardIdeationCard: React.FC<DashboardIdeationCardProps> = ({ id
                     <span>{idea.votes || 0}</span>
                 </div>
                 <Link
-                    to={`/project/${projectId}/ideas/${idea.id}`}
+                    to={`/project/${projectId}/flows/${idea.id}`}
                     className="text-[10px] font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1"
                 >
-                    View Idea
+                    View Flow
                     <span className="material-symbols-outlined text-[12px]">open_in_new</span>
                 </Link>
             </div>

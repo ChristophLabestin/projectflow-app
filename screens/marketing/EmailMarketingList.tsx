@@ -8,6 +8,8 @@ import { CreateMarketingCampaignModal } from './components/CreateMarketingCampai
 import { auth } from '../../services/firebase';
 import { Button } from '../../components/ui/Button';
 import { useToast } from '../../context/UIContext';
+import { format } from 'date-fns';
+import { dateLocale, dateFormat } from '../../utils/activityHelpers';
 
 export const EmailMarketingList = () => {
     const { id: projectId } = useParams<{ id: string }>();
@@ -291,7 +293,7 @@ export const EmailMarketingList = () => {
                                                 </span>
                                                 {campaign.originIdeaId && (
                                                     <Link
-                                                        to={`/project/${projectId}/ideas/${campaign.originIdeaId}`}
+                                                        to={`/project/${projectId}/flows/${campaign.originIdeaId}`}
                                                         className="ml-2 flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-100 hover:bg-purple-100 transition-colors"
                                                         onClick={(e) => e.stopPropagation()}
                                                     >
@@ -303,7 +305,7 @@ export const EmailMarketingList = () => {
                                             <p className="text-sm text-[var(--color-text-muted)]">{campaign.subject}</p>
                                         </div>
                                         <div className="text-right text-xs text-[var(--color-text-muted)]">
-                                            {campaign.sentAt && new Date(campaign.sentAt).toLocaleDateString()}
+                                            {campaign.sentAt && format(new Date(campaign.sentAt), dateFormat, { locale: dateLocale })}
                                         </div>
                                     </div>
 
@@ -365,7 +367,7 @@ export const EmailMarketingList = () => {
                                                 </div>
                                                 <h4 className="font-bold text-lg mb-1">{template.name || 'Unnamed Template'}</h4>
                                                 <p className="text-xs text-[var(--color-text-muted)]">
-                                                    Last updated: {template.updatedAt?.seconds ? new Date(template.updatedAt.seconds * 1000).toLocaleDateString() : 'Unknown'}
+                                                    Last updated: {template.updatedAt?.seconds ? format(new Date(template.updatedAt.seconds * 1000), dateFormat, { locale: dateLocale }) : 'Unknown'}
                                                 </p>
                                             </div>
 
@@ -423,7 +425,7 @@ export const EmailMarketingList = () => {
                                                             )}
                                                         </td>
                                                         <td className="px-4 py-3 text-[var(--color-text-muted)]">
-                                                            {template.updatedAt?.seconds ? new Date(template.updatedAt.seconds * 1000).toLocaleDateString() : '-'}
+                                                            {template.updatedAt?.seconds ? format(new Date(template.updatedAt.seconds * 1000), dateFormat, { locale: dateLocale }) : '-'}
                                                         </td>
                                                         <td className="px-4 py-3 text-right">
                                                             <div className="flex items-center justify-end gap-2">

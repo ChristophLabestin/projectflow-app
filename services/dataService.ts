@@ -545,7 +545,8 @@ export const createProject = async (
     squareIconFile?: File | string,
     screenshotFiles?: (File | string)[],
     initialMemberIds: string[] = [],
-    tenantId?: string
+    tenantId?: string,
+    visibilityGroupIds?: string[]
 ): Promise<string> => {
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
@@ -564,6 +565,8 @@ export const createProject = async (
         progress: 0,
         members: Array.from(new Set([user.uid, ...initialMemberIds])),
         memberIds: Array.from(new Set([user.uid, ...initialMemberIds])),
+        visibilityGroupIds: visibilityGroupIds || [],
+        visibilityGroupId: visibilityGroupIds?.[0] || null, // Backwards compatibility
         createdAt: serverTimestamp()
     });
 
@@ -2260,7 +2263,7 @@ export const saveIdea = async (idea: Partial<Idea>, tenantId?: string) => {
 
 export const updateIdea = async (ideaId: string, updates: Partial<Idea>, projectId?: string, tenantId?: string) => {
     const ideaSnap = await findIdeaDoc(ideaId, projectId, tenantId);
-    if (!ideaSnap) throw new Error("Idea not found");
+    if (!ideaSnap) throw new Error("Flow not found");
     await updateDoc(ideaSnap.ref, updates);
 };
 
@@ -3043,6 +3046,7 @@ export const addComment = async (
             resolvedTenant
         );
     }
+    return docRef.id;
 };
 
 export const getComments = async (
@@ -3169,6 +3173,12 @@ export const subscribeWorkspaceGroups = (
         const items = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as WorkspaceGroup));
         callback(items);
     });
+};
+
+export const getWorkspaceGroups = async (tenantId?: string): Promise<WorkspaceGroup[]> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const snap = await getDocs(collection(db, `tenants/${resolvedTenant}/groups`));
+    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as WorkspaceGroup));
 };
 
 export const createWorkspaceGroup = async (
@@ -4412,7 +4422,7 @@ export const syncSocialStrategyPlatforms = async (projectId: string, platformToR
                 count++;
             }
         } catch (e) {
-            console.error("Failed to parse concept for idea", docSnap.id, e);
+            console.error("Failed to parse concept for flow", docSnap.id, e);
         }
     });
 

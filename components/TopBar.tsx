@@ -10,10 +10,12 @@ import { Project } from '../types';
 import { useUIState } from '../context/UIContext';
 import { useHelpCenter } from '../context/HelpCenterContext';
 import { getHelpTargetForPath } from './help/helpCenterContent';
+import { useLanguage } from '../context/LanguageContext';
 
 // --- Local Components (PinnedTasksToggle) ---
 const PinnedTasksToggle = () => {
     const { toggleModal, pinnedItems, focusItemId } = usePinnedTasks();
+    const { t } = useLanguage();
     const hasItems = pinnedItems.length > 0;
     const focusItem = focusItemId ? pinnedItems.find(i => i.id === focusItemId) : null;
     const [subtaskStats, setSubtaskStats] = useState<{ done: number; total: number } | null>(null);
@@ -46,7 +48,7 @@ const PinnedTasksToggle = () => {
                         : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'
                     }
                 `}
-                title="Pinned Tasks"
+                title={t('topbar.pinnedTasks')}
             >
                 <span className="material-symbols-outlined text-[20px]">push_pin</span>
             </button>
@@ -57,7 +59,7 @@ const PinnedTasksToggle = () => {
         <button
             onClick={toggleModal}
             className="flex items-center gap-2 h-8 pl-2 pr-3 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/20 transition-all group"
-            title="Focus Task"
+            title={t('topbar.focusTask')}
         >
             <div className="relative shrink-0 flex items-center justify-center">
                 <span className="material-symbols-outlined text-[16px] text-amber-600 dark:text-amber-400">center_focus_strong</span>
@@ -81,6 +83,7 @@ export const TopBar: React.FC<TopBarProps> = ({ project, breadcrumbs, onOpenNav 
     const { openTaskCreateModal } = useUIState();
     const location = useLocation();
     const { openHelpCenter } = useHelpCenter();
+    const { t } = useLanguage();
 
     const handleOpenHelp = () => {
         openHelpCenter(getHelpTargetForPath(location.pathname));
@@ -129,7 +132,7 @@ export const TopBar: React.FC<TopBarProps> = ({ project, breadcrumbs, onOpenNav 
                 <button
                     onClick={handleOpenHelp}
                     className="flex items-center justify-center size-8 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)] transition-colors"
-                    title="Help Center"
+                    title={t('topbar.helpCenter')}
                 >
                     <span className="material-symbols-outlined text-[20px]">help</span>
                 </button>

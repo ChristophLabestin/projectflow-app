@@ -9,7 +9,6 @@ import {
     doc,
     serverTimestamp,
     writeBatch,
-    writeBatch,
     getDocs,
     deleteDoc
 } from 'firebase/firestore';
@@ -35,20 +34,32 @@ export const createNotification = async (data: {
 }): Promise<void> => {
     const user = auth.currentUser;
 
+    console.log('Creating notification:', data.type, 'to user:', data.userId);
+
     // Don't send notification to yourself
-    if (user?.uid === data.userId) return;
+    if (user?.uid === data.userId) {
+        console.log('Skipping notification - sender is recipient.');
+        return;
+    }
 
     try {
-        await addDoc(collection(db, NOTIFICATIONS), {
-            ...data,
+        // Sanitize data to remove undefined values (Firestore rejects undefined)
+        const cleanData = Object.fromEntries(
+            Object.entries(data).filter(([_, v]) => v !== undefined)
+        );
+
+        console.log('[Notification] Attempting addDoc to collection:', NOTIFICATIONS);
+        const docRef = await addDoc(collection(db, NOTIFICATIONS), {
+            ...cleanData,
             actorId: user?.uid,
             actorName: user?.displayName || 'Someone',
             actorPhotoURL: user?.photoURL || '',
             read: false,
             createdAt: serverTimestamp()
         });
+        console.log('[Notification] Success! Document ID:', docRef.id);
     } catch (error) {
-        console.error('Failed to create notification:', error);
+        console.error('[Notification] ERROR:', error);
     }
 };
 
@@ -59,10 +70,10 @@ export const subscribeToNotifications = (
     userId: string,
     callback: (notifications: Notification[]) => void
 ) => {
+    // REMOVED orderBy to avoid requiring a composite index which breaks the app for new users
     const q = query(
         collection(db, NOTIFICATIONS),
-        where('userId', '==', userId),
-        orderBy('createdAt', 'desc')
+        where('userId', '==', userId)
     );
 
     return onSnapshot(q, (snapshot) => {
@@ -70,6 +81,14 @@ export const subscribeToNotifications = (
             id: doc.id,
             ...doc.data()
         })) as Notification[];
+
+        // Client-side sort (descending by createdAt)
+        notifications.sort((a, b) => {
+            const timeA = a.createdAt?.seconds ? a.createdAt.seconds : (a.createdAt ? new Date(a.createdAt).getTime() / 1000 : 0);
+            const timeB = b.createdAt?.seconds ? b.createdAt.seconds : (b.createdAt ? new Date(b.createdAt).getTime() / 1000 : 0);
+            return timeB - timeA;
+        });
+
         callback(notifications);
     }, (error) => {
         console.error('Error subscribing to notifications:', error);
@@ -274,6 +293,31 @@ export const notifySubtaskAssignment = async (
         message: `You've been assigned to subtask "${subtaskTitle}" in task "${taskTitle}"`,
         projectId,
         taskId,
+        tenantId
+    });
+};
+/**
+ * Helper to send mention notification
+ */
+export const notifyMention = async (
+    userId: string,
+    targetTitle: string,
+    targetType: 'task' | 'issue' | 'idea',
+    projectId: string,
+    targetId: string,
+    commentId: string,
+    tenantId?: string
+): Promise<void> => {
+    console.log('[notifyMention] Called with:', { userId, targetTitle, targetType, projectId, targetId, commentId, tenantId });
+    await createNotification({
+        userId,
+        type: 'comment_mention',
+        title: 'New Mention',
+        message: `You were mentioned in a comment on ${targetType} "${targetTitle}"`,
+        projectId,
+        taskId: targetType === 'task' ? targetId : undefined,
+        issueId: targetType === 'issue' ? targetId : undefined,
+        commentId,
         tenantId
     });
 };

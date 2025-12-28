@@ -4,6 +4,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { subscribeCampaigns, deleteCampaign } from '../../services/dataService';
 import { SocialCampaign } from '../../types';
 import { useConfirm, useToast } from '../../context/UIContext';
+import { format } from 'date-fns';
+import { dateLocale, dateFormat } from '../../utils/activityHelpers';
 
 export const CampaignList = () => {
     const { id: projectId } = useParams<{ id: string }>();
@@ -78,10 +80,10 @@ export const CampaignList = () => {
                     >
                         <div className="flex justify-between items-start mb-3">
                             <span className={`px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider ${c.status === 'Active' ? 'bg-green-100 text-green-700' :
-                                    c.status === 'Planning' ? 'bg-blue-100 text-blue-700' :
-                                        c.status === 'Completed' ? 'bg-purple-100 text-purple-700' :
-                                            c.status === 'Paused' ? 'bg-amber-100 text-amber-700' :
-                                                'bg-gray-100 text-gray-700'
+                                c.status === 'Planning' ? 'bg-blue-100 text-blue-700' :
+                                    c.status === 'Completed' ? 'bg-purple-100 text-purple-700' :
+                                        c.status === 'Paused' ? 'bg-amber-100 text-amber-700' :
+                                            'bg-gray-100 text-gray-700'
                                 }`}>
                                 {c.status}
                             </span>
@@ -107,7 +109,7 @@ export const CampaignList = () => {
                         <h3 className="h4 mb-1">{c.name}</h3>
                         <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] mb-4">
                             <span className="material-symbols-outlined text-base">calendar_today</span>
-                            <span>{c.startDate ? new Date(c.startDate).toLocaleDateString() : 'TBD'}</span>
+                            <span>{c.startDate ? format(new Date(c.startDate), dateFormat, { locale: dateLocale }) : 'TBD'}</span>
                         </div>
                         <div className="pt-4 border-t border-[var(--color-surface-border)] text-sm text-[var(--color-text-muted)]">
                             {c.toneOfVoice || "No tone defined"}

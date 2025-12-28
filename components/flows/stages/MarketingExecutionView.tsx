@@ -71,7 +71,7 @@ export const MarketingExecutionView: React.FC<MarketingExecutionViewProps> = ({ 
                     </div>
                     <h2 className="text-2xl font-bold text-[var(--color-text-main)] mb-2">Campaign is Live!</h2>
                     <p className="text-[var(--color-text-muted)] max-w-md mb-8">
-                        This idea is now being executed as a <strong>{idea.campaignType === 'email' ? 'Email Campaign' : 'Ad Campaign'}</strong> in the Marketing module.
+                        This flow is now being executed as a <strong>{idea.campaignType === 'email' ? 'Email Campaign' : 'Ad Campaign'}</strong> in the Marketing module.
                     </p>
 
                     <div className="flex gap-4">
