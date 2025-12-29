@@ -15,51 +15,63 @@
     "rewrites": [
       {
         "source": "/editImageWithVertexAI",
-        "function": "editImageWithVertexAI"
+        "function": "editImageWithVertexAI",
+        "region": "europe-west3"
       },
       {
         "source": "/generatePasskeyRegistrationOptions",
-        "function": "generatePasskeyRegistrationOptions"
+        "function": "generatePasskeyRegistrationOptions",
+        "region": "europe-west3"
       },
       {
         "source": "/verifyPasskeyRegistration",
-        "function": "verifyPasskeyRegistration"
+        "function": "verifyPasskeyRegistration",
+        "region": "europe-west3"
       },
       {
         "source": "/generatePasskeyAuthenticationOptions",
-        "function": "generatePasskeyAuthenticationOptions"
+        "function": "generatePasskeyAuthenticationOptions",
+        "region": "europe-west3"
       },
       {
         "source": "/verifyPasskeyAuthentication",
-        "function": "verifyPasskeyAuthentication"
+        "function": "verifyPasskeyAuthentication",
+        "region": "europe-west3"
       },
       {
         "source": "/testSMTPConnection",
-        "function": "testSMTPConnection"
+        "function": "testSMTPConnection",
+        "region": "europe-west3"
       },
       {
         "source": "/createBlogPost",
-        "function": "createBlogPost"
+        "function": "createBlogPost",
+        "region": "europe-west3"
       },
       {
         "source": "/newsletterSubscribe",
-        "function": "newsletterSubscribe"
+        "function": "newsletterSubscribe",
+        "region": "europe-west3"
       },
       {
         "source": "/newsletterUnsubscribe",
-        "function": "newsletterUnsubscribe"
+        "function": "newsletterUnsubscribe",
+        "region": "europe-west3"
       },
       {
         "source": "/getBlogPost",
-        "function": "getBlogPosts"
+        "function": "getBlogPosts",
+        "region": "europe-west3"
       },
       {
         "source": "/getBlogPosts",
-        "function": "getBlogPosts"
+        "function": "getBlogPosts",
+        "region": "europe-west3"
       },
       {
         "source": "/api/**",
-        "function": "api"
+        "function": "api",
+        "region": "europe-west3"
       },
       {
         "source": "**",
