@@ -25,28 +25,19 @@ try {
   auth = getAuth(app);
   db = getFirestore(app);
   storage = getStorage(app);
-  // Use the custom domain for functions
-  functions = getFunctions(app, 'app.getprojectflow.com');
+  functions = getFunctions(app, 'europe-west3');
 
   // Connect to emulators if running locally
   if (location.hostname === 'localhost') {
     connectFunctionsEmulator(functions, 'localhost', 5001);
-    // const { connectAuthEmulator } = require('firebase/auth'); 
-    // const { connectFirestoreEmulator } = require('firebase/firestore');
-
-    connectFunctionsEmulator(functions, 'localhost', 5001);
     console.log('Connected to Functions Emulator');
 
-    // Uncomment if you run auth/firestore emulators too:
-    // connectAuthEmulator(auth, 'http://localhost:9099');
-    // connectFirestoreEmulator(db, 'localhost', 8080);
+  } catch (error) {
+    console.error("Firebase initialization error:", error);
+    // Throw error so it is visible in console if app fails to load
+    throw error;
   }
-} catch (error) {
-  console.error("Firebase initialization error:", error);
-  // Throw error so it is visible in console if app fails to load
-  throw error;
-}
 
-import { GithubAuthProvider, FacebookAuthProvider } from "firebase/auth";
+  import { GithubAuthProvider, FacebookAuthProvider } from "firebase/auth";
 
-export { auth, db, storage, functions, GithubAuthProvider, FacebookAuthProvider };
+  export { auth, db, storage, functions, GithubAuthProvider, FacebookAuthProvider };

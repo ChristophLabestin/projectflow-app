@@ -1,7 +1,19 @@
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 import { functions } from './firebase';
-import { httpsCallable } from 'firebase/functions';
+import { httpsCallable, httpsCallableFromURL } from 'firebase/functions';
 import { PublicKeyCredentialCreationOptionsJSON, PublicKeyCredentialRequestOptionsJSON, RegistrationResponseJSON, AuthenticationResponseJSON } from '@simplewebauthn/browser';
+
+const isLocalhost = location.hostname === 'localhost';
+const FUNCTIONS_DOMAIN = 'https://app.getprojectflow.com';
+
+// Helper to get callable based on environment
+const getFunction = <RequestData = unknown, ResponseData = unknown>(name: string) => {
+    if (isLocalhost) {
+        return httpsCallable<RequestData, ResponseData>(functions, name);
+    } else {
+        return httpsCallableFromURL<RequestData, ResponseData>(functions, `${FUNCTIONS_DOMAIN}/${name}`);
+    }
+};
 
 /**
  * Register a new passkey for the current user.
@@ -9,7 +21,7 @@ import { PublicKeyCredentialCreationOptionsJSON, PublicKeyCredentialRequestOptio
 export const registerPasskey = async () => {
     try {
         // 1. Get options from server
-        const generateOptionsFn = httpsCallable<void, PublicKeyCredentialCreationOptionsJSON>(functions, 'generatePasskeyRegistrationOptions');
+        const generateOptionsFn = getFunction<void, PublicKeyCredentialCreationOptionsJSON>('generatePasskeyRegistrationOptions');
         const optionsResp = await generateOptionsFn();
         const options = optionsResp.data;
 
@@ -17,7 +29,7 @@ export const registerPasskey = async () => {
         const registrationResponse = await startRegistration({ optionsJSON: options });
 
         // 3. Send response to server for verification
-        const verifyFn = httpsCallable<{ response: RegistrationResponseJSON, navigatorDetails: any }, { success: boolean }>(functions, 'verifyPasskeyRegistration');
+        const verifyFn = getFunction<{ response: RegistrationResponseJSON, navigatorDetails: any }, { success: boolean }>('verifyPasskeyRegistration');
         const verificationResp = await verifyFn({
             response: registrationResponse,
             navigatorDetails: {
@@ -48,7 +60,7 @@ export const registerPasskey = async () => {
 export const loginWithPasskey = async (email?: string) => {
     try {
         // 1. Get options from server
-        const generateOptionsFn = httpsCallable<{ email?: string }, PublicKeyCredentialRequestOptionsJSON>(functions, 'generatePasskeyAuthenticationOptions');
+        const generateOptionsFn = getFunction<{ email?: string }, PublicKeyCredentialRequestOptionsJSON>('generatePasskeyAuthenticationOptions');
         const optionsResp = await generateOptionsFn({ email });
         const options = optionsResp.data;
 
@@ -56,7 +68,7 @@ export const loginWithPasskey = async (email?: string) => {
         const authenticationResponse = await startAuthentication({ optionsJSON: options });
 
         // 3. Send response to server for verification
-        const verifyFn = httpsCallable<{ response: AuthenticationResponseJSON, email?: string }, { success: boolean, token: string }>(functions, 'verifyPasskeyAuthentication');
+        const verifyFn = getFunction<{ response: AuthenticationResponseJSON, email?: string }, { success: boolean, token: string }>('verifyPasskeyAuthentication');
         const verificationResp = await verifyFn({
             response: authenticationResponse,
             email // Send email back just in case
