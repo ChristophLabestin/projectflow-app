@@ -7,6 +7,7 @@ import { Project, Task, Issue, Milestone, Activity } from '../types';
 import { subscribeProjectTasks, subscribeProjectIssues, subscribeProjectMilestones, subscribeProjectActivity } from '../services/dataService';
 import { calculateProjectHealth, ProjectHealth } from '../services/healthService';
 import { useLanguage } from '../context/LanguageContext';
+import { getHealthFactorText } from '../utils/healthLocalization';
 
 export const PinnedProjectPill = () => {
     const { pinnedProject, isLoading } = usePinnedProject();
@@ -192,14 +193,17 @@ export const PinnedProjectPill = () => {
                         {/* Health Factors */}
                         {health && health.factors.length > 0 && (
                             <div className="space-y-2 mt-4">
-                                {health.factors.slice(0, 2).map(factor => (
-                                    <div key={factor.id} className="flex gap-2 items-start bg-slate-50 dark:bg-white/5 p-2 rounded-lg">
-                                        <div className={`mt-0.5 size-1.5 rounded-full shrink-0 ${factor.type === 'positive' ? 'bg-emerald-500' : factor.type === 'negative' ? 'bg-rose-500' : 'bg-slate-400'}`} />
-                                        <p className="text-[10px] text-slate-600 dark:text-slate-300 leading-tight">
-                                            <span className="font-bold text-slate-900 dark:text-white">{factor.label}:</span> {factor.description}
-                                        </p>
-                                    </div>
-                                ))}
+                                {health.factors.slice(0, 2).map(factor => {
+                                    const { label, description } = getHealthFactorText(factor, t);
+                                    return (
+                                        <div key={factor.id} className="flex gap-2 items-start bg-slate-50 dark:bg-white/5 p-2 rounded-lg">
+                                            <div className={`mt-0.5 size-1.5 rounded-full shrink-0 ${factor.type === 'positive' ? 'bg-emerald-500' : factor.type === 'negative' ? 'bg-rose-500' : 'bg-slate-400'}`} />
+                                            <p className="text-[10px] text-slate-600 dark:text-slate-300 leading-tight">
+                                                <span className="font-bold text-slate-900 dark:text-white">{label}:</span> {description}
+                                            </p>
+                                        </div>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>

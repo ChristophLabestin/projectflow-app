@@ -29,8 +29,9 @@ const REGION = 'europe-west3'; // Frankfurt
 // firebase functions:config:set passkeys.rp_id="your-app.com" passkeys.origin="https://your-app.com"
 // Or use Google Cloud Run environment variables
 const RP_NAME = 'ProjectFlow';
-const RP_ID = process.env.RP_ID || 'localhost';
-const ORIGIN = process.env.ORIGIN || 'http://localhost:3000';
+const isEmulator = process.env.FUNCTIONS_EMULATOR === 'true';
+const RP_ID = process.env.RP_ID || (isEmulator ? 'localhost' : 'app.getprojectflow.com');
+const ORIGIN = process.env.ORIGIN || (isEmulator ? 'http://localhost:3000' : 'https://app.getprojectflow.com');
 
 /**
  * Generate Registration Options

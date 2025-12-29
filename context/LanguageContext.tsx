@@ -61,9 +61,15 @@ export function LanguageProvider({
 
                 // Sync Language
                 const profileLanguage = profile?.language as Language | undefined;
+                const storedLanguage = (localStorage.getItem(storageKey) as Language) || defaultLanguage;
+                const normalizedStoredLanguage = (storedLanguage === 'en' || storedLanguage === 'de') ? storedLanguage : defaultLanguage;
                 if (profileLanguage === 'en' || profileLanguage === 'de') {
                     setLanguageState(profileLanguage);
                     localStorage.setItem(storageKey, profileLanguage);
+                } else if (normalizedStoredLanguage) {
+                    updateUserData(user.uid, { language: normalizedStoredLanguage }).catch(err =>
+                        console.error('Failed to sync language to profile', err)
+                    );
                 }
 
                 // Sync Date Format
@@ -77,7 +83,7 @@ export function LanguageProvider({
             }
         });
         return () => unsubscribe();
-    }, [storageKey]);
+    }, [storageKey, defaultLanguage]);
 
     useEffect(() => {
         document.documentElement.lang = language;

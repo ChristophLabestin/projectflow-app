@@ -9,6 +9,9 @@ export interface HealthFactor {
     description: string;
     impact: number; // Positive or negative
     type: 'positive' | 'negative' | 'neutral';
+    labelKey?: string;
+    descriptionKey?: string;
+    meta?: Record<string, number | string>;
 }
 
 export interface ProjectHealth {
@@ -16,6 +19,7 @@ export interface ProjectHealth {
     status: HealthStatus;
     factors: HealthFactor[];
     recommendations: string[];
+    recommendationKeys?: string[];
     trend: 'improving' | 'declining' | 'stable';
     lastUpdated: number;
 }
@@ -33,8 +37,11 @@ export const calculateProjectHealth = (
 ): ProjectHealth => {
     let score = 70; // Start with a base neutral-positive score
     const factors: HealthFactor[] = [];
-    const recommendations: string[] = [];
+    const recommendationEntries: { key: string; text: string }[] = [];
     const now = Date.now();
+    const addRecommendation = (key: string, text: string) => {
+        recommendationEntries.push({ key, text });
+    };
 
     // 1. DEADLINE URGENCY
     if (project.dueDate) {
@@ -42,32 +49,46 @@ export const calculateProjectHealth = (
         const daysUntilDue = (dueTime - now) / DAY;
 
         if (daysUntilDue < 0) {
+            const overdueDays = Math.abs(Math.floor(daysUntilDue));
             const urgency = Math.min(40, Math.abs(Math.floor(daysUntilDue)) * 3);
             score -= (30 + urgency);
             factors.push({
                 id: 'deadline_overdue',
                 label: 'Deadline Overdue',
-                description: `The project passed its deadline ${Math.abs(Math.floor(daysUntilDue))} days ago.`,
+                labelKey: 'health.factors.deadline_overdue.label',
+                description: `The project passed its deadline ${overdueDays} days ago.`,
+                descriptionKey: 'health.factors.deadline_overdue.description',
+                meta: { days: overdueDays },
                 impact: -(30 + urgency),
                 type: 'negative'
             });
-            recommendations.push('Update project deadline or complete outstanding core milestones.');
+            addRecommendation(
+                'health.recommendations.updateDeadline',
+                'Update project deadline or complete outstanding core milestones.'
+            );
         } else if (daysUntilDue <= 3) {
             score -= 25;
             factors.push({
                 id: 'deadline_imminent',
                 label: 'Deadline Imminent',
+                labelKey: 'health.factors.deadline_imminent.label',
                 description: 'The project deadline is less than 3 days away.',
+                descriptionKey: 'health.factors.deadline_imminent.description',
                 impact: -25,
                 type: 'negative'
             });
-            recommendations.push('Prioritize remaining high-priority tasks to meet the deadline.');
+            addRecommendation(
+                'health.recommendations.prioritizeTasks',
+                'Prioritize remaining high-priority tasks to meet the deadline.'
+            );
         } else if (daysUntilDue <= 14) {
             score -= 5;
             factors.push({
                 id: 'deadline_approaching',
                 label: 'Deadline Approaching',
+                labelKey: 'health.factors.deadline_approaching.label',
                 description: 'The project is due within 2 weeks.',
+                descriptionKey: 'health.factors.deadline_approaching.description',
                 impact: -5,
                 type: 'neutral'
             });
@@ -78,10 +99,11 @@ export const calculateProjectHealth = (
     const totalTasks = tasks.length;
     const completedTasks = tasks.filter(t => t.isCompleted || t.status === 'Done').length;
     const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : project.progress || 0;
+    let recentCompletions = 0;
 
     if (totalTasks > 0) {
         // Momentum: Tasks completed in last 7 days
-        const recentCompletions = tasks.filter(t => {
+        recentCompletions = tasks.filter(t => {
             if (!(t.isCompleted || t.status === 'Done')) return false;
             const created = t.createdAt ? (typeof t.createdAt === 'object' && 'toMillis' in t.createdAt ? t.createdAt.toMillis() : toMillis(t.createdAt)) : 0;
             // Note: Ideally we'd have a 'completedAt' timestamp. Falling back to createdAt is suboptimal but works for new work.
@@ -93,7 +115,10 @@ export const calculateProjectHealth = (
             factors.push({
                 id: 'high_velocity',
                 label: 'High Velocity',
+                labelKey: 'health.factors.high_velocity.label',
                 description: `${recentCompletions} tasks completed in the last week. Great momentum!`,
+                descriptionKey: 'health.factors.high_velocity.description',
+                meta: { count: recentCompletions },
                 impact: 15,
                 type: 'positive'
             });
@@ -102,7 +127,9 @@ export const calculateProjectHealth = (
             factors.push({
                 id: 'steady_progress',
                 label: 'Steady Progress',
+                labelKey: 'health.factors.steady_progress.label',
                 description: 'Active progress is being made on project tasks.',
+                descriptionKey: 'health.factors.steady_progress.description',
                 impact: 5,
                 type: 'positive'
             });
@@ -111,11 +138,16 @@ export const calculateProjectHealth = (
             factors.push({
                 id: 'stalled_velocity',
                 label: 'Stalled Velocity',
+                labelKey: 'health.factors.stalled_velocity.label',
                 description: 'No tasks completed in the last 7 days.',
+                descriptionKey: 'health.factors.stalled_velocity.description',
                 impact: -10,
                 type: 'negative'
             });
-            recommendations.push('Consider breaking down large tasks to regain momentum.');
+            addRecommendation(
+                'health.recommendations.breakdownTasks',
+                'Consider breaking down large tasks to regain momentum.'
+            );
         }
 
         // Scope Creep: New tasks added in last 7 days vs completions
@@ -129,11 +161,16 @@ export const calculateProjectHealth = (
             factors.push({
                 id: 'scope_creep',
                 label: 'Scope Creep',
+                labelKey: 'health.factors.scope_creep.label',
                 description: 'Tasks are being added faster than they are being completed.',
+                descriptionKey: 'health.factors.scope_creep.description',
                 impact: -10,
                 type: 'negative'
             });
-            recommendations.push('Review project scope and prioritize essential features.');
+            addRecommendation(
+                'health.recommendations.reviewScope',
+                'Review project scope and prioritize essential features.'
+            );
         }
 
         // --- NEW: TASK-LEVEL DEADLINES ---
@@ -181,11 +218,17 @@ export const calculateProjectHealth = (
             factors.push({
                 id: 'tasks_overdue',
                 label: 'Overdue Tasks',
+                labelKey: 'health.factors.tasks_overdue.label',
                 description: `${overdueCount} tasks are past their deadline.`,
+                descriptionKey: 'health.factors.tasks_overdue.description',
+                meta: { count: overdueCount },
                 impact: -impact,
                 type: 'negative'
             });
-            recommendations.push('Complete or reschedule overdue tasks immediately.');
+            addRecommendation(
+                'health.recommendations.rescheduleOverdue',
+                'Complete or reschedule overdue tasks immediately.'
+            );
         } else if (dueSoonCount > 0) {
             // Cap the impact to ensure we land in "Warning" (30-49) and not "Critical" (<30)
             // Base 70 - 25 = 45 (Solid Orange)
@@ -194,7 +237,10 @@ export const calculateProjectHealth = (
             factors.push({
                 id: 'tasks_due_soon',
                 label: 'Tasks Due Soon',
+                labelKey: 'health.factors.tasks_due_soon.label',
                 description: `${dueSoonCount} tasks are due within 72 hours.`,
+                descriptionKey: 'health.factors.tasks_due_soon.description',
+                meta: { count: dueSoonCount },
                 impact: -impact,
                 type: 'negative'
             });
@@ -209,11 +255,17 @@ export const calculateProjectHealth = (
         factors.push({
             id: 'blocked_tasks',
             label: 'Task Blockers',
+            labelKey: 'health.factors.blocked_tasks.label',
             description: `${blockedTasks} task(s) are currently blocked.`,
+            descriptionKey: 'health.factors.blocked_tasks.description',
+            meta: { count: blockedTasks },
             impact: -impact,
             type: 'negative'
         });
-        recommendations.push('Resolve dependencies or clear blockers for the restricted tasks.');
+        addRecommendation(
+            'health.recommendations.resolveBlockers',
+            'Resolve dependencies or clear blockers for the restricted tasks.'
+        );
     }
 
     const urgentIssues = issues.filter(i => (i.priority === 'Urgent' || i.priority === 'High') && i.status !== 'Resolved' && i.status !== 'Closed').length;
@@ -223,11 +275,17 @@ export const calculateProjectHealth = (
         factors.push({
             id: 'unresolved_issues',
             label: 'Critical Issues',
+            labelKey: 'health.factors.unresolved_issues.label',
             description: `${urgentIssues} high-priority issue(s) remain unresolved.`,
+            descriptionKey: 'health.factors.unresolved_issues.description',
+            meta: { count: urgentIssues },
             impact: -impact,
             type: 'negative'
         });
-        recommendations.push('Address critical issues to stabilize project health.');
+        addRecommendation(
+            'health.recommendations.addressIssues',
+            'Address critical issues to stabilize project health.'
+        );
     }
 
     // 4. ENGAGEMENT & STALENESS
@@ -242,17 +300,25 @@ export const calculateProjectHealth = (
         factors.push({
             id: 'stale_project',
             label: 'Stale Project',
+            labelKey: 'health.factors.stale_project.label',
             description: `No activity recorded for over ${Math.floor(idleDays)} days.`,
+            descriptionKey: 'health.factors.stale_project.description',
+            meta: { days: Math.floor(idleDays) },
             impact: -25,
             type: 'negative'
         });
-        recommendations.push('Reactivate the project with a status update or team meeting.');
+        addRecommendation(
+            'health.recommendations.reactivateProject',
+            'Reactivate the project with a status update or team meeting.'
+        );
     } else if (idleDays > 7) {
         score -= 10;
         factors.push({
             id: 'inactive_recent',
             label: 'Recent Inactivity',
+            labelKey: 'health.factors.inactive_recent.label',
             description: 'No activity in the last 7 days.',
+            descriptionKey: 'health.factors.inactive_recent.description',
             impact: -10,
             type: 'neutral'
         });
@@ -261,7 +327,9 @@ export const calculateProjectHealth = (
         factors.push({
             id: 'active_engagement',
             label: 'Highly Engaged',
+            labelKey: 'health.factors.active_engagement.label',
             description: 'The project has seen recent activity and team engagement.',
+            descriptionKey: 'health.factors.active_engagement.description',
             impact: 2,
             type: 'positive'
         });
@@ -275,11 +343,17 @@ export const calculateProjectHealth = (
         factors.push({
             id: 'missed_milestones',
             label: 'Milestone Delays',
+            labelKey: 'health.factors.missed_milestones.label',
             description: `${missedMilestones} milestone(s) have been missed or are overdue.`,
+            descriptionKey: 'health.factors.missed_milestones.description',
+            meta: { count: missedMilestones },
             impact: -impact,
             type: 'negative'
         });
-        recommendations.push('Replan missed milestones to provide a realistic project timeline.');
+        addRecommendation(
+            'health.recommendations.replanMilestones',
+            'Replan missed milestones to provide a realistic project timeline.'
+        );
     }
 
     // Normalize score
@@ -328,11 +402,20 @@ export const calculateProjectHealth = (
         return Math.abs(b.impact) - Math.abs(a.impact);
     });
 
+    const uniqueRecommendations: { key: string; text: string }[] = [];
+    const seenRecommendations = new Set<string>();
+    recommendationEntries.forEach(recommendation => {
+        if (seenRecommendations.has(recommendation.key)) return;
+        seenRecommendations.add(recommendation.key);
+        uniqueRecommendations.push(recommendation);
+    });
+
     return {
         score,
         status,
         factors,
-        recommendations: [...new Set(recommendations)], // Unique recommendations
+        recommendations: uniqueRecommendations.map(recommendation => recommendation.text),
+        recommendationKeys: uniqueRecommendations.map(recommendation => recommendation.key),
         trend,
         lastUpdated: now
     };
@@ -341,6 +424,8 @@ export const calculateProjectHealth = (
 export interface SpotlightScore {
     score: number;
     reason: string;
+    reasonKey?: string;
+    reasonMeta?: Record<string, number | string>;
 }
 
 export const calculateSpotlightScore = (
@@ -350,9 +435,12 @@ export const calculateSpotlightScore = (
     issues: Issue[] = []
 ): SpotlightScore => {
     let score = 0;
-    let reasons: string[] = [];
+    const reasons: { key: string; text: string; meta?: Record<string, number | string> }[] = [];
     const now = Date.now();
     const DAY = 24 * 60 * 60 * 1000;
+    const addReason = (key: string, text: string, meta?: Record<string, number | string>) => {
+        reasons.push({ key, text, meta });
+    };
 
     // 1. Project Deadline Urgency
     if (project.dueDate) {
@@ -361,13 +449,13 @@ export const calculateSpotlightScore = (
 
         if (daysUntilDue < 0) {
             score += 100; // Immediate top priority
-            reasons.push('Project is overdue');
+            addReason('health.spotlight.projectOverdue', 'Project is overdue');
         } else if (daysUntilDue <= 3) {
             score += 40;
-            reasons.push('Due in < 3 days');
+            addReason('health.spotlight.projectDueSoon', 'Due in < 3 days');
         } else if (daysUntilDue <= 7) {
             score += 20;
-            reasons.push('Due this week');
+            addReason('health.spotlight.projectDueThisWeek', 'Due this week');
         }
     }
 
@@ -431,10 +519,20 @@ export const calculateSpotlightScore = (
     });
 
     if (overduecritical > 0) {
-        reasons.push(`${overduecritical} critical overdue tasks`);
+        addReason(
+            'health.spotlight.criticalOverdueTasks',
+            `${overduecritical} critical overdue tasks`,
+            { count: overduecritical }
+        );
     }
     if (blockedCount > 0) {
-        if (reasons.length === 0) reasons.push(`${blockedCount} blocked tasks`);
+        if (reasons.length === 0) {
+            addReason(
+                'health.spotlight.blockedTasks',
+                `${blockedCount} blocked tasks`,
+                { count: blockedCount }
+            );
+        }
     }
 
     // 4. Milestone Urgency
@@ -457,14 +555,31 @@ export const calculateSpotlightScore = (
         }
     });
 
-    if (overdueMilestones > 0) reasons.push(`${overdueMilestones} overdue milestones`);
-    else if (imminentMilestones > 0) reasons.push(`${imminentMilestones} milestones due soon`);
+    if (overdueMilestones > 0) {
+        addReason(
+            'health.spotlight.overdueMilestones',
+            `${overdueMilestones} overdue milestones`,
+            { count: overdueMilestones }
+        );
+    } else if (imminentMilestones > 0) {
+        addReason(
+            'health.spotlight.milestonesDueSoon',
+            `${imminentMilestones} milestones due soon`,
+            { count: imminentMilestones }
+        );
+    }
 
     // 5. Issue Pressure
     const urgentIssues = issues.filter(i => (i.priority === 'Urgent' || i.priority === 'High') && i.status !== 'Resolved' && i.status !== 'Closed').length;
     if (urgentIssues > 0) {
         score += (urgentIssues * 20);
-        if (reasons.length === 0) reasons.push(`${urgentIssues} urgent issues`);
+        if (reasons.length === 0) {
+            addReason(
+                'health.spotlight.urgentIssues',
+                `${urgentIssues} urgent issues`,
+                { count: urgentIssues }
+            );
+        }
     }
 
     // 6. Status Weight (Active projects > Planning)
@@ -474,9 +589,13 @@ export const calculateSpotlightScore = (
         score -= 1000; // strong penalty (filter out unless they have massive urgency)
     }
 
+    const primaryReason = reasons[0] || { key: 'health.spotlight.generalUpdate', text: 'General Update' };
+
     return {
         score,
-        reason: reasons[0] || 'General Update'
+        reason: primaryReason.text,
+        reasonKey: primaryReason.key,
+        reasonMeta: primaryReason.meta
     };
 };
 

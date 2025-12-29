@@ -1,0 +1,92 @@
+/* Prosemirror / Tiptap specific styles for the editor content */
+.ProseMirror {
+    outline: none;
+    min-height: 100%;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    color: var(--color-text-muted);
+    pointer-events: none;
+    height: 0;
+}
+
+.ProseMirror h1 {
+    font-size: 2em;
+    font-weight: bold;
+    line-height: 1.25;
+    margin-bottom: 0.5em;
+}
+
+.ProseMirror h2 {
+    font-size: 1.5em;
+    font-weight: bold;
+    line-height: 1.35;
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+}
+
+.ProseMirror h3 {
+    font-size: 1.25em;
+    font-weight: bold;
+    line-height: 1.4;
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+    padding-left: 1.5em;
+    margin: 1em 0;
+}
+
+.ProseMirror ul {
+    list-style-type: disc;
+}
+
+.ProseMirror ol {
+    list-style-type: decimal;
+}
+
+.ProseMirror blockquote {
+    border-left: 3px solid var(--color-primary);
+    padding-left: 1em;
+    margin: 1em 0;
+    font-style: italic;
+    color: var(--color-text-muted);
+}
+
+.ProseMirror img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+    margin: 1em 0;
+}
+
+.ProseMirror hr {
+    margin: 2em 0;
+    border: none;
+    border-top: 1px solid var(--color-surface-border);
+}
+
+.ProseMirror pre {
+    background: #0d0d0d;
+    color: #fff;
+    font-family: 'JetBrainsMono', monospace;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+
+    code {
+        color: inherit;
+        padding: 0;
+        background: none;
+        font-size: 0.8rem;
+    }
+}
+
+.ProseMirror a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    cursor: pointer;
+}

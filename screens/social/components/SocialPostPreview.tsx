@@ -1,5 +1,6 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 import { SocialPlatform, SocialPostFormat, SocialAsset } from '../../../types';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface SocialPostPreviewProps {
     platform: SocialPlatform;
@@ -38,16 +39,15 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
     videoDurations,
     setVideoDurations
 }) => {
+    const { t } = useLanguage();
     // Shared Elements
     const mediaUrl = (isYouTube && thumbnailUrl) ? thumbnailUrl : (assets.length > 0 ? (assets[activeCarouselIndex]?.url || assets[0].url) : null);
     const currentAsset = assets[activeCarouselIndex] || assets[0];
-    const mockUser = { name: 'Christopher Labestin', handle: '@chrislab', avatar: 'CL', headline: 'Product Designer at ProjectFlow' };
+    const mockUser = { name: 'Christopher Labestin', handle: '@chrislab', avatar: 'CL', headline: t('social.preview.linkedin.headline') };
 
     const PlatformIcon = ({ name, className = "" }: { name: string, className?: string }) => (
         <span className={`material-symbols-outlined ${className}`}>{name}</span>
     );
-
-    const videoRef = useRef<HTMLVideoElement>(null);
 
     // Sync playback state with video elements
     useEffect(() => {
@@ -65,7 +65,6 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
 
     // --- 1. INSTAGRAM FEED ---
     if (platform === 'Instagram' && format !== 'Story' && format !== 'Reel') {
-        const isDark = document.documentElement.classList.contains('dark');
         const instagramAssets = assets.length > 0 ? assets : [];
         const currentAsset = instagramAssets[activeCarouselIndex] || instagramAssets[0];
 
@@ -81,7 +80,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                         </div>
                         <div className="flex flex-col">
                             <span className="text-sm font-bold leading-none">projectflow.app</span>
-                            <span className="text-[11px] text-gray-500 dark:text-gray-400">Sponsored</span>
+                            <span className="text-[11px] text-gray-500 dark:text-gray-400">{t('social.preview.instagram.sponsored')}</span>
                         </div>
                     </div>
                     <PlatformIcon name="more_horiz" className="text-gray-900 dark:text-gray-100" />
@@ -142,17 +141,21 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                         </div>
                         <PlatformIcon name="bookmark" className="text-2xl hover:text-gray-500 cursor-pointer" />
                     </div>
-                    <div className="font-bold text-sm mb-1">12,492 likes</div>
+                    <div className="font-bold text-sm mb-1">{t('social.preview.instagram.likes').replace('{count}', '12,492')}</div>
 
                     {/* Caption */}
                     <div className="text-sm mb-1 leading-relaxed">
                         <span className="font-bold mr-2">projectflow.app</span>
-                        {caption || <span className="text-gray-400 italic">Write a caption...</span>}
+                        {caption || <span className="text-gray-400 italic">{t('social.preview.instagram.captionPlaceholder')}</span>}
                     </div>
                     {hashtags && <div className="text-sm text-blue-900 dark:text-blue-400 mb-1">{hashtags}</div>}
 
-                    <div className="text-gray-500 dark:text-gray-400 text-sm cursor-pointer mb-1">View all 124 comments</div>
-                    <div className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-tight mb-3">2 hours ago</div>
+                    <div className="text-gray-500 dark:text-gray-400 text-sm cursor-pointer mb-1">
+                        {t('social.preview.instagram.viewComments').replace('{count}', '124')}
+                    </div>
+                    <div className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-tight mb-3">
+                        {t('social.preview.instagram.timeAgo')}
+                    </div>
                 </div>
             </div>
         );
@@ -185,7 +188,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
 
                 {/* Text Content */}
                 <div className="px-3 pb-4 text-sm whitespace-pre-wrap leading-relaxed">
-                    {caption || <span className="text-gray-400 italic">What do you want to talk about?</span>}
+                    {caption || <span className="text-gray-400 italic">{t('social.preview.linkedin.prompt')}</span>}
                     {hashtags && <div className="text-[#0A66C2] font-semibold mt-2">{hashtags}</div>}
                 </div>
 
@@ -199,16 +202,18 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                         </div>
                         <span className="hover:text-[#0A66C2] hover:underline cursor-pointer">128</span>
                     </div>
-                    <div className="hover:text-[#0A66C2] hover:underline cursor-pointer">32 comments • 5 reposts</div>
+                    <div className="hover:text-[#0A66C2] hover:underline cursor-pointer">
+                        {t('social.preview.linkedin.commentsReposts').replace('{comments}', '32').replace('{reposts}', '5')}
+                    </div>
                 </div>
 
                 {/* Footer Actions */}
                 <div className="px-1 py-1 flex justify-between border-t border-gray-200 dark:border-gray-700">
                     {[
-                        { icon: 'thumb_up', label: 'Like' },
-                        { icon: 'chat', label: 'Comment' },
-                        { icon: 'repeat', label: 'Repost' },
-                        { icon: 'send', label: 'Send' }
+                        { icon: 'thumb_up', label: t('social.preview.linkedin.actions.like') },
+                        { icon: 'chat', label: t('social.preview.linkedin.actions.comment') },
+                        { icon: 'repeat', label: t('social.preview.linkedin.actions.repost') },
+                        { icon: 'send', label: t('social.preview.linkedin.actions.send') }
                     ].map(btn => (
                         <button key={btn.label} className="flex items-center gap-1.5 px-3 py-3 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-400 transition-colors flex-1 justify-center">
                             <PlatformIcon name={btn.icon} className={`text-[20px] ${btn.icon === 'thumb_up' ? '-scale-x-100' : ''}`} />
@@ -247,7 +252,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
 
                 {/* Text Content (Above Media) */}
                 <div className="px-3 pb-2 text-sm whitespace-pre-wrap">
-                    {caption || <span className="text-gray-400 italic">What do you want to talk about?</span>}
+                    {caption || <span className="text-gray-400 italic">{t('social.preview.linkedin.prompt')}</span>}
                     {hashtags && <span className="text-[#0A66C2] font-bold ml-1">{hashtags}</span>}
                 </div>
 
@@ -288,16 +293,18 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                         </div>
                         <span className="hover:text-[#0A66C2] hover:underline cursor-pointer">128</span>
                     </div>
-                    <div className="hover:text-[#0A66C2] hover:underline cursor-pointer">32 comments • 5 reposts</div>
+                    <div className="hover:text-[#0A66C2] hover:underline cursor-pointer">
+                        {t('social.preview.linkedin.commentsReposts').replace('{comments}', '32').replace('{reposts}', '5')}
+                    </div>
                 </div>
 
                 {/* Footer Actions */}
                 <div className="px-1 py-1 flex justify-between">
                     {[
-                        { icon: 'thumb_up', label: 'Like' },
-                        { icon: 'chat', label: 'Comment' },
-                        { icon: 'repeat', label: 'Repost' },
-                        { icon: 'send', label: 'Send' }
+                        { icon: 'thumb_up', label: t('social.preview.linkedin.actions.like') },
+                        { icon: 'chat', label: t('social.preview.linkedin.actions.comment') },
+                        { icon: 'repeat', label: t('social.preview.linkedin.actions.repost') },
+                        { icon: 'send', label: t('social.preview.linkedin.actions.send') }
                     ].map(btn => (
                         <button key={btn.label} className="flex items-center gap-1.5 px-3 py-3 rounded hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-400 transition-colors flex-1 justify-center">
                             <PlatformIcon name={btn.icon} className={`text-[20px] ${btn.icon === 'thumb_up' ? '-scale-x-100' : ''}`} />
@@ -330,7 +337,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
 
                         {/* Content */}
                         <div className="mt-2 text-[15px] whitespace-pre-wrap text-white/90 leading-relaxed">
-                            {caption || <span className="text-gray-600">What is happening?!</span>}
+                            {caption || <span className="text-gray-600">{t('social.preview.x.prompt')}</span>}
                             {hashtags && <div className="text-blue-400 mt-2">{hashtags}</div>}
                         </div>
 
@@ -383,7 +390,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
 
                         {/* Content */}
                         <div className="mt-1 text-[15px] whitespace-pre-wrap text-white/90 mb-3">
-                            {caption || <span className="text-gray-600">What is happening?!</span>}
+                            {caption || <span className="text-gray-600">{t('social.preview.x.prompt')}</span>}
                             {hashtags && <div className="text-blue-400 mt-1">{hashtags}</div>}
                         </div>
 
@@ -465,11 +472,11 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                     <PlatformIcon name="add" className="text-2xl" />
                     <div className="flex items-center gap-4 text-sm font-bold">
                         <div className="flex items-center gap-1">
-                            <span>For you</span>
+                            <span>{t('social.preview.common.forYou')}</span>
                             <PlatformIcon name="expand_more" className="text-lg" />
                         </div>
                         <div className="flex items-center gap-2 opacity-60">
-                            <span>Friends</span>
+                            <span>{t('social.preview.common.friends')}</span>
                             <div className="flex -space-x-1.5 align-middle">
                                 <div className="w-4 h-4 rounded-full border border-white overflow-hidden bg-gray-500">
                                     <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix" className="w-full h-full" />
@@ -524,7 +531,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                             <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=Lufthansa`} className="w-full h-full" />
                         </div>
                         <span className="font-bold text-[13px] drop-shadow-md">lufthansa and lufthansaviews</span>
-                        <button className="px-3 py-1 rounded-lg border border-white text-[11px] font-bold bg-transparent">Follow</button>
+                        <button className="px-3 py-1 rounded-lg border border-white text-[11px] font-bold bg-transparent">{t('social.preview.facebook.follow')}</button>
                     </div>
 
                     <div className="text-[13px] mb-3 drop-shadow-md leading-relaxed">
@@ -532,10 +539,12 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                         {caption ? (
                             <span>
                                 {caption.length > 60 ? caption.substring(0, 60) + '...' : caption}
-                                <span className="text-white/70 font-bold ml-1">more</span>
+                                <span className="text-white/70 font-bold ml-1">{t('social.preview.common.more')}</span>
                             </span>
                         ) : (
-                            <span>2026 marks 100 years of Lufthansa, and we're ... <span className="text-white/70 font-bold ml-1">more</span></span>
+                            <span>
+                                {t('social.preview.facebook.captionFallback')} <span className="text-white/70 font-bold ml-1">{t('social.preview.common.more')}</span>
+                            </span>
                         )}
                     </div>
 
@@ -666,8 +675,8 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                         </div>
                     ) : (
                         <div className="flex justify-between items-center text-white/80 font-bold px-1">
-                            <span>Following</span>
-                            <span className="text-white border-b-2 border-white pb-0.5">For You</span>
+                            <span>{t('social.preview.facebook.following')}</span>
+                            <span className="text-white border-b-2 border-white pb-0.5">{t('social.preview.tiktok.forYou')}</span>
                             <PlatformIcon name="search" className="text-2xl" />
                         </div>
                     )}
@@ -733,12 +742,14 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                     <div className="absolute bottom-0 left-0 w-full p-4 z-20 bg-gradient-to-t from-black/80 to-transparent pb-6">
                         <div className="font-bold text-shadow mb-2">@{mockUser.handle.replace('@', '')}</div>
                         <div className="text-sm text-shadow line-clamp-2 mb-2">
-                            {caption || "Check out this new update! 🔥 #ProjectFlow #Productivity"}
+                            {caption || t('social.preview.tiktok.captionFallback')}
                         </div>
                         {hashtags && <div className="text-sm font-bold text-shadow mb-2">{hashtags}</div>}
                         <div className="flex items-center gap-2 text-sm overflow-hidden">
                             <PlatformIcon name="music_note" className="text-sm" />
-                            <div className="animate-marquee whitespace-nowrap">Original Sound - {mockUser.name} • Original Sound - {mockUser.name}</div>
+                            <div className="animate-marquee whitespace-nowrap">
+                                {t('social.preview.tiktok.originalSound').replace('{name}', mockUser.name)}
+                            </div>
                         </div>
                     </div>
                 )}
@@ -746,7 +757,11 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                 {/* Send Message (Story only) */}
                 {isStory && (
                     <div className="absolute bottom-0 w-full p-4 flex gap-2 items-center z-20">
-                        <input type="text" placeholder="Send message" className="flex-1 bg-transparent border border-white/40 rounded-full px-4 py-2 text-sm text-white placeholder-white/70 outline-none" />
+                        <input
+                            type="text"
+                            placeholder={t('social.preview.tiktok.messagePlaceholder')}
+                            className="flex-1 bg-transparent border border-white/40 rounded-full px-4 py-2 text-sm text-white placeholder-white/70 outline-none"
+                        />
                         <PlatformIcon name="favorite_border" className="text-2xl" />
                         <PlatformIcon name="send" className="text-2xl -rotate-45 mb-1" />
                     </div>
@@ -796,7 +811,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                 <div className="absolute top-0 left-0 right-0 p-5 pt-8 z-20 flex items-center justify-between text-white">
                     <PlatformIcon name="close" className="text-2xl" />
                     <div className="flex items-center gap-1 font-semibold text-base">
-                        <span>Reels</span>
+                        <span>{t('social.preview.common.reels')}</span>
                         <PlatformIcon name="expand_more" className="text-xl" />
                     </div>
                     <div className="flex items-center gap-3">
@@ -832,7 +847,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                         <span className="font-semibold text-[14px] drop-shadow-md">{mockUser.name}</span>
                         <span className="material-symbols-outlined text-[#0866FF] text-[14px] filled">verified</span>
                         <PlatformIcon name="public" className="text-[14px] opacity-70" />
-                        <button className="px-3 py-1 rounded-md bg-white/20 backdrop-blur-sm text-[12px] font-semibold">Follow</button>
+                        <button className="px-3 py-1 rounded-md bg-white/20 backdrop-blur-sm text-[12px] font-semibold">{t('social.preview.facebook.follow')}</button>
                     </div>
 
                     <div className="flex items-start gap-2">
@@ -840,12 +855,12 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                             {caption ? (
                                 <>
                                     {caption.length > 35 ? caption.substring(0, 35) + '...' : caption}
-                                    <span className="text-white/70 ml-1">more</span>
+                                    <span className="text-white/70 ml-1">{t('social.preview.common.more')}</span>
                                 </>
                             ) : (
                                 <>
-                                    A terrifying home security video capture...
-                                    <span className="text-white/70 ml-1">more</span>
+                                    {t('social.preview.facebook.captionFallback')}
+                                    <span className="text-white/70 ml-1">{t('social.preview.common.more')}</span>
                                 </>
                             )}
                         </div>
@@ -856,10 +871,10 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                 {/* Bottom Comment Bar */}
                 <div className="absolute bottom-0 left-0 right-0 px-4 py-4 z-40 flex items-center gap-3 bg-black/80 backdrop-blur-sm">
                     <div className="flex-1 bg-white/10 rounded-full px-4 py-2 text-[14px] text-white/60">
-                        Add a comment
+                        {t('social.preview.common.addComment')}
                     </div>
                     <PlatformIcon name="sentiment_satisfied" className="text-2xl text-white/80" />
-                    <span className="text-[14px] font-bold text-white/80 px-2 py-1 rounded border border-white/30">GIF</span>
+                    <span className="text-[14px] font-bold text-white/80 px-2 py-1 rounded border border-white/30">{t('social.preview.common.gif')}</span>
                 </div>
 
                 {/* Pause Overlay Indicator */}
@@ -888,7 +903,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                             <span className="font-semibold text-[15px] hover:underline cursor-pointer">{mockUser.name}</span>
                             <span className="material-symbols-outlined text-[#0866FF] text-[16px] filled">verified</span>
                             <span className="text-gray-400 dark:text-[#B0B3B8] text-[15px]">·</span>
-                            <span className="text-[#0866FF] font-semibold text-[15px] hover:underline cursor-pointer">Follow</span>
+                            <span className="text-[#0866FF] font-semibold text-[15px] hover:underline cursor-pointer">{t('social.preview.facebook.follow')}</span>
                         </div>
                         <div className="text-[13px] text-gray-500 dark:text-[#B0B3B8] flex items-center gap-1 mt-0.5">
                             <span>Dec 13</span>
@@ -904,7 +919,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
 
                 {/* Text Content */}
                 <div className="px-3 pb-4 text-[15px] leading-relaxed whitespace-pre-wrap">
-                    {caption || <span className="text-[var(--color-text-muted)]">What's on your mind?</span>}
+                    {caption || <span className="text-[var(--color-text-muted)]">{t('social.preview.facebook.prompt')}</span>}
                     {hashtags && <div className="text-[#0866FF] mt-2">{hashtags}</div>}
                 </div>
 
@@ -960,7 +975,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                             <span className="font-semibold text-[15px] hover:underline cursor-pointer">{mockUser.name}</span>
                             <span className="material-symbols-outlined text-[#0866FF] text-[16px] filled">verified</span>
                             <span className="text-gray-400 dark:text-[#B0B3B8] text-[15px]">·</span>
-                            <span className="text-[#0866FF] font-semibold text-[15px] hover:underline cursor-pointer">Follow</span>
+                            <span className="text-[#0866FF] font-semibold text-[15px] hover:underline cursor-pointer">{t('social.preview.facebook.follow')}</span>
                         </div>
                         <div className="text-[13px] text-gray-500 dark:text-[#B0B3B8] flex items-center gap-1 mt-0.5">
                             <span>Dec 13</span>
@@ -980,13 +995,13 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                         <span>
                             {caption.length > 90 ? (
                                 <>
-                                    {caption.substring(0, 90)}... <span className="text-gray-500 dark:text-[#B0B3B8] cursor-pointer hover:underline">See more</span>
+                                    {caption.substring(0, 90)}... <span className="text-gray-500 dark:text-[#B0B3B8] cursor-pointer hover:underline">{t('social.preview.facebook.seeMore')}</span>
                                 </>
                             ) : caption}
                         </span>
                     ) : (
                         <span className="text-[var(--color-text-muted)]">
-                            Write an engaging caption... <span className="text-gray-500 dark:text-[#B0B3B8] cursor-pointer hover:underline">See more</span>
+                            {t('social.preview.facebook.captionPlaceholder')} <span className="text-gray-500 dark:text-[#B0B3B8] cursor-pointer hover:underline">{t('social.preview.facebook.seeMore')}</span>
                         </span>
                     )}
                 </div>
@@ -1073,12 +1088,12 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                     <div className="w-9 h-9 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-sm shrink-0">CL</div>
                     <div className="flex-1">
                         <h3 className="text-[var(--color-text-main)] font-semibold leading-tight line-clamp-2 mb-1">
-                            {videoTitle || "How to master Project Management in 2024 (Full Guide)"}
+                            {videoTitle || t('social.preview.youtube.titleFallback')}
                         </h3>
                         <div className="text-sm text-[var(--color-text-muted)] flex flex-wrap items-center gap-1">
                             <span>{mockUser.name}</span>
                             <PlatformIcon name="check_circle" className="text-[12px] text-gray-500" />
-                            <span>• 12K views • 4 hours ago</span>
+                            <span>{t('social.preview.youtube.stats').replace('{views}', '12K').replace('{time}', t('social.preview.youtube.timeAgo'))}</span>
                         </div>
                     </div>
                     <PlatformIcon name="more_vert" className="text-[var(--color-text-main)]" />
@@ -1089,7 +1104,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
 
     return (
         <div className="w-full h-full flex items-center justify-center text-[var(--color-text-muted)] italic">
-            Select a platform to see preview
+            {t('social.preview.empty')}
         </div>
     );
 };

@@ -16,7 +16,10 @@ import { calculateProjectHealth, calculateWorkspaceHealth, ProjectHealth } from 
 import { WorkspaceHealthCard } from '../components/dashboard/WorkspaceHealthCard';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { OnboardingWelcomeModal } from '../components/onboarding/OnboardingWelcomeModal';
+import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
 import { useLanguage } from '../context/LanguageContext';
+import { checkPasskeyExists } from '../services/passkeyService';
+import { PasskeySetupModal } from '../components/modals/PasskeySetupModal';
 
 
 const formatShortDate = (date: any, dateFormat: string, dateLocale: any) => {
@@ -25,7 +28,7 @@ const formatShortDate = (date: any, dateFormat: string, dateLocale: any) => {
     return format(d, dateFormat, { locale: dateLocale });
 };
 
-const DASHBOARD_ONBOARDING_KEY = 'onboarding_dashboard_v1';
+
 
 const MemberAvatars: React.FC<{ projectId: string }> = ({ projectId }) => {
     const { t } = useLanguage();
@@ -99,9 +102,140 @@ export const Dashboard = () => {
     const [loading, setLoading] = useState(true);
     const [hoverTrendIndex, setHoverTrendIndex] = useState<number | null>(null);
     const trendRef = useRef<SVGSVGElement | null>(null);
-    const [showOnboardingWelcome, setShowOnboardingWelcome] = useState(false);
-    const [onboardingActive, setOnboardingActive] = useState(false);
-    const [onboardingStepIndex, setOnboardingStepIndex] = useState(0);
+
+    const hasIssuesModule = useMemo(() => projects.some(p => p.modules?.includes('issues')), [projects]);
+    const hasMilestonesModule = useMemo(() => projects.some(p => p.modules?.includes('milestones')), [projects]);
+
+    const onboardingSteps = useMemo<OnboardingStep[]>(() => {
+        const steps: OnboardingStep[] = [
+            {
+                id: 'header',
+                targetId: 'dashboard-header',
+                title: t('onboarding.dashboard.steps.header.title'),
+                description: t('onboarding.dashboard.steps.header.description')
+            },
+            {
+                id: 'kpis',
+                targetId: 'dashboard-kpis',
+                title: t('onboarding.dashboard.steps.kpis.title'),
+                description: t('onboarding.dashboard.steps.kpis.description')
+            },
+            {
+                id: 'trends',
+                targetId: 'dashboard-trends',
+                title: t('onboarding.dashboard.steps.trends.title'),
+                description: t('onboarding.dashboard.steps.trends.description'),
+                placement: 'top'
+            },
+            {
+                id: 'health',
+                targetId: 'dashboard-health',
+                title: t('onboarding.dashboard.steps.health.title'),
+                description: t('onboarding.dashboard.steps.health.description'),
+                placement: 'top'
+            },
+            {
+                id: 'status',
+                targetId: 'dashboard-status',
+                title: t('onboarding.dashboard.steps.status.title'),
+                description: t('onboarding.dashboard.steps.status.description'),
+                placement: 'left'
+            },
+            {
+                id: 'workload',
+                targetId: 'dashboard-workload',
+                title: t('onboarding.dashboard.steps.workload.title'),
+                description: t('onboarding.dashboard.steps.workload.description'),
+                placement: 'top'
+            },
+            {
+                id: 'deadlines',
+                targetId: 'dashboard-deadlines',
+                title: t('onboarding.dashboard.steps.deadlines.title'),
+                description: t('onboarding.dashboard.steps.deadlines.description'),
+                placement: 'top'
+            },
+            {
+                id: 'projects',
+                targetId: 'dashboard-active-projects',
+                title: t('onboarding.dashboard.steps.projects.title'),
+                description: t('onboarding.dashboard.steps.projects.description')
+            },
+            {
+                id: 'calendar',
+                targetId: 'dashboard-calendar',
+                title: t('onboarding.dashboard.steps.calendar.title'),
+                description: t('onboarding.dashboard.steps.calendar.description'),
+                placement: 'left'
+            },
+            {
+                id: 'scheduled',
+                targetId: 'dashboard-scheduled',
+                title: t('onboarding.dashboard.steps.scheduled.title'),
+                description: t('onboarding.dashboard.steps.scheduled.description'),
+                placement: 'left'
+            }
+        ];
+
+        if (hasMilestonesModule) {
+            steps.push({
+                id: 'milestones',
+                targetId: 'dashboard-milestones',
+                title: t('onboarding.dashboard.steps.milestones.title'),
+                description: t('onboarding.dashboard.steps.milestones.description'),
+                placement: 'left'
+            });
+        }
+
+        steps.push(
+            {
+                id: 'activity',
+                targetId: 'dashboard-live-activity',
+                title: t('onboarding.dashboard.steps.activity.title'),
+                description: t('onboarding.dashboard.steps.activity.description'),
+                placement: 'left'
+            },
+            {
+                id: 'attention',
+                targetId: 'dashboard-attention',
+                title: t('onboarding.dashboard.steps.attention.title'),
+                description: t('onboarding.dashboard.steps.attention.description'),
+                placement: 'left'
+            },
+            {
+                id: 'recent',
+                targetId: 'dashboard-recent-tasks',
+                title: t('onboarding.dashboard.steps.recent.title'),
+                description: t('onboarding.dashboard.steps.recent.description'),
+                placement: 'left'
+            }
+        );
+
+        if (hasIssuesModule && issues.length > 0) {
+            steps.push({
+                id: 'issues',
+                targetId: 'dashboard-recent-issues',
+                title: t('onboarding.dashboard.steps.issues.title'),
+                description: t('onboarding.dashboard.steps.issues.description'),
+                placement: 'left'
+            });
+        }
+
+        return steps;
+    }, [hasIssuesModule, hasMilestonesModule, issues.length, t]);
+
+    const {
+        showWelcome: showOnboardingWelcome,
+        onboardingActive,
+        stepIndex: onboardingStepIndex,
+        setStepIndex: setOnboardingStepIndex,
+        start: handleStartOnboarding,
+        skip: handleSkipOnboarding,
+        finish: handleFinishOnboarding
+    } = useOnboardingTour('dashboard', {
+        stepCount: onboardingSteps.length,
+        enabled: !loading // Only init tour when data is loaded
+    });
 
     // Quick Add State
     const [quickIdeaText, setQuickIdeaText] = useState('');
@@ -178,15 +312,6 @@ export const Dashboard = () => {
                             setCalendarView(view);
                             localStorage.setItem('dashboard_calendar_view', view);
                         }
-                        const onboardingState = profile?.preferences?.onboarding?.dashboard;
-                        const onboardingDone = onboardingState?.status === 'completed' ||
-                            onboardingState?.status === 'skipped' ||
-                            onboardingState?.completed === true ||
-                            onboardingState === true;
-                        const localOnboarding = localStorage.getItem(DASHBOARD_ONBOARDING_KEY);
-                        if (!onboardingDone && !localOnboarding) {
-                            setShowOnboardingWelcome(true);
-                        }
                     }
                     setStats({
                         activeProjects: allProjects.filter(p => p.status === 'Active').length,
@@ -223,8 +348,7 @@ export const Dashboard = () => {
     const ideaTrend = useMemo(() => bucketByDay(ideas), [ideas]);
     const issueTrend = useMemo(() => bucketByDay(issues), [issues]);
 
-    const hasIssuesModule = useMemo(() => projects.some(p => p.modules?.includes('issues')), [projects]);
-    const hasMilestonesModule = useMemo(() => projects.some(p => p.modules?.includes('milestones')), [projects]);
+
     const weekdays = useMemo(() => t('dashboard.calendar.weekdays').split(','), [t]);
     const projectStatusLabels = useMemo(() => ({
         Active: t('dashboard.projectStatus.active'),
@@ -542,163 +666,33 @@ export const Dashboard = () => {
         }
     ];
 
-    const onboardingSteps = useMemo<OnboardingStep[]>(() => {
-        const steps: OnboardingStep[] = [
-            {
-                id: 'header',
-                targetId: 'dashboard-header',
-                title: t('onboarding.dashboard.steps.header.title'),
-                description: t('onboarding.dashboard.steps.header.description')
-            },
-            {
-                id: 'kpis',
-                targetId: 'dashboard-kpis',
-                title: t('onboarding.dashboard.steps.kpis.title'),
-                description: t('onboarding.dashboard.steps.kpis.description')
-            },
-            {
-                id: 'trends',
-                targetId: 'dashboard-trends',
-                title: t('onboarding.dashboard.steps.trends.title'),
-                description: t('onboarding.dashboard.steps.trends.description'),
-                placement: 'top'
-            },
-            {
-                id: 'health',
-                targetId: 'dashboard-health',
-                title: t('onboarding.dashboard.steps.health.title'),
-                description: t('onboarding.dashboard.steps.health.description'),
-                placement: 'top'
-            },
-            {
-                id: 'status',
-                targetId: 'dashboard-status',
-                title: t('onboarding.dashboard.steps.status.title'),
-                description: t('onboarding.dashboard.steps.status.description'),
-                placement: 'left'
-            },
-            {
-                id: 'workload',
-                targetId: 'dashboard-workload',
-                title: t('onboarding.dashboard.steps.workload.title'),
-                description: t('onboarding.dashboard.steps.workload.description'),
-                placement: 'top'
-            },
-            {
-                id: 'deadlines',
-                targetId: 'dashboard-deadlines',
-                title: t('onboarding.dashboard.steps.deadlines.title'),
-                description: t('onboarding.dashboard.steps.deadlines.description'),
-                placement: 'top'
-            },
-            {
-                id: 'projects',
-                targetId: 'dashboard-active-projects',
-                title: t('onboarding.dashboard.steps.projects.title'),
-                description: t('onboarding.dashboard.steps.projects.description')
-            },
-            {
-                id: 'calendar',
-                targetId: 'dashboard-calendar',
-                title: t('onboarding.dashboard.steps.calendar.title'),
-                description: t('onboarding.dashboard.steps.calendar.description'),
-                placement: 'left'
-            },
-            {
-                id: 'scheduled',
-                targetId: 'dashboard-scheduled',
-                title: t('onboarding.dashboard.steps.scheduled.title'),
-                description: t('onboarding.dashboard.steps.scheduled.description'),
-                placement: 'left'
-            }
-        ];
 
-        if (hasMilestonesModule) {
-            steps.push({
-                id: 'milestones',
-                targetId: 'dashboard-milestones',
-                title: t('onboarding.dashboard.steps.milestones.title'),
-                description: t('onboarding.dashboard.steps.milestones.description'),
-                placement: 'left'
-            });
-        }
 
-        steps.push(
-            {
-                id: 'activity',
-                targetId: 'dashboard-live-activity',
-                title: t('onboarding.dashboard.steps.activity.title'),
-                description: t('onboarding.dashboard.steps.activity.description'),
-                placement: 'left'
-            },
-            {
-                id: 'attention',
-                targetId: 'dashboard-attention',
-                title: t('onboarding.dashboard.steps.attention.title'),
-                description: t('onboarding.dashboard.steps.attention.description'),
-                placement: 'left'
-            },
-            {
-                id: 'recent',
-                targetId: 'dashboard-recent-tasks',
-                title: t('onboarding.dashboard.steps.recent.title'),
-                description: t('onboarding.dashboard.steps.recent.description'),
-                placement: 'left'
-            }
-        );
 
-        if (hasIssuesModule && issues.length > 0) {
-            steps.push({
-                id: 'issues',
-                targetId: 'dashboard-recent-issues',
-                title: t('onboarding.dashboard.steps.issues.title'),
-                description: t('onboarding.dashboard.steps.issues.description'),
-                placement: 'left'
-            });
-        }
 
-        return steps;
-    }, [hasIssuesModule, hasMilestonesModule, issues.length, t]);
-
-    const handleCompleteOnboarding = async (status: 'completed' | 'skipped') => {
-        setShowOnboardingWelcome(false);
-        setOnboardingActive(false);
-        setOnboardingStepIndex(0);
-        try {
-            localStorage.setItem(DASHBOARD_ONBOARDING_KEY, status);
-        } catch {
-            // Ignore storage failures
-        }
-        if (auth.currentUser?.uid) {
-            try {
-                await updateUserData(auth.currentUser.uid, {
-                    'preferences.onboarding.dashboard': {
-                        status,
-                        completedAt: new Date().toISOString()
-                    }
-                });
-            } catch (error) {
-                console.warn('Failed to update onboarding status', error);
-            }
-        }
-    };
-
-    const handleStartOnboarding = () => {
-        setShowOnboardingWelcome(false);
-        setOnboardingStepIndex(0);
-        setOnboardingActive(true);
-    };
+    const [showPasskeyUpsell, setShowPasskeyUpsell] = useState(false);
 
     useEffect(() => {
-        if (!onboardingActive) return;
-        if (onboardingSteps.length === 0) {
-            setOnboardingActive(false);
-            return;
-        }
-        if (onboardingStepIndex >= onboardingSteps.length) {
-            setOnboardingStepIndex(onboardingSteps.length - 1);
-        }
-    }, [onboardingActive, onboardingStepIndex, onboardingSteps.length]);
+        const checkPasskeyStatus = async () => {
+            // Check if user is logged in
+            if (!auth.currentUser) return;
+
+            // Check if snoozed
+            const snoozeUntil = localStorage.getItem('projectflow_passkey_reminder_snooze');
+            if (snoozeUntil && parseInt(snoozeUntil) > Date.now()) {
+                return;
+            }
+
+            // Check if user already has passkeys
+            const hasPasskeys = await checkPasskeyExists(auth.currentUser.uid);
+            if (!hasPasskeys) {
+                // Short delay so it doesn't pop up INSTANTLY on load
+                setTimeout(() => setShowPasskeyUpsell(true), 1000);
+            }
+        };
+
+        checkPasskeyStatus();
+    }, []);
 
     if (loading) {
         return (
@@ -710,6 +704,11 @@ export const Dashboard = () => {
 
     return (
         <>
+            <PasskeySetupModal
+                isOpen={showPasskeyUpsell}
+                onClose={() => setShowPasskeyUpsell(false)}
+                onSetupComplete={() => setShowPasskeyUpsell(false)}
+            />
             <div className="space-y-6 pb-12 fade-in">
                 {/* Header - Greeting & Quick Stats */}
                 <div data-onboarding-id="dashboard-header" className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-8 animate-fade-in">
@@ -1497,15 +1496,15 @@ export const Dashboard = () => {
                 title={t('onboarding.dashboard.welcome.title')}
                 description={t('onboarding.dashboard.welcome.description')}
                 onStart={handleStartOnboarding}
-                onSkip={() => handleCompleteOnboarding('skipped')}
+                onSkip={handleSkipOnboarding}
             />
             <OnboardingOverlay
                 isOpen={onboardingActive}
                 steps={onboardingSteps}
                 stepIndex={onboardingStepIndex}
                 onStepChange={setOnboardingStepIndex}
-                onFinish={() => handleCompleteOnboarding('completed')}
-                onSkip={() => handleCompleteOnboarding('skipped')}
+                onFinish={handleFinishOnboarding}
+                onSkip={handleSkipOnboarding}
             />
         </>
     );

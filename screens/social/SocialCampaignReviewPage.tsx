@@ -10,6 +10,8 @@ import { Textarea } from '../../components/ui/Textarea';
 import { PlatformIcon } from './components/PlatformIcon';
 import { generateRiskWinAnalysis } from '../../services/geminiService';
 import { useHelpCenter } from '../../context/HelpCenterContext';
+import { useLanguage } from '../../context/LanguageContext';
+import { getSocialCampaignStatusLabel, getSocialPostFormatLabel, getSocialPostStatusLabel } from '../../utils/socialLocalization';
 
 const PHASE_COLORS = [
     { dot: 'bg-rose-500', text: 'text-rose-600 dark:text-rose-300' },
@@ -29,15 +31,13 @@ const CONTENT_TYPE_STYLES: Record<string, string> = {
     Text: 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
 };
 
-const formatStatus = (value?: string) => {
-    if (!value) return 'Draft';
-    return value.replace(/([a-z])([A-Z])/g, '$1 $2');
-};
+const formatStatusLabel = (value: string) => value.replace(/([a-z])([A-Z])/g, '$1 $2');
 
 export const SocialCampaignReviewPage = () => {
     const { id: projectId, ideaId } = useParams<{ id: string; ideaId: string }>();
     const navigate = useNavigate();
     const { openHelpCenter } = useHelpCenter();
+    const { t } = useLanguage();
     const [idea, setIdea] = useState<Idea | null>(null);
     const [linkedCampaign, setLinkedCampaign] = useState<SocialCampaign | null>(null);
     const [loading, setLoading] = useState(true);
@@ -48,6 +48,11 @@ export const SocialCampaignReviewPage = () => {
     const [rejectType, setRejectType] = useState<'changes' | 'permanent'>('changes');
     const [rejectionReason, setRejectionReason] = useState('');
     const [weekOffset, setWeekOffset] = useState(0);
+    const durationUnitLabels = useMemo(() => ({
+        Days: t('social.review.units.days'),
+        Weeks: t('social.review.units.weeks'),
+        Months: t('social.review.units.months'),
+    }), [t]);
 
     useEffect(() => {
         const load = async () => {
@@ -202,10 +207,21 @@ export const SocialCampaignReviewPage = () => {
         return 'approved';
     }, [campaignStatus, idea?.stage]);
 
-    const statusLabel = useMemo(
-        () => formatStatus(campaignStatus || idea?.stage || 'Draft'),
-        [campaignStatus, idea?.stage]
-    );
+    const statusLabel = useMemo(() => {
+        if (campaignStatus) return getSocialCampaignStatusLabel(campaignStatus, t);
+        const stage = idea?.stage || 'Draft';
+        const stageKeyMap: Record<string, string> = {
+            PendingReview: 'pendingReview',
+            ChangeRequested: 'changesRequested',
+            ChangesRequested: 'changesRequested',
+            Rejected: 'rejected',
+            Approved: 'approved',
+            Draft: 'draft',
+            Concept: 'concept'
+        };
+        const key = stageKeyMap[stage] || stage.toLowerCase();
+        return t(`social.review.status.${key}`, formatStatusLabel(stage));
+    }, [campaignStatus, idea?.stage, t]);
 
     const statusVariant = useMemo<'default' | 'primary' | 'secondary' | 'success' | 'warning' | 'error' | 'outline'>(() => {
         const key = (campaignStatus || idea?.stage || '').toLowerCase();
@@ -278,14 +294,14 @@ export const SocialCampaignReviewPage = () => {
     }, [totalWeeks]);
 
     const summaryStats = [
-        { label: 'Phases', value: phases.length, icon: 'timeline' },
-        { label: 'Duration', value: `${Math.ceil(totalDuration)}d`, icon: 'schedule' },
-        { label: 'Platforms', value: platforms.length, icon: 'public' },
-        { label: 'Audiences', value: audienceSegments.length, icon: 'groups' },
+        { label: t('social.review.stats.phases'), value: phases.length, icon: 'timeline' },
+        { label: t('social.review.stats.duration'), value: `${Math.ceil(totalDuration)}d`, icon: 'schedule' },
+        { label: t('social.review.stats.platforms'), value: platforms.length, icon: 'public' },
+        { label: t('social.review.stats.audiences'), value: audienceSegments.length, icon: 'groups' },
     ];
 
-    if (loading) return <div className="h-full flex items-center justify-center text-[var(--color-text-muted)]">Loading review...</div>;
-    if (!idea) return <div className="p-10 text-center text-[var(--color-text-muted)]">Campaign not found.</div>;
+    if (loading) return <div className="h-full flex items-center justify-center text-[var(--color-text-muted)]">{t('social.review.loading')}</div>;
+    if (!idea) return <div className="p-10 text-center text-[var(--color-text-muted)]">{t('social.review.notFound')}</div>;
 
     return (
         <div className="min-h-full w-full pb-24">
@@ -297,7 +313,7 @@ export const SocialCampaignReviewPage = () => {
                         className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
                     >
                         <span className="material-symbols-outlined text-[18px]">arrow_back</span>
-                        Back to Social
+                        {t('social.review.backToSocial')}
                     </button>
                     <Button
                         variant="ghost"
@@ -305,19 +321,19 @@ export const SocialCampaignReviewPage = () => {
                         onClick={() => openHelpCenter({ pageId: 'social-studio', sectionId: 'review-approval' })}
                         icon={<span className="material-symbols-outlined text-[16px]">help</span>}
                     >
-                        Review help
+                        {t('social.review.help')}
                     </Button>
                 </div>
                 <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)] gap-8">
                     <aside className="space-y-4">
                         <Card className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Campaign</div>
+                                <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.summary.campaign')}</div>
                                 <Badge variant={statusVariant}>{statusLabel}</Badge>
                             </div>
                             <div className="space-y-2">
                                 <h1 className="text-xl md:text-2xl font-bold text-[var(--color-text-main)]">{idea.title}</h1>
-                                <div className="text-xs text-[var(--color-text-muted)] font-medium">ID: {idea.id.slice(0, 6)}</div>
+                                <div className="text-xs text-[var(--color-text-muted)] font-medium">{t('social.review.summary.id').replace('{id}', idea.id.slice(0, 6))}</div>
                             </div>
                             {linkedCampaign && (
                                 <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] border-t border-[var(--color-surface-border)] pt-3">
@@ -330,8 +346,8 @@ export const SocialCampaignReviewPage = () => {
                         <Card className="space-y-4">
                             <div className="flex items-start justify-between gap-3">
                                 <div>
-                                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Performance Outlook</div>
-                                    <p className="text-xs text-[var(--color-text-muted)]">AI forecast for success</p>
+                                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.performance.title')}</div>
+                                    <p className="text-xs text-[var(--color-text-muted)]">{t('social.review.performance.subtitle')}</p>
                                 </div>
                                 <Button
                                     variant="secondary"
@@ -340,7 +356,7 @@ export const SocialCampaignReviewPage = () => {
                                     isLoading={analyzing}
                                     icon={<span className="material-symbols-outlined text-[16px]">refresh</span>}
                                 >
-                                    Refresh
+                                    {t('social.review.performance.refresh')}
                                 </Button>
                             </div>
 
@@ -365,15 +381,15 @@ export const SocialCampaignReviewPage = () => {
                                     </div>
                                 </div>
                                 <div>
-                                    <div className="text-sm font-semibold text-[var(--color-text-main)]">Success Probability</div>
-                                    <p className="text-xs text-[var(--color-text-muted)]">Based on current inputs</p>
+                                    <div className="text-sm font-semibold text-[var(--color-text-main)]">{t('social.review.performance.successLabel')}</div>
+                                    <p className="text-xs text-[var(--color-text-muted)]">{t('social.review.performance.successHint')}</p>
                                 </div>
                             </div>
 
                             <div className="space-y-3">
                                 <div className="space-y-1">
                                     <div className="flex justify-between text-xs text-[var(--color-text-muted)]">
-                                        <span>Market Fit</span>
+                                        <span>{t('social.review.performance.marketFit')}</span>
                                         <span className="font-semibold text-[var(--color-text-main)]">{marketFit}%</span>
                                     </div>
                                     <div className="w-full h-2 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
@@ -382,7 +398,7 @@ export const SocialCampaignReviewPage = () => {
                                 </div>
                                 <div className="space-y-1">
                                     <div className="flex justify-between text-xs text-[var(--color-text-muted)]">
-                                        <span>Feasibility</span>
+                                        <span>{t('social.review.performance.feasibility')}</span>
                                         <span className="font-semibold text-[var(--color-text-main)]">{feasibility}%</span>
                                     </div>
                                     <div className="w-full h-2 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
@@ -393,7 +409,7 @@ export const SocialCampaignReviewPage = () => {
                         </Card>
 
                         <Card className="space-y-3">
-                            <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Quick Stats</div>
+                            <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.quickStats')}</div>
                             <div className="grid grid-cols-2 gap-3">
                                 {summaryStats.map((stat) => (
                                     <div
@@ -413,25 +429,25 @@ export const SocialCampaignReviewPage = () => {
 
                     <div className="space-y-6">
                         <Card className="space-y-6">
-                            <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Strategic Intent</div>
+                            <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.strategyIntent')}</div>
                             <div className="space-y-2">
-                                <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Core Flow</div>
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.coreFlow')}</div>
                                 <h2 className="text-2xl md:text-3xl font-bold text-[var(--color-text-main)]">
-                                    "{concept.bigIdea || idea.description || 'No core flow defined'}"
+                                    "{concept.bigIdea || idea.description || t('social.review.coreFlowFallback')}"
                                 </h2>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-[var(--color-surface-border)]">
                                 <div>
-                                    <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-2">The Hook</div>
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-2">{t('social.review.hookLabel')}</div>
                                     <p className="text-sm font-medium italic text-[var(--color-text-main)] leading-relaxed">
-                                        "{concept.hook || 'No hook provided.'}"
+                                        "{concept.hook || t('social.review.hookFallback')}"
                                     </p>
                                 </div>
                                 <div className="space-y-3">
                                     <div>
-                                        <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-2">Visual Direction</div>
+                                        <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-2">{t('social.review.visualDirection')}</div>
                                         <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                                            {concept.visualDirection || 'No specific direction provided.'}
+                                            {concept.visualDirection || t('social.review.visualDirectionFallback')}
                                         </p>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
@@ -449,7 +465,7 @@ export const SocialCampaignReviewPage = () => {
                                             </span>
                                         ))}
                                         {!concept.mood && themes.length === 0 && (
-                                            <span className="text-xs text-[var(--color-text-muted)]">No themes defined.</span>
+                                            <span className="text-xs text-[var(--color-text-muted)]">{t('social.review.noThemes')}</span>
                                         )}
                                     </div>
                                 </div>
@@ -457,10 +473,10 @@ export const SocialCampaignReviewPage = () => {
                         </Card>
 
                         <Card className="space-y-4">
-                            <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Execution Channels</div>
+                            <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.executionChannels')}</div>
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                                 <div className="lg:col-span-1 space-y-3">
-                                    <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Audience Segments</div>
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.audienceSegments')}</div>
                                     <div className="space-y-2">
                                         {audienceSegments.length ? (
                                             audienceSegments.map((seg: string, i: number) => (
@@ -474,7 +490,7 @@ export const SocialCampaignReviewPage = () => {
                                             ))
                                         ) : (
                                             <div className="text-xs text-[var(--color-text-muted)] bg-[var(--color-surface-bg)] border border-dashed border-[var(--color-surface-border)] rounded-lg p-3">
-                                                No audience segments defined.
+                                                {t('social.review.noAudienceSegments')}
                                             </div>
                                         )}
                                     </div>
@@ -487,15 +503,17 @@ export const SocialCampaignReviewPage = () => {
                                             const platformId = isString ? p : p.id || p.platform || `platform-${index}`;
                                             const roleText = isString ? '' : (p.role || '');
                                             const roleParts = roleText.split(':');
-                                            const roleTitle = roleParts.length > 1 ? roleParts[0].trim() : 'Role';
+                                            const roleTitle = roleParts.length > 1 ? roleParts[0].trim() : t('social.review.roleTitle');
                                             const roleBody = roleParts.length > 1 ? roleParts.slice(1).join(':').trim() : roleText.trim();
                                             const hasFrequencyValue = !isString && typeof p.frequencyValue === 'number';
                                             const frequencyLabel = isString
-                                                ? 'TBD'
+                                                ? t('social.review.frequencyTbd')
                                                 : hasFrequencyValue
-                                                    ? `${p.frequencyValue}/${p.frequencyUnit?.replace('Posts/', '') || 'Wk'}`
-                                                    : p.frequency || '1/Wk';
-                                            const formatLabel = isString ? 'Standard' : (p.format || 'Standard');
+                                                    ? `${p.frequencyValue}/${p.frequencyUnit?.replace('Posts/', '') || t('social.review.frequencyWeek')}`
+                                                    : p.frequency || t('social.review.frequencyDefault');
+                                            const formatLabel = isString
+                                                ? t('social.review.formatDefault')
+                                                : (p.format ? getSocialPostFormatLabel(p.format, t) : t('social.review.formatDefault'));
                                             return (
                                                 <div
                                                     key={platformId}
@@ -509,29 +527,30 @@ export const SocialCampaignReviewPage = () => {
                                                         </div>
                                                         <div className="min-w-0">
                                                             <div className="text-base font-bold text-[var(--color-text-main)] leading-tight">{platformId}</div>
-                                                            <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">Execution Channel</div>
+                                                            <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.executionChannel')}</div>
                                                         </div>
                                                     </div>
 
                                                     <div className="mt-4 space-y-1">
                                                         <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">{roleTitle}</div>
                                                         <p className="text-xs text-[var(--color-text-muted)] leading-relaxed line-clamp-3">
-                                                            {roleBody || 'No role defined yet.'}
+                                                            {roleBody || t('social.review.roleFallback')}
                                                         </p>
                                                     </div>
 
                                                     <div className="mt-4 pt-3 border-t border-[var(--color-surface-border)] grid grid-cols-2 gap-3 text-xs text-[var(--color-text-muted)]">
                                                         <div className="space-y-1">
-                                                            <div className="text-[10px] uppercase tracking-wider">Frequency</div>
+                                                            <div className="text-[10px] uppercase tracking-wider">{t('social.review.frequencyLabel')}</div>
                                                             {!isString && Array.isArray(p.phaseFrequencies) && p.phaseFrequencies.length > 0 ? (
                                                                 <div className="space-y-1 mt-1">
                                                                     {p.phaseFrequencies.map((pf: any, i: number) => {
-                                                                        const phaseName = phases.find((ph: any) => ph.id === pf.phaseId)?.name || `Phase ${i + 1}`;
+                                                                        const phaseName = phases.find((ph: any) => ph.id === pf.phaseId)?.name
+                                                                            || t('social.review.phaseFallback').replace('{index}', String(i + 1));
                                                                         return (
                                                                             <div key={i} className="flex justify-between items-center text-[10px] gap-2">
                                                                                 <span className="text-[var(--color-text-muted)] truncate max-w-[80px]" title={phaseName}>{phaseName}</span>
                                                                                 <span className="font-semibold text-[var(--color-text-main)]">
-                                                                                    {pf.frequencyValue}/{pf.frequencyUnit?.replace('Posts/', '') || 'Wk'}
+                                                                                    {pf.frequencyValue}/{pf.frequencyUnit?.replace('Posts/', '') || t('social.review.frequencyWeek')}
                                                                                 </span>
                                                                             </div>
                                                                         );
@@ -542,7 +561,7 @@ export const SocialCampaignReviewPage = () => {
                                                             )}
                                                         </div>
                                                         <div className="space-y-1 text-right">
-                                                            <div className="text-[10px] uppercase tracking-wider">Format</div>
+                                                            <div className="text-[10px] uppercase tracking-wider">{t('social.review.formatLabel')}</div>
                                                             <div className="text-sm font-semibold text-[var(--color-text-main)]">{formatLabel}</div>
                                                         </div>
                                                     </div>
@@ -551,7 +570,7 @@ export const SocialCampaignReviewPage = () => {
                                         })
                                     ) : (
                                         <div className="sm:col-span-2 text-xs text-[var(--color-text-muted)] bg-[var(--color-surface-bg)] border border-dashed border-[var(--color-surface-border)] rounded-lg p-4">
-                                            No platforms defined.
+                                            {t('social.review.noPlatforms')}
                                         </div>
                                     )}
                                 </div>
@@ -559,7 +578,7 @@ export const SocialCampaignReviewPage = () => {
                         </Card>
 
                         <Card className="space-y-4">
-                            <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Action Plan</div>
+                            <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.actionPlan')}</div>
                             {phases.length ? (
                                 <div className="relative">
                                     {phases.length > 1 && (
@@ -568,10 +587,13 @@ export const SocialCampaignReviewPage = () => {
                                     <div className="space-y-5">
                                         {phases.map((phase: any, i: number) => {
                                             const style = PHASE_COLORS[i % PHASE_COLORS.length];
-                                            const phaseTitle = phase.name || `Phase ${i + 1}`;
+                                            const phaseTitle = phase.name || t('social.review.phaseFallback').replace('{index}', String(i + 1));
+                                            const phaseDurationUnit = durationUnitLabels[phase.durationUnit as keyof typeof durationUnitLabels]
+                                                || phase.durationUnit
+                                                || t('social.review.units.days');
                                             const phaseDuration = phase.durationValue
-                                                ? `${phase.durationValue} ${phase.durationUnit || 'Days'}`
-                                                : 'Duration TBD';
+                                                ? `${phase.durationValue} ${phaseDurationUnit}`
+                                                : t('social.review.durationTbd');
                                             return (
                                                 <div key={i} className="grid grid-cols-[3.5rem_1fr] gap-4 relative z-10">
                                                     <div className="flex items-start justify-center pt-1 relative z-10">
@@ -583,7 +605,7 @@ export const SocialCampaignReviewPage = () => {
                                                         <div className="flex flex-wrap items-start justify-between gap-2">
                                                             <div>
                                                                 <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
-                                                                    Phase {i + 1}
+                                                                    {t('social.review.phaseLabel').replace('{index}', String(i + 1))}
                                                                 </div>
                                                                 <h4 className="text-base font-bold text-[var(--color-text-main)]">{phaseTitle}</h4>
                                                             </div>
@@ -592,7 +614,7 @@ export const SocialCampaignReviewPage = () => {
                                                             </span>
                                                         </div>
                                                         <p className="mt-2 text-sm text-[var(--color-text-muted)] leading-relaxed">
-                                                            {phase.focus || 'No focus provided.'}
+                                                            {phase.focus || t('social.review.focusFallback')}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -602,7 +624,7 @@ export const SocialCampaignReviewPage = () => {
                                 </div>
                             ) : (
                                 <div className="text-sm text-[var(--color-text-muted)] bg-[var(--color-surface-bg)] border border-dashed border-[var(--color-surface-border)] rounded-lg p-4 text-center">
-                                    No phases defined.
+                                    {t('social.review.noPhases')}
                                 </div>
                             )}
                         </Card>
@@ -610,8 +632,10 @@ export const SocialCampaignReviewPage = () => {
                         <Card className="space-y-4">
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Content Timeline</div>
-                                    <span className="text-xs text-[var(--color-text-muted)]">{planningPosts.length} posts</span>
+                                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.contentTimeline')}</div>
+                                    <span className="text-xs text-[var(--color-text-muted)]">
+                                        {t('social.review.postsCount').replace('{count}', String(planningPosts.length))}
+                                    </span>
                                 </div>
 
                                 <div className="flex flex-wrap items-center gap-3">
@@ -625,10 +649,12 @@ export const SocialCampaignReviewPage = () => {
                                             <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                                         </button>
                                         <div className="text-xs font-semibold text-[var(--color-text-muted)]">
-                                            Week {weekOffset + 1} of {totalWeeks}
+                                            {t('social.review.weekLabel')
+                                                .replace('{week}', String(weekOffset + 1))
+                                                .replace('{total}', String(totalWeeks))}
                                             {weekData.postsThisWeek > 0 && (
                                                 <span className="ml-2 text-[10px] uppercase tracking-wider text-[var(--color-text-subtle)]">
-                                                    {weekData.postsThisWeek} posts
+                                                    {t('social.review.postsCount').replace('{count}', String(weekData.postsThisWeek))}
                                                 </span>
                                             )}
                                         </div>
@@ -657,7 +683,7 @@ export const SocialCampaignReviewPage = () => {
                                                             : 'bg-[var(--color-surface-bg)] text-[var(--color-text-muted)] border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'
                                                             }`}
                                                     >
-                                                        Week {i + 1}
+                                                        {t('social.review.weekShort').replace('{week}', String(i + 1))}
                                                         {count > 0 && (
                                                             <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[9px] ${isActive ? 'bg-[var(--color-text-main)] text-[var(--color-text-ondark)]' : 'bg-[var(--color-surface-border)] text-[var(--color-text-muted)]'}`}>
                                                                 {count}
@@ -680,7 +706,7 @@ export const SocialCampaignReviewPage = () => {
                                         >
                                             <div className="p-3 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]">
                                                 <div className="flex items-center justify-between mb-1">
-                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Day</span>
+                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.dayLabel')}</span>
                                                     {day.phase && <span className={`size-2 rounded-full ${day.phase.color.dot}`} />}
                                                 </div>
                                                 <div className="text-lg font-bold text-[var(--color-text-main)]">
@@ -696,7 +722,7 @@ export const SocialCampaignReviewPage = () => {
                                                             : (post.platform ? [post.platform] : []);
                                                         const contentType = post.contentType || 'Post';
                                                         const typeStyle = CONTENT_TYPE_STYLES[contentType] || CONTENT_TYPE_STYLES.Post;
-                                                        const hookText = post.hook || post.visualDirection || 'No hook defined.';
+                                                        const hookText = post.hook || post.visualDirection || t('social.review.hookFallbackShort');
                                                         return (
                                                             <div
                                                                 key={post.id}
@@ -717,19 +743,19 @@ export const SocialCampaignReviewPage = () => {
                                                                         )}
                                                                     </div>
                                                                     <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider border ${typeStyle}`}>
-                                                                        {contentType}
+                                                                        {getSocialPostFormatLabel(contentType as any, t)}
                                                                     </span>
                                                                 </div>
                                                                 <p className="mt-1 text-[10px] text-[var(--color-text-muted)] leading-relaxed line-clamp-2">
                                                                     {hookText}
                                                                 </p>
-                                                                <div className="absolute left-1/2 top-full mt-2 w-56 -translate-x-1/2 translate-y-1 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 shadow-lg opacity-0 pointer-events-none transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 z-20">
+                                                                    <div className="absolute left-1/2 top-full mt-2 w-56 -translate-x-1/2 translate-y-1 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 shadow-lg opacity-0 pointer-events-none transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 z-20">
                                                                     <div className="flex items-center justify-between text-[9px] uppercase tracking-wider text-[var(--color-text-muted)]">
-                                                                        <span>Preview</span>
-                                                                        {post.status && <span>{post.status}</span>}
+                                                                        <span>{t('social.review.preview')}</span>
+                                                                        {post.status && <span>{getSocialPostStatusLabel(post.status, t)}</span>}
                                                                     </div>
                                                                     <div className="mt-2 text-xs font-semibold text-[var(--color-text-main)]">
-                                                                        {contentType}
+                                                                        {getSocialPostFormatLabel(contentType as any, t)}
                                                                     </div>
                                                                     <div className="mt-1 text-xs text-[var(--color-text-muted)] leading-relaxed line-clamp-4">
                                                                         {hookText}
@@ -745,7 +771,7 @@ export const SocialCampaignReviewPage = () => {
                                                     })
                                                 ) : (
                                                     <div className="text-[10px] text-[var(--color-text-subtle)] text-center py-6">
-                                                        {day.isInCampaign ? 'No posts' : 'Outside range'}
+                                                        {day.isInCampaign ? t('social.review.noPosts') : t('social.review.outsideRange')}
                                                     </div>
                                                 )}
                                             </div>
@@ -754,13 +780,13 @@ export const SocialCampaignReviewPage = () => {
                                 </div>
                             ) : (
                                 <div className="text-sm text-[var(--color-text-muted)] bg-[var(--color-surface-bg)] border border-dashed border-[var(--color-surface-border)] rounded-lg p-4 text-center">
-                                    No planned posts yet.
+                                    {t('social.review.noPlannedPosts')}
                                 </div>
                             )}
                         </Card>
 
                         <Card className="space-y-4">
-                            <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Risk Mitigation</div>
+                            <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.riskMitigation')}</div>
                             {idea.riskWinAnalysis ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {idea.riskWinAnalysis.risks.slice(0, 4).map((risk: any, i) => (
@@ -773,8 +799,8 @@ export const SocialCampaignReviewPage = () => {
                                             </div>
                                             <div className="rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3">
                                                 <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
-                                                    <span className="font-bold text-[var(--color-success)] uppercase text-[10px] mr-2">Mitigation</span>
-                                                    {risk.mitigation || 'No mitigation protocol provided.'}
+                                                    <span className="font-bold text-[var(--color-success)] uppercase text-[10px] mr-2">{t('social.review.mitigationLabel')}</span>
+                                                    {risk.mitigation || t('social.review.noMitigation')}
                                                 </p>
                                             </div>
                                         </div>
@@ -782,7 +808,7 @@ export const SocialCampaignReviewPage = () => {
                                 </div>
                             ) : (
                                 <div className="text-sm text-[var(--color-text-muted)] bg-[var(--color-surface-bg)] border border-dashed border-[var(--color-surface-border)] rounded-lg p-4 text-center">
-                                    No risks identified.
+                                    {t('social.review.noRisks')}
                                 </div>
                             )}
                         </Card>
@@ -790,12 +816,12 @@ export const SocialCampaignReviewPage = () => {
                         <Card className="space-y-4">
                             <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
                                 <span className="material-symbols-outlined text-[16px]">monitoring</span>
-                                Success Metrics
+                                {t('social.review.successMetrics')}
                             </div>
                             {kpis.length ? (
                                 <div className="space-y-2">
                                     {kpis.map((kpi: any, index: number) => {
-                                        const metric = typeof kpi === 'string' ? kpi : kpi.metric || 'Metric';
+                                        const metric = typeof kpi === 'string' ? kpi : kpi.metric || t('social.review.metricFallback');
                                         const target = typeof kpi === 'string' ? '' : kpi.target;
                                         return (
                                             <div
@@ -806,7 +832,7 @@ export const SocialCampaignReviewPage = () => {
                                                 {target ? (
                                                     <span className="text-xs font-semibold text-[var(--color-text-muted)]">{target}</span>
                                                 ) : (
-                                                    <span className="text-xs text-[var(--color-text-subtle)]">Target TBD</span>
+                                                    <span className="text-xs text-[var(--color-text-subtle)]">{t('social.review.targetTbd')}</span>
                                                 )}
                                             </div>
                                         );
@@ -814,7 +840,7 @@ export const SocialCampaignReviewPage = () => {
                                 </div>
                             ) : (
                                 <div className="text-xs text-[var(--color-text-muted)] bg-[var(--color-surface-bg)] border border-dashed border-[var(--color-surface-border)] rounded-lg p-3">
-                                    No KPIs defined.
+                                    {t('social.review.noKpis')}
                                 </div>
                             )}
                         </Card>
@@ -826,7 +852,7 @@ export const SocialCampaignReviewPage = () => {
                 <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
                     <div className="flex items-center gap-2 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-lg rounded-full p-2 pl-4">
                         <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] hidden sm:block">
-                            Review Actions
+                            {t('social.review.actions.label')}
                         </span>
                         <div className="h-4 w-px bg-[var(--color-surface-border)] hidden sm:block" />
 
@@ -839,7 +865,7 @@ export const SocialCampaignReviewPage = () => {
                                 setShowRejectModal(true);
                             }}
                         >
-                            Reject
+                            {t('social.review.actions.reject')}
                         </Button>
                         <Button
                             variant="ghost"
@@ -850,7 +876,7 @@ export const SocialCampaignReviewPage = () => {
                                 setShowRejectModal(true);
                             }}
                         >
-                            Request Changes
+                            {t('social.review.actions.requestChanges')}
                         </Button>
                         <Button
                             variant="primary"
@@ -859,7 +885,7 @@ export const SocialCampaignReviewPage = () => {
                             onClick={handleApprove}
                             icon={<span className="material-symbols-outlined text-[18px] transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:rotate-12 group-hover:scale-110">rocket_launch</span>}
                         >
-                            Approve Campaign
+                            {t('social.review.actions.approve')}
                         </Button>
                     </div>
                 </div>
@@ -868,27 +894,27 @@ export const SocialCampaignReviewPage = () => {
             <Modal
                 isOpen={showRejectModal}
                 onClose={() => setShowRejectModal(false)}
-                title={rejectType === 'changes' ? "Request Changes" : "Reject Campaign"}
+                title={rejectType === 'changes' ? t('social.review.rejectModal.requestTitle') : t('social.review.rejectModal.rejectTitle')}
                 size="md"
             >
                 <div className="space-y-6">
                     <div className="bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] p-4 rounded-lg">
                         <p className="text-sm text-[var(--color-text-muted)]">
                             {rejectType === 'changes'
-                                ? "This will return the campaign to the creator with your feedback."
-                                : "This will permanently reject the campaign flow."}
+                                ? t('social.review.rejectModal.requestDescription')
+                                : t('social.review.rejectModal.rejectDescription')}
                         </p>
                     </div>
 
                     <Textarea
                         value={rejectionReason}
                         onChange={(e) => setRejectionReason(e.target.value)}
-                        placeholder="Enter your feedback..."
+                        placeholder={t('social.review.rejectModal.placeholder')}
                         className="min-h-[140px] resize-none"
                         autoFocus
                     />
                     <div className="flex justify-end gap-3">
-                        <Button variant="secondary" onClick={() => setShowRejectModal(false)}>Cancel</Button>
+                        <Button variant="secondary" onClick={() => setShowRejectModal(false)}>{t('social.review.rejectModal.cancel')}</Button>
                         <Button
                             variant="primary"
                             className={rejectType === 'changes'
@@ -902,7 +928,7 @@ export const SocialCampaignReviewPage = () => {
                             }}
                             disabled={!rejectionReason.trim()}
                         >
-                            {rejectType === 'changes' ? "Send Request" : "Reject Campaign"}
+                            {rejectType === 'changes' ? t('social.review.rejectModal.sendRequest') : t('social.review.rejectModal.confirmReject')}
                         </Button>
                     </div>
                 </div>

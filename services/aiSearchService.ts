@@ -2,6 +2,7 @@ import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Project, Task, SearchResult, AISearchAnswer } from "../types";
 import { getAllWorkspaceProjects, getAllWorkspaceTasks, getAllWorkspaceIssues, getAllWorkspaceIdeas, getAIUsage, incrementAIUsage, incrementImageUsage } from "./dataService";
 import { auth } from "./firebase";
+import { applyLanguageInstruction, getAIResponseInstruction } from "../utils/aiLanguage";
 
 // ... existing code ...
 
@@ -223,6 +224,7 @@ export const answerQuestionWithContext = async (
             required: ['answer', 'relevantProjects', 'relevantTasks', 'confidence']
         };
 
+        const { instruction, language } = getAIResponseInstruction();
         const prompt = `You are a project management assistant. Answer the following question based on the project context provided.
         
 Context:
@@ -236,7 +238,7 @@ Rate your confidence in the answer as Low, Medium, or High.`;
 
         const response = await ai.models.generateContent({
             model: "gemini-3-pro-preview",
-            contents: prompt,
+            contents: applyLanguageInstruction(prompt, instruction),
             config: {
                 responseMimeType: "application/json",
                 responseSchema,
@@ -263,8 +265,12 @@ Rate your confidence in the answer as Low, Medium, or High.`;
             .map(t => t.id)
             .slice(0, 3);
 
+        const fallbackAnswer = language === 'de'
+            ? "Ich konnte keine relevanten Informationen finden, um deine Frage zu beantworten."
+            : "I couldn't find relevant information to answer your question.";
+
         return {
-            answer: result.answer || "I couldn't find relevant information to answer your question.",
+            answer: result.answer || fallbackAnswer,
             relevantProjects: relevantProjects.length > 0 ? relevantProjects : result.relevantProjects || [],
             relevantTasks: relevantTasks.length > 0 ? relevantTasks : result.relevantTasks || [],
             confidence: result.confidence || 'Low'
@@ -404,7 +410,7 @@ export const editAIImage = async (
         }
 
         // Call the Vertex AI Cloud Function
-        const functionUrl = 'https://europe-west3-project-manager-9d0ad.cloudfunctions.net/editImageWithVertexAI';
+        const functionUrl = 'https://app.getprojectflow.com/editImageWithVertexAI';
 
         const response = await fetch(functionUrl, {
             method: 'POST',
@@ -442,4 +448,3 @@ export const editAIImage = async (
         throw error;
     }
 };
-

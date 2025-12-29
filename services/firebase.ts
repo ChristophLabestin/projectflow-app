@@ -2,7 +2,7 @@ import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
-import { getFunctions } from "firebase/functions";
+import { getFunctions, connectFunctionsEmulator } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -25,7 +25,22 @@ try {
   auth = getAuth(app);
   db = getFirestore(app);
   storage = getStorage(app);
-  functions = getFunctions(app, 'europe-west3');
+  // Use the custom domain for functions
+  functions = getFunctions(app, 'app.getprojectflow.com');
+
+  // Connect to emulators if running locally
+  if (location.hostname === 'localhost') {
+    connectFunctionsEmulator(functions, 'localhost', 5001);
+    // const { connectAuthEmulator } = require('firebase/auth'); 
+    // const { connectFirestoreEmulator } = require('firebase/firestore');
+
+    connectFunctionsEmulator(functions, 'localhost', 5001);
+    console.log('Connected to Functions Emulator');
+
+    // Uncomment if you run auth/firestore emulators too:
+    // connectAuthEmulator(auth, 'http://localhost:9099');
+    // connectFirestoreEmulator(db, 'localhost', 8080);
+  }
 } catch (error) {
   console.error("Firebase initialization error:", error);
   // Throw error so it is visible in console if app fails to load

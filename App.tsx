@@ -46,11 +46,15 @@ import { SocialCampaignReviewPage } from './screens/social/SocialCampaignReviewP
 import { MarketingLayout } from './screens/marketing/MarketingLayout';
 import { MarketingDashboard } from './screens/marketing/MarketingDashboard';
 import { PaidAdsList } from './screens/marketing/PaidAdsList';
+import { AdCampaignDetail } from './screens/marketing/AdCampaignDetail';
+import { CreateAdCampaignPage } from './screens/marketing/CreateAdCampaignPage';
 import { EmailMarketingList } from './screens/marketing/EmailMarketingList';
 import { CreateEmailPage } from './screens/marketing/CreateEmailPage';
 import { EmailBuilderPage } from './screens/marketing/EmailBuilderPage';
 import { RecipientList } from './screens/marketing/RecipientList';
 import { MarketingSettings } from './screens/marketing/MarketingSettings';
+import { BlogList } from './screens/marketing/BlogList';
+import { BlogEditor } from './screens/marketing/BlogEditor';
 import { auth } from './services/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useUIState } from './context/UIContext';
@@ -79,7 +83,7 @@ const RequireAuth = ({ children }: { children?: React.ReactNode }) => {
 // Root Layout Component to host global modals dependent on Router
 const RootLayout = () => {
     const location = useLocation();
-    const isPublicRoute = /^(\/login|\/invite|\/invite-project|\/join|\/join-workspace|\/auth\/action)/.test(location.pathname);
+    const isPublicRoute = /^(\/login|\/register|\/invite|\/invite-project|\/join|\/join-workspace|\/auth\/action)/.test(location.pathname);
 
     return (
         <>
@@ -142,6 +146,7 @@ const App = () => {
             <Route element={<RootLayout />} errorElement={<ErrorPage />}>
                 {/* Public / Auth-Action Routes - Higher priority siblings */}
                 <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Login />} />
                 <Route path="/auth/action" element={<AuthAction />} />
                 <Route path="/invite/:tenantId" element={<InviteLanding />} />
                 <Route path="/invite-project/:projectId" element={<ProjectInviteLanding />} />
@@ -196,10 +201,16 @@ const App = () => {
                         <Route path="marketing" element={<MarketingLayout />}>
                             <Route index element={<MarketingDashboard />} />
                             <Route path="ads" element={<PaidAdsList />} />
+                            <Route path="ads/create" element={<CreateAdCampaignPage />} />
+                            <Route path="ads/:campaignId" element={<AdCampaignDetail />} />
+                            <Route path="ads/:campaignId/edit" element={<CreateAdCampaignPage />} />
                             <Route path="email" element={<EmailMarketingList />} />
                             <Route path="email/create" element={<CreateEmailPage />} />
                             <Route path="email/builder" element={<EmailBuilderPage />} />
                             <Route path="recipients" element={<RecipientList />} />
+                            <Route path="blog" element={<BlogList />} />
+                            <Route path="blog/create" element={<BlogEditor />} />
+                            <Route path="blog/:blogId" element={<BlogEditor />} />
                             <Route path="settings" element={<MarketingSettings />} />
                         </Route>
                     </Route>

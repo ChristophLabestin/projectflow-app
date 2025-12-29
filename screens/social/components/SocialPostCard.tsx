@@ -2,7 +2,8 @@ import React from 'react';
 import { SocialPost } from '../../../types';
 import { PlatformIcon } from './PlatformIcon';
 import { format } from 'date-fns';
-import { dateLocale } from '../../../utils/activityHelpers';
+import { useLanguage } from '../../../context/LanguageContext';
+import { getSocialPostStatusLabel } from '../../../utils/socialLocalization';
 
 interface SocialPostCardProps {
     post: SocialPost;
@@ -23,9 +24,16 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({
     className = '',
     showStatus = true
 }) => {
+    const { t, dateLocale } = useLanguage();
     const isVideo = ['Video', 'Reel', 'Short', 'Story'].includes(post.format);
     const hasMedia = !!(post.videoConcept?.thumbnailUrl || post.assets?.[0]?.url);
     const mediaUrl = post.videoConcept?.thumbnailUrl || post.assets?.[0]?.url;
+    const statusLabel = getSocialPostStatusLabel(post.status, t);
+    const formatLabel = post.format === 'Story'
+        ? t('social.post.format.story')
+        : isVideo
+            ? t('social.post.format.video')
+            : t('social.post.format.post');
 
     // Platform Color Logic
     const getPlatformColor = (p: string, platforms?: string[], rejectionReason?: string) => {
@@ -80,7 +88,7 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({
                 {/* Content: Title/Concept */}
                 <div className="flex-1 space-y-2 mb-2">
                     <h3 className="font-semibold text-yellow-900 dark:text-yellow-100/90 text-sm leading-snug">
-                        {post.videoConcept?.title || (post.content.caption ? (post.content.caption.length > 30 ? post.content.caption.slice(0, 30) + '...' : post.content.caption) : 'Untitled Flow')}
+                        {post.videoConcept?.title || (post.content.caption ? (post.content.caption.length > 30 ? post.content.caption.slice(0, 30) + '...' : post.content.caption) : t('social.postCard.untitledFlow'))}
                     </h3>
                     {post.content.caption && (
                         <p className="text-xs text-yellow-800/80 dark:text-yellow-200/70 line-clamp-4 font-sans leading-relaxed">
@@ -100,7 +108,7 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({
                             className="w-full py-1.5 text-xs font-bold text-yellow-800 dark:text-yellow-200 bg-yellow-100/50 dark:bg-yellow-900/20 rounded-md hover:bg-yellow-200/50 dark:hover:bg-yellow-900/40 transition-colors flex items-center justify-center gap-1.5"
                         >
                             <span className="material-symbols-outlined text-[14px]">call_split</span>
-                            Split into {post.platforms.length} Drafts
+                            {t('social.postCard.splitDrafts').replace('{count}', String(post.platforms.length))}
                         </button>
                     </div>
                 )}
@@ -122,7 +130,7 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({
                 {hasMedia && (
                     <div className="w-[100px] bg-slate-100 dark:bg-slate-800 relative shrink-0">
                         {mediaUrl ? (
-                            <img src={mediaUrl} alt="Thumbnail" className="w-full h-full object-cover absolute inset-0" />
+                            <img src={mediaUrl} alt={t('social.postCard.thumbnailAlt')} className="w-full h-full object-cover absolute inset-0" />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center text-[var(--color-text-muted)]">
                                 <span className="material-symbols-outlined">image</span>
@@ -130,7 +138,7 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({
                         )}
                         {/* Type Badge */}
                         <div className="absolute top-1 left-1 px-1.5 py-0.5 bg-black/60 backdrop-blur-sm rounded text-[8px] font-bold text-white uppercase tracking-wider">
-                            {post.format === 'Story' ? 'Story' : isVideo ? 'Video' : 'Post'}
+                            {formatLabel}
                         </div>
                     </div>
                 )}
@@ -146,7 +154,7 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({
                             </div>
                             {/* Title */}
                             <h4 className="text-sm font-semibold text-[var(--color-text-main)] truncate block">
-                                {post.videoConcept?.title || post.content.caption?.slice(0, 30) || 'Untitled Post'}
+                                {post.videoConcept?.title || post.content.caption?.slice(0, 30) || t('social.postCard.untitledPost')}
                             </h4>
                         </div>
 
@@ -162,7 +170,7 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({
 
                     {/* Caption Preview */}
                     <p className="text-xs text-[var(--color-text-muted)] line-clamp-2 mb-3 leading-relaxed">
-                        {post.content.caption || 'No caption...'}
+                        {post.content.caption || t('social.postCard.noCaption')}
                     </p>
 
                     {/* Footer Meta */}
@@ -170,13 +178,13 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({
                         {/* Date */}
                         <div className="flex items-center gap-1 text-[10px] text-[var(--color-text-muted)] font-medium">
                             <span className="material-symbols-outlined text-[12px]">event</span>
-                            {post.scheduledFor ? format(new Date(post.scheduledFor), 'MMM d', { locale: dateLocale }) : 'Unscheduled'}
+                            {post.scheduledFor ? format(new Date(post.scheduledFor), 'MMM d', { locale: dateLocale }) : t('social.postCard.unscheduled')}
                         </div>
 
                         {/* Badges */}
                         {post.rejectionReason && (
                             <span className="px-1.5 py-0.5 rounded bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-[9px] font-bold uppercase">
-                                Revision
+                                {t('social.postCard.revision')}
                             </span>
                         )}
                         {!post.rejectionReason && showStatus && (
@@ -184,7 +192,7 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({
                                 post.status === 'Scheduled' ? 'bg-orange-100 text-orange-700' :
                                     'bg-slate-100 text-slate-600'
                                 }`}>
-                                {post.status}
+                                {statusLabel}
                             </span>
                         )}
                     </div>

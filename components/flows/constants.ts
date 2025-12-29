@@ -55,6 +55,17 @@ export const PIPELINE_CONFIGS: Record<string, PipelineStageConfig[]> = {
         { id: 'Benchmark', title: 'Benchmark', color: 'bg-blue-500', icon: 'speed', bgGradient: 'bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-950/30' },
         { id: 'Implementation', title: 'Implementation', color: 'bg-emerald-500', icon: 'code', bgGradient: 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-950/30' },
     ],
+    'PaidAds': [
+        { id: 'Brief', title: 'Brief', color: 'bg-violet-500', icon: 'description', bgGradient: 'bg-gradient-to-br from-violet-50 to-violet-100/50 dark:from-violet-900/20 dark:to-violet-950/30' },
+        { id: 'Research', title: 'Research', color: 'bg-sky-500', icon: 'insights', bgGradient: 'bg-gradient-to-br from-sky-50 to-sky-100/50 dark:from-sky-900/20 dark:to-sky-950/30' },
+        { id: 'Creative', title: 'Creative', color: 'bg-pink-500', icon: 'palette', bgGradient: 'bg-gradient-to-br from-pink-50 to-pink-100/50 dark:from-pink-900/20 dark:to-pink-950/30' },
+        { id: 'Targeting', title: 'Targeting', color: 'bg-blue-500', icon: 'target', bgGradient: 'bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-950/30' },
+        { id: 'Budget', title: 'Budget', color: 'bg-emerald-500', icon: 'payments', bgGradient: 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-900/20 dark:to-emerald-950/30' },
+        { id: 'Build', title: 'Build & QA', color: 'bg-cyan-500', icon: 'fact_check', bgGradient: 'bg-gradient-to-br from-cyan-50 to-cyan-100/50 dark:from-cyan-900/20 dark:to-cyan-950/30' },
+        { id: 'Review', title: 'Review', color: 'bg-amber-500', icon: 'rate_review', bgGradient: 'bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-900/20 dark:to-amber-950/30' },
+        { id: 'Live', title: 'Live', color: 'bg-green-500', icon: 'bolt', bgGradient: 'bg-gradient-to-br from-green-50 to-green-100/50 dark:from-green-900/20 dark:to-green-950/30' },
+        { id: 'Optimization', title: 'Optimization', color: 'bg-teal-500', icon: 'auto_graph', bgGradient: 'bg-gradient-to-br from-teal-50 to-teal-100/50 dark:from-teal-900/20 dark:to-teal-950/30' },
+    ],
 };
 
 export const OVERVIEW_COLUMNS: PipelineStageConfig[] = [
@@ -73,6 +84,7 @@ export const TYPE_COLORS: Record<string, string> = {
     'Social': 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400',
     'Moonshot': 'bg-fuchsia-100 text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400',
     'Optimization': 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+    'PaidAds': 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400',
     'default': 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400'
 };
 
@@ -84,4 +96,3 @@ export const PLATFORM_FORMATS: Record<SocialPlatform, SocialPostFormat[]> = {
     'X': ['Text', 'Post'],
     'YouTube': ['Video', 'Short'],
 };
-

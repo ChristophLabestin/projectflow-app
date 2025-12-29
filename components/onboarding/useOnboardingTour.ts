@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { auth } from '../../services/firebase';
-import { getUserProfile, updateUserData } from '../../services/dataService';
+import { getUserProfile, updateUserOnboardingStatus } from '../../services/dataService';
 
 type UseOnboardingTourOptions = {
     storageKey?: string;
@@ -104,12 +104,8 @@ export const useOnboardingTour = (tourKey: string, options: UseOnboardingTourOpt
         }
         if (auth.currentUser?.uid) {
             try {
-                await updateUserData(auth.currentUser.uid, {
-                    [`preferences.onboarding.${tourKey}`]: {
-                        status,
-                        completedAt: new Date().toISOString()
-                    }
-                });
+                // Use the dedicated helper to ensure correct nested object structure
+                await updateUserOnboardingStatus(auth.currentUser.uid, tourKey, status);
             } catch (error) {
                 console.warn('Failed to update onboarding status', error);
             }

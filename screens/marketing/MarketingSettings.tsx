@@ -20,7 +20,7 @@ const SMTP_OPTIONS: { value: SMTPSource; label: string; description: string }[] 
     { value: 'project', label: 'Project SMTP', description: 'Configure project-specific SMTP server' }
 ];
 
-type MarketingTab = 'data' | 'email' | 'embed' | 'analytics' | 'automation' | 'preferences';
+type MarketingTab = 'data' | 'email' | 'embed' | 'blog' | 'analytics' | 'automation' | 'preferences';
 
 export const MarketingSettings: React.FC = () => {
     const { id: projectId } = useParams<{ id: string }>();
@@ -56,6 +56,13 @@ export const MarketingSettings: React.FC = () => {
     const [groups, setGroups] = useState<RecipientGroup[]>([]);
     const [embedSelectedGroups, setEmbedSelectedGroups] = useState<string[]>([]);
 
+    // Blog Integration States
+    const [blogEndpoint, setBlogEndpoint] = useState('');
+    const [blogGetEndpoint, setBlogGetEndpoint] = useState('');
+    const [blogDataModel, setBlogDataModel] = useState('');
+    const [blogHeaders, setBlogHeaders] = useState('');
+    const [savingBlogSettings, setSavingBlogSettings] = useState(false);
+
     // Load data
     useEffect(() => {
         if (!projectId) return;
@@ -68,6 +75,12 @@ export const MarketingSettings: React.FC = () => {
             if (s) {
                 setSmtpSource(s.smtpSource || 'projectflow');
                 if (s.smtpConfig) setSmtpConfig(s.smtpConfig);
+                if (s.blogIntegration) {
+                    setBlogEndpoint(s.blogIntegration.endpoint || '');
+                    setBlogGetEndpoint(s.blogIntegration.getEndpoint || '');
+                    setBlogDataModel(s.blogIntegration.dataModel || '');
+                    setBlogHeaders(s.blogIntegration.headers || '');
+                }
             }
         });
 
@@ -254,6 +267,26 @@ export const MarketingSettings: React.FC = () => {
 </form>`;
     };
 
+    const handleSaveBlogSettings = async () => {
+        if (!projectId) return;
+        setSavingBlogSettings(true);
+        try {
+            await updateMarketingSettings(projectId, {
+                blogIntegration: {
+                    endpoint: blogEndpoint,
+                    getEndpoint: blogGetEndpoint,
+                    dataModel: blogDataModel,
+                    headers: blogHeaders
+                }
+            });
+            showSuccess('Blog integration settings saved');
+        } catch (e) {
+            showError('Failed to save blog settings');
+        } finally {
+            setSavingBlogSettings(false);
+        }
+    };
+
     const NavItem = ({ id, label, icon }: { id: MarketingTab, label: string, icon: string }) => (
         <button
             onClick={() => setActiveTab(id)}
@@ -276,6 +309,7 @@ export const MarketingSettings: React.FC = () => {
                     <NavItem id="data" label="Data Models" icon="database" />
                     <NavItem id="email" label="Email Delivery" icon="mail" />
                     <NavItem id="embed" label="Newsletter Embed" icon="code" />
+                    <NavItem id="blog" label="Blog Integration" icon="rss_feed" />
                     <NavItem id="analytics" label="Analytics" icon="analytics" />
                     <NavItem id="automation" label="Automation" icon="bolt" />
                     <NavItem id="preferences" label="Preferences" icon="tune" />
@@ -673,6 +707,95 @@ export const MarketingSettings: React.FC = () => {
                         </>
                     )}
 
+
+
+                    {activeTab === 'blog' && (
+                        <Card className="p-6">
+                            <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                                <span className="material-symbols-outlined text-[var(--color-primary)]">rss_feed</span>
+                                Blog Integration
+                            </h3>
+                            <p className="text-sm text-[var(--color-text-muted)] mb-6">
+                                Connect your blog to an external endpoint for publishing posts.
+                            </p>
+
+                            <div className="space-y-6">
+                                <div>
+                                    <Input
+                                        label="Post Endpoint URL"
+                                        value={blogEndpoint}
+                                        onChange={(e) => setBlogEndpoint(e.target.value)}
+                                        placeholder="https://yourwebsite.com/api/posts"
+                                    />
+                                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                                        We will send a POST request to this URL when you publish a blog post.
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <Input
+                                        label="Get Endpoint URL"
+                                        value={blogGetEndpoint}
+                                        onChange={(e) => setBlogGetEndpoint(e.target.value)}
+                                        placeholder="https://yourwebsite.com/api/posts"
+                                    />
+                                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                                        Optional: Endpoint to fetch existing posts from (GET request).
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="block text-sm font-medium">Data Model Definition</label>
+                                        <span className="text-xs text-[var(--color-text-muted)]">TypeScript Interface or JSON</span>
+                                    </div>
+                                    <textarea
+                                        value={blogDataModel}
+                                        onChange={(e) => setBlogDataModel(e.target.value)}
+                                        placeholder={`interface BlogPost {
+  title: string;
+  slug: string;
+  content: string;
+  coverImage: string;
+  publishedAt: string;
+}`}
+                                        className="w-full h-64 bg-zinc-900 text-zinc-100 font-mono text-xs p-4 rounded-xl border border-[var(--color-surface-border)] focus:ring-2 focus:ring-[var(--color-primary)] outline-none resize-none"
+                                        spellCheck={false}
+                                    />
+                                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                                        Define the structure your endpoint expects. This will help us validate data before sending.
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <div className="flex justify-between items-center mb-1">
+                                        <label className="block text-sm font-medium">Custom HTTP Headers</label>
+                                        <span className="text-xs text-[var(--color-text-muted)]">JSON</span>
+                                    </div>
+                                    <textarea
+                                        value={blogHeaders}
+                                        onChange={(e) => setBlogHeaders(e.target.value)}
+                                        placeholder={`{
+  "Authorization": "Bearer YOUR_TOKEN",
+  "X-Custom-Header": "value"
+}`}
+                                        className="w-full h-32 bg-zinc-900 text-zinc-100 font-mono text-xs p-4 rounded-xl border border-[var(--color-surface-border)] focus:ring-2 focus:ring-[var(--color-primary)] outline-none resize-none"
+                                        spellCheck={false}
+                                    />
+                                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                                        Securely send these headers with every publish request. Useful for authentication.
+                                    </p>
+                                </div>
+
+                                <div className="flex justify-end pt-4 border-t border-[var(--color-surface-border)]">
+                                    <Button variant="primary" onClick={handleSaveBlogSettings} isLoading={savingBlogSettings}>
+                                        Save Configuration
+                                    </Button>
+                                </div>
+                            </div>
+                        </Card>
+                    )}
+
                     {/* Analytics Placeholder */}
                     {activeTab === 'analytics' && (
                         <Card className="p-6">
@@ -725,6 +848,6 @@ export const MarketingSettings: React.FC = () => {
                     )}
                 </main>
             </div>
-        </div>
+        </div >
     );
 };

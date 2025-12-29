@@ -27,9 +27,10 @@ import {
     sendEmailVerification
 } from 'firebase/auth';
 import { format } from 'date-fns';
-import { getUserProfile, linkWithGithub } from '../services/dataService';
+import { getUserProfile, linkWithGithub, resetUserOnboarding } from '../services/dataService';
 import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
-import { registerPasskey } from '../services/passkeyService';
+import { registerPasskey, shouldAutoPrompt, setAutoPrompt } from '../services/passkeyService';
+import { Checkbox } from '../components/ui/Checkbox';
 
 type SettingsTab = 'account' | 'preferences' | 'security' | 'general' | 'billing' | 'email' | 'integrations';
 
@@ -51,6 +52,10 @@ export const Settings = () => {
     const [description, setDescription] = useState('');
     const [website, setWebsite] = useState('');
     const [contactEmail, setContactEmail] = useState('');
+
+    // Pre-Beta State
+    const [geminiApiKey, setGeminiApiKey] = useState('');
+    const [geminiTokenLimit, setGeminiTokenLimit] = useState(10000000); // 10M Default
 
     // SMTP State
     const [smtpHost, setSmtpHost] = useState('');
@@ -82,6 +87,7 @@ export const Settings = () => {
     const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
     const [passkeys, setPasskeys] = useState<any[]>([]);
     const [registeringPasskey, setRegisteringPasskey] = useState(false);
+    const [autoPromptEnabled, setAutoPromptEnabled] = useState(shouldAutoPrompt());
 
     // Account Management State
     const [githubLinked, setGithubLinked] = useState(false);
@@ -127,6 +133,10 @@ export const Settings = () => {
                     const profile = await getUserProfile(user.uid);
                     if (profile?.githubToken) {
                         setGithubLinked(true);
+                    }
+                    if (profile?.geminiConfig) {
+                        setGeminiApiKey(profile.geminiConfig.apiKey || '');
+                        setGeminiTokenLimit(profile.geminiConfig.tokenLimit || 10000000);
                     }
                 } catch (e) {
                     console.error("Failed to load account status", e);
@@ -429,7 +439,7 @@ export const Settings = () => {
         setRegisteringPasskey(true);
         try {
             await registerPasskey();
-            showSuccess('Passkey added successfully');
+            showSuccess(t('settings.security.passkeys.toast.added'));
             // Reload
             const user = auth.currentUser;
             if (user) {
@@ -438,23 +448,23 @@ export const Settings = () => {
                 setPasskeys(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
             }
         } catch (e: any) {
-            showError(e.message || 'Failed to register passkey');
+            showError(e.message || t('settings.security.passkeys.toast.error'));
         } finally {
             setRegisteringPasskey(false);
         }
     };
 
     const handleDeletePasskey = async (id: string, label: string) => {
-        if (!await confirm('Delete Passkey', `Are you sure you want to remove the passkey "${label || 'Unknown'}"?`)) return;
+        if (!await confirm(t('settings.security.passkeys.delete.title'), t('settings.security.passkeys.delete.message').replace('{label}', label || 'Unknown'))) return;
         try {
             const user = auth.currentUser;
             if (!user) return;
             await deleteDoc(doc(db, 'users', user.uid, 'passkeys', id));
             setPasskeys(prev => prev.filter(p => p.id !== id));
-            showSuccess('Passkey deleted');
+            showSuccess(t('settings.security.passkeys.toast.deleted'));
         } catch (e) {
             console.error(e);
-            showError('Failed to delete passkey');
+            showError(t('settings.security.passkeys.toast.deleteError'));
         }
     };
 
@@ -550,14 +560,15 @@ export const Settings = () => {
         if (!approved) return;
 
         try {
-            await updateUserData(user.uid, {
-                'preferences.onboarding.dashboard': null
+            await resetUserOnboarding(user.uid);
+
+            // Clear all local storage keys related to onboarding
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('onboarding_')) {
+                    localStorage.removeItem(key);
+                }
             });
-            try {
-                localStorage.removeItem('onboarding_dashboard_v1');
-            } catch {
-                // Ignore storage failures
-            }
+
             showSuccess(t('settings.general.onboarding.toast.restarted'));
         } catch (error) {
             console.error('Failed to reset onboarding', error);
@@ -599,8 +610,88 @@ export const Settings = () => {
         return <div className="h-full flex items-center justify-center text-[var(--color-text-muted)]">{t('settings.loading')}</div>;
     }
 
+    const handleSavePreBeta = async () => {
+        const user = auth.currentUser;
+        if (!user) return;
+        setSaving(true);
+        try {
+            await updateUserData(user.uid, {
+                geminiConfig: {
+                    apiKey: geminiApiKey,
+                    tokenLimit: geminiTokenLimit
+                }
+            });
+            showSuccess(t('settings.prebeta.saved'));
+        } catch (e: any) {
+            console.error("Failed to save Pre-Beta settings", e);
+            showError(e.message || t('settings.general.errors.saveFailed'));
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const renderContent = () => {
         switch (activeTab) {
+            case 'prebeta':
+                return (
+                    <div className="space-y-6 animate-fade-in">
+                        {/* 
+                         * PRE-BETA SETTINGS
+                         * TODO: Remove this entire case and the 'prebeta' option from SettingsTab type before Release 1.0.
+                         * This is a temporary measure to allow users to bring their own API keys during pre-beta testing.
+                         * For production, we will use the system key and enforce billing limits.
+                         */}
+                        <div>
+                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">Pre-Beta Settings</h2>
+                            <p className="text-[var(--color-text-muted)] text-sm">Configure your personal AI settings for the pre-beta period.</p>
+                        </div>
+
+                        <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-sm">
+                            <div className="flex items-start gap-3">
+                                <span className="material-symbols-outlined text-xl shrink-0 mt-0.5">warning</span>
+                                <div className="space-y-1">
+                                    <p className="font-bold">Pre-Beta Notice</p>
+                                    <p>During this phase, we do not provide a system-wide AI key. You must use your own Gemini API Key. Accounts are subject to reset.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <Card className="p-6 space-y-6 max-w-2xl">
+                            <div className="space-y-4">
+                                <Input
+                                    label="Gemini API Key"
+                                    type="password"
+                                    value={geminiApiKey}
+                                    onChange={(e) => setGeminiApiKey(e.target.value)}
+                                    placeholder="Entries start with AIza..."
+                                />
+                                <p className="text-xs text-[var(--color-text-muted)]">
+                                    Your key is stored securely in your user profile.
+                                    Get a key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-[var(--color-primary)] hover:underline">Google AI Studio</a>.
+                                </p>
+
+                                <div className="pt-2"></div>
+
+                                <Input
+                                    label="Monthly Token Limit"
+                                    type="number"
+                                    value={geminiTokenLimit}
+                                    onChange={(e) => setGeminiTokenLimit(parseInt(e.target.value) || 0)}
+                                    placeholder="10000000"
+                                />
+                                <p className="text-xs text-[var(--color-text-muted)]">
+                                    Set your own safety limit to control usage. Default is 10M tokens.
+                                </p>
+                            </div>
+
+                            <div className="pt-4 flex justify-end border-t border-[var(--color-surface-border)]">
+                                <Button onClick={handleSavePreBeta} loading={saving}>
+                                    {t('common.saveChanges')}
+                                </Button>
+                            </div>
+                        </Card>
+                    </div>
+                );
             case 'preferences':
                 return (
                     <div className="space-y-6 animate-fade-in">
@@ -876,15 +967,36 @@ export const Settings = () => {
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <div className="flex items-center gap-2">
-                                            <p className="font-semibold text-[var(--color-text-main)]">Passkeys</p>
-                                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-1.5 py-0.5 rounded">Beta</span>
+                                            <p className="font-semibold text-[var(--color-text-main)]">{t('settings.security.passkeys.title')}</p>
+                                            <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-1.5 py-0.5 rounded">{t('settings.security.passkeys.beta')}</span>
                                         </div>
-                                        <p className="text-xs text-[var(--color-text-muted)]">Sign in securely with FaceID, TouchID, or Windows Hello.</p>
+                                        <p className="text-xs text-[var(--color-text-muted)]">{t('settings.security.passkeys.description')}</p>
                                     </div>
                                     <Button size="sm" onClick={handleRegisterPasskey} isLoading={registeringPasskey}>
                                         <span className="material-symbols-outlined text-[18px] mr-1">fingerprint</span>
-                                        Add Passkey
+                                        {t('settings.security.passkeys.actions.add')}
                                     </Button>
+                                </div>
+
+                                {/* Auto-Prompt Toggle */}
+                                <div className="flex items-center gap-3 p-3 bg-[var(--color-surface-hover)] rounded-lg">
+                                    <Checkbox
+                                        checked={autoPromptEnabled}
+                                        onChange={(checked) => {
+                                            setAutoPromptEnabled(checked);
+                                            setAutoPrompt(checked);
+                                            if (checked) {
+                                                showSuccess(t('settings.security.passkeys.autoPrompt.enabled'));
+                                            } else {
+                                                showSuccess(t('settings.security.passkeys.autoPrompt.disabled'));
+                                            }
+                                        }}
+                                        id="auto-prompt-toggle"
+                                    />
+                                    <label htmlFor="auto-prompt-toggle" className="cursor-pointer">
+                                        <p className="text-sm font-medium text-[var(--color-text-main)]">{t('settings.security.passkeys.autoPrompt.label')}</p>
+                                        <p className="text-[10px] text-[var(--color-text-muted)]">{t('settings.security.passkeys.autoPrompt.description')}</p>
+                                    </label>
                                 </div>
 
                                 {passkeys.length > 0 && (
@@ -898,7 +1010,7 @@ export const Settings = () => {
                                                     <div>
                                                         <p className="text-sm font-medium text-[var(--color-text-main)]">{passkey.label || 'Passkey'}</p>
                                                         <p className="text-[10px] text-[var(--color-text-muted)]">
-                                                            Added {passkey.createdAt ? format(passkey.createdAt.toDate(), dateFormat) : 'Unknown'}
+                                                            {t('settings.security.passkeys.addedDate').replace('{date}', passkey.createdAt ? format(passkey.createdAt.toDate(), dateFormat) : 'Unknown')}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -1259,6 +1371,12 @@ export const Settings = () => {
                 {/* Sidebar */}
                 <aside className="w-full md:w-64 shrink-0 space-y-1">
                     <h1 className="text-2xl font-display font-bold text-[var(--color-text-main)] px-2 mb-6">{t('settings.title')}</h1>
+
+                    {/* PRE-BETA Section */}
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-subtle)] px-3 pt-2 pb-2">
+                        Pre-Beta
+                    </div>
+                    <NavItem id="prebeta" label="Pre-Beta Config" icon="science" />
 
                     {/* Personal Settings */}
                     <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-subtle)] px-3 pt-2 pb-2">

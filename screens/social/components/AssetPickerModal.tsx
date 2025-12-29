@@ -5,6 +5,7 @@ import { Button } from '../../../components/ui/Button';
 import { SocialAsset } from '../../../types';
 import { subscribeSocialAssets } from '../../../services/dataService';
 import { useParams } from 'react-router-dom';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface AssetPickerModalProps {
     isOpen: boolean;
@@ -15,6 +16,7 @@ interface AssetPickerModalProps {
 export const AssetPickerModal: React.FC<AssetPickerModalProps> = ({ isOpen, onClose, onSelect }) => {
     const { id: projectId } = useParams<{ id: string }>();
     const [assets, setAssets] = useState<SocialAsset[]>([]);
+    const { t } = useLanguage();
 
     useEffect(() => {
         if (!projectId || !isOpen) return;
@@ -23,11 +25,11 @@ export const AssetPickerModal: React.FC<AssetPickerModalProps> = ({ isOpen, onCl
     }, [projectId, isOpen]);
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Select Asset" maxWidth="max-w-4xl">
+        <Modal isOpen={isOpen} onClose={onClose} title={t('social.assetPicker.title')} maxWidth="max-w-4xl">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-h-[60vh] overflow-y-auto p-1">
                 {assets.length === 0 && (
                     <div className="col-span-full text-center py-10 text-[var(--color-text-muted)]">
-                        No assets found. Upload some in the Asset Library first.
+                        {t('social.assetPicker.empty')}
                     </div>
                 )}
                 {assets.map(asset => (

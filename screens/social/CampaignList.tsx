@@ -5,7 +5,8 @@ import { subscribeCampaigns, deleteCampaign } from '../../services/dataService';
 import { SocialCampaign } from '../../types';
 import { useConfirm, useToast } from '../../context/UIContext';
 import { format } from 'date-fns';
-import { dateLocale, dateFormat } from '../../utils/activityHelpers';
+import { useLanguage } from '../../context/LanguageContext';
+import { getSocialCampaignStatusLabel } from '../../utils/socialLocalization';
 
 export const CampaignList = () => {
     const { id: projectId } = useParams<{ id: string }>();
@@ -14,6 +15,7 @@ export const CampaignList = () => {
     const [loading, setLoading] = useState(true);
     const confirm = useConfirm();
     const { showSuccess, showError } = useToast();
+    const { t, dateLocale, dateFormat } = useLanguage();
 
     useEffect(() => {
         if (!projectId) return;
@@ -38,36 +40,36 @@ export const CampaignList = () => {
         if (!projectId) return;
 
         const confirmed = await confirm(
-            "Delete Campaign",
-            `Are you sure you want to delete "${campaign.name}"? This action cannot be undone.`
+            t('social.campaignList.confirmDelete.title'),
+            t('social.campaignList.confirmDelete.message').replace('{name}', campaign.name)
         );
 
         if (confirmed) {
             try {
                 await deleteCampaign(projectId, campaign.id);
-                showSuccess("Campaign deleted successfully");
+                showSuccess(t('social.campaignList.toast.deleted'));
             } catch (error) {
                 console.error("Failed to delete campaign", error);
-                showError("Failed to delete campaign");
+                showError(t('social.campaignList.toast.deleteError'));
             }
         }
     };
 
-    if (loading) return <div>Loading campaigns...</div>;
+    if (loading) return <div>{t('social.campaignList.loading')}</div>;
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="h2 mb-1">Campaigns</h1>
-                    <p className="text-[var(--color-text-muted)]">Manage your social media campaigns.</p>
+                    <h1 className="h2 mb-1">{t('social.campaignList.title')}</h1>
+                    <p className="text-[var(--color-text-muted)]">{t('social.campaignList.subtitle')}</p>
                 </div>
                 <button
                     onClick={handleCreate}
                     className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] font-bold rounded-lg hover:opacity-90 transition-opacity"
                 >
                     <span className="material-symbols-outlined">add</span>
-                    <span>New Campaign</span>
+                    <span>{t('social.campaignList.newCampaign')}</span>
                 </button>
             </div>
 
@@ -85,13 +87,13 @@ export const CampaignList = () => {
                                         c.status === 'Paused' ? 'bg-amber-100 text-amber-700' :
                                             'bg-gray-100 text-gray-700'
                                 }`}>
-                                {c.status}
+                                {getSocialCampaignStatusLabel(c.status, t)}
                             </span>
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button
                                     className="text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] p-1 rounded-full"
                                     onClick={(e) => handleEdit(e, c)}
-                                    title="Edit Campaign"
+                                    title={t('social.campaignList.editTitle')}
                                 >
                                     <span className="material-symbols-outlined text-base">edit</span>
                                 </button>
@@ -99,7 +101,7 @@ export const CampaignList = () => {
                                     <button
                                         className="text-[var(--color-text-muted)] hover:bg-red-50 hover:text-red-500 p-1 rounded-full"
                                         onClick={(e) => handleDelete(e, c)}
-                                        title="Delete Campaign"
+                                        title={t('social.campaignList.deleteTitle')}
                                     >
                                         <span className="material-symbols-outlined text-base">delete</span>
                                     </button>
@@ -109,17 +111,17 @@ export const CampaignList = () => {
                         <h3 className="h4 mb-1">{c.name}</h3>
                         <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] mb-4">
                             <span className="material-symbols-outlined text-base">calendar_today</span>
-                            <span>{c.startDate ? format(new Date(c.startDate), dateFormat, { locale: dateLocale }) : 'TBD'}</span>
+                            <span>{c.startDate ? format(new Date(c.startDate), dateFormat, { locale: dateLocale }) : t('social.campaignList.tbd')}</span>
                         </div>
                         <div className="pt-4 border-t border-[var(--color-surface-border)] text-sm text-[var(--color-text-muted)]">
-                            {c.toneOfVoice || "No tone defined"}
+                            {c.toneOfVoice || t('social.campaignList.noTone')}
                         </div>
                     </div>
                 ))}
 
                 {campaigns.length === 0 && (
                     <div className="col-span-full py-12 text-center text-[var(--color-text-muted)] bg-[var(--color-surface-bg)] rounded-xl border border-dashed border-[var(--color-surface-border)]">
-                        <p>No campaigns yet. Create one to get started!</p>
+                        <p>{t('social.campaignList.empty')}</p>
                     </div>
                 )}
             </div>

@@ -2,18 +2,21 @@ import { MediaLibrary } from '../../components/MediaLibrary/MediaLibraryModal';
 import { useState } from 'react';
 import React from 'react';
 import { NavLink, Outlet, useParams, useLocation } from 'react-router-dom';
+import { useLanguage } from '../../context/LanguageContext';
 
 export const SocialLayout = () => {
     const { id: projectId } = useParams<{ id: string }>();
     const [showMediaLibrary, setShowMediaLibrary] = useState(false);
+    const location = useLocation();
+    const { t } = useLanguage();
 
     const tabs = [
-        { to: "", label: "Dashboard", end: true, icon: "dashboard" },
-        { to: "calendar", label: "Calendar", icon: "calendar_month" },
-        { to: "campaigns", label: "Campaigns", icon: "campaign" },
-        { to: "posts", label: "Posts", icon: "post" },
-        { to: "assets", label: "Assets", icon: "perm_media" }, // This will be intercepted
-        { to: "settings", label: "Settings", icon: "settings" },
+        { to: "", label: t('socialLayout.tabs.dashboard'), end: true, icon: "dashboard" },
+        { to: "calendar", label: t('socialLayout.tabs.calendar'), icon: "calendar_month" },
+        { to: "campaigns", label: t('socialLayout.tabs.campaigns'), icon: "campaign" },
+        { to: "posts", label: t('socialLayout.tabs.posts'), icon: "post" },
+        { to: "assets", label: t('socialLayout.tabs.assets'), icon: "perm_media" }, // This will be intercepted
+        { to: "settings", label: t('socialLayout.tabs.settings'), icon: "settings" },
     ];
 
     return (
@@ -23,7 +26,7 @@ export const SocialLayout = () => {
 
                 {/* Title (Text Only) */}
                 <h1 className="text-sm font-bold text-[var(--color-text-main)] shrink-0">
-                    Social Studio
+                    {t('socialLayout.title')}
                 </h1>
 
                 <div className="h-4 w-px bg-[var(--color-surface-border)] shrink-0" />

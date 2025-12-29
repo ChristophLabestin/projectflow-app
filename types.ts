@@ -136,6 +136,10 @@ export interface Member {
     pinnedProjectId?: string;
     privacySettings?: PrivacySettings;
     originIdeaId?: string;
+    geminiConfig?: {
+        apiKey: string;
+        tokenLimit: number; // User-defined limit
+    };
 }
 
 export type PrivacyScope = 'public' | 'members' | 'guests' | 'private';
@@ -241,6 +245,8 @@ export type IdeaStage =
     | 'Analysis' | 'Proposal' | 'Benchmark' | 'Implementation'
     // Product
     | 'Strategy' | 'Discovery' | 'Definition' | 'Development' | 'Launch'
+    // Paid Ads
+    | 'Brief' | 'Research' | 'Creative' | 'Targeting' | 'Budget' | 'Build' | 'Optimization'
     | string; // Keep string fallback for safety
 
 export interface Idea {
@@ -287,10 +293,78 @@ export interface Idea {
     convertedCampaignId?: string; // ID of the created marketing campaign
     campaignType?: 'email' | 'ad' | 'marketing' | 'social'; // Type of the created campaign
     socialType?: 'post' | 'campaign'; // Distinguish between single post and campaign
+    marketingType?: 'paidAd' | 'emailMarketing'; // Distinguish between paid ads and email marketing
     lastRejectionReason?: string; // Feedback from rejection/change request
     originIdeaId?: string;
     assignedUserIds?: string[];
     aiTokensUsed?: number;
+    // Structured Paid Ads Data
+    adData?: {
+        // Brief
+        objective?: AdObjective | string;
+        missionStatement?: string;
+        targetKPIs?: string;
+        competitors?: string;
+        duration?: string;
+        offer?: string;
+        funnelStage?: 'Awareness' | 'Consideration' | 'Conversion' | 'Retention';
+        landingPage?: string;
+        conversionEvent?: string;
+        brandGuardrails?: string;
+
+        // Creative
+        creative?: AdCreative;
+
+        // Targeting
+        targeting?: AdTargetAudience;
+
+        // Budget
+        budget?: {
+            amount: number;
+            type: 'Daily' | 'Lifetime';
+            currency: string;
+            startDate?: string;
+            endDate?: string;
+            bidStrategy?: string;
+            pacing?: string;
+            notes?: string;
+        };
+
+        // Research
+        research?: {
+            marketInsights?: string;
+            competitorNotes?: string;
+            customerPainPoints?: string;
+            proofPoints?: string;
+            angleIdeas?: string[];
+        };
+
+        // Build & QA
+        setup?: {
+            platforms?: AdPlatform[];
+            campaignStructure?: string;
+            trackingStatus?: 'Not Started' | 'In Progress' | 'Verified';
+            utmScheme?: string;
+            checklist?: string[];
+            qaNotes?: string;
+        };
+
+        // Optimization
+        optimization?: {
+            hypotheses?: string[];
+            scalingPlan?: string;
+            reportingCadence?: string;
+            guardrails?: string;
+            learnings?: string;
+        };
+
+        // Review
+        riskAnalysis?: RiskWinAnalysis;
+
+        // Meta
+        completeness: number; // 0-100
+        lastSavedAt?: string;
+    };
 }
 
 export interface RiskWinAnalysis {
@@ -351,6 +425,10 @@ export type IdeaGroup =
     | 'Product'
     | 'Task'
     | 'Marketing'
+    | 'PaidAds'
+    | 'Social'
+    | 'Moonshot'
+    | 'Optimization'
     | 'Admin'
     | 'UI'
     | 'UX'
@@ -713,52 +791,142 @@ export interface MarketingCampaign {
     originIdeaId?: string;
 }
 
-// Paid Ads
-export interface AdCampaign {
-    id: string;
-    projectId: string;
-    marketingCampaignId?: string;
-    platform: 'Google' | 'Meta' | 'LinkedIn' | 'Other';
-    name: string;
-    status: 'Enabled' | 'Paused' | 'Ended';
-    budgetDaily?: number;
-    budgetTotal?: number;
-    spend: number;
-    objective: 'Traffic' | 'Leads' | 'Sales' | 'Brand Awareness';
-    metrics: {
-        impressions: number;
-        clicks: number;
-        ctr: number;
-        cpc: number;
-        conversions: number;
-        costPerConversion: number;
-        roas: number;
-        originIdeaId?: string;
-    };
-    startDate: string;
-    endDate?: string;
+// Paid Ads - Platform Types
+export type AdPlatform = 'Google' | 'Meta' | 'LinkedIn' | 'TikTok' | 'Other';
+export type AdCampaignStatus = 'Draft' | 'Pending' | 'Enabled' | 'Paused' | 'Ended' | 'Rejected';
+export type AdObjective = 'Traffic' | 'Leads' | 'Sales' | 'Brand Awareness' | 'Engagement' | 'App Installs' | 'Video Views';
+export type AdCallToAction = 'Learn More' | 'Shop Now' | 'Sign Up' | 'Contact Us' | 'Download' | 'Get Quote' | 'Watch More' | 'Apply Now';
+
+export interface AdTargetAudience {
+    locations?: string[];
+    ageMin?: number;
+    ageMax?: number;
+    genders?: ('Male' | 'Female' | 'All')[];
+    interests?: string[];
+    behaviors?: string[];
+    customAudiences?: string[]; // Note: kept as string[] based on original but UI might treat as string, check existing usage
+    lookalikes?: string[];
+    languages?: string[];
+    excludedAudiences?: string;
+    placements?: string[];
     originIdeaId?: string;
 }
 
-export interface AdGroup {
+export interface AdCreative {
+    headline1?: string;
+    headline2?: string;
+    primaryText?: string;
+    description?: string;
+    cta?: AdCallToAction | string;
+    visualConcept?: string;
+    visualAssetUrl?: string;
+    variations?: string[];
+}
+
+export interface AdMetrics {
+    impressions: number;
+    reach?: number;
+    clicks: number;
+    ctr: number;
+    cpc: number;
+    cpm?: number;
+    conversions: number;
+    conversionRate?: number;
+    costPerConversion: number;
+    roas: number;
+    engagements?: number;
+    videoViews?: number;
+    frequency?: number;
+    originIdeaId?: string;
+}
+
+export interface AdCampaign {
+    id: string;
+    projectId: string;
+    name: string;
+    description?: string;
+    platform: AdPlatform;
+    status: AdCampaignStatus;
+
+    // Budget & Schedule
+    budgetType: 'Daily' | 'Lifetime';
+    budgetDaily?: number;
+    budgetTotal?: number;
+    spend: number;
+    startDate: string;
+    endDate?: string;
+
+    // Campaign Configuration
+    objective: AdObjective;
+    targetAudience?: AdTargetAudience;
+    placements?: string[]; // e.g., 'Feed', 'Stories', 'Search', 'Display'
+
+    // Performance Metrics
+    metrics: AdMetrics;
+
+    // Integration Links
+    originIdeaId?: string;           // Flow pipeline link
+    linkedSocialPostIds?: string[];   // Boosted/linked social posts
+    marketingCampaignId?: string;     // Parent marketing campaign
+
+    // Metadata
+    createdAt: any;
+    updatedAt?: any;
+    createdBy?: string;
+}
+
+export interface AdSet {
     id: string;
     adCampaignId: string;
+    projectId: string;
     name: string;
     status: 'Enabled' | 'Paused';
-    keywords?: string[];
-    targeting?: string;
+    budgetDaily?: number;
+    targeting?: AdTargetAudience;
+    placements?: string[];
+    schedule?: {
+        startTime: string;
+        endTime: string;
+        days: string[];
+        originIdeaId?: string;
+    };
+    metrics?: AdMetrics;
+    createdAt: any;
     originIdeaId?: string;
 }
 
 export interface AdCreative {
     id: string;
-    adGroupId: string;
+    adSetId: string;
+    projectId: string;
+    name: string;
     headline: string;
     description: string;
-    assetUrl?: string;
-    previewUrl?: string;
-    format: 'Text' | 'Image' | 'Video' | 'Carousel';
-    status: 'Active' | 'Disapproved' | 'Paused';
+    primaryText?: string;
+    callToAction: AdCallToAction;
+    destinationUrl: string;
+    assets: Array<{
+        type: 'image' | 'video';
+        url: string;
+        storagePath?: string;
+        aspectRatio?: '1:1' | '4:5' | '9:16' | '16:9';
+        originIdeaId?: string;
+    }>;
+    format: 'Single Image' | 'Carousel' | 'Video' | 'Collection' | 'Stories';
+    status: 'Active' | 'Paused' | 'Disapproved' | 'Pending Review';
+    metrics?: AdMetrics;
+    socialAssetIds?: string[]; // Links to SocialAsset for reuse
+    createdAt: any;
+    originIdeaId?: string;
+}
+
+export interface AdPerformanceSnapshot {
+    id: string;
+    adCampaignId: string;
+    projectId: string;
+    date: string;
+    metrics: AdMetrics;
+    spend: number;
     originIdeaId?: string;
 }
 
@@ -965,6 +1133,12 @@ export interface MarketingSettings {
     smtpSource: SMTPSource;
     smtpConfig?: SMTPConfig; // Project-specific SMTP (only if source is 'project')
     smtpVerified?: boolean; // Whether project SMTP has been tested successfully
+    blogIntegration?: {
+        endpoint?: string;
+        getEndpoint?: string; // URL to fetch posts
+        dataModel?: string; // TypeScript interface or JSON
+        headers?: string; // JSON string of headers
+    };
     updatedAt: any;
     originIdeaId?: string;
 }

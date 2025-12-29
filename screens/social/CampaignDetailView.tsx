@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { subscribeCampaigns, subscribeSocialPosts, deleteSocialPost, createSocialPost, getProjectById, updateSocialPost, updateCampaign, getIdeaById, updateIdea } from '../../services/dataService';
-import { SocialCampaign, SocialPost, Project, Idea } from '../../types';
+import { SocialCampaign, SocialPost, Project, Idea, SocialPostFormat, SocialPostStatus } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
 import { useConfirm, useToast } from '../../context/UIContext';
 import { generateCampaignContentPlan, SocialPostDraft } from '../../services/geminiService';
 import { format } from 'date-fns';
-import { dateLocale, dateFormat } from '../../utils/activityHelpers';
+import { useLanguage } from '../../context/LanguageContext';
+import { getSocialPostFormatLabel, getSocialPostStatusLabel } from '../../utils/socialLocalization';
 import { CampaignStrategyView } from './tabs/CampaignStrategyView';
 import { CampaignKanbanView } from './tabs/CampaignKanbanView';
 import { CampaignCalendarView } from './tabs/CampaignCalendarView';
@@ -42,6 +43,7 @@ export const CampaignDetailView = () => {
 
     const confirm = useConfirm();
     const { showSuccess, showError } = useToast();
+    const { t, dateLocale, dateFormat } = useLanguage();
 
     useEffect(() => {
         if (campaign?.platforms) {
@@ -92,7 +94,7 @@ export const CampaignDetailView = () => {
         setShowConfigModal(false); // Close config
         try {
             const project = await getProjectById(projectId);
-            if (!project) throw new Error("Project not found");
+            if (!project) throw new Error(t('social.campaignDetail.errors.projectNotFound'));
 
             const existingContent = posts.map(p => p.videoConcept?.title || p.content.caption || '').filter(Boolean);
 
@@ -110,7 +112,7 @@ export const CampaignDetailView = () => {
             setShowPlanModal(true);
         } catch (error) {
             console.error("Failed to generate plan", error);
-            showError("Failed to generate content plan");
+            showError(t('social.campaignDetail.errors.generatePlan'));
         } finally {
             setGenerating(false);
         }
@@ -170,8 +172,8 @@ export const CampaignDetailView = () => {
 
                 if (isVideo) {
                     postPayload.videoConcept = {
-                        title: (draft.content || 'Video Concept').slice(0, 50) + '...',
-                        scriptOutline: `Visual: ${draft.imagePrompt || 'No prompt'}\nCaption: ${draft.content}`,
+                        title: (draft.content || t('social.campaignDetail.plan.videoConceptFallback')).slice(0, 50) + '...',
+                        scriptOutline: `${t('social.campaignDetail.plan.script.visual')}: ${draft.imagePrompt || t('social.campaignDetail.plan.script.noPrompt')}\n${t('social.campaignDetail.plan.script.caption')}: ${draft.content}`,
                         thumbnailIdea: draft.imagePrompt || ''
                     };
                 }
@@ -180,13 +182,13 @@ export const CampaignDetailView = () => {
             });
 
             await Promise.all(promises);
-            showSuccess(`Saved ${generatedPlan.length} posts to drafts`);
+            showSuccess(t('social.campaignDetail.savePlan.success').replace('{count}', String(generatedPlan.length)));
             setShowPlanModal(false);
             setGeneratedPlan([]);
             setActiveTab('board');
         } catch (error) {
             console.error("Failed to save plan", error);
-            showError("Failed to save posts");
+            showError(t('social.campaignDetail.savePlan.error'));
         }
     };
 
@@ -200,20 +202,20 @@ export const CampaignDetailView = () => {
 
     const handleDebugSyncPlan = async () => {
         if (!campaign || !projectId || !campaign.originIdeaId) {
-            showError("No linked flow found");
+            showError(t('social.campaignDetail.syncPlan.noLinkedFlow'));
             return;
         }
 
         try {
             const idea = await getIdeaById(campaign.originIdeaId, projectId);
             if (!idea || !idea.concept) {
-                showError("Flow has no concept data");
+                showError(t('social.campaignDetail.syncPlan.noConcept'));
                 return;
             }
 
             const conceptData = JSON.parse(idea.concept);
             if (!conceptData.planningPosts || !Array.isArray(conceptData.planningPosts)) {
-                showError("No planned posts found in concept");
+                showError(t('social.campaignDetail.syncPlan.noPlannedPosts'));
                 return;
             }
 
@@ -221,11 +223,11 @@ export const CampaignDetailView = () => {
                 plannedContent: conceptData.planningPosts
             });
 
-            showSuccess(`Synced ${conceptData.planningPosts.length} planned items`);
+            showSuccess(t('social.campaignDetail.syncPlan.synced').replace('{count}', String(conceptData.planningPosts.length)));
             // The subscription will auto-update the UI
         } catch (error) {
             console.error(error);
-            showError("Failed to sync plan");
+            showError(t('social.campaignDetail.syncPlan.error'));
         }
     };
 
@@ -233,8 +235,9 @@ export const CampaignDetailView = () => {
         if (!projectId || !campaignId) return;
 
         const confirmed = await confirm(
-            'Create this planned post?',
-            `Do you want to create a new post draft based on "${post.hook || post.visualDirection || 'this planned item'}"?`
+            t('social.campaignDetail.plannedPost.confirmTitle'),
+            t('social.campaignDetail.plannedPost.confirmMessage')
+                .replace('{title}', post.hook || post.visualDirection || t('social.campaignDetail.plannedPost.fallback'))
         );
 
         if (confirmed) {
@@ -314,10 +317,12 @@ export const CampaignDetailView = () => {
                 scheduledFor: date ? date.toISOString() : '', // Assuming empty string clears it in DB adapt
                 isConcept: false
             });
-            showSuccess(date ? `Scheduled for ${format(date, dateFormat, { locale: dateLocale })}` : 'Unscheduled');
+            showSuccess(date
+                ? t('social.campaignDetail.schedule.scheduled').replace('{date}', format(date, dateFormat, { locale: dateLocale }))
+                : t('social.campaignDetail.schedule.unscheduled'));
         } catch (error) {
             console.error("Failed to schedule post", error);
-            showError("Failed to update schedule");
+            showError(t('social.campaignDetail.schedule.error'));
             setPosts(originalPosts);
         }
     };
@@ -326,15 +331,16 @@ export const CampaignDetailView = () => {
         e.stopPropagation();
         if (!projectId) return;
         const confirmed = await confirm(
-            'Delete Post?',
-            `Are you sure you want to delete "${post.videoConcept?.title || post.content?.caption?.slice(0, 30) || 'this post'}" ? `
+            t('social.campaignDetail.deletePost.confirmTitle'),
+            t('social.campaignDetail.deletePost.confirmMessage')
+                .replace('{title}', post.videoConcept?.title || post.content?.caption?.slice(0, 30) || t('social.campaignDetail.deletePost.fallback'))
         );
         if (confirmed) {
             try {
                 await deleteSocialPost(projectId, post.id);
-                showSuccess("Post deleted");
+                showSuccess(t('social.campaignDetail.deletePost.success'));
             } catch {
-                showError("Failed to delete post");
+                showError(t('social.campaignDetail.deletePost.error'));
             }
         }
     };
@@ -361,10 +367,13 @@ export const CampaignDetailView = () => {
                 status: newStatus === 'Ideas' ? 'Draft' as any : newStatus as any,
                 isConcept: newStatus === 'Ideas'
             });
-            showSuccess(`Moved to ${newStatus}`);
+            const statusLabel = newStatus === 'Ideas'
+                ? t('social.campaignDetail.status.ideas')
+                : getSocialPostStatusLabel(newStatus as SocialPostStatus, t);
+            showSuccess(t('social.campaignDetail.status.moved').replace('{status}', statusLabel));
         } catch (error) {
             console.error("Failed to move post", error);
-            showError("Failed to update post status");
+            showError(t('social.campaignDetail.status.error'));
             setPosts(originalPosts);
         }
     };
@@ -403,10 +412,10 @@ export const CampaignDetailView = () => {
                     status: 'Archived' as SocialPostStatus
                 });
             }
-            showSuccess(`Created ${newPostsData.length} drafts from concept`);
+            showSuccess(t('social.campaignDetail.split.success').replace('{count}', String(newPostsData.length)));
         } catch (error) {
             console.error("Failed to split post", error);
-            showError("Failed to create drafts");
+            showError(t('social.campaignDetail.split.error'));
         }
     };
 
@@ -425,7 +434,7 @@ export const CampaignDetailView = () => {
                         approvedAt: new Date(),
                     }]
                 });
-                showSuccess("Post approved!");
+                showSuccess(t('social.campaignDetail.review.approved'));
             } else {
                 await updateSocialPost(projectId, post.id, {
                     ...post,
@@ -438,11 +447,11 @@ export const CampaignDetailView = () => {
                         approvedAt: new Date()
                     }]
                 });
-                showSuccess("Post rejected and moved to Drafts");
+                showSuccess(t('social.campaignDetail.review.rejected'));
             }
         } catch (e) {
             console.error(e);
-            showError("Failed to update post status");
+            showError(t('social.campaignDetail.review.error'));
         }
     };
 
@@ -473,7 +482,7 @@ export const CampaignDetailView = () => {
 
                     // Delete the draft
                     await deleteSocialPost(projectId, draftPost.id);
-                    showSuccess(`Reverted ${draftPost.platform} draft to concept`);
+                    showSuccess(t('social.campaignDetail.revert.successPlatform').replace('{platform}', draftPost.platform));
                     return;
                 }
             }
@@ -491,11 +500,11 @@ export const CampaignDetailView = () => {
                 },
                 platforms: [draftPost.platform] // It becomes a concept for this platform
             });
-            showSuccess(`Converted draft to concept`);
+            showSuccess(t('social.campaignDetail.revert.success'));
 
         } catch (error) {
             console.error("Failed to revert draft", error);
-            showError("Failed to revert draft");
+            showError(t('social.campaignDetail.revert.error'));
         }
     };
 
@@ -512,8 +521,8 @@ export const CampaignDetailView = () => {
         return (
             <div className="flex flex-col items-center justify-center h-64 text-[var(--color-text-muted)]">
                 <span className="material-symbols-outlined text-4xl mb-2">campaign</span>
-                <p>Campaign not found.</p>
-                <Button variant="ghost" className="mt-4" onClick={() => navigate('../campaigns')}>Back to Campaigns</Button>
+                <p>{t('social.campaignDetail.notFound')}</p>
+                <Button variant="ghost" className="mt-4" onClick={() => navigate('../campaigns')}>{t('social.campaignDetail.backToCampaigns')}</Button>
             </div>
         );
     }
@@ -574,7 +583,7 @@ export const CampaignDetailView = () => {
                                     }
 
                                     await updateCampaign(projectId, campaignId, updates);
-                                    showSuccess("Campaign Approved! moved to Planning.");
+                                    showSuccess(t('social.campaignDetail.approval.approved'));
                                     // Local state update handled by subscription
                                 }}
                                 onReject={async (reason) => {
@@ -584,7 +593,7 @@ export const CampaignDetailView = () => {
                                     if (campaign.originIdeaId) {
                                         await updateIdea(campaign.originIdeaId, {
                                             stage: 'ChangeRequested', // Send to specific ChangeRequested stage
-                                            lastRejectionReason: reason || "Changes Requested"
+                                            lastRejectionReason: reason || t('social.campaignDetail.approval.changesRequestedFallback')
                                         }, projectId);
                                     }
 
@@ -592,12 +601,15 @@ export const CampaignDetailView = () => {
                                     // This overrides any potential side-effects from updateIdea
                                     await updateCampaign(projectId, campaignId, { status: 'Concept' });
 
-                                    showSuccess("Changes Requested. Feedback sent to Flow Concept.");
+                                    showSuccess(t('social.campaignDetail.approval.changesRequested'));
                                     navigate(`../campaigns`);
                                 }}
                                 onRejectEntirely={async () => {
                                     if (!projectId || !campaignId) return;
-                                    const confirmed = await confirm('Reject Campaign?', 'Are you sure you want to completely reject this campaign and its original concept? This cannot be easily undone.');
+                                    const confirmed = await confirm(
+                                        t('social.campaignDetail.approval.rejectConfirmTitle'),
+                                        t('social.campaignDetail.approval.rejectConfirmMessage')
+                                    );
                                     if (!confirmed) return;
 
                                     try {
@@ -609,11 +621,11 @@ export const CampaignDetailView = () => {
                                             await updateIdea(campaign.originIdeaId, { stage: 'Rejected' }, projectId);
                                         }
 
-                                        showSuccess("Campaign and Concept Rejected.");
+                                        showSuccess(t('social.campaignDetail.approval.rejected'));
                                         navigate(`../campaigns`);
                                     } catch (e) {
                                         console.error("Failed to reject campaign", e);
-                                        showError("Failed to reject campaign");
+                                        showError(t('social.campaignDetail.approval.rejectError'));
                                     }
                                 }}
                             />
@@ -646,10 +658,10 @@ export const CampaignDetailView = () => {
                                 {/* Tabs */}
                                 <div className="flex items-center gap-8">
                                     {[
-                                        { id: 'dashboard', label: 'Overview', icon: 'space_dashboard' },
-                                        { id: 'strategy', label: 'Strategy', icon: 'lightbulb' },
-                                        { id: 'board', label: 'Production', icon: 'view_kanban', badge: posts.length },
-                                        { id: 'calendar', label: 'Calendar', icon: 'calendar_month' },
+                                        { id: 'dashboard', label: t('social.campaignDetail.tabs.overview'), icon: 'space_dashboard' },
+                                        { id: 'strategy', label: t('social.campaignDetail.tabs.strategy'), icon: 'lightbulb' },
+                                        { id: 'board', label: t('social.campaignDetail.tabs.production'), icon: 'view_kanban', badge: posts.length },
+                                        { id: 'calendar', label: t('social.campaignDetail.tabs.calendar'), icon: 'calendar_month' },
                                     ].map(tab => (
                                         <button
                                             key={tab.id}
@@ -699,7 +711,7 @@ export const CampaignDetailView = () => {
                                     <span className="material-symbols-outlined text-[16px]">
                                         {isFocusMode ? 'unfold_more' : 'unfold_less'}
                                     </span>
-                                    {isFocusMode ? 'Expand' : 'Focus'}
+                                    {isFocusMode ? t('social.campaignDetail.focus.expand') : t('social.campaignDetail.focus.focus')}
                                 </button>
                             </div>
                             <div className="h-px bg-[var(--color-surface-border)] -mx-8" style={{ marginTop: '-1px' }} />
@@ -758,24 +770,24 @@ export const CampaignDetailView = () => {
             <Modal
                 isOpen={showConfigModal}
                 onClose={() => setShowConfigModal(false)}
-                title="Generate Content Plan"
+                title={t('social.campaignDetail.config.title')}
                 size="lg"
             >
                 <div className="space-y-6">
                     <div>
-                        <label className="block text-sm font-bold text-[var(--color-text-main)] mb-2">Focus / Theme (Optional)</label>
+                        <label className="block text-sm font-bold text-[var(--color-text-main)] mb-2">{t('social.campaignDetail.config.focusLabel')}</label>
                         <input
                             type="text"
                             className="w-full bg-[var(--color-bg-base)] border border-[var(--color-surface-border)] rounded-lg px-4 py-2 text-sm text-[var(--color-text-main)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
-                            placeholder="e.g. Product Launch, Customer Stories, Flash Sale..."
+                            placeholder={t('social.campaignDetail.config.focusPlaceholder')}
                             value={configFocus}
                             onChange={(e) => setConfigFocus(e.target.value)}
                         />
-                        <p className="text-xs text-[var(--color-text-muted)] mt-1">Guide the AI on what this week's content should focus on.</p>
+                        <p className="text-xs text-[var(--color-text-muted)] mt-1">{t('social.campaignDetail.config.focusHint')}</p>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-bold text-[var(--color-text-main)] mb-2">Target Platforms</label>
+                        <label className="block text-sm font-bold text-[var(--color-text-main)] mb-2">{t('social.campaignDetail.config.platformsLabel')}</label>
                         <div className="grid grid-cols-2 gap-3">
                             {['Instagram', 'Facebook', 'LinkedIn', 'TikTok', 'X', 'YouTube'].map(platform => (
                                 <label key={platform} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${configPlatforms.includes(platform) ? 'bg-[var(--color-surface-hover)] border-[var(--color-primary)]' : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)]'}`}>
@@ -799,14 +811,14 @@ export const CampaignDetailView = () => {
                     </div>
 
                     <div className="flex justify-end gap-3 pt-4 border-t border-[var(--color-surface-border)]">
-                        <Button variant="ghost" onClick={() => setShowConfigModal(false)}>Cancel</Button>
+                        <Button variant="ghost" onClick={() => setShowConfigModal(false)}>{t('social.campaignDetail.config.cancel')}</Button>
                         <Button
                             variant="primary"
                             onClick={handleGeneratePlan}
                             disabled={configPlatforms.length === 0}
                             icon={<span className="material-symbols-outlined">auto_awesome</span>}
                         >
-                            Start Generating
+                            {t('social.campaignDetail.config.generate')}
                         </Button>
                     </div>
                 </div>
@@ -816,29 +828,35 @@ export const CampaignDetailView = () => {
             <Modal
                 isOpen={showPlanModal}
                 onClose={() => setShowPlanModal(false)}
-                title="AI Suggested Content Plan"
+                title={t('social.campaignDetail.plan.title')}
                 size="4xl"
             >
                 <div className="space-y-6">
                     <p className="text-sm text-[var(--color-text-muted)]">
-                        Here is a 7-day content plan generated for your campaign. Review the drafts below and click save to add them to your board.
+                        {t('social.campaignDetail.plan.description')}
                     </p>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar p-1">
                         {generatedPlan.map((draft, i) => (
                             <div key={i} className="bg-[var(--color-surface-bg)] rounded-xl p-4 border border-[var(--color-surface-border)]">
                                 <div className="flex items-center justify-between mb-3">
-                                    <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-surface-hover)] px-2 py-1 rounded">Day {draft.scheduledDayOffset + 1}</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-surface-hover)] px-2 py-1 rounded">
+                                        {t('social.campaignDetail.plan.day').replace('{day}', String(draft.scheduledDayOffset + 1))}
+                                    </span>
                                     <div className="flex gap-1">
                                         {(draft.platforms || [draft.platform]).map(p => (
                                             <span key={p} className="text-xs font-bold text-[var(--color-text-muted)]">{p}</span>
                                         ))}
                                     </div>
-                                    <span className="text-xs font-bold text-[var(--color-text-muted)]">• {draft.type}</span>
+                                    <span className="text-xs font-bold text-[var(--color-text-muted)]">
+                                        • {['Text', 'Post', 'Image', 'Video', 'Carousel', 'Story', 'Reel', 'Short'].includes(draft.type)
+                                            ? getSocialPostFormatLabel(draft.type as SocialPostFormat, t)
+                                            : draft.type}
+                                    </span>
                                 </div>
                                 <p className="text-sm text-[var(--color-text-main)] mb-3 line-clamp-4">{draft.content}</p>
                                 <div className="text-xs text-[var(--color-text-muted)] bg-[var(--color-surface-card)] p-2 rounded mb-2">
-                                    <strong className="text-[var(--color-text-main)]">Visual Flow:</strong> {draft.imagePrompt || 'No specific visual'}
+                                    <strong className="text-[var(--color-text-main)]">{t('social.campaignDetail.plan.visualLabel')}</strong> {draft.imagePrompt || t('social.campaignDetail.plan.visualFallback')}
                                 </div>
                                 <div className="flex flex-wrap gap-1">
                                     {draft.hashtags.map(tag => (
@@ -850,9 +868,9 @@ export const CampaignDetailView = () => {
                     </div>
 
                     <div className="flex justify-end gap-3 pt-4 border-t border-[var(--color-surface-border)]">
-                        <Button variant="ghost" onClick={() => setShowPlanModal(false)}>Discard</Button>
+                        <Button variant="ghost" onClick={() => setShowPlanModal(false)}>{t('social.campaignDetail.plan.discard')}</Button>
                         <Button variant="primary" onClick={handleSavePlan} icon={<span className="material-symbols-outlined">save</span>}>
-                            Save All to Drafts
+                            {t('social.campaignDetail.plan.save')}
                         </Button>
                     </div>
                 </div>

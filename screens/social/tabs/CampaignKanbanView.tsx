@@ -5,6 +5,7 @@ import { SocialPostCard } from '../components/SocialPostCard';
 import { ReviewPostModal } from '../components/ReviewPostModal';
 import { MultiPlatformFanOutModal } from '../components/MultiPlatformFanOutModal'; // Added this import
 import { useDraggable, useDroppable, DndContext, DragOverlay, DragEndEvent, closestCorners, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { useLanguage } from '../../../context/LanguageContext';
 
 // --- Local DnD Wrappers ---
 const DraggablePostCard = ({ post, children }: { post: SocialPost; children: React.ReactNode }) => {
@@ -29,6 +30,7 @@ const DraggablePostCard = ({ post, children }: { post: SocialPost; children: Rea
 
 const DroppableColumn = ({ id, title, icon, color, count, children, className }: { id: string; title: string; icon: string; color: string; count: number; children: React.ReactNode; className?: string }) => {
     const { setNodeRef, isOver } = useDroppable({ id });
+    const { t } = useLanguage();
     return (
         <div className={`flex flex-col min-w-[300px] w-full md:w-[340px] shrink-0 h-full ${className} `}>
             {/* Header */}
@@ -51,7 +53,7 @@ const DroppableColumn = ({ id, title, icon, color, count, children, className }:
                     {children}
                     {count === 0 && (
                         <div className="h-32 border border-dashed border-[var(--color-surface-border)] rounded-xl flex items-center justify-center text-[var(--color-text-muted)] bg-[var(--color-surface-card)]/30 opacity-60">
-                            <span className="text-xs">Drop here</span>
+                            <span className="text-xs">{t('social.kanban.dropHere')}</span>
                         </div>
                     )}
                 </div>
@@ -72,6 +74,7 @@ interface CampaignKanbanViewProps {
 }
 
 export const CampaignKanbanView: React.FC<CampaignKanbanViewProps> = ({ posts, onUpdateStatus, onEditPost, onDeletePost, onReviewAction, onSplitPost, onRevertDraft }) => {
+    const { t } = useLanguage();
     const [activeDragItem, setActiveDragItem] = React.useState<SocialPost | null>(null);
     const [reviewPost, setReviewPost] = React.useState<SocialPost | null>(null);
     const [fanOutPost, setFanOutPost] = React.useState<SocialPost | null>(null);
@@ -144,7 +147,7 @@ export const CampaignKanbanView: React.FC<CampaignKanbanViewProps> = ({ posts, o
         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             <div className="h-full flex overflow-x-auto pb-4 gap-4 px-6 md:px-8">
                 {/* 1. Flows / Backlog */}
-                <DroppableColumn id="Ideas" title="Flows" icon="lightbulb" color="#6366f1" count={ideas.length} className="bg-indigo-50/30 dark:bg-indigo-900/10 rounded-xl p-2">
+                <DroppableColumn id="Ideas" title={t('social.kanban.columns.flows')} icon="lightbulb" color="#6366f1" count={ideas.length} className="bg-indigo-50/30 dark:bg-indigo-900/10 rounded-xl p-2">
                     {ideas.map(post => (
                         <DraggablePostCard key={post.id} post={post}>
                             <SocialPostCard
@@ -166,7 +169,7 @@ export const CampaignKanbanView: React.FC<CampaignKanbanViewProps> = ({ posts, o
                 </DroppableColumn>
 
                 {/* 2. Drafting */}
-                <DroppableColumn id="Draft" title="Drafting" icon="edit_note" color="#64748b" count={drafts.length}>
+                <DroppableColumn id="Draft" title={t('social.kanban.columns.drafting')} icon="edit_note" color="#64748b" count={drafts.length}>
                     {drafts.map(post => (
                         <DraggablePostCard key={post.id} post={post}>
                             <SocialPostCard
@@ -181,7 +184,7 @@ export const CampaignKanbanView: React.FC<CampaignKanbanViewProps> = ({ posts, o
                 </DroppableColumn>
 
                 {/* 3. In Review */}
-                <DroppableColumn id="In Review" title="In Review" icon="rate_review" color="#f59e0b" count={inReview.length}>
+                <DroppableColumn id="In Review" title={t('social.kanban.columns.inReview')} icon="rate_review" color="#f59e0b" count={inReview.length}>
                     {inReview.map(post => (
                         <DraggablePostCard key={post.id} post={post}>
                             <SocialPostCard
@@ -196,7 +199,7 @@ export const CampaignKanbanView: React.FC<CampaignKanbanViewProps> = ({ posts, o
                 </DroppableColumn>
 
                 {/* 4. Scheduled */}
-                <DroppableColumn id="Scheduled" title="Scheduled" icon="event" color="#f97316" count={scheduled.length}>
+                <DroppableColumn id="Scheduled" title={t('social.kanban.columns.scheduled')} icon="event" color="#f97316" count={scheduled.length}>
                     {scheduled.map(post => (
                         <DraggablePostCard key={post.id} post={post}>
                             <SocialPostCard
@@ -211,7 +214,7 @@ export const CampaignKanbanView: React.FC<CampaignKanbanViewProps> = ({ posts, o
                 </DroppableColumn>
 
                 {/* 5. Published */}
-                <DroppableColumn id="Published" title="Published" icon="rocket_launch" color="#10b981" count={published.length}>
+                <DroppableColumn id="Published" title={t('social.kanban.columns.published')} icon="rocket_launch" color="#10b981" count={published.length}>
                     {published.map(post => (
                         <DraggablePostCard key={post.id} post={post}>
                             <SocialPostCard

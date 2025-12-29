@@ -1,6 +1,8 @@
 import React from 'react';
 import { Idea } from '../../../types';
 import { Link } from 'react-router-dom';
+import { useLanguage } from '../../../context/LanguageContext';
+import { getSocialIdeaStageLabel } from '../../../utils/socialLocalization';
 
 interface DashboardFlowCardProps {
     idea: Idea;
@@ -8,6 +10,7 @@ interface DashboardFlowCardProps {
 }
 
 export const DashboardFlowCard: React.FC<DashboardFlowCardProps> = ({ idea, projectId }) => {
+    const { t } = useLanguage();
     // Parse social strategy from concept if it exists
     const strategy = (() => {
         try {
@@ -19,14 +22,15 @@ export const DashboardFlowCard: React.FC<DashboardFlowCardProps> = ({ idea, proj
     })();
 
     const channels = strategy?.channels || [];
-    const goal = strategy?.campaignType || 'No Goal';
+    const goal = strategy?.campaignType || t('socialDashboard.flowCard.noGoal');
+    const stageLabel = getSocialIdeaStageLabel(idea.stage, t);
 
     return (
         <div className="bg-[var(--color-surface-card)] rounded-xl border border-[var(--color-surface-border)] p-4 hover:shadow-md transition-all group flex flex-col h-full">
             <div className="flex justify-between items-start mb-3">
                 <div className="flex flex-wrap gap-1.5">
                     <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-600">
-                        {idea.stage}
+                        {stageLabel}
                     </span>
                     <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]">
                         {goal}
@@ -70,7 +74,7 @@ export const DashboardFlowCard: React.FC<DashboardFlowCardProps> = ({ idea, proj
                     to={`/project/${projectId}/flows/${idea.id}`}
                     className="text-[10px] font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1"
                 >
-                    View Flow
+                    {t('socialDashboard.flowCard.viewFlow')}
                     <span className="material-symbols-outlined text-[12px]">open_in_new</span>
                 </Link>
             </div>

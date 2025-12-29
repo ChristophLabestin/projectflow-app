@@ -5,6 +5,7 @@ import { Button } from '../../../components/ui/Button';
 import { Input } from '../../../components/ui/Input';
 import { Select } from '../../../components/ui/Select';
 import { generateSocialCaption } from '../../../services/geminiService';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface AICaptionGeneratorProps {
     isOpen: boolean;
@@ -13,12 +14,20 @@ interface AICaptionGeneratorProps {
     platform?: string;
 }
 
-const TONES = ['Professional', 'Casual', 'Funny', 'Urgent', 'Inspirational', 'Educational'];
+const TONES = [
+    { id: 'Professional', key: 'social.aiCaption.tones.professional' },
+    { id: 'Casual', key: 'social.aiCaption.tones.casual' },
+    { id: 'Funny', key: 'social.aiCaption.tones.funny' },
+    { id: 'Urgent', key: 'social.aiCaption.tones.urgent' },
+    { id: 'Inspirational', key: 'social.aiCaption.tones.inspirational' },
+    { id: 'Educational', key: 'social.aiCaption.tones.educational' }
+];
 
 export const AICaptionGenerator: React.FC<AICaptionGeneratorProps> = ({ isOpen, onClose, onGenerate, platform = 'Instagram' }) => {
     const [topic, setTopic] = useState('');
     const [tone, setTone] = useState('Professional');
     const [loading, setLoading] = useState(false);
+    const { t } = useLanguage();
 
     const generate = async () => {
         setLoading(true);
@@ -35,13 +44,13 @@ export const AICaptionGenerator: React.FC<AICaptionGeneratorProps> = ({ isOpen, 
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="AI Caption Generator"
+        <Modal isOpen={isOpen} onClose={onClose} title={t('social.aiCaption.title')}
             footer={
                 <>
-                    <Button variant="ghost" onClick={onClose}>Cancel</Button>
+                    <Button variant="ghost" onClick={onClose}>{t('social.aiCaption.cancel')}</Button>
                     <Button variant="primary" onClick={generate} isLoading={loading} disabled={!topic}>
                         <span className="material-symbols-outlined mr-2">auto_awesome</span>
-                        Generate
+                        {t('social.aiCaption.generate')}
                     </Button>
                 </>
             }
@@ -50,20 +59,22 @@ export const AICaptionGenerator: React.FC<AICaptionGeneratorProps> = ({ isOpen, 
                 <div className="p-4 bg-indigo-50 dark:bg-indigo-500/10 rounded-xl flex items-start gap-3">
                     <span className="material-symbols-outlined text-indigo-600">auto_awesome</span>
                     <p className="text-sm text-indigo-900 dark:text-indigo-200">
-                        Describe what you want to post about, and I'll generate a catchy caption for you.
+                        {t('social.aiCaption.description')}
                     </p>
                 </div>
 
                 <Input
-                    label="What is this post about?"
+                    label={t('social.aiCaption.topicLabel')}
                     value={topic}
                     onChange={e => setTopic(e.target.value)}
-                    placeholder="e.g. New Summer Collection launch"
+                    placeholder={t('social.aiCaption.topicPlaceholder')}
                     autoFocus
                 />
 
-                <Select label="Tone" value={tone} onChange={e => setTone(e.target.value)}>
-                    {TONES.map(t => <option key={t} value={t}>{t}</option>)}
+                <Select label={t('social.aiCaption.toneLabel')} value={tone} onChange={e => setTone(e.target.value)}>
+                    {TONES.map(toneOption => (
+                        <option key={toneOption.id} value={toneOption.id}>{t(toneOption.key)}</option>
+                    ))}
                 </Select>
             </div>
         </Modal>

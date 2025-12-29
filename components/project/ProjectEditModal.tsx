@@ -24,19 +24,21 @@ interface ProjectEditModalProps {
     onClose: () => void;
     project: Project;
     onSave: (updatedFields: Partial<Project>) => Promise<void>;
+    initialTab?: Tab;
 }
 
-type Tab = 'general' | 'team' | 'appearance' | 'modules' | 'groups' | 'navigation' | 'integrations' | 'resources';
+export type Tab = 'general' | 'team' | 'appearance' | 'modules' | 'groups' | 'navigation' | 'integrations' | 'resources';
 
 export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     isOpen,
     onClose,
     project,
-    onSave
+    onSave,
+    initialTab = 'general'
 }) => {
     const { can } = useProjectPermissions(project);
     const { t } = useLanguage();
-    const [activeTab, setActiveTab] = useState<Tab>('general');
+    const [activeTab, setActiveTab] = useState<Tab>(initialTab);
     const [isSaving, setIsSaving] = useState(false);
 
     // Form State
@@ -103,7 +105,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             setLinks(project.links || []);
             setExternalResources(project.externalResources || []);
             setVisibilityGroupIds(project.visibilityGroupIds || (project.visibilityGroupId ? [project.visibilityGroupId] : []));
-            setActiveTab('general');
+            setActiveTab(initialTab);
 
             getWorkspaceGroups().then(setWorkspaceGroups).catch(console.error);
 
@@ -181,7 +183,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 githubIssueSync,
                 links,
                 externalResources,
-                visibilityGroupIds: visibilityGroupIds && visibilityGroupIds.length > 0 ? visibilityGroupIds : undefined,
+                visibilityGroupIds: visibilityGroupIds, // Pass the array directly (including empty array for "Everyone")
                 visibilityGroupId: visibilityGroupIds && visibilityGroupIds.length > 0 ? visibilityGroupIds[0] : null // Maintain backward compat for now
             });
 

@@ -5,6 +5,8 @@ import { SocialPostPreview } from './SocialPostPreview';
 import { Button } from '../../../components/ui/Button';
 import { Textarea } from '../../../components/ui/Textarea';
 import { format } from 'date-fns';
+import { useLanguage } from '../../../context/LanguageContext';
+import { getSocialPostStatusLabel } from '../../../utils/socialLocalization';
 
 interface ReviewPostModalProps {
     post: SocialPost;
@@ -28,6 +30,7 @@ export const ReviewPostModal: React.FC<ReviewPostModalProps> = ({
     const [storyProgress, setStoryProgress] = useState(0);
     const [isStoryPlaying, setIsStoryPlaying] = useState(true);
     const [videoDurations, setVideoDurations] = useState<Record<string, number>>({});
+    const { t, dateLocale } = useLanguage();
 
     if (!isOpen) return null;
 
@@ -38,10 +41,10 @@ export const ReviewPostModal: React.FC<ReviewPostModalProps> = ({
                 {/* Left: Info */}
                 <div className="w-[40%] border-r border-[var(--color-surface-border)] flex flex-col bg-[var(--color-surface-bg)]">
                     <div className="p-6 border-b border-[var(--color-surface-border)]">
-                        <h2 className="text-xl font-bold text-[var(--color-text-main)] mb-2">Review Post</h2>
+                        <h2 className="text-xl font-bold text-[var(--color-text-main)] mb-2">{t('social.reviewPost.title')}</h2>
                         <div className="flex gap-2">
                             <div className="px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                                In Review
+                                {getSocialPostStatusLabel('In Review', t)}
                             </div>
                             <div className="px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]">
                                 {post.platform}
@@ -51,27 +54,27 @@ export const ReviewPostModal: React.FC<ReviewPostModalProps> = ({
 
                     <div className="p-6 flex-1 overflow-y-auto space-y-6">
                         <div>
-                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase block mb-1">Schedule</label>
+                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase block mb-1">{t('social.reviewPost.schedule')}</label>
                             <p className="text-sm text-[var(--color-text-main)] font-medium">
                                 {post.scheduledFor
-                                    ? format(new Date(post.scheduledFor), 'MMMM d, yyyy @ h:mm a')
-                                    : 'No date proposed'
+                                    ? format(new Date(post.scheduledFor), 'MMMM d, yyyy @ p', { locale: dateLocale })
+                                    : t('social.reviewPost.noDate')
                                 }
                             </p>
                         </div>
 
                         <div>
-                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase block mb-1">Caption</label>
+                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase block mb-1">{t('social.reviewPost.caption')}</label>
                             <div className="bg-[var(--color-surface-card)] p-3 rounded-lg border border-[var(--color-surface-border)]">
                                 <p className="text-sm text-[var(--color-text-main)] whitespace-pre-wrap">
-                                    {post.content.caption || '(No caption)'}
+                                    {post.content.caption || t('social.reviewPost.noCaption')}
                                 </p>
                             </div>
                         </div>
 
                         {post.content.hashtags && post.content.hashtags.length > 0 && (
                             <div>
-                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase block mb-1">Hashtags</label>
+                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase block mb-1">{t('social.reviewPost.hashtags')}</label>
                                 <p className="text-sm text-indigo-500 font-mono">
                                     {post.content.hashtags.map(h => h).join(' ')}
                                 </p>
@@ -80,11 +83,11 @@ export const ReviewPostModal: React.FC<ReviewPostModalProps> = ({
 
                         {rejectMode && (
                             <div className="animate-fade-in">
-                                <label className="text-xs font-semibold text-red-500 uppercase block mb-2">Rejection Reason</label>
+                                <label className="text-xs font-semibold text-red-500 uppercase block mb-2">{t('social.reviewPost.rejectionReason')}</label>
                                 <Textarea
                                     value={rejectionReason}
                                     onChange={e => setRejectionReason(e.target.value)}
-                                    placeholder="Explain why this post is being rejected..."
+                                    placeholder={t('social.reviewPost.rejectionPlaceholder')}
                                     className="min-h-[100px] border-red-200 focus:ring-red-500"
                                     autoFocus
                                 />
@@ -95,29 +98,27 @@ export const ReviewPostModal: React.FC<ReviewPostModalProps> = ({
                     <div className="p-6 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-card)] flex justify-between items-center gap-4">
                         {rejectMode ? (
                             <>
-                                <Button variant="ghost" onClick={() => setRejectMode(false)}>Cancel</Button>
+                                <Button variant="ghost" onClick={() => setRejectMode(false)}>{t('social.reviewPost.cancel')}</Button>
                                 <Button
                                     variant="destructive"
                                     onClick={() => onReject(post, rejectionReason)}
                                     disabled={!rejectionReason.trim()}
                                 >
-                                    Confirm Reject
+                                    {t('social.reviewPost.confirmReject')}
                                 </Button>
                             </>
                         ) : (
                             <>
-                                <Button variant="ghost" onClick={onClose}>Close</Button>
+                                <Button variant="ghost" onClick={onClose}>{t('social.reviewPost.close')}</Button>
                                 <div className="flex gap-2">
                                     <Button
                                         variant="secondary"
                                         className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10"
                                         onClick={() => setRejectMode(true)}
                                     >
-                                        Reject
+                                        {t('social.reviewPost.reject')}
                                     </Button>
-                                    <Button variant="primary" onClick={() => onApprove(post)}>
-                                        Approve & Schedule
-                                    </Button>
+                                    <Button variant="primary" onClick={() => onApprove(post)}>{t('social.reviewPost.approve')}</Button>
                                 </div>
                             </>
                         )}

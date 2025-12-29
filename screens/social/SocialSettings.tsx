@@ -17,6 +17,7 @@ import { useToast, useConfirm } from '../../context/UIContext';
 import { CaptionPresetManager } from './components/CaptionPresetManager';
 import { PlatformIcon } from './components/PlatformIcon';
 import { format } from 'date-fns';
+import { useLanguage } from '../../context/LanguageContext';
 
 const PLATFORMS: { id: SocialPlatform; name: string; color: string }[] = [
     { id: 'Instagram', name: 'Instagram', color: 'bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500' },
@@ -39,6 +40,7 @@ export const SocialSettings = () => {
     const [showPresetManager, setShowPresetManager] = useState(false);
     const { showError, showSuccess, showToast } = useToast();
     const confirm = useConfirm();
+    const { t, dateLocale, dateFormat } = useLanguage();
 
     useEffect(() => {
         if (!projectId) return;
@@ -57,9 +59,9 @@ export const SocialSettings = () => {
         setConnecting(platform);
         try {
             await connectIntegration(projectId, platform);
-            showSuccess(`Successfully connected to ${platform} `);
+            showSuccess(t('social.settings.accounts.toast.connected').replace('{platform}', platform));
         } catch (error: any) {
-            showError(error.message || `Failed to connect to ${platform} `);
+            showError(error.message || t('social.settings.accounts.toast.failedConnect').replace('{platform}', platform));
         } finally {
             setConnecting(null);
         }
@@ -68,15 +70,15 @@ export const SocialSettings = () => {
     const handleDisconnect = async (integrationId: string) => {
         if (!projectId) return;
         const confirmed = await confirm(
-            "Disconnect Account",
-            "Are you sure you want to disconnect this account? Scheduled posts might fail."
+            t('social.settings.accounts.disconnectConfirm.title'),
+            t('social.settings.accounts.disconnectConfirm.message')
         );
         if (confirmed) {
             try {
                 await disconnectIntegration(projectId, integrationId);
-                showToast("Account disconnected", "info");
+                showToast(t('social.settings.accounts.toast.disconnected'), "info");
             } catch (error) {
-                showError("Failed to disconnect account");
+                showError(t('social.settings.accounts.toast.disconnectError'));
             }
         }
     };
@@ -99,7 +101,7 @@ export const SocialSettings = () => {
         try {
             await updateSocialStrategy(projectId, updates);
         } catch (error) {
-            showError("Failed to update strategy");
+            showError(t('social.settings.strategy.toast.updateError'));
         }
     };
 
@@ -121,8 +123,8 @@ export const SocialSettings = () => {
                 return (
                     <div className="space-y-6 animate-fade-in">
                         <div>
-                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">Platform Integrations</h2>
-                            <p className="text-sm text-[var(--color-text-muted)]">Connect your social accounts for direct publishing.</p>
+                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">{t('social.settings.accounts.title')}</h2>
+                            <p className="text-sm text-[var(--color-text-muted)]">{t('social.settings.accounts.subtitle')}</p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
@@ -149,11 +151,12 @@ export const SocialSettings = () => {
                                                             </div>
                                                             <div className="text-[10px] text-[var(--color-text-muted)] flex items-center gap-1">
                                                                 <span className="material-symbols-outlined text-[12px]">calendar_today</span>
-                                                                Connected {format(new Date(integration.connectedAt), 'MMM d, yyyy')}
+                                                                {t('social.settings.accounts.connectedOn')
+                                                                    .replace('{date}', format(new Date(integration.connectedAt), dateFormat, { locale: dateLocale }))}
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <p className="text-xs text-[var(--color-text-muted)] font-medium mt-1">Not yet connected</p>
+                                                        <p className="text-xs text-[var(--color-text-muted)] font-medium mt-1">{t('social.settings.accounts.notConnected')}</p>
                                                     )}
                                                 </div>
                                             </div>
@@ -175,7 +178,7 @@ export const SocialSettings = () => {
                                                     isLoading={connecting === platform.id}
                                                     icon={<span className="material-symbols-outlined text-[18px]">add</span>}
                                                 >
-                                                    Connect
+                                                    {t('social.settings.accounts.connect')}
                                                 </Button>
                                             )}
                                         </div>
@@ -190,8 +193,8 @@ export const SocialSettings = () => {
                     <div className="space-y-6 animate-fade-in">
                         <div className="flex items-center justify-between mb-2">
                             <div>
-                                <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">Caption & Format Presets</h2>
-                                <p className="text-sm text-[var(--color-text-muted)]">Save templates and hashtags for different platforms.</p>
+                                <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">{t('social.settings.presets.title')}</h2>
+                                <p className="text-sm text-[var(--color-text-muted)]">{t('social.settings.presets.subtitle')}</p>
                             </div>
                             <Button
                                 variant="primary"
@@ -199,19 +202,19 @@ export const SocialSettings = () => {
                                 onClick={() => setShowPresetManager(true)}
                                 icon={<span className="material-symbols-outlined">add</span>}
                             >
-                                New Preset
+                                {t('social.settings.presets.newPreset')}
                             </Button>
                         </div>
 
                         <div className="pt-4">
                             {presets.length === 0 ? (
-                                <div className="p-20 text-center bg-[var(--color-surface-card)] rounded-2xl border border-dashed border-[var(--color-surface-border)]">
-                                    <span className="material-symbols-outlined text-4xl mb-4 text-[var(--color-text-muted)]">bookmark_add</span>
-                                    <h3 className="font-bold text-lg mb-1">No presets found</h3>
-                                    <p className="text-[var(--color-text-muted)] mb-6">Create templates to speed up your posting workflow.</p>
-                                    <Button variant="secondary" onClick={() => setShowPresetManager(true)}>Create First Preset</Button>
-                                </div>
-                            ) : (
+                                    <div className="p-20 text-center bg-[var(--color-surface-card)] rounded-2xl border border-dashed border-[var(--color-surface-border)]">
+                                        <span className="material-symbols-outlined text-4xl mb-4 text-[var(--color-text-muted)]">bookmark_add</span>
+                                        <h3 className="font-bold text-lg mb-1">{t('social.settings.presets.empty.title')}</h3>
+                                        <p className="text-[var(--color-text-muted)] mb-6">{t('social.settings.presets.empty.subtitle')}</p>
+                                        <Button variant="secondary" onClick={() => setShowPresetManager(true)}>{t('social.settings.presets.empty.action')}</Button>
+                                    </div>
+                                ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
                                     {presets.map(preset => (
                                         <div key={preset.id} className="group bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 hover:border-[var(--color-primary)]/50 transition-all flex flex-col h-full shadow-sm hover:shadow-xl">
@@ -223,9 +226,9 @@ export const SocialSettings = () => {
                                                     <button
                                                         className="p-2 hover:bg-rose-50 text-rose-500 rounded-lg transition-colors"
                                                         onClick={async () => {
-                                                            if (await confirm("Delete Preset", "Delete this preset forever?")) {
+                                                            if (await confirm(t('social.settings.presets.deleteConfirm.title'), t('social.settings.presets.deleteConfirm.message'))) {
                                                                 await deleteCaptionPreset(projectId!, preset.id);
-                                                                showToast("Preset deleted", "info");
+                                                                showToast(t('social.settings.presets.toast.deleted'), "info");
                                                             }
                                                         }}
                                                     >
@@ -242,7 +245,7 @@ export const SocialSettings = () => {
                                                 </span>
                                                 {preset.hashtags && preset.hashtags.length > 0 && (
                                                     <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">
-                                                        {preset.hashtags.length} Tags
+                                                        {t('social.settings.presets.tagsCount').replace('{count}', String(preset.hashtags.length))}
                                                     </span>
                                                 )}
                                             </div>
@@ -257,15 +260,15 @@ export const SocialSettings = () => {
                 return (
                     <div className="space-y-6 animate-fade-in">
                         <div>
-                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">Social Strategy & Brain</h2>
-                            <p className="text-sm text-[var(--color-text-muted)]">Configure how AI generates content for this project.</p>
+                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">{t('social.settings.strategy.title')}</h2>
+                            <p className="text-sm text-[var(--color-text-muted)]">{t('social.settings.strategy.subtitle')}</p>
                         </div>
 
                         <div className="pt-4">
                             <Card className="p-8 space-y-8">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                                     <div className="space-y-4">
-                                        <label className="text-xs font-black text-[var(--color-text-muted)] uppercase tracking-widest">Default Platforms</label>
+                                        <label className="text-xs font-black text-[var(--color-text-muted)] uppercase tracking-widest">{t('social.settings.strategy.defaultPlatforms')}</label>
                                         <div className="flex flex-wrap gap-3">
                                             {PLATFORMS.map(p => {
                                                 const isActive = strategy?.defaultPlatforms
@@ -288,18 +291,25 @@ export const SocialSettings = () => {
                                     </div>
 
                                     <div className="space-y-4">
-                                        <label className="text-xs font-black text-[var(--color-text-muted)] uppercase tracking-widest">Preferred Tone</label>
+                                        <label className="text-xs font-black text-[var(--color-text-muted)] uppercase tracking-widest">{t('social.settings.strategy.preferredTone')}</label>
                                         <div className="grid grid-cols-2 gap-2">
-                                            {['Professional', 'Witty', 'Minimalist', 'Inspirational', 'Casual', 'Educational'].map(tone => (
+                                            {[
+                                                { id: 'Professional', label: t('social.settings.strategy.tones.professional') },
+                                                { id: 'Witty', label: t('social.settings.strategy.tones.witty') },
+                                                { id: 'Minimalist', label: t('social.settings.strategy.tones.minimalist') },
+                                                { id: 'Inspirational', label: t('social.settings.strategy.tones.inspirational') },
+                                                { id: 'Casual', label: t('social.settings.strategy.tones.casual') },
+                                                { id: 'Educational', label: t('social.settings.strategy.tones.educational') }
+                                            ].map(tone => (
                                                 <button
-                                                    key={tone}
-                                                    onClick={() => handleUpdateStrategy({ preferredTone: tone })}
-                                                    className={`px-4 py-2 text-xs font-bold border rounded-lg transition-all ${strategy?.preferredTone === tone
+                                                    key={tone.id}
+                                                    onClick={() => handleUpdateStrategy({ preferredTone: tone.id })}
+                                                    className={`px-4 py-2 text-xs font-bold border rounded-lg transition-all ${strategy?.preferredTone === tone.id
                                                         ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-sm'
                                                         : 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-primary)]/50'
                                                         }`}
                                                 >
-                                                    {tone}
+                                                    {tone.label}
                                                 </button>
                                             ))}
                                         </div>
@@ -308,8 +318,8 @@ export const SocialSettings = () => {
 
                                 <div className="pt-8 border-t border-[var(--color-surface-border)]">
                                     <div className="mb-4">
-                                        <h3 className="font-bold text-[var(--color-text-main)]">Hashtag Limits</h3>
-                                        <p className="text-sm text-[var(--color-text-muted)]">Set the maximum number of hashtags for each platform.</p>
+                                        <h3 className="font-bold text-[var(--color-text-main)]">{t('social.settings.strategy.hashtagLimits.title')}</h3>
+                                        <p className="text-sm text-[var(--color-text-muted)]">{t('social.settings.strategy.hashtagLimits.subtitle')}</p>
                                     </div>
                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                                         {PLATFORMS.map(platform => {
@@ -341,14 +351,14 @@ export const SocialSettings = () => {
                                 <div className="pt-8 border-t border-[var(--color-surface-border)]">
                                     <div className="flex items-center justify-between mb-4">
                                         <div>
-                                            <h3 className="font-bold text-[var(--color-text-main)]">Brand Pillars & Context</h3>
-                                            <p className="text-sm text-[var(--color-text-muted)]">Provide high-level context that the social AI should always consider.</p>
+                                            <h3 className="font-bold text-[var(--color-text-main)]">{t('social.settings.strategy.brandPillars.title')}</h3>
+                                            <p className="text-sm text-[var(--color-text-muted)]">{t('social.settings.strategy.brandPillars.subtitle')}</p>
                                         </div>
                                     </div>
                                     <textarea
                                         value={strategy?.brandPillars || ''}
                                         onChange={(e) => handleUpdateStrategy({ brandPillars: e.target.value })}
-                                        placeholder="e.g. Focus on sustainable tech, community growing, and long-form educational threads about local agriculture..."
+                                        placeholder={t('social.settings.strategy.brandPillars.placeholder')}
                                         className="w-full p-6 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)] text-[var(--color-text-main)] text-sm resize-none focus:ring-1 focus:ring-[var(--color-primary)] outline-none min-h-[120px]"
                                     />
                                 </div>
@@ -360,26 +370,26 @@ export const SocialSettings = () => {
                 return (
                     <div className="space-y-6 animate-fade-in">
                         <div>
-                            <h2 className="text-xl font-display font-bold text-rose-600">Danger Zone</h2>
-                            <p className="text-sm text-[var(--color-text-muted)]">Irreversible actions related to the social module.</p>
+                            <h2 className="text-xl font-display font-bold text-rose-600">{t('social.settings.danger.title')}</h2>
+                            <p className="text-sm text-[var(--color-text-muted)]">{t('social.settings.danger.subtitle')}</p>
                         </div>
 
                         <div className="pt-4">
                             <Card className="divide-y divide-[var(--color-surface-border)]">
                                 <div className="p-6 flex items-center justify-between gap-6">
                                     <div>
-                                        <h3 className="font-bold text-[var(--color-text-main)]">Reset Social Module</h3>
-                                        <p className="text-sm text-[var(--color-text-muted)] mt-1">This will permanently delete all social posts, campaigns, and integrations for this project.</p>
+                                        <h3 className="font-bold text-[var(--color-text-main)]">{t('social.settings.danger.reset.title')}</h3>
+                                        <p className="text-sm text-[var(--color-text-muted)] mt-1">{t('social.settings.danger.reset.description')}</p>
                                     </div>
-                                    <Button variant="ghost" className="text-rose-600 hover:bg-rose-100 font-bold border border-rose-200">Reset Module</Button>
+                                    <Button variant="ghost" className="text-rose-600 hover:bg-rose-100 font-bold border border-rose-200">{t('social.settings.danger.reset.action')}</Button>
                                 </div>
 
                                 <div className="p-6 flex items-center justify-between gap-6">
                                     <div>
-                                        <h3 className="font-bold text-[var(--color-text-main)]">Deep Clean Assets</h3>
-                                        <p className="text-sm text-[var(--color-text-muted)] mt-1">Free up storage by deleting all social-related assets that aren't attached to a published post.</p>
+                                        <h3 className="font-bold text-[var(--color-text-main)]">{t('social.settings.danger.cleanup.title')}</h3>
+                                        <p className="text-sm text-[var(--color-text-muted)] mt-1">{t('social.settings.danger.cleanup.description')}</p>
                                     </div>
-                                    <Button variant="ghost" className="text-rose-600 hover:bg-rose-100 font-bold border border-rose-200">Deep Clean</Button>
+                                    <Button variant="ghost" className="text-rose-600 hover:bg-rose-100 font-bold border border-rose-200">{t('social.settings.danger.cleanup.action')}</Button>
                                 </div>
                             </Card>
                         </div>
@@ -392,11 +402,11 @@ export const SocialSettings = () => {
         <div className="max-w-6xl mx-auto p-4 md:p-8 animate-fade-up min-h-screen">
             <div className="flex flex-col md:flex-row gap-8 items-start">
                 <aside className="w-full md:w-64 shrink-0 space-y-1">
-                    <h1 className="text-2xl font-display font-bold text-[var(--color-text-main)] px-2 mb-6">Social Settings</h1>
-                    <NavItem id="accounts" label="Accounts" icon="api" />
-                    <NavItem id="presets" label="Presets" icon="content_copy" />
-                    <NavItem id="strategy" label="Strategy" icon="psychology" />
-                    <NavItem id="danger" label="Danger Zone" icon="warning" />
+                    <h1 className="text-2xl font-display font-bold text-[var(--color-text-main)] px-2 mb-6">{t('social.settings.title')}</h1>
+                    <NavItem id="accounts" label={t('social.settings.nav.accounts')} icon="api" />
+                    <NavItem id="presets" label={t('social.settings.nav.presets')} icon="content_copy" />
+                    <NavItem id="strategy" label={t('social.settings.nav.strategy')} icon="psychology" />
+                    <NavItem id="danger" label={t('social.settings.nav.danger')} icon="warning" />
                 </aside>
 
                 <main className="flex-1 w-full min-w-0">

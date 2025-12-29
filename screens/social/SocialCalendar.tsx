@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { SocialPost } from '../../types';
 import { subscribeSocialPosts, updateSocialPost } from '../../services/dataService';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, startOfWeek, endOfWeek, isSameMonth, isSameDay, addMonths, subMonths, addWeeks, subWeeks, getHours } from 'date-fns';
+import { useLanguage } from '../../context/LanguageContext';
 
 type CalendarView = 'month' | 'week';
 
@@ -12,6 +13,7 @@ export const SocialCalendar = () => {
     const [posts, setPosts] = useState<SocialPost[]>([]);
     const [view, setView] = useState<CalendarView>('month');
     const [currentDate, setCurrentDate] = useState(new Date());
+    const { t, dateLocale } = useLanguage();
 
     useEffect(() => {
         if (!projectId) return;
@@ -81,7 +83,15 @@ export const SocialCalendar = () => {
 
         return (
             <div className="grid grid-cols-7 gap-px bg-[var(--color-surface-border)] rounded-lg overflow-hidden border border-[var(--color-surface-border)]">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                {[
+                    t('social.calendar.weekdays.sun'),
+                    t('social.calendar.weekdays.mon'),
+                    t('social.calendar.weekdays.tue'),
+                    t('social.calendar.weekdays.wed'),
+                    t('social.calendar.weekdays.thu'),
+                    t('social.calendar.weekdays.fri'),
+                    t('social.calendar.weekdays.sat')
+                ].map(day => (
                     <div key={day} className="bg-[var(--color-surface-card)] p-2 text-center text-xs font-semibold text-[var(--color-text-muted)] uppercase">
                         {day}
                     </div>
@@ -105,7 +115,7 @@ export const SocialCalendar = () => {
                         >
                             <div className="flex justify-between items-start mb-1">
                                 <span className={`text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-black text-white dark:bg-white dark:text-black' : 'text-[var(--color-text-main)]'}`}>
-                                    {format(day, 'd')}
+                                    {format(day, 'd', { locale: dateLocale })}
                                 </span>
                             </div>
                             <div className="space-y-1">
@@ -120,8 +130,10 @@ export const SocialCalendar = () => {
                                                 'border-l-gray-500 bg-gray-50 dark:bg-gray-500/10'
                                             }`}
                                     >
-                                        <div className="font-semibold text-[10px] opacity-75">{new Date(post.scheduledFor!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                                        {post.content.caption || 'No caption'}
+                                        <div className="font-semibold text-[10px] opacity-75">
+                                            {format(new Date(post.scheduledFor!), 'p', { locale: dateLocale })}
+                                        </div>
+                                        {post.content.caption || t('social.calendar.noCaption')}
                                     </div>
                                 ))}
                             </div>
@@ -147,10 +159,12 @@ export const SocialCalendar = () => {
                         const isToday = isSameDay(day, new Date());
                         return (
                             <div key={day.toISOString()} className={`p-2 text-center border-r border-[var(--color-surface-border)] last:border-0 ${isToday ? 'bg-[var(--color-surface-hover)]' : ''}`}>
-                                <div className={`text-xs font-semibold uppercase mb-1 ${isToday ? 'text-[var(--color-text-main)]' : 'text-[var(--color-text-muted)]'}`}>{format(day, 'EEE')}</div>
+                                <div className={`text-xs font-semibold uppercase mb-1 ${isToday ? 'text-[var(--color-text-main)]' : 'text-[var(--color-text-muted)]'}`}>
+                                    {format(day, 'EEE', { locale: dateLocale })}
+                                </div>
                                 <div className="flex justify-center">
                                     <span className={`text-lg font-bold w-8 h-8 flex items-center justify-center rounded-full ${isToday ? 'bg-black text-white dark:bg-white dark:text-black' : 'text-[var(--color-text-main)]'}`}>
-                                        {format(day, 'd')}
+                                        {format(day, 'd', { locale: dateLocale })}
                                     </span>
                                 </div>
                             </div>
@@ -164,7 +178,7 @@ export const SocialCalendar = () => {
                         <div key={hour} className="grid grid-cols-8 h-20 border-b border-[var(--color-surface-border)]/50">
                             {/* Time Label */}
                             <div className="border-r border-[var(--color-surface-border)] text-xs text-[var(--color-text-muted)] p-2 text-right">
-                                {format(new Date().setHours(hour, 0), 'h a')}
+                                {format(new Date().setHours(hour, 0), 'p', { locale: dateLocale })}
                             </div>
 
                             {/* Day Cells */}
@@ -243,7 +257,10 @@ export const SocialCalendar = () => {
                         </button>
                     </div>
                     <h2 className="h3 min-w-[200px]">
-                        {format(currentDate, view === 'month' ? 'MMMM yyyy' : "'Week of' MMM d, yyyy")}
+                        {view === 'month'
+                            ? format(currentDate, 'MMMM yyyy', { locale: dateLocale })
+                            : t('social.calendar.weekOf').replace('{date}', format(currentDate, 'MMM d, yyyy', { locale: dateLocale }))
+                        }
                     </h2>
                 </div>
 
@@ -252,7 +269,7 @@ export const SocialCalendar = () => {
                         onClick={() => setCurrentDate(new Date())}
                         className="px-3 py-1.5 text-sm font-medium bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors"
                     >
-                        Today
+                        {t('social.calendar.today')}
                     </button>
 
                     <div className="flex bg-[var(--color-surface-card)] rounded-lg border border-[var(--color-surface-border)] p-1">
@@ -260,13 +277,13 @@ export const SocialCalendar = () => {
                             onClick={() => setView('month')}
                             className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${view === 'month' ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}`}
                         >
-                            Month
+                            {t('social.calendar.month')}
                         </button>
                         <button
                             onClick={() => setView('week')}
                             className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${view === 'week' ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}`}
                         >
-                            Week
+                            {t('social.calendar.week')}
                         </button>
                     </div>
                 </div>

@@ -3,7 +3,8 @@ import { SocialCampaign, SocialPost } from '../../../types';
 import { Button } from '../../../components/ui/Button';
 import { PlatformIcon } from './PlatformIcon';
 import { format } from 'date-fns';
-import { dateLocale } from '../../../utils/activityHelpers';
+import { useLanguage } from '../../../context/LanguageContext';
+import { getSocialCampaignStatusLabel } from '../../../utils/socialLocalization';
 
 interface CampaignHeaderProps {
     campaign: SocialCampaign;
@@ -28,12 +29,13 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
     brandColor = '#E1306C',
     isGenerating = false,
 }) => {
+    const { t, dateLocale, dateFormat } = useLanguage();
     // Calculate simple stats
     // const publishedCount = posts.filter(p => p.status === 'Published').length;
 
     // Using date-fns for formatting
-    const startDate = campaign.startDate ? format(new Date(campaign.startDate), 'MMM d', { locale: dateLocale }) : 'TBD';
-    const endDate = campaign.endDate ? format(new Date(campaign.endDate), 'MMM d, yyyy', { locale: dateLocale }) : 'TBD';
+    const startDate = campaign.startDate ? format(new Date(campaign.startDate), dateFormat, { locale: dateLocale }) : t('social.campaignHeader.tbd');
+    const endDate = campaign.endDate ? format(new Date(campaign.endDate), dateFormat, { locale: dateLocale }) : t('social.campaignHeader.tbd');
 
     return (
         <div className="relative shrink-0 border-b border-[var(--color-surface-border)] bg-[var(--color-bg-base)]">
@@ -52,7 +54,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
                             <button
                                 onClick={onBack}
                                 className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors p-1.5 -ml-1.5 rounded-md hover:bg-[var(--color-surface-hover)]"
-                                title="Back to Campaigns"
+                                title={t('social.campaignHeader.backTitle')}
                             >
                                 <span className="material-symbols-outlined text-[20px]">arrow_back</span>
                             </button>
@@ -62,7 +64,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
                             </h1>
 
                             <div className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)]" style={{ color: brandColor, borderColor: `${brandColor}30` }}>
-                                {campaign.status}
+                                {getSocialCampaignStatusLabel(campaign.status, t)}
                             </div>
                         </div>
 
@@ -71,7 +73,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
                             <button
                                 onClick={onEdit}
                                 className="h-8 w-8 flex items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-colors border border-transparent hover:border-[var(--color-surface-border)]"
-                                title="Edit Campaign"
+                                title={t('social.campaignHeader.editTitle')}
                             >
                                 <span className="material-symbols-outlined text-[18px]">edit</span>
                             </button>
@@ -85,7 +87,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
                                 icon={<span className="material-symbols-outlined text-[16px]">auto_awesome</span>}
                                 className="bg-[var(--color-surface-bg)] h-8 text-xs px-3 border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]"
                             >
-                                AI Plan
+                                {t('social.campaignHeader.aiPlan')}
                             </Button>
                             {onViewPlannedContent && (
                                 <Button
@@ -94,7 +96,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
                                     icon={<span className="material-symbols-outlined text-[16px]">table_chart</span>}
                                     className="bg-[var(--color-surface-bg)] h-8 text-xs px-3 border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]"
                                 >
-                                    View Planned
+                                    {t('social.campaignHeader.viewPlanned')}
                                 </Button>
                             )}
                             <Button
@@ -104,7 +106,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
                                 style={{ backgroundColor: brandColor, borderColor: brandColor }}
                                 className="text-white h-8 text-xs px-3 shadow-sm shadow-current/20"
                             >
-                                Add Content
+                                {t('social.campaignHeader.addContent')}
                             </Button>
                         </div>
                     </div>
@@ -124,7 +126,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
                         {/* Item Count */}
                         <div className="flex items-center gap-2">
                             <span className="material-symbols-outlined text-[16px]">format_list_bulleted</span>
-                            <span className="font-medium">{posts.length} Items</span>
+                            <span className="font-medium">{t('social.campaignHeader.items').replace('{count}', String(posts.length))}</span>
                         </div>
 
                         {/* Removed Hashtags from here per plan to move them to Strategy View */}

@@ -2,6 +2,9 @@ import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Idea, MindmapGrouping, Project, Task, ProjectBlueprint, ProjectRisk, SocialCampaign, Milestone, Issue, Activity, Member } from "../types";
 import { auth } from "./firebase";
 import { getAIUsage, incrementAIUsage, incrementIdeaAIUsage, incrementCampaignAIUsage } from "./dataService";
+import { applyLanguageInstruction, getAIResponseInstruction } from "../utils/aiLanguage";
+
+import { getUserProfile } from "./dataService";
 
 // Helper to check and track usage with retry logic
 const runWithTokenCheck = async (
@@ -11,19 +14,43 @@ const runWithTokenCheck = async (
     const user = auth.currentUser;
     if (!user) throw new Error("User not authenticated");
 
-    const usage = await getAIUsage(user.uid);
-    if (usage && usage.tokensUsed >= usage.tokenLimit) {
-        throw new Error(`AI token limit reached (${usage.tokensUsed.toLocaleString()} / ${usage.tokenLimit.toLocaleString()}). Limit resets monthly.`);
+    // Pre-Beta Config Check
+    const profile = await getUserProfile(user.uid);
+    let apiKey = '';
+    let tokenLimit = 1000000; // Default system limit
+
+    if (profile?.geminiConfig?.apiKey) {
+        apiKey = profile.geminiConfig.apiKey;
+        tokenLimit = profile.geminiConfig.tokenLimit || 10000000; // User limit or high default
+    } else {
+        // Enforce user key in Pre-Beta
+        throw new Error("Pre-Beta: You must set your own Gemini API Key in Settings > Pre-Beta to use AI features.");
     }
 
-    const ai = getAiClient();
+    const usage = await getAIUsage(user.uid);
+    if (usage && usage.tokensUsed >= tokenLimit) {
+        throw new Error(`AI token limit reached (${usage.tokensUsed.toLocaleString()} / ${tokenLimit.toLocaleString()}). Limit resets monthly.`);
+    }
+
+    const ai = getAiClient(apiKey);
+    const { instruction } = getAIResponseInstruction();
+    const aiWithLanguage = {
+        ...ai,
+        models: {
+            ...ai.models,
+            generateContent: (args: any) => {
+                const contents = applyLanguageInstruction(args?.contents, instruction);
+                return ai.models.generateContent({ ...args, contents });
+            }
+        }
+    };
 
     let attempts = 0;
     const maxAttempts = 3;
 
     while (attempts < maxAttempts) {
         try {
-            const result = await operation(ai);
+            const result = await operation(aiWithLanguage);
 
             // Track usage
             const tokens = result.usageMetadata?.totalTokenCount || 0;
@@ -60,18 +87,28 @@ const runWithTokenCheck = async (
 };
 
 // Helper to get client instance safely
-const getAiClient = () => {
-    // Prefer Vite env var, then Node-style fallbacks (for CLI/local scripts)
-    const apiKey =
+const getAiClient = (apiKey?: string) => {
+    // Prefer passed key (User key), then fallback to env ONLY if not in strict user-key mode (which we are)
+    // Actually, user instruction says "currently set gemini api key should not be requested while in pre beta"
+    // So if apiKey is passed, use it. If not, don't use system key.
+
+    if (apiKey) {
+        return new GoogleGenAI({ apiKey });
+    }
+
+    // Fallback logic for dev/build scripts that might not have user context, 
+    // but for app usage, runWithTokenCheck enforces the key.
+    // We KEEP this for non-user contexts (like CLI scripts), but likely won't be reached by app.
+    const systemKey =
         (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_GEMINI_API_KEY) ||
         process.env.GEMINI_API_KEY ||
         process.env.API_KEY ||
         '';
 
-    if (!apiKey) {
-        throw new Error("Missing GEMINI API key. Set VITE_GEMINI_API_KEY (or GEMINI_API_KEY/API_KEY).");
+    if (!systemKey) {
+        throw new Error("Missing GEMINI API key.");
     }
-    return new GoogleGenAI({ apiKey });
+    return new GoogleGenAI({ apiKey: systemKey });
 };
 
 export const generateBrainstormIdeas = async (prompt: string): Promise<Idea[]> => {
@@ -787,23 +824,20 @@ export const generateProductStrategyAI = async (idea: Idea): Promise<{ vision: s
             properties: {
                 vision: { type: Type.STRING },
                 marketFit: { type: Type.NUMBER },
-                feasibility: { type: Type.NUMBER }
+                feasibility: { type: Type.NUMBER },
             },
             required: ['vision', 'marketFit', 'feasibility']
         };
 
         const prompt = `
-        You are a Chief Product Officer. defining the strategy for a new product.
-        
-        Title: ${idea.title}
-        Description: ${idea.description}
-        Type: ${idea.type}
-        
-        1. Write a compelling **Product Vision Statement** (max 3 sentences) that describes the long-term goal and impact.
-        2. Estimate a **Market Fit Score** (0-10) based on the problem's universality and urgency.
-        3. Estimate a **Technical Feasibility Score** (0-10) based on typical complexity for such a product.
-        
-        Return JSON.
+        Develop a high-level product strategy for:
+        Title: "${idea.title}"
+        Description: "${idea.description}"
+
+        Return:
+        1. Vision Statement (Inspiring, forward-looking)
+        2. Market Fit Score (0-10)
+        3. Feasibility Score (0-10)
         `;
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
@@ -816,17 +850,231 @@ export const generateProductStrategyAI = async (idea: Idea): Promise<{ vision: s
             }
         }));
 
-        const result = JSON.parse(response.text || "{}");
-        return {
-            vision: result.vision || "",
-            marketFit: result.marketFit || 5,
-            feasibility: result.feasibility || 5
-        };
+        return JSON.parse(response.text || "{}");
     } catch (error) {
-        console.error("Gemini Strategy Error:", error);
+        console.error("Gemini Product Strategy Error:", error);
         throw error;
     }
 };
+
+export const generateAdCopy = async (
+    productName: string,
+    objective: string,
+    platform: string,
+    description: string
+): Promise<{ headlines: string[]; primaryText: string[]; description: string }> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.OBJECT,
+            properties: {
+                headlines: { type: Type.ARRAY, items: { type: Type.STRING } },
+                primaryText: { type: Type.ARRAY, items: { type: Type.STRING } },
+                description: { type: Type.STRING }
+            },
+            required: ['headlines', 'primaryText', 'description']
+        };
+
+        const prompt = `
+        Generate high-converting ad copy for a "${platform}" ad campaign.
+        Product: "${productName}"
+        Objective: "${objective}"
+        Context: "${description}"
+
+        Provide:
+        - 3-5 punchy headlines (under 40 chars)
+        - 2-3 engaging primary text options (under 125 chars)
+        - 1 link description (under 30 chars)
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.8,
+            }
+        }));
+
+        return JSON.parse(response.text || "{}");
+    } catch (error) {
+        console.error("Gemini Ad Copy Error:", error);
+        throw error;
+    }
+};
+
+export const generateTargetingSuggestions = async (
+    productName: string,
+    description: string,
+    objective: string
+): Promise<{ interests: string[]; demographics: { ageMin: number; ageMax: number; genders: string[] } }> => {
+    try {
+        const ai = getAiClient();
+
+        // Define exact schema to avoid "genders" type mismatch
+        const responseSchema: Schema = {
+            type: Type.OBJECT,
+            properties: {
+                interests: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                },
+                demographics: {
+                    type: Type.OBJECT,
+                    properties: {
+                        ageMin: { type: Type.NUMBER },
+                        ageMax: { type: Type.NUMBER },
+                        genders: {
+                            type: Type.ARRAY,
+                            items: { type: Type.STRING, enum: ['Male', 'Female', 'All'] }
+                        }
+                    },
+                    required: ['ageMin', 'ageMax', 'genders']
+                }
+            },
+            required: ['interests', 'demographics']
+        };
+
+        const prompt = `
+        Suggest precise ad targeting for:
+        Product: "${productName}"
+        Description: "${description}"
+        Objective: "${objective}"
+
+        Return:
+        - 5-8 specific interests/behaviors (e.g. "Small Business Owners", "Yoga", "SaaS")
+        - Demographic fit (Age range, Gender)
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.5,
+            }
+        }));
+
+        return JSON.parse(response.text || "{}");
+    } catch (error) {
+        console.error("Gemini Targeting Error:", error);
+        throw error;
+    }
+};
+
+export const generateBudgetRecommendation = async (
+    objective: string,
+    audienceSize: string
+): Promise<{ recommendedBudget: number; rationale: string }> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.OBJECT,
+            properties: {
+                recommendedBudget: { type: Type.NUMBER },
+                rationale: { type: Type.STRING }
+            },
+            required: ['recommendedBudget', 'rationale']
+        };
+
+        const prompt = `
+        Recommend a daily starting budget for an ad campaign.
+        Objective: "${objective}"
+        Audience Estimate: "${audienceSize}"
+
+        Return reasonable daily spend (USD) and a 1-sentence rationale.
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.5,
+            }
+        }));
+
+        return JSON.parse(response.text || "{}");
+    } catch (error) {
+        console.error("Gemini Budget Error:", error);
+        throw error;
+    }
+};
+
+export const suggestObjective = async (
+    title: string,
+    description: string
+): Promise<string> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.OBJECT,
+            properties: {
+                objective: { type: Type.STRING, enum: ['Traffic', 'Leads', 'Sales', 'Brand Awareness', 'Engagement', 'Video Views'] },
+                reason: { type: Type.STRING }
+            },
+            required: ['objective', 'reason']
+        };
+
+        const prompt = `
+        Select the best ad campaign objective for:
+        Project: "${title}"
+        Description: "${description}"
+
+        Choose one: Traffic, Leads, Sales, Brand Awareness, Engagement, Video Views.
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.3,
+            }
+        }));
+
+        const data = JSON.parse(response.text || "{}");
+        return data.objective || 'Traffic';
+    } catch (error) {
+        console.error("Gemini Objective Suggestion Error:", error);
+        return 'Traffic';
+    }
+};
+
+export const rewriteText = async (
+    text: string,
+    tone: 'Professional' | 'Persuasive' | 'Punchy' = 'Professional'
+): Promise<string> => {
+    try {
+        const ai = getAiClient();
+
+        const prompt = `
+        Rewrite the following text to be more ${tone}:
+        "${text}"
+
+        Return only the rewritten text. Keep it concise.
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "text/plain",
+                temperature: 0.7,
+            }
+        }));
+
+        return response.text || text;
+    } catch (error) {
+        console.error("Gemini Rewrite Error:", error);
+        return text;
+    }
+};
+
 
 export const generateProductDiscoveryAI = async (idea: Idea): Promise<{
     personas: { name: string; role: string; painPoints: string[]; goals: string[] }[];
@@ -2562,5 +2810,48 @@ export const analyzeContentMixAI = async (
     } catch (error) {
         console.error("Gemini Content Mix Analysis Error:", error);
         throw error;
+    }
+};
+
+export const generatePaidAdsRiskAnalysis = async (
+    campaignDetails: string
+): Promise<{ wins: string[]; risks: string[]; score: number }> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.OBJECT,
+            properties: {
+                wins: { type: Type.ARRAY, items: { type: Type.STRING } },
+                risks: { type: Type.ARRAY, items: { type: Type.STRING } },
+                score: { type: Type.NUMBER }
+            },
+            required: ['wins', 'risks', 'score']
+        };
+
+        const prompt = `
+        Analyze the following ad campaign for potential Wins and Risks.
+        Campaign Details:
+        ${campaignDetails}
+
+        Provide:
+        1. Wins: 3 key strengths or reasons why this campaign will succeed.
+        2. Risks: 3 potential pitfalls or things to watch out for.
+        3. Score: A predicted success probability score from 0-100.
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.6,
+            }
+        }));
+
+        return JSON.parse(response.text || "{}");
+    } catch (error) {
+        console.error("Gemini risk win analysis error:", error);
+        return { wins: [], risks: [], score: 50 };
     }
 };

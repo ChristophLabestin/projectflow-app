@@ -1,7 +1,8 @@
 import React from 'react';
 import { SocialCampaign, SocialPost, SocialPlatform } from '../../../types';
 import { format } from 'date-fns';
-import { dateLocale, dateFormat } from '../../../utils/activityHelpers';
+import { useLanguage } from '../../../context/LanguageContext';
+import { getSocialCampaignStatusLabel, getSocialPostStatusLabel } from '../../../utils/socialLocalization';
 
 interface CampaignDashboardViewProps {
     campaign: SocialCampaign;
@@ -9,6 +10,7 @@ interface CampaignDashboardViewProps {
 }
 
 export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ campaign, posts }) => {
+    const { t, dateLocale, dateFormat } = useLanguage();
     const brandColor = campaign.color || '#E1306C';
 
     // Calculate metrics
@@ -28,10 +30,10 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
 
     // Status distribution for visual
     const statusData = [
-        { label: 'Published', count: publishedPosts, color: '#10b981' },
-        { label: 'Scheduled', count: scheduledPosts, color: '#3b82f6' },
-        { label: 'In Review', count: inReviewPosts, color: '#f59e0b' },
-        { label: 'Draft', count: draftPosts, color: '#6b7280' },
+        { label: getSocialPostStatusLabel('Published', t), count: publishedPosts, color: '#10b981' },
+        { label: getSocialPostStatusLabel('Scheduled', t), count: scheduledPosts, color: '#3b82f6' },
+        { label: getSocialPostStatusLabel('In Review', t), count: inReviewPosts, color: '#f59e0b' },
+        { label: getSocialPostStatusLabel('Draft', t), count: draftPosts, color: '#6b7280' },
     ].filter(s => s.count > 0);
 
     const maxStatusCount = Math.max(...statusData.map(s => s.count), 1);
@@ -61,25 +63,25 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard
                     icon="article"
-                    label="Total Posts"
+                    label={t('social.campaignDashboard.stats.totalPosts')}
                     value={totalPosts}
                     color={brandColor}
                 />
                 <StatCard
                     icon="check_circle"
-                    label="Published"
+                    label={t('social.campaignDashboard.stats.published')}
                     value={publishedPosts}
                     color="#10b981"
                 />
                 <StatCard
                     icon="schedule"
-                    label="Scheduled"
+                    label={t('social.campaignDashboard.stats.scheduled')}
                     value={scheduledPosts}
                     color="#3b82f6"
                 />
                 <StatCard
                     icon="pending"
-                    label="In Review"
+                    label={t('social.campaignDashboard.stats.inReview')}
                     value={inReviewPosts}
                     color="#f59e0b"
                 />
@@ -91,11 +93,13 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-sm font-bold text-[var(--color-text-main)] uppercase tracking-wider flex items-center gap-2">
                             <span className="material-symbols-outlined text-[18px]" style={{ color: brandColor }}>timeline</span>
-                            Campaign Progress
+                            {t('social.campaignDashboard.progress.title')}
                         </h3>
                         {daysRemaining !== null && (
                             <span className="text-xs font-bold text-[var(--color-text-muted)]">
-                                {daysRemaining === 0 ? 'Ends today' : `${daysRemaining} days remaining`}
+                                {daysRemaining === 0
+                                    ? t('social.campaignDashboard.progress.endsToday')
+                                    : t('social.campaignDashboard.progress.daysRemaining').replace('{count}', String(daysRemaining))}
                             </span>
                         )}
                     </div>
@@ -111,7 +115,7 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
                             />
                         </div>
                         <div className="text-center text-sm font-bold" style={{ color: brandColor }}>
-                            {progressPercent}% Complete
+                            {t('social.campaignDashboard.progress.complete').replace('{percent}', String(progressPercent))}
                         </div>
                     </div>
                 </div>
@@ -123,7 +127,7 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
                 <div className="bg-[var(--color-surface-card)] rounded-2xl p-6 border border-[var(--color-surface-border)]">
                     <h3 className="text-sm font-bold text-[var(--color-text-main)] uppercase tracking-wider flex items-center gap-2 mb-6">
                         <span className="material-symbols-outlined text-[18px]" style={{ color: brandColor }}>bar_chart</span>
-                        Post Status Distribution
+                        {t('social.campaignDashboard.statusDistribution.title')}
                     </h3>
                     {statusData.length > 0 ? (
                         <div className="space-y-4">
@@ -147,7 +151,7 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
                         </div>
                     ) : (
                         <div className="text-center py-8 text-[var(--color-text-muted)] text-sm">
-                            No posts yet
+                            {t('social.campaignDashboard.statusDistribution.empty')}
                         </div>
                     )}
                 </div>
@@ -156,7 +160,7 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
                 <div className="bg-[var(--color-surface-card)] rounded-2xl p-6 border border-[var(--color-surface-border)]">
                     <h3 className="text-sm font-bold text-[var(--color-text-main)] uppercase tracking-wider flex items-center gap-2 mb-6">
                         <span className="material-symbols-outlined text-[18px]" style={{ color: brandColor }}>devices</span>
-                        Platform Breakdown
+                        {t('social.campaignDashboard.platformBreakdown.title')}
                     </h3>
                     {platformData.length > 0 ? (
                         <div className="space-y-3">
@@ -167,14 +171,14 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
                                         <span className="font-medium text-sm text-[var(--color-text-main)]">{platform}</span>
                                     </div>
                                     <span className="text-sm font-bold px-2 py-0.5 rounded-lg bg-[var(--color-surface-hover)]" style={{ color: brandColor }}>
-                                        {count} {count === 1 ? 'post' : 'posts'}
+                                        {t('social.campaignDashboard.platformBreakdown.count').replace('{count}', String(count)).replace('{label}', count === 1 ? t('social.campaignDashboard.platformBreakdown.post') : t('social.campaignDashboard.platformBreakdown.posts'))}
                                     </span>
                                 </div>
                             ))}
                         </div>
                     ) : (
                         <div className="text-center py-8 text-[var(--color-text-muted)] text-sm">
-                            No posts yet
+                            {t('social.campaignDashboard.platformBreakdown.empty')}
                         </div>
                     )}
                 </div>
@@ -184,24 +188,33 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
             <div className="bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] rounded-2xl p-6 border border-[var(--color-surface-border)]">
                 <h3 className="text-sm font-bold text-[var(--color-text-main)] uppercase tracking-wider flex items-center gap-2 mb-4">
                     <span className="material-symbols-outlined text-[18px]" style={{ color: brandColor }}>info</span>
-                    Campaign Overview
+                    {t('social.campaignDashboard.overview.title')}
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
-                        <div className="text-[var(--color-text-muted)] text-xs uppercase mb-1">Status</div>
-                        <div className="font-bold text-[var(--color-text-main)]">{campaign.status}</div>
+                        <div className="text-[var(--color-text-muted)] text-xs uppercase mb-1">{t('social.campaignDashboard.overview.status')}</div>
+                        <div className="font-bold text-[var(--color-text-main)]">{getSocialCampaignStatusLabel(campaign.status, t)}</div>
                     </div>
                     <div>
-                        <div className="text-[var(--color-text-muted)] text-xs uppercase mb-1">Platforms</div>
-                        <div className="font-bold text-[var(--color-text-main)]">{campaign.platforms?.length || 0} active</div>
+                        <div className="text-[var(--color-text-muted)] text-xs uppercase mb-1">{t('social.campaignDashboard.overview.platforms')}</div>
+                        <div className="font-bold text-[var(--color-text-main)]">
+                            {t('social.campaignDashboard.overview.platformCount')
+                                .replace('{count}', String(campaign.platforms?.length || 0))}
+                        </div>
                     </div>
                     <div>
-                        <div className="text-[var(--color-text-muted)] text-xs uppercase mb-1">Phases</div>
-                        <div className="font-bold text-[var(--color-text-main)]">{campaign.phases?.length || 0} defined</div>
+                        <div className="text-[var(--color-text-muted)] text-xs uppercase mb-1">{t('social.campaignDashboard.overview.phases')}</div>
+                        <div className="font-bold text-[var(--color-text-main)]">
+                            {t('social.campaignDashboard.overview.phaseCount')
+                                .replace('{count}', String(campaign.phases?.length || 0))}
+                        </div>
                     </div>
                     <div>
-                        <div className="text-[var(--color-text-muted)] text-xs uppercase mb-1">KPIs</div>
-                        <div className="font-bold text-[var(--color-text-main)]">{campaign.kpis?.length || 0} tracked</div>
+                        <div className="text-[var(--color-text-muted)] text-xs uppercase mb-1">{t('social.campaignDashboard.overview.kpis')}</div>
+                        <div className="font-bold text-[var(--color-text-main)]">
+                            {t('social.campaignDashboard.overview.kpiCount')
+                                .replace('{count}', String(campaign.kpis?.length || 0))}
+                        </div>
                     </div>
                 </div>
             </div>

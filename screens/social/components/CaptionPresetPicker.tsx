@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { subscribeCaptionPresets } from '../../../services/dataService';
 import { CaptionPreset, SocialPlatform } from '../../../types';
 import { CaptionPresetManager } from './CaptionPresetManager';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface CaptionPresetPickerProps {
     projectId: string;
@@ -24,6 +25,7 @@ export const CaptionPresetPicker: React.FC<CaptionPresetPickerProps> = ({ projec
     const [isOpen, setIsOpen] = useState(false);
     const [showManager, setShowManager] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const { t } = useLanguage();
 
     useEffect(() => {
         if (!projectId) return;
@@ -65,7 +67,7 @@ export const CaptionPresetPicker: React.FC<CaptionPresetPickerProps> = ({ projec
                     className="px-3 py-1.5 bg-[var(--color-surface-hover)] hover:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
                 >
                     <span className="material-symbols-outlined text-[14px]">bookmark</span>
-                    Presets
+                    {t('social.captionPresetPicker.label')}
                     {filteredPresets.length > 0 && (
                         <span className="ml-1 px-1.5 py-0.5 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-full text-[10px] font-bold">
                             {filteredPresets.length}
@@ -80,13 +82,15 @@ export const CaptionPresetPicker: React.FC<CaptionPresetPickerProps> = ({ projec
                         <div className="px-4 py-3 border-b border-[var(--color-surface-border)] flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">{PLATFORM_ICONS[platform]}</span>
-                                <span className="text-sm font-semibold text-[var(--color-text-main)]">{platform} Presets</span>
+                                <span className="text-sm font-semibold text-[var(--color-text-main)]">
+                                    {t('social.captionPresetPicker.title').replace('{platform}', platform)}
+                                </span>
                             </div>
                             <button
                                 onClick={handleOpenManager}
                                 className="text-xs text-[var(--color-primary)] hover:underline"
                             >
-                                Manage All
+                                {t('social.captionPresetPicker.manageAll')}
                             </button>
                         </div>
 
@@ -95,12 +99,12 @@ export const CaptionPresetPicker: React.FC<CaptionPresetPickerProps> = ({ projec
                             {filteredPresets.length === 0 ? (
                                 <div className="p-6 text-center text-[var(--color-text-muted)]">
                                     <span className="material-symbols-outlined text-3xl mb-2">description</span>
-                                    <p className="text-sm">No presets for {platform}</p>
+                                    <p className="text-sm">{t('social.captionPresetPicker.empty').replace('{platform}', platform)}</p>
                                     <button
                                         onClick={handleOpenManager}
                                         className="mt-2 text-xs text-[var(--color-primary)] hover:underline"
                                     >
-                                        Create one
+                                        {t('social.captionPresetPicker.createOne')}
                                     </button>
                                 </div>
                             ) : (
@@ -131,7 +135,7 @@ export const CaptionPresetPicker: React.FC<CaptionPresetPickerProps> = ({ projec
                         {filteredPresets.length > 0 && (
                             <div className="px-4 py-2 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]">
                                 <p className="text-[10px] text-[var(--color-text-muted)] text-center">
-                                    Click to apply preset
+                                    {t('social.captionPresetPicker.hint')}
                                 </p>
                             </div>
                         )}

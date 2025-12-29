@@ -143,6 +143,26 @@ export const ProjectTaskDetail = () => {
         return project?.ownerId === auth.currentUser?.uid;
     }, [project?.ownerId]);
 
+    const displayedActivities = useMemo(() => {
+        return activities.reduce((acc: Activity[], current) => {
+            if (acc.length === 0) return [current];
+
+            const last = acc[acc.length - 1];
+            const timeDiff = toMillis(last.createdAt) - toMillis(current.createdAt);
+            const isSameUser = last.user === current.user;
+            const isSameAction = last.action === current.action;
+            const isSameType = last.type === current.type;
+            const isCloseInTime = Math.abs(timeDiff) < 5 * 60 * 1000; // 5 minutes
+
+            if (isSameUser && isSameAction && isSameType && isCloseInTime) {
+                return acc;
+            }
+
+            return [...acc, current];
+        }, []);
+    }, [activities]);
+
+
     const doneCount = subTasks.filter(s => s.isCompleted).length;
     const totalCount = subTasks.length;
     const progressPct = totalCount ? Math.round((doneCount / totalCount) * 100) : 0;
@@ -1499,9 +1519,11 @@ export const ProjectTaskDetail = () => {
                             </h3>
                             <div className="relative pl-4 space-y-6 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                                 {/* Vertical line */}
-                                <div className="absolute left-[19px] top-2 bottom-2 w-[2px] bg-[var(--color-surface-border)]" />
+                                <div className="absolute left-[31px] top-2 bottom-2 w-[2px] bg-[var(--color-surface-border)]" />
 
-                                {activities.map((item) => {
+                                {displayedActivities.slice(0, 4).map((item) => {
+
+
                                     const { icon, color, bg } = activityIcon(item.type, item.action);
                                     return (
                                         <div key={item.id} className="relative flex gap-3 group">

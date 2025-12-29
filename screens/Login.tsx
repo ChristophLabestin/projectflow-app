@@ -6,7 +6,7 @@ import { bootstrapTenantForCurrentUser, getActiveTenantId } from '../services/da
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { useLanguage } from '../context/LanguageContext';
-import { loginWithPasskey } from '../services/passkeyService';
+import { loginWithPasskey, shouldAutoPrompt } from '../services/passkeyService';
 
 export const Login = () => {
     const { t } = useLanguage();
@@ -36,10 +36,12 @@ export const Login = () => {
 
     useEffect(() => {
         const inviteTenant = (location.state as any)?.inviteTenantId || getActiveTenantId();
-        if (inviteTenant || searchParams.get('redirect')) {
+        const isRegisterMode = location.pathname.endsWith('/register') || searchParams.get('mode') === 'register';
+
+        if (inviteTenant || searchParams.get('redirect') || isRegisterMode) {
             setIsRegister(true);
         }
-    }, [location.state, searchParams]);
+    }, [location.state, searchParams, location.pathname]);
 
     const handleAuthSuccess = async () => {
         // If we have a complex redirect URL (with search params), we need to extract the path and search
@@ -133,9 +135,9 @@ export const Login = () => {
     };
 
 
-    const handlePasskeySignIn = async () => {
+    const handlePasskeySignIn = async (isAuto = false) => {
         setIsLoading(true);
-        setError('');
+        if (!isAuto) setError(''); // Only clear error on manual attempt
         try {
             const token = await loginWithPasskey(email);
             await signInWithCustomToken(auth, token);
@@ -143,11 +145,29 @@ export const Login = () => {
             await handleAuthSuccess();
         } catch (e: any) {
             console.error(e);
-            setError(e.message || 'Failed to sign in with passkey');
+            // If auto-prompt and user cancelled, don't show error
+            const isCancellation = e.name === 'NotAllowedError' || e.message.includes('The operation was canceled');
+
+            if (isAuto && isCancellation) {
+                // Just stop loading, user wants to use password
+                setIsLoading(false);
+                return;
+            }
+
+            setError(e.message || t('passkey.login.error'));
         } finally {
+            // If manual or successful, stop loading. If auto-cancelled, we stopped above.
             setIsLoading(false);
         }
     };
+
+    // Auto-prompt effect
+    useEffect(() => {
+        // Only auto-prompt if checking for login, not register, and not already redirected
+        if (!isRegister && !auth.currentUser && !showMfaStep && shouldAutoPrompt()) {
+            handlePasskeySignIn(true);
+        }
+    }, [isRegister]); // Run once on mount/mode switch if conditions met
 
     return (
         <div className="min-h-screen w-full flex bg-[var(--color-surface-bg)] text-[var(--color-text-main)] font-sans">
@@ -217,6 +237,11 @@ export const Login = () => {
                             </div>
 
                             <form onSubmit={handleSubmit} className="space-y-5">
+                                <div className="p-3 mb-4 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500 text-sm font-medium flex items-start gap-2">
+                                    <span className="material-symbols-outlined text-lg mt-0.5">warning</span>
+                                    <span>{t('login.warning.preBeta')}</span>
+                                </div>
+
                                 {isRegister && (
                                     <Input label={t('login.label.fullName')} value={name} onChange={(e) => setName(e.target.value)} placeholder={t('login.placeholder.fullName')} />
                                 )}
@@ -292,7 +317,7 @@ export const Login = () => {
                             disabled={isLoading}
                         >
                             <span className="material-symbols-outlined mr-2">fingerprint</span>
-                            Sign in with Passkey
+                            {t('passkey.login.action')}
                         </Button>
                     )}
 

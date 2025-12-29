@@ -643,7 +643,16 @@ export const updateProjectFields = async (
 ) => {
     const resolvedTenant = resolveTenantId(tenantId);
     const projectRef = projectDocRef(resolvedTenant, projectId);
-    await updateDoc(projectRef, updates);
+
+    // Sanitize updates to remove undefined values which cause Firestore errors
+    const sanitizedUpdates = Object.entries(updates).reduce((acc, [key, value]) => {
+        if (value !== undefined) {
+            acc[key] = value;
+        }
+        return acc;
+    }, {} as Record<string, any>);
+
+    await updateDoc(projectRef, sanitizedUpdates);
     if (activityMessage?.action) {
         await logActivity(
             projectId,
@@ -4429,4 +4438,43 @@ export const syncSocialStrategyPlatforms = async (projectId: string, platformToR
     if (count > 0) {
         await batch.commit();
     }
+};
+
+// --- Onboarding Persistence ---
+
+/**
+ * Updates a specific onboarding tour status for a user.
+ * Uses strict object structure to ensure Firestore merges nested maps correctly 
+ * rather than creating dot-notation field keys.
+ */
+export const updateUserOnboardingStatus = async (
+    userId: string,
+    tourKey: string,
+    status: 'completed' | 'skipped',
+    tenantId?: string
+) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const userRef = doc(tenantUsersCollection(resolvedTenant), userId);
+
+    // We must use the dot notation for the *path* to the nested field in updateDoc
+    // but the value must be the object we want to set at that path.
+    // However, if we want to merge deep without overwriting other peers, 
+    // we use "preferences.onboarding.TOURKEY": { ... }
+
+    await updateDoc(userRef, {
+        [`preferences.onboarding.${tourKey}`]: {
+            status,
+            completedAt: new Date().toISOString()
+        }
+    });
+};
+
+export const resetUserOnboarding = async (userId: string, tenantId?: string) => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const userRef = doc(tenantUsersCollection(resolvedTenant), userId);
+
+    // To delete the whole map or reset it
+    await updateDoc(userRef, {
+        'preferences.onboarding': deleteField()
+    });
 };

@@ -15,6 +15,7 @@ import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
 import { getProjectMembers, subscribeProjectTasks, subscribeProjectMilestones, getUserProfile, subscribeProjectIssues, getWorkspaceGroups } from '../services/dataService';
 import { calculateProjectHealth, ProjectHealth, calculateSpotlightScore, calculateWorkspaceHealth } from '../services/healthService';
 import { HealthIndicator } from '../components/project/HealthIndicator';
+import { getHealthFactorText, interpolate } from '../utils/healthLocalization';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
 
@@ -84,12 +85,12 @@ const ProjectCard: React.FC<{
     const healthState = health.status === 'excellent' || health.status === 'healthy' ? 'success' :
         health.status === 'warning' ? 'warning' :
             health.status === 'critical' ? 'critical' : 'normal';
-    const healthFactors = health.factors.map(f => f.label);
     const navigate = useNavigate();
     const [tasks, setTasks] = useState<Task[]>([]);
     const isBrainstorming = project.status === 'Brainstorming' || project.status === 'Planning';
     const isCompleted = project.status === 'Completed';
     const statusLabel = getProjectStatusLabel(project.status, t);
+    const primaryFactorLabel = health.factors[0] ? getHealthFactorText(health.factors[0], t).label : '';
 
     useEffect(() => {
         return subscribeProjectTasks(project.id, setTasks, project.tenantId);
@@ -176,7 +177,7 @@ const ProjectCard: React.FC<{
                         <div className="space-y-1">
                             {health.status === 'critical' && (
                                 <span className="text-[10px] font-black text-rose-500 uppercase tracking-tighter flex items-center gap-1 animate-pulse">
-                                    <span className="material-symbols-outlined text-xs">priority_high</span> {t('projectsList.health.critical')}: {health.factors[0]?.label || t('projectsList.health.needsAttention')}
+                                    <span className="material-symbols-outlined text-xs">priority_high</span> {t('projectsList.health.critical')}: {primaryFactorLabel || t('projectsList.health.needsAttention')}
                                 </span>
                             )}
                             <div className="flex items-center justify-between gap-4">
@@ -245,6 +246,9 @@ const ProjectSpotlight: React.FC<{ project: Project; health: ProjectHealth; spot
     const state = health.status === 'excellent' || health.status === 'healthy' ? 'success' :
         health.status === 'warning' ? 'warning' :
             health.status === 'critical' ? 'critical' : 'normal';
+    const primaryFactorDescription = health.factors[0]
+        ? getHealthFactorText(health.factors[0], t).description
+        : '';
 
     useEffect(() => {
         return subscribeProjectTasks(project.id, setTasks, project.tenantId);
@@ -353,7 +357,7 @@ const ProjectSpotlight: React.FC<{ project: Project; health: ProjectHealth; spot
                             <div>
                                 <div className="text-[10px] font-black uppercase tracking-widest text-[var(--color-primary)]">{t('projectsList.spotlight.reasonLabel')}</div>
                                 <div className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">
-                                    {spotlightReason || health.factors[0]?.description || t('projectsList.spotlight.defaultReason')}
+                                    {spotlightReason || primaryFactorDescription || t('projectsList.spotlight.defaultReason')}
                                 </div>
                             </div>
                         </div>
@@ -638,9 +642,11 @@ export const ProjectsList = () => {
         let maxScore = -9999;
         let winner: Project | null = null;
         let winnerReason = '';
+        let winnerReasonKey: string | undefined;
+        let winnerReasonMeta: Record<string, number | string> | undefined;
 
         activeSubscribedProjects.forEach(p => {
-            const { score, reason } = calculateSpotlightScore(
+            const { score, reason, reasonKey, reasonMeta } = calculateSpotlightScore(
                 p,
                 projectTasks[p.id] || [],
                 projectMilestones[p.id] || [],
@@ -650,6 +656,8 @@ export const ProjectsList = () => {
                 maxScore = score;
                 winner = p;
                 winnerReason = reason;
+                winnerReasonKey = reasonKey;
+                winnerReasonMeta = reasonMeta;
             }
         });
 
@@ -661,7 +669,12 @@ export const ProjectsList = () => {
             featuredProject: selectedWinner,
             spotlightHealth: healthMap[selectedWinner.id],
             projectHealthMap: healthMap,
-            spotlightReason: winnerReason || t('projectsList.spotlight.defaultReason'),
+            spotlightReason: winnerReasonKey
+                ? interpolate(
+                    t(winnerReasonKey, winnerReason || t('projectsList.spotlight.defaultReason')),
+                    winnerReasonMeta
+                )
+                : (winnerReason || t('projectsList.spotlight.defaultReason')),
             workspaceHealth
         };
     }, [myProjects, projectMilestones, projectTasks, projectIssues, t]);
@@ -833,18 +846,21 @@ export const ProjectsList = () => {
                                 </span>
                                     {spotlightHealth.factors && spotlightHealth.factors.length > 0 && (
                                         <div className="flex flex-wrap items-center gap-1">
-                                            {spotlightHealth.factors.slice(0, 4).map((factor, i) => (
-                                                <span
-                                                    key={i}
-                                                    className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${factor.type === 'negative' ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300' :
-                                                        factor.type === 'neutral' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300' :
-                                                            factor.type === 'positive' ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' :
-                                                                'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300'
-                                                        }`}
-                                                >
-                                                    {factor.label}
-                                                </span>
-                                        ))}
+                                            {spotlightHealth.factors.slice(0, 4).map((factor) => {
+                                                const { label } = getHealthFactorText(factor, t);
+                                                return (
+                                                    <span
+                                                        key={factor.id}
+                                                        className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${factor.type === 'negative' ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300' :
+                                                            factor.type === 'neutral' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300' :
+                                                                factor.type === 'positive' ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' :
+                                                                    'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300'
+                                                            }`}
+                                                    >
+                                                        {label}
+                                                    </span>
+                                                );
+                                            })}
                                         {spotlightHealth.factors.length > 4 && (
                                             <span className="text-[10px] text-[var(--color-text-subtle)]">
                                                 {t('projectsList.suggestion.more').replace('{count}', String(spotlightHealth.factors.length - 4))}

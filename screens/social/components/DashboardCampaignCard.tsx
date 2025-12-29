@@ -3,7 +3,8 @@ import { SocialCampaign, SocialPost } from '../../../types';
 import { Link } from 'react-router-dom';
 import { PlatformIcon } from './PlatformIcon';
 import { format } from 'date-fns';
-import { dateLocale, dateFormat } from '../../../utils/activityHelpers';
+import { useLanguage } from '../../../context/LanguageContext';
+import { getSocialCampaignStatusLabel } from '../../../utils/socialLocalization';
 
 interface DashboardCampaignCardProps {
     campaign: SocialCampaign;
@@ -12,6 +13,7 @@ interface DashboardCampaignCardProps {
 }
 
 export const DashboardCampaignCard: React.FC<DashboardCampaignCardProps> = ({ campaign, posts, projectId }) => {
+    const { t, dateLocale, dateFormat } = useLanguage();
     const campaignPosts = posts.filter(p => p.campaignId === campaign.id);
     const publishedPosts = campaignPosts.filter(p => p.status === 'Published').length;
     const totalPosts = campaignPosts.length;
@@ -36,7 +38,7 @@ export const DashboardCampaignCard: React.FC<DashboardCampaignCardProps> = ({ ca
                         campaign.status === 'Planning' ? 'bg-blue-100 text-blue-700' :
                             'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'
                         }`}>
-                        {campaign.status}
+                        {getSocialCampaignStatusLabel(campaign.status, t)}
                     </span>
                 </div>
 
@@ -44,8 +46,10 @@ export const DashboardCampaignCard: React.FC<DashboardCampaignCardProps> = ({ ca
                     {/* Progress */}
                     <div>
                         <div className="flex justify-between items-center mb-1.5">
-                            <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Progress</span>
-                            <span className="text-[10px] font-bold text-[var(--color-text-main)]">{publishedPosts}/{totalPosts} Posts</span>
+                            <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{t('social.dashboardCampaign.progress')}</span>
+                            <span className="text-[10px] font-bold text-[var(--color-text-main)]">
+                                {t('social.dashboardCampaign.postsCount').replace('{published}', String(publishedPosts)).replace('{total}', String(totalPosts))}
+                            </span>
                         </div>
                         <div className="h-1.5 w-full bg-[var(--color-surface-hover)] rounded-full overflow-hidden">
                             <div
@@ -60,7 +64,7 @@ export const DashboardCampaignCard: React.FC<DashboardCampaignCardProps> = ({ ca
 
                     {/* Platforms */}
                     <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mr-1">Platforms:</span>
+                        <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mr-1">{t('social.dashboardCampaign.platforms')}</span>
                         <div className="flex gap-1.5">
                             {campaign.platforms?.map(platform => (
                                 <div key={platform} className="size-5" title={platform}>
@@ -74,13 +78,16 @@ export const DashboardCampaignCard: React.FC<DashboardCampaignCardProps> = ({ ca
                 <div className="flex items-center justify-between mt-5 pt-4 border-t border-[var(--color-surface-border)]">
                     <div className="flex items-center gap-2 text-[10px] text-[var(--color-text-muted)]">
                         <span className="material-symbols-outlined text-[14px]">calendar_today</span>
-                        <span>Ends {campaign.endDate ? format(new Date(campaign.endDate), dateFormat, { locale: dateLocale }) : ''}</span>
+                        <span>
+                            {t('social.dashboardCampaign.ends')
+                                .replace('{date}', campaign.endDate ? format(new Date(campaign.endDate), dateFormat, { locale: dateLocale }) : t('social.dashboardCampaign.tbd'))}
+                        </span>
                     </div>
                     <Link
                         to={`/project/${projectId}/social/campaigns/${campaign.id}`}
                         className="text-xs font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1"
                     >
-                        View Board
+                        {t('social.dashboardCampaign.viewBoard')}
                         <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
                     </Link>
                 </div>

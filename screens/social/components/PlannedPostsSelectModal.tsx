@@ -3,6 +3,8 @@ import { Modal } from '../../../components/ui/Modal';
 import { Button } from '../../../components/ui/Button';
 import { PlatformIcon } from './PlatformIcon'; // Make sure this path is correct
 import { SocialPostFormat } from '../../../types';
+import { useLanguage } from '../../../context/LanguageContext';
+import { getSocialPostFormatLabel } from '../../../utils/socialLocalization';
 
 interface PlannedPostsSelectModalProps {
     isOpen: boolean;
@@ -28,6 +30,7 @@ export const PlannedPostsSelectModal: React.FC<PlannedPostsSelectModalProps> = (
     onSelect
 }) => {
     const [weekOffset, setWeekOffset] = useState(0);
+    const { t } = useLanguage();
 
     // Calculate total weeks
     const maxDayOffset = useMemo(() => {
@@ -66,13 +69,13 @@ export const PlannedPostsSelectModal: React.FC<PlannedPostsSelectModalProps> = (
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title="Select Planned Content"
+            title={t('social.plannedPostsSelect.title')}
             size="5xl"
             noPadding={true}
         >
             <div className="flex flex-col h-[80vh] w-full p-6">
                 <div className="flex items-center justify-between mb-4 shrink-0">
-                    <p className="text-sm text-slate-500">Pick a planned item to create a post draft.</p>
+                    <p className="text-sm text-slate-500">{t('social.plannedPostsSelect.subtitle')}</p>
 
                     {/* Week Navigator */}
                     <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
@@ -84,7 +87,9 @@ export const PlannedPostsSelectModal: React.FC<PlannedPostsSelectModalProps> = (
                             <span className="material-symbols-outlined text-sm">chevron_left</span>
                         </button>
                         <span className="text-xs font-bold px-2 tabular-nums">
-                            Week {weekOffset + 1} <span className="text-slate-400 font-normal">of {totalWeeks}</span>
+                            {t('social.plannedPostsSelect.weekLabel')
+                                .replace('{week}', String(weekOffset + 1))
+                                .replace('{total}', String(totalWeeks))}
                         </span>
                         <button
                             onClick={() => setWeekOffset(Math.min(totalWeeks - 1, weekOffset + 1))}
@@ -104,7 +109,7 @@ export const PlannedPostsSelectModal: React.FC<PlannedPostsSelectModalProps> = (
                                 {/* Column Header - Sticky */}
                                 <div className="sticky top-0 z-20 p-3 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-center shadow-sm">
                                     <div className="text-[10px] items-center justify-center font-bold uppercase tracking-wider text-slate-400 mb-1">
-                                        Day
+                                        {t('social.plannedPostsSelect.dayLabel')}
                                     </div>
                                     <div className="text-xl font-black text-slate-700 dark:text-slate-200 leading-none">
                                         {col.dayNum}
@@ -118,6 +123,10 @@ export const PlannedPostsSelectModal: React.FC<PlannedPostsSelectModalProps> = (
                                             const platforms = Array.isArray(post.platforms) ? post.platforms : (post.platform ? [post.platform] : []);
                                             const contentType = post.contentType || post.format || 'Post';
                                             const badgeColor = CONTENT_TYPE_COLORS[contentType] || 'bg-slate-500 text-white';
+                                            const isKnownFormat = ['Text', 'Post', 'Image', 'Video', 'Carousel', 'Story', 'Reel', 'Short'].includes(contentType);
+                                            const formatLabel = isKnownFormat
+                                                ? getSocialPostFormatLabel(contentType as SocialPostFormat, t)
+                                                : contentType;
 
                                             return (
                                                 <button
@@ -136,29 +145,29 @@ export const PlannedPostsSelectModal: React.FC<PlannedPostsSelectModalProps> = (
                                                                 <div className="size-5 rounded-md bg-slate-100 dark:bg-slate-800 border-dashed border-slate-300 dark:border-slate-600" />
                                                             )}
                                                         </div>
-                                                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${badgeColor} truncate max-w-[60px]`}>
-                                                            {contentType}
-                                                        </span>
-                                                    </div>
+                                                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${badgeColor} truncate max-w-[60px]`}>
+                                                        {formatLabel}
+                                                    </span>
+                                                </div>
 
-                                                    <p className="text-xs font-medium text-slate-700 dark:text-slate-200 line-clamp-3 mb-2 leading-snug group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
-                                                        {post.hook || post.visualDirection || 'Untitled Post'}
-                                                    </p>
+                                                <p className="text-xs font-medium text-slate-700 dark:text-slate-200 line-clamp-3 mb-2 leading-snug group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
+                                                    {post.hook || post.visualDirection || t('social.plannedPostsSelect.untitled')}
+                                                </p>
 
-                                                    <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium group-hover:text-cyan-600/70 dark:group-hover:text-cyan-400/70">
-                                                        <span>Select</span>
-                                                        <span className="material-symbols-outlined text-[12px] group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
-                                                    </div>
-                                                </button>
-                                            );
-                                        })
-                                    ) : (
-                                        <div className="h-24 flex items-center justify-center border-2 border-dashed border-slate-100 dark:border-slate-800/50 rounded-lg">
-                                            <span className="text-[10px] font-bold text-slate-300 dark:text-slate-700 uppercase tracking-wider">Empty</span>
-                                        </div>
-                                    )}
-                                </div>
+                                                <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium group-hover:text-cyan-600/70 dark:group-hover:text-cyan-400/70">
+                                                    <span>{t('social.plannedPostsSelect.select')}</span>
+                                                    <span className="material-symbols-outlined text-[12px] group-hover:translate-x-0.5 transition-transform">arrow_forward</span>
+                                                </div>
+                                            </button>
+                                        );
+                                    })
+                                ) : (
+                                    <div className="h-24 flex items-center justify-center border-2 border-dashed border-slate-100 dark:border-slate-800/50 rounded-lg">
+                                        <span className="text-[10px] font-bold text-slate-300 dark:text-slate-700 uppercase tracking-wider">{t('social.plannedPostsSelect.empty')}</span>
+                                    </div>
+                                )}
                             </div>
+                        </div>
                         ))}
                     </div>
                 </div>

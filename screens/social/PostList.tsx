@@ -2,11 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link, useParams } from 'react-router-dom';
 import { subscribeSocialPosts } from '../../services/dataService';
 import { SocialPost } from '../../types';
+import { useLanguage } from '../../context/LanguageContext';
+import { getSocialPostStatusLabel } from '../../utils/socialLocalization';
+import { format } from 'date-fns';
 
 export const PostList = () => {
     const { id: projectId } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const [posts, setPosts] = useState<SocialPost[]>([]);
+    const { t, dateLocale, dateFormat } = useLanguage();
 
     useEffect(() => {
         if (!projectId) return;
@@ -18,15 +22,15 @@ export const PostList = () => {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="h2 mb-1">Posts</h1>
-                    <p className="text-[var(--color-text-muted)]">All social media posts.</p>
+                    <h1 className="h2 mb-1">{t('social.postList.title')}</h1>
+                    <p className="text-[var(--color-text-muted)]">{t('social.postList.subtitle')}</p>
                 </div>
                 <Link
                     to={`/project/${projectId}/social/create`}
                     className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] font-bold rounded-lg hover:opacity-90 transition-opacity"
                 >
                     <span className="material-symbols-outlined">add</span>
-                    <span>New Post</span>
+                    <span>{t('social.postList.newPost')}</span>
                 </Link>
             </div>
 
@@ -50,20 +54,22 @@ export const PostList = () => {
                                 <span className={`text-xs px-2 py-0.5 rounded ${post.status === 'Published' ? 'bg-green-100 text-green-700' :
                                     post.status === 'Scheduled' ? 'bg-blue-100 text-blue-700' :
                                         'bg-gray-100 text-gray-600'
-                                    }`}>{post.status}</span>
+                                    }`}>{getSocialPostStatusLabel(post.status, t)}</span>
                             </div>
-                            <p className="mt-1 font-medium line-clamp-2">{post.content.caption || <span className="text-gray-400 italic">No caption</span>}</p>
+                            <p className="mt-1 font-medium line-clamp-2">
+                                {post.content.caption || <span className="text-gray-400 italic">{t('social.postList.noCaption')}</span>}
+                            </p>
                             <p className="text-xs text-[var(--color-text-muted)] mt-1">{post.content.hashtags?.join(' ')}</p>
                             {post.scheduledFor && <p className="text-xs text-[var(--color-primary)] mt-1 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[12px]">calendar_month</span>
-                                {new Date(post.scheduledFor).toLocaleString()}
+                                {format(new Date(post.scheduledFor), `${dateFormat} p`, { locale: dateLocale })}
                             </p>}
                         </div>
                     </div>
                 ))}
                 {posts.length === 0 && (
                     <div className="py-12 text-center text-[var(--color-text-muted)] bg-[var(--color-surface-bg)] rounded-xl border border-dashed border-[var(--color-surface-border)]">
-                        <p>No posts yet.</p>
+                        <p>{t('social.postList.empty')}</p>
                     </div>
                 )}
             </div>

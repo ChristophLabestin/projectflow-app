@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { ProjectHealth, HealthStatus } from '../../services/healthService';
+import { useLanguage } from '../../context/LanguageContext';
+import { getHealthFactorText, getHealthRecommendations } from '../../utils/healthLocalization';
 
 interface HealthIndicatorProps {
     health: ProjectHealth;
@@ -11,6 +13,9 @@ interface HealthIndicatorProps {
 export const HealthIndicator: React.FC<HealthIndicatorProps> = ({ health, size = 'md', showLabel = true, onOpenDetail }) => {
 
     const [showTooltip, setShowTooltip] = useState(false);
+    const { t } = useLanguage();
+    const statusLabel = t(`status.${health.status}`, health.status);
+    const recommendations = getHealthRecommendations(health, t);
 
     const getStatusColor = (status: HealthStatus) => {
         switch (status) {
@@ -96,12 +101,12 @@ export const HealthIndicator: React.FC<HealthIndicatorProps> = ({ health, size =
 
                                 <div>
                                     <h4 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-tight">
-                                        Project Health
+                                        {t('health.tooltip.title')}
                                         <div className={`px-2 py-0.5 rounded-full text-[10px] uppercase ${getStatusBg(health.status)} ${getStatusColor(health.status)}`}>
-                                            {health.status}
+                                            {statusLabel}
                                         </div>
                                     </h4>
-                                    <p className="text-[10px] text-slate-500 font-medium">Based on recent activity and metrics</p>
+                                    <p className="text-[10px] text-slate-500 font-medium">{t('health.tooltip.subtitle')}</p>
                                 </div>
                                 <div className="text-right">
                                     <span className="material-symbols-outlined text-slate-400 text-sm">
@@ -111,15 +116,17 @@ export const HealthIndicator: React.FC<HealthIndicatorProps> = ({ health, size =
                             </div>
 
                             <div className="space-y-3">
-                                {health.factors.slice(0, 3).map((factor) => (
-                                    <div key={factor.id} className="flex gap-2.5">
+                                {health.factors.slice(0, 3).map((factor) => {
+                                    const { label, description } = getHealthFactorText(factor, t);
+                                    return (
+                                        <div key={factor.id} className="flex gap-2.5">
                                         <div className={`mt-1 size-1.5 rounded-full shrink-0 ${factor.type === 'positive' ? 'bg-emerald-500' :
                                             factor.type === 'negative' ? 'bg-rose-500' : 'bg-slate-400'
                                             }`} />
                                         <div className="space-y-0.5">
                                             <div className="flex items-center justify-between w-full gap-4">
                                                 <div className="text-[10.5px] font-bold text-slate-800 dark:text-white leading-tight">
-                                                    {factor.label}
+                                                    {label}
                                                 </div>
                                                 {factor.impact !== 0 && (
                                                     <div className={`text-[9px] font-black font-mono ${factor.type === 'positive' ? 'text-emerald-500' :
@@ -129,18 +136,19 @@ export const HealthIndicator: React.FC<HealthIndicatorProps> = ({ health, size =
                                                 )}
                                             </div>
                                             <p className="text-[10px] text-slate-500 leading-tight">
-                                                {factor.description}
+                                                {description}
                                             </p>
                                         </div>
-                                    </div>
-                                ))}
+                                        </div>
+                                    );
+                                })}
                             </div>
 
-                            {health.recommendations.length > 0 && (
+                            {recommendations.length > 0 && (
                                 <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5">
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-2">Recommendation</span>
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-2">{t('health.tooltip.recommendation')}</span>
                                     <p className="text-[10px] font-bold text-[var(--color-primary)] leading-tight italic">
-                                        "{health.recommendations[0]}"
+                                        "{recommendations[0]}"
                                     </p>
                                 </div>
                             )}
@@ -149,7 +157,7 @@ export const HealthIndicator: React.FC<HealthIndicatorProps> = ({ health, size =
                                 <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/5 text-center">
                                     <span className="text-[10px] font-bold text-[var(--color-primary)] flex items-center justify-center gap-1">
                                         <span className="material-symbols-outlined text-[12px]">open_in_new</span>
-                                        Click for full details
+                                        {t('health.tooltip.fullDetails')}
                                     </span>
                                 </div>
                             )}
@@ -161,10 +169,10 @@ export const HealthIndicator: React.FC<HealthIndicatorProps> = ({ health, size =
             {showLabel && (
                 <div className="flex flex-col">
                     <span className={`text-[10px] font-black uppercase tracking-widest ${getStatusColor(health.status)}`}>
-                        {health.status}
+                        {statusLabel}
                     </span>
                     <span className="text-xs font-bold text-slate-400 dark:text-white/40 -mt-0.5">
-                        Health Score
+                        {t('health.tooltip.scoreLabel')}
                     </span>
                 </div>
             )}

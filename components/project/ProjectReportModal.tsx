@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface ProjectReportModalProps {
     isOpen: boolean;
@@ -19,6 +20,8 @@ export const ProjectReportModal: React.FC<ProjectReportModalProps> = ({
     onGenerate,
     lastUpdated
 }) => {
+    const { t } = useLanguage();
+
     // Enhanced markdown parser for headers, lists, bold, and inline formatting
     const renderMarkdown = (text: string) => {
         if (!text) return null;
@@ -123,19 +126,19 @@ export const ProjectReportModal: React.FC<ProjectReportModalProps> = ({
     };
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Project Intelligence Report" size="xl">
+        <Modal isOpen={isOpen} onClose={onClose} title={t('projectOverview.aiReport.modalTitle')} size="xl">
             <div className="flex flex-col h-[70vh]">
                 <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
                     {isLoading ? (
                         <div className="flex flex-col items-center justify-center h-full space-y-4">
                             <div className="size-12 rounded-full border-4 border-[var(--color-primary)]/30 border-t-[var(--color-primary)] animate-spin" />
-                            <p className="text-[var(--color-text-muted)] animate-pulse">Generating comprehensive analysis...</p>
+                            <p className="text-[var(--color-text-muted)] animate-pulse">{t('projectOverview.aiReport.loadingTitle')}</p>
                         </div>
                     ) : report ? (
                         <div className="prose dark:prose-invert max-w-none">
                             {lastUpdated && (
                                 <p className="text-xs text-[var(--color-text-muted)] mb-6 italic">
-                                    Generated on {lastUpdated.toLocaleString()}
+                                    {t('projectOverview.aiReport.generatedOn').replace('{date}', lastUpdated.toLocaleString())}
                                 </p>
                             )}
                             {renderMarkdown(report)}
@@ -145,26 +148,26 @@ export const ProjectReportModal: React.FC<ProjectReportModalProps> = ({
                             <div className="size-16 bg-[var(--color-primary)]/10 rounded-full flex items-center justify-center mb-4">
                                 <span className="material-symbols-outlined text-3xl text-[var(--color-primary)]">auto_awesome</span>
                             </div>
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-2">Generate Project Report</h3>
+                            <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-2">{t('projectOverview.aiReport.emptyState.title')}</h3>
                             <p className="text-[var(--color-text-muted)] mb-6">
-                                Create a comprehensive status report analyzing tasks, milestones, issues, and team activity to get tailored recommendations.
+                                {t('projectOverview.aiReport.emptyState.description')}
                             </p>
                             <Button onClick={onGenerate} icon={<span className="material-symbols-outlined">bolt</span>}>
-                                Generate Analysis
+                                {t('projectOverview.aiReport.actions.generate')}
                             </Button>
                         </div>
                     )}
                 </div>
 
                 <div className="p-4 border-t border-[var(--color-surface-border)] flex justify-between bg-[var(--color-surface-paper)]">
-                    <Button variant="ghost" onClick={onClose}>Close</Button>
+                    <Button variant="ghost" onClick={onClose}>{t('projectOverview.aiReport.actions.close')}</Button>
                     {!isLoading && report && (
                         <div className="flex gap-3">
                             <Button variant="secondary" onClick={() => navigator.clipboard.writeText(report)}>
-                                Copy to Clipboard
+                                {t('projectOverview.aiReport.actions.copy')}
                             </Button>
                             <Button onClick={onGenerate} icon={<span className="material-symbols-outlined">refresh</span>}>
-                                Regenerate
+                                {t('projectOverview.aiReport.actions.regenerate')}
                             </Button>
                         </div>
                     )}

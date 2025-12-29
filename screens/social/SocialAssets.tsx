@@ -6,12 +6,14 @@ import { SocialAsset } from '../../types';
 import { Button } from '../../components/ui/Button';
 import { auth } from '../../services/firebase';
 import { useConfirm } from '../../context/UIContext';
+import { useLanguage } from '../../context/LanguageContext';
 
 export const SocialAssets = () => {
     const { id: projectId } = useParams<{ id: string }>();
     const [assets, setAssets] = useState<SocialAsset[]>([]);
     const [uploading, setUploading] = useState(false);
     const confirm = useConfirm();
+    const { t } = useLanguage();
 
     // File Input Ref
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -62,7 +64,7 @@ export const SocialAssets = () => {
 
     const handleDelete = async (id: string) => {
         if (!projectId) return;
-        if (await confirm("Delete Asset", "Are you sure you want to delete this asset?")) {
+        if (await confirm(t('social.assets.confirmDelete.title'), t('social.assets.confirmDelete.message'))) {
             await deleteSocialAsset(projectId, id);
         }
     };
@@ -71,8 +73,8 @@ export const SocialAssets = () => {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="h2 mb-2">Asset Library</h1>
-                    <p className="text-[var(--color-text-muted)]">Manage your images and videos.</p>
+                    <h1 className="h2 mb-2">{t('social.assets.title')}</h1>
+                    <p className="text-[var(--color-text-muted)]">{t('social.assets.subtitle')}</p>
                 </div>
 
                 {/* Hidden File Input */}
@@ -90,14 +92,14 @@ export const SocialAssets = () => {
                     isLoading={uploading}
                     icon={<span className="material-symbols-outlined">upload</span>}
                 >
-                    Upload Asset
+                    {t('social.assets.upload')}
                 </Button>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {assets.length === 0 && (
                     <div className="col-span-full p-10 text-center text-[var(--color-text-muted)] bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl">
-                        No assets found. Upload one to get started.
+                        {t('social.assets.empty')}
                     </div>
                 )}
                 {assets.map(asset => (

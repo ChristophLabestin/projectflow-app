@@ -14,6 +14,50 @@
     ],
     "rewrites": [
       {
+        "source": "/editImageWithVertexAI",
+        "function": "editImageWithVertexAI"
+      },
+      {
+        "source": "/generatePasskeyRegistrationOptions",
+        "function": "generatePasskeyRegistrationOptions"
+      },
+      {
+        "source": "/verifyPasskeyRegistration",
+        "function": "verifyPasskeyRegistration"
+      },
+      {
+        "source": "/generatePasskeyAuthenticationOptions",
+        "function": "generatePasskeyAuthenticationOptions"
+      },
+      {
+        "source": "/verifyPasskeyAuthentication",
+        "function": "verifyPasskeyAuthentication"
+      },
+      {
+        "source": "/testSMTPConnection",
+        "function": "testSMTPConnection"
+      },
+      {
+        "source": "/createBlogPost",
+        "function": "createBlogPost"
+      },
+      {
+        "source": "/newsletterSubscribe",
+        "function": "newsletterSubscribe"
+      },
+      {
+        "source": "/newsletterUnsubscribe",
+        "function": "newsletterUnsubscribe"
+      },
+      {
+        "source": "/getBlogPost",
+        "function": "getBlogPosts"
+      },
+      {
+        "source": "/getBlogPosts",
+        "function": "getBlogPosts"
+      },
+      {
         "source": "/api/**",
         "function": "api"
       },

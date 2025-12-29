@@ -3,6 +3,8 @@ import { SocialPost, SocialPlatform, SocialPostStatus } from '../../../types';
 import { SocialPostCard } from '../components/SocialPostCard';
 import { useDraggable, useDroppable, DndContext, DragOverlay, DragEndEvent, useSensors, useSensor, PointerSensor } from '@dnd-kit/core';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, format, isSameMonth, isSameDay, addMonths, subMonths, parseISO, isToday } from 'date-fns';
+import { useLanguage } from '../../../context/LanguageContext';
+import { getSocialPostFormatLabel, getSocialPostStatusLabel } from '../../../utils/socialLocalization';
 
 // --- Local DnD Wrappers ---
 const DraggablePostCard = ({ post, children, className }: { post: SocialPost; children: React.ReactNode, className?: string }) => {
@@ -25,6 +27,7 @@ const DraggablePostCard = ({ post, children, className }: { post: SocialPost; ch
 };
 
 const DroppableDay = ({ date, children, isCurrentMonth }: { date: Date; children: React.ReactNode; isCurrentMonth: boolean }) => {
+    const { t, dateLocale } = useLanguage();
     const dateStr = format(date, 'yyyy-MM-dd');
     const { setNodeRef, isOver } = useDroppable({
         id: `date:${dateStr}`,
@@ -38,8 +41,8 @@ const DroppableDay = ({ date, children, isCurrentMonth }: { date: Date; children
                 } ${isOver ? 'bg-[var(--color-surface-hover)] shadow-inner' : ''}`}
         >
             <div className={`text-right text-xs font-medium mb-1 ${isToday(date) ? 'text-[var(--color-primary)] font-bold' : ''} ${!isCurrentMonth ? 'opacity-50' : ''}`}>
-                {isToday(date) && <span className="mr-1">Today</span>}
-                {format(date, 'd')}
+                {isToday(date) && <span className="mr-1">{t('social.calendar.today')}</span>}
+                {format(date, 'd', { locale: dateLocale })}
             </div>
             {children}
         </div>
@@ -70,6 +73,7 @@ interface CampaignCalendarViewProps {
 }
 
 export const CampaignCalendarView: React.FC<CampaignCalendarViewProps> = ({ posts, currentCampaignId, onSchedulePost, onEditPost }) => {
+    const { t, dateLocale } = useLanguage();
     const [currentMonth, setCurrentMonth] = useState(new Date());
     const [activeDragItem, setActiveDragItem] = useState<SocialPost | null>(null);
     const [hoveredPost, setHoveredPost] = useState<SocialPost | null>(null);
@@ -135,7 +139,15 @@ export const CampaignCalendarView: React.FC<CampaignCalendarViewProps> = ({ post
     const endDate = endOfWeek(monthEnd);
     const calendarDays = eachDayOfInterval({ start: startDate, end: endDate });
 
-    const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const weekDays = [
+        t('social.calendar.weekdays.sun'),
+        t('social.calendar.weekdays.mon'),
+        t('social.calendar.weekdays.tue'),
+        t('social.calendar.weekdays.wed'),
+        t('social.calendar.weekdays.thu'),
+        t('social.calendar.weekdays.fri'),
+        t('social.calendar.weekdays.sat')
+    ];
 
     return (
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -143,7 +155,7 @@ export const CampaignCalendarView: React.FC<CampaignCalendarViewProps> = ({ post
                 {/* Sidebar: Unscheduled */}
                 <div className="w-[260px] flex flex-col border-r border-[var(--color-surface-border)] bg-[var(--color-surface-card)] shrink-0 z-10 h-full">
                     <div className="p-4 border-b border-[var(--color-surface-border)] flex items-center justify-between shrink-0">
-                        <h3 className="font-bold text-[var(--color-text-main)] text-sm">Unscheduled</h3>
+                        <h3 className="font-bold text-[var(--color-text-main)] text-sm">{t('social.calendar.unscheduled')}</h3>
                         <span className="text-xs bg-[var(--color-surface-hover)] px-2 py-0.5 rounded-full text-[var(--color-text-muted)] font-bold">{unscheduled.length}</span>
                     </div>
                     <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3">
@@ -160,7 +172,7 @@ export const CampaignCalendarView: React.FC<CampaignCalendarViewProps> = ({ post
                             ))}
                             {unscheduled.length === 0 && (
                                 <div className="text-center py-8 opacity-50 text-sm">
-                                    No unscheduled posts
+                                    {t('social.calendar.emptyUnscheduled')}
                                 </div>
                             )}
                         </DroppableSidebar>
@@ -173,14 +185,14 @@ export const CampaignCalendarView: React.FC<CampaignCalendarViewProps> = ({ post
                     <div className="p-4 flex items-center justify-between border-b border-[var(--color-surface-border)] shrink-0 bg-[var(--color-bg-base)]">
                         <div className="flex items-center gap-4">
                             <h2 className="text-xl font-bold text-[var(--color-text-main)]">
-                                {format(currentMonth, 'MMMM yyyy')}
+                                {format(currentMonth, 'MMMM yyyy', { locale: dateLocale })}
                             </h2>
                             <div className="flex bg-[var(--color-surface-card)] rounded-lg border border-[var(--color-surface-border)] p-0.5">
                                 <button onClick={prevMonth} className="p-1 hover:bg-[var(--color-surface-hover)] rounded-md transition-colors text-[var(--color-text-muted)]">
                                     <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                                 </button>
                                 <button onClick={today} className="px-3 text-xs font-bold hover:bg-[var(--color-surface-hover)] rounded-md transition-colors text-[var(--color-text-muted)]">
-                                    Today
+                                    {t('social.calendar.today')}
                                 </button>
                                 <button onClick={nextMonth} className="p-1 hover:bg-[var(--color-surface-hover)] rounded-md transition-colors text-[var(--color-text-muted)]">
                                     <span className="material-symbols-outlined text-[18px]">chevron_right</span>
@@ -198,7 +210,7 @@ export const CampaignCalendarView: React.FC<CampaignCalendarViewProps> = ({ post
                                     }`}
                             >
                                 <span className="material-symbols-outlined text-[16px]">filter_list</span>
-                                <span>Filter</span>
+                                <span>{t('social.calendar.filter')}</span>
                                 {(selectedPlatforms.length > 0 || selectedStatuses.length > 0) && (
                                     <span className="bg-white/20 px-1.5 rounded-full text-[10px]">
                                         {selectedPlatforms.length + selectedStatuses.length}
@@ -212,20 +224,20 @@ export const CampaignCalendarView: React.FC<CampaignCalendarViewProps> = ({ post
                                     <div className="fixed inset-0 z-40" onClick={() => setShowFilters(false)} />
                                     <div className="absolute top-full right-0 mt-2 w-64 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-lg shadow-xl z-50 p-4 animate-in fade-in zoom-in-95 duration-100">
                                         <div className="flex items-center justify-between mb-3">
-                                            <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--color-text-muted)]">Filters</h4>
+                                            <h4 className="font-bold text-xs uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.calendar.filters')}</h4>
                                             {(selectedPlatforms.length > 0 || selectedStatuses.length > 0) && (
                                                 <button
                                                     onClick={() => { setSelectedPlatforms([]); setSelectedStatuses([]); }}
                                                     className="text-[10px] text-[var(--color-primary)] hover:underline"
                                                 >
-                                                    Clear All
+                                                    {t('social.calendar.clearAll')}
                                                 </button>
                                             )}
                                         </div>
 
                                         {/* Platforms */}
                                         <div className="mb-4">
-                                            <label className="text-xs font-medium mb-2 block text-[var(--color-text-main)]">Platform</label>
+                                            <label className="text-xs font-medium mb-2 block text-[var(--color-text-main)]">{t('social.calendar.platform')}</label>
                                             <div className="grid grid-cols-3 gap-2">
                                                 {(['Instagram', 'Facebook', 'LinkedIn', 'TikTok', 'X', 'YouTube'] as SocialPlatform[]).map(p => (
                                                     <button
@@ -247,7 +259,7 @@ export const CampaignCalendarView: React.FC<CampaignCalendarViewProps> = ({ post
 
                                         {/* Status */}
                                         <div>
-                                            <label className="text-xs font-medium mb-2 block text-[var(--color-text-main)]">Status</label>
+                                            <label className="text-xs font-medium mb-2 block text-[var(--color-text-main)]">{t('social.calendar.status')}</label>
                                             <div className="space-y-1">
                                                 {(['Draft', 'In Review', 'Approved', 'Scheduled', 'Published'] as SocialPostStatus[]).map(s => (
                                                     <button
@@ -261,7 +273,7 @@ export const CampaignCalendarView: React.FC<CampaignCalendarViewProps> = ({ post
                                                             : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'
                                                             }`}
                                                     >
-                                                        {s}
+                                                        {getSocialPostStatusLabel(s, t)}
                                                         {selectedStatuses.includes(s) && <span className="material-symbols-outlined text-[14px]">check</span>}
                                                     </button>
                                                 ))}
@@ -336,7 +348,7 @@ export const CampaignCalendarView: React.FC<CampaignCalendarViewProps> = ({ post
                                                         {post.platform === 'X' && <span className="w-1.5 h-1.5 rounded-full bg-black dark:bg-white shrink-0" />}
 
                                                         <span className="text-[10px] font-medium truncate text-[var(--color-text-main)] leading-tight">
-                                                            {post.videoConcept?.title || post.content.caption || 'Untitled'}
+                                                            {post.videoConcept?.title || post.content.caption || t('social.calendar.untitled')}
                                                         </span>
                                                     </div>
                                                 </DraggablePostCard>
@@ -354,7 +366,7 @@ export const CampaignCalendarView: React.FC<CampaignCalendarViewProps> = ({ post
                     <div className="w-[200px] opacity-90 rotate-2 pointer-events-none">
                         <div className="bg-[var(--color-surface-card)] rounded-lg border border-[var(--color-surface-border)] p-2 shadow-xl flex items-center gap-2">
                             <span className="text-xs font-bold truncate">
-                                {activeDragItem.videoConcept?.title || activeDragItem.content.caption || 'Post'}
+                                {activeDragItem.videoConcept?.title || activeDragItem.content.caption || t('social.calendar.postFallback')}
                             </span>
                         </div>
                     </div>
@@ -374,10 +386,10 @@ export const CampaignCalendarView: React.FC<CampaignCalendarViewProps> = ({ post
                         <span className={`w-2 h-2 rounded-full ${hoveredPost.status === 'Published' ? 'bg-green-500' : 'bg-yellow-500'}`} />
                     </div>
                     <div className="text-sm font-medium text-[var(--color-text-main)] mb-1 line-clamp-2">
-                        {hoveredPost.videoConcept?.title || hoveredPost.content.caption || `${hoveredPost.format} Post`}
+                        {hoveredPost.videoConcept?.title || hoveredPost.content.caption || `${getSocialPostFormatLabel(hoveredPost.format, t)} ${t('social.calendar.postLabel')}`}
                     </div>
                     <div className="text-xs text-[var(--color-text-muted)] line-clamp-3">
-                        {hoveredPost.content.caption || 'No caption provided.'}
+                        {hoveredPost.content.caption || t('social.calendar.noCaption')}
                     </div>
                 </div>
             )}

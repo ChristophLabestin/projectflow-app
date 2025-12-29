@@ -6,6 +6,7 @@ const admin = require("firebase-admin");
 const cors = require("cors");
 const crypto = require("crypto");
 const init_1 = require("./init");
+const blog_1 = require("./blog");
 const CORS_ORIGIN = true; // Allow all origins - can be restricted in production
 const REGION = 'europe-west3'; // Frankfurt
 /**
@@ -380,6 +381,14 @@ exports.api = functions.region(REGION).https.onRequest((req, res) => {
         // Route: newsletter/unsubscribe (POST, GET)
         if (path === '/newsletter/unsubscribe' || path === '/api/newsletter/unsubscribe') {
             return (0, exports.newsletterUnsubscribe)(req, res);
+        }
+        // Route: blog/create (POST)
+        if (path === '/blog/create' || path === '/api/blog/create') {
+            return (0, blog_1.createBlogPost)(req, res);
+        }
+        // Route: blog/posts (GET)
+        if (path === '/blog/posts' || path === '/api/blog/posts') {
+            return (0, blog_1.getBlogPosts)(req, res);
         }
         // 404 for unknown routes
         res.status(404).json({

@@ -8,6 +8,7 @@ const MarketingLayout = () => {
         { to: "ads", label: "Paid Ads", icon: "ads_click" },
         { to: "email", label: "Email Marketing", icon: "mail" },
         { to: "recipients", label: "Recipients", icon: "group" },
+        { to: "blog", label: "Example Blog", icon: "article" },
         { to: "settings", label: "Settings", icon: "settings" },
     ];
 

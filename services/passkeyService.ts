@@ -73,3 +73,35 @@ export const loginWithPasskey = async (email?: string) => {
         throw error;
     }
 };
+
+const AUTO_PROMPT_KEY = 'projectflow_passkey_autoprompt';
+
+export const shouldAutoPrompt = (): boolean => {
+    return localStorage.getItem(AUTO_PROMPT_KEY) === 'true';
+};
+
+export const setAutoPrompt = (enabled: boolean) => {
+    if (enabled) {
+        localStorage.setItem(AUTO_PROMPT_KEY, 'true');
+    } else {
+        localStorage.removeItem(AUTO_PROMPT_KEY);
+    }
+};
+
+/**
+ * Check if the user has any passkeys registered.
+ * Uses dynamic imports to avoid circular dependencies.
+ */
+export const checkPasskeyExists = async (uid: string): Promise<boolean> => {
+    try {
+        const { getFirestore, collection, getDocs, query, limit } = await import('firebase/firestore');
+        const db = getFirestore();
+        const passkeysRef = collection(db, 'users', uid, 'passkeys');
+        const q = query(passkeysRef, limit(1));
+        const snapshot = await getDocs(q);
+        return !snapshot.empty;
+    } catch (error) {
+        console.error('Error checking passkey existence:', error);
+        return false;
+    }
+};

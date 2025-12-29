@@ -6,6 +6,7 @@ import * as crypto from 'crypto';
 
 
 import { db } from './init';
+import { createBlogPost, getBlogPosts } from './blog';
 
 const CORS_ORIGIN = true; // Allow all origins - can be restricted in production
 const REGION = 'europe-west3'; // Frankfurt
@@ -424,6 +425,16 @@ export const api = functions.region(REGION).https.onRequest((req, res) => {
         // Route: newsletter/unsubscribe (POST, GET)
         if (path === '/newsletter/unsubscribe' || path === '/api/newsletter/unsubscribe') {
             return newsletterUnsubscribe(req, res);
+        }
+
+        // Route: blog/create (POST)
+        if (path === '/blog/create' || path === '/api/blog/create') {
+            return createBlogPost(req, res);
+        }
+
+        // Route: blog/posts (GET)
+        if (path === '/blog/posts' || path === '/api/blog/posts') {
+            return getBlogPosts(req, res);
         }
 
         // 404 for unknown routes

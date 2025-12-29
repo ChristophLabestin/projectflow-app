@@ -31,6 +31,16 @@ import { SocialCampaignStrategyView } from '../components/flows/stages/SocialCam
 import { SocialCampaignPlanningView } from '../components/flows/stages/SocialCampaignPlanningView';
 import { SocialCampaignSubmitView } from '../components/flows/stages/SocialCampaignSubmitView';
 import { SocialCampaignApprovedView } from '../components/flows/stages/SocialCampaignApprovedView';
+import { PaidAdsBriefView } from '../components/flows/stages/PaidAdsBriefView';
+import { PaidAdsResearchView } from '../components/flows/stages/PaidAdsResearchView';
+import { PaidAdsCreativeView } from '../components/flows/stages/PaidAdsCreativeView';
+import { PaidAdsTargetingView } from '../components/flows/stages/PaidAdsTargetingView';
+import { PaidAdsBudgetView } from '../components/flows/stages/PaidAdsBudgetView';
+import { PaidAdsBuildView } from '../components/flows/stages/PaidAdsBuildView';
+import { PaidAdsReviewView } from '../components/flows/stages/PaidAdsReviewView';
+import { PaidAdsLiveView } from '../components/flows/stages/PaidAdsLiveView';
+import { PaidAdsOptimizationView } from '../components/flows/stages/PaidAdsOptimizationView';
+import { MarketingTypeSelection } from '../components/flows/stages/MarketingTypeSelection';
 import { Idea, SocialCampaign } from '../types';
 import { useConfirm } from '../context/UIContext';
 import { PIPELINE_CONFIGS } from '../components/flows/constants';
@@ -220,6 +230,12 @@ export const FlowDetail = () => {
         Implementation: t('flows.stage.implementation'),
         Implemented: t('flows.stage.implemented'),
         Archived: t('flows.stage.archived'),
+        // Paid Ads stages
+        Brief: t('flows.stage.brief'),
+        Creative: t('flows.stage.creative'),
+        Targeting: t('flows.stage.targeting'),
+        Budget: t('flows.stage.budget'),
+        Live: t('flows.stage.live'),
     }), [t]);
 
     const socialCampaignStageLabels = useMemo(() => ({
@@ -239,6 +255,7 @@ export const FlowDetail = () => {
         Moonshot: t('flows.type.moonshot'),
         Optimization: t('flows.type.optimization'),
         SocialCampaign: t('flows.type.socialCampaign'),
+        PaidAds: t('flows.type.paidAds'),
     }), [t]);
 
 
@@ -348,8 +365,28 @@ export const FlowDetail = () => {
         }
 
         // Marketing specific mappings
-        // Marketing specific mappings
         if (idea.type === 'Marketing') {
+            // 1. Interception: Select Type if not set (Paid Ads vs Email Marketing)
+            if (!idea.marketingType) {
+                return (
+                    <MarketingTypeSelection
+                        onSelect={(type) => {
+                            const updates: Partial<Idea> = { marketingType: type };
+                            if (type === 'paidAd') {
+                                // Switch to PaidAds pipeline
+                                updates.type = 'PaidAds';
+                                updates.stage = 'Brief';
+                            } else {
+                                // Stay in Marketing pipeline for email marketing
+                                updates.stage = 'Strategy';
+                            }
+                            handleUpdate(updates);
+                        }}
+                    />
+                );
+            }
+
+            // Email Marketing pipeline (default Marketing stages)
             switch (activeTab) {
                 case 'Strategy': return <MarketingStrategyView idea={idea} onUpdate={handleUpdate} />;
                 case 'Planning': return <MarketingPlanningView idea={idea} onUpdate={handleUpdate} />;
@@ -421,6 +458,22 @@ export const FlowDetail = () => {
             }
         }
 
+        // Paid Ads specific mappings
+        if (idea.type === 'PaidAds') {
+            switch (activeTab) {
+                case 'Brief': return <PaidAdsBriefView idea={idea} onUpdate={handleUpdate} />;
+                case 'Research': return <PaidAdsResearchView idea={idea} onUpdate={handleUpdate} />;
+                case 'Creative': return <PaidAdsCreativeView idea={idea} onUpdate={handleUpdate} />;
+                case 'Targeting': return <PaidAdsTargetingView idea={idea} onUpdate={handleUpdate} />;
+                case 'Budget': return <PaidAdsBudgetView idea={idea} onUpdate={handleUpdate} />;
+                case 'Build': return <PaidAdsBuildView idea={idea} onUpdate={handleUpdate} />;
+                case 'Review': return <PaidAdsReviewView idea={idea} onUpdate={handleUpdate} />;
+                case 'Live': return <PaidAdsLiveView idea={idea} onUpdate={handleUpdate} />;
+                case 'Optimization': return <PaidAdsOptimizationView idea={idea} onUpdate={handleUpdate} />;
+                default: return <PaidAdsBriefView idea={idea} onUpdate={handleUpdate} />;
+            }
+        }
+
         // Return Generic View for other types (for now)
         return <GenericStageView idea={idea} stageId={activeTab} onUpdate={handleUpdate} />;
     };
@@ -460,10 +513,10 @@ export const FlowDetail = () => {
 
                     <div className="h-6 w-px bg-[var(--color-surface-border)] shrink-0" />
 
-                <div className="flex items-center gap-2 max-w-[200px] shrink-0">
-                    <h1 className="text-sm font-bold text-[var(--color-text-main)] truncate" title={idea.title}>{idea.title}</h1>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] font-medium shrink-0">{flowTypeLabels[idea.type] || idea.type}</span>
-                </div>
+                    <div className="flex items-center gap-2 max-w-[200px] shrink-0">
+                        <h1 className="text-sm font-bold text-[var(--color-text-main)] truncate" title={idea.title}>{idea.title}</h1>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] font-medium shrink-0">{flowTypeLabels[idea.type] || idea.type}</span>
+                    </div>
 
                     <div className="h-6 w-px bg-[var(--color-surface-border)] shrink-0" />
 
@@ -531,11 +584,11 @@ export const FlowDetail = () => {
             </div>
 
             {/* Content Area */}
-            <div className={`flex-1 overflow-auto bg-[var(--color-surface-bg)] ${(idea.type === 'Social' && idea.socialType === 'campaign') ||
+            <div className={`flex-1 overflow-auto bg-[var(--color-surface-bg)] ${(idea.type === 'Social' && idea.socialType === 'campaign') || idea.type === 'PaidAds' ||
                 ((activeTab === 'Strategy' || activeTab === 'Brainstorm' || activeTab === 'CreativeLab' || activeTab === 'Studio' || activeTab === 'Distribution') && idea.type === 'Social')
                 ? 'p-0' : 'p-6'
                 }`}>
-                <div className={`${(idea.type === 'Social' && idea.socialType === 'campaign') ||
+                <div className={`${(idea.type === 'Social' && idea.socialType === 'campaign') || idea.type === 'PaidAds' ||
                     ((activeTab === 'Strategy' || activeTab === 'Brainstorm' || activeTab === 'CreativeLab' || activeTab === 'Studio' || activeTab === 'Distribution') && idea.type === 'Social')
                     ? 'h-full flex flex-col' : 'max-w-6xl mx-auto h-full flex flex-col'
                     }`}>

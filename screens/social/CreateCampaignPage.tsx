@@ -13,7 +13,8 @@ import { auth, db } from '../../services/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { generateCampaignDetailsAI, generateCampaignDescriptionAI } from '../../services/geminiService';
 import { format } from 'date-fns';
-import { dateLocale, dateFormat } from '../../utils/activityHelpers';
+import { useLanguage } from '../../context/LanguageContext';
+import { getSocialCampaignStatusLabel } from '../../utils/socialLocalization';
 
 const ALL_PLATFORMS: SocialPlatform[] = ['Instagram', 'Facebook', 'LinkedIn', 'TikTok', 'X', 'YouTube'];
 
@@ -23,6 +24,7 @@ export const CreateCampaignPage = () => {
     const [searchParams] = useSearchParams();
     const ideaId = searchParams.get('ideaId');
     const { showError } = useToast();
+    const { t, dateLocale, dateFormat } = useLanguage();
 
     // Mode State
     const [editMode, setEditMode] = useState<'simple' | 'advanced'>('simple');
@@ -261,7 +263,7 @@ export const CreateCampaignPage = () => {
             setDescription(result);
         } catch (error) {
             console.error("Failed to generate description", error);
-            showError("Failed to generate description");
+            showError(t('social.campaignForm.errors.generateDescription'));
         } finally {
             setGeneratingDescription(false);
         }
@@ -322,7 +324,8 @@ export const CreateCampaignPage = () => {
             navigate(`/project/${projectId}/social/campaigns/${newCampaignId}`);
         } catch (error: any) {
             console.error("Failed to save campaign", error);
-            showError(`Failed to save: ${error.message || 'Unknown error'}`);
+            showError(t('social.campaignForm.errors.save')
+                .replace('{error}', error.message || t('social.campaignForm.errors.unknown')));
         } finally {
             setLoading(false);
         }
@@ -381,11 +384,11 @@ export const CreateCampaignPage = () => {
                             <div className="flex items-center gap-3 mb-1">
                                 <span className="p-2 bg-orange-100 text-orange-600 rounded-lg material-symbols-outlined">campaign</span>
                                 <h1 className="text-xl font-bold text-[var(--color-text-main)]">
-                                    {campaignId ? 'Edit Campaign' : 'Create New Campaign'}
+                                    {campaignId ? t('social.campaignForm.title.edit') : t('social.campaignForm.title.create')}
                                 </h1>
                             </div>
                             <p className="text-sm text-[var(--color-text-subtle)] ml-12">
-                                {editMode === 'simple' ? 'Define essential campaign details.' : 'Manage full campaign strategy and details.'}
+                                {editMode === 'simple' ? t('social.campaignForm.subtitle.simple') : t('social.campaignForm.subtitle.advanced')}
                             </p>
                         </div>
 
@@ -395,13 +398,13 @@ export const CreateCampaignPage = () => {
                                 onClick={() => setEditMode('simple')}
                                 className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${editMode === 'simple' ? 'bg-[var(--color-surface-card)] text-[var(--color-text-main)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
                             >
-                                Simple
+                                {t('social.campaignForm.mode.simple')}
                             </button>
                             <button
                                 onClick={() => setEditMode('advanced')}
                                 className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${editMode === 'advanced' ? 'bg-[var(--color-surface-card)] text-[var(--color-text-main)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
                             >
-                                Advanced
+                                {t('social.campaignForm.mode.advanced')}
                             </button>
                         </div>
                     </header>
@@ -412,15 +415,15 @@ export const CreateCampaignPage = () => {
                         <div className="space-y-4">
                             <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[16px]">info</span>
-                                General Information
+                                {t('social.campaignForm.section.general')}
                             </h3>
                             <div className="flex gap-2 items-end">
                                 <div className="flex-1">
                                     <Input
-                                        label="Campaign Name"
+                                        label={t('social.campaignForm.fields.name')}
                                         value={name}
                                         onChange={e => setName(e.target.value)}
-                                        placeholder="e.g. Summer Launch 2025"
+                                        placeholder={t('social.campaignForm.placeholders.name')}
                                         autoFocus
                                     />
                                 </div>
@@ -431,23 +434,23 @@ export const CreateCampaignPage = () => {
                                     icon={<span className="material-symbols-outlined text-[18px]">auto_awesome</span>}
                                     className="mb-[2px] h-[42px] bg-gradient-to-r from-violet-100 to-fuchsia-100 text-violet-700 border-violet-200 hover:from-violet-200 hover:to-fuchsia-200"
                                 >
-                                    Auto-Fill
+                                    {t('social.campaignForm.actions.autoFill')}
                                 </Button>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-2 block">Status</label>
+                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-2 block">{t('social.campaignForm.fields.status')}</label>
                                     <Select value={status} onChange={e => setStatus(e.target.value as any)}>
-                                        <option value="Backlog">Backlog</option>
-                                        <option value="Planning">Planning</option>
-                                        <option value="Active">Active</option>
-                                        <option value="Completed">Completed</option>
-                                        <option value="Paused">Paused</option>
+                                        <option value="Backlog">{t('social.campaign.status.backlog')}</option>
+                                        <option value="Planning">{t('social.campaign.status.planning')}</option>
+                                        <option value="Active">{t('social.campaign.status.active')}</option>
+                                        <option value="Completed">{t('social.campaign.status.completed')}</option>
+                                        <option value="Paused">{t('social.campaign.status.paused')}</option>
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase block">Theme Color</label>
+                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase block">{t('social.campaignForm.fields.themeColor')}</label>
                                     <div className="flex gap-2">
                                         {['#E1306C', '#1877F2', '#0A66C2', '#000000', '#FF0000', '#7C3AED'].map(c => (
                                             <button
@@ -462,10 +465,10 @@ export const CreateCampaignPage = () => {
                             </div>
 
                             <div className="grid grid-cols-2 gap-6">
-                                <DatePicker label="Start Date" value={startDate} onChange={setStartDate} />
+                                <DatePicker label={t('social.campaignForm.fields.startDate')} value={startDate} onChange={setStartDate} />
                                 <div className="space-y-1">
                                     <DatePicker
-                                        label="End Date"
+                                        label={t('social.campaignForm.fields.endDate')}
                                         value={endDate}
                                         onChange={setEndDate}
                                         disabled={isEndDateDerived}
@@ -473,22 +476,23 @@ export const CreateCampaignPage = () => {
                                     {isEndDateDerived && (
                                         <p className="text-[10px] text-[var(--color-text-muted)] flex items-center gap-1">
                                             <span className="material-symbols-outlined text-[12px]">info</span>
-                                            Calculated from phases ({phases.length} phases)
+                                            {t('social.campaignForm.fields.endDateDerived')
+                                                .replace('{count}', String(phases.length))}
                                         </p>
                                     )}
                                 </div>
                             </div>
 
                             <Input
-                                label="Primary Goal"
+                                label={t('social.campaignForm.fields.primaryGoal')}
                                 value={goal}
                                 onChange={e => setGoal(e.target.value)}
-                                placeholder="e.g. Increase brand awareness by 20%"
+                                placeholder={t('social.campaignForm.placeholders.primaryGoal')}
                             />
 
                             {/* Platforms - Basic */}
                             <div>
-                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-2 block">Target Platforms</label>
+                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-2 block">{t('social.campaignForm.fields.platforms')}</label>
                                 <div className="flex flex-wrap gap-2">
                                     {ALL_PLATFORMS.map(p => (
                                         <button
@@ -508,7 +512,7 @@ export const CreateCampaignPage = () => {
 
                             <div>
                                 <div className="flex items-center justify-between mb-1">
-                                    <label className="text-sm font-bold text-[var(--color-text-main)]">Description</label>
+                                    <label className="text-sm font-bold text-[var(--color-text-main)]">{t('social.campaignForm.fields.description')}</label>
                                     <button
                                         onClick={handleGenerateDescription}
                                         disabled={generatingDescription || !name}
@@ -517,19 +521,19 @@ export const CreateCampaignPage = () => {
                                         <span className={`material-symbols-outlined text-[14px] ${generatingDescription ? 'animate-spin' : ''}`}>
                                             {generatingDescription ? 'progress_activity' : 'auto_awesome'}
                                         </span>
-                                        {generatingDescription ? 'Generating...' : 'AI Generate'}
+                                        {generatingDescription ? t('social.campaignForm.actions.generating') : t('social.campaignForm.actions.generateDescription')}
                                     </button>
                                 </div>
                                 <RichTextEditor
                                     value={description}
                                     onChange={setDescription}
-                                    placeholder="Brief campaign description..."
+                                    placeholder={t('social.campaignForm.placeholders.description')}
                                     className="min-h-[150px]"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-2 block">Tags</label>
+                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-2 block">{t('social.campaignForm.fields.tags')}</label>
                                 <div className="flex flex-wrap gap-2 mb-2">
                                     {tags.map(tag => (
                                         <span key={tag} className="px-2 py-1 bg-[var(--color-surface-hover)] rounded-md text-xs font-medium flex items-center gap-1 group">
@@ -542,7 +546,7 @@ export const CreateCampaignPage = () => {
                                         value={tagInput}
                                         onChange={e => setTagInput(e.target.value)}
                                         onKeyDown={handleAddTag}
-                                        placeholder="Add tag + Enter"
+                                        placeholder={t('social.campaignForm.placeholders.tag')}
                                         className="bg-transparent border-none text-xs focus:ring-0 p-1 min-w-[80px]"
                                     />
                                 </div>
@@ -556,20 +560,20 @@ export const CreateCampaignPage = () => {
                                 <div className="space-y-4 pt-4 border-t border-[var(--color-surface-border)] animate-fade-in">
                                     <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider flex items-center gap-2">
                                         <span className="material-symbols-outlined text-[16px]">lightbulb</span>
-                                        Deep Strategy
+                                        {t('social.campaignForm.section.strategy')}
                                     </h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <Input
-                                            label="Core Flow / Concept"
+                                            label={t('social.campaignForm.fields.coreConcept')}
                                             value={bigIdea}
                                             onChange={e => setBigIdea(e.target.value)}
-                                            placeholder="The core message or theme..."
+                                            placeholder={t('social.campaignForm.placeholders.coreConcept')}
                                         />
                                         <Input
-                                            label="The Hook"
+                                            label={t('social.campaignForm.fields.hook')}
                                             value={hook}
                                             onChange={e => setHook(e.target.value)}
-                                            placeholder="The grabby line that pulls people in..."
+                                            placeholder={t('social.campaignForm.placeholders.hook')}
                                         />
                                     </div>
                                 </div>
@@ -578,28 +582,28 @@ export const CreateCampaignPage = () => {
                                 <div className="space-y-4 pt-4 border-t border-[var(--color-surface-border)] animate-fade-in">
                                     <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider flex items-center gap-2">
                                         <span className="material-symbols-outlined text-[16px]">palette</span>
-                                        Visuals & Mood
+                                        {t('social.campaignForm.section.visuals')}
                                     </h3>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <TextArea
-                                            label="Visual Direction"
+                                            label={t('social.campaignForm.fields.visualDirection')}
                                             value={visualDirection}
                                             onChange={e => setVisualDirection(e.target.value)}
-                                            placeholder="e.g. Minimalist, Neon-noir, Hand-drawn..."
+                                            placeholder={t('social.campaignForm.placeholders.visualDirection')}
                                             rows={3}
                                         />
                                         <div className="space-y-4">
                                             <Input
-                                                label="Mood"
+                                                label={t('social.campaignForm.fields.mood')}
                                                 value={mood}
                                                 onChange={e => setMood(e.target.value)}
-                                                placeholder="e.g. Exciting, Serene, Professional..."
+                                                placeholder={t('social.campaignForm.placeholders.mood')}
                                             />
                                             <Input
-                                                label="Tone of Voice"
+                                                label={t('social.campaignForm.fields.tone')}
                                                 value={toneOfVoice}
                                                 onChange={e => setToneOfVoice(e.target.value)}
-                                                placeholder="e.g. Witty, Urgent..."
+                                                placeholder={t('social.campaignForm.placeholders.tone')}
                                             />
                                         </div>
                                     </div>
@@ -609,17 +613,17 @@ export const CreateCampaignPage = () => {
                                 <div className="space-y-4 pt-4 border-t border-[var(--color-surface-border)] animate-fade-in">
                                     <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider flex items-center gap-2">
                                         <span className="material-symbols-outlined text-[16px]">group</span>
-                                        Detailed Audience
+                                        {t('social.campaignForm.section.audience')}
                                     </h3>
                                     <TextArea
-                                        label="Target Audience Description"
+                                        label={t('social.campaignForm.fields.targetAudience')}
                                         value={targetAudience}
                                         onChange={e => setTargetAudience(e.target.value)}
-                                        placeholder="Demographics, psychographics..."
+                                        placeholder={t('social.campaignForm.placeholders.targetAudience')}
                                         rows={2}
                                     />
                                     <div>
-                                        <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-2 block">Audience Segments</label>
+                                        <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-2 block">{t('social.campaignForm.fields.audienceSegments')}</label>
                                         <div className="flex flex-wrap gap-2 mb-2">
                                             {audienceSegments.map(seg => (
                                                 <span key={seg} className="px-2 py-1 bg-[var(--color-surface-hover)] rounded-md text-xs font-medium flex items-center gap-1 group">
@@ -632,7 +636,7 @@ export const CreateCampaignPage = () => {
                                                 value={segmentInput}
                                                 onChange={e => setSegmentInput(e.target.value)}
                                                 onKeyDown={handleAddSegment}
-                                                placeholder="Add segment + Enter"
+                                                placeholder={t('social.campaignForm.placeholders.segment')}
                                                 className="bg-transparent border-none text-xs focus:ring-0 p-1 min-w-[120px]"
                                             />
                                         </div>
@@ -645,14 +649,14 @@ export const CreateCampaignPage = () => {
                                     <div className="space-y-2">
                                         <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider flex items-center gap-2 mb-2">
                                             <span className="material-symbols-outlined text-[16px]">timeline</span>
-                                            Rollout Phases
+                                            {t('social.campaignForm.section.phases')}
                                         </h3>
                                         {phases.map((phase, idx) => (
                                             <div key={idx} className="bg-[var(--color-surface-bg)] rounded-xl p-3 border border-[var(--color-surface-border)] space-y-2">
                                                 <div className="flex gap-2">
                                                     <input
                                                         className="flex-1 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded px-2 py-1 text-sm font-bold"
-                                                        placeholder="Phase Name"
+                                                        placeholder={t('social.campaignForm.placeholders.phaseName')}
                                                         value={phase.name}
                                                         onChange={e => updatePhase(idx, 'name', e.target.value)}
                                                     />
@@ -672,38 +676,38 @@ export const CreateCampaignPage = () => {
                                                         value={phase.durationUnit}
                                                         onChange={e => updatePhase(idx, 'durationUnit', e.target.value)}
                                                     >
-                                                        <option value="Days">Days</option>
-                                                        <option value="Weeks">Weeks</option>
+                                                        <option value="Days">{t('social.campaignForm.units.days')}</option>
+                                                        <option value="Weeks">{t('social.campaignForm.units.weeks')}</option>
                                                     </select>
                                                 </div>
                                                 <input
                                                     className="w-full bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded px-2 py-1 text-xs"
-                                                    placeholder="Phase Focus..."
+                                                    placeholder={t('social.campaignForm.placeholders.phaseFocus')}
                                                     value={phase.focus}
                                                     onChange={e => updatePhase(idx, 'focus', e.target.value)}
                                                 />
                                             </div>
                                         ))}
-                                        <Button variant="secondary" size="sm" onClick={addPhase} className="text-xs w-full">Add Phase</Button>
+                                        <Button variant="secondary" size="sm" onClick={addPhase} className="text-xs w-full">{t('social.campaignForm.actions.addPhase')}</Button>
                                     </div>
 
                                     {/* KPIs */}
                                     <div className="space-y-2">
                                         <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider flex items-center gap-2 mb-2">
                                             <span className="material-symbols-outlined text-[16px]">flag</span>
-                                            Success Metrics
+                                            {t('social.campaignForm.section.kpis')}
                                         </h3>
                                         {kpis.map((kpi, idx) => (
                                             <div key={idx} className="flex gap-2">
                                                 <input
                                                     className="flex-1 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded px-3 py-2 text-sm"
-                                                    placeholder="Metric (e.g. Views)"
+                                                    placeholder={t('social.campaignForm.placeholders.kpiMetric')}
                                                     value={kpi.metric}
                                                     onChange={e => updateKPI(idx, 'metric', e.target.value)}
                                                 />
                                                 <input
                                                     className="w-24 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded px-3 py-2 text-sm"
-                                                    placeholder="Target"
+                                                    placeholder={t('social.campaignForm.placeholders.kpiTarget')}
                                                     value={kpi.target}
                                                     onChange={e => updateKPI(idx, 'target', e.target.value)}
                                                 />
@@ -712,7 +716,7 @@ export const CreateCampaignPage = () => {
                                                 </button>
                                             </div>
                                         ))}
-                                        <Button variant="secondary" size="sm" onClick={addKPI} className="text-xs w-full">Add Metric</Button>
+                                        <Button variant="secondary" size="sm" onClick={addKPI} className="text-xs w-full">{t('social.campaignForm.actions.addKpi')}</Button>
                                     </div>
                                 </div>
                             </>
@@ -722,9 +726,9 @@ export const CreateCampaignPage = () => {
 
 
                     <footer className="px-8 py-5 border-t border-[var(--color-surface-border)] flex gap-3 justify-end bg-[var(--color-surface-card)]">
-                        <Button variant="ghost" onClick={() => navigate(-1)}>Cancel</Button>
+                        <Button variant="ghost" onClick={() => navigate(-1)}>{t('social.campaignForm.actions.cancel')}</Button>
                         <Button variant="primary" onClick={handleSubmit} isLoading={loading} disabled={!name}>
-                            {campaignId ? 'Save Changes' : 'Create Campaign'}
+                            {campaignId ? t('social.campaignForm.actions.save') : t('social.campaignForm.actions.create')}
                         </Button>
                     </footer>
                 </div>
@@ -735,7 +739,7 @@ export const CreateCampaignPage = () => {
                     <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-orange-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none" />
 
-                    <h2 className="text-sm font-bold text-[var(--color-text-muted)] uppercase mb-6 relative z-10">Campaign Card Preview</h2>
+                    <h2 className="text-sm font-bold text-[var(--color-text-muted)] uppercase mb-6 relative z-10">{t('social.campaignForm.preview.title')}</h2>
 
                     <div className="relative z-10 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl p-6 shadow-lg">
                         <div className="flex justify-between items-start mb-4">
@@ -745,23 +749,23 @@ export const CreateCampaignPage = () => {
                                         status === 'Paused' ? 'bg-amber-100 text-amber-700' :
                                             'bg-gray-100 text-gray-700'
                                 }`}>
-                                {status}
+                                {getSocialCampaignStatusLabel(status, t)}
                             </span>
                         </div>
 
                         <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-2 line-clamp-2">
-                            {name || 'Campaign Name'}
+                            {name || t('social.campaignForm.preview.nameFallback')}
                         </h3>
 
                         <p className="text-sm text-[var(--color-text-muted)] line-clamp-3 mb-6 min-h-[40px]">
-                            {bigIdea || description || 'No description provided.'}
+                            {bigIdea || description || t('social.campaignForm.preview.descriptionFallback')}
                         </p>
 
                         <div className="space-y-3">
                             <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
                                 <span className="material-symbols-outlined text-[16px]">calendar_today</span>
                                 <span>
-                                    {startDate ? format(new Date(startDate), dateFormat, { locale: dateLocale }) : 'Start Date'} - {endDate ? format(new Date(endDate), dateFormat, { locale: dateLocale }) : 'End Date'}
+                                    {startDate ? format(new Date(startDate), dateFormat, { locale: dateLocale }) : t('social.campaignForm.preview.startDateFallback')} - {endDate ? format(new Date(endDate), dateFormat, { locale: dateLocale }) : t('social.campaignForm.preview.endDateFallback')}
                                 </span>
                             </div>
 
@@ -770,16 +774,16 @@ export const CreateCampaignPage = () => {
                                     <span key={p} className="px-1.5 py-0.5 bg-[var(--color-surface-hover)] rounded text-[10px] font-medium text-[var(--color-text-muted)]">
                                         {p}
                                     </span>
-                                )) : <span className="text-[10px] text-[var(--color-text-muted)] italic">No platforms selected</span>}
+                                )) : <span className="text-[10px] text-[var(--color-text-muted)] italic">{t('social.campaignForm.preview.noPlatforms')}</span>}
                             </div>
                         </div>
                     </div>
                     <div className="mt-8 relative z-10">
-                        <h4 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-2">Strategy Tips</h4>
+                        <h4 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-2">{t('social.campaignForm.preview.tipsTitle')}</h4>
                         <ul className="text-xs text-[var(--color-text-subtle)] space-y-2 list-disc pl-4">
-                            <li><strong>Core Flow:</strong> Make it single-minded.</li>
-                            <li><strong>Hook:</strong> Ensure it stops the scroll.</li>
-                            <li><strong>Visuals:</strong> Keep it consistent.</li>
+                            <li><strong>{t('social.campaignForm.preview.tipCore.label')}</strong> {t('social.campaignForm.preview.tipCore.text')}</li>
+                            <li><strong>{t('social.campaignForm.preview.tipHook.label')}</strong> {t('social.campaignForm.preview.tipHook.text')}</li>
+                            <li><strong>{t('social.campaignForm.preview.tipVisuals.label')}</strong> {t('social.campaignForm.preview.tipVisuals.text')}</li>
                         </ul>
                     </div>
                 </div>

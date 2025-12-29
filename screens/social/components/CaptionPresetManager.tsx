@@ -9,6 +9,7 @@ import { CaptionPreset, SocialPlatform } from '../../../types';
 import { useToast, useConfirm } from '../../../context/UIContext';
 import { AICaptionGenerator } from './AICaptionGenerator';
 import { generateSocialHashtags } from '../../../services/geminiService';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface CaptionPresetManagerProps {
     isOpen: boolean;
@@ -32,6 +33,7 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
     const { id: projectId } = useParams<{ id: string }>();
     const { showSuccess, showError } = useToast();
     const confirm = useConfirm();
+    const { t } = useLanguage();
 
     const [presets, setPresets] = useState<CaptionPreset[]>([]);
     const [selectedPlatform, setSelectedPlatform] = useState<SocialPlatform | 'All'>('All');
@@ -90,15 +92,15 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
 
             if (editingPreset) {
                 await updateCaptionPreset(projectId, editingPreset.id, data);
-                showSuccess('Preset updated');
+                showSuccess(t('social.captionPresetManager.toast.updated'));
             } else {
                 await createCaptionPreset(projectId, data);
-                showSuccess('Preset created');
+                showSuccess(t('social.captionPresetManager.toast.created'));
             }
             resetForm();
         } catch (error) {
             console.error(error);
-            showError('Failed to save preset');
+            showError(t('social.captionPresetManager.toast.saveError'));
         } finally {
             setLoading(false);
         }
@@ -106,13 +108,16 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
 
     const handleDelete = async (preset: CaptionPreset) => {
         if (!projectId) return;
-        const confirmed = await confirm('Delete Preset?', `Are you sure you want to delete "${preset.name}"?`);
+        const confirmed = await confirm(
+            t('social.captionPresetManager.deleteConfirm.title'),
+            t('social.captionPresetManager.deleteConfirm.message').replace('{name}', preset.name)
+        );
         if (confirmed) {
             try {
                 await deleteCaptionPreset(projectId, preset.id);
-                showSuccess('Preset deleted');
+                showSuccess(t('social.captionPresetManager.toast.deleted'));
             } catch (error) {
-                showError('Failed to delete preset');
+                showError(t('social.captionPresetManager.toast.deleteError'));
             }
         }
     };
@@ -128,7 +133,7 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
 
     // Group by category
     const groupedPresets = filteredPresets.reduce((acc, preset) => {
-        const cat = preset.category || 'Uncategorized';
+        const cat = preset.category || t('social.captionPresetManager.category.uncategorized');
         if (!acc[cat]) acc[cat] = [];
         acc[cat].push(preset);
         return acc;
@@ -142,8 +147,8 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-[var(--color-surface-border)] flex items-center justify-between">
                     <div>
-                        <h2 className="text-xl font-bold text-[var(--color-text-main)]">Caption Presets</h2>
-                        <p className="text-sm text-[var(--color-text-muted)]">Save and reuse your best captions</p>
+                        <h2 className="text-xl font-bold text-[var(--color-text-main)]">{t('social.captionPresetManager.title')}</h2>
+                        <p className="text-sm text-[var(--color-text-muted)]">{t('social.captionPresetManager.subtitle')}</p>
                     </div>
                     <button onClick={onClose} className="p-2 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors">
                         <span className="material-symbols-outlined">close</span>
@@ -168,7 +173,7 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
                                             }`}
                                     >
                                         <span className="material-symbols-outlined text-[14px]">{PLATFORM_ICONS[p]}</span>
-                                        {p}
+                                        {p === 'All' ? t('social.captionPresetManager.platform.all') : p}
                                     </button>
                                 ))}
                             </div>
@@ -177,7 +182,7 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
                                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] text-[18px]">search</span>
                                 <input
                                     type="text"
-                                    placeholder="Search presets..."
+                                    placeholder={t('social.captionPresetManager.searchPlaceholder')}
                                     value={searchQuery}
                                     onChange={e => setSearchQuery(e.target.value)}
                                     className="w-full pl-10 pr-4 py-2 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50"
@@ -190,8 +195,8 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
                             {Object.keys(groupedPresets).length === 0 ? (
                                 <div className="text-center py-12 text-[var(--color-text-muted)]">
                                     <span className="material-symbols-outlined text-4xl mb-2">description</span>
-                                    <p>No presets found</p>
-                                    <p className="text-sm">Create your first caption preset!</p>
+                                    <p>{t('social.captionPresetManager.empty.title')}</p>
+                                    <p className="text-sm">{t('social.captionPresetManager.empty.subtitle')}</p>
                                 </div>
                             ) : (
                                 Object.entries(groupedPresets).map(([category, categoryPresets]) => (
@@ -243,55 +248,55 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
                     <div className="w-1/3 p-6 flex flex-col">
                         <div className="flex items-center justify-between mb-4">
                             <h3 className="font-bold text-[var(--color-text-main)]">
-                                {editingPreset ? 'Edit Preset' : 'New Preset'}
+                                {editingPreset ? t('social.captionPresetManager.form.editTitle') : t('social.captionPresetManager.form.newTitle')}
                             </h3>
                             {(isCreating || editingPreset) && (
                                 <button onClick={resetForm} className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]">
-                                    Cancel
+                                    {t('social.captionPresetManager.form.cancel')}
                                 </button>
                             )}
                         </div>
 
                         <div className="flex-1 space-y-4 overflow-y-auto">
                             <Input
-                                label="Name"
-                                placeholder="e.g. Product Launch"
+                                label={t('social.captionPresetManager.form.nameLabel')}
+                                placeholder={t('social.captionPresetManager.form.namePlaceholder')}
                                 value={formName}
                                 onChange={e => setFormName(e.target.value)}
                             />
 
                             <Select
-                                label="Platform"
+                                label={t('social.captionPresetManager.form.platformLabel')}
                                 value={formPlatform}
                                 onChange={e => setFormPlatform(e.target.value as SocialPlatform | 'All')}
                             >
                                 {PLATFORMS.map(p => (
-                                    <option key={p} value={p}>{p}</option>
+                                    <option key={p} value={p}>{p === 'All' ? t('social.captionPresetManager.platform.all') : p}</option>
                                 ))}
                             </Select>
 
                             <div>
                                 <div className="flex justify-between items-center mb-1">
-                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase">Caption</label>
+                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase">{t('social.captionPresetManager.form.captionLabel')}</label>
                                     <button
                                         onClick={() => setShowAIGenerator(true)}
                                         className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
                                     >
                                         <span className="material-symbols-outlined text-[14px]">auto_awesome</span>
-                                        AI Assist
+                                        {t('social.captionPresetManager.form.aiAssist')}
                                     </button>
                                 </div>
                                 <Textarea
                                     value={formContent}
                                     onChange={e => setFormContent(e.target.value)}
-                                    placeholder="Write your caption template..."
+                                    placeholder={t('social.captionPresetManager.form.captionPlaceholder')}
                                     className="min-h-[120px]"
                                 />
                             </div>
 
                             <div className="space-y-1">
                                 <div className="flex justify-between items-center">
-                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase">Hashtags</label>
+                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase">{t('social.captionPresetManager.form.hashtagsLabel')}</label>
                                     <button
                                         onClick={async () => {
                                             if (!formContent) return;
@@ -301,7 +306,7 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
                                                 setFormHashtags(tags);
                                             } catch (error) {
                                                 console.error(error);
-                                                showError("Failed to generate hashtags");
+                                                showError(t('social.captionPresetManager.form.hashtagsError'));
                                             } finally {
                                                 setGeneratingHashtags(false);
                                             }
@@ -310,19 +315,19 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
                                         className="text-xs font-bold text-indigo-600 hover:text-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                                     >
                                         <span className="material-symbols-outlined text-[14px]">{generatingHashtags ? 'hourglass_top' : 'auto_awesome'}</span>
-                                        {generatingHashtags ? 'Generating...' : 'Generate'}
+                                        {generatingHashtags ? t('social.captionPresetManager.form.generating') : t('social.captionPresetManager.form.generate')}
                                     </button>
                                 </div>
                                 <Input
-                                    placeholder="#marketing #social"
+                                    placeholder={t('social.captionPresetManager.form.hashtagsPlaceholder')}
                                     value={formHashtags}
                                     onChange={e => setFormHashtags(e.target.value)}
                                 />
                             </div>
 
                             <Input
-                                label="Category (optional)"
-                                placeholder="e.g. Promotional, Engagement"
+                                label={t('social.captionPresetManager.form.categoryLabel')}
+                                placeholder={t('social.captionPresetManager.form.categoryPlaceholder')}
                                 value={formCategory}
                                 onChange={e => setFormCategory(e.target.value)}
                             />
@@ -336,7 +341,7 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
                                 disabled={!formName.trim() || !formContent.trim()}
                                 isLoading={loading}
                             >
-                                {editingPreset ? 'Update Preset' : 'Create Preset'}
+                                {editingPreset ? t('social.captionPresetManager.form.update') : t('social.captionPresetManager.form.create')}
                             </Button>
                         </div>
                     </div>

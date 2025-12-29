@@ -1,8 +1,8 @@
 import React from 'react';
 import { SocialCampaign, SocialPost } from '../../../types';
 import { differenceInDays, format } from 'date-fns';
-import { dateLocale, dateFormat } from '../../../utils/activityHelpers';
-import { SocialPostCard } from '../components/SocialPostCard';
+import { useLanguage } from '../../../context/LanguageContext';
+import { getSocialPostFormatLabel } from '../../../utils/socialLocalization';
 
 interface CampaignStrategyViewProps {
     campaign: SocialCampaign;
@@ -11,6 +11,7 @@ interface CampaignStrategyViewProps {
 }
 
 export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ campaign, posts, onTabChange }) => {
+    const { t, dateLocale, dateFormat } = useLanguage();
     // Derived Metrics
     const concepts = posts.filter(p => p.isConcept);
     const published = posts.filter(p => p.status === 'Published');
@@ -25,6 +26,17 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
 
     // Color
     const brandColor = campaign.color || '#E1306C';
+    const durationUnitLabels: Record<string, string> = {
+        Days: t('social.campaignStrategy.units.days'),
+        Weeks: t('social.campaignStrategy.units.weeks'),
+        Months: t('social.campaignStrategy.units.months')
+    };
+    const frequencyUnitLabels: Record<string, string> = {
+        'Posts/Day': t('social.campaignStrategy.frequency.day'),
+        'Posts/Week': t('social.campaignStrategy.frequency.week'),
+        'Posts/Month': t('social.campaignStrategy.frequency.month')
+    };
+    const formatFrequencyUnit = (unit?: string) => frequencyUnitLabels[unit || ''] || unit?.replace('Posts/', '') || '';
 
     const StatCard = ({ icon, label, value, subtext }: { icon: string, label: string, value: string | number, subtext?: string }) => (
         <div className="bg-[var(--color-surface-card)] rounded-xl border border-[var(--color-surface-border)] p-4 shadow-sm flex items-start justify-between">
@@ -54,7 +66,7 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
                     <div className="lg:col-span-7 space-y-6">
                         <div>
                             <div className="flex items-center gap-2 mb-3">
-                                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-[var(--color-primary)]/10 text-[var(--color-primary)]">The Concept</span>
+                                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-[var(--color-primary)]/10 text-[var(--color-primary)]">{t('social.campaignStrategy.conceptBadge')}</span>
                                 <div className="h-px flex-1 bg-[var(--color-surface-border)]" />
                                 {campaign.plannedContent && campaign.plannedContent.length > 0 && (
                                     <button
@@ -62,7 +74,7 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
                                         className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[var(--color-primary)] hover:text-[var(--color-primary-dark)] transition-colors"
                                     >
                                         <span className="material-symbols-outlined text-[14px]">calendar_view_week</span>
-                                        See Planned Timeline
+                                        {t('social.campaignStrategy.viewTimeline')}
                                     </button>
                                 )}
                             </div>
@@ -70,22 +82,22 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
                                 "{campaign.bigIdea || campaign.name}"
                             </h2>
                             <p className="text-base text-[var(--color-text-secondary)] font-medium leading-relaxed max-w-2xl">
-                                {campaign.hook || campaign.description || "No specific hook defined for this campaign."}
+                                {campaign.hook || campaign.description || t('social.campaignStrategy.noHook')}
                             </p>
                         </div>
 
                         {(campaign.mood || campaign.visualDirection) && (
                             <div className="grid grid-cols-2 gap-4 pt-4">
                                 <div className="bg-[var(--color-surface-hover)]/50 rounded-xl p-4 border border-[var(--color-surface-border)]">
-                                    <h4 className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Visual Direction</h4>
-                                    <p className="text-xs font-bold text-[var(--color-text-main)] line-clamp-3">{campaign.visualDirection || 'Not specified'}</p>
+                                    <h4 className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1">{t('social.campaignStrategy.visualDirection')}</h4>
+                                    <p className="text-xs font-bold text-[var(--color-text-main)] line-clamp-3">{campaign.visualDirection || t('social.campaignStrategy.notSpecified')}</p>
                                 </div>
                                 <div className="bg-[var(--color-surface-hover)]/50 rounded-xl p-4 border border-[var(--color-surface-border)]">
-                                    <h4 className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Mood & Tone</h4>
+                                    <h4 className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1">{t('social.campaignStrategy.moodTone')}</h4>
                                     <div className="flex items-center gap-2">
                                         {campaign.mood && <span className="px-2 py-1 bg-[var(--color-surface-card)] rounded text-[10px] font-bold border border-[var(--color-surface-border)]">{campaign.mood}</span>}
                                         {campaign.toneOfVoice && <span className="px-2 py-1 bg-[var(--color-surface-card)] rounded text-[10px] font-bold border border-[var(--color-surface-border)]">{campaign.toneOfVoice}</span>}
-                                        {!campaign.mood && !campaign.toneOfVoice && <span className="text-xs text-[var(--color-text-muted)] italic">Not set</span>}
+                                        {!campaign.mood && !campaign.toneOfVoice && <span className="text-xs text-[var(--color-text-muted)] italic">{t('social.campaignStrategy.notSet')}</span>}
                                     </div>
                                 </div>
                             </div>
@@ -96,15 +108,17 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
                         <div className="grid grid-cols-2 gap-4">
                             <StatCard
                                 icon="calendar_today"
-                                label="Duration"
+                                label={t('social.campaignStrategy.duration')}
                                 value={`${totalDays}d`}
-                                subtext={campaign.endDate ? `Ends ${format(new Date(campaign.endDate), dateFormat, { locale: dateLocale })}` : 'Ongoing'}
+                                subtext={campaign.endDate
+                                    ? t('social.campaignStrategy.ends').replace('{date}', format(new Date(campaign.endDate), dateFormat, { locale: dateLocale }))
+                                    : t('social.campaignStrategy.ongoing')}
                             />
                             <StatCard
                                 icon="layers"
-                                label="Content"
+                                label={t('social.campaignStrategy.content')}
                                 value={posts.length}
-                                subtext={`${scheduled.length} Scheduled`}
+                                subtext={t('social.campaignStrategy.scheduledCount').replace('{count}', String(scheduled.length))}
                             />
                         </div>
 
@@ -112,7 +126,7 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
                             <div className="bg-[var(--color-surface-hover)]/30 rounded-xl p-4 border border-[var(--color-surface-border)]">
                                 <h4 className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3 flex items-center gap-2">
                                     <span className="material-symbols-outlined text-[14px]">flag</span>
-                                    Success Metrics
+                                    {t('social.campaignStrategy.successMetrics')}
                                 </h4>
                                 <div className="space-y-2">
                                     {campaign.kpis.map((kpi, i) => (
@@ -136,7 +150,7 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
                     <div className="flex items-center justify-between px-1">
                         <h3 className="font-bold text-[var(--color-text-main)] text-sm uppercase tracking-wider flex items-center gap-2">
                             <span className="material-symbols-outlined text-[18px]">timeline</span>
-                            Rollout Phases
+                            {t('social.campaignStrategy.rolloutPhases')}
                         </h3>
                     </div>
 
@@ -154,7 +168,7 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
                                         <div className="flex items-center justify-between mb-1">
                                             <h4 className="font-bold text-[var(--color-text-main)] text-sm">{phase.name}</h4>
                                             <span className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider bg-[var(--color-surface-hover)] px-2 py-0.5 rounded">
-                                                {phase.durationValue} {phase.durationUnit}
+                                                {phase.durationValue} {durationUnitLabels[phase.durationUnit] || phase.durationUnit}
                                             </span>
                                         </div>
                                         <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">{phase.focus}</p>
@@ -164,7 +178,7 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
                         </div>
                     ) : (
                         <div className="bg-[var(--color-surface-card)] rounded-xl p-8 border border-dashed border-[var(--color-surface-border)] text-center">
-                            <p className="text-xs text-[var(--color-text-muted)]">No phases defined. Switch to full Concept view to add phases.</p>
+                            <p className="text-xs text-[var(--color-text-muted)]">{t('social.campaignStrategy.noPhases')}</p>
                         </div>
                     )}
                 </div>
@@ -174,7 +188,7 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
                     <div className="flex items-center justify-between px-1">
                         <h3 className="font-bold text-[var(--color-text-main)] text-sm uppercase tracking-wider flex items-center gap-2">
                             <span className="material-symbols-outlined text-[18px]">hub</span>
-                            Channel Mix
+                            {t('social.campaignStrategy.channelMix')}
                         </h3>
                     </div>
 
@@ -185,29 +199,31 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
                                     <div className="font-bold text-sm text-[var(--color-text-main)]">{chan.id}</div>
                                     {chan.frequencyValue && (
                                         <span className="text-[9px] font-bold text-[var(--color-primary)] bg-[var(--color-primary)]/5 px-2 py-0.5 rounded-full uppercase">
-                                            {chan.frequencyValue} {chan.frequencyUnit?.replace('Posts/', '')}
+                                            {chan.frequencyValue} {formatFrequencyUnit(chan.frequencyUnit)}
                                         </span>
                                     )}
                                 </div>
                                 <div className="text-xs text-[var(--color-text-secondary)] leading-snug line-clamp-2">
-                                    {chan.role || 'No specific role defined'}
+                                    {chan.role || t('social.campaignStrategy.noRole')}
                                 </div>
                                 <div className="pt-2 border-t border-[var(--color-surface-border)] flex items-center gap-2">
-                                    <span className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Format:</span>
-                                    <span className="text-[10px] font-bold text-[var(--color-text-main)]">{chan.format || 'Mixed'}</span>
+                                    <span className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{t('social.campaignStrategy.formatLabel')}</span>
+                                    <span className="text-[10px] font-bold text-[var(--color-text-main)]">
+                                        {chan.format ? getSocialPostFormatLabel(chan.format, t) : t('social.campaignStrategy.mixed')}
+                                    </span>
                                 </div>
                             </div>
                         )) : (
                             (campaign.platforms || []).map(p => (
                                 <div key={p} className="bg-[var(--color-surface-card)] rounded-xl p-4 border border-[var(--color-surface-border)]">
                                     <div className="font-bold text-sm text-[var(--color-text-main)] mb-1">{p}</div>
-                                    <span className="text-xs text-[var(--color-text-muted)]">Legacy configuration</span>
+                                    <span className="text-xs text-[var(--color-text-muted)]">{t('social.campaignStrategy.legacyConfig')}</span>
                                 </div>
                             ))
                         )}
                         {(!campaign.channelStrategy?.length && !campaign.platforms?.length) && (
                             <div className="col-span-2 text-center py-6 border border-dashed border-[var(--color-surface-border)] rounded-xl bg-[var(--color-surface-bg)]">
-                                <p className="text-xs text-[var(--color-text-muted)]">No channels configured</p>
+                                <p className="text-xs text-[var(--color-text-muted)]">{t('social.campaignStrategy.noChannels')}</p>
                             </div>
                         )}
                     </div>
@@ -221,7 +237,7 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
                 <div className="bg-[var(--color-surface-card)] rounded-2xl border border-[var(--color-surface-border)] p-6 shadow-sm">
                     <h3 className="font-bold text-[var(--color-text-muted)] text-[11px] uppercase tracking-wider mb-4 flex items-center gap-2">
                         <span className="material-symbols-outlined text-[16px]">group</span>
-                        Audience Segments
+                        {t('social.campaignStrategy.audienceSegments')}
                     </h3>
                     <div className="flex flex-wrap gap-2">
                         {campaign.audienceSegments?.map((seg, i) => (
@@ -230,7 +246,7 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
                             </span>
                         ))}
                         {(!campaign.audienceSegments || campaign.audienceSegments.length === 0) && (
-                            <span className="text-xs text-[var(--color-text-muted)] italic">{campaign.targetAudience || 'No segments defined'}</span>
+                            <span className="text-xs text-[var(--color-text-muted)] italic">{campaign.targetAudience || t('social.campaignStrategy.noSegments')}</span>
                         )}
                     </div>
                 </div>
@@ -239,7 +255,7 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
                 <div className="bg-[var(--color-surface-card)] rounded-2xl border border-[var(--color-surface-border)] p-6 shadow-sm">
                     <h3 className="font-bold text-[var(--color-text-muted)] text-[11px] uppercase tracking-wider mb-4 flex items-center gap-2">
                         <span className="material-symbols-outlined text-[16px]">warning</span>
-                        Key Risks
+                        {t('social.campaignStrategy.keyRisks')}
                     </h3>
                     <div className="space-y-3">
                         {campaign.risks?.slice(0, 3).map((risk, i) => (
@@ -251,7 +267,7 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
                                 </div>
                             </div>
                         ))}
-                        {(!campaign.risks || campaign.risks.length === 0) && <p className="text-xs text-[var(--color-text-muted)] italic">No risks identified</p>}
+                        {(!campaign.risks || campaign.risks.length === 0) && <p className="text-xs text-[var(--color-text-muted)] italic">{t('social.campaignStrategy.noRisks')}</p>}
                     </div>
                 </div>
 
@@ -259,7 +275,7 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
                 <div className="bg-[var(--color-surface-card)] rounded-2xl border border-[var(--color-surface-border)] p-6 shadow-sm">
                     <h3 className="font-bold text-[var(--color-text-muted)] text-[11px] uppercase tracking-wider mb-4 flex items-center gap-2">
                         <span className="material-symbols-outlined text-[16px]">emoji_events</span>
-                        Projected Wins
+                        {t('social.campaignStrategy.projectedWins')}
                     </h3>
                     <div className="space-y-3">
                         {campaign.wins?.slice(0, 3).map((win, i) => (
@@ -267,11 +283,13 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
                                 <div className="size-1.5 mt-1.5 rounded-full shrink-0 bg-emerald-500" />
                                 <div>
                                     <p className="text-xs font-bold text-[var(--color-text-main)] mb-0.5">{win.title}</p>
-                                    <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider font-bold text-emerald-600 dark:text-emerald-400">{win.impact} Impact</p>
+                                    <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider font-bold text-emerald-600 dark:text-emerald-400">
+                                        {t('social.campaignStrategy.winImpact').replace('{impact}', win.impact)}
+                                    </p>
                                 </div>
                             </div>
                         ))}
-                        {(!campaign.wins || campaign.wins.length === 0) && <p className="text-xs text-[var(--color-text-muted)] italic">No wins projected</p>}
+                        {(!campaign.wins || campaign.wins.length === 0) && <p className="text-xs text-[var(--color-text-muted)] italic">{t('social.campaignStrategy.noWins')}</p>}
                     </div>
                 </div>
             </div>
@@ -288,6 +306,7 @@ export const CampaignStrategyView: React.FC<CampaignStrategyViewProps> = ({ camp
 
 const PlannedTimelineModal = ({ isOpen, onClose, plannedContent }: { isOpen: boolean, onClose: () => void, plannedContent: any[] }) => {
     const [weekOffset, setWeekOffset] = React.useState(0);
+    const { t } = useLanguage();
 
     // Calculate total weeks
     const maxDay = plannedContent.reduce((max, p) => Math.max(max, p.dayOffset), 0);
@@ -311,8 +330,8 @@ const PlannedTimelineModal = ({ isOpen, onClose, plannedContent }: { isOpen: boo
             <div className="bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-2xl w-full max-w-5xl max-h-[90vh] flex flex-col shadow-2xl animate-scale-in">
                 <div className="flex items-center justify-between p-4 border-b border-[var(--color-surface-border)]">
                     <div>
-                        <h3 className="text-lg font-bold text-[var(--color-text-main)]">Planned Content Timeline</h3>
-                        <p className="text-xs text-[var(--color-text-muted)]">AI-generated content plan from Concept phase</p>
+                        <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('social.campaignStrategy.timeline.title')}</h3>
+                        <p className="text-xs text-[var(--color-text-muted)]">{t('social.campaignStrategy.timeline.subtitle')}</p>
                     </div>
                     <button onClick={onClose} className="p-2 hover:bg-[var(--color-surface-hover)] rounded-full transition-colors">
                         <span className="material-symbols-outlined text-[var(--color-text-muted)]">close</span>
@@ -330,7 +349,9 @@ const PlannedTimelineModal = ({ isOpen, onClose, plannedContent }: { isOpen: boo
                                 >
                                     <span className="material-symbols-outlined">chevron_left</span>
                                 </button>
-                                <span className="text-sm font-bold text-[var(--color-text-main)]">Week {weekOffset + 1} of {totalWeeks}</span>
+                                <span className="text-sm font-bold text-[var(--color-text-main)]">
+                                    {t('social.campaignStrategy.timeline.week').replace('{week}', String(weekOffset + 1)).replace('{total}', String(totalWeeks))}
+                                </span>
                                 <button
                                     onClick={() => setWeekOffset(prev => Math.min(totalWeeks - 1, prev + 1))}
                                     disabled={weekOffset >= totalWeeks - 1}
@@ -344,7 +365,9 @@ const PlannedTimelineModal = ({ isOpen, onClose, plannedContent }: { isOpen: boo
                         <div className="grid grid-cols-7 gap-3 min-w-[800px]">
                             {weekPosts.days.map((day) => (
                                 <div key={day.dayOffset} className="flex flex-col gap-2">
-                                    <div className="text-[10px] font-bold uppercase text-[var(--color-text-muted)] text-center">Day {day.dayNum}</div>
+                                    <div className="text-[10px] font-bold uppercase text-[var(--color-text-muted)] text-center">
+                                        {t('social.campaignStrategy.timeline.day').replace('{day}', String(day.dayNum))}
+                                    </div>
                                     <div className="flex-1 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl min-h-[200px] p-2 space-y-2">
                                         {day.posts.map((post: any, idx: number) => (
                                             <div key={idx} className="bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg p-2 shadow-sm text-xs">
@@ -356,12 +379,14 @@ const PlannedTimelineModal = ({ isOpen, onClose, plannedContent }: { isOpen: boo
                                                     )}
                                                 </div>
                                                 <div className="font-semibold text-[var(--color-text-main)] mb-1 line-clamp-2">{post.hook}</div>
-                                                <div className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">{post.contentType}</div>
+                                                <div className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">
+                                                    {post.contentType ? getSocialPostFormatLabel(post.contentType as any, t) : t('social.campaignStrategy.timeline.unknownType')}
+                                                </div>
                                             </div>
                                         ))}
                                         {day.posts.length === 0 && (
                                             <div className="h-full flex items-center justify-center text-[10px] text-[var(--color-text-subtle)] italic">
-                                                No posts
+                                                {t('social.campaignStrategy.timeline.empty')}
                                             </div>
                                         )}
                                     </div>

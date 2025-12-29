@@ -6,10 +6,13 @@ import { SocialPost, SocialCampaign, Idea } from '../../types';
 import { subDays, format, isSameDay, differenceInDays } from 'date-fns';
 import { PlatformIcon } from './components/PlatformIcon';
 import { DashboardFlowCard } from './components/DashboardFlowCard';
+import { useLanguage } from '../../context/LanguageContext';
+import { getSocialCampaignStatusLabel } from '../../utils/socialLocalization';
 
 export const SocialDashboard = () => {
     const { id: projectId } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { t, dateLocale } = useLanguage();
     const [posts, setPosts] = useState<SocialPost[]>([]);
     const [campaigns, setCampaigns] = useState<SocialCampaign[]>([]);
     const [ideas, setIdeas] = useState<Idea[]>([]);
@@ -92,8 +95,8 @@ export const SocialDashboard = () => {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-[var(--color-text-main)] tracking-tight">Social Command</h1>
-                    <p className="text-[var(--color-text-muted)] font-medium">Manage your social strategy and content pipeline</p>
+                    <h1 className="text-3xl font-black text-[var(--color-text-main)] tracking-tight">{t('socialDashboard.title')}</h1>
+                    <p className="text-[var(--color-text-muted)] font-medium">{t('socialDashboard.subtitle')}</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button
@@ -101,14 +104,14 @@ export const SocialDashboard = () => {
                         className="flex items-center gap-2 px-4 py-2.5 bg-[var(--color-surface-hover)] text-[var(--color-text-main)] hover:bg-[var(--color-surface-card)] rounded-xl text-sm font-bold transition-all border border-[var(--color-surface-border)]"
                     >
                         <span className="material-symbols-outlined text-[18px]">lightbulb</span>
-                        Flows Pipeline
+                        {t('socialDashboard.actions.flowsPipeline')}
                     </button>
                     <button
                         onClick={() => navigate(`/project/${projectId}/social/create`)}
                         className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-primary)] text-white dark:text-slate-900 hover:bg-[var(--color-primary)]/90 shadow-lg shadow-[var(--color-primary)]/20 active:scale-95 rounded-xl text-sm font-bold transition-all"
                     >
                         <span className="material-symbols-outlined text-[18px]">add</span>
-                        Create Post
+                        {t('socialDashboard.actions.createPost')}
                     </button>
                 </div>
             </div>
@@ -124,15 +127,15 @@ export const SocialDashboard = () => {
                         <div className="space-y-4">
                             <div className="flex items-center gap-2 pb-2 border-b border-[var(--color-surface-border)]">
                                 <span className="material-symbols-outlined text-rose-500 animate-pulse">warning</span>
-                                <h2 className="text-lg font-black text-[var(--color-text-main)] uppercase tracking-wide">Action Required</h2>
+                                <h2 className="text-lg font-black text-[var(--color-text-main)] uppercase tracking-wide">{t('socialDashboard.sections.actionRequired')}</h2>
                             </div>
 
                             <div className="bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/30 rounded-2xl overflow-hidden">
                                 <div className="px-6 py-4 border-b border-rose-100 dark:border-rose-900/30 flex items-center justify-between">
                                     <div>
-                                        <h3 className="font-bold text-rose-700 dark:text-rose-400">Missing Assets</h3>
+                                        <h3 className="font-bold text-rose-700 dark:text-rose-400">{t('socialDashboard.alerts.missingAssets.title')}</h3>
                                         <p className="text-xs text-rose-600/80 dark:text-rose-400/80 font-medium">
-                                            {missingAssetsPosts.length} scheduled posts need visual content.
+                                            {t('socialDashboard.alerts.missingAssets.subtitle').replace('{count}', String(missingAssetsPosts.length))}
                                         </p>
                                     </div>
                                     <span className="material-symbols-outlined text-rose-400 text-3xl opacity-50">perm_media</span>
@@ -143,10 +146,10 @@ export const SocialDashboard = () => {
                                             <div className="flex items-center gap-4">
                                                 <div className="flex flex-col items-center justify-center w-12 h-12 bg-[var(--color-surface-card)] rounded-xl border border-rose-200 dark:border-rose-900/50 shrink-0">
                                                     <span className="text-lg font-black text-[var(--color-text-main)] leading-none">
-                                                        {post.scheduledFor ? format(new Date(post.scheduledFor), 'd') : '?'}
+                                                        {post.scheduledFor ? format(new Date(post.scheduledFor), 'd', { locale: dateLocale }) : '?'}
                                                     </span>
                                                     <span className="text-[9px] font-bold text-[var(--color-text-muted)] uppercase">
-                                                        {post.scheduledFor ? format(new Date(post.scheduledFor), 'MMM') : 'TBD'}
+                                                        {post.scheduledFor ? format(new Date(post.scheduledFor), 'MMM', { locale: dateLocale }) : t('socialDashboard.alerts.missingAssets.tbd')}
                                                     </span>
                                                 </div>
                                                 <div>
@@ -157,7 +160,7 @@ export const SocialDashboard = () => {
                                                         </span>
                                                     </div>
                                                     <h4 className="font-bold text-[var(--color-text-main)] line-clamp-1">
-                                                        {post.videoConcept?.title || post.content.caption || "Untitled Post"}
+                                                        {post.videoConcept?.title || post.content.caption || t('socialDashboard.alerts.missingAssets.untitledPost')}
                                                     </h4>
                                                 </div>
                                             </div>
@@ -166,7 +169,7 @@ export const SocialDashboard = () => {
                                                 className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-surface-card)] hover:bg-white dark:hover:bg-slate-700 text-rose-600 text-xs font-bold rounded-lg border border-rose-200 dark:border-rose-900/50 shadow-sm transition-all group-hover:scale-105"
                                             >
                                                 <span className="material-symbols-outlined text-[16px]">upload</span>
-                                                Upload
+                                                {t('socialDashboard.alerts.missingAssets.upload')}
                                             </button>
                                         </div>
                                     ))}
@@ -180,7 +183,7 @@ export const SocialDashboard = () => {
                         <div className="space-y-4">
                             <div className="flex items-center gap-2 pb-2 border-b border-[var(--color-surface-border)]">
                                 <span className="material-symbols-outlined text-amber-500">priority_high</span>
-                                <h2 className="text-lg font-black text-[var(--color-text-main)] uppercase tracking-wide">Needs Approval</h2>
+                                <h2 className="text-lg font-black text-[var(--color-text-main)] uppercase tracking-wide">{t('socialDashboard.sections.needsApproval')}</h2>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -194,21 +197,21 @@ export const SocialDashboard = () => {
                                         <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
                                             <span className="material-symbols-outlined text-5xl text-amber-500 -rotate-12 translate-x-2 -translate-y-2">rate_review</span>
                                         </div>
-                                        <div className="flex items-center gap-3 relative z-10 mb-3">
-                                            <div className="size-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 flex items-center justify-center shrink-0">
-                                                <span className="material-symbols-outlined">lightbulb</span>
+                                            <div className="flex items-center gap-3 relative z-10 mb-3">
+                                                <div className="size-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 text-amber-600 flex items-center justify-center shrink-0">
+                                                    <span className="material-symbols-outlined">lightbulb</span>
+                                                </div>
+                                                <div>
+                                                    <div className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-0.5">{t('socialDashboard.cards.campaignConcept')}</div>
+                                                    <h3 className="font-bold text-[var(--color-text-main)] truncate max-w-[200px]">{idea.title}</h3>
+                                                </div>
                                             </div>
-                                            <div>
-                                                <div className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-0.5">Campaign Concept</div>
-                                                <h3 className="font-bold text-[var(--color-text-main)] truncate max-w-[200px]">{idea.title}</h3>
+                                            <div className="flex items-center justify-between text-xs font-bold text-amber-600 relative z-10 pl-13">
+                                                <span>{t('socialDashboard.cards.reviewStrategy')}</span>
+                                                <span className="material-symbols-outlined text-base group-hover:translate-x-1 transition-transform">arrow_forward</span>
                                             </div>
-                                        </div>
-                                        <div className="flex items-center justify-between text-xs font-bold text-amber-600 relative z-10 pl-13">
-                                            <span>Review Strategy</span>
-                                            <span className="material-symbols-outlined text-base group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                                        </div>
-                                    </Link>
-                                ))}
+                                        </Link>
+                                    ))}
 
                                 {/* Posts Pending Review (Link to Approvals page if many, or list here) */}
                                 {stats.inReview > 0 && (
@@ -222,7 +225,7 @@ export const SocialDashboard = () => {
                                             </div>
                                             <div>
                                                 <div className="text-2xl font-black text-[var(--color-text-main)]">{stats.inReview}</div>
-                                                <div className="text-xs font-bold text-amber-600 uppercase tracking-wider">Posts Pending Review</div>
+                                                <div className="text-xs font-bold text-amber-600 uppercase tracking-wider">{t('socialDashboard.cards.postsPendingReview')}</div>
                                             </div>
                                             <span className="material-symbols-outlined text-amber-400 ml-auto group-hover:translate-x-1 transition-transform">arrow_forward</span>
                                         </div>
@@ -237,17 +240,17 @@ export const SocialDashboard = () => {
                         <div className="flex items-center justify-between pb-2 border-b border-[var(--color-surface-border)]">
                             <div className="flex items-center gap-2">
                                 <span className="material-symbols-outlined text-purple-500">tips_and_updates</span>
-                                <h2 className="text-lg font-black text-[var(--color-text-main)] uppercase tracking-wide">Flow Pipeline</h2>
+                                <h2 className="text-lg font-black text-[var(--color-text-main)] uppercase tracking-wide">{t('socialDashboard.sections.flowPipeline')}</h2>
                             </div>
                             <Link to={`/project/${projectId}/flows?pipeline=Social`} className="text-xs font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1">
-                                View Full Pipeline <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
+                                {t('socialDashboard.actions.viewFullPipeline')} <span className="material-symbols-outlined text-[14px]">arrow_forward</span>
                             </Link>
                         </div>
 
                         {rawIdeas.length === 0 ? (
                             <div className="p-8 text-center bg-[var(--color-surface-card)] rounded-2xl border-2 border-dashed border-[var(--color-surface-border)]">
                                 <span className="material-symbols-outlined text-4xl text-[var(--color-text-muted)] opacity-50 mb-2">lightbulb</span>
-                                <p className="text-sm font-medium text-[var(--color-text-muted)]">No active flows. Start brainstorming!</p>
+                                <p className="text-sm font-medium text-[var(--color-text-muted)]">{t('socialDashboard.empty.flows')}</p>
                             </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -263,14 +266,14 @@ export const SocialDashboard = () => {
                         <div className="flex items-center justify-between pb-2 border-b border-[var(--color-surface-border)]">
                             <div className="flex items-center gap-2">
                                 <span className="material-symbols-outlined text-rose-500">campaign</span>
-                                <h2 className="text-lg font-black text-[var(--color-text-main)] uppercase tracking-wide">Active Campaigns</h2>
+                                <h2 className="text-lg font-black text-[var(--color-text-main)] uppercase tracking-wide">{t('socialDashboard.sections.activeCampaigns')}</h2>
                             </div>
-                            <Link to={`/project/${projectId}/social/campaigns`} className="text-xs font-bold text-[var(--color-primary)] hover:underline">View All</Link>
+                            <Link to={`/project/${projectId}/social/campaigns`} className="text-xs font-bold text-[var(--color-primary)] hover:underline">{t('socialDashboard.actions.viewAll')}</Link>
                         </div>
 
                         {activeCampaignsList.length === 0 ? (
                             <div className="bg-[var(--color-surface-card)] rounded-2xl border border-[var(--color-surface-border)] p-6 text-center">
-                                <p className="text-sm text-[var(--color-text-muted)]">No active campaigns.</p>
+                                <p className="text-sm text-[var(--color-text-muted)]">{t('socialDashboard.empty.activeCampaigns')}</p>
                             </div>
                         ) : (
                             <div className="space-y-3">
@@ -288,10 +291,10 @@ export const SocialDashboard = () => {
 
                     {/* Quick Stats Grid */}
                     <div className="grid grid-cols-2 gap-3">
-                        <QuickStatBox label="Scheduled" value={stats.scheduled} icon="event" color="text-blue-500" />
-                        <QuickStatBox label="Published" value={stats.published} icon="check_circle" color="text-emerald-500" />
-                        <QuickStatBox label="Active Drafts" value={stats.drafts} icon="edit_note" color="text-slate-500" />
-                        <QuickStatBox label="Total Posts" value={stats.totalPosts} icon="grid_view" color="text-indigo-500" />
+                        <QuickStatBox label={t('socialDashboard.stats.scheduled')} value={stats.scheduled} icon="event" color="text-blue-500" />
+                        <QuickStatBox label={t('socialDashboard.stats.published')} value={stats.published} icon="check_circle" color="text-emerald-500" />
+                        <QuickStatBox label={t('socialDashboard.stats.activeDrafts')} value={stats.drafts} icon="edit_note" color="text-slate-500" />
+                        <QuickStatBox label={t('socialDashboard.stats.totalPosts')} value={stats.totalPosts} icon="grid_view" color="text-indigo-500" />
                     </div>
 
                     {/* Upcoming Content */}
@@ -299,15 +302,15 @@ export const SocialDashboard = () => {
                         <div className="flex items-center justify-between pb-2 border-b border-[var(--color-surface-border)]">
                             <div className="flex items-center gap-2">
                                 <span className="material-symbols-outlined text-blue-500">calendar_month</span>
-                                <h2 className="text-lg font-black text-[var(--color-text-main)] uppercase tracking-wide">Up Next</h2>
+                                <h2 className="text-lg font-black text-[var(--color-text-main)] uppercase tracking-wide">{t('socialDashboard.sections.upNext')}</h2>
                             </div>
-                            <Link to={`/project/${projectId}/social/calendar`} className="text-xs font-bold text-[var(--color-primary)] hover:underline">Calendar</Link>
+                            <Link to={`/project/${projectId}/social/calendar`} className="text-xs font-bold text-[var(--color-primary)] hover:underline">{t('socialDashboard.actions.calendar')}</Link>
                         </div>
 
                         <div className="space-y-3">
                             {upcomingPosts.length === 0 ? (
                                 <div className="p-6 text-center bg-[var(--color-surface-card)] rounded-2xl border border-[var(--color-surface-border)] border-dashed">
-                                    <p className="text-xs text-[var(--color-text-muted)] italic">Queue empty.</p>
+                                    <p className="text-xs text-[var(--color-text-muted)] italic">{t('socialDashboard.empty.queue')}</p>
                                 </div>
                             ) : (
                                 upcomingPosts.map(post => (
@@ -321,11 +324,11 @@ export const SocialDashboard = () => {
                     <div className="bg-[var(--color-surface-card)] rounded-2xl border border-[var(--color-surface-border)] p-5">
                         <h3 className="text-sm font-bold text-[var(--color-text-main)] mb-4 flex items-center gap-2">
                             <span className="material-symbols-outlined text-[16px] text-purple-500">pie_chart</span>
-                            Platform Mix
+                            {t('socialDashboard.platformMix.title')}
                         </h3>
                         <div className="space-y-3">
                             {topPlatforms.length === 0 ? (
-                                <p className="text-xs text-[var(--color-text-muted)] text-center">No platform data</p>
+                                <p className="text-xs text-[var(--color-text-muted)] text-center">{t('socialDashboard.platformMix.empty')}</p>
                             ) : (
                                 topPlatforms.map(([platform, count]) => {
                                     const total = posts.length || 1;
@@ -368,9 +371,11 @@ const QuickStatBox = ({ label, value, icon, color }: { label: string; value: num
 );
 
 const CampaignRow = ({ campaign, projectId, postsCount }: { campaign: SocialCampaign; projectId: string; postsCount: number }) => {
+    const { t } = useLanguage();
     const brandColor = campaign.color || '#E1306C';
     const progress = campaign.endDate ? Math.round((differenceInDays(new Date(), new Date(campaign.startDate)) / differenceInDays(new Date(campaign.endDate), new Date(campaign.startDate))) * 100) : 0;
     const cleanProgress = Math.min(Math.max(progress, 0), 100);
+    const statusLabel = getSocialCampaignStatusLabel(campaign.status, t);
 
     return (
         <Link
@@ -381,14 +386,14 @@ const CampaignRow = ({ campaign, projectId, postsCount }: { campaign: SocialCamp
             <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
                     <h3 className="font-bold text-[var(--color-text-main)] truncate text-sm">{campaign.name}</h3>
-                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 uppercase">{campaign.status}</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 uppercase">{statusLabel}</span>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-[var(--color-text-muted)]">
                     <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[12px]">article</span> {postsCount} posts
+                        <span className="material-symbols-outlined text-[12px]">article</span> {t('socialDashboard.campaignRow.posts').replace('{count}', String(postsCount))}
                     </span>
                     <span className="flex items-center gap-1">
-                        <span className="material-symbols-outlined text-[12px]">flag</span> {campaign.phases?.length || 0} phases
+                        <span className="material-symbols-outlined text-[12px]">flag</span> {t('socialDashboard.campaignRow.phases').replace('{count}', String(campaign.phases?.length || 0))}
                     </span>
                 </div>
             </div>
@@ -405,6 +410,7 @@ const CampaignRow = ({ campaign, projectId, postsCount }: { campaign: SocialCamp
 };
 
 const CompactScheduleItem = ({ post, projectId }: { post: SocialPost; projectId: string }) => {
+    const { t, dateLocale } = useLanguage();
     const date = new Date(post.scheduledFor!);
     return (
         <Link
@@ -412,16 +418,16 @@ const CompactScheduleItem = ({ post, projectId }: { post: SocialPost; projectId:
             className="flex items-center gap-3 p-3 bg-[var(--color-surface-card)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] rounded-xl transition-all group"
         >
             <div className="flex flex-col items-center justify-center w-10 h-10 bg-[var(--color-surface-bg)] rounded-lg border border-[var(--color-surface-border)] shrink-0">
-                <span className="text-sm font-black text-[var(--color-text-main)] leading-none">{format(date, 'd')}</span>
-                <span className="text-[8px] font-bold text-[var(--color-text-muted)] uppercase">{format(date, 'MMM')}</span>
+                <span className="text-sm font-black text-[var(--color-text-main)] leading-none">{format(date, 'd', { locale: dateLocale })}</span>
+                <span className="text-[8px] font-bold text-[var(--color-text-muted)] uppercase">{format(date, 'MMM', { locale: dateLocale })}</span>
             </div>
             <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-0.5">
                     <PlatformIcon platform={post.platform} className="size-3" />
-                    <span className="text-[10px] font-semibold text-[var(--color-text-muted)]">{format(date, 'HH:mm')}</span>
+                    <span className="text-[10px] font-semibold text-[var(--color-text-muted)]">{format(date, 'HH:mm', { locale: dateLocale })}</span>
                 </div>
                 <p className="text-xs font-bold text-[var(--color-text-main)] truncate group-hover:text-[var(--color-primary)] transition-colors">
-                    {post.content.caption || 'Untitled Content'}
+                    {post.content.caption || t('socialDashboard.compact.untitledContent')}
                 </p>
             </div>
         </Link>

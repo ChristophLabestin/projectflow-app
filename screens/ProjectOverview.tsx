@@ -27,7 +27,8 @@ import { subscribeProjectGroups } from '../services/projectGroupService';
 import { calculateProjectHealth } from '../services/healthService';
 import { HealthIndicator } from '../components/project/HealthIndicator';
 import { HealthDetailModal } from '../components/project/HealthDetailModal';
-import { ProjectEditModal } from '../components/project/ProjectEditModal';
+import { getHealthFactorText } from '../utils/healthLocalization';
+import { ProjectEditModal, Tab } from '../components/project/ProjectEditModal';
 import { ProjectReportModal } from '../components/project/ProjectReportModal';
 import { TYPE_COLORS } from '../components/flows/constants';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
@@ -103,6 +104,7 @@ export const ProjectOverview = () => {
 
     // Modals
     const [showEditModal, setShowEditModal] = useState(false);
+    const [editModalTab, setEditModalTab] = useState<Tab>('general');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [showTaskModal, setShowTaskModal] = useState(false);
     const [showInviteModal, setShowInviteModal] = useState(false);
@@ -627,7 +629,8 @@ export const ProjectOverview = () => {
         healthy: t('status.healthy'),
         warning: t('status.warning'),
         critical: t('status.critical'),
-        normal: t('status.normal')
+        normal: t('status.normal'),
+        stalemate: t('status.stalemate')
     }), [t]);
     const roleLabels = useMemo(() => ({
         Owner: t('projectOverview.team.roles.owner'),
@@ -1113,12 +1116,15 @@ export const ProjectOverview = () => {
                                                 <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('projectOverview.snapshot.health.topRisks')}</p>
                                                 {health.factors.filter(f => f.type === 'negative').length > 0 ? (
                                                     <ul className="mt-2 space-y-1">
-                                                        {health.factors.filter(f => f.type === 'negative').slice(0, 2).map((factor, i) => (
-                                                            <li key={i} className="text-[11px] text-[var(--color-text-main)] flex items-center gap-1.5">
-                                                                <span className="text-rose-500 text-[8px]">●</span>
-                                                                <span className="line-clamp-1">{factor.label}</span>
-                                                            </li>
-                                                        ))}
+                                                        {health.factors.filter(f => f.type === 'negative').slice(0, 2).map((factor) => {
+                                                            const { label } = getHealthFactorText(factor, t);
+                                                            return (
+                                                                <li key={factor.id} className="text-[11px] text-[var(--color-text-main)] flex items-center gap-1.5">
+                                                                    <span className="text-rose-500 text-[8px]">●</span>
+                                                                    <span className="line-clamp-1">{label}</span>
+                                                                </li>
+                                                            );
+                                                        })}
                                                     </ul>
                                                 ) : (
                                                     <p className="mt-2 text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1.5">
@@ -1880,7 +1886,10 @@ export const ProjectOverview = () => {
                                                         <p>{t('projectOverview.github.noRepoHint')}</p>
                                                         {isOwner && (
                                                             <button
-                                                                onClick={() => setShowEditModal(true)}
+                                                                onClick={() => {
+                                                                    setEditModalTab('integrations');
+                                                                    setShowEditModal(true);
+                                                                }}
                                                                 className="inline-flex items-center gap-1 text-[var(--color-primary)] font-semibold hover:underline"
                                                             >
                                                                 {t('projectOverview.github.openSettings')} <span className="material-symbols-outlined text-sm">settings</span>
@@ -1954,7 +1963,10 @@ export const ProjectOverview = () => {
                                             <div className="flex items-center justify-between">
                                                 <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectOverview.resources.quickLinks')}</h3>
                                                 {isOwner && (
-                                                    <Button size="sm" variant="ghost" onClick={() => setShowEditModal(true)}>
+                                                    <Button size="sm" variant="ghost" onClick={() => {
+                                                        setEditModalTab('resources');
+                                                        setShowEditModal(true);
+                                                    }}>
                                                         {t('projectOverview.resources.manage')}
                                                     </Button>
                                                 )}
@@ -2049,7 +2061,10 @@ export const ProjectOverview = () => {
 
                                     {isOwner && (
                                         <button
-                                            onClick={() => setShowEditModal(true)}
+                                            onClick={() => {
+                                                setEditModalTab('general');
+                                                setShowEditModal(true);
+                                            }}
                                             className="text-[10px] font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1 mt-4"
                                         >
                                             {t('projectOverview.planning.editDates')} <span className="material-symbols-outlined text-[12px]">settings</span>
@@ -2175,9 +2190,9 @@ export const ProjectOverview = () => {
                                             <span className="material-symbols-outlined text-xl">psychology</span>
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <h3 className="text-sm font-bold">AI Intelligence</h3>
+                                            <h3 className="text-sm font-bold">{t('projectOverview.aiReport.title')}</h3>
                                             <p className="text-[10px] text-indigo-100 truncate">
-                                                {pinnedReport ? `Updated ${timeAgo(pinnedReport.createdAt)}` : 'Generate project analysis'}
+                                                {pinnedReport ? t('projectOverview.aiReport.updated').replace('{time}', timeAgo(pinnedReport.createdAt)) : t('projectOverview.aiReport.generateAnalysis')}
                                             </p>
                                         </div>
                                         <span className="material-symbols-outlined text-white/70">arrow_forward</span>
@@ -2199,7 +2214,15 @@ export const ProjectOverview = () => {
                                                 </span>
                                             )}
                                         </h3>
-                                        <Link to={`/project/${id}/team`} className="text-xs font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1">
+                                        <Link
+                                            to="#"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                setEditModalTab('team');
+                                                setShowEditModal(true);
+                                            }}
+                                            className="text-xs font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1"
+                                        >
                                             <span className="material-symbols-outlined text-sm">settings</span>
                                             {t('projectOverview.team.manage')}
                                         </Link>
@@ -2450,9 +2473,13 @@ export const ProjectOverview = () => {
                     project && (
                         <ProjectEditModal
                             isOpen={showEditModal}
-                            onClose={() => setShowEditModal(false)}
+                            onClose={() => {
+                                setShowEditModal(false);
+                                setEditModalTab('general'); // Reset to default on close
+                            }}
                             project={project}
                             onSave={handleSaveEdit}
+                            initialTab={editModalTab}
                         />
                     )
                 }

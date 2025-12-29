@@ -3,6 +3,7 @@ import { ProjectHealth, HealthStatus, HealthFactor } from '../../services/health
 import { Task, Milestone, Issue } from '../../types';
 import { Button } from '../ui/Button';
 import { useLanguage } from '../../context/LanguageContext';
+import { getHealthFactorText, getHealthRecommendations } from '../../utils/healthLocalization';
 
 interface HealthDetailModalProps {
     isOpen: boolean;
@@ -113,6 +114,7 @@ export const HealthDetailModal: React.FC<HealthDetailModalProps> = ({
 
     const negativeFactors = health.factors.filter(f => f.type === 'negative');
     const positiveFactors = health.factors.filter(f => f.type === 'positive');
+    const recommendations = getHealthRecommendations(health, t);
 
     // Gauge
     const radius = 70;
@@ -255,22 +257,25 @@ export const HealthDetailModal: React.FC<HealthDetailModalProps> = ({
                                         {t('healthDetail.factors.title')}
                                     </h3>
                                     <div className="space-y-2">
-                                        {health.factors.map((factor) => (
-                                            <FactorRow key={factor.id} factor={factor} />
-                                        ))}
+                                        {health.factors.map((factor) => {
+                                            const { label, description } = getHealthFactorText(factor, t);
+                                            return (
+                                                <FactorRow key={factor.id} factor={factor} label={label} description={description} />
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
 
                             {/* Recommendations */}
-                            {health.recommendations.length > 0 && (
+                            {recommendations.length > 0 && (
                                 <div className="space-y-3">
                                     <h3 className="text-[10px] font-bold text-slate-500 dark:text-white/50 uppercase tracking-widest flex items-center gap-2">
                                         <span className="material-symbols-outlined text-sm">auto_awesome</span>
                                         {t('healthDetail.recommendations.title')}
                                     </h3>
                                     <div className="space-y-2">
-                                        {health.recommendations.map((rec, i) => (
+                                        {recommendations.map((rec, i) => (
                                             <div
                                                 key={i}
                                                 className="flex items-start gap-3 p-4 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20"
@@ -284,7 +289,7 @@ export const HealthDetailModal: React.FC<HealthDetailModalProps> = ({
                             )}
 
                             {/* Empty State */}
-                            {health.factors.length === 0 && health.recommendations.length === 0 && attentionCount === 0 && (
+                            {health.factors.length === 0 && recommendations.length === 0 && attentionCount === 0 && (
                                 <div className="text-center py-8">
                                     <span className="material-symbols-outlined text-5xl text-emerald-500 mb-3">verified</span>
                                     <p className="text-slate-900 dark:text-white font-bold text-lg">{t('healthDetail.empty.title')}</p>
@@ -320,7 +325,7 @@ const AttentionChip: React.FC<{ icon: string; label: string; count: number; colo
     );
 };
 
-const FactorRow: React.FC<{ factor: HealthFactor }> = ({ factor }) => {
+const FactorRow: React.FC<{ factor: HealthFactor; label: string; description: string }> = ({ factor, label, description }) => {
     const isNegative = factor.type === 'negative';
     const isPositive = factor.type === 'positive';
 
@@ -336,12 +341,12 @@ const FactorRow: React.FC<{ factor: HealthFactor }> = ({ factor }) => {
             <div className={`size-2.5 rounded-full mt-1.5 shrink-0 ${dotColor}`} />
             <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-3 mb-1">
-                    <h4 className="font-bold text-slate-900 dark:text-white">{factor.label}</h4>
+                    <h4 className="font-bold text-slate-900 dark:text-white">{label}</h4>
                     <span className={`text-xs font-bold font-mono px-2 py-0.5 rounded-md ${impactClass}`}>
                         {factor.impact > 0 ? '+' : ''}{factor.impact}
                     </span>
                 </div>
-                <p className="text-sm text-slate-500 dark:text-white/60">{factor.description}</p>
+                <p className="text-sm text-slate-500 dark:text-white/60">{description}</p>
             </div>
         </div>
     );
