@@ -18,6 +18,9 @@ import { CaptionPresetManager } from './components/CaptionPresetManager';
 import { PlatformIcon } from './components/PlatformIcon';
 import { format } from 'date-fns';
 import { useLanguage } from '../../context/LanguageContext';
+import { getMultiFactorResolver, MultiFactorResolver } from 'firebase/auth';
+import { auth } from '../../services/firebase';
+import { TwoFactorChallengeModal } from '../../components/modals/TwoFactorChallengeModal';
 
 const PLATFORMS: { id: SocialPlatform; name: string; color: string }[] = [
     { id: 'Instagram', name: 'Instagram', color: 'bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-500' },
@@ -42,6 +45,11 @@ export const SocialSettings = () => {
     const confirm = useConfirm();
     const { t, dateLocale, dateFormat } = useLanguage();
 
+    // MFA State
+    const [showMfaModal, setShowMfaModal] = useState(false);
+    const [mfaResolver, setMfaResolver] = useState<MultiFactorResolver | null>(null);
+    const [pendingPlatform, setPendingPlatform] = useState<SocialPlatform | null>(null);
+
     useEffect(() => {
         if (!projectId) return;
         const unsubIntegrations = subscribeIntegrations(projectId, setIntegrations);
@@ -61,9 +69,24 @@ export const SocialSettings = () => {
             await connectIntegration(projectId, platform);
             showSuccess(t('social.settings.accounts.toast.connected').replace('{platform}', platform));
         } catch (error: any) {
-            showError(error.message || t('social.settings.accounts.toast.failedConnect').replace('{platform}', platform));
+            console.error("Connection error:", error);
+            if (error.code === 'auth/multi-factor-auth-required') {
+                const resolver = getMultiFactorResolver(auth, error);
+                setMfaResolver(resolver);
+                setPendingPlatform(platform);
+                setShowMfaModal(true);
+            } else {
+                showError(error.message || t('social.settings.accounts.toast.failedConnect').replace('{platform}', platform));
+            }
         } finally {
             setConnecting(null);
+        }
+    };
+
+    const handleMfaSuccess = async () => {
+        if (pendingPlatform) {
+            // Retry connection
+            await handleConnect(pendingPlatform);
         }
     };
 
@@ -208,13 +231,13 @@ export const SocialSettings = () => {
 
                         <div className="pt-4">
                             {presets.length === 0 ? (
-                                    <div className="p-20 text-center bg-[var(--color-surface-card)] rounded-2xl border border-dashed border-[var(--color-surface-border)]">
-                                        <span className="material-symbols-outlined text-4xl mb-4 text-[var(--color-text-muted)]">bookmark_add</span>
-                                        <h3 className="font-bold text-lg mb-1">{t('social.settings.presets.empty.title')}</h3>
-                                        <p className="text-[var(--color-text-muted)] mb-6">{t('social.settings.presets.empty.subtitle')}</p>
-                                        <Button variant="secondary" onClick={() => setShowPresetManager(true)}>{t('social.settings.presets.empty.action')}</Button>
-                                    </div>
-                                ) : (
+                                <div className="p-20 text-center bg-[var(--color-surface-card)] rounded-2xl border border-dashed border-[var(--color-surface-border)]">
+                                    <span className="material-symbols-outlined text-4xl mb-4 text-[var(--color-text-muted)]">bookmark_add</span>
+                                    <h3 className="font-bold text-lg mb-1">{t('social.settings.presets.empty.title')}</h3>
+                                    <p className="text-[var(--color-text-muted)] mb-6">{t('social.settings.presets.empty.subtitle')}</p>
+                                    <Button variant="secondary" onClick={() => setShowPresetManager(true)}>{t('social.settings.presets.empty.action')}</Button>
+                                </div>
+                            ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
                                     {presets.map(preset => (
                                         <div key={preset.id} className="group bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 hover:border-[var(--color-primary)]/50 transition-all flex flex-col h-full shadow-sm hover:shadow-xl">
@@ -417,6 +440,17 @@ export const SocialSettings = () => {
             <CaptionPresetManager
                 isOpen={showPresetManager}
                 onClose={() => setShowPresetManager(false)}
+            />
+
+            <TwoFactorChallengeModal
+                isOpen={showMfaModal}
+                onClose={() => {
+                    setShowMfaModal(false);
+                    setMfaResolver(null);
+                    setPendingPlatform(null);
+                }}
+                resolver={mfaResolver}
+                onSuccess={handleMfaSuccess}
             />
         </div>
     );

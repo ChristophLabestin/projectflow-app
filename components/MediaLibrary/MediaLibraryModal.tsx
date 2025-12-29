@@ -691,6 +691,17 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
+                                                        navigator.clipboard.writeText(asset.url);
+                                                        showSuccess("Link copied to clipboard");
+                                                    }}
+                                                    className="size-8 rounded-lg bg-white shadow-lg text-zinc-600 hover:text-[var(--color-primary)] flex items-center justify-center transition-colors"
+                                                    title="Copy Link"
+                                                >
+                                                    <span className="material-symbols-outlined text-[18px]">link</span>
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
                                                         setEditingImage(asset);
                                                     }}
                                                     className="size-8 rounded-lg bg-white shadow-lg text-zinc-600 hover:text-[var(--color-primary)] flex items-center justify-center transition-colors"
@@ -924,7 +935,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                             </button>
                                         </div>
                                         <div className="flex-1 overflow-y-auto p-8 flex items-center justify-center">
-                                            <div className="grid grid-cols-2 gap-8 w-full max-w-4xl">
+                                            <div className={`grid gap-8 w-full max-w-4xl ${generatedImages.length === 1 ? 'grid-cols-1 max-w-xl' : 'grid-cols-2'}`}>
                                                 {generatedImages.map((url, i) => (
                                                     <div key={i} className="group relative aspect-square rounded-2xl overflow-hidden shadow-2xl bg-zinc-900 ring-4 ring-white dark:ring-zinc-800 animate-in zoom-in-95 duration-500" style={{ animationDelay: `${i * 100}ms` }}>
                                                         <img src={url} alt="Generated" className="w-full h-full object-cover" />

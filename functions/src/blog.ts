@@ -44,9 +44,14 @@ export interface BlogPost {
 export const createBlogPost = functions.region(REGION).https.onRequest((req, res) => {
     return cors({ origin: CORS_ORIGIN })(req, res, async () => {
 
-        // Extract ID from path if present (e.g. /my-slug)
-        // req.path includes the leading slash
-        const pathId = req.path.split('/')[1];
+        // Extract ID from path if present (e.g. /createBlogPost/my-slug)
+        // We filter out empty segments and ignore 'createBlogPost' if it's the only segment.
+        const segments = req.path.split('/').filter(s => s.length > 0);
+        const lastSegment = segments[segments.length - 1];
+
+        // If the last segment is the function name itself, it means no ID was provided.
+        // Or if explicit 'createBlogPost' check is needed:
+        const pathId = (lastSegment && lastSegment !== 'createBlogPost') ? lastSegment : undefined;
 
         // 1. DELETE
         if (req.method === 'DELETE') {

@@ -32,7 +32,7 @@ import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
 import { registerPasskey, shouldAutoPrompt, setAutoPrompt } from '../services/passkeyService';
 import { Checkbox } from '../components/ui/Checkbox';
 
-type SettingsTab = 'account' | 'preferences' | 'security' | 'general' | 'billing' | 'email' | 'integrations';
+type SettingsTab = 'account' | 'preferences' | 'security' | 'general' | 'billing' | 'email' | 'integrations' | 'prebeta';
 
 import { DateFormat, useLanguage } from '../context/LanguageContext';
 
@@ -642,16 +642,16 @@ export const Settings = () => {
                          * For production, we will use the system key and enforce billing limits.
                          */}
                         <div>
-                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">Pre-Beta Settings</h2>
-                            <p className="text-[var(--color-text-muted)] text-sm">Configure your personal AI settings for the pre-beta period.</p>
+                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">{t('settings.prebeta.title')}</h2>
+                            <p className="text-[var(--color-text-muted)] text-sm">{t('settings.prebeta.subtitle')}</p>
                         </div>
 
                         <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-sm">
                             <div className="flex items-start gap-3">
                                 <span className="material-symbols-outlined text-xl shrink-0 mt-0.5">warning</span>
                                 <div className="space-y-1">
-                                    <p className="font-bold">Pre-Beta Notice</p>
-                                    <p>During this phase, we do not provide a system-wide AI key. You must use your own Gemini API Key. Accounts are subject to reset.</p>
+                                    <p className="font-bold">{t('settings.prebeta.notice.title')}</p>
+                                    <p>{t('settings.prebeta.notice.body')}</p>
                                 </div>
                             </div>
                         </div>
@@ -659,28 +659,31 @@ export const Settings = () => {
                         <Card className="p-6 space-y-6 max-w-2xl">
                             <div className="space-y-4">
                                 <Input
-                                    label="Gemini API Key"
+                                    label={t('settings.prebeta.apiKey.label')}
                                     type="password"
                                     value={geminiApiKey}
                                     onChange={(e) => setGeminiApiKey(e.target.value)}
-                                    placeholder="Entries start with AIza..."
+                                    placeholder={t('settings.prebeta.apiKey.placeholder')}
                                 />
                                 <p className="text-xs text-[var(--color-text-muted)]">
-                                    Your key is stored securely in your user profile.
-                                    Get a key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-[var(--color-primary)] hover:underline">Google AI Studio</a>.
+                                    {t('settings.prebeta.apiKey.helperPrefix')}{' '}
+                                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-[var(--color-primary)] hover:underline">
+                                        {t('settings.prebeta.apiKey.helperLink')}
+                                    </a>
+                                    {t('settings.prebeta.apiKey.helperSuffix')}
                                 </p>
 
                                 <div className="pt-2"></div>
 
                                 <Input
-                                    label="Monthly Token Limit"
+                                    label={t('settings.prebeta.tokenLimit.label')}
                                     type="number"
                                     value={geminiTokenLimit}
                                     onChange={(e) => setGeminiTokenLimit(parseInt(e.target.value) || 0)}
-                                    placeholder="10000000"
+                                    placeholder={t('settings.prebeta.tokenLimit.placeholder')}
                                 />
                                 <p className="text-xs text-[var(--color-text-muted)]">
-                                    Set your own safety limit to control usage. Default is 10M tokens.
+                                    {t('settings.prebeta.tokenLimit.helper')}
                                 </p>
                             </div>
 
@@ -1374,9 +1377,9 @@ export const Settings = () => {
 
                     {/* PRE-BETA Section */}
                     <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-subtle)] px-3 pt-2 pb-2">
-                        Pre-Beta
+                        {t('settings.sections.prebeta')}
                     </div>
-                    <NavItem id="prebeta" label="Pre-Beta Config" icon="science" />
+                    <NavItem id="prebeta" label={t('settings.tabs.prebeta')} icon="science" />
 
                     {/* Personal Settings */}
                     <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-subtle)] px-3 pt-2 pb-2">

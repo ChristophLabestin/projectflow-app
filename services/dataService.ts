@@ -25,7 +25,7 @@ import {
     deleteField
 } from "firebase/firestore";
 import { httpsCallable } from "firebase/functions";
-import { updateProfile, linkWithPopup } from "firebase/auth";
+import { updateProfile, linkWithPopup, reauthenticateWithPopup } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, auth, functions, GithubAuthProvider, FacebookAuthProvider } from "./firebase";
 import type { Task, Idea, Activity, Project, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, EmailComponent, GeminiReport, Milestone, AIUsage, Member, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy } from '../types';
@@ -3843,13 +3843,23 @@ export const linkWithFacebook = async (): Promise<{ accessToken: string, user: a
         return { accessToken: credential.accessToken, user: result.user };
     } catch (error: any) {
         console.error("Facebook link error", error);
-        if (error.code === 'auth/credential-already-in-use') {
-            // If already linked, we might still want to get the token. 
-            // Often requires re-login or different flow if we just want token.
-            // For now, treat as error or potentially try signInWithPopup if strictly separation is needed.
-            // But usually this means another account has it.
-            throw new Error("This Facebook account is already linked to another user.");
+
+        // Case 1: The provider is ALREADY linked to the CURRENT user.
+        // We just need to re-authenticate to get a fresh token.
+        if (error.code === 'auth/provider-already-linked') {
+            const reauthResult = await reauthenticateWithPopup(user, provider);
+            const credential = FacebookAuthProvider.credentialFromResult(reauthResult);
+            if (!credential?.accessToken) {
+                throw new Error("Failed to refresh Facebook access token");
+            }
+            return { accessToken: credential.accessToken, user: reauthResult.user };
         }
+
+        // Case 2: The Facebook account is already linked to ANOTHER Firebase user.
+        if (error.code === 'auth/credential-already-in-use') {
+            throw new Error("This Facebook account is already connected to another user in the system.");
+        }
+
         if (error.code === 'auth/popup-closed-by-user') {
             throw new Error("Authentication cancelled.");
         }
@@ -3885,24 +3895,54 @@ export const connectIntegration = async (projectId: string, platform: SocialPlat
             // Fetch detailed profile info to store
             const profile = await getInstagramProfile(igBusinessId, accessToken);
 
-            await addDoc(projectSubCollection(tenantId, projectId, SOCIAL_INTEGRATIONS), {
-                projectId,
-                platform: 'Instagram', // Force Instagram if we found IG account, even if user clicked Facebook initially? 
-                // The prompt specifically asked for Instagram.
-                username: profile.username || selectedAccount.name,
-                authUserId: auth.currentUser?.uid,
-                accessToken, // Note: Long-lived tokens are better, this is short-lived usually.
-                instagramBusinessAccountId: igBusinessId,
-                facebookPageId: selectedAccount.id,
-                profilePictureUrl: profile.profile_picture_url,
-                status: 'Connected',
-                connectedAt: new Date().toISOString()
+            // Check if already connected
+            const existingIntegration = await new Promise<SocialIntegration | null>(resolve => {
+                const q = query(projectSubCollection(tenantId, projectId, SOCIAL_INTEGRATIONS), where("platform", "==", "Instagram"));
+                const unsubscribe = onSnapshot(q, (snapshot) => {
+                    if (!snapshot.empty) {
+                        unsubscribe();
+                        resolve({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as SocialIntegration);
+                    } else {
+                        unsubscribe();
+                        resolve(null);
+                    }
+                });
             });
+
+            if (existingIntegration) {
+                // Update existing
+                await updateDoc(doc(projectSubCollection(tenantId, projectId, SOCIAL_INTEGRATIONS), existingIntegration.id), {
+                    username: profile.username || selectedAccount.name,
+                    accessToken,
+                    instagramBusinessAccountId: igBusinessId,
+                    facebookPageId: selectedAccount.id,
+                    profilePictureUrl: profile.profile_picture_url,
+                    status: 'Connected',
+                    connectedAt: new Date().toISOString()
+                });
+            } else {
+                await addDoc(projectSubCollection(tenantId, projectId, SOCIAL_INTEGRATIONS), {
+                    projectId,
+                    platform: 'Instagram',
+                    username: profile.username || selectedAccount.name,
+                    authUserId: auth.currentUser?.uid,
+                    accessToken,
+                    instagramBusinessAccountId: igBusinessId,
+                    facebookPageId: selectedAccount.id,
+                    profilePictureUrl: profile.profile_picture_url,
+                    status: 'Connected',
+                    connectedAt: new Date().toISOString()
+                });
+            }
             return;
         }
     } catch (error) {
-        console.warn("Social Auth failed, falling back to mock integration:", error);
+        console.error("Social Auth failed:", error);
+        throw error;
     }
+
+    // Fallback only for non-meta platforms or if explicitly requested (not implemented here)
+    if (['Facebook', 'Instagram'].includes(platform)) return;
 
     // Mock implementation for others OR fallback
     const mockUsernames: Record<string, string> = {

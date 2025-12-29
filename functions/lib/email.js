@@ -42,13 +42,12 @@ exports.testSMTPConnection = functions.region(REGION).https.onCall(async (data, 
 });
 // Helper to create a reuseable transporter
 const createTransporter = () => {
-    var _a;
     // Ideally use functions.config() but for now use user provided as fallback or env
     const host = process.env.SMTP_HOST || 'smtp.gmail.com';
     const port = parseInt(process.env.SMTP_PORT || '587');
     const user = process.env.SMTP_USER || 'christoph@christophlabestin.de';
     // IMPORTANT: User must set this env var or config
-    const pass = process.env.SMTP_PASS || ((_a = functions.config().smtp) === null || _a === void 0 ? void 0 : _a.pass);
+    const pass = process.env.SMTP_PASS;
     if (!pass) {
         console.warn("SMTP Password not set! Emails will fail.");
     }

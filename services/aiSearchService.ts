@@ -315,7 +315,7 @@ export const generateAIImage = async (prompt: string): Promise<string[]> => {
             model: "imagen-4.0-generate-001",
             prompt: prompt,
             config: {
-                numberOfImages: 4,
+                numberOfImages: 1,
                 // aspectRatio: "4:3", // Optional, if needed
             }
         });
