@@ -74,10 +74,10 @@ export const requestWaitlist = functions.region(REGION).https.onRequest((req, re
             const subject = 'Confirm your email'; // Updated to match design attached
 
             const html = getSystemEmailTemplate(
-                'Confirm your email',
-                'We received a request to create a new account. Click the button below to verify your identity and access your workspace.',
+                'Secure your spot on the Waitlist',
+                'Thanks for your interest in ProjectFlow. We received a request to join the waitlist. Please confirm your email address below to secure your spot.',
                 link,
-                'Confirm Email Address'
+                'Join Waitlist'
             );
 
             await sendEmail(email, subject, html);

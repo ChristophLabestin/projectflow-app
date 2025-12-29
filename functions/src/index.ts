@@ -7,6 +7,7 @@ import { createBlogPost, getBlogPosts } from './blog';
 import { onNotificationCreated } from './notifications';
 import { sendInvitation } from './invitations';
 import { requestWaitlist, confirmWaitlist } from './waitlist';
+import { requestNewsletterSignup, confirmNewsletterSignup } from './newsletter-public';
 
 export {
     testSMTPConnection,
@@ -19,7 +20,9 @@ export {
     onNotificationCreated,
     sendInvitation,
     requestWaitlist,
-    confirmWaitlist
+    confirmWaitlist,
+    requestNewsletterSignup,
+    confirmNewsletterSignup
 };
 export * from './passkeys';
 

@@ -61,7 +61,7 @@ exports.requestWaitlist = functions.region(REGION).https.onRequest((req, res) =>
             // 3. Send Email
             const link = `https://getprojectflow.com/waitlist-confirm?code=${code}`;
             const subject = 'Confirm your email'; // Updated to match design attached
-            const html = (0, email_1.getSystemEmailTemplate)('Confirm your email', 'We received a request to create a new account. Click the button below to verify your identity and access your workspace.', link, 'Confirm Email Address');
+            const html = (0, email_1.getSystemEmailTemplate)('Secure your spot on the Waitlist', 'Thanks for your interest in ProjectFlow. We received a request to join the waitlist. Please confirm your email address below to secure your spot.', link, 'Join Waitlist');
             await (0, email_1.sendEmail)(email, subject, html);
             res.status(200).json({ success: true, message: 'Confirmation email sent' });
         }

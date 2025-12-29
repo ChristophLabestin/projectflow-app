@@ -94,8 +94,8 @@ export const sendInvitation = functions.region(REGION).https.onCall(async (data,
         const subject = `You've been invited to join ${type === 'workspace' ? 'a Workspace' : 'a Project'} on ProjectFlow`;
 
         const html = getSystemEmailTemplate(
-            "You've been invited!",
-            `You have been invited to join the <strong>${type}</strong>.<br>Role: ${role || 'Member'}`,
+            "You've been invited to ProjectFlow",
+            `You have been invited to join the <strong>${type}</strong> as a <strong>${role || 'Member'}</strong>. Click the button below to accept the invitation and get started.`,
             inviteUrl,
             'Accept Invitation'
         );

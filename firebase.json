@@ -94,6 +94,21 @@
         "region": "europe-west3"
       },
       {
+        "source": "/api/confirmWaitlist",
+        "function": "confirmWaitlist",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/api/requestNewsletterSignup",
+        "function": "requestNewsletterSignup",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/api/confirmNewsletterSignup",
+        "function": "confirmNewsletterSignup",
+        "region": "europe-west3"
+      },
+      {
         "source": "/api/**",
         "function": "api",
         "region": "europe-west3"
