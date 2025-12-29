@@ -31,13 +31,13 @@ try {
   if (location.hostname === 'localhost') {
     connectFunctionsEmulator(functions, 'localhost', 5001);
     console.log('Connected to Functions Emulator');
-
-  } catch (error) {
-    console.error("Firebase initialization error:", error);
-    // Throw error so it is visible in console if app fails to load
-    throw error;
   }
+} catch (error) {
+  console.error("Firebase initialization error:", error);
+  // Throw error so it is visible in console if app fails to load
+  throw error;
+}
 
-  import { GithubAuthProvider, FacebookAuthProvider } from "firebase/auth";
+import { GithubAuthProvider, FacebookAuthProvider } from "firebase/auth";
 
-  export { auth, db, storage, functions, GithubAuthProvider, FacebookAuthProvider };
+export { auth, db, storage, functions, GithubAuthProvider, FacebookAuthProvider };
