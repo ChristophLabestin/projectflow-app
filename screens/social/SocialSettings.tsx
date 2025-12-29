@@ -18,7 +18,7 @@ import { CaptionPresetManager } from './components/CaptionPresetManager';
 import { PlatformIcon } from './components/PlatformIcon';
 import { format } from 'date-fns';
 import { useLanguage } from '../../context/LanguageContext';
-import { getMultiFactorResolver, MultiFactorResolver } from 'firebase/auth';
+import { getMultiFactorResolver, MultiFactorResolver, unlink, FacebookAuthProvider } from 'firebase/auth';
 import { auth } from '../../services/firebase';
 import { TwoFactorChallengeModal } from '../../components/modals/TwoFactorChallengeModal';
 
@@ -70,11 +70,23 @@ export const SocialSettings = () => {
             showSuccess(t('social.settings.accounts.toast.connected').replace('{platform}', platform));
         } catch (error: any) {
             console.error("Connection error:", error);
+            console.log("Error code:", error.code);
+            console.log("Error customData:", error.customData);
+            console.log("Auth instance:", auth);
+
             if (error.code === 'auth/multi-factor-auth-required') {
-                const resolver = getMultiFactorResolver(auth, error);
-                setMfaResolver(resolver);
-                setPendingPlatform(platform);
-                setShowMfaModal(true);
+                try {
+                    const resolver = getMultiFactorResolver(auth, error);
+                    console.log("Resolver created:", resolver);
+                    setMfaResolver(resolver);
+                    setPendingPlatform(platform);
+                    setShowMfaModal(true);
+                } catch (resolverError) {
+                    console.error("Failed to get multi-factor resolver:", resolverError);
+                    showError("MFA Error: " + (resolverError as Error).message);
+                }
+            } else if (error.code === 'auth/credential-already-in-use') {
+                showError("This Facebook account is already connected to another ProjectFlow user. Please log in with Facebook to access that account, or use a different Facebook account.");
             } else {
                 showError(error.message || t('social.settings.accounts.toast.failedConnect').replace('{platform}', platform));
             }
@@ -102,6 +114,28 @@ export const SocialSettings = () => {
                 showToast(t('social.settings.accounts.toast.disconnected'), "info");
             } catch (error) {
                 showError(t('social.settings.accounts.toast.disconnectError'));
+            }
+        }
+    };
+
+    const handleUnlinkProvider = async (providerId: string) => {
+        if (!auth.currentUser) return;
+        const confirmed = await confirm(
+            "Unlink Authentication?",
+            "This will remove the Facebook/Instagram link from your Firebase account. Use this only if you are stuck."
+        );
+        if (confirmed) {
+            try {
+                // Find the provider object
+                const provider = auth.currentUser.providerData.find(p => p.providerId === providerId);
+                // We actually need to unlink by providerId string
+                await unlink(auth.currentUser, providerId);
+                showSuccess("Unlinked successfully. You can now try connecting again.");
+                // Force refresh
+                window.location.reload();
+            } catch (error: any) {
+                console.error("Unlink failed", error);
+                showError("Unlink failed: " + error.message);
             }
         }
     };
@@ -155,6 +189,12 @@ export const SocialSettings = () => {
                                 const integration = integrations.find(i => i.platform === platform.id);
                                 const isConnected = !!integration;
 
+                                // Check for Auth/DB mismatch for Facebook/Instagram
+                                const isAuthLinked = (platform.id === 'Facebook' || platform.id === 'Instagram') &&
+                                    auth.currentUser?.providerData.some(p => p.providerId === 'facebook.com');
+
+                                const needsSync = !isConnected && isAuthLinked;
+
                                 return (
                                     <div key={platform.id} className="group relative overflow-hidden bg-[var(--color-surface-card)] p-6 rounded-2xl border border-[var(--color-surface-border)] hover:border-[var(--color-primary)]/50 transition-all">
                                         <div className={`absolute top-0 right-0 w-32 h-32 opacity-5 bg-gradient-to-br ${platform.color} rounded-full -mr-16 -mt-16 group-hover:scale-125 transition-transform`} />
@@ -178,6 +218,16 @@ export const SocialSettings = () => {
                                                                     .replace('{date}', format(new Date(integration.connectedAt), dateFormat, { locale: dateLocale }))}
                                                             </div>
                                                         </div>
+                                                    ) : needsSync ? (
+                                                        <div className="space-y-1 mt-1">
+                                                            <div className="flex items-center gap-1.5 text-xs font-bold text-amber-500">
+                                                                <span className="material-symbols-outlined text-[14px]">sync_problem</span>
+                                                                Auth Connected (Setup Incomplete)
+                                                            </div>
+                                                            <p className="text-[10px] text-[var(--color-text-muted)]">
+                                                                Facebook is linked to your account, but we missed the final setup step.
+                                                            </p>
+                                                        </div>
                                                     ) : (
                                                         <p className="text-xs text-[var(--color-text-muted)] font-medium mt-1">{t('social.settings.accounts.notConnected')}</p>
                                                     )}
@@ -193,6 +243,23 @@ export const SocialSettings = () => {
                                                 >
                                                     <span className="material-symbols-outlined text-[18px]">logout</span>
                                                 </Button>
+                                            ) : needsSync ? (
+                                                <div className="flex flex-col gap-2">
+                                                    <Button
+                                                        variant="primary"
+                                                        size="sm"
+                                                        onClick={() => handleConnect(platform.id)}
+                                                        isLoading={connecting === platform.id}
+                                                    >
+                                                        Complete Setup
+                                                    </Button>
+                                                    <button
+                                                        onClick={() => handleUnlinkProvider('facebook.com')}
+                                                        className="text-[10px] text-rose-500 hover:underline text-right"
+                                                    >
+                                                        Force Unlink
+                                                    </button>
+                                                </div>
                                             ) : (
                                                 <Button
                                                     variant="secondary"

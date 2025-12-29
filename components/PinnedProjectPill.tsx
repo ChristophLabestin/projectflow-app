@@ -96,6 +96,13 @@ export const PinnedProjectPill = () => {
     if (isLoading || !pinnedProject) return null;
 
     const modules = pinnedProject.modules || [];
+    const showIssues = modules.includes('issues') || modules.length === 0;
+    const showMilestones = modules.includes('milestones') || modules.length === 0;
+    const stats = [
+        { id: 'tasks', label: t('nav.tasks'), value: tasks.length, icon: 'task_alt' },
+        ...(showIssues ? [{ id: 'issues', label: t('nav.issues'), value: issues.length, icon: 'bug_report' }] : []),
+        ...(showMilestones ? [{ id: 'milestones', label: t('nav.milestones'), value: milestones.length, icon: 'flag' }] : []),
+    ];
 
     const handleAction = (action: () => void) => {
         setIsOpen(false);
@@ -156,63 +163,100 @@ export const PinnedProjectPill = () => {
             {isOpen && createPortal(
                 <div
                     id="pinned-project-dropdown"
-                    className="fixed z-[100] w-80 rounded-2xl shadow-2xl ring-1 ring-black/10 overflow-hidden origin-top animate-in fade-in zoom-in-95 duration-200"
+                    className="fixed z-[100] w-[360px] rounded-2xl shadow-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] overflow-hidden origin-top animate-in fade-in zoom-in-95 duration-200"
                     style={{
                         top: dropdownCoords.top,
                         left: dropdownCoords.left,
                         transform: 'translateX(-50%)',
-                        // Glass Styles
-                        backgroundColor: 'rgba(15, 23, 42, 0.8)',
-                        backdropFilter: 'saturate(180%) blur(25px)',
-                        WebkitBackdropFilter: 'saturate(180%) blur(25px)',
-                        border: '1px solid rgba(255, 255, 255, 0.1)'
                     }}
                 >
-                    {/* Header with Health Score */}
-                    <div className="p-4 border-b border-slate-100 dark:border-white/5 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
-                            <span className="material-symbols-outlined text-6xl">analytics</span>
+                    {/* Header */}
+                    <div className="relative px-5 py-4 border-b border-[var(--color-surface-border)] bg-gradient-to-r from-[var(--color-surface-card)] to-[var(--color-surface-bg)] overflow-hidden">
+                        <div className="absolute -top-10 -right-8 opacity-[0.08] pointer-events-none">
+                            <span className="material-symbols-outlined text-[140px]">insights</span>
                         </div>
 
-                        <div className="relative z-10 flex items-start justify-between gap-4 mb-3">
-                            <div>
-                                <h4 className="font-bold text-lg text-slate-900 dark:text-white line-clamp-1">{pinnedProject.title}</h4>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <Badge status={health?.status} />
-                                    <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider">
-                                        {health ? `${t(`trend.${health.trend}`)} ${t('pinned.trend')}` : t('pinned.loading')}
-                                    </span>
+                        <div className="relative z-10 flex items-start gap-4">
+                            <div className={`
+                                size-11 rounded-2xl flex items-center justify-center overflow-hidden shrink-0 border border-[var(--color-surface-border)]
+                                ${pinnedProject.squareIcon ? 'bg-[var(--color-surface-paper)]' : 'bg-gradient-to-br from-indigo-500 to-purple-600'}
+                                font-bold text-white text-sm
+                            `}>
+                                {pinnedProject.squareIcon ? (
+                                    <img src={pinnedProject.squareIcon} alt="" className="w-full h-full object-cover" />
+                                ) : (
+                                    <span>{pinnedProject.title.charAt(0).toUpperCase()}</span>
+                                )}
+                            </div>
+
+                            <div className="min-w-0">
+                                <div className="text-[10px] uppercase tracking-[0.3em] text-[var(--color-text-subtle)] font-bold">
+                                    {t('pinned.pinnedProject', 'Pinned Project')}
+                                </div>
+                                <h4 className="text-sm font-bold text-[var(--color-text-main)] line-clamp-1">{pinnedProject.title}</h4>
+                                <div className="text-[11px] text-[var(--color-text-muted)]">
+                                    {health ? `${health.score} ${t('pinned.healthScore')}` : t('pinned.loading')}
                                 </div>
                             </div>
-                            <div className="flex flex-col items-center justify-center size-14 rounded-full border-4 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm shrink-0">
+
+                            <div className="ml-auto flex flex-col items-center justify-center size-14 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-paper)] shadow-sm shrink-0">
                                 <span className={`text-lg font-black ${getHealthColor(health?.status)}`}>{health?.score || 0}</span>
-                                <span className="text-[8px] font-bold text-slate-400 uppercase">{t('pinned.score')}</span>
+                                <span className="text-[8px] font-bold text-[var(--color-text-subtle)] uppercase">{t('pinned.score')}</span>
                             </div>
                         </div>
 
-                        {/* Health Factors */}
-                        {health && health.factors.length > 0 && (
-                            <div className="space-y-2 mt-4">
+                        <div className="mt-3 flex items-center gap-2">
+                            <Badge status={health?.status} />
+                            <span className="text-[10px] text-[var(--color-text-muted)] font-medium uppercase tracking-wider">
+                                {health ? `${t(`trend.${health.trend}`)} ${t('pinned.trend')}` : t('pinned.loading')}
+                            </span>
+                        </div>
+
+                        <div className={`mt-4 grid gap-2 ${stats.length > 2 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                            {stats.map(stat => (
+                                <div key={stat.id} className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-paper)] px-3 py-2">
+                                    <div className="flex items-center gap-2 text-[var(--color-text-subtle)] text-[11px] font-medium">
+                                        <span className="material-symbols-outlined text-[14px]">{stat.icon}</span>
+                                        <span className="uppercase tracking-wider">{stat.label}</span>
+                                    </div>
+                                    <div className="text-lg font-black text-[var(--color-text-main)] leading-tight mt-1">
+                                        {stat.value}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Health Factors */}
+                    <div className="px-5 py-4 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-paper)]">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--color-text-subtle)]">
+                            {t('pinned.healthScore')}
+                        </div>
+                        {health && health.factors.length > 0 ? (
+                            <div className="space-y-2 mt-3">
                                 {health.factors.slice(0, 2).map(factor => {
                                     const { label, description } = getHealthFactorText(factor, t);
                                     return (
-                                        <div key={factor.id} className="flex gap-2 items-start bg-slate-50 dark:bg-white/5 p-2 rounded-lg">
-                                            <div className={`mt-0.5 size-1.5 rounded-full shrink-0 ${factor.type === 'positive' ? 'bg-emerald-500' : factor.type === 'negative' ? 'bg-rose-500' : 'bg-slate-400'}`} />
-                                            <p className="text-[10px] text-slate-600 dark:text-slate-300 leading-tight">
-                                                <span className="font-bold text-slate-900 dark:text-white">{label}:</span> {description}
+                                        <div key={factor.id} className="flex gap-2 items-start bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] p-3 rounded-xl">
+                                            <div className={`mt-1 size-2 rounded-full shrink-0 ${factor.type === 'positive' ? 'bg-emerald-500' : factor.type === 'negative' ? 'bg-rose-500' : 'bg-slate-400'}`} />
+                                            <p className="text-[11px] text-[var(--color-text-muted)] leading-tight">
+                                                <span className="font-bold text-[var(--color-text-main)]">{label}:</span> {description}
                                             </p>
                                         </div>
                                     );
                                 })}
                             </div>
+                        ) : (
+                            <div className="mt-3 text-xs text-[var(--color-text-muted)]">{t('pinned.loading')}</div>
                         )}
                     </div>
 
                     {/* Quick Actions Grid */}
-                    <div className="p-2 grid grid-cols-3 gap-1 bg-slate-50/50 dark:bg-black/20">
+                    <div className="px-4 py-3 bg-[var(--color-surface-bg)]">
+                        <div className="grid grid-cols-3 gap-2">
                         <button
                             onClick={() => handleAction(() => openTaskCreateModal(pinnedProject.id))}
-                            className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl hover:bg-white dark:hover:bg-white/10 hover:shadow-sm transition-all group/btn"
+                            className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl border border-transparent bg-[var(--color-surface-card)] hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-surface-border)] transition-all group/btn"
                         >
                             <div className="size-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover/btn:scale-110 transition-transform">
                                 <span className="material-symbols-outlined text-[18px]">add_task</span>
@@ -223,7 +267,7 @@ export const PinnedProjectPill = () => {
                         {(modules.includes('ideas') || modules.length === 0) && (
                             <button
                                 onClick={() => handleAction(() => openIdeaCreateModal(pinnedProject.id))}
-                                className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl hover:bg-white dark:hover:bg-white/10 hover:shadow-sm transition-all group/btn"
+                                className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl border border-transparent bg-[var(--color-surface-card)] hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-surface-border)] transition-all group/btn"
                             >
                                 <div className="size-8 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover/btn:scale-110 transition-transform">
                                     <span className="material-symbols-outlined text-[18px]">lightbulb</span>
@@ -235,7 +279,7 @@ export const PinnedProjectPill = () => {
                         {(modules.includes('issues') || modules.length === 0) && (
                             <button
                                 onClick={() => handleAction(() => openIssueCreateModal(pinnedProject.id))}
-                                className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl hover:bg-white dark:hover:bg-white/10 hover:shadow-sm transition-all group/btn"
+                                className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl border border-transparent bg-[var(--color-surface-card)] hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-surface-border)] transition-all group/btn"
                             >
                                 <div className="size-8 rounded-full bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center group-hover/btn:scale-110 transition-transform">
                                     <span className="material-symbols-outlined text-[18px]">bug_report</span>
@@ -243,20 +287,21 @@ export const PinnedProjectPill = () => {
                                 <span className="text-[10px] font-semibold text-slate-600 dark:text-slate-400">{t('quickActions.newIssue')}</span>
                             </button>
                         )}
+                        </div>
                     </div>
 
                     {/* Navigation Footer */}
-                    <div className="p-3 border-t border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-black/40 flex gap-2">
+                    <div className="p-3 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-card)] flex gap-2">
                         <button
                             onClick={() => handleAction(() => navigate(`/project/${pinnedProject.id}`))}
-                            className="flex-1 h-8 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-indigo-500 hover:text-indigo-500 text-xs font-semibold text-slate-600 dark:text-slate-300 transition-all shadow-sm flex items-center justify-center gap-2"
+                            className="flex-1 h-8 rounded-lg bg-[var(--color-surface-paper)] border border-[var(--color-surface-border)] hover:border-indigo-500 hover:text-indigo-500 text-xs font-semibold text-[var(--color-text-muted)] transition-all shadow-sm flex items-center justify-center gap-2"
                         >
                             <span className="material-symbols-outlined text-[16px]">dashboard</span>
                             {t('quickActions.overview')}
                         </button>
                         <button
                             onClick={() => handleAction(() => navigate(`/project/${pinnedProject.id}/tasks`))}
-                            className="flex-1 h-8 rounded-lg bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-indigo-500 hover:text-indigo-500 text-xs font-semibold text-slate-600 dark:text-slate-300 transition-all shadow-sm flex items-center justify-center gap-2"
+                            className="flex-1 h-8 rounded-lg bg-[var(--color-surface-paper)] border border-[var(--color-surface-border)] hover:border-indigo-500 hover:text-indigo-500 text-xs font-semibold text-[var(--color-text-muted)] transition-all shadow-sm flex items-center justify-center gap-2"
                         >
                             <span className="material-symbols-outlined text-[16px]">list_alt</span>
                             {t('quickActions.tasks')}
