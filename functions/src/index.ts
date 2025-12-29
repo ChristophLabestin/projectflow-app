@@ -6,6 +6,7 @@ import { editImageWithVertexAI } from './vertexAI';
 import { createBlogPost, getBlogPosts } from './blog';
 import { onNotificationCreated } from './notifications';
 import { sendInvitation } from './invitations';
+import { requestWaitlist, confirmWaitlist } from './waitlist';
 
 export {
     testSMTPConnection,
@@ -16,6 +17,10 @@ export {
     createBlogPost,
     getBlogPosts,
     onNotificationCreated,
-    sendInvitation
+    sendInvitation,
+    requestWaitlist,
+    confirmWaitlist
 };
 export * from './passkeys';
+
+

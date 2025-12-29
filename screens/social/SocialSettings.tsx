@@ -71,7 +71,8 @@ export const SocialSettings = () => {
         } catch (error: any) {
             console.error("Connection error:", error);
             console.log("Error code:", error.code);
-            console.log("Error customData:", error.customData);
+            console.log("Error full:", JSON.stringify(error, null, 2));
+            console.log("Error customData details:", JSON.stringify(error.customData, null, 2));
             console.log("Auth instance:", auth);
 
             if (error.code === 'auth/multi-factor-auth-required') {

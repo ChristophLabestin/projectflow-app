@@ -74,6 +74,26 @@
         "region": "europe-west3"
       },
       {
+        "source": "/requestWaitlist",
+        "function": "requestWaitlist",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/confirmWaitlist",
+        "function": "confirmWaitlist",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/api/requestWaitlist",
+        "function": "requestWaitlist",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/api/confirmWaitlist",
+        "function": "confirmWaitlist",
+        "region": "europe-west3"
+      },
+      {
         "source": "/api/**",
         "function": "api",
         "region": "europe-west3"
