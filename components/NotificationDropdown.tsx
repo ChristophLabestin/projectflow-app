@@ -67,7 +67,7 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
     const handleNotificationClick = async (notification: Notification) => {
         // Mark as read
         if (!notification.read) {
-            await markNotificationAsRead(notification.id);
+            await markNotificationAsRead(notification.id, notification.tenantId);
         }
 
         // Navigate to the relevant item
@@ -256,7 +256,7 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                                         role="button"
                                         tabIndex={0}
                                         onClick={() => handleNotificationClick(notification)}
-                                        onMouseEnter={() => !notification.read && markNotificationAsRead(notification.id)}
+                                        onMouseEnter={() => !notification.read && markNotificationAsRead(notification.id, notification.tenantId)}
                                         className={`
                                             group relative mx-2 mb-1 px-3 py-3 rounded-xl cursor-pointer transition-all duration-200
                                             ${!notification.read

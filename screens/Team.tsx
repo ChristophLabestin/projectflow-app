@@ -20,7 +20,8 @@ import {
     getWorkspaceInviteLinks,
     revokeWorkspaceInviteLink,
     getProjectInviteLinks,
-    revokeProjectInviteLink
+    revokeProjectInviteLink,
+    sendTeamInvitation
 } from '../services/dataService';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -884,6 +885,9 @@ export const Team = () => {
                 onGenerateLink={(role, maxUses, expiresIn) =>
                     generateWorkspaceInviteLink(role as WorkspaceRole, maxUses, expiresIn, tenantId)
                 }
+                onSendEmail={async (email, role) => {
+                    await sendTeamInvitation(email, 'workspace', tenantId, role, tenantId);
+                }}
                 projectTitle={t('team.header.workspace')}
                 isWorkspace={true}
             />

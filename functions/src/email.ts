@@ -42,3 +42,50 @@ export const testSMTPConnection = functions.region(REGION).https.onCall(async (d
         };
     }
 });
+
+// Helper to create a reuseable transporter
+const createTransporter = () => {
+    // Ideally use functions.config() but for now use user provided as fallback or env
+    const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+    const port = parseInt(process.env.SMTP_PORT || '587');
+    const user = process.env.SMTP_USER || 'christoph@christophlabestin.de';
+    // IMPORTANT: User must set this env var or config
+    const pass = process.env.SMTP_PASS || functions.config().smtp?.pass || 'nadm vtnn pgsj kxhr';
+
+    if (!pass) {
+        console.warn("SMTP Password not set! Emails will fail.");
+    }
+
+    return nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465, // true for 465, false for other ports
+        auth: {
+            user,
+            pass
+        },
+        tls: {
+            rejectUnauthorized: false
+        }
+    });
+};
+
+export const sendEmail = async (to: string, subject: string, html: string) => {
+    const transporter = createTransporter();
+
+    const mailOptions = {
+        from: '"ProjectFlow" <no-reply@getprojectflow.com>', // sender address
+        to,
+        subject,
+        html
+    };
+
+    try {
+        const info = await transporter.sendMail(mailOptions);
+        console.log('Message sent: %s', info.messageId);
+        return info;
+    } catch (error) {
+        console.error('Error sending email:', error);
+        throw error;
+    }
+};

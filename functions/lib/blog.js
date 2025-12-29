@@ -12,61 +12,105 @@ const REGION = 'europe-west3'; // Same region as newsletter function
  */
 exports.createBlogPost = functions.region(REGION).https.onRequest((req, res) => {
     return cors({ origin: CORS_ORIGIN })(req, res, async () => {
-        // Only allow POST
-        if (req.method !== 'POST') {
-            res.status(405).json({ success: false, error: 'Method Not Allowed' });
+        // Extract ID from path if present (e.g. /my-slug)
+        // req.path includes the leading slash
+        const pathId = req.path.split('/')[1];
+        // 1. DELETE
+        if (req.method === 'DELETE') {
+            if (!pathId) {
+                res.status(400).json({ success: false, error: 'Missing blog ID in URL path' });
+                return;
+            }
+            try {
+                const docRef = init_1.db.collection('blog_posts').doc(pathId);
+                const doc = await docRef.get();
+                if (!doc.exists) {
+                    res.status(404).json({ success: false, error: 'Blog post not found' });
+                    return;
+                }
+                await docRef.delete();
+                res.status(200).json({ success: true, message: 'Blog post deleted successfully' });
+            }
+            catch (error) {
+                console.error('Error deleting blog post:', error);
+                res.status(500).json({ success: false, error: error.message || 'Internal Server Error' });
+            }
             return;
         }
-        try {
-            const data = req.body;
-            // Basic validation
-            if (!data.slug || !data.title || !data.content || !data.author || !data.category) {
-                res.status(400).json({
-                    success: false,
-                    error: 'Missing required fields: slug, title, content, author, category'
+        // 2. PUT (Update)
+        if (req.method === 'PUT') {
+            if (!pathId) {
+                res.status(400).json({ success: false, error: 'Missing blog ID in URL path' });
+                return;
+            }
+            try {
+                const data = req.body;
+                const docRef = init_1.db.collection('blog_posts').doc(pathId);
+                const doc = await docRef.get();
+                if (!doc.exists) {
+                    res.status(404).json({ success: false, error: 'Blog post not found' });
+                    return;
+                }
+                // Update fields
+                await docRef.update(Object.assign(Object.assign({}, data), { 
+                    // Prevent changing crucial immutable fields if needed, or allow all
+                    updatedAt: new Date().toISOString() }));
+                res.status(200).json({ success: true, message: 'Blog post updated successfully' });
+            }
+            catch (error) {
+                console.error('Error updating blog post:', error);
+                res.status(500).json({ success: false, error: error.message || 'Internal Server Error' });
+            }
+            return;
+        }
+        // 3. POST (Create)
+        if (req.method === 'POST') {
+            try {
+                const data = req.body;
+                // Basic validation
+                if (!data.slug || !data.title || !data.content || !data.author || !data.category) {
+                    res.status(400).json({
+                        success: false,
+                        error: 'Missing required fields: slug, title, content, author, category'
+                    });
+                    return;
+                }
+                const docId = data.slug;
+                const blogPost = {
+                    id: data.id || docId,
+                    slug: data.slug,
+                    title: data.title,
+                    excerpt: data.excerpt || '',
+                    content: data.content,
+                    coverImage: data.coverImage || '',
+                    publishedAt: data.publishedAt || new Date().toISOString(),
+                    readTime: data.readTime || '5 min read',
+                    author: data.author,
+                    category: data.category,
+                    tags: Array.isArray(data.tags) ? data.tags : [],
+                    featured: !!data.featured
+                };
+                const docRef = init_1.db.collection('blog_posts').doc(blogPost.slug);
+                const doc = await docRef.get();
+                if (doc.exists) {
+                    res.status(409).json({ success: false, error: 'Blog post with this slug already exists' });
+                    return;
+                }
+                await docRef.set(blogPost);
+                res.status(201).json({
+                    success: true,
+                    message: 'Blog post created successfully',
+                    data: blogPost
                 });
-                return;
             }
-            // Construct proper object to clean any extra fields if necessary
-            // or just validate structure. 
-            // We use the provided ID or generate a new one if not present, 
-            // though the interface says ID is required.
-            const docId = data.slug; // Good practice to use slug as ID for blogs, or auto-id.
-            // Requirement says "creates an entry in the blog_posts collection"
-            const blogPost = {
-                id: data.id || docId,
-                slug: data.slug,
-                title: data.title,
-                excerpt: data.excerpt || '',
-                content: data.content,
-                coverImage: data.coverImage || '',
-                publishedAt: data.publishedAt || new Date().toISOString(),
-                readTime: data.readTime || '5 min read',
-                author: data.author,
-                category: data.category,
-                tags: Array.isArray(data.tags) ? data.tags : [],
-                featured: !!data.featured
-            };
-            // Allow using the slug as the document ID for cleaner URLs/references
-            // or let Firestore generate one if that's preferred. 
-            // Let's use the provided slug as the document ID to ensure uniqueness by slug.
-            const docRef = init_1.db.collection('blog_posts').doc(blogPost.slug);
-            const doc = await docRef.get();
-            if (doc.exists) {
-                res.status(409).json({ success: false, error: 'Blog post with this slug already exists' });
-                return;
+            catch (error) {
+                console.error('Error creating blog post:', error);
+                res.status(500).json({ success: false, error: error.message || 'Internal Server Error' });
             }
-            await docRef.set(blogPost);
-            res.status(201).json({
-                success: true,
-                message: 'Blog post created successfully',
-                data: blogPost
-            });
+            return;
         }
-        catch (error) {
-            console.error('Error creating blog post:', error);
-            res.status(500).json({ success: false, error: error.message || 'Internal Server Error' });
-        }
+        // If not POST, PUT, or DELETE
+        res.status(405).json({ success: false, error: 'Method Not Allowed' });
     });
 });
 /**

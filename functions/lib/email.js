@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.testSMTPConnection = void 0;
+exports.sendEmail = exports.testSMTPConnection = void 0;
 const functions = require("firebase-functions");
 const nodemailer = require("nodemailer");
 const REGION = 'europe-west3'; // Frankfurt
@@ -40,4 +40,48 @@ exports.testSMTPConnection = functions.region(REGION).https.onCall(async (data, 
         };
     }
 });
+// Helper to create a reuseable transporter
+const createTransporter = () => {
+    var _a;
+    // Ideally use functions.config() but for now use user provided as fallback or env
+    const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+    const port = parseInt(process.env.SMTP_PORT || '587');
+    const user = process.env.SMTP_USER || 'christoph@christophlabestin.de';
+    // IMPORTANT: User must set this env var or config
+    const pass = process.env.SMTP_PASS || ((_a = functions.config().smtp) === null || _a === void 0 ? void 0 : _a.pass) || 'nadm vtnn pgsj kxhr';
+    if (!pass) {
+        console.warn("SMTP Password not set! Emails will fail.");
+    }
+    return nodemailer.createTransport({
+        host,
+        port,
+        secure: port === 465,
+        auth: {
+            user,
+            pass
+        },
+        tls: {
+            rejectUnauthorized: false
+        }
+    });
+};
+const sendEmail = async (to, subject, html) => {
+    const transporter = createTransporter();
+    const mailOptions = {
+        from: '"ProjectFlow" <no-reply@getprojectflow.com>',
+        to,
+        subject,
+        html
+    };
+    try {
+        const info = await transporter.sendMail(mailOptions);
+        console.log('Message sent: %s', info.messageId);
+        return info;
+    }
+    catch (error) {
+        console.error('Error sending email:', error);
+        throw error;
+    }
+};
+exports.sendEmail = sendEmail;
 //# sourceMappingURL=email.js.map

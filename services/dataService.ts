@@ -24,9 +24,10 @@ import {
     runTransaction,
     deleteField
 } from "firebase/firestore";
+import { httpsCallable } from "firebase/functions";
 import { updateProfile, linkWithPopup } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage, auth, GithubAuthProvider, FacebookAuthProvider } from "./firebase";
+import { db, storage, auth, functions, GithubAuthProvider, FacebookAuthProvider } from "./firebase";
 import type { Task, Idea, Activity, Project, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, EmailComponent, GeminiReport, Milestone, AIUsage, Member, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy } from '../types';
 import { toMillis } from "../utils/time";
 import {
@@ -1400,6 +1401,30 @@ export const joinProjectViaLink = async (
         { action: `${user.displayName || "User"} joined the project`, target: "Team", type: "status", user: user.displayName || "User" },
         tenantId
     );
+};
+
+/**
+ * Send an email invitation directly
+ */
+export const sendTeamInvitation = async (
+    email: string,
+    type: 'workspace' | 'project',
+    targetId: string, // tenantId or projectId
+    role: string,
+    tenantId: string
+): Promise<void> => {
+    const sendInviteFn = httpsCallable(functions, 'sendInvitation');
+
+    // If calling from existing "invite to project" UI, targetId is projectId.
+    // If "invite to workspace", targetId is tenantId.
+
+    await sendInviteFn({
+        email,
+        type,
+        targetId,
+        role,
+        tenantId
+    });
 };
 
 // --- Workspace Invites ---
@@ -3341,21 +3366,15 @@ export const requestJoinProject = async (projectId: string, tenantId?: string) =
     }
 
     // Create a notification for the owner
-    const notification: Omit<Notification, 'id'> = {
+    // We use createNotification helper which handles valid tenant checks
+    await createNotification({
         type: 'project_join_request',
         userId: project.ownerId,
         title: 'Project Join Request',
         message: `${user.displayName || 'A user'} requested to join ${project.title}`,
-        read: false,
-        createdAt: serverTimestamp(),
         projectId: project.id,
-        actorId: user.uid,
-        actorName: user.displayName || 'Unknown',
-        actorPhotoURL: user.photoURL || null,
-        tenantId: resolvedTenant
-    };
-
-    await addDoc(collection(db, 'notifications'), notification);
+        tenantId: resolvedTenant // Tenant-scoped for the owner
+    });
 
     await logActivity(
         projectId,
@@ -3376,7 +3395,7 @@ export const respondToJoinRequest = async (
 
     // 1. Update the original notification to accepted/denied status to prevent re-use
     // We update type so UI can show "Accepted" or "Denied" state
-    await updateDoc(doc(db, 'notifications', notificationId), {
+    await updateDoc(doc(db, 'tenants', resolvedTenant, 'notifications', notificationId), {
         type: accept ? 'project_join_request_accepted' : 'project_join_request_denied',
         read: true
     });
@@ -3394,7 +3413,7 @@ export const respondToJoinRequest = async (
             message: `Your request to join ${project?.title || 'a project'} was approved.`,
             projectId: projectId,
             actorId: user?.uid,
-            tenantId: resolvedTenant
+            // tenantId: resolvedTenant // OMITTED to make it GLOBAL so user sees it anywhere
         });
     } else {
         // Notify denial
@@ -3406,7 +3425,7 @@ export const respondToJoinRequest = async (
             message: `Your request to join ${project?.title || 'a project'} was denied.`,
             projectId: projectId,
             actorId: user?.uid,
-            tenantId: resolvedTenant
+            // tenantId: resolvedTenant // OMITTED to make it GLOBAL
         });
     }
 };

@@ -12,9 +12,12 @@ import Link from '@tiptap/extension-link';
 import Underline from '@tiptap/extension-underline';
 import TextAlign from '@tiptap/extension-text-align';
 import { useNavigate, useParams } from 'react-router-dom';
+import { auth } from '../../services/firebase';
 import { MediaLibrary } from '../../components/MediaLibrary/MediaLibraryModal';
 import { publishBlogPost } from '../../services/blogService';
-import { useUI } from '../../context/UIContext';
+import { useToast, useConfirm } from '../../context/UIContext';
+import { useLocation } from 'react-router-dom';
+import { fetchExternalBlogPosts, BlogPost, updateBlogPost } from '../../services/blogService';
 import './editorStyles.css';
 
 const MenuBar = ({ editor, onImageClick }: { editor: any, onImageClick: () => void }) => {
@@ -62,15 +65,18 @@ const MenuBar = ({ editor, onImageClick }: { editor: any, onImageClick: () => vo
     );
 };
 
+
 const BlogEditor = () => {
     const navigate = useNavigate();
-    const { id: projectId } = useParams<{ id: string }>();
+    const location = useLocation();
+    const { id: projectId, blogId } = useParams<{ id: string; blogId?: string }>();
     const [title, setTitle] = useState('');
     const [coverImage, setCoverImage] = useState<string | null>(null);
+    const [status, setStatus] = useState<'draft' | 'published'>('draft');
     const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
     const [mediaPickerMode, setMediaPickerMode] = useState<'cover' | 'content'>('cover');
     const [isPublishing, setIsPublishing] = useState(false);
-    const { showSuccess, showError } = useUI();
+    const { showSuccess, showError } = useToast();
 
     const editor = useEditor({
         extensions: [
@@ -106,6 +112,51 @@ const BlogEditor = () => {
         },
     });
 
+    // Check for existing blog post data
+    React.useEffect(() => {
+        const loadPost = async () => {
+            if (!blogId) return;
+
+            // 1. Try from navigation state
+            if (location.state?.blogPost) {
+                const post = location.state.blogPost as BlogPost;
+                setTitle(post.title);
+                setCoverImage(post.coverImage || null);
+                setStatus(post.status);
+                // Wait for editor to be ready before setting content
+                if (editor) {
+                    editor.commands.setContent(post.content || '');
+                }
+                return;
+            }
+
+            // 2. Fallback: Fetch from API if direct link/refresh
+            if (projectId) {
+                try {
+                    const posts = await fetchExternalBlogPosts(projectId);
+                    const post = posts.find(p => p.id === blogId);
+                    if (post) {
+                        setTitle(post.title);
+                        setCoverImage(post.coverImage || null);
+                        setStatus(post.status);
+                        if (editor) {
+                            editor.commands.setContent(post.content || '');
+                        }
+                    } else {
+                        showError('Blog post not found');
+                    }
+                } catch (e) {
+                    console.error('Failed to load post', e);
+                    showError('Failed to load blog post');
+                }
+            }
+        };
+
+        if (editor) {
+            loadPost();
+        }
+    }, [blogId, projectId, editor]);
+
     const handleOpenMediaPicker = (mode: 'cover' | 'content') => {
         setMediaPickerMode(mode);
         setIsMediaPickerOpen(true);
@@ -120,26 +171,85 @@ const BlogEditor = () => {
         setIsMediaPickerOpen(false);
     };
 
-    const handleSave = async () => {
+    // Add useAuth to imports if not present, assuming it's available in context/AuthContext
+    // If not, we might need to fetch user profile differently.
+    // For now, I'll assume we can get it from a hook or default it.
+    // Let's check imports first. Wait, I see useUI but not useAuth.
+    // I will add the import in a separate block if needed, but for now let me modify the handleSave logic.
+
+    // Actually, I need to add state for category/slug/tags as well.
+    // Let's update the component logic.
+
+    const confirm = useConfirm();
+
+    const handleSave = async (newStatus: 'draft' | 'published', forceCreate = false) => {
         if (!projectId) return;
 
         setIsPublishing(true);
+        setStatus(newStatus);
+
         try {
+            // Generate slug from title
+            const slug = title
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g, '-')
+                .replace(/(^-|-$)+/g, '');
+
             const postData = {
+                slug,
                 title,
                 content: editor?.getHTML(),
                 excerpt: editor?.getText().slice(0, 150) + '...',
                 coverImage,
-                status: 'published',
+                author: {
+                    uid: auth.currentUser?.uid || 'anonymous',
+                    name: auth.currentUser?.displayName || 'Anonymous',
+                    photoURL: auth.currentUser?.photoURL || null
+                },
+                category: {
+                    name: 'General',
+                    slug: 'general'
+                },
+                tags: [],
+                status: newStatus,
                 publishedAt: new Date().toISOString()
             };
 
-            await publishBlogPost(projectId, postData);
-            showSuccess('Blog post published successfully!');
+            if (blogId && !forceCreate) {
+                // Update existing post
+                const confirmed = await confirm(
+                    'Update Blog Post',
+                    'Are you sure you want to update this existing post? This will overwrite the current version.'
+                );
+
+                if (!confirmed) {
+                    setIsPublishing(false);
+                    return;
+                }
+
+                await updateBlogPost(projectId, blogId, postData);
+                showSuccess(`Blog post updated successfully!`);
+            } else {
+                // Create new post
+                if (forceCreate) {
+                    const confirmed = await confirm(
+                        'Save as New Post',
+                        'Are you sure you want to create a new copy of this post?'
+                    );
+                    if (!confirmed) {
+                        setIsPublishing(false);
+                        return;
+                    }
+                }
+
+                await publishBlogPost(projectId, postData);
+                showSuccess(`Blog post ${newStatus === 'published' ? 'published' : 'saved'} successfully!`);
+            }
+
             navigate('../blog');
         } catch (error) {
-            console.error('Failed to publish', error);
-            showError('Failed to publish blog post. Check your settings and endpoint.');
+            console.error('Failed to save', error);
+            showError('Failed to save blog post. Check your settings and endpoint.');
         } finally {
             setIsPublishing(false);
         }
@@ -160,16 +270,31 @@ const BlogEditor = () => {
                     </button>
 
                     <div className="flex items-center gap-3">
-                        <button className="px-4 py-2 rounded-lg text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-colors">
-                            Save as Draft
+                        {blogId && (
+                            <button
+                                onClick={() => handleSave('draft', true)}
+                                disabled={isPublishing}
+                                className="px-4 py-2 rounded-lg text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-50 flex items-center gap-2"
+                                title="Save as a new post (copy)"
+                            >
+                                <span className="material-symbols-outlined text-[18px]">content_copy</span>
+                                Save as New
+                            </button>
+                        )}
+                        <button
+                            onClick={() => handleSave('draft')}
+                            disabled={isPublishing}
+                            className="px-4 py-2 rounded-lg text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-50"
+                        >
+                            {isPublishing && status === 'draft' ? 'Saving...' : 'Save as Draft'}
                         </button>
                         <button
-                            onClick={handleSave}
+                            onClick={() => handleSave('published')}
                             disabled={isPublishing}
                             className="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
-                            {isPublishing && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
-                            {isPublishing ? 'Publishing...' : 'Publish Post'}
+                            {isPublishing && status === 'published' && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
+                            {isPublishing && status === 'published' ? 'Publishing...' : 'Publish Post'}
                         </button>
                     </div>
                 </div>

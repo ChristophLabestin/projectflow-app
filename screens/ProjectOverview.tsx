@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams, useOutletContext } from 'react-router-dom';
 import { usePinnedProject } from '../context/PinnedProjectContext';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
-import { getProjectById, toggleTaskStatus, updateProjectFields, addActivityEntry, deleteProjectById, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues, getActiveTenantId, getLatestGeminiReport, saveGeminiReport, getProjectMembers, getSubTasks } from '../services/dataService';
+import { getProjectById, toggleTaskStatus, updateProjectFields, addActivityEntry, deleteProjectById, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues, getActiveTenantId, getLatestGeminiReport, saveGeminiReport, getProjectMembers, getSubTasks, sendTeamInvitation, generateInviteLink } from '../services/dataService';
 import { TaskCreateModal } from '../components/TaskCreateModal';
 import { generateProjectReport, getGeminiInsight } from '../services/geminiService';
 import { Activity, Idea, Project, Task, Issue, ProjectRole, GeminiReport, Milestone, ProjectGroup } from '../types';
@@ -2519,8 +2519,10 @@ export const ProjectOverview = () => {
                             onClose={() => setShowInviteModal(false)}
                             projectTitle={project.title}
                             onGenerateLink={async (role: ProjectRole, maxUses?: number, expiresInHours?: number) => {
-                                const { generateInviteLink } = await import('../services/dataService');
                                 return await generateInviteLink(id || '', role, maxUses, expiresInHours, project.tenantId);
+                            }}
+                            onSendEmail={async (email, role) => {
+                                await sendTeamInvitation(email, 'project', id || '', role, project.tenantId);
                             }}
                         />
                     )

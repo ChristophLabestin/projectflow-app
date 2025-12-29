@@ -45,7 +45,7 @@ export const Notifications = () => {
     const handleNotificationClick = async (notification: Notification) => {
         // Mark as read
         if (!notification.read) {
-            await markNotificationAsRead(notification.id);
+            await markNotificationAsRead(notification.id, notification.tenantId);
         }
 
         // Navigate to the relevant item
@@ -127,10 +127,10 @@ export const Notifications = () => {
         }
     };
 
-    const handleDelete = async (e: React.MouseEvent, notificationId: string) => {
+    const handleDelete = async (e: React.MouseEvent, notificationId: string, tenantId?: string) => {
         e.stopPropagation();
         try {
-            await deleteNotification(notificationId);
+            await deleteNotification(notificationId, tenantId);
             showToast(t('notifications.toast.delete'), 'success');
         } catch (error) {
             console.error(error);
@@ -239,7 +239,7 @@ export const Notifications = () => {
                                 role="button"
                                 tabIndex={0}
                                 onClick={() => handleNotificationClick(notification)}
-                                onMouseEnter={() => !notification.read && markNotificationAsRead(notification.id)}
+                                onMouseEnter={() => !notification.read && markNotificationAsRead(notification.id, notification.tenantId)}
                                 className={`w-full text-left px-6 py-4 hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer group ${!notification.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''
                                     }`}
                             >
@@ -300,7 +300,7 @@ export const Notifications = () => {
                                             <div className="w-2.5 h-2.5 bg-blue-500 rounded-full shadow-sm shadow-blue-500/50"></div>
                                         )}
                                         <button
-                                            onClick={(e) => handleDelete(e, notification.id)}
+                                            onClick={(e) => handleDelete(e, notification.id, notification.tenantId)}
                                             className="p-1.5 rounded-full text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
                                             title={t('notifications.actions.delete')}
                                         >

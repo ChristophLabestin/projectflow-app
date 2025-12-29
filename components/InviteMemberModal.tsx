@@ -9,6 +9,7 @@ interface InviteMemberModalProps {
     isOpen: boolean;
     onClose: () => void;
     onGenerateLink: (role: any, maxUses?: number, expiresInHours?: number) => Promise<string>;
+    onSendEmail?: (email: string, role: string) => Promise<void>;
     projectTitle: string;
     isWorkspace?: boolean;
 }
@@ -58,26 +59,33 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
     isOpen,
     onClose,
     onGenerateLink,
+    onSendEmail,
     projectTitle,
     isWorkspace
 }) => {
+    const [activeTab, setActiveTab] = useState<'link' | 'email'>('link');
     const [selectedRole, setSelectedRole] = useState<string>(isWorkspace ? 'Member' : 'Editor');
     const [maxUses, setMaxUses] = useState<string>('');
     const [expiresIn, setExpiresIn] = useState<string>('24');
     const [generatedLink, setGeneratedLink] = useState<string>('');
+    const [email, setEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [copied, setCopied] = useState(false);
 
-    // Reset default role when mode changes
+    // Reset default role and state when mode changes
     React.useEffect(() => {
         if (isOpen) {
             setSelectedRole(isWorkspace ? 'Member' : 'Editor');
             setGeneratedLink('');
             setMaxUses('');
             setExpiresIn('24');
+            setEmail('');
             setError(null);
+            setSuccessMessage(null);
             setCopied(false);
+            setActiveTab('link');
         }
     }, [isOpen, isWorkspace]);
 
@@ -91,6 +99,29 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
             setGeneratedLink(link);
         } catch (err: any) {
             setError(err.message || 'Failed to generate invite link');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleSendEmail = async () => {
+        if (!email || !email.includes('@')) {
+            setError('Please enter a valid email address');
+            return;
+        }
+        if (!onSendEmail) {
+            setError('Email invitations are not configured for this context.');
+            return;
+        }
+
+        setError(null);
+        setIsLoading(true);
+        try {
+            await onSendEmail(email, selectedRole);
+            setSuccessMessage(`Invitation sent to ${email}`);
+            setEmail('');
+        } catch (err: any) {
+            setError(err.message || 'Failed to send invitation');
         } finally {
             setIsLoading(false);
         }
@@ -117,21 +148,48 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
             title={`Invite to ${projectTitle}`}
             size="md"
             footer={
-                generatedLink ? (
+                generatedLink || successMessage ? (
                     <Button onClick={handleClose}>Done</Button>
                 ) : (
                     <>
                         <Button variant="ghost" onClick={handleClose} disabled={isLoading}>
                             Cancel
                         </Button>
-                        <Button onClick={handleGenerateLink} isLoading={isLoading}>
-                            Generate Invite Link
-                        </Button>
+                        {activeTab === 'link' ? (
+                            <Button onClick={handleGenerateLink} isLoading={isLoading}>
+                                Generate Invite Link
+                            </Button>
+                        ) : (
+                            <Button onClick={handleSendEmail} isLoading={isLoading} disabled={!email}>
+                                Send Invitation
+                            </Button>
+                        )}
                     </>
                 )
             }
         >
-            {!generatedLink ? (
+            <div className="flex border-b border-[var(--color-surface-border)] mb-6">
+                <button
+                    className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'link'
+                        ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
+                        : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                        }`}
+                    onClick={() => { setActiveTab('link'); setError(null); setSuccessMessage(null); }}
+                >
+                    Invite via Link
+                </button>
+                <button
+                    className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'email'
+                        ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
+                        : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                        }`}
+                    onClick={() => { setActiveTab('email'); setError(null); setSuccessMessage(null); }}
+                >
+                    Invite via Email
+                </button>
+            </div>
+
+            {!generatedLink && !successMessage ? (
                 <div className="space-y-6">
                     {/* Role Selection */}
                     <div>
@@ -232,44 +290,62 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                         </div>
                     </div>
 
-                    {/* Link Settings */}
-                    <div className="space-y-4 p-4 bg-[var(--color-surface-hover)] rounded-xl border border-[var(--color-surface-border)]">
-                        <h4 className="text-sm font-bold text-[var(--color-text-main)] flex items-center gap-2">
-                            <span className="material-symbols-outlined text-[18px]">settings</span>
-                            Link Settings
-                        </h4>
+                    {/* Link Settings or Email Input */}
+                    {activeTab === 'link' ? (
+                        <div className="space-y-4 p-4 bg-[var(--color-surface-hover)] rounded-xl border border-[var(--color-surface-border)]">
+                            <h4 className="text-sm font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                <span className="material-symbols-outlined text-[18px]">settings</span>
+                                Link Settings
+                            </h4>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
-                                    Max Uses
-                                </label>
-                                <Input
-                                    type="number"
-                                    min="1"
-                                    placeholder="Unlimited"
-                                    value={maxUses}
-                                    onChange={(e) => setMaxUses(e.target.value)}
-                                />
-                                <p className="text-xs text-[var(--color-text-subtle)] mt-1">Leave empty for unlimited</p>
-                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
+                                        Max Uses
+                                    </label>
+                                    <Input
+                                        type="number"
+                                        min="1"
+                                        placeholder="Unlimited"
+                                        value={maxUses}
+                                        onChange={(e) => setMaxUses(e.target.value)}
+                                    />
+                                    <p className="text-xs text-[var(--color-text-subtle)] mt-1">Leave empty for unlimited</p>
+                                </div>
 
-                            <div>
-                                <label className="block text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
-                                    Expires In (hours)
-                                </label>
-                                <Select value={expiresIn} onChange={(e) => setExpiresIn(e.target.value)}>
-                                    <option value="1">1 hour</option>
-                                    <option value="6">6 hours</option>
-                                    <option value="24">24 hours</option>
-                                    <option value="72">3 days</option>
-                                    <option value="168">7 days</option>
-                                    <option value="720">30 days</option>
-                                    <option value="8760">1 year</option>
-                                </Select>
+                                <div>
+                                    <label className="block text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
+                                        Expires In (hours)
+                                    </label>
+                                    <Select value={expiresIn} onChange={(e) => setExpiresIn(e.target.value)}>
+                                        <option value="1">1 hour</option>
+                                        <option value="6">6 hours</option>
+                                        <option value="24">24 hours</option>
+                                        <option value="72">3 days</option>
+                                        <option value="168">7 days</option>
+                                        <option value="720">30 days</option>
+                                        <option value="8760">1 year</option>
+                                    </Select>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    ) : (
+                        <div>
+                            <label className="block text-sm font-bold text-[var(--color-text-main)] mb-2">
+                                Email Address
+                            </label>
+                            <Input
+                                type="email"
+                                placeholder="colleague@example.com"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                autoFocus
+                            />
+                            <p className="text-xs text-[var(--color-text-subtle)] mt-2">
+                                An invitation email will be sent to this address with a unique link.
+                            </p>
+                        </div>
+                    )}
 
                     {selectedRole === 'Owner' && !isWorkspace && (
                         <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg p-4 flex items-start gap-3">
@@ -279,7 +355,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                             <div className="flex-1 text-sm text-amber-800 dark:text-amber-200">
                                 <p className="font-bold mb-1">Sharing Ownership</p>
                                 <p>
-                                    Anyone with this link will become an owner with full control, including the ability to delete the project or remove you.
+                                    Anyone with this link/invite will become an owner with full control, including the ability to delete the project or remove you.
                                 </p>
                             </div>
                         </div>
@@ -293,50 +369,70 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                 </div>
             ) : (
                 <div className="space-y-4">
-                    <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 flex items-start gap-3">
-                        <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-2xl">
-                            check_circle
-                        </span>
-                        <div className="flex-1">
-                            <p className="font-bold text-emerald-900 dark:text-emerald-100 mb-1">Invite Link Created!</p>
-                            <p className="text-sm text-emerald-800 dark:text-emerald-200">
-                                Share this link to invite members as <span className="font-bold">{selectedRole}</span>
-                            </p>
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
-                            Invite Link
-                        </label>
-                        <div className="flex gap-2">
-                            <div className="flex-1 px-4 py-3 bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] rounded-lg font-mono text-sm text-[var(--color-text-main)] truncate">
-                                {generatedLink}
+                    {generatedLink ? (
+                        <>
+                            <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 flex items-start gap-3">
+                                <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-2xl">
+                                    check_circle
+                                </span>
+                                <div className="flex-1">
+                                    <p className="font-bold text-emerald-900 dark:text-emerald-100 mb-1">Invite Link Created!</p>
+                                    <p className="text-sm text-emerald-800 dark:text-emerald-200">
+                                        Share this link to invite members as <span className="font-bold">{selectedRole}</span>
+                                    </p>
+                                </div>
                             </div>
-                            <Button
-                                variant="secondary"
-                                onClick={handleCopyLink}
-                                icon={<span className="material-symbols-outlined">{copied ? 'check' : 'content_copy'}</span>}
-                            >
-                                {copied ? 'Copied!' : 'Copy'}
-                            </Button>
-                        </div>
-                    </div>
 
-                    <div className="grid grid-cols-3 gap-3 p-4 bg-[var(--color-surface-hover)] rounded-lg border border-[var(--color-surface-border)]">
-                        <div>
-                            <p className="text-xs text-[var(--color-text-muted)] mb-1">Role</p>
-                            <p className="font-semibold text-sm">{selectedRole}</p>
+                            <div>
+                                <label className="block text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
+                                    Invite Link
+                                </label>
+                                <div className="flex gap-2">
+                                    <div className="flex-1 px-4 py-3 bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] rounded-lg font-mono text-sm text-[var(--color-text-main)] truncate">
+                                        {generatedLink}
+                                    </div>
+                                    <Button
+                                        variant="secondary"
+                                        onClick={handleCopyLink}
+                                        icon={<span className="material-symbols-outlined">{copied ? 'check' : 'content_copy'}</span>}
+                                    >
+                                        {copied ? 'Copied!' : 'Copy'}
+                                    </Button>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4 flex items-center gap-3">
+                            <span className="material-symbols-outlined text-emerald-600 dark:text-emerald-400 text-2xl">
+                                send
+                            </span>
+                            <div>
+                                <p className="font-bold text-emerald-900 dark:text-emerald-100 flex items-center gap-2">
+                                    Invitation Sent!
+                                </p>
+                                <p className="text-sm text-emerald-800 dark:text-emerald-200">
+                                    {successMessage}
+                                </p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-xs text-[var(--color-text-muted)] mb-1">Max Uses</p>
-                            <p className="font-semibold text-sm">{maxUses || 'Unlimited'}</p>
+                    )}
+
+                    {!successMessage && (
+                        <div className="grid grid-cols-3 gap-3 p-4 bg-[var(--color-surface-hover)] rounded-lg border border-[var(--color-surface-border)]">
+                            <div>
+                                <p className="text-xs text-[var(--color-text-muted)] mb-1">Role</p>
+                                <p className="font-semibold text-sm">{selectedRole}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-[var(--color-text-muted)] mb-1">Max Uses</p>
+                                <p className="font-semibold text-sm">{maxUses || 'Unlimited'}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-[var(--color-text-muted)] mb-1">Expires In</p>
+                                <p className="font-semibold text-sm">{expiresIn}h</p>
+                            </div>
                         </div>
-                        <div>
-                            <p className="text-xs text-[var(--color-text-muted)] mb-1">Expires In</p>
-                            <p className="font-semibold text-sm">{expiresIn}h</p>
-                        </div>
-                    </div>
+                    )}
                 </div>
             )}
         </Modal>

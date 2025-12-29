@@ -12,6 +12,7 @@ import { auth, functions } from '../../services/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { getTenant } from '../../services/dataService';
 import { getActiveTenantId } from '../../services/dataService';
+import { BlogConnectionWizard } from './components/BlogConnectionWizard';
 
 // SMTP Source options
 const SMTP_OPTIONS: { value: SMTPSource; label: string; description: string }[] = [
@@ -57,6 +58,7 @@ export const MarketingSettings: React.FC = () => {
     const [embedSelectedGroups, setEmbedSelectedGroups] = useState<string[]>([]);
 
     // Blog Integration States
+    const [showBlogWizard, setShowBlogWizard] = useState(false);
     const [blogEndpoint, setBlogEndpoint] = useState('');
     const [blogGetEndpoint, setBlogGetEndpoint] = useState('');
     const [blogDataModel, setBlogDataModel] = useState('');
@@ -710,90 +712,100 @@ export const MarketingSettings: React.FC = () => {
 
 
                     {activeTab === 'blog' && (
-                        <Card className="p-6">
-                            <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                                <span className="material-symbols-outlined text-[var(--color-primary)]">rss_feed</span>
-                                Blog Integration
-                            </h3>
-                            <p className="text-sm text-[var(--color-text-muted)] mb-6">
-                                Connect your blog to an external endpoint for publishing posts.
-                            </p>
-
-                            <div className="space-y-6">
-                                <div>
-                                    <Input
-                                        label="Post Endpoint URL"
-                                        value={blogEndpoint}
-                                        onChange={(e) => setBlogEndpoint(e.target.value)}
-                                        placeholder="https://yourwebsite.com/api/posts"
-                                    />
-                                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                                        We will send a POST request to this URL when you publish a blog post.
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <Input
-                                        label="Get Endpoint URL"
-                                        value={blogGetEndpoint}
-                                        onChange={(e) => setBlogGetEndpoint(e.target.value)}
-                                        placeholder="https://yourwebsite.com/api/posts"
-                                    />
-                                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                                        Optional: Endpoint to fetch existing posts from (GET request).
-                                    </p>
-                                </div>
-
-                                <div>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <label className="block text-sm font-medium">Data Model Definition</label>
-                                        <span className="text-xs text-[var(--color-text-muted)]">TypeScript Interface or JSON</span>
+                        <div className="space-y-6">
+                            {/* We show either the summary card or the wizard */}
+                            {!showBlogWizard ? (
+                                <Card className="p-6">
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div>
+                                            <h3 className="font-semibold text-lg flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-[var(--color-primary)]">rss_feed</span>
+                                                Blog Integration
+                                            </h3>
+                                            <p className="text-sm text-[var(--color-text-muted)] mt-1">
+                                                Connect your blog to an external endpoint for publishing posts.
+                                            </p>
+                                        </div>
+                                        <Button variant={blogEndpoint ? "secondary" : "primary"} onClick={() => setShowBlogWizard(true)}>
+                                            {blogEndpoint ? 'Reconfigure' : 'Setup Integration'}
+                                        </Button>
                                     </div>
-                                    <textarea
-                                        value={blogDataModel}
-                                        onChange={(e) => setBlogDataModel(e.target.value)}
-                                        placeholder={`interface BlogPost {
-  title: string;
-  slug: string;
-  content: string;
-  coverImage: string;
-  publishedAt: string;
-}`}
-                                        className="w-full h-64 bg-zinc-900 text-zinc-100 font-mono text-xs p-4 rounded-xl border border-[var(--color-surface-border)] focus:ring-2 focus:ring-[var(--color-primary)] outline-none resize-none"
-                                        spellCheck={false}
-                                    />
-                                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                                        Define the structure your endpoint expects. This will help us validate data before sending.
-                                    </p>
-                                </div>
 
-                                <div>
-                                    <div className="flex justify-between items-center mb-1">
-                                        <label className="block text-sm font-medium">Custom HTTP Headers</label>
-                                        <span className="text-xs text-[var(--color-text-muted)]">JSON</span>
-                                    </div>
-                                    <textarea
-                                        value={blogHeaders}
-                                        onChange={(e) => setBlogHeaders(e.target.value)}
-                                        placeholder={`{
-  "Authorization": "Bearer YOUR_TOKEN",
-  "X-Custom-Header": "value"
-}`}
-                                        className="w-full h-32 bg-zinc-900 text-zinc-100 font-mono text-xs p-4 rounded-xl border border-[var(--color-surface-border)] focus:ring-2 focus:ring-[var(--color-primary)] outline-none resize-none"
-                                        spellCheck={false}
-                                    />
-                                    <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                                        Securely send these headers with every publish request. Useful for authentication.
-                                    </p>
-                                </div>
+                                    {blogEndpoint ? (
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-3 p-4 bg-green-500/5 rounded-xl border border-green-500/20">
+                                                <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
+                                                    <span className="material-symbols-outlined text-green-500">check_circle</span>
+                                                </div>
+                                                <div>
+                                                    <div className="font-medium text-green-500">Active Connection</div>
+                                                    <div className="text-sm text-[var(--color-text-muted)]">{blogEndpoint}</div>
+                                                </div>
+                                            </div>
 
-                                <div className="flex justify-end pt-4 border-t border-[var(--color-surface-border)]">
-                                    <Button variant="primary" onClick={handleSaveBlogSettings} isLoading={savingBlogSettings}>
-                                        Save Configuration
-                                    </Button>
-                                </div>
-                            </div>
-                        </Card>
+                                            <div className="grid grid-cols-2 gap-4">
+                                                <div className="p-4 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)]">
+                                                    <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Method</div>
+                                                    <div className="font-mono text-sm">REST API</div>
+                                                </div>
+                                                <div className="p-4 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)]">
+                                                    <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Get Endpoint</div>
+                                                    <div className="font-mono text-sm truncate" title={blogGetEndpoint || 'Not configured'}>
+                                                        {blogGetEndpoint || 'Not configured'}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center py-12 text-center text-[var(--color-text-muted)] bg-[var(--color-surface-bg)] rounded-xl border border-dashed border-[var(--color-surface-border)]">
+                                            <span className="material-symbols-outlined text-4xl mb-3 opacity-50">connect_without_contact</span>
+                                            <h3 className="font-medium mb-1">No Blog Connected</h3>
+                                            <p className="text-sm max-w-xs mx-auto mb-4">
+                                                Connect your CMS or custom blog to publish content directly from ProjectFlow.
+                                            </p>
+                                            <Button variant="primary" onClick={() => setShowBlogWizard(true)}>
+                                                Start Setup Wizard
+                                            </Button>
+                                        </div>
+                                    )}
+                                </Card>
+                            ) : (
+                                <BlogConnectionWizard
+                                    initialSettings={{
+                                        endpoint: blogEndpoint,
+                                        getEndpoint: blogGetEndpoint,
+                                        dataModel: blogDataModel,
+                                        headers: blogHeaders
+                                    }}
+                                    onSave={async (newSettings) => {
+                                        setBlogEndpoint(newSettings.endpoint);
+                                        setBlogGetEndpoint(newSettings.getEndpoint);
+                                        setBlogDataModel(newSettings.dataModel);
+                                        setBlogHeaders(newSettings.headers);
+
+                                        // Save to backend immediately
+                                        if (projectId) {
+                                            try {
+                                                await updateMarketingSettings(projectId, {
+                                                    blogIntegration: {
+                                                        endpoint: newSettings.endpoint,
+                                                        getEndpoint: newSettings.getEndpoint,
+                                                        dataModel: newSettings.dataModel,
+                                                        headers: newSettings.headers
+                                                    }
+                                                });
+                                                showSuccess('Blog configuration saved');
+                                            } catch (e) {
+                                                showError('Failed to save to server');
+                                            }
+                                        }
+                                        // Wizard handles its own completion state, but we might want to close it after a delay or manual actions
+                                        // The wizard has a 'Return to Settings' button which calls onCancel, effectively closing it.
+                                    }}
+                                    onCancel={() => setShowBlogWizard(false)}
+                                />
+                            )}
+                        </div>
                     )}
 
                     {/* Analytics Placeholder */}

@@ -3,7 +3,6 @@ import {
     addDoc,
     query,
     where,
-    orderBy,
     onSnapshot,
     updateDoc,
     doc,
@@ -15,7 +14,31 @@ import {
 import { db, auth } from './firebase';
 import { Notification, NotificationType } from '../types';
 
-const NOTIFICATIONS = 'notifications';
+// Helper to get tenant ID without importing from dataService (circular dependency)
+const getCachedTenantId = () => {
+    try {
+        if (typeof localStorage === "undefined") return undefined;
+        return localStorage.getItem("activeTenantId") || undefined;
+    } catch {
+        return undefined;
+    }
+};
+
+const resolveTenantId = (tenantId?: string) => {
+    const user = auth.currentUser;
+    const resolved = tenantId || getCachedTenantId() || user?.uid;
+    if (!resolved) {
+        // Fallback to error or maybe just user.uid if auth exists?
+        // If we can't resolve a tenant, we can't save/read notifications.
+        throw new Error("Cannot resolve tenant ID for notifications");
+    }
+    return resolved;
+};
+
+const getNotificationsCollection = (tenantId?: string) => {
+    const tid = resolveTenantId(tenantId);
+    return collection(db, 'tenants', tid, 'notifications');
+};
 
 /**
  * Create a new notification
@@ -48,8 +71,10 @@ export const createNotification = async (data: {
             Object.entries(data).filter(([_, v]) => v !== undefined)
         );
 
-        console.log('[Notification] Attempting addDoc to collection:', NOTIFICATIONS);
-        const docRef = await addDoc(collection(db, NOTIFICATIONS), {
+        const tenantId = resolveTenantId(data.tenantId);
+        console.log('[Notification] Attempting addDoc to tenant collection:', tenantId);
+
+        const docRef = await addDoc(getNotificationsCollection(tenantId), {
             ...cleanData,
             actorId: user?.uid,
             actorName: user?.displayName || 'Someone',
@@ -65,43 +90,56 @@ export const createNotification = async (data: {
 
 /**
  * Subscribe to real-time notifications for the current user
+ * @param userId - The user ID to listen for
+ * @param callback - Function to call with updates
+ * @param tenantId - Optional tenant ID. If not provided, uses active tenant.
  */
 export const subscribeToNotifications = (
     userId: string,
-    callback: (notifications: Notification[]) => void
+    callback: (notifications: Notification[]) => void,
+    tenantId?: string
 ) => {
-    // REMOVED orderBy to avoid requiring a composite index which breaks the app for new users
-    const q = query(
-        collection(db, NOTIFICATIONS),
-        where('userId', '==', userId)
-    );
+    try {
+        const tid = resolveTenantId(tenantId);
 
-    return onSnapshot(q, (snapshot) => {
-        const notifications = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-        })) as Notification[];
+        // REMOVED orderBy to avoid requiring a composite index which breaks the app for new users
+        const q = query(
+            getNotificationsCollection(tid),
+            where('userId', '==', userId)
+        );
 
-        // Client-side sort (descending by createdAt)
-        notifications.sort((a, b) => {
-            const timeA = a.createdAt?.seconds ? a.createdAt.seconds : (a.createdAt ? new Date(a.createdAt).getTime() / 1000 : 0);
-            const timeB = b.createdAt?.seconds ? b.createdAt.seconds : (b.createdAt ? new Date(b.createdAt).getTime() / 1000 : 0);
-            return timeB - timeA;
+        return onSnapshot(q, (snapshot) => {
+            const notifications = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })) as Notification[];
+
+            // Client-side sort (descending by createdAt)
+            notifications.sort((a, b) => {
+                const timeA = a.createdAt?.seconds ? a.createdAt.seconds : (a.createdAt ? new Date(a.createdAt).getTime() / 1000 : 0);
+                const timeB = b.createdAt?.seconds ? b.createdAt.seconds : (b.createdAt ? new Date(b.createdAt).getTime() / 1000 : 0);
+                return timeB - timeA;
+            });
+
+            callback(notifications);
+        }, (error) => {
+            console.error('Error subscribing to notifications:', error);
+            callback([]);
         });
-
-        callback(notifications);
-    }, (error) => {
-        console.error('Error subscribing to notifications:', error);
-        callback([]);
-    });
+    } catch (error) {
+        console.error("Failed to subscribe to notifications:", error);
+        // Return a dummy unsubscribe
+        return () => { };
+    }
 };
 
 /**
  * Mark a notification as read
  */
-export const markNotificationAsRead = async (notificationId: string): Promise<void> => {
+export const markNotificationAsRead = async (notificationId: string, tenantId?: string): Promise<void> => {
     try {
-        const notificationRef = doc(db, NOTIFICATIONS, notificationId);
+        const tid = resolveTenantId(tenantId);
+        const notificationRef = doc(db, 'tenants', tid, 'notifications', notificationId);
         await updateDoc(notificationRef, {
             read: true
         });
@@ -113,10 +151,11 @@ export const markNotificationAsRead = async (notificationId: string): Promise<vo
 /**
  * Mark all notifications as read for a user
  */
-export const markAllNotificationsAsRead = async (userId: string): Promise<void> => {
+export const markAllNotificationsAsRead = async (userId: string, tenantId?: string): Promise<void> => {
     try {
+        const tid = resolveTenantId(tenantId);
         const q = query(
-            collection(db, NOTIFICATIONS),
+            getNotificationsCollection(tid),
             where('userId', '==', userId),
             where('read', '==', false)
         );
@@ -137,9 +176,10 @@ export const markAllNotificationsAsRead = async (userId: string): Promise<void> 
 /**
  * Delete a single notification
  */
-export const deleteNotification = async (notificationId: string): Promise<void> => {
+export const deleteNotification = async (notificationId: string, tenantId?: string): Promise<void> => {
     try {
-        await deleteDoc(doc(db, NOTIFICATIONS, notificationId));
+        const tid = resolveTenantId(tenantId);
+        await deleteDoc(doc(db, 'tenants', tid, 'notifications', notificationId));
     } catch (error) {
         console.error('Failed to delete notification:', error);
         throw error;
@@ -149,10 +189,11 @@ export const deleteNotification = async (notificationId: string): Promise<void> 
 /**
  * Delete all notifications for a user
  */
-export const deleteAllNotifications = async (userId: string): Promise<void> => {
+export const deleteAllNotifications = async (userId: string, tenantId?: string): Promise<void> => {
     try {
+        const tid = resolveTenantId(tenantId);
         const q = query(
-            collection(db, NOTIFICATIONS),
+            getNotificationsCollection(tid),
             where('userId', '==', userId)
         );
 
@@ -173,10 +214,11 @@ export const deleteAllNotifications = async (userId: string): Promise<void> => {
 /**
  * Get unread notification count for a user
  */
-export const getUnreadCount = async (userId: string): Promise<number> => {
+export const getUnreadCount = async (userId: string, tenantId?: string): Promise<number> => {
     try {
+        const tid = resolveTenantId(tenantId);
         const q = query(
-            collection(db, NOTIFICATIONS),
+            getNotificationsCollection(tid),
             where('userId', '==', userId),
             where('read', '==', false)
         );
@@ -296,6 +338,7 @@ export const notifySubtaskAssignment = async (
         tenantId
     });
 };
+
 /**
  * Helper to send mention notification
  */
