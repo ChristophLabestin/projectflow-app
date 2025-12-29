@@ -50,7 +50,7 @@ const createTransporter = () => {
     const port = parseInt(process.env.SMTP_PORT || '587');
     const user = process.env.SMTP_USER || 'christoph@christophlabestin.de';
     // IMPORTANT: User must set this env var or config
-    const pass = process.env.SMTP_PASS || functions.config().smtp?.pass || 'nadm vtnn pgsj kxhr';
+    const pass = process.env.SMTP_PASS || functions.config().smtp?.pass;
 
     if (!pass) {
         console.warn("SMTP Password not set! Emails will fail.");
