@@ -1,7 +1,7 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as cors from 'cors';
-import { sendEmail } from './email';
+import { sendEmail, getSystemEmailTemplate } from './email';
 
 const db = admin.firestore();
 const REGION = 'europe-west3';
@@ -71,20 +71,14 @@ export const requestWaitlist = functions.region(REGION).https.onRequest((req, re
 
             // 3. Send Email
             const link = `https://getprojectflow.com/waitlist-confirm?code=${code}`;
+            const subject = 'Confirm your email'; // Updated to match design attached
 
-            const subject = 'Confirm your spot on the ProjectFlow Waitlist';
-            const html = `
-                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                    <h2>Welcome to ProjectFlow!</h2>
-                    <p>Hi ${name},</p>
-                    <p>Thanks for signing up for our waitlist. Please confirm your email address to secure your spot.</p>
-                    <p>This link is valid for 4 hours.</p>
-                    <div style="margin: 20px 0;">
-                        <a href="${link}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Confirm Waitlist Spot</a>
-                    </div>
-                    <p style="font-size: 12px; color: #888;">If you didn't request this, please ignore this email.</p>
-                </div>
-            `;
+            const html = getSystemEmailTemplate(
+                'Confirm your email',
+                'We received a request to create a new account. Click the button below to verify your identity and access your workspace.',
+                link,
+                'Confirm Email Address'
+            );
 
             await sendEmail(email, subject, html);
 

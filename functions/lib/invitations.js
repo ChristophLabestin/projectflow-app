@@ -77,17 +77,7 @@ exports.sendInvitation = functions.region(REGION).https.onCall(async (data, cont
         // `generateWorkspaceInviteLink` returns the ID. 
         // Let's assume the ID acts as the token for simplicity unless we implemented a token field lookup.
         const subject = `You've been invited to join ${type === 'workspace' ? 'a Workspace' : 'a Project'} on ProjectFlow`;
-        const html = `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2>You've been invited!</h2>
-                <p>You have been invited to join the <strong>${type}</strong>.</p>
-                <p>Role: ${role || 'Member'}</p>
-                <div style="margin: 20px 0;">
-                    <a href="${inviteUrl}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Accept Invitation</a>
-                </div>
-                <p style="font-size: 12px; color: #888;">Unique Invite ID: ${docRef.id}</p>
-            </div>
-        `;
+        const html = (0, email_1.getSystemEmailTemplate)("You've been invited!", `You have been invited to join the <strong>${type}</strong>.<br>Role: ${role || 'Member'}`, inviteUrl, 'Accept Invitation');
         await (0, email_1.sendEmail)(email, subject, html);
         return { success: true, message: 'Invitation sent' };
     }

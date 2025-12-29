@@ -1,6 +1,6 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import { sendEmail } from './email';
+import { sendEmail, getSystemEmailTemplate } from './email';
 
 const db = admin.firestore();
 const REGION = 'europe-west3';
@@ -93,17 +93,12 @@ export const sendInvitation = functions.region(REGION).https.onCall(async (data,
 
         const subject = `You've been invited to join ${type === 'workspace' ? 'a Workspace' : 'a Project'} on ProjectFlow`;
 
-        const html = `
-            <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2>You've been invited!</h2>
-                <p>You have been invited to join the <strong>${type}</strong>.</p>
-                <p>Role: ${role || 'Member'}</p>
-                <div style="margin: 20px 0;">
-                    <a href="${inviteUrl}" style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">Accept Invitation</a>
-                </div>
-                <p style="font-size: 12px; color: #888;">Unique Invite ID: ${docRef.id}</p>
-            </div>
-        `;
+        const html = getSystemEmailTemplate(
+            "You've been invited!",
+            `You have been invited to join the <strong>${type}</strong>.<br>Role: ${role || 'Member'}`,
+            inviteUrl,
+            'Accept Invitation'
+        );
 
         await sendEmail(email, subject, html);
 
