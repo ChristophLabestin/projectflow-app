@@ -24,12 +24,12 @@ const runWithTokenCheck = async (
         tokenLimit = profile.geminiConfig.tokenLimit || 10000000; // User limit or high default
     } else {
         // Enforce user key in Pre-Beta
-        throw new Error("Pre-Beta: You must set your own Gemini API Key in Settings > Pre-Beta to use AI features.");
+        throw new Error("Pre-Beta: You must set your own Gemini API Key in Settings > Pre-Beta to use CORA features.");
     }
 
     const usage = await getAIUsage(user.uid);
     if (usage && usage.tokensUsed >= tokenLimit) {
-        throw new Error(`AI token limit reached (${usage.tokensUsed.toLocaleString()} / ${tokenLimit.toLocaleString()}). Limit resets monthly.`);
+        throw new Error(`CORA token limit reached (${usage.tokensUsed.toLocaleString()} / ${tokenLimit.toLocaleString()}). Limit resets monthly.`);
     }
 
     const ai = getAiClient(apiKey);
@@ -203,7 +203,7 @@ export const generateProjectReport = async (
         const recentActivity = activity.slice(0, 5).map(a => `${a.user} ${a.action} ${a.target}`).join('; ');
 
         const prompt = `
-        You are an expert Project Manager AI. Create a comprehensive, professional status report for the project "${project.title}".
+        You are CORA, an expert project manager. Create a comprehensive, professional status report for the project "${project.title}".
         
         **Project Context:**
         - Description: ${project.description || "No description provided"}
@@ -353,7 +353,7 @@ export const suggestMindmapGrouping = async (project: Project, ideas: Idea[]): P
 
         const response = await runWithTokenCheck((ai) => ai.models.generateContent({
             model: "gemini-3-pro-preview",
-            contents: `You are an AI mind - mapping assistant.Group the provided project flows into 3 - 6 concise branches with short names(1 - 2 words).
+            contents: `You are CORA, a mind-mapping assistant. Group the provided project flows into 3 - 6 concise branches with short names(1 - 2 words).
             Project: "${project.title}".
                 Flows (id: title — description):
 ${ideaList}

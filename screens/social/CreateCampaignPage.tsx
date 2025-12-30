@@ -233,7 +233,7 @@ export const CreateCampaignPage = () => {
             setStartDate(result.startDate);
             setEndDate(result.endDate);
         } catch (error) {
-            console.error("AI Generation failed", error);
+            console.error("CORA generation failed", error);
         } finally {
             setLoading(false);
         }

@@ -31,9 +31,9 @@ export const CreateProjectSelect = () => {
                             <span className="material-symbols-outlined text-3xl">lightbulb</span>
                         </div>
                         <div>
-                            <h3 className="h3 mb-2 text-[var(--color-text-main)]">AI Brainstorm</h3>
+                            <h3 className="h3 mb-2 text-[var(--color-text-main)]">CORA Brainstorm</h3>
                             <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
-                                Not sure where to start? Let Gemini AI help you structure your project idea and suggest tasks.
+                                Not sure where to start? Let CORA help you structure your project idea and suggest tasks.
                             </p>
                         </div>
                     </Card>

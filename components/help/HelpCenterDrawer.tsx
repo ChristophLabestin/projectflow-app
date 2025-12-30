@@ -58,7 +58,7 @@ export const HelpCenterDrawer = () => {
     const categoryLabels = useMemo(() => ({
         Basics: t('help.category.basics'),
         Workflows: t('help.category.workflows'),
-        'AI Studio': t('help.category.aiStudio'),
+        'CORA Studio': t('help.category.aiStudio'),
         Assets: t('help.category.assets'),
         'Social Studio': t('help.category.socialStudio'),
         Marketing: t('help.category.marketing'),

@@ -94,6 +94,8 @@ export const TextMenu: React.FC<TextMenuProps> = ({ editor }) => {
         <div
             className="fixed z-[100000] flex items-center gap-1 p-1 rounded-lg bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-xl pointer-events-auto transform -translate-x-1/2 -translate-y-full mb-2"
             style={{ top: position.top, left: position.left }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
         >
             {showLinkInput ? (
                 <div className="flex items-center gap-1 p-1">

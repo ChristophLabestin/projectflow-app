@@ -473,7 +473,7 @@ export const ProjectsPage = (_props: HelpCenterPageProps) => {
                         icon="flow_chart"
                         name="Flows"
                         description="Strategic work that progresses through stages. Captures intent before execution."
-                        features={['Stage pipeline', 'AI Studio', 'Approvals', 'Conversion']}
+                        features={['Stage pipeline', 'CORA Studio', 'Approvals', 'Conversion']}
                     />
                     <ModuleCard
                         icon="flag"
@@ -503,7 +503,7 @@ export const ProjectsPage = (_props: HelpCenterPageProps) => {
                         icon="photo_library"
                         name="Media"
                         description="Centralized asset library for all project visuals and creative files."
-                        features={['Upload', 'Stock search', 'AI generation', 'Editor']}
+                        features={['Upload', 'Stock search', 'CORA generation', 'Editor']}
                     />
                 </div>
             </section>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Editor } from '@tiptap/react';
 import { Check, Save, Settings2, BoxSelect, Maximize, Minimize, Columns, LayoutGrid } from 'lucide-react';
+import { useUI } from '../../../context/UIContext';
 
 interface CardMenuProps {
     editor: Editor;
@@ -33,6 +34,7 @@ const areValuesUnified = (vals: { t: string, r: string, b: string, l: string }) 
 };
 
 export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
+    const { showSuccess } = useUI();
     const [isVisible, setIsVisible] = useState(false);
     const [position, setPosition] = useState({ top: 0, left: 0 });
     const menuRef = useRef<HTMLDivElement>(null);
@@ -48,6 +50,7 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
     // UI Toggles
     const [isUnifiedPadding, setIsUnifiedPadding] = useState(true);
     const [isUnifiedRadius, setIsUnifiedRadius] = useState(true);
+    const [activeTab, setActiveTab] = useState<'fill' | 'border' | 'text'>('fill');
 
     const updateMenu = () => {
         if (!editor) return;
@@ -127,223 +130,354 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
     // if (!isVisible) return null; // Removed to prevent unmounting/remounting which kills focus
 
     const attrs = editor.getAttributes('card');
-    const { backgroundColor, textColor, borderColor } = attrs;
+    const { backgroundColor, textColor, borderColor, borderWidth, borderStyle } = attrs;
 
-    // ... (rest of logic)
+    const colors = ['#f3f4f6', '#fffbeb', '#ecfdf5', '#fef2f2', '#eff6ff', '#fafafa', '#18181b'];
+    const textColors = ['inherit', '#000000', '#ffffff', '#ef4444', '#f59e0b', '#10b981', '#3b82f6'];
+
+    const updateAttribute = (attr: string, value: string) => {
+        // Use commands.updateAttributes to avoid stealing focus from the input fields
+        editor.commands.updateAttributes('card', { [attr]: value });
+    };
+
+    const ensureUnit = (val: string) => {
+        val = val.trim();
+        if (!val) return '0px';
+        if (/^[0-9]+(\.[0-9]+)?$/.test(val)) return `${val}px`;
+        return val;
+    };
+
+    const commitPadding = () => {
+        const cleaned = {
+            t: ensureUnit(localPadding.t),
+            r: ensureUnit(localPadding.r),
+            b: ensureUnit(localPadding.b),
+            l: ensureUnit(localPadding.l)
+        };
+        // Update local state with cleaned values so UI reflects the change (e.g. 10 -> 10px) immediately
+        setLocalPadding(cleaned);
+        const val = formatFourValues(cleaned);
+        updateAttribute('padding', val);
+    };
+
+    const commitRadius = () => {
+        const cleaned = {
+            t: ensureUnit(localRadius.t),
+            r: ensureUnit(localRadius.r),
+            b: ensureUnit(localRadius.b),
+            l: ensureUnit(localRadius.l)
+        };
+        setLocalRadius(cleaned);
+        const val = formatFourValues(cleaned);
+        updateAttribute('borderRadius', val);
+    };
+
+    const handleUnifiedChange = (type: 'padding' | 'radius', value: string) => {
+        const newVal = { t: value, r: value, b: value, l: value };
+        if (type === 'padding') {
+            setLocalPadding(newVal);
+        } else {
+            setLocalRadius(newVal);
+        }
+    };
+
+    const handleSavePreset = () => {
+        if (!presetName.trim()) return;
+
+        const newPreset = {
+            title: presetName,
+            description: 'Custom card preset',
+            icon: 'web_asset',
+            attributes: {
+                backgroundColor,
+                borderRadius: formatFourValues(localRadius),
+                padding: formatFourValues(localPadding),
+                textColor
+            }
+        };
+
+        const existing = JSON.parse(localStorage.getItem('card_presets') || '[]');
+        localStorage.setItem('card_presets', JSON.stringify([...existing, newPreset]));
+
+        window.dispatchEvent(new Event('storage'));
+        setShowSaveInput(false);
+        setPresetName('');
+        showSuccess(`Saved preset "${presetName}".`);
+    };
 
     return (
         <div
             ref={menuRef}
-            className={`fixed z-[100000] flex flex-col gap-2 p-3 rounded-lg bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-xl w-96 transition-opacity duration-100 ${isVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-                }`}
+            className={`fixed z-[100000] flex flex-col gap-1 p-3 rounded-xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-2xl w-80 transition-opacity duration-100 ${isVisible ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
             style={{
                 top: position.top,
                 left: position.left,
                 transform: 'translateY(-100%)',
             }}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
         >
-            style={{
-                top: position.top,
-                left: position.left,
-                transform: 'translateY(-100%)',
-            }}
-        >
-            <div className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-1">Card Style</div>
+            <div className="flex items-center justify-between px-1 mb-2">
+                <span className="text-xs font-bold text-[var(--color-text-main)]">Card Settings</span>
+                {/* Save Preset Button - Small and integrated into header */}
+                {!showSaveInput ? (
+                    <button
+                        onClick={() => setShowSaveInput(true)}
+                        className="p-1 hover:bg-[var(--color-surface-hover)] rounded-md text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors"
+                        title="Save as Preset"
+                    >
+                        <Save size={14} />
+                    </button>
+                ) : (
+                    <div className="flex bg-[var(--color-surface-bg)] rounded-md border border-[var(--color-surface-border)] overflow-hidden h-6">
+                        <input
+                            type="text"
+                            placeholder="Name"
+                            value={presetName}
+                            onChange={(e) => setPresetName(e.target.value)}
+                            className="w-20 text-[10px] px-2 bg-transparent outline-none text-[var(--color-text-main)]"
+                            autoFocus
+                        />
+                        <button
+                            onClick={handleSavePreset}
+                            className="bg-[var(--color-primary)] text-white px-2 hover:bg-[var(--color-primary-dark)]"
+                        >
+                            <Check size={12} />
+                        </button>
+                    </div>
+                )}
+            </div>
 
-            {/* Colors Row */}
-            <div className="flex gap-2 mb-2">
-                <div className="flex-1 min-w-0">
-                    <div className="text-[10px] text-[var(--color-text-muted)] mb-1">Background</div>
-                    <div className="flex flex-wrap gap-1.5">
-                        {colors.slice(0, 5).map(color => (
-                            <button
-                                key={color}
-                                onClick={() => updateAttribute('backgroundColor', color)}
-                                className={`w-5 h-5 shrink-0 rounded-full border border-black/10 hover:scale-110 transition-transform ${backgroundColor === color ? 'ring-1 ring-[var(--color-primary)]' : ''}`}
-                                style={{ backgroundColor: color }}
-                            />
-                        ))}
-                        <div className="relative w-5 h-5 shrink-0 rounded-full overflow-hidden border border-[var(--color-surface-border)]">
-                            <input
-                                type="color"
-                                value={backgroundColor || '#f3f4f6'}
-                                onChange={(e) => updateAttribute('backgroundColor', e.target.value)}
-                                className="absolute inset-[-4px] w-[150%] h-[150%] p-0 border-none cursor-pointer"
-                            />
+            {/* TABS */}
+            <div className="flex gap-1 p-1 bg-[var(--color-surface-bg)] rounded-lg mb-3 border border-[var(--color-surface-border)]">
+                {(['fill', 'border', 'text'] as const).map(tab => (
+                    <button
+                        key={tab}
+                        onClick={() => setActiveTab(tab)}
+                        className={`flex-1 py-1 text-[10px] font-medium rounded-md transition-all capitalize ${activeTab === tab ? 'bg-[var(--color-surface-card)] shadow-sm text-[var(--color-primary)] font-bold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                    >
+                        {tab}
+                    </button>
+                ))}
+            </div>
+
+            {/* TAB CONTENT */}
+            <div className="mb-4 min-h-[80px]">
+                {activeTab === 'fill' && (
+                    <div className="animate-in fade-in duration-200">
+                        <div className="text-[10px] font-medium text-[var(--color-text-muted)] mb-2 uppercase tracking-wide">Background Color</div>
+                        <div className="flex flex-wrap gap-2">
+                            {colors.map(color => (
+                                <button
+                                    key={color}
+                                    onClick={() => updateAttribute('backgroundColor', color)}
+                                    className={`w-6 h-6 rounded-full border border-black/10 hover:scale-110 transition-transform ${backgroundColor === color ? 'ring-2 ring-offset-1 ring-[var(--color-primary)]' : ''}`}
+                                    style={{ backgroundColor: color }}
+                                />
+                            ))}
+                            <div className="relative w-6 h-6 rounded-full overflow-hidden border border-[var(--color-surface-border)] shadow-sm group hover:border-[var(--color-text-muted)] transition-colors">
+                                <div className="absolute inset-0 bg-gradient-to-br from-red-400 via-green-400 to-blue-400 opacity-50" />
+                                <input
+                                    type="color"
+                                    value={backgroundColor || '#f3f4f6'}
+                                    onChange={(e) => updateAttribute('backgroundColor', e.target.value)}
+                                    className="absolute inset-[-4px] w-[150%] h-[150%] p-0 border-none cursor-pointer opacity-0"
+                                    title="Custom Color"
+                                />
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
-                <div className="w-px bg-[var(--color-surface-border)] shrink-0" />
+                {activeTab === 'border' && (
+                    <div className="animate-in fade-in duration-200 space-y-3">
+                        <div>
+                            <div className="text-[10px] font-medium text-[var(--color-text-muted)] mb-2 uppercase tracking-wide">Color</div>
+                            <div className="flex flex-wrap gap-2">
+                                {colors.map(color => (
+                                    <button
+                                        key={color}
+                                        onClick={() => updateAttribute('borderColor', color)}
+                                        className={`w-6 h-6 rounded-full border-2 hover:scale-110 transition-transform ${borderColor === color ? 'ring-2 ring-offset-1 ring-[var(--color-primary)] border-transparent' : 'border-black/10'}`}
+                                        style={{ borderColor: color, backgroundColor: 'transparent' }}
+                                    />
+                                ))}
+                                <div className="relative w-6 h-6 rounded-full overflow-hidden border-2 border-[var(--color-surface-border)] group hover:border-[var(--color-text-muted)] transition-colors">
+                                    <div className="absolute inset-0 bg-gradient-to-br from-red-400 via-green-400 to-blue-400 opacity-20" />
+                                    <input
+                                        type="color"
+                                        value={borderColor || '#e5e7eb'}
+                                        onChange={(e) => updateAttribute('borderColor', e.target.value)}
+                                        className="absolute inset-[-4px] w-[150%] h-[150%] p-0 border-none cursor-pointer opacity-0"
+                                    />
+                                </div>
+                            </div>
+                        </div>
 
-                <div className="flex-1 min-w-0">
-                    <div className="text-[10px] text-[var(--color-text-muted)] mb-1">Border</div>
-                    <div className="flex flex-wrap gap-1.5">
-                        {colors.slice(0, 5).map(color => (
-                            <button
-                                key={color}
-                                onClick={() => updateAttribute('borderColor', color)}
-                                className={`w-5 h-5 shrink-0 rounded-full border-2 hover:scale-110 transition-transform ${borderColor === color ? 'ring-1 ring-[var(--color-primary)]' : 'border-black/10'}`}
-                                style={{ borderColor: color, backgroundColor: 'transparent' }}
-                            />
-                        ))}
-                        <div className="relative w-5 h-5 shrink-0 rounded-full overflow-hidden border-2 border-[var(--color-surface-border)]">
-                            <input
-                                type="color"
-                                value={borderColor || '#e5e7eb'}
-                                onChange={(e) => updateAttribute('borderColor', e.target.value)}
-                                className="absolute inset-[-4px] w-[150%] h-[150%] p-0 border-none cursor-pointer"
-                            />
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-[var(--color-surface-bg)] rounded-lg p-2 border border-[var(--color-surface-border)]">
+                                <span className="text-[9px] text-[var(--color-text-muted)] uppercase block mb-1">Width</span>
+                                <div className="flex items-center gap-1">
+                                    <input
+                                        type="text"
+                                        value={borderWidth || '1px'}
+                                        onChange={(e) => updateAttribute('borderWidth', ensureUnit(e.target.value))}
+                                        className="w-full text-xs font-medium bg-transparent outline-none p-0.5"
+                                        placeholder="1px"
+                                    />
+                                </div>
+                            </div>
+                            <div className="bg-[var(--color-surface-bg)] rounded-lg p-2 border border-[var(--color-surface-border)]">
+                                <span className="text-[9px] text-[var(--color-text-muted)] uppercase block mb-1">Style</span>
+                                <select
+                                    value={borderStyle || 'solid'}
+                                    onChange={(e) => updateAttribute('borderStyle', e.target.value)}
+                                    className="w-full text-xs font-medium bg-transparent outline-none appearance-none cursor-pointer"
+                                >
+                                    <option value="solid">Solid</option>
+                                    <option value="dashed">Dashed</option>
+                                    <option value="dotted">Dotted</option>
+                                    <option value="double">Double</option>
+                                    <option value="none">None</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
-                </div>
+                )}
 
-                <div className="w-px bg-[var(--color-surface-border)] shrink-0" />
-
-                <div className="flex-1 min-w-0">
-                    <div className="text-[10px] text-[var(--color-text-muted)] mb-1">Text</div>
-                    <div className="flex flex-wrap gap-1.5">
-                        {textColors.slice(0, 5).map(color => (
+                {activeTab === 'text' && (
+                    <div className="animate-in fade-in duration-200">
+                        <div className="text-[10px] font-medium text-[var(--color-text-muted)] mb-2 uppercase tracking-wide">Text Color</div>
+                        <div className="flex flex-wrap gap-2">
+                            {/* Auto Button */}
                             <button
-                                key={color}
-                                onClick={() => updateAttribute('textColor', color)}
-                                className={`w-5 h-5 shrink-0 rounded-full border border-black/10 hover:scale-110 transition-transform flex items-center justify-center ${textColor === color ? 'ring-1 ring-[var(--color-primary)]' : ''}`}
-                                style={{ backgroundColor: color === 'inherit' ? 'transparent' : color }}
+                                onClick={() => updateAttribute('textColor', 'inherit')}
+                                className={`w-6 h-6 rounded-full border border-dashed border-[var(--color-text-muted)] flex items-center justify-center hover:bg-[var(--color-surface-hover)] ${textColor === 'inherit' ? 'ring-2 ring-offset-1 ring-[var(--color-primary)]' : ''}`}
+                                title="Inherit / Auto"
                             >
-                                {color === 'inherit' && <span className="text-[8px] font-bold text-[var(--color-text-muted)]">A</span>}
+                                <span className="text-[9px] font-bold text-[var(--color-text-muted)]">A</span>
                             </button>
-                        ))}
-                        <div className="relative w-5 h-5 shrink-0 rounded-full overflow-hidden border border-[var(--color-surface-border)]">
-                            <input
-                                type="color"
-                                value={textColor && textColor !== 'inherit' ? textColor : '#000000'}
-                                onChange={(e) => updateAttribute('textColor', e.target.value)}
-                                className="absolute inset-[-4px] w-[150%] h-[150%] p-0 border-none cursor-pointer"
-                            />
+                            {/* Colors excluding inherit which is manual above */}
+                            {textColors.filter(c => c !== 'inherit').map(color => (
+                                <button
+                                    key={color}
+                                    onClick={() => updateAttribute('textColor', color)}
+                                    className={`w-6 h-6 rounded-full border border-black/10 hover:scale-110 transition-transform ${textColor === color ? 'ring-2 ring-offset-1 ring-[var(--color-primary)]' : ''}`}
+                                    style={{ backgroundColor: color }}
+                                />
+                            ))}
+                            <div className="relative w-6 h-6 rounded-full overflow-hidden border border-[var(--color-surface-border)] shadow-sm group hover:border-[var(--color-text-muted)] transition-colors">
+                                <div className="absolute inset-0 bg-gradient-to-br from-red-400 via-green-400 to-blue-400 opacity-50" />
+                                <input
+                                    type="color"
+                                    value={textColor && textColor !== 'inherit' ? textColor : '#000000'}
+                                    onChange={(e) => updateAttribute('textColor', e.target.value)}
+                                    className="absolute inset-[-4px] w-[150%] h-[150%] p-0 border-none cursor-pointer opacity-0"
+                                />
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <div className="h-px bg-[var(--color-surface-border)] my-1" />
-
-            {/* Radius Control */}
-            <div className="mb-2">
-                <div className="flex items-center justify-between text-[var(--color-text-muted)] mb-1">
-                    <div className="flex items-center gap-1">
-                        <Maximize size={10} />
-                        <span className="text-[10px]">Corner Radius</span>
-                    </div>
-                    <button
-                        onClick={() => setIsUnifiedRadius(!isUnifiedRadius)}
-                        className="p-1 hover:bg-[var(--color-surface-hover)] rounded text-[var(--color-text-muted)]"
-                        title={isUnifiedRadius ? "Enter individual corners" : "Unified corners"}
-                    >
-                        {isUnifiedRadius ? <Columns size={10} /> : <LayoutGrid size={10} />}
-                    </button>
-                </div>
-
-                {isUnifiedRadius ? (
-                    <input
-                        type="text"
-                        value={localRadius.t}
-                        onChange={(e) => handleUnifiedChange('radius', e.target.value)}
-                        onBlur={commitRadius}
-                        onKeyDown={(e) => e.key === 'Enter' && commitRadius()}
-                        className="w-full p-1 text-[10px] rounded border border-[var(--color-surface-border)] bg-transparent text-center focus:border-[var(--color-primary)] outline-none"
-                        placeholder="e.g. 8px"
-                    />
-                ) : (
-                    <div className="grid grid-cols-4 gap-1">
-                        {['t', 'r', 'b', 'l'].map((key) => (
-                            <div key={`radius-${key}`} className="flex flex-col items-center">
-                                <span className="text-[8px] text-[var(--color-text-muted)] uppercase mb-0.5">{key === 't' ? 'TL' : key === 'r' ? 'TR' : key === 'b' ? 'BR' : 'BL'}</span>
-                                <input
-                                    type="text"
-                                    value={(localRadius as any)[key]}
-                                    onChange={(e) => setLocalRadius({ ...localRadius, [key]: e.target.value })}
-                                    onBlur={commitRadius}
-                                    onKeyDown={(e) => e.key === 'Enter' && commitRadius()}
-                                    className="w-full p-1 text-[10px] rounded border border-[var(--color-surface-border)] bg-transparent text-center focus:border-[var(--color-primary)] outline-none"
-                                />
-                            </div>
-                        ))}
-                    </div>
                 )}
             </div>
 
-            {/* Padding Control */}
-            <div className="mb-2">
-                <div className="flex items-center justify-between text-[var(--color-text-muted)] mb-1">
-                    <div className="flex items-center gap-1">
-                        <BoxSelect size={10} />
-                        <span className="text-[10px]">Padding</span>
+            <div className="h-px bg-[var(--color-surface-border)] my-1 opacity-50" />
+
+            {/* DIMENSIONS (Always Visible) */}
+            <div className="space-y-3 pt-1">
+                {/* Radius */}
+                <div className="bg-[var(--color-surface-bg)] rounded-lg p-2 border border-[var(--color-surface-border)]">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-1.5 text-[var(--color-text-muted)]">
+                            <Maximize size={12} />
+                            <span className="text-[10px] uppercase font-medium tracking-wide">Radius</span>
+                        </div>
+                        <button
+                            onClick={() => setIsUnifiedRadius(!isUnifiedRadius)}
+                            className={`p-1 rounded hover:bg-[var(--color-surface-hover)] transition-colors ${!isUnifiedRadius ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'text-[var(--color-text-muted)]'}`}
+                            title="Toggle individual corners"
+                        >
+                            <LayoutGrid size={12} />
+                        </button>
                     </div>
-                    <button
-                        onClick={() => setIsUnifiedPadding(!isUnifiedPadding)}
-                        className="p-1 hover:bg-[var(--color-surface-hover)] rounded text-[var(--color-text-muted)]"
-                        title={isUnifiedPadding ? "Enter individual sides" : "Unified padding"}
-                    >
-                        {isUnifiedPadding ? <Columns size={10} /> : <LayoutGrid size={10} />}
-                    </button>
+
+                    {isUnifiedRadius ? (
+                        <input
+                            type="text"
+                            value={localRadius.t}
+                            onChange={(e) => handleUnifiedChange('radius', e.target.value)}
+                            onBlur={commitRadius}
+                            onKeyDown={(e) => e.key === 'Enter' && commitRadius()}
+                            className="w-full p-1.5 text-xs rounded bg-[var(--color-surface-card)] border-none focus:ring-1 focus:ring-[var(--color-primary)] text-center outline-none transition-shadow"
+                            placeholder="e.g. 8px"
+                        />
+                    ) : (
+                        <div className="grid grid-cols-2 gap-2">
+                            {['t', 'r', 'b', 'l'].map((key) => (
+                                <div key={`radius-${key}`} className="relative">
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[8px] text-[var(--color-text-muted)] font-bold uppercase pointer-events-none">
+                                        {key === 't' ? 'TL' : key === 'r' ? 'TR' : key === 'b' ? 'BR' : 'BL'}
+                                    </span>
+                                    <input
+                                        type="text"
+                                        value={(localRadius as any)[key]}
+                                        onChange={(e) => setLocalRadius({ ...localRadius, [key]: e.target.value })}
+                                        onBlur={commitRadius}
+                                        onKeyDown={(e) => e.key === 'Enter' && commitRadius()}
+                                        className="w-full p-1.5 pl-6 text-xs rounded bg-[var(--color-surface-card)] border-none focus:ring-1 focus:ring-[var(--color-primary)] outline-none text-right transition-shadow"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
-                {isUnifiedPadding ? (
-                    <input
-                        type="text"
-                        value={localPadding.t}
-                        onChange={(e) => handleUnifiedChange('padding', e.target.value)}
-                        onBlur={commitPadding}
-                        onKeyDown={(e) => e.key === 'Enter' && commitPadding()}
-                        className="w-full p-1 text-[10px] rounded border border-[var(--color-surface-border)] bg-transparent text-center focus:border-[var(--color-primary)] outline-none"
-                        placeholder="e.g. 16px"
-                    />
-                ) : (
-                    <div className="grid grid-cols-4 gap-1">
-                        {['t', 'r', 'b', 'l'].map((key) => (
-                            <div key={`padding-${key}`} className="flex flex-col items-center">
-                                <span className="text-[8px] text-[var(--color-text-muted)] uppercase mb-0.5">{key.toUpperCase()}</span>
-                                <input
-                                    type="text"
-                                    value={(localPadding as any)[key]}
-                                    onChange={(e) => setLocalPadding({ ...localPadding, [key]: e.target.value })}
-                                    onBlur={commitPadding}
-                                    onKeyDown={(e) => e.key === 'Enter' && commitPadding()}
-                                    className="w-full p-1 text-[10px] rounded border border-[var(--color-surface-border)] bg-transparent text-center focus:border-[var(--color-primary)] outline-none"
-                                />
-                            </div>
-                        ))}
+                {/* Padding */}
+                <div className="bg-[var(--color-surface-bg)] rounded-lg p-2 border border-[var(--color-surface-border)]">
+                    <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-1.5 text-[var(--color-text-muted)]">
+                            <BoxSelect size={12} />
+                            <span className="text-[10px] uppercase font-medium tracking-wide">Padding</span>
+                        </div>
+                        <button
+                            onClick={() => setIsUnifiedPadding(!isUnifiedPadding)}
+                            className={`p-1 rounded hover:bg-[var(--color-surface-hover)] transition-colors ${!isUnifiedPadding ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'text-[var(--color-text-muted)]'}`}
+                            title="Toggle individual sides"
+                        >
+                            <LayoutGrid size={12} />
+                        </button>
                     </div>
-                )}
+
+                    {isUnifiedPadding ? (
+                        <input
+                            type="text"
+                            value={localPadding.t}
+                            onChange={(e) => handleUnifiedChange('padding', e.target.value)}
+                            onBlur={commitPadding}
+                            onKeyDown={(e) => e.key === 'Enter' && commitPadding()}
+                            className="w-full p-1.5 text-xs rounded bg-[var(--color-surface-card)] border-none focus:ring-1 focus:ring-[var(--color-primary)] text-center outline-none transition-shadow"
+                            placeholder="e.g. 16px"
+                        />
+                    ) : (
+                        <div className="grid grid-cols-2 gap-2">
+                            {['t', 'r', 'b', 'l'].map((key) => (
+                                <div key={`padding-${key}`} className="relative">
+                                    <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[8px] text-[var(--color-text-muted)] font-bold uppercase pointer-events-none">
+                                        {key}
+                                    </span>
+                                    <input
+                                        type="text"
+                                        value={(localPadding as any)[key]}
+                                        onChange={(e) => setLocalPadding({ ...localPadding, [key]: e.target.value })}
+                                        onBlur={commitPadding}
+                                        onKeyDown={(e) => e.key === 'Enter' && commitPadding()}
+                                        className="w-full p-1.5 pl-6 text-xs rounded bg-[var(--color-surface-card)] border-none focus:ring-1 focus:ring-[var(--color-primary)] outline-none text-right transition-shadow"
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
-
-
-            {/* Presets */}
-            {!showSaveInput ? (
-                <button
-                    onClick={() => setShowSaveInput(true)}
-                    className="flex items-center gap-2 text-xs text-[var(--color-primary)] font-medium hover:bg-[var(--color-surface-hover)] p-1 rounded w-full justify-center mt-1"
-                >
-                    <Save size={14} />
-                    <span>Save Preset</span>
-                </button>
-            ) : (
-                <div className="flex gap-2 mt-1">
-                    <input
-                        type="text"
-                        placeholder="Name..."
-                        value={presetName}
-                        onChange={(e) => setPresetName(e.target.value)}
-                        className="flex-1 text-xs p-1 rounded border border-[var(--color-surface-border)] text-[var(--color-text-main)] bg-transparent"
-                    />
-                    <button
-                        onClick={handleSavePreset}
-                        className="p-1.5 text-white bg-[var(--color-primary)] rounded hover:bg-[var(--color-primary-light)]"
-                    >
-                        <Check size={14} />
-                    </button>
-                </div>
-            )}
         </div>
     );
 };

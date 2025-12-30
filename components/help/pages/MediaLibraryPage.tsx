@@ -3,10 +3,10 @@ import type { HelpCenterPageProps, HelpCenterSectionIndex } from '../helpCenterT
 
 export const mediaLibrarySections: HelpCenterSectionIndex[] = [
     { id: 'file-types', title: 'Supported file types', summary: 'Complete list of formats and limits.', content: 'All supported file types with size limits.', keywords: ['files', 'formats', 'types'] },
-    { id: 'upload-methods', title: 'Upload methods', summary: 'Ways to add media.', content: 'Drag & drop, file picker, URL import, AI generation.', keywords: ['upload', 'import'] },
+    { id: 'upload-methods', title: 'Upload methods', summary: 'Ways to add media.', content: 'Drag & drop, file picker, URL import, CORA generation.', keywords: ['upload', 'import'] },
     { id: 'image-editor', title: 'Image editor', summary: 'Edit images in-app.', content: 'Crop, resize, rotate, and adjust images.', keywords: ['editor', 'crop', 'resize'] },
     { id: 'stock-search', title: 'Stock photo search', summary: 'Find royalty-free images.', content: 'Search and use stock photos.', keywords: ['stock', 'photos', 'search'] },
-    { id: 'ai-generation', title: 'AI image generation', summary: 'Create with AI.', content: 'Generate images from prompts.', keywords: ['ai', 'generation', 'create'] },
+    { id: 'ai-generation', title: 'CORA image generation', summary: 'Create with CORA.', content: 'Generate images from prompts.', keywords: ['cora', 'ai', 'generation', 'create'] },
     { id: 'organization', title: 'Organization', summary: 'Keep assets organized.', content: 'Naming, folders, and tagging best practices.', keywords: ['organize', 'folders', 'tags'] }
 ];
 
@@ -48,9 +48,9 @@ export const MediaLibraryPage = (_props: HelpCenterPageProps) => (
         <div className="rounded-[28px] border border-[var(--color-surface-border)] bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] p-6">
             <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Media Library</div>
             <h2 className="text-3xl font-bold text-[var(--color-text-main)] mt-3">Your Visual Asset Hub</h2>
-            <p className="text-sm text-[var(--color-text-muted)] mt-3 leading-relaxed max-w-2xl">Store, organize, and create visual assets. Upload files, search stock photos, generate AI images, and edit directly in the app.</p>
+            <p className="text-sm text-[var(--color-text-muted)] mt-3 leading-relaxed max-w-2xl">Store, organize, and create visual assets. Upload files, search stock photos, generate images with CORA, and edit directly in the app.</p>
             <div className="mt-6 flex flex-wrap gap-2">
-                {['Images', 'Videos', 'Documents', 'Stock', 'AI Generated'].map(t => <span key={t} className="px-3 py-1 rounded-full text-[10px] font-semibold bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]">{t}</span>)}
+                {['Images', 'Videos', 'Documents', 'Stock', 'CORA Generated'].map(t => <span key={t} className="px-3 py-1 rounded-full text-[10px] font-semibold bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]">{t}</span>)}
             </div>
         </div>
 
@@ -74,7 +74,7 @@ export const MediaLibraryPage = (_props: HelpCenterPageProps) => (
                 <UploadCard icon="upload_file" method="Drag & Drop" description="Drop files directly onto the library to upload instantly." color="bg-sky-500" />
                 <UploadCard icon="folder_open" method="File Picker" description="Click upload button to browse and select files." color="bg-emerald-500" />
                 <UploadCard icon="image_search" method="Stock Search" description="Search and add royalty-free stock photos." color="bg-amber-500" />
-                <UploadCard icon="auto_awesome" method="AI Generate" description="Create new images from text prompts using AI." color="bg-purple-500" />
+                <UploadCard icon="auto_awesome" method="CORA Generate" description="Create new images from text prompts using CORA." color="bg-purple-500" />
             </div>
         </section>
 
@@ -120,7 +120,7 @@ export const MediaLibraryPage = (_props: HelpCenterPageProps) => (
         </section>
 
         <section data-section-id="ai-generation" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
-            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Create</div><h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">AI Image Generation</h3></div>
+            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Create</div><h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">CORA Image Generation</h3></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
                     <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-3">Prompt Structure</div>

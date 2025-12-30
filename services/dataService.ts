@@ -256,7 +256,7 @@ export const getAIUsage = async (userId: string, tenantId?: string): Promise<AIU
             return data.aiUsage || null;
         }
     } catch (e) {
-        console.warn("Failed to get AI usage", e);
+        console.warn("Failed to get CORA usage", e);
     }
     return null;
 };
@@ -751,7 +751,7 @@ export const saveGeminiReport = async (projectId: string, content: string, tenan
 
     await logActivity(
         projectId,
-        { action: "Generated project report", target: "AI Report", details: content, type: "report" },
+        { action: "Generated project report", target: "CORA Report", details: content, type: "report" },
         resolvedTenant
     );
 };

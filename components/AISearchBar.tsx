@@ -171,7 +171,7 @@ export const AISearchBar = () => {
             // (Optional: update results based on AI response if needed)
 
         } catch (err: any) {
-            console.error('AI Search error:', err);
+            console.error('CORA search error:', err);
             setError(err.message || t('search.aiSearchFailed'));
         } finally {
             setIsAiLoading(false);

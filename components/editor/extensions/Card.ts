@@ -48,6 +48,24 @@ export const Card = Node.create({
                     };
                 },
             },
+            borderWidth: {
+                default: '1px',
+                parseHTML: element => element.style.borderWidth,
+                renderHTML: attributes => {
+                    return {
+                        style: `border-width: ${attributes.borderWidth}`,
+                    };
+                },
+            },
+            borderStyle: {
+                default: 'solid',
+                parseHTML: element => element.style.borderStyle,
+                renderHTML: attributes => {
+                    return {
+                        style: `border-style: ${attributes.borderStyle}`,
+                    };
+                },
+            },
             textColor: {
                 default: 'inherit',
                 parseHTML: element => element.style.color,

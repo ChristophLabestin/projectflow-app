@@ -111,7 +111,7 @@ export const TaskStrategicContext: React.FC<TaskStrategicContextProps> = ({ proj
                         />
                         {(!idea.riskWinAnalysis) && (
                             <div className="p-12 text-center text-[var(--color-text-muted)]">
-                                <p>No AI analysis available for this flow.</p>
+                                <p>No CORA analysis available for this flow.</p>
                             </div>
                         )}
                     </div>

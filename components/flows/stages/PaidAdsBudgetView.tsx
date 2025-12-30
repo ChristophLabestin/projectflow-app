@@ -92,7 +92,7 @@ export const PaidAdsBudgetView: React.FC<PaidAdsBudgetViewProps> = ({ idea, onUp
                                             <label className="text-[9px] font-black text-emerald-600 uppercase tracking-[.25em] block opacity-80">Amount</label>
                                             {aiRecommendation && (
                                                 <span className="text-[9px] font-bold text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded">
-                                                    AI Recommended
+                                                    CORA Recommended
                                                 </span>
                                             )}
                                         </div>
@@ -246,7 +246,7 @@ export const PaidAdsBudgetView: React.FC<PaidAdsBudgetViewProps> = ({ idea, onUp
                                 </div>
                                 <div className="flex-1">
                                     <div className="flex items-center justify-between mb-1">
-                                        <h4 className="text-xs font-black text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">AI Insight</h4>
+                                        <h4 className="text-xs font-black text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">CORA Insight</h4>
                                         <button
                                             onClick={handleGetRecommendation}
                                             disabled={isAnalysing}

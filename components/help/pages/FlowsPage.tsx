@@ -18,10 +18,10 @@ export const flowsSections: HelpCenterSectionIndex[] = [
     },
     {
         id: 'ai-studio-tools',
-        title: 'AI Studio tools',
-        summary: 'AI-powered analysis and generation.',
-        content: 'All AI tools available within flows.',
-        keywords: ['ai', 'studio', 'analysis', 'generation']
+        title: 'CORA Studio tools',
+        summary: 'CORA-powered analysis and generation.',
+        content: 'All CORA tools available within flows.',
+        keywords: ['cora', 'ai', 'studio', 'analysis', 'generation']
     },
     {
         id: 'flow-fields',
@@ -222,14 +222,14 @@ export const FlowsPage = (_props: HelpCenterPageProps) => {
             {/* Hero with Pipeline Preview */}
             <div className="rounded-[28px] border border-[var(--color-surface-border)] bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] p-6">
                 <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">
-                    Flows and AI Studio
+                    Flows and CORA Studio
                 </div>
                 <h2 className="text-3xl font-bold text-[var(--color-text-main)] mt-3">
                     Shape Strategy Before Execution
                 </h2>
                 <p className="text-sm text-[var(--color-text-muted)] mt-3 leading-relaxed max-w-2xl">
                     Flows capture intent, research, and decisions so execution teams can move fast. They progress through
-                    stages, get enhanced by AI, and convert into actionable work.
+                    stages, get enhanced by CORA, and convert into actionable work.
                 </p>
 
                 {/* Pipeline Preview */}
@@ -251,7 +251,7 @@ export const FlowsPage = (_props: HelpCenterPageProps) => {
                         <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Categories</div>
                         <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Flow Types</h3>
                         <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
-                            Different flow types for different kinds of strategic work. Each type has tailored stages and AI tools.
+                            Different flow types for different kinds of strategic work. Each type has tailored stages and CORA tools.
                         </p>
                     </div>
                     <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">category</span>
@@ -323,7 +323,7 @@ export const FlowsPage = (_props: HelpCenterPageProps) => {
                             <span className="text-sm font-bold text-[var(--color-text-main)]">Strategy</span>
                         </div>
                         <p className="text-sm text-[var(--color-text-muted)] leading-relaxed mb-3">
-                            Define the approach, positioning, and key decisions. Use AI analysis to validate assumptions.
+                            Define the approach, positioning, and key decisions. Use CORA analysis to validate assumptions.
                         </p>
                         <div className="text-xs text-[var(--color-text-subtle)]">
                             <strong>Key outputs:</strong> Strategic direction, positioning, channel strategy
@@ -358,14 +358,14 @@ export const FlowsPage = (_props: HelpCenterPageProps) => {
                 </div>
             </section>
 
-            {/* SECTION: AI Studio Tools */}
+            {/* SECTION: CORA Studio Tools */}
             <section data-section-id="ai-studio-tools" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">AI Powered</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">AI Studio Tools</h3>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Powered by CORA</div>
+                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">CORA Studio Tools</h3>
                         <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
-                            AI Studio provides analysis, generation, and validation tools within each flow stage. Use them to accelerate thinking and surface blind spots.
+                            CORA Studio provides analysis, generation, and validation tools within each flow stage. Use them to accelerate thinking and surface blind spots.
                         </p>
                     </div>
                     <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">auto_awesome</span>
@@ -411,7 +411,7 @@ export const FlowsPage = (_props: HelpCenterPageProps) => {
                 </div>
 
                 <Callout type="tip">
-                    AI outputs are starting points. Always validate with your team's expertise and real data before making final decisions.
+                    CORA outputs are starting points. Always validate with your team's expertise and real data before making final decisions.
                 </Callout>
             </section>
 
@@ -441,7 +441,7 @@ export const FlowsPage = (_props: HelpCenterPageProps) => {
                         <FieldRow field="Target Audience" type="Text" description="Who this flow is designed for. Critical for strategy development." />
                         <FieldRow field="Success Metrics" type="Text" description="How you'll measure if this flow achieves its goals." />
                         <FieldRow field="Tags" type="Multi-select" description="Labels for categorization and filtering." />
-                        <FieldRow field="AI Tokens Used" type="Number" description="Tracked AI usage for this flow. Auto-calculated." />
+                        <FieldRow field="CORA Tokens Used" type="Number" description="Tracked CORA usage for this flow. Auto-calculated." />
                     </div>
                 </div>
             </section>

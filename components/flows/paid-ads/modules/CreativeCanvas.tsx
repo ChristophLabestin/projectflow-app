@@ -69,7 +69,7 @@ export const CreativeCanvas: React.FC<ModuleProps> = ({ adData, updateAdData, on
                             <label className="text-xs font-black uppercase tracking-widest text-slate-400">Primary Text</label>
                             <button onClick={() => generateVariant('primaryText')} className="text-xs font-bold text-emerald-500 hover:text-emerald-400 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-sm">auto_awesome</span>
-                                AI Variant
+                                CORA Variant
                             </button>
                         </div>
                         <textarea
@@ -86,7 +86,7 @@ export const CreativeCanvas: React.FC<ModuleProps> = ({ adData, updateAdData, on
                             <label className="text-xs font-black uppercase tracking-widest text-slate-400">Headline</label>
                             <button onClick={() => generateVariant('headline1')} className="text-xs font-bold text-emerald-500 hover:text-emerald-400 flex items-center gap-1">
                                 <span className="material-symbols-outlined text-sm">auto_awesome</span>
-                                AI Variant
+                                CORA Variant
                             </button>
                         </div>
                         <input
@@ -183,7 +183,7 @@ export const CreativeCanvas: React.FC<ModuleProps> = ({ adData, updateAdData, on
 
                 <div className="mt-6 text-xs font-medium text-slate-400 flex gap-4">
                     <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-emerald-500"></span> Live Preview</span>
-                    <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-amber-500"></span> AI Insights Active</span>
+                    <span className="flex items-center gap-1"><span className="size-2 rounded-full bg-amber-500"></span> CORA Insights Active</span>
                 </div>
             </div>
         </div>

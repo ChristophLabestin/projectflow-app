@@ -164,7 +164,7 @@ export const CampaignDetailView = () => {
                     },
                     assets: [],
                     scheduledFor: scheduledDate.toISOString(),
-                    createdBy: 'AI',
+                    createdBy: 'CORA',
                     createdAt: new Date(),
                     updatedAt: new Date(),
                     isConcept: true

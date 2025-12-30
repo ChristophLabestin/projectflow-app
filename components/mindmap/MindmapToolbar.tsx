@@ -195,7 +195,7 @@ export const MindmapToolbar = memo(function MindmapToolbar({
                     label="Auto-group"
                     onClick={onAutoGroup || (() => { })}
                     disabled={isAiLoading}
-                    tooltip="AI Auto-group"
+                    tooltip="CORA Auto-group"
                 />
             </div>
 

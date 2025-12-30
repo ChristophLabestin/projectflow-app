@@ -227,7 +227,7 @@ export const CreateProjectWizard = () => {
                     await createMilestone(projectId, { title: ms.title, description: ms.description, status: 'Pending' });
                 }
                 for (const task of blueprint.initialTasks) {
-                    await addTask(projectId, task.title, undefined, undefined, task.priority, { category: ['AI Generated'] });
+                    await addTask(projectId, task.title, undefined, undefined, task.priority, { category: ['CORA Generated'] });
                 }
             }
 

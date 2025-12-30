@@ -755,7 +755,7 @@ export const GettingStartedPage = (_props: HelpCenterPageProps) => {
                     <div>
                         <div className="text-sm font-bold text-[var(--color-text-main)]">You're ready to go!</div>
                         <p className="text-sm text-[var(--color-text-muted)] mt-1 leading-relaxed">
-                            Explore the other help pages to learn about specific features like Projects, Tasks, Flows, and AI tools.
+                            Explore the other help pages to learn about specific features like Projects, Tasks, Flows, and CORA tools.
                             Use the Help button anytime to get context-aware guidance for the page you're on.
                         </p>
                     </div>

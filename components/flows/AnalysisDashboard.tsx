@@ -42,7 +42,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
                     {stages[loadingStage]}
                 </h3>
                 <p className="text-[var(--color-text-muted)] text-sm max-w-xs mx-auto">
-                    Our AI is simulating a VC & CTO review of your concept.
+                    CORA is simulating a VC & CTO review of your concept.
                 </p>
 
                 {/* Progress bar visual */}
@@ -68,7 +68,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
                 </div>
                 <h3 className="text-xl font-bold text-[var(--color-text-main)] mb-2">No Analysis Yet</h3>
                 <p className="text-[var(--color-text-muted)] max-w-md mb-8">
-                    Run our AI analysis to estimate success probability, identify risks, and uncover potential wins.
+                    Run CORA analysis to estimate success probability, identify risks, and uncover potential wins.
                 </p>
                 <Button variant="primary" size="lg" onClick={onRunAnalysis} loading={loading} icon={<span className="material-symbols-outlined">network_intelligence</span>}>
                     Run Risk/Win Analysis
@@ -157,7 +157,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
             <div className="bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20 p-4 rounded-xl flex gap-4 items-start">
                 <span className="material-symbols-outlined text-violet-600 mt-0.5">psychology_alt</span>
                 <div>
-                    <h4 className="text-sm font-bold text-violet-900 dark:text-violet-300 mb-1">AI Verdict</h4>
+                    <h4 className="text-sm font-bold text-violet-900 dark:text-violet-300 mb-1">CORA Verdict</h4>
                     <p className="text-sm text-[var(--color-text-main)] italic">"{recommendation}"</p>
                 </div>
             </div>

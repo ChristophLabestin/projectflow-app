@@ -30,7 +30,21 @@ export const SlashCommand = Extension.create({
 
 export const getSlashCommandSuggestions = (items: any) => ({
     items: ({ query }) => {
-        return items.filter(item => item.title.toLowerCase().startsWith(query.toLowerCase())).slice(0, 10);
+        // If no query, show all items
+        if (!query) {
+            return items.slice(0, 15);
+        }
+
+        const lowerQuery = query.toLowerCase();
+
+        // Filter items by matching query anywhere in title or searchTerms
+        return items.filter(item => {
+            const titleMatch = item.title.toLowerCase().includes(lowerQuery);
+            const searchTermMatch = item.searchTerms?.some((term: string) =>
+                term.toLowerCase().includes(lowerQuery)
+            );
+            return titleMatch || searchTermMatch;
+        }).slice(0, 15);
     },
     render: () => {
         let component;
@@ -49,13 +63,18 @@ export const getSlashCommandSuggestions = (items: any) => ({
 
                 popup = tippy('body', {
                     getReferenceClientRect: props.clientRect,
-                    appendTo: () => document.body,
+                    appendTo: () => {
+                        // Use the dedicated popup container inside the editor wrapper
+                        // This ensures popups work in fullscreen mode
+                        const popupContainer = document.getElementById('editor-popup-container');
+                        return popupContainer || document.body;
+                    },
                     content: component.element,
                     showOnCreate: true,
                     interactive: true,
                     trigger: 'manual',
                     placement: 'bottom-start',
-                    zIndex: 100000,
+                    zIndex: 2147483647, // Max z-index value
                 });
             },
             onUpdate(props) {

@@ -127,7 +127,7 @@ export const Brainstorming = () => {
             // Add initial tasks
             for (const task of bp.initialTasks) {
                 await addTask(projectId, task.title, undefined, undefined, task.priority, {
-                    category: ['AI Generated', 'Setup']
+                    category: ['CORA Generated', 'Setup']
                 });
             }
 

@@ -200,7 +200,7 @@ export const PaidAdsReviewView: React.FC<PaidAdsReviewViewProps> = ({ idea, onUp
                             ) : (
                                 <div className="py-8 flex flex-col items-center justify-center text-center opacity-60">
                                     <span className="material-symbols-outlined text-4xl text-slate-300 mb-2">analytics</span>
-                                    <p className="text-sm font-medium text-slate-500 max-w-xs">Run a predictive analysis to see AI-generated wins and risks for this campaign.</p>
+                                    <p className="text-sm font-medium text-slate-500 max-w-xs">Run a predictive analysis to see CORA-generated wins and risks for this campaign.</p>
                                 </div>
                             )}
                         </div>

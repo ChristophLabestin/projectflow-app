@@ -40,19 +40,19 @@ export const helpCenterPages: HelpCenterPageDefinition[] = [
     },
     {
         id: 'ideas-ai',
-        title: 'Flows and AI Studio',
+        title: 'Flows and CORA Studio',
         description: 'Develop flows into structured, execution-ready plans.',
         category: 'Workflows',
-        keywords: ['flows', 'ai', 'briefs', 'pipeline'],
+        keywords: ['flows', 'cora', 'ai', 'briefs', 'pipeline'],
         sections: flowsSections,
         component: FlowsPage
     },
     {
         id: 'ai-features',
-        title: 'AI Features',
-        description: 'Discover AI search, drafting, analysis, and media tools.',
-        category: 'AI Studio',
-        keywords: ['ai', 'studio', 'usage', 'limits'],
+        title: 'CORA Features',
+        description: 'Discover CORA search, drafting, analysis, and media tools.',
+        category: 'CORA Studio',
+        keywords: ['cora', 'ai', 'studio', 'usage', 'limits'],
         sections: aiFeaturesSections,
         component: AIFeaturesPage
     },

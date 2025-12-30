@@ -60,7 +60,7 @@ export const BlogAIModal: React.FC<BlogAIModalProps> = ({ isOpen, onClose, onGen
                 <div className="p-4 border-b border-[var(--color-surface-border)] flex items-center justify-between bg-[var(--color-surface-bg)]">
                     <div className="flex items-center gap-2 text-[var(--color-primary)]">
                         <Sparkles size={20} className="fill-current" />
-                        <h3 className="font-semibold text-lg">AI Blog Assistant</h3>
+                        <h3 className="font-semibold text-lg">CORA Blog Assistant</h3>
                     </div>
                     <button onClick={onClose} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors">
                         <X size={20} />

@@ -179,7 +179,7 @@ export const answerQuestionWithContext = async (
     // Check token usage
     const usage = await getAIUsage(user.uid);
     if (usage && usage.tokensUsed >= usage.tokenLimit) {
-        throw new Error(`AI token limit reached (${usage.tokensUsed.toLocaleString()} / ${usage.tokenLimit.toLocaleString()}). Limit resets monthly.`);
+        throw new Error(`CORA token limit reached (${usage.tokensUsed.toLocaleString()} / ${usage.tokenLimit.toLocaleString()}). Limit resets monthly.`);
     }
 
     try {
@@ -225,7 +225,7 @@ export const answerQuestionWithContext = async (
         };
 
         const { instruction, language } = getAIResponseInstruction();
-        const prompt = `You are a project management assistant. Answer the following question based on the project context provided.
+        const prompt = `You are CORA, a project management assistant. Answer the following question based on the project context provided.
         
 Context:
 ${contextStr}
@@ -277,7 +277,7 @@ Rate your confidence in the answer as Low, Medium, or High.`;
         };
 
     } catch (error) {
-        console.error("AI Search Error:", error);
+        console.error("CORA Search Error:", error);
         throw error;
     }
 };
@@ -292,7 +292,7 @@ export const generateAIImage = async (prompt: string): Promise<string[]> => {
     // Check image usage limit
     const usage = await getAIUsage(user.uid);
     if (usage && (usage.imagesUsed || 0) >= (usage.imageLimit || 50)) {
-        throw new Error(`AI image generation limit reached. Limit resets monthly.`);
+        throw new Error(`CORA image generation limit reached. Limit resets monthly.`);
     }
 
     try {
@@ -369,7 +369,7 @@ export const editAIImage = async (
     // Check image usage limit
     const usage = await getAIUsage(user.uid);
     if (usage && (usage.imagesUsed || 0) >= (usage.imageLimit || 50)) {
-        throw new Error(`AI image generation limit reached. Limit resets monthly.`);
+        throw new Error(`CORA image generation limit reached. Limit resets monthly.`);
     }
 
     try {

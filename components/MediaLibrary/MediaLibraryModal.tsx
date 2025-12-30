@@ -441,13 +441,13 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             setGeneratedImages(images);
             setAiView('results');
         } catch (error: any) {
-            console.error("AI Generation failed:", error);
+            console.error("CORA generation failed:", error);
             const msg = error?.message || "Failed to generate images. Please try again.";
             // User-friendly error for API key issues
             if (msg.includes("API key")) {
                 showError("Google API Key missing or invalid.");
             } else if (msg.includes("limit")) {
-                showError("AI usage limit reached.");
+                showError("CORA usage limit reached.");
             } else {
                 showError(msg);
             }
@@ -468,7 +468,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             await handleFileUpload([file]);
             showSuccess("Image saved to library");
         } catch (error) {
-            console.error("Failed to save AI image:", error);
+            console.error("Failed to save CORA image:", error);
             showError("Failed to save image");
         } finally {
             setIsUploading(false);

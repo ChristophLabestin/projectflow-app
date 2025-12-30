@@ -20,8 +20,10 @@ import { Column, ColumnBlock } from './extensions/Column';
 import { Banner } from './extensions/Banner';
 import { Divider } from './extensions/Divider';
 import { Card } from './extensions/Card';
+import { Button } from './extensions/Button';
 import { SlashCommand, getSlashCommandSuggestions } from './extensions/SlashCommand';
 import { CardMenu } from './menus/CardMenu';
+import { ButtonMenu } from './menus/ButtonMenu';
 import { TextMenu } from './menus/TextMenu';
 import { SlashCommandDrawer } from './menus/SlashCommandDrawer';
 import { Menu } from 'lucide-react';
@@ -88,6 +90,54 @@ export const AdvancedEditor: React.FC<AdvancedEditorProps> = ({
             },
         },
         {
+            title: 'Heading 3',
+            description: 'Small section heading.',
+            searchTerms: ['subtitle', 'small'],
+            icon: 'format_h3',
+            category: 'general',
+            command: ({ editor, range }) => {
+                const chain = editor.chain().focus();
+                if (range) chain.deleteRange(range);
+                chain.setNode('heading', { level: 3 }).run();
+            },
+        },
+        {
+            title: 'Heading 4',
+            description: 'Smaller section heading.',
+            searchTerms: ['subtitle', 'smaller'],
+            icon: 'format_h4',
+            category: 'general',
+            command: ({ editor, range }) => {
+                const chain = editor.chain().focus();
+                if (range) chain.deleteRange(range);
+                chain.setNode('heading', { level: 4 }).run();
+            },
+        },
+        {
+            title: 'Heading 5',
+            description: 'Tiny section heading.',
+            searchTerms: ['subtitle', 'tiny'],
+            icon: 'format_h5',
+            category: 'general',
+            command: ({ editor, range }) => {
+                const chain = editor.chain().focus();
+                if (range) chain.deleteRange(range);
+                chain.setNode('heading', { level: 5 }).run();
+            },
+        },
+        {
+            title: 'Heading 6',
+            description: 'Micro section heading.',
+            searchTerms: ['subtitle', 'micro'],
+            icon: 'format_h6',
+            category: 'general',
+            command: ({ editor, range }) => {
+                const chain = editor.chain().focus();
+                if (range) chain.deleteRange(range);
+                chain.setNode('heading', { level: 6 }).run();
+            },
+        },
+        {
             title: 'Bullet List',
             description: 'Create a simple bulleted list.',
             searchTerms: ['unordered', 'point'],
@@ -129,13 +179,25 @@ export const AdvancedEditor: React.FC<AdvancedEditorProps> = ({
         {
             title: '2 Columns',
             description: 'Create two side-by-side columns.',
-            searchTerms: ['layout', 'grid'],
+            searchTerms: ['layout', 'grid', 'columns', 'split', 'side', 'two'],
             icon: 'view_column',
             category: 'general',
             command: ({ editor, range }) => {
                 const chain = editor.chain().focus();
                 if (range) chain.deleteRange(range);
                 chain.setColumns().run();
+            },
+        },
+        {
+            title: '3 Columns',
+            description: 'Create three side-by-side columns.',
+            searchTerms: ['layout', 'grid', 'columns', 'split', 'three', 'triple'],
+            icon: 'view_week',
+            category: 'general',
+            command: ({ editor, range }) => {
+                const chain = editor.chain().focus();
+                if (range) chain.deleteRange(range);
+                chain.setThreeColumns().run();
             },
         },
         {
@@ -184,6 +246,18 @@ export const AdvancedEditor: React.FC<AdvancedEditorProps> = ({
                 const chain = editor.chain().focus();
                 if (range) chain.deleteRange(range);
                 chain.setCard().run();
+            },
+        },
+        {
+            title: 'Button',
+            description: 'Call-to-action button with link.',
+            searchTerms: ['cta', 'link', 'action'],
+            icon: 'smart_button',
+            category: 'general',
+            command: ({ editor, range }) => {
+                const chain = editor.chain().focus();
+                if (range) chain.deleteRange(range);
+                chain.setButton().run();
             },
         },
     ];
@@ -268,6 +342,7 @@ export const AdvancedEditor: React.FC<AdvancedEditorProps> = ({
             Banner,
             Divider,
             Card,
+            Button,
             SlashCommand.configure({
                 suggestion: getSlashCommandSuggestions(dynamicCommands),
             }),
@@ -306,6 +381,7 @@ export const AdvancedEditor: React.FC<AdvancedEditorProps> = ({
 
     return (
         <div
+            id="advanced-editor-container"
             className="relative advanced-editor-wrapper cursor-text min-h-full"
             onClick={() => {
                 if (editor && !editor.isFocused) {
@@ -313,7 +389,11 @@ export const AdvancedEditor: React.FC<AdvancedEditorProps> = ({
                 }
             }}
         >
+            {/* Portal container for popups - must be inside any fullscreen parent */}
+            <div id="editor-popup-container" style={{ position: 'fixed', top: 0, left: 0, zIndex: 2147483647 }} />
+
             {editor && <CardMenu editor={editor} />}
+            {editor && <ButtonMenu editor={editor} />}
             {editor && <TextMenu editor={editor} />}
 
             {/* Drawer Trigger - Floating Action Button Style */}

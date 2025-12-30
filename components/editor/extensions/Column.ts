@@ -32,7 +32,7 @@ export const Column = Node.create({
 
 export const ColumnBlock = Node.create({
     name: 'columnBlock',
-    content: 'column column', // Enforce exactly 2 columns for now
+    content: 'column{2,4}', // Allow 2-4 columns
     isolating: true,
     defining: true,
     group: 'block',
@@ -65,6 +65,16 @@ export const ColumnBlock = Node.create({
                 return commands.insertContent({
                     type: 'columnBlock',
                     content: [
+                        { type: 'column', content: [{ type: 'paragraph' }] },
+                        { type: 'column', content: [{ type: 'paragraph' }] }
+                    ]
+                });
+            },
+            setThreeColumns: () => ({ commands }) => {
+                return commands.insertContent({
+                    type: 'columnBlock',
+                    content: [
+                        { type: 'column', content: [{ type: 'paragraph' }] },
                         { type: 'column', content: [{ type: 'paragraph' }] },
                         { type: 'column', content: [{ type: 'paragraph' }] }
                     ]

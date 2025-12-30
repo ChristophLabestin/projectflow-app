@@ -315,7 +315,7 @@ export const PaidAdsBriefView: React.FC<PaidAdsBriefViewProps> = ({ idea, onUpda
                                 <div>
                                     <h4 className="text-xs font-black text-violet-700 dark:text-violet-300 uppercase tracking-wider mb-1">Pro Tip</h4>
                                     <p className="text-xs font-medium text-slate-600 dark:text-slate-400 leading-relaxed">
-                                        Defining a sharp CPA target early helps the AI optimize your budget allocation in the next steps.
+                                        Defining a sharp CPA target early helps CORA optimize your budget allocation in the next steps.
                                     </p>
                                 </div>
                             </div>

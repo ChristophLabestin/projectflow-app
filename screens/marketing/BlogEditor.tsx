@@ -99,7 +99,7 @@ export const BlogEditor = () => {
         // Update both local state and editor
         setContent(data.content);
         editorRef.current?.commands.setContent(data.content);
-        showSuccess('Blog post drafted by AI!');
+        showSuccess('Blog post drafted by CORA!');
     };
 
     const confirm = useConfirm();
@@ -285,7 +285,7 @@ export const BlogEditor = () => {
                             className="px-4 py-2 rounded-lg text-sm font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:text-purple-300 dark:hover:bg-purple-900/30 transition-colors flex items-center gap-2"
                         >
                             <Sparkles size={16} />
-                            <span>Ask AI</span>
+                            <span>Ask CORA</span>
                         </button>
 
                         <div className="w-px h-6 bg-[var(--color-surface-border)] mx-1" />

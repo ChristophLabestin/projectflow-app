@@ -44,6 +44,11 @@
         "region": "europe-west3"
       },
       {
+        "source": "/sendContactFormEmail",
+        "function": "sendContactFormEmail",
+        "region": "europe-west3"
+      },
+      {
         "source": "/createBlogPost**",
         "function": "createBlogPost",
         "region": "europe-west3"
