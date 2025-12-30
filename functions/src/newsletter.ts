@@ -8,74 +8,10 @@ import { db } from './init';
 import { createBlogPost, getBlogPosts } from './blog';
 import { getCategories, manageCategories } from './categories';
 import { corsMiddleware } from './corsConfig';
+import { validateAPIToken } from './authUtils';
 
 const REGION = 'europe-west3'; // Frankfurt
 
-/**
- * Hash a token using SHA-256 (must match client-side implementation)
- */
-const hashToken = (token: string): string => {
-    return crypto.createHash('sha256').update(token).digest('hex');
-};
-
-/**
- * Validate an API token and return the token data if valid
- */
-const validateAPIToken = async (
-    token: string,
-    requiredPermission: 'newsletter:write' | 'recipients:read'
-): Promise<{ valid: boolean; tokenData?: any; tenantId?: string; error?: string }> => {
-    try {
-        const tokenHash = hashToken(token);
-
-        // Search all tenants for the token (we could optimize this with a global tokens collection)
-        const tenantsSnapshot = await db.collection('tenants').get();
-
-        for (const tenantDoc of tenantsSnapshot.docs) {
-            const tokensQuery = await db
-                .collection('tenants')
-                .doc(tenantDoc.id)
-                .collection('api_tokens')
-                .where('tokenHash', '==', tokenHash)
-                .limit(1)
-                .get();
-
-            if (!tokensQuery.empty) {
-                const tokenDoc = tokensQuery.docs[0];
-                const tokenData = tokenDoc.data();
-
-                // Check expiration
-                if (tokenData.expiresAt) {
-                    const expiresAt = tokenData.expiresAt.toDate();
-                    if (new Date() > expiresAt) {
-                        return { valid: false, error: 'Token expired' };
-                    }
-                }
-
-                // Check permissions
-                if (!tokenData.permissions.includes(requiredPermission)) {
-                    return { valid: false, error: 'Insufficient permissions' };
-                }
-
-                // Update lastUsedAt
-                await tokenDoc.ref.update({
-                    lastUsedAt: admin.firestore.FieldValue.serverTimestamp()
-                });
-
-                return {
-                    valid: true,
-                    tokenData,
-                    tenantId: tenantDoc.id
-                };
-            }
-        }
-
-        return { valid: false, error: 'Invalid token' };
-    } catch (error: any) {
-        console.error('Token validation error:', error);
-        return { valid: false, error: error.message };
-    }
-};
 
 /**
  * Newsletter Subscribe Endpoint

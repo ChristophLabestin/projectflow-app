@@ -816,7 +816,7 @@ Content Plan: ${parsed.planningPosts?.length || 0} posts scheduled.
     }
 };
 
-export const generateBlogPostAI = async (topic: string, language: string = 'en'): Promise<{ content: string; title: string; excerpt: string }> => {
+export const generateBlogPostAI = async (topic: string, language: string = 'en', useSearch: boolean = false): Promise<{ content: string; title: string; excerpt: string }> => {
     try {
         const ai = getAiClient();
         const responseSchema: Schema = {
@@ -829,10 +829,19 @@ export const generateBlogPostAI = async (topic: string, language: string = 'en')
             required: ['title', 'excerpt', 'content']
         };
 
+        const searchInstructions = useSearch ? `
+        **Internet Search Enabled:**
+        - You MUST use the Google Search tool to research the latest information, statistics, and trends related to this topic.
+        - Include a "Sources & References" section at the very end of the content.
+        - Link to the sources you found during your research.
+        - Cite specific facts or data points within the text where appropriate.` : '';
+
         const prompt = `
         You are an expert SEO blog writer. Write a comprehensive, engaging, and professional blog post about: "${topic}".
         
         Language: ${language === 'de' ? 'German' : 'English'}
+        
+        ${searchInstructions}
         
         **Instructions:**
         1. **Title**: Catchy and SEO-optimized.
@@ -851,6 +860,7 @@ export const generateBlogPostAI = async (topic: string, language: string = 'en')
                  <li>Point 2...</li>
                </ul>
              </div>
+           ${useSearch ? '- At the end, add a <hr /> followed by a "Sources & References" section.' : ''}
            - Write in a natural, human-like tone.
            
         Return the result as a JSON object with 'title', 'excerpt', and 'content' (the HTML string).
@@ -863,12 +873,62 @@ export const generateBlogPostAI = async (topic: string, language: string = 'en')
                 responseMimeType: "application/json",
                 responseSchema,
                 temperature: 0.7,
+                tools: useSearch ? [{ googleSearch: {} }] : undefined
             }
         }));
 
         return JSON.parse(response.text || "{}");
     } catch (error) {
         console.error("Gemini Blog Generation Error:", error);
+        throw error;
+    }
+};
+
+export const suggestBlogTopicsAI = async (project: Project): Promise<{ title: string; rationale: string }[]> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.ARRAY,
+            items: {
+                type: Type.OBJECT,
+                properties: {
+                    title: { type: Type.STRING },
+                    rationale: { type: Type.STRING },
+                },
+                required: ['title', 'rationale']
+            }
+        };
+
+        const prompt = `
+        You are a Content Strategist. Based on the following project context, suggest 4-6 specific blog post topics that would be relevant, engaging, and valuable for the project's audience.
+        
+        **Project Context:**
+        - Title: ${project.title}
+        - Description: ${project.description || "A professional project."}
+        - Status: ${project.status}
+        
+        **Instructions:**
+        1. Each topic should have a compelling **Title**.
+        2. Each topic should have a brief **Rationale** (1 sentence) explaining why this topic is strategically relevant.
+        3. Aim for a mix of "Thought Leadership", "How-to/Educational", and "Product/Service Deep Dive" styles.
+        4. Focus on areas that help build authority and solve user problems related to the project.
+        
+        Return the result as a JSON array of objects with 'title' and 'rationale'.
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.8,
+            }
+        }));
+
+        return JSON.parse(response.text || "[]");
+    } catch (error) {
+        console.error("Gemini Blog Topic Suggestion Error:", error);
         throw error;
     }
 };

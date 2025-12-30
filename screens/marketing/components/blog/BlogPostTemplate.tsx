@@ -16,7 +16,7 @@ export const BlogPostTemplate: React.FC<BlogPostTemplateProps> = ({ post, onBack
     // Default values for preview mode
     const title = post.title || 'Untitled Post';
     const coverImage = post.coverImage;
-    const authorName = post.author || auth.currentUser?.displayName || 'Anonymous';
+    const authorName = typeof post.author === 'object' ? post.author.name : (post.author || auth.currentUser?.displayName || 'Anonymous');
     const date = post.createdAt ? format(new Date(post.createdAt), 'MMM d, yyyy') : format(new Date(), 'MMM d, yyyy');
     const readTime = '5 min read'; // Placeholder or calc
     const categoryName = 'General'; // Placeholder

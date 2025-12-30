@@ -2,6 +2,7 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { db } from './init';
 import { corsMiddleware } from './corsConfig';
+import { validateAPIToken, getAuthToken } from './authUtils';
 
 const REGION = 'europe-west3'; // Same region as newsletter function
 
@@ -42,6 +43,17 @@ export interface BlogPost {
  */
 export const createBlogPost = functions.region(REGION).https.onRequest((req, res) => {
     return corsMiddleware(req, res, async () => {
+        const token = getAuthToken(req);
+        if (!token) {
+            res.status(401).json({ success: false, error: 'Missing API token' });
+            return;
+        }
+
+        const validation = await validateAPIToken(token, 'blog:write');
+        if (!validation.valid) {
+            res.status(401).json({ success: false, error: validation.error });
+            return;
+        }
 
         // Extract ID from path if present (e.g. /createBlogPost/my-slug)
         // We filter out empty segments and ignore 'createBlogPost' if it's the only segment.
@@ -177,6 +189,18 @@ export const getBlogPosts = functions.region(REGION).https.onRequest((req, res) 
         // Only allow GET
         if (req.method !== 'GET') {
             res.status(405).json({ success: false, error: 'Method Not Allowed' });
+            return;
+        }
+
+        const token = getAuthToken(req);
+        if (!token) {
+            res.status(401).json({ success: false, error: 'Missing API token' });
+            return;
+        }
+
+        const validation = await validateAPIToken(token, 'blog:read');
+        if (!validation.valid) {
+            res.status(401).json({ success: false, error: validation.error });
             return;
         }
 

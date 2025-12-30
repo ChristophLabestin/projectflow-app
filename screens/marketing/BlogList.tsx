@@ -213,7 +213,7 @@ const BlogList = () => {
                                     )}
 
                                     <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] mt-4">
-                                        <span>{blog.author}</span>
+                                        <span>{typeof blog.author === 'object' ? blog.author.name : blog.author}</span>
                                         <span>{format(new Date(blog.createdAt), 'MMM d, yyyy')}</span>
                                     </div>
                                 </div>
@@ -268,7 +268,7 @@ const BlogList = () => {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="py-3 px-4 text-[var(--color-text-muted)]">{blog.author}</td>
+                                            <td className="py-3 px-4 text-[var(--color-text-muted)]">{typeof blog.author === 'object' ? blog.author.name : blog.author}</td>
                                             <td className="py-3 px-4">
                                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${blog.status === 'published'
                                                     ? 'bg-emerald-500/10 text-emerald-600'

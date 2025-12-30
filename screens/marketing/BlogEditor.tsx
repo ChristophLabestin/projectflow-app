@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { auth } from '../../services/firebase';
 import { MediaLibrary } from '../../components/MediaLibrary/MediaLibraryModal';
@@ -37,10 +37,28 @@ export const BlogEditor = () => {
     const [isAIModalOpen, setIsAIModalOpen] = useState(false);
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const { showSuccess, showError } = useToast();
+    const [isSettingsCollapsed, setIsSettingsCollapsed] = useState(false);
 
     // Store content in state to pass to preview
     const [content, setContent] = useState('');
     const editorRef = useRef<Editor | null>(null);
+
+    const loadCats = useCallback(async () => {
+        try {
+            if (!projectId) return;
+            const cats = await fetchCategories(projectId);
+            setCategories(cats);
+
+            // Sync selected category to ensure name/slug changes are picked up
+            setSelectedCategory(prev => {
+                if (!prev) return null;
+                const fresh = cats.find(c => c.id === prev.id);
+                return fresh || prev;
+            });
+        } catch (e) {
+            console.error("Failed to load categories", e);
+        }
+    }, [projectId]);
 
     // Check for existing blog post data
     React.useEffect(() => {
@@ -61,6 +79,8 @@ export const BlogEditor = () => {
                 // Use a small timeout to ensure editor is mounted if this is initial render
                 setTimeout(() => {
                     editorRef.current?.commands.setContent(post.content || '');
+                    // Reset change tracking after initial load from state
+                    hasChangesRef.current = false;
                 }, 0);
                 return;
             }
@@ -80,6 +100,8 @@ export const BlogEditor = () => {
                         setContent(post.content || '');
                         // Force update editor content
                         editorRef.current?.commands.setContent(post.content || '');
+                        // Reset change tracking after initial load from API
+                        hasChangesRef.current = false;
                     } else {
                         showError('Blog post not found');
                     }
@@ -90,18 +112,9 @@ export const BlogEditor = () => {
             }
         };
 
-        const loadCats = async () => {
-            try {
-                const cats = await fetchCategories();
-                setCategories(cats);
-            } catch (e) {
-                console.error("Failed to load categories", e);
-            }
-        };
-
         loadPost();
         loadCats();
-    }, [blogId, projectId]);
+    }, [blogId, projectId, loadCats]);
 
     const handleOpenMediaPicker = (mode: 'cover' | 'content') => {
         setMediaPickerMode(mode);
@@ -137,11 +150,14 @@ export const BlogEditor = () => {
     const hasChangesRef = useRef(false);
 
     // Track changes
+    const isInitialMount = useRef(true);
     React.useEffect(() => {
-        if (title || content || coverImage || selectedCategory || tags.length > 0) {
-            hasChangesRef.current = true;
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
         }
-    }, [title, content, coverImage, selectedCategory, tags]);
+        hasChangesRef.current = true;
+    }, [title, content, coverImage, selectedCategory, tags, excerpt]);
 
     const handleSave = async (newStatus: 'draft' | 'published', forceCreate = false, isAutosave = false) => {
         if (!projectId) return;
@@ -363,107 +379,135 @@ export const BlogEditor = () => {
                     {/* LEFT: Editor Side */}
                     <div className={`flex-1 flex flex-col bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl overflow-hidden shadow-sm relative ${isFullscreen ? 'w-1/2' : 'w-1/2'}`}>
                         {/* Meta Data Inputs */}
-                        <div className="p-6 border-b border-[var(--color-surface-border)] space-y-4 bg-white/50 dark:bg-black/20">
-                            <input
-                                type="text"
-                                placeholder="Post Title"
-                                value={title}
-                                onChange={(e) => setTitle(e.target.value)}
-                                className="w-full text-3xl font-bold bg-transparent border-none outline-none placeholder:text-[var(--color-text-muted)]/50 text-[var(--color-text-main)]"
-                            />
-
-                            {/* Excerpt Input */}
-                            <textarea
-                                placeholder="Enter a short excerpt (optional)..."
-                                value={excerpt}
-                                onChange={(e) => setExcerpt(e.target.value)}
-                                className="w-full text-sm bg-transparent border-none outline-none placeholder:text-[var(--color-text-muted)]/50 text-[var(--color-text-muted)] resize-none h-[40px] focus:h-[80px] transition-all"
-                            />
-
-                            {/* Cover Image Selection */}
-                            <div className="flex items-center gap-3">
+                        <div className="border-b border-[var(--color-surface-border)] bg-white/50 dark:bg-black/20">
+                            <div className="p-6 pb-4 flex items-center justify-between gap-4">
+                                <input
+                                    type="text"
+                                    placeholder="Post Title"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                    className="flex-1 text-3xl font-bold bg-transparent border-none outline-none placeholder:text-[var(--color-text-muted)]/50 text-[var(--color-text-main)]"
+                                />
                                 <button
-                                    onClick={() => handleOpenMediaPicker('cover')}
-                                    className="flex items-center gap-2 text-sm text-[var(--color-primary)] font-medium hover:underline"
+                                    onClick={() => setIsSettingsCollapsed(!isSettingsCollapsed)}
+                                    className="p-2 rounded-lg hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] transition-colors flex items-center justify-center"
+                                    title={isSettingsCollapsed ? 'Expand Settings' : 'Collapse Settings'}
                                 >
-                                    <span className="material-symbols-outlined text-[18px]">add_photo_alternate</span>
-                                    {coverImage ? 'Change Cover Image' : 'Add Cover Image'}
+                                    <span className="material-symbols-outlined">
+                                        {isSettingsCollapsed ? 'expand_more' : 'expand_less'}
+                                    </span>
                                 </button>
-                                {coverImage && (
-                                    <button
-                                        onClick={() => setCoverImage(null)}
-                                        className="text-xs text-red-500 hover:text-red-600 font-medium"
-                                    >
-                                        Remove
-                                    </button>
-                                )}
                             </div>
 
-                            {/* Category & Tags */}
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium mb-1.5 text-[var(--color-text-muted)]">Category</label>
-                                    <div className="flex gap-2">
-                                        <div className="relative flex-1">
-                                            <select
-                                                className="w-full appearance-none bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[var(--color-primary)] transition-colors"
-                                                value={selectedCategory?.id || ''}
-                                                onChange={(e) => {
-                                                    const cat = categories.find(c => c.id === e.target.value);
-                                                    setSelectedCategory(cat || null);
-                                                }}
+                            <motion.div
+                                initial={false}
+                                animate={{
+                                    height: isSettingsCollapsed ? 0 : 'auto',
+                                    opacity: isSettingsCollapsed ? 0 : 1,
+                                    marginBottom: isSettingsCollapsed ? 0 : 0
+                                }}
+                                transition={{ duration: 0.3, ease: 'easeInOut' }}
+                                className="overflow-hidden"
+                            >
+                                <div className="px-6 pb-6 space-y-4">
+                                    {/* Excerpt Input */}
+                                    <textarea
+                                        placeholder="Enter a short excerpt (optional)..."
+                                        value={excerpt}
+                                        onChange={(e) => setExcerpt(e.target.value)}
+                                        className="w-full text-sm bg-transparent border-none outline-none placeholder:text-[var(--color-text-muted)]/50 text-[var(--color-text-muted)] resize-none h-[40px] focus:h-[80px] transition-all"
+                                    />
+
+                                    {/* Cover Image Selection */}
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={() => handleOpenMediaPicker('cover')}
+                                            className="flex items-center gap-2 text-sm text-[var(--color-primary)] font-medium hover:underline"
+                                        >
+                                            <span className="material-symbols-outlined text-[18px]">add_photo_alternate</span>
+                                            {coverImage ? 'Change Cover Image' : 'Add Cover Image'}
+                                        </button>
+                                        {coverImage && (
+                                            <button
+                                                onClick={() => setCoverImage(null)}
+                                                className="text-xs text-red-500 hover:text-red-600 font-medium"
                                             >
-                                                <option value="">Select a category...</option>
-                                                {categories.map(cat => (
-                                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
-                                                ))}
-                                            </select>
-                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--color-text-muted)]">
-                                                <span className="material-symbols-outlined text-sm">expand_more</span>
+                                                Remove
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {/* Category & Tags Row */}
+                                    <div className="grid grid-cols-2 gap-6">
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1.5 text-[var(--color-text-muted)]">Category</label>
+                                            <div className="flex gap-2">
+                                                <div className="relative flex-1">
+                                                    <select
+                                                        className="w-full appearance-none bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+                                                        value={selectedCategory?.id || ''}
+                                                        onChange={(e) => {
+                                                            const cat = categories.find(c => c.id === e.target.value);
+                                                            setSelectedCategory(cat || null);
+                                                        }}
+                                                    >
+                                                        <option value="">Select a category...</option>
+                                                        {categories.map(cat => (
+                                                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                                        ))}
+                                                    </select>
+                                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--color-text-muted)]">
+                                                        <span className="material-symbols-outlined text-sm">expand_more</span>
+                                                    </div>
+                                                </div>
+                                                <Button
+                                                    variant="secondary"
+                                                    className="shrink-0 aspect-square flex items-center justify-center p-0 w-10"
+                                                    onClick={() => setShowCategoryManager(true)}
+                                                    title="Manage Categories"
+                                                >
+                                                    <span className="material-symbols-outlined">settings</span>
+                                                </Button>
                                             </div>
                                         </div>
-                                        <Button
-                                            variant="secondary"
-                                            className="shrink-0 aspect-square flex items-center justify-center p-0 w-10"
-                                            onClick={() => setShowCategoryManager(true)}
-                                            title="Manage Categories"
-                                        >
-                                            <span className="material-symbols-outlined">settings</span>
-                                        </Button>
+                                        <div>
+                                            <label className="block text-sm font-medium mb-1.5 text-[var(--color-text-muted)]">Tags</label>
+                                            <div className="space-y-2">
+                                                {tags.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {tags.map((tag, i) => (
+                                                            <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--color-surface-hover)] text-xs font-medium">
+                                                                {tag}
+                                                                <button
+                                                                    onClick={() => setTags(tags.filter((_, idx) => idx !== i))}
+                                                                    className="hover:text-red-500 flex items-center justify-center"
+                                                                >
+                                                                    <span className="material-symbols-outlined text-[14px]">close</span>
+                                                                </button>
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                <input
+                                                    type="text"
+                                                    placeholder="Add tag and press Enter..."
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.preventDefault();
+                                                            const val = e.currentTarget.value.trim();
+                                                            if (val && !tags.includes(val)) {
+                                                                setTags([...tags, val]);
+                                                                e.currentTarget.value = '';
+                                                            }
+                                                        }
+                                                    }}
+                                                    className="w-full text-sm bg-black/5 dark:bg-white/5 border-none rounded-lg px-3 py-2.5 outline-none placeholder:text-[var(--color-text-muted)] text-[var(--color-text-main)]"
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="block text-sm font-medium text-[var(--color-text-muted)]">Tags</label>
-                                    <div className="flex flex-wrap gap-2">
-                                        {tags.map((tag, i) => (
-                                            <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--color-surface-hover)] text-xs font-medium">
-                                                {tag}
-                                                <button
-                                                    onClick={() => setTags(tags.filter((_, idx) => idx !== i))}
-                                                    className="hover:text-red-500 flex items-center justify-center"
-                                                >
-                                                    <span className="material-symbols-outlined text-[14px]">close</span>
-                                                </button>
-                                            </span>
-                                        ))}
-                                    </div>
-                                    <input
-                                        type="text"
-                                        placeholder="Add tag and press Enter..."
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                                e.preventDefault();
-                                                const val = e.currentTarget.value.trim();
-                                                if (val && !tags.includes(val)) {
-                                                    setTags([...tags, val]);
-                                                    e.currentTarget.value = '';
-                                                }
-                                            }
-                                        }}
-                                        className="w-full text-sm bg-black/5 dark:bg-white/5 border-none rounded-lg px-3 py-2 outline-none placeholder:text-[var(--color-text-muted)] text-[var(--color-text-main)]"
-                                    />
-                                </div>
-                            </div>
+                            </motion.div>
                         </div>
 
                         {/* Advanced Editor */}
@@ -503,6 +547,7 @@ export const BlogEditor = () => {
             <BlogAIModal
                 isOpen={isAIModalOpen}
                 onClose={() => setIsAIModalOpen(false)}
+                projectId={projectId}
                 onGenerate={(result) => {
                     // Assuming result is { title, excerpt, content }
                     if (result.title) setTitle(result.title);
@@ -532,8 +577,12 @@ export const BlogEditor = () => {
 
             {showCategoryManager && (
                 <CategoryManager
-                    onClose={() => setShowCategoryManager(false)}
+                    onClose={() => {
+                        setShowCategoryManager(false);
+                        loadCats();
+                    }}
                     onSelect={(cat) => setSelectedCategory(cat)}
+                    projectId={projectId || ''}
                 />
             )}
         </>

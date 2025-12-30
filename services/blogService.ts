@@ -33,7 +33,6 @@ export interface BlogTemplate {
     createdAt: Date;
 }
 
-// Helper to get configuration (migrating old settings to new structure if needed)
 const getApiConfig = async (projectId: string): Promise<ApiResourceConfig | null> => {
     const settings = await getMarketingSettings(projectId);
     if (!settings) return null;
@@ -62,15 +61,30 @@ const getApiConfig = async (projectId: string): Promise<ApiResourceConfig | null
     return null;
 };
 
-// Internal Cloud Functions Helper
-const CLOUD_FUNCTIONS_URL = `https://europe-west3-project-manager-9d0ad.cloudfunctions.net/api`;
+/**
+ * Extract Bearer token from headers string
+ */
+const extractToken = (headersJson?: string): string => {
+    if (!headersJson) return '';
+    try {
+        const headers = JSON.parse(headersJson);
+        const auth = headers.Authorization || headers.authorization || '';
+        return auth.replace('Bearer ', '').trim();
+    } catch (e) {
+        return '';
+    }
+};
 
-const executeCloudApiRequest = async (path: string, method: string = 'GET', data?: any) => {
+// Internal Cloud Functions Helper
+const CLOUD_FUNCTIONS_URL = import.meta.env.VITE_CLOUD_FUNCTIONS_URL || `https://europe-west3-project-manager-9d0ad.cloudfunctions.net/api`;
+
+const executeCloudApiRequest = async (path: string, method: string = 'GET', data?: any, token?: string) => {
     const url = `${CLOUD_FUNCTIONS_URL}${path}`;
     const options: RequestInit = {
         method,
         headers: {
             'Content-Type': 'application/json',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
     };
 
@@ -258,7 +272,9 @@ export const fetchCategories = async (projectId: string): Promise<BlogCategory[]
 
     // Fallback to internal Cloud Functions
     try {
-        const response = await executeCloudApiRequest('/blog/categories');
+        const token = extractToken(config?.headers);
+
+        const response = await executeCloudApiRequest('/blog/categories', 'GET', null, token);
         return response.data || [];
     } catch (e) {
         console.error('Failed to fetch internal categories', e);
@@ -272,7 +288,8 @@ export const createCategory = async (projectId: string, category: Partial<BlogCa
         return await executeApiRequest(config, 'categories', 'create', { data: category });
     }
 
-    const response = await executeCloudApiRequest('/blog/categories/manage', 'POST', category);
+    const token = extractToken(config?.headers);
+    const response = await executeCloudApiRequest('/blog/categories/manage', 'POST', category, token);
     return response.data;
 };
 
@@ -282,7 +299,8 @@ export const updateCategory = async (projectId: string, id: string, category: Pa
         return await executeApiRequest(config, 'categories', 'update', { id, data: category });
     }
 
-    const response = await executeCloudApiRequest(`/blog/categories/manage/${id}`, 'PUT', category);
+    const token = extractToken(config?.headers);
+    const response = await executeCloudApiRequest(`/blog/categories/manage/${id}`, 'PUT', category, token);
     return response.data;
 };
 
@@ -293,7 +311,8 @@ export const deleteCategory = async (projectId: string, id: string): Promise<voi
         return;
     }
 
-    await executeCloudApiRequest(`/blog/categories/manage/${id}`, 'DELETE');
+    const token = extractToken(config?.headers);
+    await executeCloudApiRequest(`/blog/categories/manage/${id}`, 'DELETE', null, token);
 };
 
 /**

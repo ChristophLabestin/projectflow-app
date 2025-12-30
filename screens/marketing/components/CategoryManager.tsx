@@ -7,9 +7,10 @@ import { BlogCategory, fetchCategories, createCategory, updateCategory, deleteCa
 interface CategoryManagerProps {
     onClose: () => void;
     onSelect?: (category: BlogCategory) => void;
+    projectId: string;
 }
 
-export const CategoryManager: React.FC<CategoryManagerProps> = ({ onClose, onSelect }) => {
+export const CategoryManager: React.FC<CategoryManagerProps> = ({ onClose, onSelect, projectId }) => {
     const { showSuccess, showError } = useToast();
     const [categories, setCategories] = useState<BlogCategory[]>([]);
     const [loading, setLoading] = useState(false);
@@ -22,7 +23,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ onClose, onSel
     const loadCategories = async () => {
         setLoading(true);
         try {
-            const data = await fetchCategories();
+            const data = await fetchCategories(projectId);
             setCategories(data);
         } catch (e) {
             // Quiet fail or notify
@@ -34,26 +35,29 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ onClose, onSel
 
     useEffect(() => {
         loadCategories();
-    }, []);
+    }, [projectId]);
 
     const handleSave = async () => {
         if (!editName.trim()) return;
 
         try {
             if (isEditing === 'new') {
-                const newCat = await createCategory({ name: editName, slug: editSlug || undefined });
-                setCategories([...categories, newCat]);
+                const newCat = await createCategory(projectId, { name: editName, slug: editSlug || undefined });
                 if (onSelect) onSelect(newCat);
                 showSuccess('Category created');
             } else if (isEditing) {
-                const updated = await updateCategory(isEditing, { name: editName, slug: editSlug || undefined });
-                setCategories(categories.map(c => c.id === isEditing ? updated : c));
+                const updated = await updateCategory(projectId, isEditing, { name: editName, slug: editSlug || undefined });
                 showSuccess('Category updated');
             }
+
+            // Re-fetch all to ensure sync and proper data shape
+            await loadCategories();
+
             setIsEditing(null);
             setEditName('');
             setEditSlug('');
         } catch (e) {
+            console.error(e);
             showError('Failed to save category');
         }
     };
@@ -61,7 +65,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({ onClose, onSel
     const handleDelete = async (id: string) => {
         if (!confirm('Are you sure you want to delete this category?')) return;
         try {
-            await deleteCategory(id);
+            await deleteCategory(projectId, id);
             setCategories(categories.filter(c => c.id !== id));
             showSuccess('Category deleted');
         } catch (e) {

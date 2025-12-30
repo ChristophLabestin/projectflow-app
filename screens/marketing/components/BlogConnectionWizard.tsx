@@ -47,7 +47,14 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
     const updateEndpoint = (resource: string, type: keyof ApiResourceConfig['resources'][string]['endpoints'], field: keyof ApiEndpoint, value: string) => {
         setResources(prev => {
             const res = prev[resource] || { endpoints: {} };
-            const endpoint = res.endpoints[type] || { path: '', method: type === 'list' || type === 'get' ? 'GET' : 'POST' };
+            const defaultMethods: Record<string, string> = {
+                list: 'GET',
+                get: 'GET',
+                create: 'POST',
+                update: 'PUT',
+                delete: 'DELETE'
+            };
+            const endpoint = res.endpoints[type] || { path: '', method: defaultMethods[type] || 'GET' };
 
             return {
                 ...prev,
