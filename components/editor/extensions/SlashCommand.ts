@@ -30,9 +30,9 @@ export const SlashCommand = Extension.create({
 
 export const getSlashCommandSuggestions = (items: any) => ({
     items: ({ query }) => {
-        // If no query, show all items
+        // If no query, show all items (no limit for initial display)
         if (!query) {
-            return items.slice(0, 15);
+            return items;
         }
 
         const lowerQuery = query.toLowerCase();
@@ -44,7 +44,7 @@ export const getSlashCommandSuggestions = (items: any) => ({
                 term.toLowerCase().includes(lowerQuery)
             );
             return titleMatch || searchTermMatch;
-        }).slice(0, 15);
+        });
     },
     render: () => {
         let component;

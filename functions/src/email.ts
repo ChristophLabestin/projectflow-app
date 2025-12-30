@@ -74,7 +74,7 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
   const transporter = createTransporter();
 
   const mailOptions = {
-    from: '"ProjectFlow" <no-reply@getprojectflow.com>', // sender address
+    from: '"ProjectFlow" <no-reply@getprojectflow.com>', // Amazon SES verified sender
     to,
     subject,
     html
@@ -82,7 +82,7 @@ export const sendEmail = async (to: string, subject: string, html: string) => {
 
   try {
     const info = await transporter.sendMail(mailOptions);
-    console.log('Message sent: %s', info.messageId);
+    console.log('Message sent to %s: %s', to, info.messageId);
     return info;
   } catch (error) {
     console.error('Error sending email:', error);

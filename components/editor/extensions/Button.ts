@@ -1,4 +1,5 @@
 import { Node, mergeAttributes } from '@tiptap/core';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
 
 export const Button = Node.create({
     name: 'button',
@@ -91,18 +92,6 @@ export const Button = Node.create({
     },
 
     renderHTML({ HTMLAttributes }) {
-        // We render a wrapper div for alignment, and the anchor inside?
-        // Actually, 'block' node is usually a div.
-        // If we want it to be a link, the outer element should be 'a'.
-        // But 'a' cannot be block in HTML semantics (it can display:block though).
-        // Let's make it a div wrapper (for alignment) -> a (button).
-        // Tiptap schema restriction: node must be a single element root?
-        // `renderHTML` returns an array.
-        // Let's just return the 'a' and set it to display: inline-block or block via CSS.
-        // Wait, if it's `group: 'block'`, Tiptap treats it as a block.
-        // Let's render 'a' with `display: inline-block` inside a container?
-        // Simpler: Just render 'a' with `display: block; width: fit-content; margin: 0 auto;` for center?
-        // Let's use a class `editor-button-block`.
         return ['a', mergeAttributes(HTMLAttributes, { 'data-type': 'button', class: 'editor-button-block no-prose' }), 0];
     },
 
@@ -120,5 +109,35 @@ export const Button = Node.create({
                 return commands.updateAttributes('button', attributes);
             },
         } as any;
+    },
+
+    addProseMirrorPlugins() {
+        return [
+            new Plugin({
+                key: new PluginKey('buttonClickPrevention'),
+                props: {
+                    handleClick: (view, pos, event) => {
+                        const target = event.target as HTMLElement;
+                        // Check if the click is on a button block
+                        if (target.closest('[data-type="button"]')) {
+                            // Prevent the default link navigation
+                            event.preventDefault();
+                            return true;
+                        }
+                        return false;
+                    },
+                    handleDOMEvents: {
+                        click: (view, event) => {
+                            const target = event.target as HTMLElement;
+                            if (target.closest('[data-type="button"]')) {
+                                event.preventDefault();
+                                return true;
+                            }
+                            return false;
+                        },
+                    },
+                },
+            }),
+        ];
     },
 });

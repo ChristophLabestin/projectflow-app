@@ -240,6 +240,24 @@ html.dark .banner-info {
 .ProseMirror [data-type="button"] {
     display: block;
     width: fit-content;
+    pointer-events: auto;
+    /* Allow selection */
+}
+
+/* Prevent the anchor from navigating when clicked in editor */
+.ProseMirror [data-type="button"]:not(:focus-within) {
+    cursor: text;
+}
+
+/* Ensure the link doesn't navigate - ProseMirror handles this via editable mode */
+.ProseMirror.ProseMirror-focused [data-type="button"] a,
+.ProseMirror [data-type="button"].editor-button-block {
+    pointer-events: none;
+}
+
+/* Re-enable pointer events for the node itself so it can be selected */
+.ProseMirror [data-type="button"] {
+    pointer-events: auto;
 }
 
 .ProseMirror [data-type="button"][style*="text-align: center"] {
