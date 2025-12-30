@@ -805,16 +805,74 @@ Content Plan: ${parsed.planningPosts?.length || 0} posts scheduled.
             config: {
                 responseMimeType: "application/json",
                 responseSchema,
-                temperature: 0.5,
+                temperature: 0.7,
             }
-        }), { ideaId: idea.id, projectId: idea.projectId, tenantId: idea.tenantId });
+        }));
 
         return JSON.parse(response.text || "{}");
     } catch (error) {
-        console.error("Gemini Risk/Win Analysis Error:", error);
+        console.error("Gemini Win/Risk Analysis Error:", error);
         throw error;
     }
 };
+
+export const generateBlogPostAI = async (topic: string, language: string = 'en'): Promise<{ content: string; title: string; excerpt: string }> => {
+    try {
+        const ai = getAiClient();
+        const responseSchema: Schema = {
+            type: Type.OBJECT,
+            properties: {
+                title: { type: Type.STRING },
+                excerpt: { type: Type.STRING },
+                content: { type: Type.STRING },
+            },
+            required: ['title', 'excerpt', 'content']
+        };
+
+        const prompt = `
+        You are an expert SEO blog writer. Write a comprehensive, engaging, and professional blog post about: "${topic}".
+        
+        Language: ${language === 'de' ? 'German' : 'English'}
+        
+        **Instructions:**
+        1. **Title**: Catchy and SEO-optimized.
+        2. **Excerpt**: A concise summary (max 2 sentences).
+        3. **Content**:
+           - Use rich HTML formatting compatible with a Tiptap editor.
+           - Use <h1> for the main title (if you include it in content, otherwise start with intro), <h2> and <h3> for subheadings.
+           - Use <p> for paragraphs.
+           - Use <ul> / <ol> and <li> for lists.
+           - Use <blockquote> for quotes or key emphasis.
+           - **CRITICAL**: Include at least one "Key Takeaways" or "Summary" section using a special card block format:
+             <div class="card-block">
+               <p><strong>Key Takeaways</strong></p>
+               <ul>
+                 <li>Point 1...</li>
+                 <li>Point 2...</li>
+               </ul>
+             </div>
+           - Write in a natural, human-like tone.
+           
+        Return the result as a JSON object with 'title', 'excerpt', and 'content' (the HTML string).
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema,
+                temperature: 0.7,
+            }
+        }));
+
+        return JSON.parse(response.text || "{}");
+    } catch (error) {
+        console.error("Gemini Blog Generation Error:", error);
+        throw error;
+    }
+};
+
 
 export const generateProductStrategyAI = async (idea: Idea): Promise<{ vision: string, marketFit: number, feasibility: number }> => {
     try {

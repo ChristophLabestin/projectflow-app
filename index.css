@@ -753,3 +753,13 @@ html.dark .glass-strong {
   background-color: #f43f5e;
   box-shadow: 0 0 8px rgba(244, 63, 94, 0.5);
 }
+
+/* Background Pattern for Blog Preview */
+.bg-dots {
+  background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+html.dark .bg-dots {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+}

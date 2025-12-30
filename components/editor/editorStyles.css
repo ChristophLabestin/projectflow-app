@@ -1,0 +1,217 @@
+/* Prosemirror / Tiptap specific styles for the editor content */
+.ProseMirror {
+    outline: none;
+    min-height: 100%;
+}
+
+.ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    color: var(--color-text-muted);
+    pointer-events: none;
+    height: 0;
+}
+
+/* Ensure paragraphs have spacing and empty ones are preserved */
+.ProseMirror p {
+    margin: 1em 0;
+    min-height: 1.5em;
+    /* Ensure empty lines take up space */
+    line-height: 1.6;
+}
+
+.ProseMirror p:empty::before {
+    content: "\00a0";
+    /* NBSP to force height */
+    display: inline-block;
+}
+
+/* Base Nodes */
+.ProseMirror h1 {
+    font-size: 2em;
+    font-weight: bold;
+    line-height: 1.25;
+    margin-bottom: 0.5em;
+}
+
+.ProseMirror h2 {
+    font-size: 1.5em;
+    font-weight: bold;
+    line-height: 1.35;
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+}
+
+.ProseMirror h3 {
+    font-size: 1.25em;
+    font-weight: bold;
+    line-height: 1.4;
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+    padding-left: 1.5em;
+    margin: 1em 0;
+}
+
+.ProseMirror ul {
+    list-style-type: disc;
+}
+
+.ProseMirror ol {
+    list-style-type: decimal;
+}
+
+.ProseMirror blockquote {
+    border-left: 3px solid var(--color-primary);
+    padding-left: 1em;
+    margin: 1em 0;
+    font-style: italic;
+    color: var(--color-text-muted);
+}
+
+.ProseMirror img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+    margin: 1em 0;
+}
+
+.ProseMirror hr {
+    margin: 2em 0;
+    border: none;
+    border-top: 1px solid var(--color-surface-border);
+}
+
+.ProseMirror pre {
+    background: #0d0d0d;
+    color: #fff;
+    font-family: 'JetBrainsMono', monospace;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+
+    code {
+        color: inherit;
+        padding: 0;
+        background: none;
+        font-size: 0.8rem;
+    }
+}
+
+.ProseMirror a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+/* --- New Advanced Blocks --- */
+
+/* Columns */
+.column-block {
+    display: flex;
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.column {
+    flex: 1;
+    min-width: 0;
+    border: 1px dashed transparent;
+    /* visual hint when empty/active? */
+}
+
+/* Column visual feedback for empty states if desired */
+.column:empty::before {
+    content: "Type here...";
+    color: var(--color-text-muted);
+    opacity: 0.5;
+    pointer-events: none;
+    display: block;
+}
+
+/* Responsive Columns */
+@media (max-width: 640px) {
+    .column-block {
+        flex-direction: column;
+    }
+}
+
+
+/* Banners (Callouts) */
+.banner {
+    padding: 1rem 1.5rem;
+    border-radius: 0.5rem;
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    border-left: 4px solid transparent;
+}
+
+.banner p {
+    margin: 0;
+}
+
+.banner-info {
+    background-color: var(--color-surface-hover);
+    border-left-color: var(--color-primary);
+}
+
+.banner-warning {
+    background-color: #fffbeb;
+    /* amber-50 */
+    border-left-color: var(--color-warning);
+    color: #92400e;
+    /* amber-800 */
+}
+
+.banner-success {
+    background-color: #ecfdf5;
+    /* emerald-50 */
+    border-left-color: var(--color-success);
+    color: #065f46;
+    /* emerald-800 */
+}
+
+.banner-error {
+    background-color: #fef2f2;
+    /* red-50 */
+    border-left-color: var(--color-error);
+    color: #991b1b;
+    /* red-800 */
+}
+
+/* Dark Mode Banners */
+html.dark .banner-warning {
+    background-color: rgba(245, 158, 11, 0.1);
+    color: #fbbf24;
+}
+
+html.dark .banner-success {
+    background-color: rgba(16, 185, 129, 0.1);
+    color: #34d399;
+}
+
+html.dark .banner-error {
+    background-color: rgba(239, 68, 68, 0.1);
+    color: #f87171;
+}
+
+html.dark .banner-info {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+/* Card Block Styles */
+.card-block {
+    border: 1px solid var(--color-surface-border);
+    margin: 1.5rem 0;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.2s ease;
+}
+
+/* Ensure text color inside card is inherited, overriding prose defaults and specificity issues */
+.card-block * {
+    color: inherit !important;
+}

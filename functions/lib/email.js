@@ -83,7 +83,9 @@ const sendEmail = async (to, subject, html) => {
     }
 };
 exports.sendEmail = sendEmail;
-const getSystemEmailTemplate = (title, body, actionLink, actionText) => {
+const email_locales_1 = require("./email-locales");
+const getSystemEmailTemplate = (title, body, actionLink, actionText, language = 'en') => {
+    const t = email_locales_1.EMAIL_CONTENT[language].common;
     return `
 <!DOCTYPE html>
 <html>
@@ -146,7 +148,7 @@ const getSystemEmailTemplate = (title, body, actionLink, actionText) => {
       
       <a href="${actionLink}" class="button">${actionText}</a>
 
-      <div class="divider">or paste link</div>
+      <div class="divider">${t.orPasteLink}</div>
 
       <div class="link-box">
         <div class="link-text">${actionLink}</div>
@@ -161,7 +163,7 @@ const getSystemEmailTemplate = (title, body, actionLink, actionText) => {
     </div>
 
     <div class="footer">
-      <p>If you didn't request this email, you can safely ignore it.<br>Your email address has not been added to any lists.</p>
+      <p>${t.footerIgnore}<br>${t.footerNoList}</p>
       <p>&copy; ${new Date().getFullYear()} Project Flow Inc.<br>88 Colin P Kelly Jr St, San Francisco, CA 94107</p>
     </div>
   </div>

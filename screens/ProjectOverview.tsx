@@ -242,6 +242,13 @@ export const ProjectOverview = () => {
                         return;
                     }
 
+                    // Private Project Security Check: Strictly members only
+                    if (projData.isPrivate && !isProjectMember) {
+                        setUnauthorized(true);
+                        setLoading(false);
+                        return;
+                    }
+
                     const userProfile = tenantProfile || await getUserProfile(auth.currentUser.uid); // Fallback to default if cross-tenant?
 
                     // GitHub fetching removed

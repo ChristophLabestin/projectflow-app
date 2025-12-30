@@ -5,6 +5,7 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const cors = require("cors");
 const email_1 = require("./email");
+const email_locales_1 = require("./email-locales");
 const db = admin.firestore();
 const REGION = 'europe-west3';
 // Allow all origins or restrict to specific domains
@@ -22,7 +23,7 @@ exports.requestWaitlist = functions.region(REGION).https.onRequest((req, res) =>
             return;
         }
         // 1. Validate Request
-        const { name, email } = req.body;
+        const { name, email, language } = req.body;
         if (!name || !email) {
             res.status(400).json({ success: false, error: 'Missing required fields: name, email' });
             return;
@@ -60,8 +61,10 @@ exports.requestWaitlist = functions.region(REGION).https.onRequest((req, res) =>
             await batch.commit();
             // 3. Send Email
             const link = `https://getprojectflow.com/waitlist-confirm?code=${code}`;
-            const subject = 'Confirm your email'; // Updated to match design attached
-            const html = (0, email_1.getSystemEmailTemplate)('Secure your spot on the Waitlist', 'Thanks for your interest in ProjectFlow. We received a request to join the waitlist. Please confirm your email address below to secure your spot.', link, 'Join Waitlist');
+            const locale = (0, email_locales_1.getLocale)(language);
+            const content = email_locales_1.EMAIL_CONTENT[locale].waitlist;
+            const subject = content.subject;
+            const html = (0, email_1.getSystemEmailTemplate)(content.title, content.body, link, content.button, locale);
             await (0, email_1.sendEmail)(email, subject, html);
             res.status(200).json({ success: true, message: 'Confirmation email sent' });
         }

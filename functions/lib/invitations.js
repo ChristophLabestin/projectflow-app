@@ -4,6 +4,7 @@ exports.sendInvitation = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const email_1 = require("./email");
+const email_locales_1 = require("./email-locales");
 const db = admin.firestore();
 const REGION = 'europe-west3';
 // Helper to generate a unique token
@@ -15,7 +16,7 @@ exports.sendInvitation = functions.region(REGION).https.onCall(async (data, cont
     if (!context.auth) {
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in to send invites.');
     }
-    const { email, type, targetId, role, tenantId: inputTenantId } = data;
+    const { email, type, targetId, role, tenantId: inputTenantId, language } = data;
     // For workspace invites, inputTenantId might be null if we are inviting TO the tenant context which is usually implicit
     // Actually, usually inviter is in a tenant. 
     if (!email || !type || !targetId) {
@@ -76,8 +77,11 @@ exports.sendInvitation = functions.region(REGION).https.onCall(async (data, cont
         // Note: existing invites rely on doc ID or token field? 
         // `generateWorkspaceInviteLink` returns the ID. 
         // Let's assume the ID acts as the token for simplicity unless we implemented a token field lookup.
-        const subject = `You've been invited to join ${type === 'workspace' ? 'a Workspace' : 'a Project'} on ProjectFlow`;
-        const html = (0, email_1.getSystemEmailTemplate)("You've been invited to ProjectFlow", `You have been invited to join the <strong>${type}</strong> as a <strong>${role || 'Member'}</strong>. Click the button below to accept the invitation and get started.`, inviteUrl, 'Accept Invitation');
+        const locale = (0, email_locales_1.getLocale)(language);
+        const content = email_locales_1.EMAIL_CONTENT[locale].invitation;
+        const subject = content.subject;
+        const bodyHtml = `${content.bodyPrefix} <strong>${type}</strong> ${content.rolePrefix} <strong>${role || 'Member'}</strong>. ${content.bodySuffix}`;
+        const html = (0, email_1.getSystemEmailTemplate)(content.title, bodyHtml, inviteUrl, content.button, locale);
         await (0, email_1.sendEmail)(email, subject, html);
         return { success: true, message: 'Invitation sent' };
     }

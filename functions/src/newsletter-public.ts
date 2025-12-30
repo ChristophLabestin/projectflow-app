@@ -2,6 +2,7 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as cors from 'cors';
 import { sendEmail, getSystemEmailTemplate } from './email';
+import { EMAIL_CONTENT, getLocale } from './email-locales';
 
 const db = admin.firestore();
 const REGION = 'europe-west3';
@@ -21,7 +22,7 @@ export const requestNewsletterSignup = functions.region(REGION).https.onRequest(
         }
 
         // 1. Validate Request
-        const { email } = req.body;
+        const { email, language } = req.body;
 
         if (!email) {
             res.status(400).json({ success: false, error: 'Missing required field: email' });
@@ -59,13 +60,16 @@ export const requestNewsletterSignup = functions.region(REGION).https.onRequest(
 
             // 2. Send Email
             const link = `https://getprojectflow.com/confirmNewsletterSignup?code=${code}`;
-            const subject = 'Confirm your subscription';
+            const locale = getLocale(language);
+            const content = EMAIL_CONTENT[locale].newsletter;
+            const subject = content.subject;
 
             const html = getSystemEmailTemplate(
-                'Confirm Newsletter Subscription',
-                "You're one step away from receiving the latest updates, tips, and news from ProjectFlow. Please confirm your email address to subscribe.",
+                content.title,
+                content.body,
                 link,
-                'Confirm Subscription'
+                content.button,
+                locale
             );
 
             await sendEmail(email, subject, html);

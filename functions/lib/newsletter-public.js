@@ -5,6 +5,7 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const cors = require("cors");
 const email_1 = require("./email");
+const email_locales_1 = require("./email-locales");
 const db = admin.firestore();
 const REGION = 'europe-west3';
 const CORS_ORIGIN = true;
@@ -20,7 +21,7 @@ exports.requestNewsletterSignup = functions.region(REGION).https.onRequest((req,
             return;
         }
         // 1. Validate Request
-        const { email } = req.body;
+        const { email, language } = req.body;
         if (!email) {
             res.status(400).json({ success: false, error: 'Missing required field: email' });
             return;
@@ -49,8 +50,10 @@ exports.requestNewsletterSignup = functions.region(REGION).https.onRequest((req,
             await batch.commit();
             // 2. Send Email
             const link = `https://getprojectflow.com/confirmNewsletterSignup?code=${code}`;
-            const subject = 'Confirm your subscription';
-            const html = (0, email_1.getSystemEmailTemplate)('Confirm Newsletter Subscription', "You're one step away from receiving the latest updates, tips, and news from ProjectFlow. Please confirm your email address to subscribe.", link, 'Confirm Subscription');
+            const locale = (0, email_locales_1.getLocale)(language);
+            const content = email_locales_1.EMAIL_CONTENT[locale].newsletter;
+            const subject = content.subject;
+            const html = (0, email_1.getSystemEmailTemplate)(content.title, content.body, link, content.button, locale);
             await (0, email_1.sendEmail)(email, subject, html);
             res.status(200).json({ success: true, message: 'Confirmation email sent' });
         }

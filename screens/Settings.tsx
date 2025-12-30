@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import React, { useState, useEffect } from 'react';
 import { remove } from 'firebase/database';
 import { collection, query, getDocs, deleteDoc, doc } from 'firebase/firestore';
@@ -31,13 +31,16 @@ import { getUserProfile, linkWithGithub, resetUserOnboarding } from '../services
 import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
 import { registerPasskey, shouldAutoPrompt, setAutoPrompt } from '../services/passkeyService';
 import { Checkbox } from '../components/ui/Checkbox';
+import LegalOverlay, { LegalPageType } from '../components/LegalOverlay';
+import { AnimatePresence } from 'framer-motion';
 
 type SettingsTab = 'account' | 'preferences' | 'security' | 'general' | 'billing' | 'email' | 'integrations' | 'prebeta';
 
 import { DateFormat, useLanguage } from '../context/LanguageContext';
 
 export const Settings = () => {
-    const [activeTab, setActiveTab] = useState<SettingsTab>('account');
+    const [searchParams] = useSearchParams();
+    const [activeTab, setActiveTab] = useState<SettingsTab>((searchParams.get('tab') as SettingsTab) || 'account');
     const { language, setLanguage, dateFormat, setDateFormat, t } = useLanguage();
     const [tenant, setTenant] = useState<Partial<Tenant>>({});
     const [loading, setLoading] = useState(true);
@@ -46,6 +49,10 @@ export const Settings = () => {
     const { showSuccess, showError } = useToast();
     const confirm = useConfirm();
     const [aiUsage, setAiUsage] = useState<AIUsage | null>(null);
+
+    // Legal Page State
+    const [showLegal, setShowLegal] = useState(false);
+    const [legalPage, setLegalPage] = useState<LegalPageType>('impressum');
 
     // Form State
     const [name, setName] = useState('');
@@ -1397,6 +1404,20 @@ export const Settings = () => {
                     <NavItem id="billing" label={t('settings.tabs.billing')} icon="credit_card" />
                     <NavItem id="email" label={t('settings.tabs.email')} icon="mail" />
                     <NavItem id="integrations" label={t('settings.tabs.integrations')} icon="key" />
+
+                    {/* Legal Footer */}
+                    <div className="mt-8 px-3 pt-6 border-t border-[var(--color-surface-border)]">
+                        <button
+                            onClick={() => {
+                                setLegalPage('impressum');
+                                setShowLegal(true);
+                            }}
+                            className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
+                        >
+                            <span className="material-symbols-outlined text-[16px]">gavel</span>
+                            {t('legal.titles.impressum')} / {t('legal.titles.privacy')}
+                        </button>
+                    </div>
                 </aside>
 
                 {/* Content */}
@@ -1501,6 +1522,16 @@ export const Settings = () => {
                     }
                 }}
             />
+
+            <AnimatePresence>
+                {showLegal && (
+                    <LegalOverlay
+                        page={legalPage}
+                        onClose={() => setShowLegal(false)}
+                        onNavigate={setLegalPage}
+                    />
+                )}
+            </AnimatePresence>
         </div>
     );
 };

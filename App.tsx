@@ -87,6 +87,8 @@ const RootLayout = () => {
 
     return (
         <>
+            <GlobalToast />
+            <GlobalConfirmationModal />
             <PinnedTasksModal />
             <HelpCenterDrawer />
             {isPublicRoute && (
@@ -246,8 +248,6 @@ const App = () => {
 
     return (
         <>
-            <GlobalToast />
-            <GlobalConfirmationModal />
             <RouterProvider router={router} />
         </>
     );

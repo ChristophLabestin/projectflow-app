@@ -1,6 +1,7 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import { sendEmail, getSystemEmailTemplate } from './email';
+import { EMAIL_CONTENT, getLocale } from './email-locales';
 
 const db = admin.firestore();
 const REGION = 'europe-west3';
@@ -16,7 +17,7 @@ export const sendInvitation = functions.region(REGION).https.onCall(async (data,
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in to send invites.');
     }
 
-    const { email, type, targetId, role, tenantId: inputTenantId } = data;
+    const { email, type, targetId, role, tenantId: inputTenantId, language } = data;
     // For workspace invites, inputTenantId might be null if we are inviting TO the tenant context which is usually implicit
     // Actually, usually inviter is in a tenant. 
 
@@ -91,13 +92,18 @@ export const sendInvitation = functions.region(REGION).https.onCall(async (data,
         // `generateWorkspaceInviteLink` returns the ID. 
         // Let's assume the ID acts as the token for simplicity unless we implemented a token field lookup.
 
-        const subject = `You've been invited to join ${type === 'workspace' ? 'a Workspace' : 'a Project'} on ProjectFlow`;
+        const locale = getLocale(language);
+        const content = EMAIL_CONTENT[locale].invitation;
+        const subject = content.subject;
+
+        const bodyHtml = `${content.bodyPrefix} <strong>${type}</strong> ${content.rolePrefix} <strong>${role || 'Member'}</strong>. ${content.bodySuffix}`;
 
         const html = getSystemEmailTemplate(
-            "You've been invited to ProjectFlow",
-            `You have been invited to join the <strong>${type}</strong> as a <strong>${role || 'Member'}</strong>. Click the button below to accept the invitation and get started.`,
+            content.title,
+            bodyHtml,
             inviteUrl,
-            'Accept Invitation'
+            content.button,
+            locale
         );
 
         await sendEmail(email, subject, html);

@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useUIState } from '../../context/UIContext';
 
 import { CreateIssueModal } from '../CreateIssueModal';
 
 export const GlobalToast = () => {
     const { toast, closeToast } = useUIState();
+    const navigate = useNavigate();
     const [isVisible, setIsVisible] = useState(false);
     const [copied, setCopied] = useState(false);
     const [isIssueModalOpen, setIsIssueModalOpen] = useState(false);
@@ -61,6 +63,17 @@ export const GlobalToast = () => {
 
                 {toast.type === 'error' && (
                     <>
+                        {toast.action && (
+                            <button
+                                onClick={() => {
+                                    navigate(toast.action!.path);
+                                    closeToast();
+                                }}
+                                className="px-3 py-1.5 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-xs font-bold shrink-0"
+                            >
+                                {toast.action.label}
+                            </button>
+                        )}
                         <button
                             onClick={handleOpenIssue}
                             className="p-1.5 hover:bg-white/20 rounded-lg transition-colors shrink-0 flex items-center justify-center"

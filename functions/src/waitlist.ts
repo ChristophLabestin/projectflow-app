@@ -2,6 +2,7 @@ import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 import * as cors from 'cors';
 import { sendEmail, getSystemEmailTemplate } from './email';
+import { EMAIL_CONTENT, getLocale } from './email-locales';
 
 const db = admin.firestore();
 const REGION = 'europe-west3';
@@ -23,7 +24,7 @@ export const requestWaitlist = functions.region(REGION).https.onRequest((req, re
         }
 
         // 1. Validate Request
-        const { name, email } = req.body;
+        const { name, email, language } = req.body;
 
         if (!name || !email) {
             res.status(400).json({ success: false, error: 'Missing required fields: name, email' });
@@ -71,13 +72,16 @@ export const requestWaitlist = functions.region(REGION).https.onRequest((req, re
 
             // 3. Send Email
             const link = `https://getprojectflow.com/waitlist-confirm?code=${code}`;
-            const subject = 'Confirm your email'; // Updated to match design attached
+            const locale = getLocale(language);
+            const content = EMAIL_CONTENT[locale].waitlist;
+            const subject = content.subject;
 
             const html = getSystemEmailTemplate(
-                'Secure your spot on the Waitlist',
-                'Thanks for your interest in ProjectFlow. We received a request to join the waitlist. Please confirm your email address below to secure your spot.',
+                content.title,
+                content.body,
                 link,
-                'Join Waitlist'
+                content.button,
+                locale
             );
 
             await sendEmail(email, subject, html);

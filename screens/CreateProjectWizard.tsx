@@ -55,6 +55,7 @@ export const CreateProjectWizard = () => {
     const [workspaceGroups, setWorkspaceGroups] = useState<WorkspaceGroup[]>([]);
     const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
     const [visibilityGroupIds, setVisibilityGroupIds] = useState<string[]>([]);
+    const [isPrivate, setIsPrivate] = useState(false);
     const [startDate, setStartDate] = useState('');
     const [dueDate, setDueDate] = useState('');
     const [priority, setPriority] = useState('Medium');
@@ -214,6 +215,7 @@ export const CreateProjectWizard = () => {
                 dueDate,
                 priority,
                 status: status as any,
+                isPrivate,
                 modules,
                 links: links.filter(l => l.title && l.url),
                 externalResources: externalResources.filter(r => r.title && r.url),
@@ -553,10 +555,10 @@ export const CreateProjectWizard = () => {
                                         <p className="text-sm text-[var(--color-text-subtle)]">{t('createProjectWizard.visibility.subtitle')}</p>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                         <button
-                                            onClick={() => setVisibilityGroupIds([])}
-                                            className={`p-4 rounded-xl flex flex-col items-start gap-2 transition-all hover:scale-[1.02] ${visibilityGroupIds.length === 0
+                                            onClick={() => { setVisibilityGroupIds([]); setIsPrivate(false); }}
+                                            className={`p-4 rounded-xl flex flex-col items-start gap-2 transition-all hover:scale-[1.02] ${!isPrivate && visibilityGroupIds.length === 0
                                                 ? 'bg-gradient-to-br from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 text-white dark:text-zinc-800 shadow-lg'
                                                 : 'bg-black/[0.03] dark:bg-white/[0.03] text-[var(--color-text-main)]'
                                                 }`}
@@ -565,19 +567,20 @@ export const CreateProjectWizard = () => {
                                                 <span className="material-symbols-outlined text-[20px]">public</span>
                                                 <span className="text-sm font-bold">{t('createProjectWizard.visibility.everyone')}</span>
                                             </div>
-                                            <span className={`text-[10px] ${visibilityGroupIds.length === 0 ? 'text-white/70 dark:text-zinc-600' : 'text-[var(--color-text-subtle)]'}`}>
+                                            <span className={`text-[10px] text-left ${!isPrivate && visibilityGroupIds.length === 0 ? 'text-white/70 dark:text-zinc-600' : 'text-[var(--color-text-subtle)]'}`}>
                                                 {t('createProjectWizard.visibility.everyoneHint')}
                                             </span>
                                         </button>
 
                                         <button
                                             onClick={() => {
+                                                setIsPrivate(false);
                                                 if (visibilityGroupIds.length === 0 && workspaceGroups.length > 0) {
                                                     setVisibilityGroupIds([workspaceGroups[0].id]);
                                                 }
                                             }}
                                             disabled={workspaceGroups.length === 0}
-                                            className={`p-4 rounded-xl flex flex-col items-start gap-2 transition-all hover:scale-[1.02] ${visibilityGroupIds.length > 0
+                                            className={`p-4 rounded-xl flex flex-col items-start gap-2 transition-all hover:scale-[1.02] ${!isPrivate && visibilityGroupIds.length > 0
                                                 ? 'bg-gradient-to-br from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 text-white dark:text-zinc-800 shadow-lg'
                                                 : 'bg-black/[0.03] dark:bg-white/[0.03] text-[var(--color-text-main)]'
                                                 } ${workspaceGroups.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -586,14 +589,30 @@ export const CreateProjectWizard = () => {
                                                 <span className="material-symbols-outlined text-[20px]">lock_person</span>
                                                 <span className="text-sm font-bold">{t('createProjectWizard.visibility.groups')}</span>
                                             </div>
-                                            <span className={`text-[10px] ${visibilityGroupIds.length > 0 ? 'text-white/70 dark:text-zinc-600' : 'text-[var(--color-text-subtle)]'}`}>
+                                            <span className={`text-[10px] text-left ${!isPrivate && visibilityGroupIds.length > 0 ? 'text-white/70 dark:text-zinc-600' : 'text-[var(--color-text-subtle)]'}`}>
                                                 {workspaceGroups.length === 0 ? t('createProjectWizard.visibility.noGroups') : t('createProjectWizard.visibility.groupsHint')}
+                                            </span>
+                                        </button>
+
+                                        <button
+                                            onClick={() => { setIsPrivate(true); setVisibilityGroupIds([]); }}
+                                            className={`p-4 rounded-xl flex flex-col items-start gap-2 transition-all hover:scale-[1.02] ${isPrivate
+                                                ? 'bg-gradient-to-br from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 text-white dark:text-zinc-800 shadow-lg'
+                                                : 'bg-black/[0.03] dark:bg-white/[0.03] text-[var(--color-text-main)]'
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className="material-symbols-outlined text-[20px]">lock</span>
+                                                <span className="text-sm font-bold">{t('createProjectWizard.visibility.private')}</span>
+                                            </div>
+                                            <span className={`text-[10px] text-left ${isPrivate ? 'text-white/70 dark:text-zinc-600' : 'text-[var(--color-text-subtle)]'}`}>
+                                                {t('createProjectWizard.visibility.privateHint')}
                                             </span>
                                         </button>
                                     </div>
 
                                     {/* Group Selector Dropdown */}
-                                    {visibilityGroupIds.length > 0 && workspaceGroups.length > 0 && (
+                                    {!isPrivate && visibilityGroupIds.length > 0 && workspaceGroups.length > 0 && (
                                         <div className="mt-4 animate-fade-in">
                                             <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2 block">
                                                 {t('createProjectWizard.visibility.selectGroups')}

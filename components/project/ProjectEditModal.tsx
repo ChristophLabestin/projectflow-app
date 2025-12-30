@@ -55,6 +55,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     const [links, setLinks] = useState(project.links || []);
     const [externalResources, setExternalResources] = useState(project.externalResources || []);
     const [visibilityGroupIds, setVisibilityGroupIds] = useState<string[]>(project.visibilityGroupIds || (project.visibilityGroupId ? [project.visibilityGroupId] : []));
+    const [isPrivate, setIsPrivate] = useState(project.isPrivate || false);
     const [workspaceGroups, setWorkspaceGroups] = useState<WorkspaceGroup[]>([]);
 
     // Permission check for visibility settings
@@ -105,6 +106,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             setLinks(project.links || []);
             setExternalResources(project.externalResources || []);
             setVisibilityGroupIds(project.visibilityGroupIds || (project.visibilityGroupId ? [project.visibilityGroupId] : []));
+            setIsPrivate(project.isPrivate || false);
             setActiveTab(initialTab);
 
             getWorkspaceGroups().then(setWorkspaceGroups).catch(console.error);
@@ -183,6 +185,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 githubIssueSync,
                 links,
                 externalResources,
+                isPrivate,
                 visibilityGroupIds: visibilityGroupIds, // Pass the array directly (including empty array for "Everyone")
                 visibilityGroupId: visibilityGroupIds && visibilityGroupIds.length > 0 ? visibilityGroupIds[0] : null // Maintain backward compat for now
             });
@@ -303,18 +306,18 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                             canChangeVisibility && workspaceGroups.length > 0 && (
                                 <div className="pt-4 mt-4 border-t border-[var(--color-surface-border)]">
                                     <label className="text-sm font-medium text-[var(--color-text-main)] mb-2 block">{t('projectSettings.visibility.title')}</label>
-                                    <div className="grid grid-cols-2 gap-3 mb-3">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
                                         <button
                                             type="button"
-                                            onClick={() => setVisibilityGroupIds([])}
-                                            className={`p-3 rounded-xl border text-left transition-all ${visibilityGroupIds.length === 0
+                                            onClick={() => { setVisibilityGroupIds([]); setIsPrivate(false); }}
+                                            className={`p-3 rounded-xl border text-left transition-all ${!isPrivate && visibilityGroupIds.length === 0
                                                 ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500'
                                                 : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:border-[var(--color-surface-border-hover)]'
                                                 }`}
                                         >
                                             <div className="flex items-center gap-2 mb-1">
-                                                <span className={`material-symbols-outlined text-lg ${visibilityGroupIds.length === 0 ? 'text-emerald-600' : 'text-[var(--color-text-subtle)]'}`}>public</span>
-                                                <span className={`text-sm font-bold ${visibilityGroupIds.length === 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-[var(--color-text-main)]'}`}>{t('projectSettings.visibility.everyone')}</span>
+                                                <span className={`material-symbols-outlined text-lg ${!isPrivate && visibilityGroupIds.length === 0 ? 'text-emerald-600' : 'text-[var(--color-text-subtle)]'}`}>public</span>
+                                                <span className={`text-sm font-bold ${!isPrivate && visibilityGroupIds.length === 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-[var(--color-text-main)]'}`}>{t('projectSettings.visibility.everyone')}</span>
                                             </div>
                                             <p className="text-xs text-[var(--color-text-muted)]">{t('projectSettings.visibility.everyoneDescription')}</p>
                                         </button>
@@ -322,24 +325,40 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                         <button
                                             type="button"
                                             onClick={() => {
+                                                setIsPrivate(false);
                                                 if (workspaceGroups.length > 0 && visibilityGroupIds.length === 0) {
                                                     setVisibilityGroupIds([workspaceGroups[0].id]);
                                                 }
                                             }}
-                                            className={`p-3 rounded-xl border text-left transition-all ${visibilityGroupIds.length > 0
+                                            className={`p-3 rounded-xl border text-left transition-all ${!isPrivate && visibilityGroupIds.length > 0
                                                 ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]'
                                                 : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:border-[var(--color-surface-border-hover)]'
                                                 }`}
                                         >
                                             <div className="flex items-center gap-2 mb-1">
-                                                <span className={`material-symbols-outlined text-lg ${visibilityGroupIds.length > 0 ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}>lock_person</span>
-                                                <span className={`text-sm font-bold ${visibilityGroupIds.length > 0 ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}>{t('projectSettings.visibility.specificGroup')}</span>
+                                                <span className={`material-symbols-outlined text-lg ${!isPrivate && visibilityGroupIds.length > 0 ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}>lock_person</span>
+                                                <span className={`text-sm font-bold ${!isPrivate && visibilityGroupIds.length > 0 ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}>{t('projectSettings.visibility.specificGroup')}</span>
                                             </div>
                                             <p className="text-xs text-[var(--color-text-muted)]">{t('projectSettings.visibility.specificGroupDescription')}</p>
                                         </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => { setIsPrivate(true); setVisibilityGroupIds([]); }}
+                                            className={`p-3 rounded-xl border text-left transition-all ${isPrivate
+                                                ? 'bg-rose-50 dark:bg-rose-500/10 border-rose-500 ring-1 ring-rose-500'
+                                                : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:border-[var(--color-surface-border-hover)]'
+                                                }`}
+                                        >
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className={`material-symbols-outlined text-lg ${isPrivate ? 'text-rose-600' : 'text-[var(--color-text-subtle)]'}`}>lock</span>
+                                                <span className={`text-sm font-bold ${isPrivate ? 'text-rose-700 dark:text-rose-400' : 'text-[var(--color-text-main)]'}`}>{t('projectSettings.visibility.private')}</span>
+                                            </div>
+                                            <p className="text-xs text-[var(--color-text-muted)]">{t('projectSettings.visibility.privateDescription')}</p>
+                                        </button>
                                     </div>
 
-                                    {visibilityGroupIds.length > 0 && (
+                                    {!isPrivate && visibilityGroupIds.length > 0 && (
                                         <div className="animate-fade-in bg-[var(--color-surface-hover)] rounded-xl p-3 border border-[var(--color-surface-border)]">
                                             <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2 block">
                                                 {t('projectSettings.visibility.allowedGroups')}

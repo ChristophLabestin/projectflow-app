@@ -554,6 +554,16 @@ export const ProjectsList = () => {
         const other: Project[] = [];
 
         projects.forEach(p => {
+            const isMember = p.ownerId === currentUser.uid || (p.memberIds || []).includes(currentUser.uid);
+
+            // Private Project Check: Only visible to members/owner
+            if (p.isPrivate) {
+                if (isMember) {
+                    my.push(p);
+                }
+                return;
+            }
+
             // Visibility Check
             if (p.visibilityGroupIds && p.visibilityGroupIds.length > 0) {
                 if (!isOwner && !p.visibilityGroupIds.some(id => userGroupIds.includes(id))) {
@@ -565,7 +575,6 @@ export const ProjectsList = () => {
                 }
             }
 
-            const isMember = p.ownerId === currentUser.uid || (p.memberIds || []).includes(currentUser.uid);
             if (isMember) {
                 my.push(p);
             } else {
@@ -797,7 +806,7 @@ export const ProjectsList = () => {
                                             workspaceHealth.status === 'excellent' ? 'bg-emerald-500' :
                                                 workspaceHealth.status === 'healthy' ? 'bg-emerald-600' :
                                                     'bg-indigo-500'
-                                    }`} />
+                                        }`} />
                                     {t('projectsList.header.avgHealth')}
                                 </div>
                             </div>
@@ -831,19 +840,19 @@ export const ProjectsList = () => {
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
                                     <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider flex items-center gap-1">
-                                    <span className="material-symbols-outlined text-xs">smart_toy</span>
-                                    {t('projectsList.suggestion.label')}
-                                </span>
-                                <span className="text-sm text-[var(--color-text-main)] font-medium">
-                                    {spotlightHealth.status === 'critical'
-                                        ? <><span className="text-rose-600 dark:text-rose-400">⚠️</span> {t('projectsList.suggestion.critical').replace('{title}', featuredProject.title)}</>
-                                        : spotlightHealth.status === 'warning'
-                                            ? <><span className="text-amber-600 dark:text-amber-400">⏰</span> {t('projectsList.suggestion.warning').replace('{title}', featuredProject.title)}</>
-                                            : spotlightHealth.status === 'excellent' || spotlightHealth.status === 'healthy'
-                                                ? <><span className="text-emerald-600 dark:text-emerald-400">🎉</span> {t('projectsList.suggestion.healthy').replace('{title}', featuredProject.title)}</>
-                                                : <>{t('projectsList.suggestion.focus').replace('{title}', featuredProject.title)}</>
-                                    }
-                                </span>
+                                        <span className="material-symbols-outlined text-xs">smart_toy</span>
+                                        {t('projectsList.suggestion.label')}
+                                    </span>
+                                    <span className="text-sm text-[var(--color-text-main)] font-medium">
+                                        {spotlightHealth.status === 'critical'
+                                            ? <><span className="text-rose-600 dark:text-rose-400">⚠️</span> {t('projectsList.suggestion.critical').replace('{title}', featuredProject.title)}</>
+                                            : spotlightHealth.status === 'warning'
+                                                ? <><span className="text-amber-600 dark:text-amber-400">⏰</span> {t('projectsList.suggestion.warning').replace('{title}', featuredProject.title)}</>
+                                                : spotlightHealth.status === 'excellent' || spotlightHealth.status === 'healthy'
+                                                    ? <><span className="text-emerald-600 dark:text-emerald-400">🎉</span> {t('projectsList.suggestion.healthy').replace('{title}', featuredProject.title)}</>
+                                                    : <>{t('projectsList.suggestion.focus').replace('{title}', featuredProject.title)}</>
+                                        }
+                                    </span>
                                     {spotlightHealth.factors && spotlightHealth.factors.length > 0 && (
                                         <div className="flex flex-wrap items-center gap-1">
                                             {spotlightHealth.factors.slice(0, 4).map((factor) => {
@@ -861,14 +870,14 @@ export const ProjectsList = () => {
                                                     </span>
                                                 );
                                             })}
-                                        {spotlightHealth.factors.length > 4 && (
-                                            <span className="text-[10px] text-[var(--color-text-subtle)]">
-                                                {t('projectsList.suggestion.more').replace('{count}', String(spotlightHealth.factors.length - 4))}
-                                            </span>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
+                                            {spotlightHealth.factors.length > 4 && (
+                                                <span className="text-[10px] text-[var(--color-text-subtle)]">
+                                                    {t('projectsList.suggestion.more').replace('{count}', String(spotlightHealth.factors.length - 4))}
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                             <button onClick={() => setShowSuggestion(false)} className="text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)] transition-colors p-1 -m-1 flex-shrink-0">
                                 <span className="material-symbols-outlined text-lg">close</span>
@@ -881,72 +890,72 @@ export const ProjectsList = () => {
                     {/* My Projects Toolbar */}
                     <div data-onboarding-id="projects-list-toolbar" className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-2 border-b border-[var(--color-surface-border)]/50">
                         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-                        {(['all', 'active', 'planning', 'completed'] as const).map((f) => (
-                            <button
-                                key={f}
-                                onClick={() => setFilter(f)}
-                                className={`
+                            {(['all', 'active', 'planning', 'completed'] as const).map((f) => (
+                                <button
+                                    key={f}
+                                    onClick={() => setFilter(f)}
+                                    className={`
                                     px-6 py-2.5 rounded-xl text-sm font-bold transition-all capitalize whitespace-nowrap flex items-center gap-2
                                     ${filter === f
-                                        ? 'bg-[var(--color-text-main)] text-[var(--color-surface-paper)] shadow-md'
-                                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}
+                                            ? 'bg-[var(--color-text-main)] text-[var(--color-surface-paper)] shadow-md'
+                                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}
                                 `}
-                            >
-                                {filterLabels[f]}
-                                <span className={`text-[10px] py-0.5 px-2 rounded-full font-bold ${filter === f ? 'bg-white/20' : 'bg-[var(--color-surface-border)]'}`}>
-                                    {f === 'planning' ? filterCounts.planning : (filterCounts as any)[f]}
-                                </span>
-                            </button>
-                        ))}
+                                >
+                                    {filterLabels[f]}
+                                    <span className={`text-[10px] py-0.5 px-2 rounded-full font-bold ${filter === f ? 'bg-white/20' : 'bg-[var(--color-surface-border)]'}`}>
+                                        {f === 'planning' ? filterCounts.planning : (filterCounts as any)[f]}
+                                    </span>
+                                </button>
+                            ))}
                         </div>
 
                         <div className="flex items-center gap-4 w-full lg:w-auto">
-                        <Input
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            placeholder={t('projectsList.search.placeholder')}
-                            className="w-full"
-                            icon="search"
-                        />
+                            <Input
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                placeholder={t('projectsList.search.placeholder')}
+                                className="w-full"
+                                icon="search"
+                            />
                             <Select
                                 value={sort}
                                 onChange={(e) => setSort(e.target.value as any)}
                                 className="w-full lg:w-40"
-                        >
-                            <option value="activity">{t('projectsList.sort.activity')}</option>
-                            <option value="recent">{t('projectsList.sort.recent')}</option>
-                            <option value="due">{t('projectsList.sort.due')}</option>
-                            <option value="progress">{t('projectsList.sort.progress')}</option>
-                        </Select>
+                            >
+                                <option value="activity">{t('projectsList.sort.activity')}</option>
+                                <option value="recent">{t('projectsList.sort.recent')}</option>
+                                <option value="due">{t('projectsList.sort.due')}</option>
+                                <option value="progress">{t('projectsList.sort.progress')}</option>
+                            </Select>
 
                             {/* Action Button - Integrated into Toolbar */}
                             {can('canCreateProjects') && (
                                 <Link to="/create">
-                                <Button
-                                    size="lg"
-                                    className="h-10 px-6 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 border-none font-bold text-sm shadow-xl hover:shadow-2xl transition-all whitespace-nowrap"
-                                    icon={<span className="material-symbols-outlined text-lg">add</span>}
-                                >
-                                    {t('projectsList.actions.newProject')}
-                                </Button>
-                            </Link>
-                        )}
+                                    <Button
+                                        size="lg"
+                                        className="h-10 px-6 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 border-none font-bold text-sm shadow-xl hover:shadow-2xl transition-all whitespace-nowrap"
+                                        icon={<span className="material-symbols-outlined text-lg">add</span>}
+                                    >
+                                        {t('projectsList.actions.newProject')}
+                                    </Button>
+                                </Link>
+                            )}
                         </div>
                     </div>
 
                     {/* My Projects Grid */}
                     <div data-onboarding-id="projects-list-grid">
                         {filteredMyProjects.length === 0 ? (
-                        <div className="text-center py-20 border-2 border-dashed border-[var(--color-surface-border)] rounded-xl">
-                            <span className="material-symbols-outlined text-4xl text-[var(--color-text-subtle)] mb-4">folder_off</span>
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectsList.empty.title')}</h3>
-                            <p className="text-[var(--color-text-muted)] mb-4">{t('projectsList.empty.description')}</p>
-                            {can('canCreateProjects') && (
-                                <Link to="/create">
-                                    <Button variant="secondary">{t('projectsList.actions.createProject')}</Button>
-                                </Link>
-                            )}
-                        </div>
+                            <div className="text-center py-20 border-2 border-dashed border-[var(--color-surface-border)] rounded-xl">
+                                <span className="material-symbols-outlined text-4xl text-[var(--color-text-subtle)] mb-4">folder_off</span>
+                                <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectsList.empty.title')}</h3>
+                                <p className="text-[var(--color-text-muted)] mb-4">{t('projectsList.empty.description')}</p>
+                                {can('canCreateProjects') && (
+                                    <Link to="/create">
+                                        <Button variant="secondary">{t('projectsList.actions.createProject')}</Button>
+                                    </Link>
+                                )}
+                            </div>
                         ) : (
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                 {filteredMyProjects.map((p) => (
@@ -965,25 +974,25 @@ export const ProjectsList = () => {
                 {/* Other Projects List View */}
                 {
                     otherProjects.length > 0 && (
-                    <div data-onboarding-id="projects-list-other" className="pt-10 space-y-6">
-                        <div className="flex items-center justify-between border-b border-[var(--color-surface-border)] pb-4">
-                            <div>
-                                <h2 className="text-2xl font-bold text-[var(--color-text-main)]">{t('projectsList.other.title')}</h2>
-                                <p className="text-sm text-[var(--color-text-muted)]">{t('projectsList.other.subtitle')}</p>
+                        <div data-onboarding-id="projects-list-other" className="pt-10 space-y-6">
+                            <div className="flex items-center justify-between border-b border-[var(--color-surface-border)] pb-4">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">{t('projectsList.other.title')}</h2>
+                                    <p className="text-sm text-[var(--color-text-muted)]">{t('projectsList.other.subtitle')}</p>
+                                </div>
                             </div>
-                        </div>
 
                             <div className="bg-[var(--color-surface-card)] rounded-xl border border-[var(--color-surface-border)] overflow-hidden">
                                 <table className="w-full text-left">
-                                <thead className="bg-[var(--color-surface-hover)] text-xs text-[var(--color-text-subtle)] uppercase tracking-wider font-semibold border-b border-[var(--color-surface-border)]">
-                                    <tr>
-                                        <th className="px-6 py-4">{t('projectsList.other.table.project')}</th>
-                                        <th className="px-6 py-4">{t('projectsList.other.table.status')}</th>
-                                        <th className="px-6 py-4">{t('projectsList.other.table.members')}</th>
-                                        <th className="px-6 py-4">{t('projectsList.other.table.created')}</th>
-                                        <th className="px-6 py-4"></th>
-                                    </tr>
-                                </thead>
+                                    <thead className="bg-[var(--color-surface-hover)] text-xs text-[var(--color-text-subtle)] uppercase tracking-wider font-semibold border-b border-[var(--color-surface-border)]">
+                                        <tr>
+                                            <th className="px-6 py-4">{t('projectsList.other.table.project')}</th>
+                                            <th className="px-6 py-4">{t('projectsList.other.table.status')}</th>
+                                            <th className="px-6 py-4">{t('projectsList.other.table.members')}</th>
+                                            <th className="px-6 py-4">{t('projectsList.other.table.created')}</th>
+                                            <th className="px-6 py-4"></th>
+                                        </tr>
+                                    </thead>
                                     <tbody className="divide-y divide-[var(--color-surface-border)]">
                                         {otherProjects.map(project => (
                                             <tr key={project.id} className="hover:bg-[var(--color-surface-hover)] transition-colors group">
@@ -1002,28 +1011,28 @@ export const ProjectsList = () => {
                                                         </div>
                                                     </div>
                                                 </td>
-                                            <td className="px-6 py-4">
-                                                <Badge variant={project.status === 'Active' ? 'success' : 'secondary'} size="sm">
-                                                    {getProjectStatusLabel(project.status, t)}
-                                                </Badge>
-                                            </td>
+                                                <td className="px-6 py-4">
+                                                    <Badge variant={project.status === 'Active' ? 'success' : 'secondary'} size="sm">
+                                                        {getProjectStatusLabel(project.status, t)}
+                                                    </Badge>
+                                                </td>
                                                 <td className="px-6 py-4">
                                                     <MemberAvatars projectId={project.id} />
                                                 </td>
-                                            <td className="px-6 py-4 text-sm text-[var(--color-text-muted)]">
-                                                {format(new Date(toMillis(project.createdAt)), dateFormat, { locale: dateLocale })}
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() => window.location.href = `/project/${project.id}`}
-                                                    icon={<span className="material-symbols-outlined">visibility</span>}
-                                                >
-                                                    {t('projectsList.actions.view')}
-                                                </Button>
-                                            </td>
-                                        </tr>
+                                                <td className="px-6 py-4 text-sm text-[var(--color-text-muted)]">
+                                                    {format(new Date(toMillis(project.createdAt)), dateFormat, { locale: dateLocale })}
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => window.location.href = `/project/${project.id}`}
+                                                        icon={<span className="material-symbols-outlined">visibility</span>}
+                                                    >
+                                                        {t('projectsList.actions.view')}
+                                                    </Button>
+                                                </td>
+                                            </tr>
                                         ))}
                                     </tbody>
                                 </table>

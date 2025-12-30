@@ -8,6 +8,7 @@ import { onNotificationCreated } from './notifications';
 import { sendInvitation } from './invitations';
 import { requestWaitlist, confirmWaitlist } from './waitlist';
 import { requestNewsletterSignup, confirmNewsletterSignup } from './newsletter-public';
+import { sendContactFormEmail } from './contact';
 
 export {
     testSMTPConnection,
@@ -22,7 +23,8 @@ export {
     requestWaitlist,
     confirmWaitlist,
     requestNewsletterSignup,
-    confirmNewsletterSignup
+    confirmNewsletterSignup,
+    sendContactFormEmail
 };
 export * from './passkeys';
 

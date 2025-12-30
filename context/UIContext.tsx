@@ -7,6 +7,10 @@ interface ToastState {
     show: boolean;
     message: string;
     type: ToastType;
+    action?: {
+        label: string;
+        path: string;
+    };
 }
 
 interface ConfirmationState {
@@ -17,7 +21,7 @@ interface ConfirmationState {
 }
 
 interface UIContextType {
-    showToast: (message: string, type?: ToastType) => void;
+    showToast: (message: string, type?: ToastType, action?: { label: string; path: string }) => void;
     confirm: (title: string, message: string) => Promise<boolean>;
 
     // State for components to consume
@@ -159,8 +163,13 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [pinnedProject, isTaskCreateModalOpen, isIdeaCreateModalOpen, isIssueCreateModalOpen, openTaskCreateModal, closeTaskCreateModal, openIdeaCreateModal, closeIdeaCreateModal, openIssueCreateModal, closeIssueCreateModal]);
 
-    const showToast = useCallback((message: string, type: ToastType = 'info') => {
-        setToast({ show: true, message, type });
+    const showToast = useCallback((message: string, type: ToastType = 'info', action?: { label: string; path: string }) => {
+        // Intercept Pre-Beta Missing Key Error
+        if (message.includes('Pre-Beta: You must set your own Gemini API Key')) {
+            action = { label: 'Go to Settings', path: '/settings?tab=prebeta' };
+        }
+
+        setToast({ show: true, message, type, action });
         // Auto hide after 8 seconds
         setTimeout(() => {
             setToast(prev => ({ ...prev, show: false }));

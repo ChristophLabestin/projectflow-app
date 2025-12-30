@@ -95,6 +95,7 @@ export const fetchExternalBlogPosts = async (projectId: string): Promise<BlogPos
                 return {
                     id: item.id || fields.id || item._id || String(Math.random()),
                     title: fields.title || 'Untitled',
+                    content: fields.content || fields.body || fields.html || fields.text || '',
                     excerpt: fields.excerpt || fields.description || fields.summary || '',
                     coverImage: fields.coverImage || fields.image || fields.thumbnail || null,
                     author: fields.author?.name || fields.author || 'Unknown',
