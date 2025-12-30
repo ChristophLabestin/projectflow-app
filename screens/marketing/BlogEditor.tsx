@@ -2,15 +2,18 @@ import React, { useState, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { auth } from '../../services/firebase';
 import { MediaLibrary } from '../../components/MediaLibrary/MediaLibraryModal';
-import { publishBlogPost, fetchExternalBlogPosts, BlogPost, updateBlogPost } from '../../services/blogService';
+import { publishBlogPost, fetchExternalBlogPosts, BlogPost, updateBlogPost, fetchCategories, BlogCategory } from '../../services/blogService';
 import { useToast, useConfirm } from '../../context/UIContext';
 import { motion } from 'framer-motion';
 import { ArrowLeft } from 'lucide-react';
 import { AdvancedEditor } from '../../components/editor/AdvancedEditor';
 import { BlogPostTemplate } from './components/blog/BlogPostTemplate';
 import { BlogAIModal } from './components/blog/BlogAIModal';
+import { TemplateManagerModal } from './components/TemplateManagerModal';
+import { CategoryManager } from './components/CategoryManager';
 import { Editor } from '@tiptap/react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles, Layout } from 'lucide-react';
+import { Button } from '../../components/ui/Button';
 
 export const BlogEditor = () => {
     const navigate = useNavigate();
@@ -19,12 +22,20 @@ export const BlogEditor = () => {
     const [title, setTitle] = useState('');
     const [excerpt, setExcerpt] = useState('');
     const [coverImage, setCoverImage] = useState<string | null>(null);
+
+    // Category State
+    const [categories, setCategories] = useState<BlogCategory[]>([]);
+    const [selectedCategory, setSelectedCategory] = useState<BlogCategory | null>(null);
+    const [showCategoryManager, setShowCategoryManager] = useState(false);
+
+    const [tags, setTags] = useState<string[]>([]);
     const [status, setStatus] = useState<'draft' | 'published'>('draft');
     const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
     const [mediaPickerMode, setMediaPickerMode] = useState<'cover' | 'content'>('cover');
     const [isPublishing, setIsPublishing] = useState(false);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const [isAIModalOpen, setIsAIModalOpen] = useState(false);
+    const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const { showSuccess, showError } = useToast();
 
     // Store content in state to pass to preview
@@ -42,6 +53,8 @@ export const BlogEditor = () => {
                 setTitle(post.title);
                 setExcerpt(post.excerpt || '');
                 setCoverImage(post.coverImage || null);
+                if (post.category) setSelectedCategory(post.category);
+                setTags(post.tags || []);
                 setStatus(post.status);
                 setContent(post.content || '');
                 // Force update editor content
@@ -61,6 +74,8 @@ export const BlogEditor = () => {
                         setTitle(post.title);
                         setExcerpt(post.excerpt || '');
                         setCoverImage(post.coverImage || null);
+                        if (post.category) setSelectedCategory(post.category);
+                        setTags(post.tags || []);
                         setStatus(post.status);
                         setContent(post.content || '');
                         // Force update editor content
@@ -75,7 +90,17 @@ export const BlogEditor = () => {
             }
         };
 
+        const loadCats = async () => {
+            try {
+                const cats = await fetchCategories();
+                setCategories(cats);
+            } catch (e) {
+                console.error("Failed to load categories", e);
+            }
+        };
+
         loadPost();
+        loadCats();
     }, [blogId, projectId]);
 
     const handleOpenMediaPicker = (mode: 'cover' | 'content') => {
@@ -113,10 +138,10 @@ export const BlogEditor = () => {
 
     // Track changes
     React.useEffect(() => {
-        if (title || content || coverImage) {
+        if (title || content || coverImage || selectedCategory || tags.length > 0) {
             hasChangesRef.current = true;
         }
-    }, [title, content, coverImage]);
+    }, [title, content, coverImage, selectedCategory, tags]);
 
     const handleSave = async (newStatus: 'draft' | 'published', forceCreate = false, isAutosave = false) => {
         if (!projectId) return;
@@ -155,11 +180,8 @@ export const BlogEditor = () => {
                     name: auth.currentUser?.displayName || 'Anonymous',
                     photoURL: auth.currentUser?.photoURL || null
                 },
-                category: {
-                    name: 'General',
-                    slug: 'general'
-                },
-                tags: [],
+                category: selectedCategory || { name: 'Uncategorized', slug: 'uncategorized' },
+                tags: tags,
                 status: newStatus,
                 publishedAt: new Date().toISOString()
             };
@@ -288,7 +310,21 @@ export const BlogEditor = () => {
                             <span>Ask CORA</span>
                         </button>
 
+                        <button
+                            onClick={() => setIsTemplateModalOpen(true)}
+                            className="px-4 py-2 rounded-lg text-sm font-medium text-[var(--color-primary)] bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 transition-colors flex items-center gap-2"
+                            title="Manage Templates"
+                        >
+                            <Layout size={16} />
+                            <span>Templates</span>
+                        </button>
+
                         <div className="w-px h-6 bg-[var(--color-surface-border)] mx-1" />
+
+                        {/* Autosave Status */}
+                        <div className="text-xs text-[var(--color-text-muted)] opacity-70">
+                            {isAutosaving ? 'Autosaving...' : lastSavedTime ? `Saved ${lastSavedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
+                        </div>
 
                         {blogId && (
                             <button
@@ -301,6 +337,7 @@ export const BlogEditor = () => {
                                 Save as New
                             </button>
                         )}
+
                         <button
                             onClick={() => handleSave('draft')}
                             disabled={isPublishing}
@@ -309,15 +346,10 @@ export const BlogEditor = () => {
                             {isPublishing && status === 'draft' ? 'Saving...' : 'Save as Draft'}
                         </button>
 
-                        {/* Autosave Status */}
-                        <div className="text-xs text-[var(--color-text-muted)] min-w-[100px] text-right">
-                            {isAutosaving ? 'Autosaving...' : lastSavedTime ? `Saved ${lastSavedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
-                        </div>
-
                         <button
                             onClick={() => handleSave('published')}
                             disabled={isPublishing}
-                            className="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            className="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--color-primary)] text-white dark:text-black hover:bg-[var(--color-primary-hover)] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                         >
                             {isPublishing && status === 'published' && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
                             {isPublishing && status === 'published' ? 'Publishing...' : 'Publish Post'}
@@ -366,6 +398,72 @@ export const BlogEditor = () => {
                                     </button>
                                 )}
                             </div>
+
+                            {/* Category & Tags */}
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium mb-1.5 text-[var(--color-text-muted)]">Category</label>
+                                    <div className="flex gap-2">
+                                        <div className="relative flex-1">
+                                            <select
+                                                className="w-full appearance-none bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+                                                value={selectedCategory?.id || ''}
+                                                onChange={(e) => {
+                                                    const cat = categories.find(c => c.id === e.target.value);
+                                                    setSelectedCategory(cat || null);
+                                                }}
+                                            >
+                                                <option value="">Select a category...</option>
+                                                {categories.map(cat => (
+                                                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                                                ))}
+                                            </select>
+                                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--color-text-muted)]">
+                                                <span className="material-symbols-outlined text-sm">expand_more</span>
+                                            </div>
+                                        </div>
+                                        <Button
+                                            variant="secondary"
+                                            className="shrink-0 aspect-square flex items-center justify-center p-0 w-10"
+                                            onClick={() => setShowCategoryManager(true)}
+                                            title="Manage Categories"
+                                        >
+                                            <span className="material-symbols-outlined">settings</span>
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="block text-sm font-medium text-[var(--color-text-muted)]">Tags</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {tags.map((tag, i) => (
+                                            <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--color-surface-hover)] text-xs font-medium">
+                                                {tag}
+                                                <button
+                                                    onClick={() => setTags(tags.filter((_, idx) => idx !== i))}
+                                                    className="hover:text-red-500 flex items-center justify-center"
+                                                >
+                                                    <span className="material-symbols-outlined text-[14px]">close</span>
+                                                </button>
+                                            </span>
+                                        ))}
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Add tag and press Enter..."
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                const val = e.currentTarget.value.trim();
+                                                if (val && !tags.includes(val)) {
+                                                    setTags([...tags, val]);
+                                                    e.currentTarget.value = '';
+                                                }
+                                            }
+                                        }}
+                                        className="w-full text-sm bg-black/5 dark:bg-white/5 border-none rounded-lg px-3 py-2 outline-none placeholder:text-[var(--color-text-muted)] text-[var(--color-text-main)]"
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         {/* Advanced Editor */}
@@ -405,8 +503,39 @@ export const BlogEditor = () => {
             <BlogAIModal
                 isOpen={isAIModalOpen}
                 onClose={() => setIsAIModalOpen(false)}
-                onGenerate={handleAIGenerated}
+                onGenerate={(result) => {
+                    // Assuming result is { title, excerpt, content }
+                    if (result.title) setTitle(result.title);
+                    if (result.excerpt) setExcerpt(result.excerpt);
+                    if (result.content) {
+                        editorRef.current?.commands.setContent(result.content);
+                        setContent(result.content);
+                    }
+                    // No close here? usually modal handles validation or confirm.
+                    // But onClose is already passed.
+                }}
             />
+
+            {projectId && (
+                <TemplateManagerModal
+                    isOpen={isTemplateModalOpen}
+                    onClose={() => setIsTemplateModalOpen(false)}
+                    currentContent={content || ''}
+                    projectId={projectId}
+                    onLoadTemplate={(newContent) => {
+                        editorRef.current?.commands.setContent(newContent);
+                        setContent(newContent);
+                        handleSave('draft');
+                    }}
+                />
+            )}
+
+            {showCategoryManager && (
+                <CategoryManager
+                    onClose={() => setShowCategoryManager(false)}
+                    onSelect={(cat) => setSelectedCategory(cat)}
+                />
+            )}
         </>
     );
 };

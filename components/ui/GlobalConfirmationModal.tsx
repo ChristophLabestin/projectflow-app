@@ -20,7 +20,7 @@ export const GlobalConfirmationModal = () => {
 
     return (
         <div className={`
-             fixed inset-0 z-[99999] flex items-center justify-center p-4
+             fixed inset-0 z-[2147483647] flex items-center justify-center p-4
              transition-opacity duration-200
              ${confirmation.show ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
         `}>

@@ -2,12 +2,11 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.sendContactFormEmail = void 0;
 const functions = require("firebase-functions");
-const cors = require("cors");
 const email_1 = require("./email");
+const corsConfig_1 = require("./corsConfig");
 const REGION = 'europe-west3';
-const CORS_ORIGIN = true; // Allow all origins for public contact form
 exports.sendContactFormEmail = functions.region(REGION).https.onRequest((req, res) => {
-    return cors({ origin: CORS_ORIGIN })(req, res, async () => {
+    return (0, corsConfig_1.corsMiddleware)(req, res, async () => {
         // Only allow POST
         if (req.method !== 'POST') {
             res.status(405).json({ success: false, error: 'Method Not Allowed' });

@@ -3,20 +3,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.confirmWaitlist = exports.requestWaitlist = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const cors = require("cors");
 const email_1 = require("./email");
 const email_locales_1 = require("./email-locales");
+const corsConfig_1 = require("./corsConfig");
 const db = admin.firestore();
 const REGION = 'europe-west3';
-// Allow all origins or restrict to specific domains
-// const CORS_ORIGIN = ['https://getprojectflow.com', 'http://localhost:5173']; 
-const CORS_ORIGIN = true; // Allowing all for now to match newsletter.ts pattern
 // Helper to generate a unique code
 const generateCode = () => {
     return Math.random().toString(36).substring(2, 10).toUpperCase();
 };
 exports.requestWaitlist = functions.region(REGION).https.onRequest((req, res) => {
-    return cors({ origin: CORS_ORIGIN })(req, res, async () => {
+    return (0, corsConfig_1.corsMiddleware)(req, res, async () => {
         // Only allow POST
         if (req.method !== 'POST') {
             res.status(405).json({ success: false, error: 'Method Not Allowed' });
@@ -75,7 +72,7 @@ exports.requestWaitlist = functions.region(REGION).https.onRequest((req, res) =>
     });
 });
 exports.confirmWaitlist = functions.region(REGION).https.onRequest((req, res) => {
-    return cors({ origin: CORS_ORIGIN })(req, res, async () => {
+    return (0, corsConfig_1.corsMiddleware)(req, res, async () => {
         // Only allow POST
         if (req.method !== 'POST') {
             res.status(405).json({ success: false, error: 'Method Not Allowed' });

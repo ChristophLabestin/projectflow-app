@@ -16,6 +16,8 @@ const MOCK_BLOGS: BlogPost[] = [
         author: 'Christoph L.',
         status: 'published',
         createdAt: new Date(2025, 11, 28),
+        category: { name: 'Product', slug: 'product' },
+        tags: ['guide', 'basics']
     },
     {
         id: '2',
@@ -25,6 +27,8 @@ const MOCK_BLOGS: BlogPost[] = [
         author: 'Sarah M.',
         status: 'draft',
         createdAt: new Date(2025, 11, 29),
+        category: { name: 'Announcements', slug: 'announcements' },
+        tags: ['roadmap', 'planning']
     }
 ];
 
@@ -122,7 +126,7 @@ const BlogList = () => {
 
                     <button
                         onClick={handleCreate}
-                        className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors shadow-sm font-medium"
+                        className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-white dark:text-black rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors shadow-sm font-medium"
                     >
                         <span className="material-symbols-outlined text-[20px]">add</span>
                         Create New Post
@@ -159,8 +163,8 @@ const BlogList = () => {
                                 {/* Status Badge */}
                                 <div className="absolute top-3 right-3 z-10">
                                     <span className={`px-2.5 py-1 rounded-full text-xs font-medium backdrop-blur-md shadow-sm border ${blog.status === 'published'
-                                        ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
-                                        : 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                                        ? 'bg-white text-emerald-600 border-emerald-500/20'
+                                        : 'bg-white text-amber-600 border-amber-500/20'
                                         }`}>
                                         {blog.status === 'published' ? 'Published' : 'Draft'}
                                     </span>
@@ -169,7 +173,7 @@ const BlogList = () => {
                                 {/* Delete Button (Visible on hover) */}
                                 <button
                                     onClick={(e) => handleDelete(e, blog.id)}
-                                    className="absolute top-3 left-3 z-10 p-1.5 rounded-full bg-white/90 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 shadow-sm"
+                                    className="absolute top-3 left-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 text-red-500 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-50 shadow-sm"
                                     title="Delete Post"
                                 >
                                     <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -198,6 +202,15 @@ const BlogList = () => {
                                     <p className="text-sm text-[var(--color-text-muted)] line-clamp-2 mb-auto">
                                         {blog.excerpt}
                                     </p>
+
+                                    {/* Category Badge */}
+                                    {blog.category && (
+                                        <div className="mt-3">
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] border border-[var(--color-surface-border)]">
+                                                {blog.category.name}
+                                            </span>
+                                        </div>
+                                    )}
 
                                     <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] mt-4">
                                         <span>{blog.author}</span>

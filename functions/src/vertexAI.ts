@@ -1,10 +1,6 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import * as cors from 'cors';
-
-
-
-const corsHandler = cors({ origin: true });
+import { corsMiddleware } from './corsConfig';
 
 // Vertex AI configuration
 const VERTEX_PROJECT = 'project-manager-9d0ad';
@@ -29,7 +25,7 @@ export const editImageWithVertexAI = functions
         memory: '1GB',
     })
     .https.onRequest((req, res) => {
-        corsHandler(req, res, async () => {
+        corsMiddleware(req, res, async () => {
             // Only allow POST
             if (req.method !== 'POST') {
                 res.status(405).json({ error: 'Method not allowed' });

@@ -28,17 +28,20 @@ export const SlashCommand = Extension.create({
     },
 });
 
-export const getSlashCommandSuggestions = (items: any) => ({
-    items: ({ query }) => {
+export const getSlashCommandSuggestions = (itemsOrRef: any) => ({
+    items: ({ query }: { query: string }) => {
+        // Resolve items from ref or direct array
+        const sourceItems = itemsOrRef.current || itemsOrRef;
+
         // If no query, show all items (no limit for initial display)
         if (!query) {
-            return items;
+            return sourceItems;
         }
 
         const lowerQuery = query.toLowerCase();
 
         // Filter items by matching query anywhere in title or searchTerms
-        return items.filter(item => {
+        return sourceItems.filter((item: any) => {
             const titleMatch = item.title.toLowerCase().includes(lowerQuery);
             const searchTermMatch = item.searchTerms?.some((term: string) =>
                 term.toLowerCase().includes(lowerQuery)

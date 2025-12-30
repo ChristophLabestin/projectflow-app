@@ -309,31 +309,21 @@ export const generateAIImage = async (prompt: string): Promise<string[]> => {
         // Initialize GoogleGenAI
         const ai = new GoogleGenAI({ apiKey });
 
-        // Use the native generateImages method from the new SDK
-        // This is specific to the @google/genai package
-        const response = await ai.models.generateImages({
-            model: "imagen-4.0-generate-001",
-            prompt: prompt,
-            config: {
-                numberOfImages: 1,
-                // aspectRatio: "4:3", // Optional, if needed
-            }
+        // Use the generic generateContent method for the new Gemini image model
+        // Model: gemini-3-pro-image-preview
+        const response = await ai.models.generateContent({
+            model: "gemini-3-pro-image-preview",
+            contents: prompt,
         });
-
-        // Extract image data
-        // response.generatedImages is the array
-        // each item has .image.imageBytes (base64)
 
         const images: string[] = [];
 
-        if (response.generatedImages) {
-            for (const item of response.generatedImages) {
-                if (item.image?.imageBytes) {
-                    // Start with data URI prefix
-                    // Imagen typically returns JPEG or PNG bytes. 
-                    // Usually safe to assume image/jpeg or image/png.
-                    // The SDK type definition implies it's just bytes string (base64).
-                    images.push(`data:image/jpeg;base64,${item.image.imageBytes}`);
+        // Extract image data from parts
+        if (response.candidates?.[0]?.content?.parts) {
+            for (const part of response.candidates[0].content.parts) {
+                if (part.inlineData) {
+                    const mimeType = part.inlineData.mimeType || 'image/png';
+                    images.push(`data:${mimeType};base64,${part.inlineData.data}`);
                 }
             }
         }
@@ -342,14 +332,13 @@ export const generateAIImage = async (prompt: string): Promise<string[]> => {
             throw new Error("No images generated");
         }
 
-        // Track usage (count images, e.g. 4)
+        // Track usage (count images)
         await incrementImageUsage(user.uid, images.length);
 
         return images;
 
     } catch (error) {
         console.error("Image Generation Error:", error);
-        // Fallback mechanism or re-throw
         throw error;
     }
 };
@@ -373,8 +362,18 @@ export const editAIImage = async (
     }
 
     try {
-        // Get user's auth token for the Cloud Function
-        const idToken = await user.getIdToken();
+        const apiKey =
+            (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_GEMINI_API_KEY) ||
+            process.env.GEMINI_API_KEY ||
+            process.env.API_KEY ||
+            '';
+
+        if (!apiKey) {
+            throw new Error("Missing GEMINI API key");
+        }
+
+        // Initialize GoogleGenAI
+        const ai = new GoogleGenAI({ apiKey });
 
         // Fetch image and convert to base64 if it's a URL
         let base64Data: string;
@@ -390,7 +389,7 @@ export const editAIImage = async (
                 throw new Error("Invalid data URL format");
             }
         } else {
-            // Fetch from URL and convert to base64 using FileReader (avoids stack overflow)
+            // Fetch from URL and convert to base64 using FileReader
             const response = await fetch(imageUrl);
             const blob = await response.blob();
             mimeType = blob.type || 'image/jpeg';
@@ -409,39 +408,47 @@ export const editAIImage = async (
             });
         }
 
-        // Call the Vertex AI Cloud Function
-        const functionUrl = 'https://app.getprojectflow.com/editImageWithVertexAI';
+        // Construct parts for multimodal request
+        const parts: any[] = [
+            { text: prompt },
+            {
+                inlineData: {
+                    mimeType: mimeType,
+                    data: base64Data
+                }
+            }
+        ];
 
-        const response = await fetch(functionUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${idToken}`,
-            },
-            body: JSON.stringify({
-                prompt,
-                imageBase64: base64Data,
-                mimeType,
-                editMode,
-                numberOfImages: 1,
-            }),
+        // Use the Gemini 3 image model for editing/rework
+        // It accepts multimodal input (image + text)
+        const response = await ai.models.generateContent({
+            model: "gemini-3-pro-image-preview",
+            contents: [{
+                role: 'user',
+                parts: parts
+            }],
         });
 
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `Cloud Function error: ${response.status}`);
+        const images: string[] = [];
+
+        // Extract image data from parts
+        if (response.candidates?.[0]?.content?.parts) {
+            for (const part of response.candidates[0].content.parts) {
+                if (part.inlineData) {
+                    const resMimeType = part.inlineData.mimeType || 'image/png';
+                    images.push(`data:${resMimeType};base64,${part.inlineData.data}`);
+                }
+            }
         }
 
-        const data = await response.json();
-
-        if (!data.images || data.images.length === 0) {
-            throw new Error("No images generated. Try a different prompt.");
+        if (images.length === 0) {
+            throw new Error("No images generated from rework.");
         }
 
         // Track usage
-        await incrementImageUsage(user.uid, data.images.length);
+        await incrementImageUsage(user.uid, images.length);
 
-        return data.images;
+        return images;
 
     } catch (error) {
         console.error("Image Edit Error:", error);

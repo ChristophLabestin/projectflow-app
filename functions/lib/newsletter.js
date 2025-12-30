@@ -3,11 +3,11 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.api = exports.newsletterUnsubscribe = exports.newsletterSubscribe = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const cors = require("cors");
 const crypto = require("crypto");
 const init_1 = require("./init");
 const blog_1 = require("./blog");
-const CORS_ORIGIN = true; // Allow all origins - can be restricted in production
+const categories_1 = require("./categories");
+const corsConfig_1 = require("./corsConfig");
 const REGION = 'europe-west3'; // Frankfurt
 /**
  * Hash a token using SHA-256 (must match client-side implementation)
@@ -81,7 +81,7 @@ const validateAPIToken = async (token, requiredPermission) => {
  *   }
  */
 exports.newsletterSubscribe = functions.region(REGION).https.onRequest((req, res) => {
-    return cors({ origin: CORS_ORIGIN })(req, res, async () => {
+    return (0, corsConfig_1.corsMiddleware)(req, res, async () => {
         // Only allow POST
         if (req.method !== 'POST') {
             res.status(405).json({ success: false, error: 'Method Not Allowed' });
@@ -229,7 +229,7 @@ exports.newsletterSubscribe = functions.region(REGION).https.onRequest((req, res
  *   }
  */
 exports.newsletterUnsubscribe = functions.region(REGION).https.onRequest((req, res) => {
-    return cors({ origin: CORS_ORIGIN })(req, res, async () => {
+    return (0, corsConfig_1.corsMiddleware)(req, res, async () => {
         const isGet = req.method === 'GET';
         const isPost = req.method === 'POST';
         // Only allow GET and POST
@@ -371,7 +371,7 @@ exports.newsletterUnsubscribe = functions.region(REGION).https.onRequest((req, r
  * This function handles all /api/** requests
  */
 exports.api = functions.region(REGION).https.onRequest((req, res) => {
-    return cors({ origin: CORS_ORIGIN })(req, res, async () => {
+    return (0, corsConfig_1.corsMiddleware)(req, res, async () => {
         // Use path relative to the function URL
         const path = req.path.replace(/^\/api/, '');
         // Route: newsletter/subscribe (POST)
@@ -389,6 +389,14 @@ exports.api = functions.region(REGION).https.onRequest((req, res) => {
         // Route: blog/posts (GET)
         if (path === '/blog/posts' || path === '/api/blog/posts') {
             return (0, blog_1.getBlogPosts)(req, res);
+        }
+        // Route: blog/categories (GET)
+        if (path === '/blog/categories' || path === '/api/blog/categories') {
+            return (0, categories_1.getCategories)(req, res);
+        }
+        // Route: blog/categories/manage (POST, PUT, DELETE)
+        if (path.startsWith('/blog/categories/manage') || path.startsWith('/api/blog/categories/manage')) {
+            return (0, categories_1.manageCategories)(req, res);
         }
         // 404 for unknown routes
         res.status(404).json({

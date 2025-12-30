@@ -514,7 +514,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
     return createPortal(
         <div
-            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[200000] flex items-center justify-center bg-black/60 backdrop-blur-sm"
             onClick={(e) => {
                 // Close when clicking backdrop
                 if (e.target === e.currentTarget) onClose();

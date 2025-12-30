@@ -79,6 +79,21 @@
         "region": "europe-west3"
       },
       {
+        "source": "/getCategories",
+        "function": "getCategories",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/manageCategories**",
+        "function": "manageCategories",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/manageCategories/**",
+        "function": "manageCategories",
+        "region": "europe-west3"
+      },
+      {
         "source": "/requestWaitlist",
         "function": "requestWaitlist",
         "region": "europe-west3"
@@ -101,6 +116,16 @@
       {
         "source": "/api/confirmWaitlist",
         "function": "confirmWaitlist",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/requestNewsletterSignup",
+        "function": "requestNewsletterSignup",
+        "region": "europe-west3"
+      },
+      {
+        "source": "/confirmNewsletterSignup",
+        "function": "confirmNewsletterSignup",
         "region": "europe-west3"
       },
       {

@@ -1,12 +1,11 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import * as cors from 'cors';
 import { sendEmail, getSystemEmailTemplate } from './email';
 import { EMAIL_CONTENT, getLocale } from './email-locales';
+import { corsMiddleware } from './corsConfig';
 
 const db = admin.firestore();
 const REGION = 'europe-west3';
-const CORS_ORIGIN = true;
 
 // Helper to generate a unique code
 const generateCode = () => {
@@ -14,7 +13,7 @@ const generateCode = () => {
 };
 
 export const requestNewsletterSignup = functions.region(REGION).https.onRequest((req, res) => {
-    return cors({ origin: CORS_ORIGIN })(req, res, async () => {
+    return corsMiddleware(req, res, async () => {
         // Only allow POST
         if (req.method !== 'POST') {
             res.status(405).json({ success: false, error: 'Method Not Allowed' });
@@ -84,7 +83,7 @@ export const requestNewsletterSignup = functions.region(REGION).https.onRequest(
 });
 
 export const confirmNewsletterSignup = functions.region(REGION).https.onRequest((req, res) => {
-    return cors({ origin: CORS_ORIGIN })(req, res, async () => {
+    return corsMiddleware(req, res, async () => {
         // Only allow POST
         if (req.method !== 'POST') {
             res.status(405).json({ success: false, error: 'Method Not Allowed' });

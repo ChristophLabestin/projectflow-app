@@ -1,14 +1,14 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import * as cors from 'cors';
 import * as crypto from 'crypto';
 
 
 
 import { db } from './init';
 import { createBlogPost, getBlogPosts } from './blog';
+import { getCategories, manageCategories } from './categories';
+import { corsMiddleware } from './corsConfig';
 
-const CORS_ORIGIN = true; // Allow all origins - can be restricted in production
 const REGION = 'europe-west3'; // Frankfurt
 
 /**
@@ -95,7 +95,7 @@ const validateAPIToken = async (
  *   }
  */
 export const newsletterSubscribe = functions.region(REGION).https.onRequest((req, res) => {
-    return cors({ origin: CORS_ORIGIN })(req, res, async () => {
+    return corsMiddleware(req, res, async () => {
         // Only allow POST
         if (req.method !== 'POST') {
             res.status(405).json({ success: false, error: 'Method Not Allowed' });
@@ -259,7 +259,7 @@ export const newsletterSubscribe = functions.region(REGION).https.onRequest((req
  *   }
  */
 export const newsletterUnsubscribe = functions.region(REGION).https.onRequest((req, res) => {
-    return cors({ origin: CORS_ORIGIN })(req, res, async () => {
+    return corsMiddleware(req, res, async () => {
         const isGet = req.method === 'GET';
         const isPost = req.method === 'POST';
 
@@ -413,7 +413,7 @@ export const newsletterUnsubscribe = functions.region(REGION).https.onRequest((r
  * This function handles all /api/** requests
  */
 export const api = functions.region(REGION).https.onRequest((req, res) => {
-    return cors({ origin: CORS_ORIGIN })(req, res, async () => {
+    return corsMiddleware(req, res, async () => {
         // Use path relative to the function URL
         const path = req.path.replace(/^\/api/, '');
 
@@ -435,6 +435,16 @@ export const api = functions.region(REGION).https.onRequest((req, res) => {
         // Route: blog/posts (GET)
         if (path === '/blog/posts' || path === '/api/blog/posts') {
             return getBlogPosts(req, res);
+        }
+
+        // Route: blog/categories (GET)
+        if (path === '/blog/categories' || path === '/api/blog/categories') {
+            return getCategories(req, res);
+        }
+
+        // Route: blog/categories/manage (POST, PUT, DELETE)
+        if (path.startsWith('/blog/categories/manage') || path.startsWith('/api/blog/categories/manage')) {
+            return manageCategories(req, res);
         }
 
         // 404 for unknown routes

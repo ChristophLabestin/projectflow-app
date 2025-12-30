@@ -58,11 +58,9 @@ export const MarketingSettings: React.FC = () => {
     const [embedSelectedGroups, setEmbedSelectedGroups] = useState<string[]>([]);
 
     // Blog Integration States
+    // Generic API Integration
     const [showBlogWizard, setShowBlogWizard] = useState(false);
-    const [blogEndpoint, setBlogEndpoint] = useState('');
-    const [blogGetEndpoint, setBlogGetEndpoint] = useState('');
-    const [blogDataModel, setBlogDataModel] = useState('');
-    const [blogHeaders, setBlogHeaders] = useState('');
+    const [apiSettings, setApiSettings] = useState<ApiResourceConfig | undefined>(undefined);
     const [savingBlogSettings, setSavingBlogSettings] = useState(false);
 
     // Load data
@@ -77,11 +75,24 @@ export const MarketingSettings: React.FC = () => {
             if (s) {
                 setSmtpSource(s.smtpSource || 'projectflow');
                 if (s.smtpConfig) setSmtpConfig(s.smtpConfig);
-                if (s.blogIntegration) {
-                    setBlogEndpoint(s.blogIntegration.endpoint || '');
-                    setBlogGetEndpoint(s.blogIntegration.getEndpoint || '');
-                    setBlogDataModel(s.blogIntegration.dataModel || '');
-                    setBlogHeaders(s.blogIntegration.headers || '');
+                if (s.apiIntegration) {
+                    setApiSettings(s.apiIntegration);
+                } else if (s.blogIntegration) {
+                    // Migration fallback for UI if only old settings exist
+                    setApiSettings({
+                        baseUrl: '',
+                        headers: s.blogIntegration.headers || '{}',
+                        resources: {
+                            posts: {
+                                endpoints: {
+                                    list: { path: s.blogIntegration.getEndpoint || '', method: 'GET' },
+                                    create: { path: s.blogIntegration.endpoint || '', method: 'POST' },
+                                    update: { path: '', method: 'PUT' },
+                                    delete: { path: '', method: 'DELETE' }
+                                }
+                            }
+                        }
+                    });
                 }
             }
         });
@@ -193,10 +204,10 @@ export const MarketingSettings: React.FC = () => {
                     await updateMarketingSettings(projectId, { smtpVerified: true });
                 }
             } else {
-                showError(result.data?.error || 'Connection failed');
+                showError(result.data?.error || 'Connection failed', JSON.stringify(result.data, null, 2));
             }
         } catch (e: any) {
-            showError(e.message || 'Connection failed');
+            showError(e.message || 'Connection failed', e.stack || JSON.stringify(e));
         } finally {
             setTesting(false);
         }
@@ -221,7 +232,7 @@ export const MarketingSettings: React.FC = () => {
             showSuccess('Settings saved');
         } catch (e: any) {
             console.error('Failed to save settings:', e);
-            showError(e?.message || 'Failed to save settings');
+            showError(e?.message || 'Failed to save settings', e.stack || JSON.stringify(e));
         } finally {
             setSaving(false);
         }
@@ -269,21 +280,18 @@ export const MarketingSettings: React.FC = () => {
 </form>`;
     };
 
-    const handleSaveBlogSettings = async () => {
+    const handleSaveApiSettings = async (newSettings: ApiResourceConfig) => {
         if (!projectId) return;
         setSavingBlogSettings(true);
         try {
             await updateMarketingSettings(projectId, {
-                blogIntegration: {
-                    endpoint: blogEndpoint,
-                    getEndpoint: blogGetEndpoint,
-                    dataModel: blogDataModel,
-                    headers: blogHeaders
-                }
+                apiIntegration: newSettings
             });
-            showSuccess('Blog integration settings saved');
+            setApiSettings(newSettings);
+            setShowBlogWizard(false);
+            showSuccess('API integration settings saved');
         } catch (e) {
-            showError('Failed to save blog settings');
+            showError('Failed to save settings');
         } finally {
             setSavingBlogSettings(false);
         }
@@ -719,19 +727,19 @@ export const MarketingSettings: React.FC = () => {
                                     <div className="flex justify-between items-start mb-6">
                                         <div>
                                             <h3 className="font-semibold text-lg flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-[var(--color-primary)]">rss_feed</span>
-                                                Blog Integration
+                                                <span className="material-symbols-outlined text-[var(--color-primary)]">api</span>
+                                                Content API Integration
                                             </h3>
                                             <p className="text-sm text-[var(--color-text-muted)] mt-1">
-                                                Connect your blog to an external endpoint for publishing posts.
+                                                Connect to any external REST API to check sync status and configure resources like Posts and Categories.
                                             </p>
                                         </div>
-                                        <Button variant={blogEndpoint ? "secondary" : "primary"} onClick={() => setShowBlogWizard(true)}>
-                                            {blogEndpoint ? 'Reconfigure' : 'Setup Integration'}
+                                        <Button variant={apiSettings ? "secondary" : "primary"} onClick={() => setShowBlogWizard(true)}>
+                                            {apiSettings ? 'Reconfigure' : 'Setup Integration'}
                                         </Button>
                                     </div>
 
-                                    {blogEndpoint ? (
+                                    {apiSettings ? (
                                         <div className="space-y-4">
                                             <div className="flex items-center gap-3 p-4 bg-green-500/5 rounded-xl border border-green-500/20">
                                                 <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
@@ -739,29 +747,31 @@ export const MarketingSettings: React.FC = () => {
                                                 </div>
                                                 <div>
                                                     <div className="font-medium text-green-500">Active Connection</div>
-                                                    <div className="text-sm text-[var(--color-text-muted)]">{blogEndpoint}</div>
+                                                    <div className="text-sm text-[var(--color-text-muted)]">{apiSettings.baseUrl}</div>
                                                 </div>
                                             </div>
 
                                             <div className="grid grid-cols-2 gap-4">
                                                 <div className="p-4 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)]">
-                                                    <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Method</div>
-                                                    <div className="font-mono text-sm">REST API</div>
+                                                    <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Resources</div>
+                                                    <div className="font-mono text-sm capitalize">
+                                                        {Object.keys(apiSettings.resources).join(', ') || 'None'}
+                                                    </div>
                                                 </div>
                                                 <div className="p-4 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)]">
-                                                    <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Get Endpoint</div>
-                                                    <div className="font-mono text-sm truncate" title={blogGetEndpoint || 'Not configured'}>
-                                                        {blogGetEndpoint || 'Not configured'}
+                                                    <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Headers</div>
+                                                    <div className="font-mono text-sm truncate" title={apiSettings.headers}>
+                                                        {apiSettings.headers !== '{}' ? 'Configured' : 'None'}
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-center justify-center py-12 text-center text-[var(--color-text-muted)] bg-[var(--color-surface-bg)] rounded-xl border border-dashed border-[var(--color-surface-border)]">
-                                            <span className="material-symbols-outlined text-4xl mb-3 opacity-50">connect_without_contact</span>
-                                            <h3 className="font-medium mb-1">No Blog Connected</h3>
+                                            <span className="material-symbols-outlined text-4xl mb-3 opacity-50">hub</span>
+                                            <h3 className="font-medium mb-1">No API Connected</h3>
                                             <p className="text-sm max-w-xs mx-auto mb-4">
-                                                Connect your CMS or custom blog to publish content directly from ProjectFlow.
+                                                Connect to your CMS or custom backend to sync posts and categories.
                                             </p>
                                             <Button variant="primary" onClick={() => setShowBlogWizard(true)}>
                                                 Start Setup Wizard
@@ -771,37 +781,8 @@ export const MarketingSettings: React.FC = () => {
                                 </Card>
                             ) : (
                                 <BlogConnectionWizard
-                                    initialSettings={{
-                                        endpoint: blogEndpoint,
-                                        getEndpoint: blogGetEndpoint,
-                                        dataModel: blogDataModel,
-                                        headers: blogHeaders
-                                    }}
-                                    onSave={async (newSettings) => {
-                                        setBlogEndpoint(newSettings.endpoint);
-                                        setBlogGetEndpoint(newSettings.getEndpoint);
-                                        setBlogDataModel(newSettings.dataModel);
-                                        setBlogHeaders(newSettings.headers);
-
-                                        // Save to backend immediately
-                                        if (projectId) {
-                                            try {
-                                                await updateMarketingSettings(projectId, {
-                                                    blogIntegration: {
-                                                        endpoint: newSettings.endpoint,
-                                                        getEndpoint: newSettings.getEndpoint,
-                                                        dataModel: newSettings.dataModel,
-                                                        headers: newSettings.headers
-                                                    }
-                                                });
-                                                showSuccess('Blog configuration saved');
-                                            } catch (e) {
-                                                showError('Failed to save to server');
-                                            }
-                                        }
-                                        // Wizard handles its own completion state, but we might want to close it after a delay or manual actions
-                                        // The wizard has a 'Return to Settings' button which calls onCancel, effectively closing it.
-                                    }}
+                                    initialSettings={apiSettings}
+                                    onSave={handleSaveApiSettings}
                                     onCancel={() => setShowBlogWizard(false)}
                                 />
                             )}

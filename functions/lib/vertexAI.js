@@ -3,8 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.editImageWithVertexAI = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const cors = require("cors");
-const corsHandler = cors({ origin: true });
+const corsConfig_1 = require("./corsConfig");
 // Vertex AI configuration
 const VERTEX_PROJECT = 'project-manager-9d0ad';
 const VERTEX_LOCATION = 'europe-west3';
@@ -19,7 +18,7 @@ exports.editImageWithVertexAI = functions
     memory: '1GB',
 })
     .https.onRequest((req, res) => {
-    corsHandler(req, res, async () => {
+    (0, corsConfig_1.corsMiddleware)(req, res, async () => {
         var _a, _b, _c, _d, _e, _f;
         // Only allow POST
         if (req.method !== 'POST') {

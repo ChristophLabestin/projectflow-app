@@ -14,7 +14,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendContactFormEmail = exports.confirmNewsletterSignup = exports.requestNewsletterSignup = exports.confirmWaitlist = exports.requestWaitlist = exports.sendInvitation = exports.onNotificationCreated = exports.getBlogPosts = exports.createBlogPost = exports.editImageWithVertexAI = exports.api = exports.newsletterUnsubscribe = exports.newsletterSubscribe = exports.testSMTPConnection = void 0;
+exports.sendContactFormEmail = exports.confirmNewsletterSignup = exports.requestNewsletterSignup = exports.confirmWaitlist = exports.requestWaitlist = exports.sendInvitation = exports.onNotificationCreated = exports.manageCategories = exports.getCategories = exports.getBlogPosts = exports.createBlogPost = exports.editImageWithVertexAI = exports.api = exports.newsletterUnsubscribe = exports.newsletterSubscribe = exports.testSMTPConnection = void 0;
 require("./init"); // Ensure init runs
 const email_1 = require("./email");
 Object.defineProperty(exports, "testSMTPConnection", { enumerable: true, get: function () { return email_1.testSMTPConnection; } });
@@ -27,6 +27,9 @@ Object.defineProperty(exports, "editImageWithVertexAI", { enumerable: true, get:
 const blog_1 = require("./blog");
 Object.defineProperty(exports, "createBlogPost", { enumerable: true, get: function () { return blog_1.createBlogPost; } });
 Object.defineProperty(exports, "getBlogPosts", { enumerable: true, get: function () { return blog_1.getBlogPosts; } });
+const categories_1 = require("./categories");
+Object.defineProperty(exports, "getCategories", { enumerable: true, get: function () { return categories_1.getCategories; } });
+Object.defineProperty(exports, "manageCategories", { enumerable: true, get: function () { return categories_1.manageCategories; } });
 const notifications_1 = require("./notifications");
 Object.defineProperty(exports, "onNotificationCreated", { enumerable: true, get: function () { return notifications_1.onNotificationCreated; } });
 const invitations_1 = require("./invitations");

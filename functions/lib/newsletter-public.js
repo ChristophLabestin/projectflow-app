@@ -3,18 +3,17 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.confirmNewsletterSignup = exports.requestNewsletterSignup = void 0;
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
-const cors = require("cors");
 const email_1 = require("./email");
 const email_locales_1 = require("./email-locales");
+const corsConfig_1 = require("./corsConfig");
 const db = admin.firestore();
 const REGION = 'europe-west3';
-const CORS_ORIGIN = true;
 // Helper to generate a unique code
 const generateCode = () => {
     return Math.random().toString(36).substring(2, 10).toUpperCase();
 };
 exports.requestNewsletterSignup = functions.region(REGION).https.onRequest((req, res) => {
-    return cors({ origin: CORS_ORIGIN })(req, res, async () => {
+    return (0, corsConfig_1.corsMiddleware)(req, res, async () => {
         // Only allow POST
         if (req.method !== 'POST') {
             res.status(405).json({ success: false, error: 'Method Not Allowed' });
@@ -64,7 +63,7 @@ exports.requestNewsletterSignup = functions.region(REGION).https.onRequest((req,
     });
 });
 exports.confirmNewsletterSignup = functions.region(REGION).https.onRequest((req, res) => {
-    return cors({ origin: CORS_ORIGIN })(req, res, async () => {
+    return (0, corsConfig_1.corsMiddleware)(req, res, async () => {
         // Only allow POST
         if (req.method !== 'POST') {
             res.status(405).json({ success: false, error: 'Method Not Allowed' });

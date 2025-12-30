@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Editor } from '@tiptap/react';
-import { X, Search, Grid, Star, Layout } from 'lucide-react';
+import { X, Search, Grid, Star, Layout, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useUI } from '../../../context/UIContext';
+import { useConfirm } from '../../../context/UIContext';
 
 interface SlashCommandDrawerProps {
     isOpen: boolean;
@@ -13,6 +15,23 @@ interface SlashCommandDrawerProps {
 export const SlashCommandDrawer: React.FC<SlashCommandDrawerProps> = ({ isOpen, onClose, editor, commands }) => {
     const [filter, setFilter] = useState<'all' | 'general' | 'custom'>('all');
     const [search, setSearch] = useState('');
+    const { showSuccess } = useUI();
+    const confirm = useConfirm();
+
+    const handleDeletePreset = async (e: React.MouseEvent, title: string) => {
+        e.stopPropagation();
+        if (await confirm('Delete Preset', `Are you sure you want to delete "${title}"?`)) {
+            const stored = localStorage.getItem('card_presets');
+            if (stored) {
+                const presets = JSON.parse(stored);
+                // Filter out by title
+                const updated = presets.filter((p: any) => p.title !== title);
+                localStorage.setItem('card_presets', JSON.stringify(updated));
+                window.dispatchEvent(new Event('storage'));
+                showSuccess(`Deleted preset "${title}"`);
+            }
+        }
+    };
 
     const filteredCommands = commands.filter(cmd => {
         const matchesCategory = filter === 'all' || cmd.category === filter;
@@ -96,6 +115,15 @@ export const SlashCommandDrawer: React.FC<SlashCommandDrawerProps> = ({ isOpen, 
                                         <div className="font-medium text-sm text-[var(--color-text-main)]">{cmd.title}</div>
                                         <div className="text-xs text-[var(--color-text-muted)]">{cmd.description}</div>
                                     </div>
+                                    {cmd.category === 'custom' && (
+                                        <button
+                                            onClick={(e) => handleDeletePreset(e, cmd.title)}
+                                            className="p-2 text-red-400 hover:text-red-500 hover:bg-red-50 rounded-full opacity-0 group-hover:opacity-100 transition-all"
+                                            title="Delete Preset"
+                                        >
+                                            <Trash2 size={16} />
+                                        </button>
+                                    )}
                                 </button>
                             ))}
                             {filteredCommands.length === 0 && (

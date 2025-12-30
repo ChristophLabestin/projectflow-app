@@ -4,6 +4,7 @@ import { testSMTPConnection } from './email';
 import { newsletterSubscribe, newsletterUnsubscribe, api } from './newsletter';
 import { editImageWithVertexAI } from './vertexAI';
 import { createBlogPost, getBlogPosts } from './blog';
+import { getCategories, manageCategories } from './categories';
 import { onNotificationCreated } from './notifications';
 import { sendInvitation } from './invitations';
 import { requestWaitlist, confirmWaitlist } from './waitlist';
@@ -18,6 +19,8 @@ export {
     editImageWithVertexAI,
     createBlogPost,
     getBlogPosts,
+    getCategories,
+    manageCategories,
     onNotificationCreated,
     sendInvitation,
     requestWaitlist,

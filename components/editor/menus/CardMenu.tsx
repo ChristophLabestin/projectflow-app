@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Editor } from '@tiptap/react';
-import { Check, Save, Settings2, BoxSelect, Maximize, Minimize, Columns, LayoutGrid } from 'lucide-react';
+import { Check, Save, Settings2, BoxSelect, Maximize, Minimize, Columns, LayoutGrid, Plus } from 'lucide-react';
+import { HexColorPicker } from 'react-colorful';
 import { useUI } from '../../../context/UIContext';
 
 interface CardMenuProps {
@@ -42,6 +43,10 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
     // Form states
     const [presetName, setPresetName] = useState('');
     const [showSaveInput, setShowSaveInput] = useState(false);
+
+    // Picker State
+    const [activeColorPicker, setActiveColorPicker] = useState<'bg' | 'border' | 'text' | null>(null);
+    const [tempColor, setTempColor] = useState('#000000');
 
     // Attributes
     const [localPadding, setLocalPadding] = useState({ t: '', r: '', b: '', l: '' });
@@ -132,8 +137,74 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
     const attrs = editor.getAttributes('card');
     const { backgroundColor, textColor, borderColor, borderWidth, borderStyle } = attrs;
 
-    const colors = ['#f3f4f6', '#fffbeb', '#ecfdf5', '#fef2f2', '#eff6ff', '#fafafa', '#18181b'];
-    const textColors = ['inherit', '#000000', '#ffffff', '#ef4444', '#f59e0b', '#10b981', '#3b82f6'];
+    // Persistent Color Palette Logic
+    const [bgColors, setBgColors] = useState<string[]>([]);
+    const [borderColors, setBorderColors] = useState<string[]>([]);
+    const [textColors, setTextColors] = useState<string[]>([]);
+
+    // Picker State (Moved to top)
+
+    // Close picker when clicking outside
+    useEffect(() => {
+        const handleClickOutside = () => setActiveColorPicker(null);
+        if (activeColorPicker) {
+            window.addEventListener('click', handleClickOutside);
+        }
+        return () => window.removeEventListener('click', handleClickOutside);
+    }, [activeColorPicker]);
+
+    useEffect(() => {
+        // Load persisted colors on mount
+        const load = (key: string, setter: (v: string[]) => void) => {
+            const stored = localStorage.getItem(`editor_palette_${key}`);
+            if (stored) {
+                try {
+                    setter(JSON.parse(stored));
+                } catch (e) {
+                    console.error('Failed to parse color palette', e);
+                }
+            }
+        };
+        load('bg', setBgColors);
+        load('border', setBorderColors);
+        load('text', setTextColors);
+    }, []);
+
+    const addColor = (type: 'bg' | 'border' | 'text', color: string) => {
+        if (!color) return;
+
+        const update = (current: string[], setter: (v: string[]) => void) => {
+            // Remove if exists, add to front, limit to 8
+            const filtered = current.filter(c => c.toLowerCase() !== color.toLowerCase());
+            const newVal = [color, ...filtered].slice(0, 8);
+            setter(newVal);
+            localStorage.setItem(`editor_palette_${type}`, JSON.stringify(newVal));
+        };
+
+        if (type === 'bg') update(bgColors, setBgColors);
+        if (type === 'border') update(borderColors, setBorderColors);
+        if (type === 'text') update(textColors, setTextColors);
+    };
+
+    const toggleColorPicker = (type: 'bg' | 'border' | 'text') => {
+        if (activeColorPicker === type) {
+            setActiveColorPicker(null);
+        } else {
+            setActiveColorPicker(type);
+            // set initial temp color
+            if (type === 'bg') setTempColor(backgroundColor || '#ffffff');
+            if (type === 'border') setTempColor(borderColor || '#000000');
+            if (type === 'text') setTempColor(textColor && textColor !== 'inherit' ? textColor : '#000000');
+        }
+    };
+
+    const handleSaveColor = (type: 'bg' | 'border' | 'text') => {
+        addColor(type, tempColor);
+        if (type === 'bg') updateAttribute('backgroundColor', tempColor);
+        if (type === 'border') updateAttribute('borderColor', tempColor);
+        if (type === 'text') updateAttribute('textColor', tempColor);
+        setActiveColorPicker(null);
+    };
 
     const updateAttribute = (attr: string, value: string) => {
         // Use commands.updateAttributes to avoid stealing focus from the input fields
@@ -267,24 +338,52 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
                     <div className="animate-in fade-in duration-200">
                         <div className="text-[10px] font-medium text-[var(--color-text-muted)] mb-2 uppercase tracking-wide">Background Color</div>
                         <div className="flex flex-wrap gap-2">
-                            {colors.map(color => (
+                            {/* Color Picker Toggle */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => toggleColorPicker('bg')}
+                                    className="w-6 h-6 rounded-full border border-[var(--color-surface-border)] hover:border-[var(--color-primary)] flex items-center justify-center transition-colors bg-[var(--color-surface-bg)] group"
+                                >
+                                    <Plus size={12} className="text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]" />
+                                </button>
+
+                                {activeColorPicker === 'bg' && (
+                                    <div className="absolute top-full left-0 mt-2 z-[50] p-3 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-2xl animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
+                                        <div className="mb-3">
+                                            <HexColorPicker color={tempColor} onChange={setTempColor} />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1 bg-[var(--color-surface-bg)] rounded-lg px-2 py-1 border border-[var(--color-surface-border)] flex items-center">
+                                                <span className="text-[10px] text-[var(--color-text-muted)] mr-1">#</span>
+                                                <input
+                                                    type="text"
+                                                    value={tempColor.replace('#', '')}
+                                                    onChange={(e) => setTempColor(`#${e.target.value}`)}
+                                                    className="w-full bg-transparent text-xs font-mono outline-none uppercase"
+                                                    maxLength={6}
+                                                />
+                                            </div>
+                                            <button
+                                                onClick={() => handleSaveColor('bg')}
+                                                className="px-3 py-1 bg-[var(--color-primary)] text-white dark:text-black text-xs font-medium rounded-lg hover:bg-[var(--color-primary-hover)]"
+                                            >
+                                                Save
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Recent Colors */}
+                            {bgColors.map(color => (
                                 <button
                                     key={color}
                                     onClick={() => updateAttribute('backgroundColor', color)}
                                     className={`w-6 h-6 rounded-full border border-black/10 hover:scale-110 transition-transform ${backgroundColor === color ? 'ring-2 ring-offset-1 ring-[var(--color-primary)]' : ''}`}
                                     style={{ backgroundColor: color }}
+                                    title={color}
                                 />
                             ))}
-                            <div className="relative w-6 h-6 rounded-full overflow-hidden border border-[var(--color-surface-border)] shadow-sm group hover:border-[var(--color-text-muted)] transition-colors">
-                                <div className="absolute inset-0 bg-gradient-to-br from-red-400 via-green-400 to-blue-400 opacity-50" />
-                                <input
-                                    type="color"
-                                    value={backgroundColor || '#f3f4f6'}
-                                    onChange={(e) => updateAttribute('backgroundColor', e.target.value)}
-                                    className="absolute inset-[-4px] w-[150%] h-[150%] p-0 border-none cursor-pointer opacity-0"
-                                    title="Custom Color"
-                                />
-                            </div>
                         </div>
                     </div>
                 )}
@@ -294,23 +393,52 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
                         <div>
                             <div className="text-[10px] font-medium text-[var(--color-text-muted)] mb-2 uppercase tracking-wide">Color</div>
                             <div className="flex flex-wrap gap-2">
-                                {colors.map(color => (
+                                {/* Color Picker Toggle */}
+                                <div className="relative">
+                                    <button
+                                        onClick={() => toggleColorPicker('border')}
+                                        className="w-6 h-6 rounded-full border border-[var(--color-surface-border)] hover:border-[var(--color-primary)] flex items-center justify-center transition-colors bg-[var(--color-surface-bg)] group"
+                                    >
+                                        <Plus size={12} className="text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]" />
+                                    </button>
+
+                                    {activeColorPicker === 'border' && (
+                                        <div className="absolute top-full left-0 mt-2 z-[50] p-3 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-2xl animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
+                                            <div className="mb-3">
+                                                <HexColorPicker color={tempColor} onChange={setTempColor} />
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-1 bg-[var(--color-surface-bg)] rounded-lg px-2 py-1 border border-[var(--color-surface-border)] flex items-center">
+                                                    <span className="text-[10px] text-[var(--color-text-muted)] mr-1">#</span>
+                                                    <input
+                                                        type="text"
+                                                        value={tempColor.replace('#', '')}
+                                                        onChange={(e) => setTempColor(`#${e.target.value}`)}
+                                                        className="w-full bg-transparent text-xs font-mono outline-none uppercase"
+                                                        maxLength={6}
+                                                    />
+                                                </div>
+                                                <button
+                                                    onClick={() => handleSaveColor('border')}
+                                                    className="px-3 py-1 bg-[var(--color-primary)] text-white dark:text-black text-xs font-medium rounded-lg hover:bg-[var(--color-primary-hover)]"
+                                                >
+                                                    Save
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Recent Colors */}
+                                {borderColors.map(color => (
                                     <button
                                         key={color}
                                         onClick={() => updateAttribute('borderColor', color)}
                                         className={`w-6 h-6 rounded-full border-2 hover:scale-110 transition-transform ${borderColor === color ? 'ring-2 ring-offset-1 ring-[var(--color-primary)] border-transparent' : 'border-black/10'}`}
                                         style={{ borderColor: color, backgroundColor: 'transparent' }}
+                                        title={color}
                                     />
                                 ))}
-                                <div className="relative w-6 h-6 rounded-full overflow-hidden border-2 border-[var(--color-surface-border)] group hover:border-[var(--color-text-muted)] transition-colors">
-                                    <div className="absolute inset-0 bg-gradient-to-br from-red-400 via-green-400 to-blue-400 opacity-20" />
-                                    <input
-                                        type="color"
-                                        value={borderColor || '#e5e7eb'}
-                                        onChange={(e) => updateAttribute('borderColor', e.target.value)}
-                                        className="absolute inset-[-4px] w-[150%] h-[150%] p-0 border-none cursor-pointer opacity-0"
-                                    />
-                                </div>
                             </div>
                         </div>
 
@@ -357,24 +485,53 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
                             >
                                 <span className="text-[9px] font-bold text-[var(--color-text-muted)]">A</span>
                             </button>
-                            {/* Colors excluding inherit which is manual above */}
+
+                            {/* Color Picker Toggle */}
+                            <div className="relative">
+                                <button
+                                    onClick={() => toggleColorPicker('text')}
+                                    className="w-6 h-6 rounded-full border border-[var(--color-surface-border)] hover:border-[var(--color-primary)] flex items-center justify-center transition-colors bg-[var(--color-surface-bg)] group"
+                                >
+                                    <Plus size={12} className="text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]" />
+                                </button>
+
+                                {activeColorPicker === 'text' && (
+                                    <div className="absolute top-full left-0 mt-2 z-[50] p-3 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-2xl animate-in fade-in zoom-in-95" onClick={e => e.stopPropagation()}>
+                                        <div className="mb-3">
+                                            <HexColorPicker color={tempColor} onChange={setTempColor} />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="flex-1 bg-[var(--color-surface-bg)] rounded-lg px-2 py-1 border border-[var(--color-surface-border)] flex items-center">
+                                                <span className="text-[10px] text-[var(--color-text-muted)] mr-1">#</span>
+                                                <input
+                                                    type="text"
+                                                    value={tempColor.replace('#', '')}
+                                                    onChange={(e) => setTempColor(`#${e.target.value}`)}
+                                                    className="w-full bg-transparent text-xs font-mono outline-none uppercase"
+                                                    maxLength={6}
+                                                />
+                                            </div>
+                                            <button
+                                                onClick={() => handleSaveColor('text')}
+                                                className="px-3 py-1 bg-[var(--color-primary)] text-white dark:text-black text-xs font-medium rounded-lg hover:bg-[var(--color-primary-hover)]"
+                                            >
+                                                Save
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Recent Colors (excluding inherit if accidentally saved) */}
                             {textColors.filter(c => c !== 'inherit').map(color => (
                                 <button
                                     key={color}
                                     onClick={() => updateAttribute('textColor', color)}
                                     className={`w-6 h-6 rounded-full border border-black/10 hover:scale-110 transition-transform ${textColor === color ? 'ring-2 ring-offset-1 ring-[var(--color-primary)]' : ''}`}
                                     style={{ backgroundColor: color }}
+                                    title={color}
                                 />
                             ))}
-                            <div className="relative w-6 h-6 rounded-full overflow-hidden border border-[var(--color-surface-border)] shadow-sm group hover:border-[var(--color-text-muted)] transition-colors">
-                                <div className="absolute inset-0 bg-gradient-to-br from-red-400 via-green-400 to-blue-400 opacity-50" />
-                                <input
-                                    type="color"
-                                    value={textColor && textColor !== 'inherit' ? textColor : '#000000'}
-                                    onChange={(e) => updateAttribute('textColor', e.target.value)}
-                                    className="absolute inset-[-4px] w-[150%] h-[150%] p-0 border-none cursor-pointer opacity-0"
-                                />
-                            </div>
                         </div>
                     </div>
                 )}

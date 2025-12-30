@@ -1,9 +1,8 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import * as cors from 'cors';
 import { db } from './init';
+import { corsMiddleware } from './corsConfig';
 
-const CORS_ORIGIN = true; // Allow all origins
 const REGION = 'europe-west3'; // Same region as newsletter function
 
 // Interfaces matching the provided datamodel
@@ -42,7 +41,7 @@ export interface BlogPost {
  * POST /api/blog/create
  */
 export const createBlogPost = functions.region(REGION).https.onRequest((req, res) => {
-    return cors({ origin: CORS_ORIGIN })(req, res, async () => {
+    return corsMiddleware(req, res, async () => {
 
         // Extract ID from path if present (e.g. /createBlogPost/my-slug)
         // We filter out empty segments and ignore 'createBlogPost' if it's the only segment.
@@ -174,7 +173,7 @@ export const createBlogPost = functions.region(REGION).https.onRequest((req, res
  * GET /api/blog/posts
  */
 export const getBlogPosts = functions.region(REGION).https.onRequest((req, res) => {
-    return cors({ origin: CORS_ORIGIN })(req, res, async () => {
+    return corsMiddleware(req, res, async () => {
         // Only allow GET
         if (req.method !== 'GET') {
             res.status(405).json({ success: false, error: 'Method Not Allowed' });

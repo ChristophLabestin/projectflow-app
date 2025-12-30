@@ -7,6 +7,7 @@ interface ToastState {
     show: boolean;
     message: string;
     type: ToastType;
+    details?: string;
     action?: {
         label: string;
         path: string;
@@ -21,7 +22,7 @@ interface ConfirmationState {
 }
 
 interface UIContextType {
-    showToast: (message: string, type?: ToastType, action?: { label: string; path: string }) => void;
+    showToast: (message: string, type?: ToastType, action?: { label: string; path: string }, details?: string) => void;
     confirm: (title: string, message: string) => Promise<boolean>;
 
     // State for components to consume
@@ -163,13 +164,13 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [pinnedProject, isTaskCreateModalOpen, isIdeaCreateModalOpen, isIssueCreateModalOpen, openTaskCreateModal, closeTaskCreateModal, openIdeaCreateModal, closeIdeaCreateModal, openIssueCreateModal, closeIssueCreateModal]);
 
-    const showToast = useCallback((message: string, type: ToastType = 'info', action?: { label: string; path: string }) => {
+    const showToast = useCallback((message: string, type: ToastType = 'info', action?: { label: string; path: string }, details?: string) => {
         // Intercept Pre-Beta Missing Key Error
         if (message.includes('Pre-Beta: You must set your own Gemini API Key')) {
             action = { label: 'Go to Settings', path: '/settings?tab=prebeta' };
         }
 
-        setToast({ show: true, message, type, action });
+        setToast({ show: true, message, type, action, details });
         // Auto hide after 8 seconds
         setTimeout(() => {
             setToast(prev => ({ ...prev, show: false }));
@@ -236,7 +237,7 @@ export const useToast = () => {
     if (!context) throw new Error('useToast must be used within a UIProvider');
     return {
         showToast: context.showToast,
-        showError: (msg: string) => context.showToast(msg, 'error'),
+        showError: (msg: string, details?: string) => context.showToast(msg, 'error', undefined, details),
         showSuccess: (msg: string) => context.showToast(msg, 'success'),
         showInfo: (msg: string) => context.showToast(msg, 'info'),
     };

@@ -2,16 +2,15 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getBlogPosts = exports.createBlogPost = void 0;
 const functions = require("firebase-functions");
-const cors = require("cors");
 const init_1 = require("./init");
-const CORS_ORIGIN = true; // Allow all origins
+const corsConfig_1 = require("./corsConfig");
 const REGION = 'europe-west3'; // Same region as newsletter function
 /**
  * Create Blog Post Endpoint
  * POST /api/blog/create
  */
 exports.createBlogPost = functions.region(REGION).https.onRequest((req, res) => {
-    return cors({ origin: CORS_ORIGIN })(req, res, async () => {
+    return (0, corsConfig_1.corsMiddleware)(req, res, async () => {
         // Extract ID from path if present (e.g. /createBlogPost/my-slug)
         // We filter out empty segments and ignore 'createBlogPost' if it's the only segment.
         const segments = req.path.split('/').filter(s => s.length > 0);
@@ -122,7 +121,7 @@ exports.createBlogPost = functions.region(REGION).https.onRequest((req, res) => 
  * GET /api/blog/posts
  */
 exports.getBlogPosts = functions.region(REGION).https.onRequest((req, res) => {
-    return cors({ origin: CORS_ORIGIN })(req, res, async () => {
+    return (0, corsConfig_1.corsMiddleware)(req, res, async () => {
         // Only allow GET
         if (req.method !== 'GET') {
             res.status(405).json({ success: false, error: 'Method Not Allowed' });

@@ -1,12 +1,11 @@
 import * as functions from 'firebase-functions';
-import * as cors from 'cors';
 import { sendEmail } from './email';
+import { corsMiddleware } from './corsConfig';
 
 const REGION = 'europe-west3';
-const CORS_ORIGIN = true; // Allow all origins for public contact form
 
 export const sendContactFormEmail = functions.region(REGION).https.onRequest((req, res) => {
-    return cors({ origin: CORS_ORIGIN })(req, res, async () => {
+    return corsMiddleware(req, res, async () => {
         // Only allow POST
         if (req.method !== 'POST') {
             res.status(405).json({ success: false, error: 'Method Not Allowed' });

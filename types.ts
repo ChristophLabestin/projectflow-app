@@ -1127,12 +1127,37 @@ export interface GroupColumn {
 
 export type SMTPSource = 'projectflow' | 'workspace' | 'project';
 
+export interface ApiEndpoint {
+    path: string; // relative to baseUrl, e.g. "/posts" or "/posts/:id"
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+    bodyStructure?: string; // Optional JSON template for body
+}
+
+export interface ApiResourceConfig {
+    baseUrl: string;
+    headers: string; // JSON string of headers
+    resources: {
+        [resourceName: string]: { // e.g. 'posts', 'categories'
+            endpoints: {
+                list?: ApiEndpoint;   // GET /posts
+                create?: ApiEndpoint; // POST /posts
+                update?: ApiEndpoint; // PUT /posts/:id
+                delete?: ApiEndpoint; // DELETE /posts/:id
+                get?: ApiEndpoint;    // GET /posts/:id
+            };
+            fieldMapping?: Record<string, string>; // Optional JSON path mapping
+        }
+    }
+}
+
 export interface MarketingSettings {
     id: string;
     projectId: string;
     smtpSource: SMTPSource;
     smtpConfig?: SMTPConfig; // Project-specific SMTP (only if source is 'project')
     smtpVerified?: boolean; // Whether project SMTP has been tested successfully
+    apiIntegration?: ApiResourceConfig;
+    /** @deprecated Use apiIntegration instead */
     blogIntegration?: {
         endpoint?: string;
         getEndpoint?: string; // URL to fetch posts
