@@ -33,7 +33,6 @@ const MODULE_OPTIONS = [
     { id: 'milestones', labelKey: 'createProjectWizard.modules.milestones.label', descKey: 'createProjectWizard.modules.milestones.desc', icon: 'flag' },
     { id: 'social', labelKey: 'createProjectWizard.modules.social.label', descKey: 'createProjectWizard.modules.social.desc', icon: 'campaign' },
     { id: 'marketing', labelKey: 'createProjectWizard.modules.marketing.label', descKey: 'createProjectWizard.modules.marketing.desc', icon: 'ads_click' },
-    { id: 'mindmap', labelKey: 'createProjectWizard.modules.mindmap.label', descKey: 'createProjectWizard.modules.mindmap.desc', icon: 'account_tree' },
     { id: 'activity', labelKey: 'createProjectWizard.modules.activity.label', descKey: 'createProjectWizard.modules.activity.desc', icon: 'history' },
 ] as const;
 
@@ -123,7 +122,7 @@ export const CreateProjectWizard = () => {
             const defaults: Record<string, ProjectModule[]> = {
                 standard: ['tasks', 'ideas', 'milestones', 'activity'],
                 software: ['tasks', 'issues', 'activity'],
-                creative: ['ideas', 'mindmap', 'activity']
+                creative: ['ideas', 'tasks', 'activity']
             };
             setModules(defaults[projectType] || defaults.standard);
         }

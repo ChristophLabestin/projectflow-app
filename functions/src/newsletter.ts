@@ -226,18 +226,140 @@ export const newsletterUnsubscribe = functions.region(REGION).https.onRequest((r
                     <head>
                         <meta charset="UTF-8">
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <title>Unsubscribe Error</title>
+                        <title>Unsubscribe Error | ProjectFlow</title>
+                        <link rel="preconnect" href="https://fonts.googleapis.com">
+                        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
                         <style>
-                            body { font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f9fafb; color: #111827; }
-                            .card { background: white; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 400px; width: 100%; text-align: center; }
-                            h1 { color: #ef4444; margin-top: 0; font-size: 1.5rem; }
-                            p { color: #4b5563; line-height: 1.5; margin-bottom: 0; }
+                            * { box-sizing: border-box; margin: 0; padding: 0; }
+                            body {
+                                font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                                min-height: 100vh;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                background-color: #fafafa;
+                                background-image: radial-gradient(circle, rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+                                background-size: 20px 20px;
+                                color: #171717;
+                                -webkit-font-smoothing: antialiased;
+                                padding: 20px;
+                            }
+                            .container {
+                                width: 100%;
+                                max-width: 440px;
+                                animation: fadeIn 0.5s ease-out;
+                            }
+                            @keyframes fadeIn {
+                                from { opacity: 0; transform: translateY(20px); }
+                                to { opacity: 1; transform: translateY(0); }
+                            }
+                            .card {
+                                background: rgba(255, 255, 255, 0.85);
+                                backdrop-filter: blur(12px);
+                                -webkit-backdrop-filter: blur(12px);
+                                border: 1px solid rgba(0, 0, 0, 0.08);
+                                border-radius: 20px;
+                                padding: 48px 40px;
+                                text-align: center;
+                                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.04);
+                            }
+                            .icon-wrapper {
+                                width: 72px;
+                                height: 72px;
+                                border-radius: 50%;
+                                background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                margin: 0 auto 24px;
+                                animation: pulse 2s ease-in-out infinite;
+                            }
+                            @keyframes pulse {
+                                0%, 100% { transform: scale(1); }
+                                50% { transform: scale(1.05); }
+                            }
+                            .icon {
+                                width: 32px;
+                                height: 32px;
+                                position: relative;
+                            }
+                            .icon::before, .icon::after {
+                                content: '';
+                                position: absolute;
+                                width: 28px;
+                                height: 4px;
+                                background: #ef4444;
+                                border-radius: 2px;
+                                top: 50%;
+                                left: 50%;
+                            }
+                            .icon::before { transform: translate(-50%, -50%) rotate(45deg); }
+                            .icon::after { transform: translate(-50%, -50%) rotate(-45deg); }
+                            .logo {
+                                font-size: 14px;
+                                font-weight: 600;
+                                color: #a3a3a3;
+                                letter-spacing: 0.5px;
+                                margin-bottom: 24px;
+                                text-transform: uppercase;
+                            }
+                            h1 {
+                                font-size: 28px;
+                                font-weight: 600;
+                                color: #171717;
+                                margin-bottom: 12px;
+                                letter-spacing: -0.02em;
+                            }
+                            p {
+                                font-size: 16px;
+                                line-height: 1.6;
+                                color: #737373;
+                                margin-bottom: 32px;
+                            }
+                            .btn {
+                                display: inline-block;
+                                padding: 14px 28px;
+                                background: #171717;
+                                color: #fff;
+                                text-decoration: none;
+                                border-radius: 12px;
+                                font-weight: 500;
+                                font-size: 15px;
+                                transition: all 0.2s ease;
+                            }
+                            .btn:hover {
+                                background: #404040;
+                                transform: translateY(-2px);
+                                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+                            }
+                            .footer {
+                                margin-top: 32px;
+                                font-size: 13px;
+                                color: #a3a3a3;
+                            }
+                            .footer a {
+                                color: #737373;
+                                text-decoration: none;
+                                transition: color 0.2s;
+                            }
+                            .footer a:hover { color: #171717; }
                         </style>
                     </head>
                     <body>
-                        <div class="card">
-                            <h1>Error</h1>
-                            <p>${message}</p>
+                        <div class="container">
+                            <div class="card">
+                                <div class="logo">ProjectFlow</div>
+                                <div class="icon-wrapper">
+                                    <div class="icon"></div>
+                                </div>
+                                <h1>Something went wrong</h1>
+                                <p>${message}</p>
+                                <a href="https://getprojectflow.com" class="btn">Back to Homepage</a>
+                            </div>
+                            <div class="footer">
+                                Need help? <a href="https://getprojectflow.com/contact">Contact Support</a>
+                            </div>
                         </div>
                     </body>
                     </html>
@@ -315,18 +437,151 @@ export const newsletterUnsubscribe = functions.region(REGION).https.onRequest((r
                     <head>
                         <meta charset="UTF-8">
                         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                        <title>Unsubscribed Successfully</title>
+                        <title>Unsubscribed | ProjectFlow</title>
+                        <link rel="preconnect" href="https://fonts.googleapis.com">
+                        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
                         <style>
-                            body { font-family: system-ui, -apple-system, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f9fafb; color: #111827; }
-                            .card { background: white; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1); max-width: 400px; width: 100%; text-align: center; }
-                            h1 { color: #10b981; margin-top: 0; font-size: 1.5rem; }
-                            p { color: #4b5563; line-height: 1.5; margin-bottom: 0; }
+                            * { box-sizing: border-box; margin: 0; padding: 0; }
+                            body {
+                                font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                                min-height: 100vh;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                background-color: #fafafa;
+                                background-image: radial-gradient(circle, rgba(0, 0, 0, 0.06) 1px, transparent 1px);
+                                background-size: 20px 20px;
+                                color: #171717;
+                                -webkit-font-smoothing: antialiased;
+                                padding: 20px;
+                            }
+                            .container {
+                                width: 100%;
+                                max-width: 440px;
+                                animation: fadeIn 0.5s ease-out;
+                            }
+                            @keyframes fadeIn {
+                                from { opacity: 0; transform: translateY(20px); }
+                                to { opacity: 1; transform: translateY(0); }
+                            }
+                            .card {
+                                background: rgba(255, 255, 255, 0.85);
+                                backdrop-filter: blur(12px);
+                                -webkit-backdrop-filter: blur(12px);
+                                border: 1px solid rgba(0, 0, 0, 0.08);
+                                border-radius: 20px;
+                                padding: 48px 40px;
+                                text-align: center;
+                                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.04);
+                            }
+                            .icon-wrapper {
+                                width: 72px;
+                                height: 72px;
+                                border-radius: 50%;
+                                background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                margin: 0 auto 24px;
+                            }
+                            .checkmark {
+                                width: 32px;
+                                height: 32px;
+                                position: relative;
+                            }
+                            .checkmark::before {
+                                content: '';
+                                position: absolute;
+                                width: 12px;
+                                height: 4px;
+                                background: #10b981;
+                                border-radius: 2px;
+                                top: 18px;
+                                left: 4px;
+                                transform: rotate(45deg);
+                            }
+                            .checkmark::after {
+                                content: '';
+                                position: absolute;
+                                width: 20px;
+                                height: 4px;
+                                background: #10b981;
+                                border-radius: 2px;
+                                top: 14px;
+                                left: 10px;
+                                transform: rotate(-45deg);
+                            }
+                            @keyframes checkIn {
+                                0% { transform: scale(0); }
+                                50% { transform: scale(1.2); }
+                                100% { transform: scale(1); }
+                            }
+                            .icon-wrapper { animation: checkIn 0.5s ease-out 0.2s both; }
+                            .logo {
+                                font-size: 14px;
+                                font-weight: 600;
+                                color: #a3a3a3;
+                                letter-spacing: 0.5px;
+                                margin-bottom: 24px;
+                                text-transform: uppercase;
+                            }
+                            h1 {
+                                font-size: 28px;
+                                font-weight: 600;
+                                color: #171717;
+                                margin-bottom: 12px;
+                                letter-spacing: -0.02em;
+                            }
+                            p {
+                                font-size: 16px;
+                                line-height: 1.6;
+                                color: #737373;
+                                margin-bottom: 32px;
+                            }
+                            .btn {
+                                display: inline-block;
+                                padding: 14px 28px;
+                                background: #171717;
+                                color: #fff;
+                                text-decoration: none;
+                                border-radius: 12px;
+                                font-weight: 500;
+                                font-size: 15px;
+                                transition: all 0.2s ease;
+                            }
+                            .btn:hover {
+                                background: #404040;
+                                transform: translateY(-2px);
+                                box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+                            }
+                            .footer {
+                                margin-top: 32px;
+                                font-size: 13px;
+                                color: #a3a3a3;
+                            }
+                            .footer a {
+                                color: #737373;
+                                text-decoration: none;
+                                transition: color 0.2s;
+                            }
+                            .footer a:hover { color: #171717; }
                         </style>
                     </head>
                     <body>
-                        <div class="card">
-                            <h1>Unsubscribed</h1>
-                            <p>You have been successfully removed from our mailing list. We're sorry to see you go!</p>
+                        <div class="container">
+                            <div class="card">
+                                <div class="logo">ProjectFlow</div>
+                                <div class="icon-wrapper">
+                                    <div class="checkmark"></div>
+                                </div>
+                                <h1>You're Unsubscribed</h1>
+                                <p>You've been removed from our mailing list. We're sorry to see you go, but you can always come back!</p>
+                                <a href="https://getprojectflow.com" class="btn">Visit ProjectFlow</a>
+                            </div>
+                            <div class="footer">
+                                Changed your mind? <a href="https://getprojectflow.com/newsletter">Re-subscribe</a>
+                            </div>
                         </div>
                     </body>
                     </html>

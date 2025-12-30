@@ -1,11 +1,12 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { auth } from '../../services/firebase';
 import { MediaLibrary } from '../../components/MediaLibrary/MediaLibraryModal';
 import { publishBlogPost, fetchExternalBlogPosts, BlogPost, updateBlogPost, fetchCategories, BlogCategory } from '../../services/blogService';
+import { subscribeMarketingSettings } from '../../services/marketingSettingsService';
 import { useToast, useConfirm } from '../../context/UIContext';
 import { motion } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Globe } from 'lucide-react';
 import { AdvancedEditor } from '../../components/editor/AdvancedEditor';
 import { BlogPostTemplate } from './components/blog/BlogPostTemplate';
 import { BlogAIModal } from './components/blog/BlogAIModal';
@@ -42,6 +43,26 @@ export const BlogEditor = () => {
     // Store content in state to pass to preview
     const [content, setContent] = useState('');
     const editorRef = useRef<Editor | null>(null);
+
+    // Multi-language support
+    const [supportedLanguages, setSupportedLanguages] = useState<string[]>([]);
+    const [currentLanguage, setCurrentLanguage] = useState<string>('en');
+    const [showLanguageMenu, setShowLanguageMenu] = useState(false);
+
+    // Subscribe to marketing settings to get supported languages
+    useEffect(() => {
+        if (!projectId) return;
+        const unsubscribe = subscribeMarketingSettings(projectId, (settings) => {
+            if (settings?.apiIntegration?.supportedLanguages) {
+                setSupportedLanguages(settings.apiIntegration.supportedLanguages);
+                // Set default language if not already set
+                if (settings.apiIntegration.supportedLanguages.length > 0 && !settings.apiIntegration.supportedLanguages.includes(currentLanguage)) {
+                    setCurrentLanguage(settings.apiIntegration.supportedLanguages[0]);
+                }
+            }
+        });
+        return () => unsubscribe();
+    }, [projectId]);
 
     const loadCats = useCallback(async () => {
         try {
@@ -199,7 +220,9 @@ export const BlogEditor = () => {
                 category: selectedCategory || { name: 'Uncategorized', slug: 'uncategorized' },
                 tags: tags,
                 status: newStatus,
-                publishedAt: new Date().toISOString()
+                publishedAt: new Date().toISOString(),
+                // Include language if multi-language is enabled
+                ...(supportedLanguages.length > 0 && { language: currentLanguage })
             };
 
             let savedPostId = blogId;
@@ -334,6 +357,91 @@ export const BlogEditor = () => {
                             <Layout size={16} />
                             <span>Templates</span>
                         </button>
+
+                        {/* Language Selector - Only show if multiple languages are configured */}
+                        {supportedLanguages.length > 1 && (
+                            <div className="relative">
+                                <button
+                                    onClick={() => setShowLanguageMenu(!showLanguageMenu)}
+                                    className="px-3 py-2 rounded-lg text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-colors flex items-center gap-2 border border-[var(--color-surface-border)]"
+                                    title="Select Language"
+                                >
+                                    <Globe size={16} />
+                                    <span className="uppercase">{currentLanguage}</span>
+                                    <span className="material-symbols-outlined text-[16px]">expand_more</span>
+                                </button>
+
+                                {showLanguageMenu && (
+                                    <>
+                                        <div
+                                            className="fixed inset-0 z-40"
+                                            onClick={() => setShowLanguageMenu(false)}
+                                        />
+                                        <div className="absolute right-0 top-full mt-1 z-50 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-lg py-1 min-w-[180px]">
+                                            <div className="px-3 py-2 text-xs text-[var(--color-text-muted)] uppercase tracking-wider border-b border-[var(--color-surface-border)]">
+                                                Post Language
+                                            </div>
+                                            {supportedLanguages.map(lang => (
+                                                <button
+                                                    key={lang}
+                                                    onClick={() => {
+                                                        setCurrentLanguage(lang);
+                                                        setShowLanguageMenu(false);
+                                                    }}
+                                                    className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-[var(--color-surface-hover)] ${currentLanguage === lang ? 'text-[var(--color-primary)] font-medium' : 'text-[var(--color-text-main)]'
+                                                        }`}
+                                                >
+                                                    {currentLanguage === lang && (
+                                                        <span className="material-symbols-outlined text-[16px]">check</span>
+                                                    )}
+                                                    <span className={currentLanguage !== lang ? 'ml-6' : ''}>{lang.toUpperCase()}</span>
+                                                </button>
+                                            ))}
+
+                                            {blogId && (
+                                                <>
+                                                    <div className="border-t border-[var(--color-surface-border)] my-1" />
+                                                    <div className="px-3 py-2 text-xs text-[var(--color-text-muted)]">
+                                                        Create a translation in another language:
+                                                    </div>
+                                                    {supportedLanguages
+                                                        .filter(lang => lang !== currentLanguage)
+                                                        .map(lang => (
+                                                            <button
+                                                                key={`translate-${lang}`}
+                                                                onClick={() => {
+                                                                    setCurrentLanguage(lang);
+                                                                    setShowLanguageMenu(false);
+                                                                    // Navigate to create new post (translation) with current content
+                                                                    navigate('../blog/create', {
+                                                                        state: {
+                                                                            blogPost: {
+                                                                                title,
+                                                                                content,
+                                                                                excerpt,
+                                                                                coverImage,
+                                                                                category: selectedCategory,
+                                                                                tags,
+                                                                                language: lang
+                                                                            },
+                                                                            isTranslation: true,
+                                                                            sourceLanguage: currentLanguage
+                                                                        }
+                                                                    });
+                                                                }}
+                                                                className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-[var(--color-surface-hover)] text-[var(--color-primary)]"
+                                                            >
+                                                                <span className="material-symbols-outlined text-[16px]">translate</span>
+                                                                Create {lang.toUpperCase()} Translation
+                                                            </button>
+                                                        ))}
+                                                </>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        )}
 
                         <div className="w-px h-6 bg-[var(--color-surface-border)] mx-1" />
 

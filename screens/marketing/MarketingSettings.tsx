@@ -765,6 +765,57 @@ export const MarketingSettings: React.FC = () => {
                                                     </div>
                                                 </div>
                                             </div>
+
+                                            {/* Languages */}
+                                            {apiSettings.supportedLanguages && apiSettings.supportedLanguages.length > 0 && (
+                                                <div className="p-4 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)]">
+                                                    <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Multi-Language Support</div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {apiSettings.supportedLanguages.map(lang => (
+                                                            <span
+                                                                key={lang}
+                                                                className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20"
+                                                            >
+                                                                {lang.toUpperCase()}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Data Model Fields */}
+                                            {apiSettings.dataModel && (
+                                                <div className="p-4 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)]">
+                                                    <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Configured Data Model Fields</div>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {['id', 'title', 'slug', 'content', 'excerpt', 'coverImage', 'language', 'author', 'category', 'tags', 'status', 'publishedAt', 'url'].map(field => {
+                                                            const fieldLower = field.toLowerCase();
+                                                            const aliases: Record<string, string[]> = {
+                                                                content: ['body', 'html', 'text'],
+                                                                excerpt: ['description', 'summary'],
+                                                                coverImage: ['image', 'thumbnail', 'featuredimage'],
+                                                                language: ['locale', 'lang'],
+                                                                publishedAt: ['createdat', 'date']
+                                                            };
+                                                            const allKeys = [fieldLower, ...(aliases[field] || [])];
+                                                            const isDetected = allKeys.some(k =>
+                                                                new RegExp(`["']?${k}["']?\\s*[?]?\\s*:`, 'i').test(apiSettings.dataModel || '')
+                                                            );
+                                                            return (
+                                                                <span
+                                                                    key={field}
+                                                                    className={`px-2 py-0.5 rounded text-xs font-medium ${isDetected
+                                                                            ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                                                                            : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] opacity-50'
+                                                                        }`}
+                                                                >
+                                                                    {isDetected && '✓ '}{field}
+                                                                </span>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     ) : (
                                         <div className="flex flex-col items-center justify-center py-12 text-center text-[var(--color-text-muted)] bg-[var(--color-surface-bg)] rounded-xl border border-dashed border-[var(--color-surface-border)]">

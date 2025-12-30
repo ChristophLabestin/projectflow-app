@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import { format } from 'date-fns';
 import { fetchExternalBlogPosts, BlogPost, deleteBlogPost } from '../../services/blogService';
+import { subscribeMarketingSettings } from '../../services/marketingSettingsService';
 import { useToast, useConfirm } from '../../context/UIContext';
 
 
@@ -41,8 +42,23 @@ const BlogList = () => {
     const [error, setError] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
+    // Language filter state
+    const [supportedLanguages, setSupportedLanguages] = useState<string[]>([]);
+    const [selectedLanguage, setSelectedLanguage] = useState<string | 'all'>('all');
+
     const { showSuccess, showError } = useToast();
     const confirm = useConfirm();
+
+    // Subscribe to marketing settings for language config
+    useEffect(() => {
+        if (!projectId) return;
+        const unsubscribe = subscribeMarketingSettings(projectId, (settings) => {
+            if (settings?.apiIntegration?.supportedLanguages) {
+                setSupportedLanguages(settings.apiIntegration.supportedLanguages);
+            }
+        });
+        return () => unsubscribe();
+    }, [projectId]);
 
     React.useEffect(() => {
         const loadBlogs = async () => {
@@ -94,6 +110,11 @@ const BlogList = () => {
         navigate(`${blogId}`, { state: { blogPost: blog } });
     };
 
+    // Filter blogs by selected language
+    const filteredBlogs = selectedLanguage === 'all'
+        ? blogs
+        : blogs.filter(blog => blog.language === selectedLanguage);
+
     return (
         <div className="h-full flex flex-col gap-6">
             {/* Header */}
@@ -103,6 +124,23 @@ const BlogList = () => {
                     <p className="text-sm text-[var(--color-text-muted)]">Manage your blog content and publications</p>
                 </div>
                 <div className="flex items-center gap-3">
+                    {/* Language Filter - Only show if languages are configured */}
+                    {supportedLanguages.length > 1 && (
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs text-[var(--color-text-muted)]">Language:</span>
+                            <select
+                                value={selectedLanguage}
+                                onChange={(e) => setSelectedLanguage(e.target.value)}
+                                className="px-3 py-1.5 text-sm bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg focus:border-[var(--color-primary)] outline-none"
+                            >
+                                <option value="all">All Languages</option>
+                                {supportedLanguages.map(lang => (
+                                    <option key={lang} value={lang}>{lang.toUpperCase()}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+
                     <div className="flex items-center p-1 bg-[var(--color-surface-hover)] rounded-lg">
                         <button
                             onClick={() => setViewMode('grid')}
@@ -154,7 +192,7 @@ const BlogList = () => {
             {!isLoading && (
                 viewMode === 'grid' ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-6">
-                        {blogs.map((blog) => (
+                        {filteredBlogs.map((blog) => (
                             <div
                                 key={blog.id}
                                 onClick={() => handleEdit(blog.id)}
@@ -168,6 +206,11 @@ const BlogList = () => {
                                         }`}>
                                         {blog.status === 'published' ? 'Published' : 'Draft'}
                                     </span>
+                                    {blog.language && (
+                                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-600 border border-blue-500/20 ml-1">
+                                            {blog.language.toUpperCase()}
+                                        </span>
+                                    )}
                                 </div>
 
                                 {/* Delete Button (Visible on hover) */}
@@ -245,7 +288,7 @@ const BlogList = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[var(--color-surface-border)]">
-                                    {blogs.map((blog) => (
+                                    {filteredBlogs.map((blog) => (
                                         <tr
                                             key={blog.id}
                                             onClick={() => handleEdit(blog.id)}
@@ -276,6 +319,11 @@ const BlogList = () => {
                                                     }`}>
                                                     {blog.status === 'published' ? 'Published' : 'Draft'}
                                                 </span>
+                                                {blog.language && (
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-600 ml-1">
+                                                        {blog.language.toUpperCase()}
+                                                    </span>
+                                                )}
                                             </td>
                                             <td className="py-3 px-4 text-[var(--color-text-muted)]">
                                                 {format(new Date(blog.createdAt), 'MMM d, yyyy')}
@@ -291,7 +339,7 @@ const BlogList = () => {
                                             </td>
                                         </tr>
                                     ))}
-                                    {blogs.length === 0 && (
+                                    {filteredBlogs.length === 0 && (
                                         <tr>
                                             <td colSpan={5} className="py-12 text-center text-[var(--color-text-muted)]">
                                                 No blog posts found. <button onClick={handleCreate} className="text-[var(--color-primary)] hover:underline">Create your first post</button>

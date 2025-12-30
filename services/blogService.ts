@@ -10,6 +10,7 @@ export interface BlogPost {
     content: string; // HTML Content
     coverImage: string | null;
     publishedAt?: string; // ISO String
+    language?: string; // e.g. 'en', 'de' - for multi-language support
     author: {
         uid?: string;
         name: string;
@@ -195,6 +196,7 @@ export const fetchExternalBlogPosts = async (projectId: string): Promise<BlogPos
                     author: typeof fields.author === 'object' ? fields.author : { name: fields.author || 'Unknown' },
                     category: fields.category || { name: 'General', slug: 'general' },
                     tags: Array.isArray(fields.tags) ? fields.tags : [],
+                    language: fields.language || fields.locale || fields.lang || undefined,
                     status: (fields.status === 'published' || item.publishedAt) ? 'published' : 'draft',
                     createdAt: fields.createdAt || fields.publishedAt || fields.date || new Date(),
                     url: fields.url || fields.slug ? `/${fields.slug}` : undefined

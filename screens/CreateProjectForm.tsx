@@ -185,7 +185,7 @@ export const CreateProjectForm = () => {
                         {[
                             { id: 'default', title: 'Standard', desc: 'Tasks, Flows & Activity', modules: ['tasks', 'ideas', 'activity'] },
                             { id: 'software', title: 'Software', desc: 'Tasks, Issues & Activity', modules: ['tasks', 'issues', 'activity'] },
-                            { id: 'creative', title: 'Creative', desc: 'Flows, Mindmap & Activity', modules: ['ideas', 'mindmap', 'activity'] },
+                            { id: 'creative', title: 'Creative', desc: 'Flows, Tasks & Activity', modules: ['ideas', 'tasks', 'activity'] },
                         ].map((tmpl) => (
                             <div
                                 key={tmpl.id}
@@ -224,7 +224,6 @@ export const CreateProjectForm = () => {
                             {[
                                 { id: 'tasks', label: 'Tasks', desc: 'Manage todos and milestones' },
                                 { id: 'ideas', label: 'Flows', desc: 'Brainstorming and concepts' },
-                                { id: 'mindmap', label: 'Mindmap', desc: 'Visual planning board' },
                                 { id: 'activity', label: 'Activity', desc: 'Track project history' },
                                 { id: 'issues', label: 'Issues', desc: 'Bug tracking and tickets' },
                             ].map((mod) => (

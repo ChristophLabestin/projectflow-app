@@ -11,10 +11,106 @@ interface BlogConnectionWizardProps {
     onCancel: () => void;
 }
 
-type WizardStep = 'welcome' | 'base_auth' | 'resources' | 'validation' | 'completion';
+type WizardStep = 'welcome' | 'base_auth' | 'resources' | 'data_model' | 'validation' | 'completion';
 type ResourceType = 'posts' | 'categories';
 
 const DEFAULT_RESOURCES: ResourceType[] = ['posts', 'categories'];
+
+const DEFAULT_LANGUAGES = [
+    { code: 'en', name: 'English' },
+    { code: 'de', name: 'German' },
+    { code: 'fr', name: 'French' },
+    { code: 'es', name: 'Spanish' },
+    { code: 'it', name: 'Italian' },
+    { code: 'pt', name: 'Portuguese' },
+    { code: 'nl', name: 'Dutch' },
+    { code: 'pl', name: 'Polish' },
+    { code: 'ja', name: 'Japanese' },
+    { code: 'zh', name: 'Chinese' },
+];
+
+// Helper to detect if a data model contains a language field
+const detectLanguageField = (dataModel: string): boolean => {
+    if (!dataModel) return false;
+    // Check for common patterns: language: string, locale: string, lang: string
+    const patterns = [
+        /language\s*[?]?\s*:\s*(string|'[a-z]{2}')/i,
+        /locale\s*[?]?\s*:\s*(string|'[a-z]{2}')/i,
+        /lang\s*[?]?\s*:\s*(string|'[a-z]{2}')/i,
+        /"language"\s*:/i,
+        /"locale"\s*:/i,
+    ];
+    return patterns.some(pattern => pattern.test(dataModel));
+};
+
+// Known BlogPost fields that the application can map
+const KNOWN_FIELDS = [
+    { key: 'id', label: 'ID', required: true },
+    { key: 'title', label: 'Title', required: true },
+    { key: 'slug', label: 'Slug', required: false },
+    { key: 'content', label: 'Content', required: true, aliases: ['body', 'html', 'text'] },
+    { key: 'excerpt', label: 'Excerpt', required: false, aliases: ['description', 'summary'] },
+    { key: 'coverImage', label: 'Cover Image', required: false, aliases: ['image', 'thumbnail', 'featuredImage'] },
+    { key: 'language', label: 'Language', required: false, aliases: ['locale', 'lang'] },
+    { key: 'author', label: 'Author', required: false },
+    { key: 'category', label: 'Category', required: false },
+    { key: 'tags', label: 'Tags', required: false },
+    { key: 'status', label: 'Status', required: false },
+    { key: 'publishedAt', label: 'Published Date', required: false, aliases: ['createdAt', 'date'] },
+    { key: 'url', label: 'URL', required: false },
+];
+
+// Parse data model and detect which fields are present
+const parseDataModel = (dataModel: string): { isValid: boolean; detectedFields: string[]; error?: string } => {
+    if (!dataModel.trim()) {
+        return { isValid: true, detectedFields: [] }; // Empty is valid (optional)
+    }
+
+    // Check if it looks like a TypeScript interface or JSON
+    const isTypeScript = /interface\s+\w+/i.test(dataModel) || /type\s+\w+\s*=/i.test(dataModel);
+    const isJson = dataModel.trim().startsWith('{');
+
+    if (!isTypeScript && !isJson) {
+        return {
+            isValid: false,
+            detectedFields: [],
+            error: 'Data model should be a TypeScript interface or JSON object'
+        };
+    }
+
+    // Detect fields present in the data model
+    const detectedFields: string[] = [];
+    const contentLower = dataModel.toLowerCase();
+
+    for (const field of KNOWN_FIELDS) {
+        const allKeys = [field.key, ...(field.aliases || [])];
+        for (const key of allKeys) {
+            // Check for various patterns: key:, "key":, key?:, 'key':
+            const patterns = [
+                new RegExp(`["']?${key}["']?\\s*[?]?\\s*:`, 'i'),
+            ];
+            if (patterns.some(p => p.test(contentLower))) {
+                detectedFields.push(field.key);
+                break;
+            }
+        }
+    }
+
+    // Check for required fields
+    const missingRequired = KNOWN_FIELDS
+        .filter(f => f.required && !detectedFields.includes(f.key))
+        .map(f => f.label);
+
+    if (missingRequired.length > 0 && detectedFields.length > 0) {
+        return {
+            isValid: false,
+            detectedFields,
+            error: `Missing required fields: ${missingRequired.join(', ')}`
+        };
+    }
+
+    return { isValid: true, detectedFields };
+};
 
 export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ initialSettings, onSave, onCancel }) => {
     const { showSuccess, showError } = useToast();
@@ -23,6 +119,23 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
     // Core Config
     const [baseUrl, setBaseUrl] = useState(initialSettings?.baseUrl || '');
     const [headers, setHeaders] = useState(initialSettings?.headers || '{}');
+
+    // Data Model Config
+    const [dataModel, setDataModel] = useState(initialSettings?.dataModel || '');
+    const [hasLanguageField, setHasLanguageField] = useState(false);
+    const [supportedLanguages, setSupportedLanguages] = useState<string[]>(initialSettings?.supportedLanguages || []);
+    const [dataModelValidation, setDataModelValidation] = useState<{ isValid: boolean; detectedFields: string[]; error?: string }>({ isValid: true, detectedFields: [] });
+
+    // Detect language field and validate when data model changes
+    useEffect(() => {
+        const hasLang = detectLanguageField(dataModel);
+        setHasLanguageField(hasLang);
+        if (!hasLang) {
+            setSupportedLanguages([]);
+        }
+        // Validate the data model
+        setDataModelValidation(parseDataModel(dataModel));
+    }, [dataModel]);
 
     // Resources Config
     const [resources, setResources] = useState<ApiResourceConfig['resources']>(initialSettings?.resources || {
@@ -87,13 +200,27 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
             }
             setStep('resources');
         }
-        else if (step === 'resources') setStep('validation');
+        else if (step === 'resources') setStep('data_model');
+        else if (step === 'data_model') {
+            // Validate data model if provided
+            if (dataModel.trim() && !dataModelValidation.isValid) {
+                showError(dataModelValidation.error || 'Invalid data model format');
+                return;
+            }
+            // If language field detected but no languages selected, show warning
+            if (hasLanguageField && supportedLanguages.length === 0) {
+                showError('Please select at least one language to enable multi-language support');
+                return;
+            }
+            setStep('validation');
+        }
     };
 
     const handleBack = () => {
         if (step === 'base_auth') setStep('welcome');
         else if (step === 'resources') setStep('base_auth');
-        else if (step === 'validation') setStep('resources');
+        else if (step === 'data_model') setStep('resources');
+        else if (step === 'validation') setStep('data_model');
     };
 
     const testResource = async (resource: ResourceType) => {
@@ -186,12 +313,22 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
             await onSave({
                 baseUrl,
                 headers,
+                dataModel: dataModel || undefined,
+                supportedLanguages: supportedLanguages.length > 0 ? supportedLanguages : undefined,
                 resources
             });
             setStep('completion');
         } catch (e) {
             showError('Failed to save configuration');
         }
+    };
+
+    const toggleLanguage = (code: string) => {
+        setSupportedLanguages(prev =>
+            prev.includes(code)
+                ? prev.filter(l => l !== code)
+                : [...prev, code]
+        );
     };
 
     return (
@@ -212,10 +349,11 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
 
                 {/* Progress */}
                 <div className="flex items-center justify-center gap-2">
-                    {(['welcome', 'base_auth', 'resources', 'validation'] as WizardStep[]).map((s, idx) => {
+                    {(['welcome', 'base_auth', 'resources', 'data_model', 'validation'] as WizardStep[]).map((s, idx) => {
                         const isActive = s === step;
+                        const isPast = (['welcome', 'base_auth', 'resources', 'data_model', 'validation'] as WizardStep[]).indexOf(s) < (['welcome', 'base_auth', 'resources', 'data_model', 'validation'] as WizardStep[]).indexOf(step);
                         return (
-                            <div key={s} className={`h-2 rounded-full transition-all ${isActive ? 'w-12 bg-[var(--color-primary)]' : 'w-2 bg-[var(--color-surface-border)]'}`} />
+                            <div key={s} className={`h-2 rounded-full transition-all ${isActive ? 'w-12 bg-[var(--color-primary)]' : isPast ? 'w-2 bg-[var(--color-primary)]/50' : 'w-2 bg-[var(--color-surface-border)]'}`} />
                         );
                     })}
                 </div>
@@ -333,6 +471,150 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                         <div className="p-4 bg-[var(--color-surface-bg)] rounded-lg text-xs text-[var(--color-text-muted)] mt-4">
                             <p><strong>Tip:</strong> Use <code>:id</code> as a placeholder for resource IDs in Update/Delete/Get paths.</p>
                         </div>
+                    </div>
+                )}
+
+                {step === 'data_model' && (
+                    <div className="space-y-6 animate-fade-up max-w-2xl mx-auto">
+                        <div>
+                            <h3 className="text-lg font-bold mb-2">Data Model (Optional)</h3>
+                            <p className="text-sm text-[var(--color-text-muted)]">
+                                Define your blog post structure. If your API supports multiple languages, include a <code className="bg-[var(--color-surface-hover)] px-1.5 py-0.5 rounded text-xs">language</code> field.
+                            </p>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="block text-sm font-medium">Post Interface / Schema</label>
+                            <textarea
+                                className="w-full h-64 bg-zinc-900 text-zinc-100 font-mono text-xs p-4 rounded-xl border border-[var(--color-surface-border)] focus:ring-2 focus:ring-[var(--color-primary)] outline-none resize-none"
+                                value={dataModel}
+                                onChange={(e) => setDataModel(e.target.value)}
+                                placeholder={`interface BlogPost {
+  id: string;
+  title: string;
+  slug: string;
+  content: string;
+  excerpt?: string;
+  coverImage?: string;
+  language?: string;  // Add this for multi-language support
+  author: {
+    name: string;
+    avatar?: string;
+  };
+  category: {
+    name: string;
+    slug: string;
+  };
+  tags?: string[];
+  status: 'draft' | 'published';
+  publishedAt?: string;
+}`}
+                                spellCheck={false}
+                            />
+                            <p className="text-xs text-[var(--color-text-muted)]">
+                                This helps ProjectFlow understand how to map data to your API.
+                            </p>
+                        </div>
+
+                        {/* Validation Status & Detected Fields */}
+                        {dataModel.trim() && (
+                            <div className={`p-4 rounded-xl border ${dataModelValidation.isValid
+                                    ? 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)]'
+                                    : 'bg-red-500/5 border-red-500/20'
+                                }`}>
+                                {dataModelValidation.error ? (
+                                    <div className="flex items-start gap-3">
+                                        <span className="material-symbols-outlined text-red-500 shrink-0">error</span>
+                                        <div>
+                                            <div className="font-medium text-red-500">Invalid Data Model</div>
+                                            <div className="text-sm text-red-400">{dataModelValidation.error}</div>
+                                        </div>
+                                    </div>
+                                ) : dataModelValidation.detectedFields.length > 0 ? (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-green-500 text-lg">check_circle</span>
+                                            <span className="font-medium text-green-600 dark:text-green-400">
+                                                Valid Data Model — {dataModelValidation.detectedFields.length} fields detected
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {KNOWN_FIELDS.map(field => {
+                                                const isDetected = dataModelValidation.detectedFields.includes(field.key);
+                                                return (
+                                                    <span
+                                                        key={field.key}
+                                                        className={`px-2 py-1 rounded text-xs font-medium ${isDetected
+                                                                ? 'bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20'
+                                                                : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] border border-transparent opacity-50'
+                                                            }`}
+                                                    >
+                                                        {isDetected && <span className="mr-1">✓</span>}
+                                                        {field.label}
+                                                        {field.required && !isDetected && <span className="ml-1 text-red-400">*</span>}
+                                                    </span>
+                                                );
+                                            })}
+                                        </div>
+                                        <p className="text-xs text-[var(--color-text-muted)]">
+                                            Fields marked with * are required for full functionality.
+                                        </p>
+                                    </div>
+                                ) : null}
+                            </div>
+                        )}
+                        {hasLanguageField && (
+                            <div className="p-4 bg-green-500/5 rounded-xl border border-green-500/20 space-y-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center shrink-0">
+                                        <span className="material-symbols-outlined text-green-500">translate</span>
+                                    </div>
+                                    <div>
+                                        <div className="font-medium text-green-600 dark:text-green-400">Language Field Detected!</div>
+                                        <div className="text-sm text-[var(--color-text-muted)]">
+                                            Multi-language support is available. Select the languages you want to support.
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="flex flex-wrap gap-2">
+                                    {DEFAULT_LANGUAGES.map(lang => {
+                                        const isSelected = supportedLanguages.includes(lang.code);
+                                        return (
+                                            <button
+                                                key={lang.code}
+                                                type="button"
+                                                onClick={() => toggleLanguage(lang.code)}
+                                                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${isSelected
+                                                    ? 'bg-[var(--color-primary)] text-white dark:text-black border-[var(--color-primary)]'
+                                                    : 'bg-[var(--color-surface-card)] text-[var(--color-text-main)] border-[var(--color-surface-border)] hover:border-[var(--color-primary)]'
+                                                    }`}
+                                            >
+                                                {isSelected && <span className="mr-1">✓</span>}
+                                                {lang.name} ({lang.code})
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+
+                                {supportedLanguages.length > 0 && (
+                                    <p className="text-xs text-[var(--color-text-muted)]">
+                                        Selected: {supportedLanguages.join(', ')}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
+                        {!hasLanguageField && dataModel && (
+                            <div className="p-4 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)]">
+                                <div className="flex items-start gap-3">
+                                    <span className="material-symbols-outlined text-[var(--color-text-muted)]">info</span>
+                                    <div className="text-sm text-[var(--color-text-muted)]">
+                                        <strong>Tip:</strong> To enable multi-language support, add a <code className="bg-[var(--color-surface-hover)] px-1 rounded">language: string</code> field to your data model.
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 

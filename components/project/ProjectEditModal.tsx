@@ -83,7 +83,6 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         { id: 'tasks', icon: 'checklist', label: t('nav.tasks'), moduleKey: 'tasks' },
         { id: 'ideas', icon: 'emoji_objects', label: t('nav.flows'), moduleKey: 'ideas' },
         { id: 'issues', icon: 'medication', label: t('nav.issues'), moduleKey: 'issues' },
-        { id: 'mindmap', icon: 'hub', label: t('nav.mindmap'), moduleKey: 'mindmap' },
         { id: 'milestones', icon: 'outlined_flag', label: t('nav.milestones'), moduleKey: 'milestones' },
         { id: 'social', icon: 'campaign', label: t('nav.social'), moduleKey: 'social' },
         { id: 'marketing', icon: 'ads_click', label: t('nav.marketing'), moduleKey: 'marketing' },
@@ -223,7 +222,6 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         milestones: t('nav.milestones'),
         issues: t('nav.issues'),
         ideas: t('nav.flows'),
-        mindmap: t('nav.mindmap'),
         groups: t('projectSettings.modules.groups'),
         activity: t('nav.activity'),
         social: t('nav.social'),
@@ -477,7 +475,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                     <div className="space-y-4 animate-in fade-in duration-300">
                         <p className="text-sm text-[var(--color-text-muted)]">{t('projectSettings.modules.description')}</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {['tasks', 'milestones', 'issues', 'ideas', 'mindmap', 'groups', 'activity', 'social', 'marketing'].map((mod) => (
+                            {['tasks', 'milestones', 'issues', 'ideas', 'groups', 'activity', 'social', 'marketing'].map((mod) => (
                                 <div
                                     key={mod}
                                     className={`
@@ -503,11 +501,10 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                             {mod === 'tasks' ? 'check_circle' :
                                                 mod === 'ideas' ? 'lightbulb' :
                                                     mod === 'milestones' ? 'flag' :
-                                                        mod === 'mindmap' ? 'hub' :
-                                                            mod === 'social' ? 'campaign' :
-                                                                mod === 'marketing' ? 'ads_click' :
-                                                                    mod === 'groups' ? 'groups' :
-                                                                        mod === 'activity' ? 'history' : 'bug_report'}
+                                                        mod === 'social' ? 'campaign' :
+                                                            mod === 'marketing' ? 'ads_click' :
+                                                                mod === 'groups' ? 'groups' :
+                                                                    mod === 'activity' ? 'history' : 'bug_report'}
                                         </span>
                                     </div>
                                     <div className="flex-1">

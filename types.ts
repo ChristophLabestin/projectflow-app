@@ -1136,6 +1136,8 @@ export interface ApiEndpoint {
 export interface ApiResourceConfig {
     baseUrl: string;
     headers: string; // JSON string of headers
+    dataModel?: string; // TypeScript interface or JSON schema defining the post structure
+    supportedLanguages?: string[]; // e.g. ['en', 'de'] - detected from dataModel if it has a language field
     resources: {
         [resourceName: string]: { // e.g. 'posts', 'categories'
             endpoints: {
