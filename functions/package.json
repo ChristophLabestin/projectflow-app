@@ -3,6 +3,7 @@
     "scripts": {
         "lint": "eslint --ext .js,.ts .",
         "build": "tsc",
+        "postbuild": "cp ../dist/index.html ./landing-page-index.html || echo 'Warning: ../dist/index.html not found. Make sure to build the web app first.'",
         "build:watch": "tsc --watch",
         "serve": "npm run build && firebase emulators:start --only functions",
         "shell": "npm run build && firebase functions:shell",
@@ -15,7 +16,6 @@
     },
     "main": "lib/index.js",
     "dependencies": {
-        "@google-cloud/vertexai": "^1.9.3",
         "@simplewebauthn/server": "^13.2.2",
         "cors": "^2.8.5",
         "firebase-admin": "^11.8.0",

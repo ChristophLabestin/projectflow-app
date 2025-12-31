@@ -4,6 +4,7 @@ import { auth } from '../../services/firebase';
 import { MediaLibrary } from '../../components/MediaLibrary/MediaLibraryModal';
 import { publishBlogPost, fetchExternalBlogPosts, BlogPost, updateBlogPost, fetchCategories, BlogCategory } from '../../services/blogService';
 import { subscribeMarketingSettings } from '../../services/marketingSettingsService';
+import { translateBlogPostAI } from '../../services/geminiService';
 import { useToast, useConfirm } from '../../context/UIContext';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Globe } from 'lucide-react';
@@ -23,6 +24,8 @@ export const BlogEditor = () => {
     const [title, setTitle] = useState('');
     const [excerpt, setExcerpt] = useState('');
     const [coverImage, setCoverImage] = useState<string | null>(null);
+    const [translationId, setTranslationId] = useState<string | null>(null);
+    const [linkedTranslations, setLinkedTranslations] = useState<Record<string, string>>({});
 
     // Category State
     const [categories, setCategories] = useState<BlogCategory[]>([]);
@@ -47,7 +50,62 @@ export const BlogEditor = () => {
     // Multi-language support
     const [supportedLanguages, setSupportedLanguages] = useState<string[]>([]);
     const [currentLanguage, setCurrentLanguage] = useState<string>('en');
+
     const [showLanguageMenu, setShowLanguageMenu] = useState(false);
+    const [isTranslating, setIsTranslating] = useState(false);
+
+    // Initial load from location state (for translations)
+    useEffect(() => {
+        const state = location.state as any;
+
+        // precise language setting
+        if (state?.blogPost?.language) {
+            setCurrentLanguage(state.blogPost.language);
+        }
+
+        if (state?.autoTranslate && state?.blogPost) {
+            const timer = setTimeout(() => {
+                handleAutoTranslate(
+                    state.blogPost.content,
+                    state.blogPost.title,
+                    state.blogPost.excerpt
+                );
+            }, 500);
+            return () => clearTimeout(timer);
+        }
+    }, [location.state]);
+
+    const handleAutoTranslate = async (overrideContent?: string, overrideTitle?: string, overrideExcerpt?: string) => {
+        const contentToUse = overrideContent || content;
+        if (!contentToUse) return;
+
+        setIsTranslating(true);
+        try {
+            const state = location.state as { sourceLanguage?: string };
+            const srcLang = state?.sourceLanguage;
+
+            const { content: translatedHtml, title: translatedTitle, excerpt: translatedExcerpt } = await translateBlogPostAI(
+                contentToUse,
+                (location.state as any)?.blogPost?.language || currentLanguage,
+                srcLang,
+                overrideTitle || title,
+                overrideExcerpt || excerpt
+            );
+
+            setContent(translatedHtml);
+            editorRef.current?.commands.setContent(translatedHtml);
+
+            if (translatedTitle) setTitle(translatedTitle);
+            if (translatedExcerpt) setExcerpt(translatedExcerpt);
+
+            showSuccess(`Content translated to ${((location.state as any)?.blogPost?.language || currentLanguage).toUpperCase()}`);
+        } catch (error) {
+            console.error(error);
+            showError('Failed to translate content');
+        } finally {
+            setIsTranslating(false);
+        }
+    };
 
     // Subscribe to marketing settings to get supported languages
     useEffect(() => {
@@ -84,7 +142,7 @@ export const BlogEditor = () => {
     // Check for existing blog post data
     React.useEffect(() => {
         const loadPost = async () => {
-            if (!blogId) return;
+            if (!blogId && !location.state?.blogPost) return;
 
             // 1. Try from navigation state
             if (location.state?.blogPost) {
@@ -96,7 +154,15 @@ export const BlogEditor = () => {
                 setTags(post.tags || []);
                 setStatus(post.status);
                 setContent(post.content || '');
-                // Force update editor content
+                setContent(post.content || '');
+                setTranslationId(post.translationId || post.translationGroupId || null);
+                if (post.translations) {
+                    setLinkedTranslations(post.translations);
+                } else if (post.translationId) {
+                    // Fallback for transition period: fetch manually if translations map not yet present
+                    // This can be removed once all posts are migrated
+                    // But for now we rely on the backend trigger to populate 'translations'
+                }
                 // Use a small timeout to ensure editor is mounted if this is initial render
                 setTimeout(() => {
                     editorRef.current?.commands.setContent(post.content || '');
@@ -119,7 +185,11 @@ export const BlogEditor = () => {
                         setTags(post.tags || []);
                         setStatus(post.status);
                         setContent(post.content || '');
-                        // Force update editor content
+                        setTranslationId(post.translationId || post.translationGroupId || null);
+                        if (post.language) setCurrentLanguage(post.language);
+                        if (post.translations) {
+                            setLinkedTranslations(post.translations);
+                        }
                         editorRef.current?.commands.setContent(post.content || '');
                         // Reset change tracking after initial load from API
                         hasChangesRef.current = false;
@@ -136,6 +206,26 @@ export const BlogEditor = () => {
         loadPost();
         loadCats();
     }, [blogId, projectId, loadCats]);
+
+    // Poll for translation updates if we have an ID but no map (or just to keep fresh)
+    useEffect(() => {
+        if (!projectId || !translationId) return;
+
+        // Simple polling to catch updates from the backend trigger
+        const poll = setInterval(async () => {
+            try {
+                const posts = await fetchExternalBlogPosts(projectId);
+                const currentPost = posts.find(p => p.id === blogId);
+                if (currentPost?.translations) {
+                    setLinkedTranslations(currentPost.translations);
+                }
+            } catch (e) {
+                // ignore silent errors
+            }
+        }, 5000);
+
+        return () => clearInterval(poll);
+    }, [projectId, translationId, blogId]);
 
     const handleOpenMediaPicker = (mode: 'cover' | 'content') => {
         setMediaPickerMode(mode);
@@ -221,8 +311,8 @@ export const BlogEditor = () => {
                 tags: tags,
                 status: newStatus,
                 publishedAt: new Date().toISOString(),
-                // Include language if multi-language is enabled
-                ...(supportedLanguages.length > 0 && { language: currentLanguage })
+                language: currentLanguage,
+                translationId: translationId || undefined
             };
 
             let savedPostId = blogId;
@@ -263,7 +353,7 @@ export const BlogEditor = () => {
                 if (newId) {
                     savedPostId = newId;
                     // Update URL silently so we are now "editing" this post instead of "creating"
-                    navigate(`../blog/${newId}/edit`, { replace: true, state: { blogPost: { ...postData, id: newId } } });
+                    navigate(`/project/${projectId}/marketing/blog/${newId}`, { replace: true, state: { blogPost: { ...postData, id: newId } } });
                 }
 
                 if (!isAutosave) showSuccess(`Blog post ${newStatus === 'published' ? 'published' : 'saved'} successfully!`);
@@ -274,7 +364,7 @@ export const BlogEditor = () => {
             setLastSavedTime(new Date());
 
             if (!isAutosave) {
-                navigate('../blog');
+                navigate(`/project/${projectId}/marketing/blog`);
             }
         } catch (error) {
             console.error('Failed to save', error);
@@ -320,7 +410,7 @@ export const BlogEditor = () => {
                 {/* Top Bar Actions */}
                 <div className="flex items-center justify-between shrink-0">
                     <button
-                        onClick={() => navigate('../blog')}
+                        onClick={() => navigate(`/project/${projectId}/marketing/blog`)}
                         className="flex items-center gap-2 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
                     >
                         <ArrowLeft size={18} />
@@ -358,6 +448,8 @@ export const BlogEditor = () => {
                             <span>Templates</span>
                         </button>
 
+
+
                         {/* Language Selector - Only show if multiple languages are configured */}
                         {supportedLanguages.length > 1 && (
                             <div className="relative">
@@ -381,22 +473,39 @@ export const BlogEditor = () => {
                                             <div className="px-3 py-2 text-xs text-[var(--color-text-muted)] uppercase tracking-wider border-b border-[var(--color-surface-border)]">
                                                 Post Language
                                             </div>
-                                            {supportedLanguages.map(lang => (
-                                                <button
-                                                    key={lang}
-                                                    onClick={() => {
-                                                        setCurrentLanguage(lang);
-                                                        setShowLanguageMenu(false);
-                                                    }}
-                                                    className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-[var(--color-surface-hover)] ${currentLanguage === lang ? 'text-[var(--color-primary)] font-medium' : 'text-[var(--color-text-main)]'
-                                                        }`}
-                                                >
-                                                    {currentLanguage === lang && (
-                                                        <span className="material-symbols-outlined text-[16px]">check</span>
-                                                    )}
-                                                    <span className={currentLanguage !== lang ? 'ml-6' : ''}>{lang.toUpperCase()}</span>
-                                                </button>
-                                            ))}
+                                            {supportedLanguages.map(lang => {
+                                                const isCurrent = currentLanguage === lang;
+                                                const linkedSlug = linkedTranslations[lang];
+                                                const isAvailable = isCurrent || !!linkedSlug;
+
+                                                if (!isAvailable) return null;
+
+                                                return (
+                                                    <button
+                                                        key={lang}
+                                                        onClick={() => {
+                                                            setShowLanguageMenu(false);
+                                                            if (linkedSlug && linkedSlug !== blogId) {
+                                                                // If we have slug, we need to find ID or route by slug?
+                                                                // The current app routes by ID mostly, but let's check if we can resolve it.
+                                                                // Actually, fetchExternalBlogPosts returns ID.
+                                                                // The backend map stores SLUG.
+                                                                // We might need to fetch the post by slug to get ID or just assume ID=Slug if that's how it works?
+                                                                // Looking at blogService: id = item.id || fields.id.
+                                                                // Cloud function uses slug as Doc ID. So likely ID == Slug.
+                                                                navigate(`/project/${projectId}/marketing/blog/${linkedSlug}`);
+                                                            }
+                                                        }}
+                                                        className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-[var(--color-surface-hover)] ${isCurrent ? 'text-[var(--color-primary)] font-medium' : 'text-[var(--color-text-main)]'
+                                                            }`}
+                                                    >
+                                                        {isCurrent && (
+                                                            <span className="material-symbols-outlined text-[16px]">check</span>
+                                                        )}
+                                                        <span className={isCurrent ? '' : 'ml-6'}>{lang.toUpperCase()}</span>
+                                                    </button>
+                                                );
+                                            })}
 
                                             {blogId && (
                                                 <>
@@ -405,15 +514,36 @@ export const BlogEditor = () => {
                                                         Create a translation in another language:
                                                     </div>
                                                     {supportedLanguages
-                                                        .filter(lang => lang !== currentLanguage)
+                                                        .filter(lang => lang !== currentLanguage && !linkedTranslations[lang])
                                                         .map(lang => (
                                                             <button
                                                                 key={`translate-${lang}`}
-                                                                onClick={() => {
+                                                                onClick={async () => {
                                                                     setCurrentLanguage(lang);
                                                                     setShowLanguageMenu(false);
-                                                                    // Navigate to create new post (translation) with current content
-                                                                    navigate('../blog/create', {
+
+                                                                    // Ensure we have a translationId
+                                                                    let activeId = translationId;
+                                                                    if (!activeId && blogId) {
+                                                                        activeId = crypto.randomUUID();
+                                                                        // Save ID to current post first
+                                                                        try {
+                                                                            await updateBlogPost(projectId!, blogId, { translationId: activeId });
+                                                                            setTranslationId(activeId);
+                                                                        } catch (e) {
+                                                                            console.error("Failed to init translation ID", e);
+                                                                            showError("Failed to prepare translation");
+                                                                            return;
+                                                                        }
+                                                                    }
+
+                                                                    // Ask for AI Translation
+                                                                    const useAI = await confirm(
+                                                                        'Use AI Translation?',
+                                                                        `Do you want to automatically translate the content to ${lang.toUpperCase()} using AI?`
+                                                                    );
+
+                                                                    navigate(`/project/${projectId}/marketing/blog/create`, {
                                                                         state: {
                                                                             blogPost: {
                                                                                 title,
@@ -422,10 +552,12 @@ export const BlogEditor = () => {
                                                                                 coverImage,
                                                                                 category: selectedCategory,
                                                                                 tags,
-                                                                                language: lang
+                                                                                language: lang,
+                                                                                translationId: activeId
                                                                             },
                                                                             isTranslation: true,
-                                                                            sourceLanguage: currentLanguage
+                                                                            sourceLanguage: currentLanguage,
+                                                                            autoTranslate: useAI
                                                                         }
                                                                     });
                                                                 }}
@@ -442,7 +574,6 @@ export const BlogEditor = () => {
                                 )}
                             </div>
                         )}
-
                         <div className="w-px h-6 bg-[var(--color-surface-border)] mx-1" />
 
                         {/* Autosave Status */}
@@ -480,6 +611,20 @@ export const BlogEditor = () => {
                         </button>
                     </div>
                 </div>
+
+                {isTranslating && (
+                    <div className="bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 px-6 py-3 flex items-center justify-between animate-in slide-in-from-top-2">
+                        <div className="flex items-center gap-3 text-amber-800 dark:text-amber-200">
+                            <span className="animate-spin material-symbols-outlined text-[20px]">refresh</span>
+                            <span className="font-medium">Translating content to {currentLanguage.toUpperCase()}...</span>
+                        </div>
+                        <div className="text-xs opacity-75">
+                            This may take a few seconds
+                        </div>
+                    </div>
+                )}
+
+
 
                 {/* Main Split View Area */}
                 <div className="flex-1 min-h-0 flex gap-6">
@@ -669,30 +814,34 @@ export const BlogEditor = () => {
                 }}
             />
 
-            {projectId && (
-                <TemplateManagerModal
-                    isOpen={isTemplateModalOpen}
-                    onClose={() => setIsTemplateModalOpen(false)}
-                    currentContent={content || ''}
-                    projectId={projectId}
-                    onLoadTemplate={(newContent) => {
-                        editorRef.current?.commands.setContent(newContent);
-                        setContent(newContent);
-                        handleSave('draft');
-                    }}
-                />
-            )}
+            {
+                projectId && (
+                    <TemplateManagerModal
+                        isOpen={isTemplateModalOpen}
+                        onClose={() => setIsTemplateModalOpen(false)}
+                        currentContent={content || ''}
+                        projectId={projectId}
+                        onLoadTemplate={(newContent) => {
+                            editorRef.current?.commands.setContent(newContent);
+                            setContent(newContent);
+                            handleSave('draft');
+                        }}
+                    />
+                )
+            }
 
-            {showCategoryManager && (
-                <CategoryManager
-                    onClose={() => {
-                        setShowCategoryManager(false);
-                        loadCats();
-                    }}
-                    onSelect={(cat) => setSelectedCategory(cat)}
-                    projectId={projectId || ''}
-                />
-            )}
+            {
+                showCategoryManager && (
+                    <CategoryManager
+                        onClose={() => {
+                            setShowCategoryManager(false);
+                            loadCats();
+                        }}
+                        onSelect={(cat) => setSelectedCategory(cat)}
+                        projectId={projectId || ''}
+                    />
+                )
+            }
         </>
     );
 };

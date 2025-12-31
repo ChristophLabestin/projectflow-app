@@ -1,16 +1,109 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getBlogPosts = exports.createBlogPost = void 0;
+exports.getBlogPosts = exports.createBlogPost = exports.onBlogPostWrite = void 0;
 const functions = require("firebase-functions");
 const init_1 = require("./init");
 const corsConfig_1 = require("./corsConfig");
+const authUtils_1 = require("./authUtils");
 const REGION = 'europe-west3'; // Same region as newsletter function
+/**
+ * Trigger: On Blog Post Write
+ * Automatically syncs 'translations' map across all posts with the same translationId
+ */
+exports.onBlogPostWrite = functions.region(REGION).firestore
+    .document('blog_posts/{slug}')
+    .onWrite(async (change, context) => {
+    const afterData = change.after.exists ? change.after.data() : null;
+    const beforeData = change.before.exists ? change.before.data() : null;
+    // 1. Handle Deletion
+    if (!afterData && beforeData && beforeData.translationId) {
+        // Remove from siblings
+        await syncTranslations(beforeData.translationId);
+        return;
+    }
+    // 2. Handle Create or Update
+    if (afterData && afterData.translationId) {
+        const hasChanged = JSON.stringify(afterData.translations) !== JSON.stringify(beforeData === null || beforeData === void 0 ? void 0 : beforeData.translations) ||
+            afterData.translationId !== (beforeData === null || beforeData === void 0 ? void 0 : beforeData.translationId) ||
+            afterData.slug !== (beforeData === null || beforeData === void 0 ? void 0 : beforeData.slug) ||
+            afterData.language !== (beforeData === null || beforeData === void 0 ? void 0 : beforeData.language) ||
+            afterData.coverImage !== (beforeData === null || beforeData === void 0 ? void 0 : beforeData.coverImage);
+        // Prevent infinite loops: only sync if meaningful data changed,
+        // AND we aren't just receiving the sync update itself (hard to detect perfectly without a flag,
+        // but checking if the map is ALREADY correct helps).
+        if (hasChanged) {
+            // If cover image changed, propagate it
+            const updates = {};
+            if (afterData.coverImage !== (beforeData === null || beforeData === void 0 ? void 0 : beforeData.coverImage)) {
+                updates.coverImage = afterData.coverImage;
+            }
+            await syncTranslations(afterData.translationId, updates);
+        }
+    }
+});
+/**
+ * Helper: Syncs translation map for a given group ID
+ */
+const syncTranslations = async (translationId, updates) => {
+    // 1. Fetch all posts in this group
+    const snapshot = await init_1.db.collection('blog_posts')
+        .where('translationId', '==', translationId)
+        .get();
+    if (snapshot.empty)
+        return;
+    // 2. Build the map { [lang]: slug }
+    const translationMap = {};
+    snapshot.docs.forEach(doc => {
+        const p = doc.data();
+        if (p.language) {
+            translationMap[p.language] = p.slug;
+        }
+    });
+    // 3. Update all docs if their map is outdated OR if we have other updates (image) that need applying
+    const batch = init_1.db.batch();
+    let commitNeeded = false;
+    snapshot.docs.forEach(doc => {
+        const p = doc.data();
+        const currentMapJSON = JSON.stringify(p.translations || {});
+        const newMapJSON = JSON.stringify(translationMap);
+        const docUpdates = {};
+        let needsUpdate = false;
+        // Check translation map
+        if (currentMapJSON !== newMapJSON) {
+            docUpdates.translations = translationMap;
+            needsUpdate = true;
+        }
+        // Check cover image sync
+        if ((updates === null || updates === void 0 ? void 0 : updates.coverImage) !== undefined && p.coverImage !== updates.coverImage) {
+            docUpdates.coverImage = updates.coverImage;
+            needsUpdate = true;
+        }
+        if (needsUpdate) {
+            batch.update(doc.ref, docUpdates);
+            commitNeeded = true;
+        }
+    });
+    if (commitNeeded) {
+        console.log(`Syncing group ${translationId}: map=${Object.keys(translationMap)}, updates=${JSON.stringify(updates)}`);
+        await batch.commit();
+    }
+};
 /**
  * Create Blog Post Endpoint
  * POST /api/blog/create
  */
 exports.createBlogPost = functions.region(REGION).https.onRequest((req, res) => {
     return (0, corsConfig_1.corsMiddleware)(req, res, async () => {
+        const token = (0, authUtils_1.getAuthToken)(req);
+        if (!token) {
+            res.status(401).json({ success: false, error: 'Missing API token' });
+            return;
+        }
+        const validation = await (0, authUtils_1.validateAPIToken)(token, 'blog:write');
+        if (!validation.valid) {
+            res.status(401).json({ success: false, error: validation.error });
+            return;
+        }
         // Extract ID from path if present (e.g. /createBlogPost/my-slug)
         // We filter out empty segments and ignore 'createBlogPost' if it's the only segment.
         const segments = req.path.split('/').filter(s => s.length > 0);
@@ -91,7 +184,11 @@ exports.createBlogPost = functions.region(REGION).https.onRequest((req, res) => 
                     author: data.author,
                     category: data.category,
                     tags: Array.isArray(data.tags) ? data.tags : [],
-                    featured: !!data.featured
+                    featured: !!data.featured,
+                    language: data.language || 'en',
+                    translationGroupId: data.translationGroupId || null,
+                    translationId: data.translationId || data.translationGroupId || null,
+                    sourceLanguage: data.sourceLanguage || null
                 };
                 const docRef = init_1.db.collection('blog_posts').doc(blogPost.slug);
                 const doc = await docRef.get();
@@ -125,6 +222,16 @@ exports.getBlogPosts = functions.region(REGION).https.onRequest((req, res) => {
         // Only allow GET
         if (req.method !== 'GET') {
             res.status(405).json({ success: false, error: 'Method Not Allowed' });
+            return;
+        }
+        const token = (0, authUtils_1.getAuthToken)(req);
+        if (!token) {
+            res.status(401).json({ success: false, error: 'Missing API token' });
+            return;
+        }
+        const validation = await (0, authUtils_1.validateAPIToken)(token, 'blog:read');
+        if (!validation.valid) {
+            res.status(401).json({ success: false, error: validation.error });
             return;
         }
         try {

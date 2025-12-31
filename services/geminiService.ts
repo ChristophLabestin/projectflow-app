@@ -2973,3 +2973,104 @@ export const generatePaidAdsRiskAnalysis = async (
         return { wins: [], risks: [], score: 50 };
     }
 };
+
+const _deprecated_translateBlogPostAI = async (content: string, targetLanguage: string, sourceLanguage?: string): Promise<string> => {
+    try {
+        const ai = getAiClient();
+        const prompt = `
+        You are a professional translator.
+        Task: Translate the following HTML content ${sourceLanguage ? `from ${sourceLanguage} ` : ''}to ${targetLanguage}.
+        
+        Rules:
+        1. Maintain all HTML tags, attributes, and structure EXACTLY. Do NOT remove or modify any tags (like <p>, <strong>, <img>, etc.).
+        2. Only translate the human-readable text content inside the tags.
+        3. Adapt the tone to be professional yet engaging, suitable for a blog post.
+        4. Do not include any preamble or explanation. Return ONLY the translated HTML string.
+        5. If the content is already in ${targetLanguage}, return it unchanged.
+
+        Content:
+        ${content}
+        `;
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "text/plain",
+                temperature: 0.3
+            }
+        }));
+
+        const translation = response.text || "";
+        // Clean up markdown blocks if present
+        return translation.replace(/^```html\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
+
+    } catch (error) {
+        console.error("Gemini Translation Error:", error);
+        throw error;
+    }
+};
+
+export const translateBlogPostAI = async (
+    content: string,
+    targetLanguage: string,
+    sourceLanguage?: string,
+    title?: string,
+    excerpt?: string
+): Promise<{ content: string; title?: string; excerpt?: string }> => {
+    try {
+        const ai = getAiClient();
+
+        const inputData = {
+            title,
+            excerpt,
+            content
+        };
+
+        const prompt = `
+        You are a professional translator.
+        Task: Translate the provided blog post fields ${sourceLanguage ? `from ${sourceLanguage} ` : ''}to ${targetLanguage}.
+        
+        Input Data:
+        ${JSON.stringify(inputData)}
+
+        Rules:
+        1. "content": Maintain all HTML tags, attributes, and structure EXACTLY. Only translate the text inside tags.
+        2. "title": Translate the title naturally.
+        3. "excerpt": Translate the excerpt naturally.
+        4. Return ONLY a valid JSON object with the translated fields.
+        `;
+
+        const responseSchema: Schema = {
+            type: Type.OBJECT,
+            properties: {
+                content: { type: Type.STRING },
+                title: { type: Type.STRING },
+                excerpt: { type: Type.STRING },
+            },
+            required: ['content']
+        };
+
+        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+            model: "gemini-3-pro-preview",
+            contents: prompt,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: responseSchema,
+                temperature: 0.3
+            }
+        }));
+
+        const result = JSON.parse(response.text || "{}");
+
+        return {
+            content: result.content || "",
+            title: result.title,
+            excerpt: result.excerpt
+        };
+
+    } catch (error) {
+        console.error("Gemini Translation Error:", error);
+        throw error;
+    }
+};

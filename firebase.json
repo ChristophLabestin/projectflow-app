@@ -14,6 +14,11 @@
     ],
     "rewrites": [
       {
+        "source": "/blog/**",
+        "function": "blogMeta",
+        "region": "europe-west3"
+      },
+      {
         "source": "/editImageWithVertexAI",
         "function": "editImageWithVertexAI",
         "region": "europe-west3"

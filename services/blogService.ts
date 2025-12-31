@@ -1,5 +1,5 @@
 import { getMarketingSettings } from './marketingSettingsService';
-import { db } from './firebase';
+import { db, auth } from './firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, query, where } from 'firebase/firestore';
 
 export interface BlogPost {
@@ -24,6 +24,9 @@ export interface BlogPost {
     status: 'published' | 'draft';
     createdAt: string | Date;
     url?: string;
+    translationGroupId?: string;
+    translationId?: string;
+    translations?: { [key: string]: string };
 }
 
 export interface BlogTemplate {
@@ -126,6 +129,16 @@ const executeApiRequest = async (config: ApiResourceConfig, resourceName: string
         console.error('Failed to parse headers', e);
     }
 
+    // Auto-inject Firebase ID Token if not present
+    if (!headers.Authorization && !headers.authorization && auth.currentUser) {
+        try {
+            const token = await auth.currentUser.getIdToken();
+            headers['Authorization'] = `Bearer ${token}`;
+        } catch (e) {
+            console.error('Failed to get ID token', e);
+        }
+    }
+
     const fetchOptions: RequestInit = {
         method: endpoint.method,
         headers: {
@@ -199,7 +212,10 @@ export const fetchExternalBlogPosts = async (projectId: string): Promise<BlogPos
                     language: fields.language || fields.locale || fields.lang || undefined,
                     status: (fields.status === 'published' || item.publishedAt) ? 'published' : 'draft',
                     createdAt: fields.createdAt || fields.publishedAt || fields.date || new Date(),
-                    url: fields.url || fields.slug ? `/${fields.slug}` : undefined
+                    url: fields.url || fields.slug ? `/${fields.slug}` : undefined,
+                    translationGroupId: fields.translationGroupId || undefined,
+                    translationId: fields.translationId || fields.translationGroupId || undefined,
+                    translations: fields.translations || undefined
                 };
             });
         }

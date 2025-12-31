@@ -35,7 +35,108 @@ export interface BlogPost {
     category: Topic;
     tags: string[];
     featured?: boolean;
+    language?: string;
+    translationGroupId?: string;
+    sourceLanguage?: string;
+    translations?: { [key: string]: string }; // Map of language -> slug
+    translationId?: string; // Group ID
 }
+
+/**
+ * Trigger: On Blog Post Write
+ * Automatically syncs 'translations' map across all posts with the same translationId
+ */
+export const onBlogPostWrite = functions.region(REGION).firestore
+    .document('blog_posts/{slug}')
+    .onWrite(async (change, context) => {
+        const afterData = change.after.exists ? change.after.data() as BlogPost : null;
+        const beforeData = change.before.exists ? change.before.data() as BlogPost : null;
+
+        // 1. Handle Deletion
+        if (!afterData && beforeData && beforeData.translationId) {
+            // Remove from siblings
+            await syncTranslations(beforeData.translationId);
+            return;
+        }
+
+        // 2. Handle Create or Update
+        if (afterData && afterData.translationId) {
+            const hasChanged = JSON.stringify(afterData.translations) !== JSON.stringify(beforeData?.translations) ||
+                afterData.translationId !== beforeData?.translationId ||
+                afterData.slug !== beforeData?.slug ||
+                afterData.language !== beforeData?.language ||
+                afterData.coverImage !== beforeData?.coverImage;
+
+            // Prevent infinite loops: only sync if meaningful data changed,
+            // AND we aren't just receiving the sync update itself (hard to detect perfectly without a flag,
+            // but checking if the map is ALREADY correct helps).
+            if (hasChanged) {
+                // If cover image changed, propagate it
+                const updates: any = {};
+                if (afterData.coverImage !== beforeData?.coverImage) {
+                    updates.coverImage = afterData.coverImage;
+                }
+
+                await syncTranslations(afterData.translationId, updates);
+            }
+        }
+    });
+
+/**
+ * Helper: Syncs translation map for a given group ID
+ */
+const syncTranslations = async (translationId: string, updates?: { coverImage?: string }) => {
+    // 1. Fetch all posts in this group
+    const snapshot = await db.collection('blog_posts')
+        .where('translationId', '==', translationId)
+        .get();
+
+    if (snapshot.empty) return;
+
+    // 2. Build the map { [lang]: slug }
+    const translationMap: { [key: string]: string } = {};
+    snapshot.docs.forEach(doc => {
+        const p = doc.data() as BlogPost;
+        if (p.language) {
+            translationMap[p.language] = p.slug;
+        }
+    });
+
+    // 3. Update all docs if their map is outdated OR if we have other updates (image) that need applying
+    const batch = db.batch();
+    let commitNeeded = false;
+
+    snapshot.docs.forEach(doc => {
+        const p = doc.data() as BlogPost;
+        const currentMapJSON = JSON.stringify(p.translations || {});
+        const newMapJSON = JSON.stringify(translationMap);
+
+        const docUpdates: any = {};
+        let needsUpdate = false;
+
+        // Check translation map
+        if (currentMapJSON !== newMapJSON) {
+            docUpdates.translations = translationMap;
+            needsUpdate = true;
+        }
+
+        // Check cover image sync
+        if (updates?.coverImage !== undefined && p.coverImage !== updates.coverImage) {
+            docUpdates.coverImage = updates.coverImage;
+            needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+            batch.update(doc.ref, docUpdates);
+            commitNeeded = true;
+        }
+    });
+
+    if (commitNeeded) {
+        console.log(`Syncing group ${translationId}: map=${Object.keys(translationMap)}, updates=${JSON.stringify(updates)}`);
+        await batch.commit();
+    }
+};
 
 /**
  * Create Blog Post Endpoint
@@ -149,7 +250,11 @@ export const createBlogPost = functions.region(REGION).https.onRequest((req, res
                     author: data.author,
                     category: data.category,
                     tags: Array.isArray(data.tags) ? data.tags : [],
-                    featured: !!data.featured
+                    featured: !!data.featured,
+                    language: data.language || 'en',
+                    translationGroupId: data.translationGroupId || null,
+                    translationId: data.translationId || data.translationGroupId || null, // normalize
+                    sourceLanguage: data.sourceLanguage || null
                 };
 
                 const docRef = db.collection('blog_posts').doc(blogPost.slug);

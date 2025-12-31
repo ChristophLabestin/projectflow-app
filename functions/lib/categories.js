@@ -5,6 +5,7 @@ const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const init_1 = require("./init");
 const corsConfig_1 = require("./corsConfig");
+const authUtils_1 = require("./authUtils");
 const REGION = 'europe-west3';
 /**
  * Get Categories Endpoint
@@ -14,6 +15,16 @@ exports.getCategories = functions.region(REGION).https.onRequest((req, res) => {
     return (0, corsConfig_1.corsMiddleware)(req, res, async () => {
         if (req.method !== 'GET') {
             res.status(405).json({ success: false, error: 'Method Not Allowed' });
+            return;
+        }
+        const token = (0, authUtils_1.getAuthToken)(req);
+        if (!token) {
+            res.status(401).json({ success: false, error: 'Missing API token' });
+            return;
+        }
+        const validation = await (0, authUtils_1.validateAPIToken)(token, 'blog:categories:read');
+        if (!validation.valid) {
+            res.status(401).json({ success: false, error: validation.error });
             return;
         }
         try {
@@ -43,11 +54,24 @@ exports.manageCategories = functions.region(REGION).https.onRequest((req, res) =
         // In the api routing, it might be slightly different.
         // If we route /api/blog/categories/manage -> it hits this.
         // If we route /api/blog/categories/manage/ID -> it hits this.
+        const token = (0, authUtils_1.getAuthToken)(req);
+        if (!token) {
+            res.status(401).json({ success: false, error: 'Missing API token' });
+            return;
+        }
+        const validation = await (0, authUtils_1.validateAPIToken)(token, 'blog:categories:write');
+        if (!validation.valid) {
+            res.status(401).json({ success: false, error: validation.error });
+            return;
+        }
         let pathId;
-        if (segments.length > 1) {
-            pathId = segments[segments.length - 1];
-            if (pathId === 'manage')
-                pathId = undefined; // it was /manage
+        if (segments.length > 0) {
+            // If the last segment is 'manage', it means no ID was provided (e.g. /categories/manage)
+            // Otherwise, the last segment is likely the ID
+            const lastSegment = segments[segments.length - 1];
+            if (lastSegment !== 'manage') {
+                pathId = lastSegment;
+            }
         }
         // 1. DELETE
         if (req.method === 'DELETE') {
@@ -95,6 +119,10 @@ exports.manageCategories = functions.region(REGION).https.onRequest((req, res) =
         }
         // 3. POST (Create)
         if (req.method === 'POST') {
+            if (pathId) {
+                res.status(405).json({ success: false, error: 'Method Not Allowed. Use PUT to update existing categories or DELETE to remove them.' });
+                return;
+            }
             try {
                 const data = req.body;
                 if (!data.name) {

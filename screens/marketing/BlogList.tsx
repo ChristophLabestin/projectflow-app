@@ -34,7 +34,7 @@ const MOCK_BLOGS: BlogPost[] = [
 ];
 
 const BlogList = () => {
-    const { t } = useLanguage();
+    const { t, language } = useLanguage();
     const navigate = useNavigate();
     const { id: projectId } = useParams();
     const [blogs, setBlogs] = useState<BlogPost[]>([]);
@@ -115,6 +115,70 @@ const BlogList = () => {
         ? blogs
         : blogs.filter(blog => blog.language === selectedLanguage);
 
+    const groupedBlogs = React.useMemo(() => {
+        // If specific language selected, show as is (but mapped to structure)
+        if (selectedLanguage !== 'all') {
+            return filteredBlogs.map(b => ({
+                ...b,
+                availableLanguages: b.language ? [{ lang: b.language || 'en', id: b.id }] : [],
+            }));
+        }
+
+        // Group by translationGroupId
+        const groups: Record<string, BlogPost[]> = {};
+        const standalone: BlogPost[] = [];
+
+        filteredBlogs.forEach(blog => {
+            const groupId = blog.translationId || blog.translationGroupId;
+            if (groupId) {
+                if (!groups[groupId]) {
+                    groups[groupId] = [];
+                }
+                groups[groupId].push(blog);
+            } else {
+                standalone.push(blog);
+            }
+        });
+
+        const groupRepresentatives = Object.values(groups).map(group => {
+            // Normalize current language
+            const currentLang = (language || 'en').toLowerCase();
+
+            // Pick representative: 
+            // 1. Match current app language
+            // 2. Match 'en'
+            // 3. First available
+            const primary = group.find(b => (b.language || 'en').toLowerCase() === currentLang) ||
+                group.find(b => (b.language || 'en').toLowerCase() === 'en') ||
+                group[0];
+
+            return {
+                ...primary,
+                availableLanguages: group.map(b => ({ lang: b.language || 'en', id: b.id })).sort((a, b) => {
+                    const langA = (a.lang || 'en').toLowerCase();
+                    const langB = (b.lang || 'en').toLowerCase();
+
+                    // Sort: Current language first, then English, then others
+                    if (langA === currentLang) return -1;
+                    if (langB === currentLang) return 1;
+                    if (langA === 'en') return -1;
+                    if (langB === 'en') return 1;
+                    return langA.localeCompare(langB);
+                }),
+            };
+        });
+
+        const standaloneReps = standalone.map(b => ({
+            ...b,
+            availableLanguages: b.language ? [{ lang: b.language, id: b.id }] : []
+        }));
+
+        // Sort by created date
+        return [...groupRepresentatives, ...standaloneReps].sort((a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+    }, [filteredBlogs, selectedLanguage, language]);
+
     return (
         <div className="h-full flex flex-col gap-6">
             {/* Header */}
@@ -192,7 +256,7 @@ const BlogList = () => {
             {!isLoading && (
                 viewMode === 'grid' ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-6">
-                        {filteredBlogs.map((blog) => (
+                        {groupedBlogs.map((blog: any) => (
                             <div
                                 key={blog.id}
                                 onClick={() => handleEdit(blog.id)}
@@ -206,11 +270,26 @@ const BlogList = () => {
                                         }`}>
                                         {blog.status === 'published' ? 'Published' : 'Draft'}
                                     </span>
-                                    {blog.language && (
-                                        <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-600 border border-blue-500/20 ml-1">
-                                            {blog.language.toUpperCase()}
-                                        </span>
-                                    )}
+                                </div>
+                                <div className="absolute top-3 right-3 z-20 mt-8 flex flex-row items-center gap-1">
+                                    {blog.availableLanguages && blog.availableLanguages.map((langItem: any) => (
+                                        <button
+                                            key={langItem.lang}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (langItem.id !== blog.id) {
+                                                    navigate(`${langItem.id}`);
+                                                }
+                                            }}
+                                            className={`px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md shadow-sm transition-all uppercase tracking-wide ${langItem.id === blog.id
+                                                ? 'bg-white text-[var(--color-primary)] ring-1 ring-[var(--color-primary)]/10 dark:text-black'
+                                                : 'bg-white/90 text-[var(--color-text-muted)] hover:bg-white hover:text-[var(--color-primary)] dark:text-black/70 dark:hover:text-black'
+                                                }`}
+                                            title={`Switch to ${langItem.lang.toUpperCase()}`}
+                                        >
+                                            {langItem.lang}
+                                        </button>
+                                    ))}
                                 </div>
 
                                 {/* Delete Button (Visible on hover) */}
@@ -288,7 +367,7 @@ const BlogList = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[var(--color-surface-border)]">
-                                    {filteredBlogs.map((blog) => (
+                                    {groupedBlogs.map((blog: any) => (
                                         <tr
                                             key={blog.id}
                                             onClick={() => handleEdit(blog.id)}
@@ -308,6 +387,34 @@ const BlogList = () => {
                                                     <div>
                                                         <div className="font-medium text-[var(--color-text-main)] group-hover:text-[var(--color-primary)] transition-colors">{blog.title}</div>
                                                         <div className="text-xs text-[var(--color-text-muted)] line-clamp-1 max-w-[300px]">{blog.excerpt}</div>
+                                                        <div className="flex flex-wrap gap-1 mt-1">
+                                                            {blog.availableLanguages && blog.availableLanguages.length > 0 ? (
+                                                                blog.availableLanguages.map((langItem: any) => (
+                                                                    <button
+                                                                        key={langItem.lang}
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            if (langItem.id !== blog.id) {
+                                                                                navigate(`${langItem.id}`);
+                                                                            }
+                                                                        }}
+                                                                        className={`px-1.5 py-0.5 rounded text-[10px] font-medium border ${langItem.lang === blog.language
+                                                                            ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+                                                                            : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-blue-50 hover:text-blue-600'
+                                                                            }`}
+                                                                        title={`Switch to ${langItem.lang.toUpperCase()}`}
+                                                                    >
+                                                                        {langItem.lang.toUpperCase()}
+                                                                    </button>
+                                                                ))
+                                                            ) : (
+                                                                blog.language && (
+                                                                    <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-500/10 text-blue-600 border border-blue-500/20">
+                                                                        {blog.language.toUpperCase()}
+                                                                    </span>
+                                                                )
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </td>

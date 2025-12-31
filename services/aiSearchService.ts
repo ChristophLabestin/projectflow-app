@@ -344,8 +344,8 @@ export const generateAIImage = async (prompt: string): Promise<string[]> => {
 };
 
 /**
- * Edit/rework an existing image using Vertex AI via Cloud Function
- * The Cloud Function handles the Vertex AI integration server-side
+ * Edit/rework an existing image using Gemini 3 Pro
+ * This runs client-side using the Gemini API directly
  */
 export const editAIImage = async (
     prompt: string,
