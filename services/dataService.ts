@@ -3983,6 +3983,38 @@ export const connectIntegration = async (projectId: string, platform: SocialPlat
             }
             return;
         }
+
+        if (platform === 'TikTok') {
+            try {
+                const getAuthUrlFn = httpsCallable(functions, 'getTikTokAuthUrl');
+                const response = await getAuthUrlFn({ projectId, tenantId }) as any;
+                const authUrl = response.data.url;
+
+                // Open popup
+                const width = 600;
+                const height = 700;
+                const left = (window.screen.width / 2) - (width / 2);
+                const top = (window.screen.height / 2) - (height / 2);
+
+                window.open(authUrl, 'tiktok_auth', `width=${width},height=${height},top=${top},left=${left}`);
+
+                // Await message
+                await new Promise<void>((resolve, reject) => {
+                    const handleMessage = (event: MessageEvent) => {
+                        if (event.data?.type === 'TIKTOK_CONNECTED') {
+                            window.removeEventListener('message', handleMessage);
+                            resolve();
+                        }
+                    };
+                    window.addEventListener('message', handleMessage);
+                    // TODO: Add timeout
+                });
+                return;
+            } catch (e: any) {
+                console.error("TikTok Connect Failed", e);
+                throw new Error("Failed to initiate TikTok connection: " + e.message);
+            }
+        }
     } catch (error) {
         console.error("Social Auth failed:", error);
         throw error;

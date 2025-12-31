@@ -11,6 +11,7 @@ import { requestWaitlist, confirmWaitlist } from './waitlist';
 import { requestNewsletterSignup, confirmNewsletterSignup } from './newsletter-public';
 import { sendContactFormEmail } from './contact';
 import { askCora, generateImage, editImage, callGemini } from './ai-service';
+import { getTikTokAuthUrl, tiktokCallback } from './tiktok';
 
 
 export {
@@ -33,7 +34,9 @@ export {
     askCora,
     generateImage,
     editImage,
-    callGemini
+    callGemini,
+    getTikTokAuthUrl,
+    tiktokCallback
 };
 export * from './passkeys';
 

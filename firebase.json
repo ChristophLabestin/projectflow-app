@@ -139,6 +139,11 @@
         "region": "europe-west3"
       },
       {
+        "source": "/tiktokCallback",
+        "function": "tiktokCallback",
+        "region": "europe-west3"
+      },
+      {
         "source": "/api/**",
         "function": "api",
         "region": "europe-west3"

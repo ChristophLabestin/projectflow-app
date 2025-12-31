@@ -14,7 +14,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.callGemini = exports.editImage = exports.generateImage = exports.askCora = exports.sendContactFormEmail = exports.confirmNewsletterSignup = exports.requestNewsletterSignup = exports.confirmWaitlist = exports.requestWaitlist = exports.sendInvitation = exports.onNotificationCreated = exports.manageCategories = exports.getCategories = exports.onBlogPostWrite = exports.getBlogPosts = exports.createBlogPost = exports.api = exports.newsletterUnsubscribe = exports.newsletterSubscribe = exports.testSMTPConnection = void 0;
+exports.tiktokCallback = exports.getTikTokAuthUrl = exports.callGemini = exports.editImage = exports.generateImage = exports.askCora = exports.sendContactFormEmail = exports.confirmNewsletterSignup = exports.requestNewsletterSignup = exports.confirmWaitlist = exports.requestWaitlist = exports.sendInvitation = exports.onNotificationCreated = exports.manageCategories = exports.getCategories = exports.onBlogPostWrite = exports.getBlogPosts = exports.createBlogPost = exports.api = exports.newsletterUnsubscribe = exports.newsletterSubscribe = exports.testSMTPConnection = void 0;
 require("./init"); // Ensure init runs
 const email_1 = require("./email");
 Object.defineProperty(exports, "testSMTPConnection", { enumerable: true, get: function () { return email_1.testSMTPConnection; } });
@@ -46,5 +46,8 @@ Object.defineProperty(exports, "askCora", { enumerable: true, get: function () {
 Object.defineProperty(exports, "generateImage", { enumerable: true, get: function () { return ai_service_1.generateImage; } });
 Object.defineProperty(exports, "editImage", { enumerable: true, get: function () { return ai_service_1.editImage; } });
 Object.defineProperty(exports, "callGemini", { enumerable: true, get: function () { return ai_service_1.callGemini; } });
+const tiktok_1 = require("./tiktok");
+Object.defineProperty(exports, "getTikTokAuthUrl", { enumerable: true, get: function () { return tiktok_1.getTikTokAuthUrl; } });
+Object.defineProperty(exports, "tiktokCallback", { enumerable: true, get: function () { return tiktok_1.tiktokCallback; } });
 __exportStar(require("./passkeys"), exports);
 //# sourceMappingURL=index.js.map
