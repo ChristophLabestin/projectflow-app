@@ -172,6 +172,8 @@ const de = {
     'passkey.setup.error': 'Fehler beim Einrichten des Passkeys. Bitte versuchen Sie es erneut.',
     'passkey.login.action': 'Mit Passkey anmelden',
     'passkey.login.error': 'Anmeldung mit Passkey fehlgeschlagen',
+    'passkey.setup.device_name_label': 'Gerätename (Optional)',
+    'passkey.setup.device_name_placeholder': 'z. B. MacBook Pro',
 
     'settings.security.passkeys.title': 'Passkeys',
     'settings.security.passkeys.beta': 'Beta',
@@ -3289,6 +3291,16 @@ const de = {
 
     'help.open': 'Hilfe',
     'help.openAria': 'Hilfezentrum öffnen',
+
+    'social.approvals.title': 'Social Freigaben',
+    'social.approvals.subtitle': 'Überprüfe Beiträge bevor sie veröffentlicht werden.',
+    'social.approvals.emptyTitle': 'Alles erledigt!',
+    'social.approvals.emptySubtitle': 'Gerade warten keine Beiträge auf deine Freigabe.',
+    'social.approvals.backToDashboard': 'Zurück zum Dashboard',
+    'social.approvals.reviewBtn': 'Überprüfen',
+    'social.postStatus.Review': 'Prüfung',
+    'social.post.noCaption': 'Keine Bildunterschrift',
+    'social.post.unscheduled': 'Nicht geplant',
 };
 
 export default de;

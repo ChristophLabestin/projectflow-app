@@ -77,6 +77,15 @@ export const requestNewsletterSignup = functions.region(REGION).https.onRequest(
 
         } catch (error: any) {
             console.error('Error processing newsletter signup:', error);
+
+            // Handle AWS SES Sandbox error specifically
+            if (error.response && error.response.includes('Email address is not verified')) {
+                const errorMessage = 'Failed to send email: Your AWS SES account is in Sandbox mode and the recipient email is not verified. Please verify the email in AWS Console or request production access.';
+                console.error(errorMessage);
+                res.status(500).json({ success: false, error: errorMessage });
+                return;
+            }
+
             res.status(500).json({ success: false, error: error.message || 'Internal Server Error' });
         }
     });

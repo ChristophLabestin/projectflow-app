@@ -580,9 +580,9 @@ export const CreateSocialPost = () => {
                                                             projectId={projectId}
                                                             platform={platform}
                                                             onApply={(presetCaption, presetHashtags) => {
-                                                                setCaption(presetCaption);
+                                                                setCaption(prev => prev ? `${prev}\n\n${presetCaption}` : presetCaption);
                                                                 if (presetHashtags && presetHashtags.length > 0) {
-                                                                    setHashtags(presetHashtags);
+                                                                    setHashtags(prev => Array.from(new Set([...prev, ...presetHashtags])));
                                                                 }
                                                             }}
                                                         />
@@ -807,7 +807,7 @@ export const CreateSocialPost = () => {
                             format={format}
                             assets={assets}
                             caption={caption}
-                            hashtags={hashtags}
+                            hashtags={hashtags.map(t => t.startsWith('#') ? t : `#${t}`).join(' ')}
                             isYouTube={isYouTube}
                             thumbnailUrl={thumbnailUrl}
                             videoTitle={videoTitle}

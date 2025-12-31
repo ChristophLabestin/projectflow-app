@@ -35,6 +35,18 @@ export const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, placeho
         }
     }, [isOpen, align]);
 
+    const selectedRef = useRef<HTMLButtonElement>(null);
+
+    // Scroll to selected time on open
+    useEffect(() => {
+        if (isOpen && selectedRef.current) {
+            selectedRef.current.scrollIntoView({ block: "center", behavior: "auto" });
+        } else if (isOpen) {
+            // If no value, scroll to roughly current time?
+            // Implementation in next step if tricky to get ref to exact current time without value
+        }
+    }, [isOpen]);
+
     // Close on click outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -56,10 +68,12 @@ export const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, placeho
         };
     }, [isOpen]);
 
-    // Close on scroll
+    // Close on scroll (except when scrolling inside the popover)
     useEffect(() => {
-        const handleScroll = () => {
-            if (isOpen) setIsOpen(false);
+        const handleScroll = (event: Event) => {
+            if (isOpen && popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
+                setIsOpen(false);
+            }
         };
 
         if (isOpen) {
@@ -90,13 +104,28 @@ export const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, placeho
             }}
             className="p-2 bg-[var(--color-surface-card)] rounded-xl shadow-2xl border border-[var(--color-surface-border)] w-[200px] animate-scale-up"
         >
-            <div className="max-h-[300px] overflow-y-auto custom-scrollbar">
+            <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-1">
+                <div className="mb-2 px-1">
+                    <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase mb-1 block">Custom</label>
+                    <input
+                        type="time"
+                        className="w-full bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none transition-all text-[var(--color-text-main)]"
+                        onChange={(e) => {
+                            onChange(e.target.value);
+                            setIsOpen(false);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+                <div className="h-px bg-[var(--color-surface-border)] my-1 mx-1" />
                 <div className="grid grid-cols-1 gap-1">
                     {times.map((t) => {
                         const isSelected = value === t;
                         return (
                             <button
                                 key={t}
+                                id={`time-option-${t}`}
+                                ref={isSelected ? selectedRef : null}
                                 onClick={() => {
                                     onChange(t);
                                     setIsOpen(false);

@@ -18,7 +18,7 @@ const getFunction = <RequestData = unknown, ResponseData = unknown>(name: string
 /**
  * Register a new passkey for the current user.
  */
-export const registerPasskey = async () => {
+export const registerPasskey = async (deviceName?: string) => {
     try {
         // 1. Get options from server
         const generateOptionsFn = getFunction<void, PublicKeyCredentialCreationOptionsJSON>('generatePasskeyRegistrationOptions');
@@ -29,14 +29,15 @@ export const registerPasskey = async () => {
         const registrationResponse = await startRegistration({ optionsJSON: options });
 
         // 3. Send response to server for verification
-        const verifyFn = getFunction<{ response: RegistrationResponseJSON, navigatorDetails: any }, { success: boolean }>('verifyPasskeyRegistration');
+        const verifyFn = getFunction<{ response: RegistrationResponseJSON, navigatorDetails: any, deviceName?: string }, { success: boolean }>('verifyPasskeyRegistration');
         const verificationResp = await verifyFn({
             response: registrationResponse,
             navigatorDetails: {
                 userAgent: navigator.userAgent,
                 platform: navigator.platform,
                 language: navigator.language
-            }
+            },
+            deviceName
         });
 
         if (verificationResp.data.success) {

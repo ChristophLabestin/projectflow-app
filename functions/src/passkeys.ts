@@ -143,7 +143,7 @@ export const verifyPasskeyRegistration = functions.region(REGION).https.onCall(a
             credentialID: Buffer.from(id, 'base64url'), // Verify if Firestore supports Buffer or if we need to store as blob/base64
             credentialPublicKey: Buffer.from(publicKey),
             createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            label: `Passkey (${navigatorDetails?.platform || 'Unknown Device'})`,
+            label: data.deviceName || `Passkey (${navigatorDetails?.platform || 'Unknown Device'})`,
         });
 
         // Cleanup challenge

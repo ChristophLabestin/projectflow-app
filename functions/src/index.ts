@@ -13,6 +13,7 @@ import { sendContactFormEmail } from './contact';
 import { askCora, generateImage, editImage, callGemini } from './ai-service';
 import { getTikTokAuthUrl, tiktokCallback } from './tiktok';
 import { getYouTubeAuthUrl, youtubeCallback } from './youtube';
+import { checkScheduledPosts } from './scheduler';
 
 
 export {
@@ -39,7 +40,8 @@ export {
     getTikTokAuthUrl,
     tiktokCallback,
     getYouTubeAuthUrl,
-    youtubeCallback
+    youtubeCallback,
+    checkScheduledPosts
 };
 export * from './passkeys';
 

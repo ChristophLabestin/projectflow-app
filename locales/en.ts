@@ -173,6 +173,8 @@ const en = {
     'passkey.setup.error': 'Failed to set up passkey. Please try again.',
     'passkey.login.action': 'Sign in with Passkey',
     'passkey.login.error': 'Failed to sign in with passkey',
+    'passkey.setup.device_name_label': 'Device Name (Optional)',
+    'passkey.setup.device_name_placeholder': 'e.g. MacBook Pro',
 
     'settings.security.passkeys.title': 'Passkeys',
     'settings.security.passkeys.beta': 'Beta',
@@ -3313,6 +3315,16 @@ const en = {
     'help.open': 'Help',
     'help.openAria': 'Open help center',
     'settings.prebeta.saved': 'Pre-Beta settings saved successfully.',
+
+    'social.approvals.title': 'Social Approvals',
+    'social.approvals.subtitle': 'Review and approve posts before they go live.',
+    'social.approvals.emptyTitle': 'All Caught Up!',
+    'social.approvals.emptySubtitle': 'There are no posts waiting for your approval right now.',
+    'social.approvals.backToDashboard': 'Back to Dashboard',
+    'social.approvals.reviewBtn': 'Review',
+    'social.postStatus.Review': 'Review',
+    'social.post.noCaption': 'No caption',
+    'social.post.unscheduled': 'Unscheduled',
 };
 
 export default en;

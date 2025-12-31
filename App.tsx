@@ -43,6 +43,7 @@ import { SocialAssets } from './screens/social/SocialAssets';
 import { CreateSocialPost } from './screens/social/CreateSocialPost';
 import { CreateCampaignPage } from './screens/social/CreateCampaignPage';
 import { SocialCampaignReviewPage } from './screens/social/SocialCampaignReviewPage';
+import { SocialApprovalsPage } from './screens/social/SocialApprovalsPage';
 import { MarketingLayout } from './screens/marketing/MarketingLayout';
 import { MarketingDashboard } from './screens/marketing/MarketingDashboard';
 import { PaidAdsList } from './screens/marketing/PaidAdsList';
@@ -199,6 +200,7 @@ const App = () => {
                         </Route>
                         <Route path="social/create" element={<CreateSocialPost />} />
                         <Route path="social/edit/:postId" element={<CreateSocialPost />} />
+                        <Route path="social/approvals" element={<SocialApprovalsPage />} />
 
                         <Route path="marketing" element={<MarketingLayout />}>
                             <Route index element={<MarketingDashboard />} />

@@ -28,10 +28,12 @@ try {
   functions = getFunctions(app, 'europe-west3');
 
   // Connect to emulators if running locally
-  if (location.hostname === 'localhost') {
-    connectFunctionsEmulator(functions, 'localhost', 5001);
-    console.log('Connected to Functions Emulator');
-  }
+  // FIXME: This forces emulator usage even if we want to test prod from localhost.
+  // Uncomment only if you are actually running `firebase emulators:start`
+  // if (location.hostname === 'localhost') {
+  //   connectFunctionsEmulator(functions, 'localhost', 5001);
+  //   console.log('Connected to Functions Emulator');
+  // }
 } catch (error) {
   console.error("Firebase initialization error:", error);
   // Throw error so it is visible in console if app fails to load

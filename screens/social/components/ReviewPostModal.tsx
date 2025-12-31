@@ -12,8 +12,9 @@ interface ReviewPostModalProps {
     post: SocialPost;
     isOpen: boolean;
     onClose: () => void;
-    onApprove: (post: SocialPost) => void;
-    onReject: (post: SocialPost, reason: string) => void;
+    onApprove?: (post: SocialPost) => void;
+    onReject?: (post: SocialPost, reason: string) => void;
+    readOnly?: boolean;
 }
 
 export const ReviewPostModal: React.FC<ReviewPostModalProps> = ({
@@ -21,7 +22,8 @@ export const ReviewPostModal: React.FC<ReviewPostModalProps> = ({
     isOpen,
     onClose,
     onApprove,
-    onReject
+    onReject,
+    ...rest
 }) => {
     const [rejectMode, setRejectMode] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
@@ -110,47 +112,51 @@ export const ReviewPostModal: React.FC<ReviewPostModalProps> = ({
                         ) : (
                             <>
                                 <Button variant="ghost" onClick={onClose}>{t('social.reviewPost.close')}</Button>
-                                <div className="flex gap-2">
-                                    <Button
-                                        variant="secondary"
-                                        className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10"
-                                        onClick={() => setRejectMode(true)}
-                                    >
-                                        {t('social.reviewPost.reject')}
-                                    </Button>
-                                    <Button variant="primary" onClick={() => onApprove(post)}>{t('social.reviewPost.approve')}</Button>
-                                </div>
+                                {!rest.readOnly && onApprove && (
+                                    <div className="flex gap-2">
+                                        <Button
+                                            variant="secondary"
+                                            className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10"
+                                            onClick={() => setRejectMode(true)}
+                                        >
+                                            {t('social.reviewPost.reject')}
+                                        </Button>
+                                        <Button variant="primary" onClick={() => onApprove(post)}>{t('social.reviewPost.approve')}</Button>
+                                    </div>
+                                )}
                             </>
                         )}
                     </div>
                 </div>
 
                 {/* Right: Preview */}
-                <div className="w-[60%] bg-[var(--color-bg-base)] flex items-center justify-center p-8 relative overflow-hidden">
+                <div className="w-[60%] bg-[var(--color-bg-base)] relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none" />
 
-                    <div className="relative z-10 w-full flex justify-center max-h-full overflow-y-auto custom-scrollbar p-4">
-                        <SocialPostPreview
-                            platform={post.platform}
-                            format={post.format}
-                            assets={post.assets || []}
-                            caption={post.content.caption}
-                            hashtags={post.content.hashtags?.join(' ') || ''}
-                            isYouTube={post.platform === 'YouTube'}
-                            thumbnailUrl={post.videoConcept?.thumbnailUrl || post.assets?.[0]?.url || ''}
-                            videoTitle={post.videoConcept?.title || ''}
+                    <div className="relative z-10 w-full h-full overflow-y-auto custom-scrollbar p-8">
+                        <div className="min-h-min w-full flex justify-center">
+                            <SocialPostPreview
+                                platform={post.platform}
+                                format={post.format}
+                                assets={post.assets || []}
+                                caption={post.content.caption}
+                                hashtags={post.content.hashtags?.join(' ') || ''}
+                                isYouTube={post.platform === 'YouTube'}
+                                thumbnailUrl={post.videoConcept?.thumbnailUrl || post.assets?.[0]?.url || ''}
+                                videoTitle={post.videoConcept?.title || ''}
 
-                            // Interactive props (read-only mostly, but functional for playback)
-                            activeCarouselIndex={activeCarouselIndex}
-                            setActiveCarouselIndex={setActiveCarouselIndex}
-                            storyProgress={storyProgress}
-                            setStoryProgress={setStoryProgress}
-                            isStoryPlaying={isStoryPlaying}
-                            isPreviewHovered={false}
-                            videoDurations={videoDurations}
-                            setVideoDurations={setVideoDurations}
-                        />
+                                // Interactive props (read-only mostly, but functional for playback)
+                                activeCarouselIndex={activeCarouselIndex}
+                                setActiveCarouselIndex={setActiveCarouselIndex}
+                                storyProgress={storyProgress}
+                                setStoryProgress={setStoryProgress}
+                                isStoryPlaying={isStoryPlaying}
+                                isPreviewHovered={false}
+                                videoDurations={videoDurations}
+                                setVideoDurations={setVideoDurations}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>

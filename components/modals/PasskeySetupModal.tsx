@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
+import { Input } from '../ui/Input';
 import { registerPasskey } from '../../services/passkeyService';
 import { useToast } from '../../context/UIContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -15,11 +16,12 @@ export const PasskeySetupModal: React.FC<PasskeySetupModalProps> = ({ isOpen, on
     const { t } = useLanguage();
     const { showSuccess, showError } = useToast();
     const [loading, setLoading] = useState(false);
+    const [deviceName, setDeviceName] = useState('');
 
     const handleSetup = async () => {
         setLoading(true);
         try {
-            await registerPasskey();
+            await registerPasskey(deviceName);
             showSuccess(t('passkey.setup.success'));
             onSetupComplete();
             onClose();
@@ -57,6 +59,18 @@ export const PasskeySetupModal: React.FC<PasskeySetupModalProps> = ({ isOpen, on
                     {t('passkey.setup.description')}
                 </p>
 
+
+
+                <div className="w-full mb-4">
+                    <Input
+                        label={t('passkey.setup.device_name_label') || "Device Name (Optional)"}
+                        placeholder={t('passkey.setup.device_name_placeholder') || "e.g. MacBook Pro"}
+                        value={deviceName}
+                        onChange={(e) => setDeviceName(e.target.value)}
+                        disabled={loading}
+                    />
+                </div>
+
                 <div className="w-full flex flex-col gap-3">
                     <Button
                         onClick={handleSetup}
@@ -76,6 +90,6 @@ export const PasskeySetupModal: React.FC<PasskeySetupModalProps> = ({ isOpen, on
                     </Button>
                 </div>
             </div>
-        </Modal>
+        </Modal >
     );
 };
