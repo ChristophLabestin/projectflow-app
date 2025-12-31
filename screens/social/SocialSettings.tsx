@@ -77,40 +77,35 @@ export const SocialSettings = () => {
 
             if (error.code === 'auth/multi-factor-auth-required') {
                 try {
-                    // WORKAROUND: Firebase JS SDK v9+ sometimes uses internal `_serverResponse` 
-                    // property which causes getMultiFactorResolver to fail with auth/argument-error.
-                    // We map it to the expected property if missing.
-                    if (error.customData && error.customData._serverResponse && !error.customData.serverResponse) {
-                        console.log("Patching auth error for MFA resolver...");
-                        error.customData.serverResponse = error.customData._serverResponse;
+                    // WORKAROUND: Reconstruct the error object completely to avoid property access issues
+                    // or read-only 'customData' on the original FirebaseError.
+                    const serverResponse = error.customData?._serverResponse || error.customData?.serverResponse;
+
+                    if (!serverResponse) {
+                        throw new Error("Missing serverResponse in MFA error");
                     }
 
-                    const resolver = getMultiFactorResolver(auth, error);
+                    const mfaErrorPayload = {
+                        code: 'auth/multi-factor-auth-required',
+                        message: error.message,
+                        name: 'FirebaseError',
+                        customData: {
+                            serverResponse: serverResponse,
+                            appName: error.customData?.appName
+                        }
+                    };
+
+                    console.log("Attempting MFA resolution with reconstructed object:", mfaErrorPayload);
+
+                    // Cast to any to bypass strict typing of getMultiFactorResolver which might expect a real FirebaseError instance
+                    // but functionally usually only checks properties.
+                    const resolver = getMultiFactorResolver(auth, mfaErrorPayload as any);
                     console.log("Resolver created:", resolver);
                     setMfaResolver(resolver);
                     setPendingPlatform(platform);
                     setShowMfaModal(true);
                 } catch (resolverError) {
                     console.error("Failed to get multi-factor resolver:", resolverError);
-                    // Fallback: try to reconstruct a clean error if mutation failed or wasn't enough
-                    try {
-                        if (error.customData && error.customData._serverResponse) {
-                            const cleanError: any = new Error(error.message);
-                            cleanError.code = error.code;
-                            cleanError.customData = {
-                                serverResponse: error.customData._serverResponse,
-                                appName: error.customData.appName
-                            };
-                            const resolver = getMultiFactorResolver(auth, cleanError);
-                            setMfaResolver(resolver);
-                            setPendingPlatform(platform);
-                            setShowMfaModal(true);
-                            return;
-                        }
-                    } catch (fallbackError) {
-                        console.error("Fallback MFA resolution failed:", fallbackError);
-                    }
-
                     showError("MFA Error: " + (resolverError as Error).message);
                 }
             } else if (error.code === 'auth/credential-already-in-use') {
