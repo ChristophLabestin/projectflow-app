@@ -3828,11 +3828,17 @@ export const linkWithFacebook = async (): Promise<{ accessToken: string, user: a
 
     const provider = new FacebookAuthProvider();
     // Permissions needed for Instagram Graph API
+    provider.addScope('business_management'); // Often needed for Business Manager owned pages
     provider.addScope('pages_show_list');
     provider.addScope('pages_read_engagement');
     provider.addScope('instagram_basic');
     provider.addScope('instagram_content_publish');
     provider.addScope('public_profile');
+
+    // Force the dialog to show again so user can select pages they might have missed
+    provider.setCustomParameters({
+        auth_type: 'rerequest'
+    });
 
     try {
         // Check if already linked
