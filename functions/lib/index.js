@@ -14,7 +14,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendContactFormEmail = exports.confirmNewsletterSignup = exports.requestNewsletterSignup = exports.confirmWaitlist = exports.requestWaitlist = exports.sendInvitation = exports.onNotificationCreated = exports.manageCategories = exports.getCategories = exports.onBlogPostWrite = exports.getBlogPosts = exports.createBlogPost = exports.api = exports.newsletterUnsubscribe = exports.newsletterSubscribe = exports.testSMTPConnection = void 0;
+exports.callGemini = exports.editImage = exports.generateImage = exports.askCora = exports.sendContactFormEmail = exports.confirmNewsletterSignup = exports.requestNewsletterSignup = exports.confirmWaitlist = exports.requestWaitlist = exports.sendInvitation = exports.onNotificationCreated = exports.manageCategories = exports.getCategories = exports.onBlogPostWrite = exports.getBlogPosts = exports.createBlogPost = exports.api = exports.newsletterUnsubscribe = exports.newsletterSubscribe = exports.testSMTPConnection = void 0;
 require("./init"); // Ensure init runs
 const email_1 = require("./email");
 Object.defineProperty(exports, "testSMTPConnection", { enumerable: true, get: function () { return email_1.testSMTPConnection; } });
@@ -41,5 +41,10 @@ Object.defineProperty(exports, "requestNewsletterSignup", { enumerable: true, ge
 Object.defineProperty(exports, "confirmNewsletterSignup", { enumerable: true, get: function () { return newsletter_public_1.confirmNewsletterSignup; } });
 const contact_1 = require("./contact");
 Object.defineProperty(exports, "sendContactFormEmail", { enumerable: true, get: function () { return contact_1.sendContactFormEmail; } });
+const ai_service_1 = require("./ai-service");
+Object.defineProperty(exports, "askCora", { enumerable: true, get: function () { return ai_service_1.askCora; } });
+Object.defineProperty(exports, "generateImage", { enumerable: true, get: function () { return ai_service_1.generateImage; } });
+Object.defineProperty(exports, "editImage", { enumerable: true, get: function () { return ai_service_1.editImage; } });
+Object.defineProperty(exports, "callGemini", { enumerable: true, get: function () { return ai_service_1.callGemini; } });
 __exportStar(require("./passkeys"), exports);
 //# sourceMappingURL=index.js.map

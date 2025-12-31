@@ -144,3 +144,7 @@ functions/service-account.json
 
 # Backup directories
 dist_backup_*
+
+# Environment Variables
+.env
+functions/.env

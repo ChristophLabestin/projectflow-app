@@ -1,11 +1,8 @@
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+import { httpsCallable } from "firebase/functions";
+import { functions, auth } from "./firebase";
 import { Project, Task, SearchResult, AISearchAnswer } from "../types";
 import { getAllWorkspaceProjects, getAllWorkspaceTasks, getAllWorkspaceIssues, getAllWorkspaceIdeas, getAIUsage, incrementAIUsage, incrementImageUsage } from "./dataService";
-import { auth } from "./firebase";
-import { applyLanguageInstruction, getAIResponseInstruction } from "../utils/aiLanguage";
-
-// ... existing code ...
-
+import { getAIResponseInstruction } from "../utils/aiLanguage";
 
 /**
  * Helper to check if a query looks like a question
@@ -167,7 +164,7 @@ const buildContextForAI = (projects: Project[], tasks: Task[]): string => {
 };
 
 /**
- * Answer a question using Gemini AI with project context
+ * Answer a question using Gemini AI via Cloud Functions
  */
 export const answerQuestionWithContext = async (
     question: string,
@@ -190,69 +187,26 @@ export const answerQuestionWithContext = async (
         ]);
 
         const contextStr = buildContextForAI(projects, tasks);
-
-        // Get Gemini API key
-        const apiKey =
-            (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_GEMINI_API_KEY) ||
-            process.env.GEMINI_API_KEY ||
-            process.env.API_KEY ||
-            '';
-
-        if (!apiKey) {
-            throw new Error("Missing GEMINI API key");
-        }
-
-        const ai = new GoogleGenAI({ apiKey });
-
-        const responseSchema: Schema = {
-            type: Type.OBJECT,
-            properties: {
-                answer: { type: Type.STRING },
-                relevantProjects: {
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING }
-                },
-                relevantTasks: {
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING }
-                },
-                confidence: {
-                    type: Type.STRING,
-                    enum: ['Low', 'Medium', 'High']
-                }
-            },
-            required: ['answer', 'relevantProjects', 'relevantTasks', 'confidence']
-        };
-
         const { instruction, language } = getAIResponseInstruction();
-        const prompt = `You are CORA, a project management assistant. Answer the following question based on the project context provided.
-        
-Context:
-${contextStr}
 
-Question: ${question}
+        const askCoraFn = httpsCallable<{
+            question: string;
+            contextStr: string;
+            instruction: string;
+            language: string;
+        }, any>(functions, 'askCora');
 
-Provide a helpful, concise answer (2-3 sentences max). Include IDs of relevant projects and tasks in your response.
-If you reference specific projects or tasks, use their exact titles.
-Rate your confidence in the answer as Low, Medium, or High.`;
-
-        const response = await ai.models.generateContent({
-            model: "gemini-3-pro-preview",
-            contents: applyLanguageInstruction(prompt, instruction),
-            config: {
-                responseMimeType: "application/json",
-                responseSchema,
-                temperature: 0.4,
-            }
+        const { data: result } = await askCoraFn({
+            question,
+            contextStr,
+            instruction,
+            language
         });
 
-        // Track usage
-        const tokens = response.usageMetadata?.totalTokenCount || 0;
-        if (tokens > 0) {
-            await incrementAIUsage(user.uid, tokens);
+        // Track usage (increment based on backend report)
+        if (result.tokensUsed > 0) {
+            await incrementAIUsage(user.uid, result.tokensUsed);
         }
-
-        const result = JSON.parse(response.text || "{}");
 
         // Match project and task titles to IDs
         const relevantProjects = projects
@@ -283,7 +237,7 @@ Rate your confidence in the answer as Low, Medium, or High.`;
 };
 
 /**
- * Generate an image using Google Imagen 3 model
+ * Generate an image using Google Imagen 3 model via Cloud Functions
  */
 export const generateAIImage = async (prompt: string): Promise<string[]> => {
     const user = auth.currentUser;
@@ -296,46 +250,17 @@ export const generateAIImage = async (prompt: string): Promise<string[]> => {
     }
 
     try {
-        const apiKey =
-            (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_GEMINI_API_KEY) ||
-            process.env.GEMINI_API_KEY ||
-            process.env.API_KEY ||
-            '';
+        const generateImageFn = httpsCallable<{ prompt: string }, { images: string[] }>(functions, 'generateImage');
+        const { data } = await generateImageFn({ prompt });
 
-        if (!apiKey) {
-            throw new Error("Missing GEMINI API key");
-        }
-
-        // Initialize GoogleGenAI
-        const ai = new GoogleGenAI({ apiKey });
-
-        // Use the generic generateContent method for the new Gemini image model
-        // Model: gemini-3-pro-image-preview
-        const response = await ai.models.generateContent({
-            model: "gemini-3-pro-image-preview",
-            contents: prompt,
-        });
-
-        const images: string[] = [];
-
-        // Extract image data from parts
-        if (response.candidates?.[0]?.content?.parts) {
-            for (const part of response.candidates[0].content.parts) {
-                if (part.inlineData) {
-                    const mimeType = part.inlineData.mimeType || 'image/png';
-                    images.push(`data:${mimeType};base64,${part.inlineData.data}`);
-                }
-            }
-        }
-
-        if (images.length === 0) {
+        if (!data.images || data.images.length === 0) {
             throw new Error("No images generated");
         }
 
         // Track usage (count images)
-        await incrementImageUsage(user.uid, images.length);
+        await incrementImageUsage(user.uid, data.images.length);
 
-        return images;
+        return data.images;
 
     } catch (error) {
         console.error("Image Generation Error:", error);
@@ -344,8 +269,7 @@ export const generateAIImage = async (prompt: string): Promise<string[]> => {
 };
 
 /**
- * Edit/rework an existing image using Gemini 3 Pro
- * This runs client-side using the Gemini API directly
+ * Edit/rework an existing image using Gemini 3 Pro via Cloud Functions
  */
 export const editAIImage = async (
     prompt: string,
@@ -362,19 +286,6 @@ export const editAIImage = async (
     }
 
     try {
-        const apiKey =
-            (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_GEMINI_API_KEY) ||
-            process.env.GEMINI_API_KEY ||
-            process.env.API_KEY ||
-            '';
-
-        if (!apiKey) {
-            throw new Error("Missing GEMINI API key");
-        }
-
-        // Initialize GoogleGenAI
-        const ai = new GoogleGenAI({ apiKey });
-
         // Fetch image and convert to base64 if it's a URL
         let base64Data: string;
         let mimeType = 'image/jpeg';
@@ -390,6 +301,7 @@ export const editAIImage = async (
             }
         } else {
             // Fetch from URL and convert to base64 using FileReader
+            // IMPORTANT: If this is a cross-origin URL, this might fail without proper CORS headers on the source
             const response = await fetch(imageUrl);
             const blob = await response.blob();
             mimeType = blob.type || 'image/jpeg';
@@ -408,47 +320,28 @@ export const editAIImage = async (
             });
         }
 
-        // Construct parts for multimodal request
-        const parts: any[] = [
-            { text: prompt },
-            {
-                inlineData: {
-                    mimeType: mimeType,
-                    data: base64Data
-                }
-            }
-        ];
+        const editImageFn = httpsCallable<{
+            prompt: string;
+            image: string;
+            mimeType: string;
+            editMode: string;
+        }, { images: string[] }>(functions, 'editImage');
 
-        // Use the Gemini 3 image model for editing/rework
-        // It accepts multimodal input (image + text)
-        const response = await ai.models.generateContent({
-            model: "gemini-3-pro-image-preview",
-            contents: [{
-                role: 'user',
-                parts: parts
-            }],
+        const { data } = await editImageFn({
+            prompt,
+            image: base64Data,
+            mimeType,
+            editMode
         });
 
-        const images: string[] = [];
-
-        // Extract image data from parts
-        if (response.candidates?.[0]?.content?.parts) {
-            for (const part of response.candidates[0].content.parts) {
-                if (part.inlineData) {
-                    const resMimeType = part.inlineData.mimeType || 'image/png';
-                    images.push(`data:${resMimeType};base64,${part.inlineData.data}`);
-                }
-            }
-        }
-
-        if (images.length === 0) {
+        if (!data.images || data.images.length === 0) {
             throw new Error("No images generated from rework.");
         }
 
         // Track usage
-        await incrementImageUsage(user.uid, images.length);
+        await incrementImageUsage(user.uid, data.images.length);
 
-        return images;
+        return data.images;
 
     } catch (error) {
         console.error("Image Edit Error:", error);

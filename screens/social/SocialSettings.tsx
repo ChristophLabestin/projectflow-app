@@ -89,6 +89,7 @@ export const SocialSettings = () => {
                         code: 'auth/multi-factor-auth-required',
                         message: error.message,
                         name: 'FirebaseError',
+                        operationType: 'signIn', // Required by MultiFactorResolverImpl logic
                         customData: {
                             // Validation requires 'operationType'
                             operationType: 'signIn',
