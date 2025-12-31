@@ -21,10 +21,13 @@ const trackUsage = async (uid: string, tokens: number) => {
 
 // Initialize with process.env for standard Cloud Functions config
 // Ensure GEMINI_API_KEY is set in functions configuration
-const getApiKey = () => {
+// Pre-Beta: Optionally accept key from client
+const getApiKey = (providedKey?: string) => {
+    if (providedKey) return providedKey;
+
     const key = process.env.GEMINI_API_KEY;
     if (!key) {
-        throw new Error("GEMINI_API_KEY is not set in environment variables");
+        throw new Error("GEMINI_API_KEY is not set in environment variables and no key provided.");
     }
     return key;
 };
@@ -36,14 +39,14 @@ export const askCora = functions.region('europe-west3').https.onCall(async (data
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
     }
 
-    const { question, contextStr, instruction } = data;
+    const { question, contextStr, instruction, apiKey: clientApiKey } = data;
 
     if (!question || !contextStr) {
         throw new functions.https.HttpsError('invalid-argument', 'Missing question or context');
     }
 
     try {
-        const apiKey = getApiKey();
+        const apiKey = getApiKey(clientApiKey);
         const ai = new GoogleGenAI({ apiKey });
 
         const responseSchema: Schema = {
@@ -120,13 +123,13 @@ export const generateImage = functions.region('europe-west3').https.onCall(async
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
     }
 
-    const { prompt } = data;
+    const { prompt, apiKey: clientApiKey } = data;
     if (!prompt) {
         throw new functions.https.HttpsError('invalid-argument', 'Missing prompt');
     }
 
     try {
-        const apiKey = getApiKey();
+        const apiKey = getApiKey(clientApiKey);
         const ai = new GoogleGenAI({ apiKey });
 
         const response = await ai.models.generateContent({
@@ -164,14 +167,14 @@ export const editImage = functions.region('europe-west3').https.onCall(async (da
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
     }
 
-    const { prompt, image, mimeType = 'image/png' } = data; // image expects base64 string (no header)
+    const { prompt, image, mimeType = 'image/png', apiKey: clientApiKey } = data; // image expects base64 string (no header)
 
     if (!prompt || !image) {
         throw new functions.https.HttpsError('invalid-argument', 'Missing prompt or image data');
     }
 
     try {
-        const apiKey = getApiKey();
+        const apiKey = getApiKey(clientApiKey);
         const ai = new GoogleGenAI({ apiKey });
 
         const parts: any[] = [
@@ -221,14 +224,14 @@ export const callGemini = functions.region('europe-west3').https.onCall(async (d
         throw new functions.https.HttpsError('unauthenticated', 'User must be logged in.');
     }
 
-    const { systemInstruction, prompt, temperature = 0.7, jsonMode = false, model = "gemini-3-pro-preview" } = data;
+    const { systemInstruction, prompt, temperature = 0.7, jsonMode = false, model = "gemini-3-pro-preview", apiKey: clientApiKey, responseSchema } = data;
 
     if (!prompt) {
         throw new functions.https.HttpsError('invalid-argument', 'Missing prompt');
     }
 
     try {
-        const apiKey = getApiKey();
+        const apiKey = getApiKey(clientApiKey);
         const ai = new GoogleGenAI({ apiKey });
 
         const config: any = {
@@ -237,6 +240,11 @@ export const callGemini = functions.region('europe-west3').https.onCall(async (d
 
         if (jsonMode) {
             config.responseMimeType = "application/json";
+        }
+
+        if (responseSchema) {
+            config.responseSchema = responseSchema;
+            config.responseMimeType = "application/json"; // Schema implies JSON usually
         }
 
         const generateParams: any = {

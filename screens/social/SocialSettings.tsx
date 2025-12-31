@@ -89,15 +89,16 @@ export const SocialSettings = () => {
                         code: 'auth/multi-factor-auth-required',
                         message: error.message,
                         name: 'FirebaseError',
-                        operationType: 'signIn', // Required by MultiFactorResolverImpl logic
+                        operationType: 'reauthenticate', // Use reauthenticate for linking flows
                         customData: {
                             // Validation requires 'operationType'
-                            operationType: 'signIn',
+                            operationType: 'reauthenticate',
                             // Validation requires '_serverResponse' specifically
                             _serverResponse: serverResponse,
                             serverResponse: serverResponse, // Keep for compatibility
                             appName: error.customData?.appName
-                        }
+                        },
+                        user: auth.currentUser // Required for reauthenticate operation
                     };
 
                     console.log("Attempting MFA resolution with reconstructed object:", mfaErrorPayload);
@@ -114,7 +115,7 @@ export const SocialSettings = () => {
                     showError("MFA Error: " + (resolverError as Error).message);
                 }
             } else if (error.code === 'auth/credential-already-in-use') {
-                showError("This Facebook account is already connected to another ProjectFlow user. Please log in with Facebook to access that account, or use a different Facebook account.");
+                showError("This Facebook account is linked to a DIFFERENT ProjectFlow user. Please Log Out, then Log In with Facebook to access (and delete) that account before linking it here.");
             } else {
                 showError(error.message || t('social.settings.accounts.toast.failedConnect').replace('{platform}', platform));
             }
@@ -124,10 +125,21 @@ export const SocialSettings = () => {
     };
 
     const handleMfaSuccess = async () => {
-        if (pendingPlatform) {
-            // Retry connection
-            await handleConnect(pendingPlatform);
-        }
+        // Did success! The resolver.resolveSignIn() inside the modal has already
+        // completed the authentication/linking process. 
+        // We do NOT need to call handleConnect again (that causes the loop/conflict).
+
+        setShowMfaModal(false);
+        setMfaResolver(null);
+        setPendingPlatform(null);
+
+        // Refresh the page state or show success
+        showSuccess(t('social.settings.accounts.toast.connected'));
+
+        // Use a small timeout to allow Firebase auth state to propagate if needed
+        setTimeout(() => {
+            // Force re-fetch of integrations if needed, handled by listeners usually
+        }, 1000);
     };
 
     const handleDisconnect = async (integrationId: string) => {

@@ -1,115 +1,110 @@
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+// Removed: import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { Idea, MindmapGrouping, Project, Task, ProjectBlueprint, ProjectRisk, SocialCampaign, Milestone, Issue, Activity, Member } from "../types";
-import { auth } from "./firebase";
-import { getAIUsage, incrementAIUsage, incrementIdeaAIUsage, incrementCampaignAIUsage } from "./dataService";
+import { auth, functions } from "./firebase";
+import { httpsCallable } from 'firebase/functions';
+import { getAIUsage, incrementAIUsage, incrementIdeaAIUsage, incrementCampaignAIUsage, getUserProfile, getActiveTenantId } from "./dataService";
 import { applyLanguageInstruction, getAIResponseInstruction } from "../utils/aiLanguage";
 
-import { getUserProfile } from "./dataService";
+// Polyfills for types removed from @google/genai import to specific string literals/types
+enum Type {
+    STRING = "STRING",
+    NUMBER = "NUMBER",
+    INTEGER = "INTEGER",
+    BOOLEAN = "BOOLEAN",
+    ARRAY = "ARRAY",
+    OBJECT = "OBJECT"
+}
+type Schema = any;
 
-// Helper to check and track usage with retry logic
+// Helper to call generic Gemini Cloud Function with user's specific API Key if available (Pre-Beta)
+const callGeminiAPI = async (params: {
+    prompt: string,
+    systemInstruction?: string,
+    responseSchema?: any,
+    temperature?: number,
+    jsonMode?: boolean,
+    model?: string
+}) => {
+    const user = auth.currentUser;
+    let apiKey = undefined;
+
+    // Pre-Beta: Fetch user's API key from profile
+    if (user) {
+        try {
+            const profile = await getUserProfile(user.uid, getActiveTenantId());
+            if (profile?.geminiConfig?.apiKey) {
+                apiKey = profile.geminiConfig.apiKey;
+            }
+        } catch (e) {
+            console.warn("Failed to fetch API key from profile", e);
+        }
+    }
+
+    const { prompt, systemInstruction, responseSchema, temperature = 0.7, jsonMode = false, model = "gemini-3-pro-preview" } = params;
+
+    const callFn = httpsCallable(functions, 'callGemini');
+
+    // The backend now accepts 'responseSchema' as well.
+    const { data }: any = await callFn({
+        prompt,
+        systemInstruction,
+        temperature,
+        jsonMode: jsonMode || !!responseSchema, // schema implies json
+        responseSchema,
+        model,
+        apiKey
+    });
+
+    return data; // returns { text, tokensUsed }
+};
+
+// Adapter to support legacy code patterns during refactor
+// This mocks the GoogleGenAI client and intercepts calls to redirect them to callGeminiAPI
 const runWithTokenCheck = async (
     operation: (ai: any) => Promise<any>,
-    tracking?: { ideaId?: string; projectId?: string; campaignId?: string; tenantId?: string }
+    tracking?: any
 ): Promise<any> => {
-    const user = auth.currentUser;
-    if (!user) throw new Error("User not authenticated");
-
-    // Pre-Beta Config Check
-    const profile = await getUserProfile(user.uid);
-    let apiKey = '';
-    let tokenLimit = 1000000; // Default system limit
-
-    if (profile?.geminiConfig?.apiKey) {
-        apiKey = profile.geminiConfig.apiKey;
-        tokenLimit = profile.geminiConfig.tokenLimit || 10000000; // User limit or high default
-    } else {
-        // Enforce user key in Pre-Beta
-        throw new Error("Pre-Beta: You must set your own Gemini API Key in Settings > Pre-Beta to use CORA features.");
-    }
-
-    const usage = await getAIUsage(user.uid);
-    if (usage && usage.tokensUsed >= tokenLimit) {
-        throw new Error(`CORA token limit reached (${usage.tokensUsed.toLocaleString()} / ${tokenLimit.toLocaleString()}). Limit resets monthly.`);
-    }
-
-    const ai = getAiClient(apiKey);
-    const { instruction } = getAIResponseInstruction();
-    const aiWithLanguage = {
-        ...ai,
+    // Create a mock AI client that intercepts generateContent
+    const mockAi = {
         models: {
-            ...ai.models,
-            generateContent: (args: any) => {
-                const contents = applyLanguageInstruction(args?.contents, instruction);
-                return ai.models.generateContent({ ...args, contents });
+            generateContent: async (args: any) => {
+                // Map args to callGeminiAPI params
+                const params = {
+                    model: args.model,
+                    prompt: args.contents,
+                    // Check config
+                    temperature: args.config?.temperature,
+                    responseSchema: args.config?.responseSchema,
+                    // Convert mimeType 'application/json' to jsonMode=true
+                    jsonMode: args.config?.responseMimeType?.includes('json'),
+                    systemInstruction: args.systemInstruction
+                };
+
+                const result = await callGeminiAPI(params);
+
+                // Return structure matching Gemini SDK response expectation
+                // Existing code often checks result.text or result.usageMetadata
+                return {
+                    text: result.text,
+                    usageMetadata: { totalTokenCount: result.tokensUsed || 0 },
+                    // Mock function if code calls text() method instead of property
+                    // usage: response.text()
+                    functionCall: () => result.text
+                };
             }
         }
     };
 
-    let attempts = 0;
-    const maxAttempts = 3;
-
-    while (attempts < maxAttempts) {
-        try {
-            const result = await operation(aiWithLanguage);
-
-            // Track usage
-            const tokens = result.usageMetadata?.totalTokenCount || 0;
-            if (tokens > 0) {
-                await incrementAIUsage(user.uid, tokens);
-
-                // Track per idea/campaign
-                if (tracking?.ideaId && tracking?.projectId) {
-                    await incrementIdeaAIUsage(tracking.ideaId, tokens, tracking.projectId, tracking.tenantId);
-                } else if (tracking?.campaignId) {
-                    await incrementCampaignAIUsage(tracking.campaignId, tokens, tracking.tenantId);
-                }
-            }
-
-            return result;
-        } catch (error: any) {
-            attempts++;
-
-            // Checks for common network/fetch errors
-            const isNetworkError =
-                error.message?.includes('Failed to fetch') ||
-                error.message?.includes('network') ||
-                error.message?.includes('PROTOCOL_ERROR');
-
-            if (isNetworkError && attempts < maxAttempts) {
-                console.warn(`Gemini API request failed (attempt ${attempts}/${maxAttempts}). Retrying in ${attempts * 1000}ms...`, error);
-                await new Promise(resolve => setTimeout(resolve, attempts * 1000));
-                continue;
-            }
-
-            throw error;
-        }
-    }
+    // Execute the operation with the mock client
+    return operation(mockAi);
 };
 
-// Helper to get client instance safely
+// Stub for getAiClient - used by legacy functions but ignored by runWithTokenCheck
 const getAiClient = (apiKey?: string) => {
-    // Prefer passed key (User key), then fallback to env ONLY if not in strict user-key mode (which we are)
-    // Actually, user instruction says "currently set gemini api key should not be requested while in pre beta"
-    // So if apiKey is passed, use it. If not, don't use system key.
-
-    if (apiKey) {
-        return new GoogleGenAI({ apiKey });
-    }
-
-    // Fallback logic for dev/build scripts that might not have user context, 
-    // but for app usage, runWithTokenCheck enforces the key.
-    // We KEEP this for non-user contexts (like CLI scripts), but likely won't be reached by app.
-    const systemKey =
-        (typeof import.meta !== "undefined" && (import.meta as any).env?.VITE_GEMINI_API_KEY) ||
-        process.env.GEMINI_API_KEY ||
-        process.env.API_KEY ||
-        '';
-
-    if (!systemKey) {
-        throw new Error("Missing GEMINI API key.");
-    }
-    return new GoogleGenAI({ apiKey: systemKey });
+    return { models: {} } as any;
 };
+
+// Start of functions refactored to use callGeminiAPI
 
 export const generateBrainstormIdeas = async (prompt: string): Promise<Idea[]> => {
     try {
@@ -189,7 +184,6 @@ export const generateProjectReport = async (
     members: any[]
 ): Promise<string> => {
     try {
-        const ai = getAiClient();
         const openTasks = tasks.filter(t => !t.isCompleted);
         const completedTasks = tasks.filter(t => t.isCompleted);
         const highPriorityTasks = openTasks.filter(t => t.priority === 'High' || t.priority === 'Urgent');
@@ -245,14 +239,12 @@ export const generateProjectReport = async (
         Keep the tone professional yet encouraging. Use emojis sparingly for section headers only.
         `;
 
-        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
-            model: "gemini-3-pro-preview",
-            contents: prompt,
-            config: {
-                temperature: 0.4,
-                responseMimeType: "text/plain"
-            }
-        }));
+        const response = await callGeminiAPI({
+            model: "gemini-3-pro-preview", // Use a stable model name or whatever is available
+            prompt: prompt,
+            temperature: 0.4,
+        });
+
         return response.text || "Report unavailable.";
     } catch (error) {
         console.error("Gemini Report Error:", error);
@@ -262,16 +254,15 @@ export const generateProjectReport = async (
 
 export const generateProjectIdeasAI = async (project: Project, tasks: Task[], type: string, categoryContext?: string): Promise<Idea[]> => {
     try {
-        const ai = getAiClient();
-        const responseSchema: Schema = {
-            type: Type.ARRAY,
+        const responseSchema = {
+            type: "ARRAY",
             items: {
-                type: Type.OBJECT,
+                type: "OBJECT",
                 properties: {
-                    title: { type: Type.STRING },
-                    description: { type: Type.STRING },
+                    title: { type: "STRING" },
+                    description: { type: "STRING" },
                     // type field is optional in response since we force it, but good for AI to confirm
-                    type: { type: Type.STRING },
+                    type: { type: "STRING" },
                 },
                 required: ['title', 'description'],
             },
@@ -298,15 +289,12 @@ export const generateProjectIdeasAI = async (project: Project, tasks: Task[], ty
         ${specificInstructions}
         Keep descriptions under 18 words.
         `;
-        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+        const response = await callGeminiAPI({
             model: "gemini-3-pro-preview",
-            contents: prompt,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema,
-                temperature: 0.7,
-            }
-        }));
+            prompt: prompt,
+            responseSchema,
+            temperature: 0.7
+        });
         const rawIdeas = JSON.parse(response.text || "[]");
         if (!Array.isArray(rawIdeas) || rawIdeas.length === 0) {
             throw new Error("Gemini returned no flows");
@@ -330,17 +318,16 @@ export const generateProjectIdeasAI = async (project: Project, tasks: Task[], ty
 export const suggestMindmapGrouping = async (project: Project, ideas: Idea[]): Promise<MindmapGrouping[]> => {
     if (!ideas.length) return [];
     try {
-        const ai = getAiClient();
-        const responseSchema: Schema = {
-            type: Type.ARRAY,
+        const responseSchema = {
+            type: "ARRAY",
             items: {
-                type: Type.OBJECT,
+                type: "OBJECT",
                 properties: {
-                    group: { type: Type.STRING },
-                    reason: { type: Type.STRING },
+                    group: { type: "STRING" },
+                    reason: { type: "STRING" },
                     ideaIds: {
-                        type: Type.ARRAY,
-                        items: { type: Type.STRING }
+                        type: "ARRAY",
+                        items: { type: "STRING" }
                     }
                 },
                 required: ['group', 'ideaIds']
@@ -351,9 +338,9 @@ export const suggestMindmapGrouping = async (project: Project, ideas: Idea[]): P
             .map((idea) => `- ${idea.id}: ${idea.title} — ${idea.description || 'No description'} `)
             .join('\n');
 
-        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+        const response = await callGeminiAPI({
             model: "gemini-3-pro-preview",
-            contents: `You are CORA, a mind-mapping assistant. Group the provided project flows into 3 - 6 concise branches with short names(1 - 2 words).
+            prompt: `You are CORA, a mind-mapping assistant. Group the provided project flows into 3 - 6 concise branches with short names(1 - 2 words).
             Project: "${project.title}".
                 Flows (id: title — description):
 ${ideaList}
@@ -361,12 +348,9 @@ Return JSON only.Each object must include:
         - group: the group name you propose(keep it short, eg. "UI", "Architecture", "Growth Ops")
             - ideaIds: an array of flow ids from above that belong in that group
                 - reason: optional one - line rationale`,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema,
-                temperature: 0.5,
-            }
-        }));
+            responseSchema,
+            temperature: 0.5
+        });
 
         const parsed = JSON.parse(response.text || "[]");
         return (Array.isArray(parsed) ? parsed : []).map((entry, index) => ({
@@ -382,54 +366,50 @@ Return JSON only.Each object must include:
 
 export const generateProjectBlueprint = async (prompt: string): Promise<ProjectBlueprint> => {
     try {
-        const ai = getAiClient();
-        const responseSchema: Schema = {
-            type: Type.OBJECT,
+        const responseSchema = {
+            type: "OBJECT",
             properties: {
-                title: { type: Type.STRING },
-                description: { type: Type.STRING },
-                targetAudience: { type: Type.STRING },
+                title: { type: "STRING" },
+                description: { type: "STRING" },
+                targetAudience: { type: "STRING" },
                 milestones: {
-                    type: Type.ARRAY,
+                    type: "ARRAY",
                     items: {
-                        type: Type.OBJECT,
+                        type: "OBJECT",
                         properties: {
-                            title: { type: Type.STRING },
-                            description: { type: Type.STRING },
+                            title: { type: "STRING" },
+                            description: { type: "STRING" },
                         },
                         required: ['title', 'description']
                     }
                 },
                 initialTasks: {
-                    type: Type.ARRAY,
+                    type: "ARRAY",
                     items: {
-                        type: Type.OBJECT,
+                        type: "OBJECT",
                         properties: {
-                            title: { type: Type.STRING },
-                            priority: { type: Type.STRING, enum: ['Low', 'Medium', 'High'] },
+                            title: { type: "STRING" },
+                            priority: { type: "STRING", enum: ['Low', 'Medium', 'High'] },
                         },
                         required: ['title', 'priority']
                     }
                 },
                 suggestedTechStack: {
-                    type: Type.ARRAY,
-                    items: { type: Type.STRING }
+                    type: "ARRAY",
+                    items: { type: "STRING" }
                 }
             },
             required: ['title', 'description', 'targetAudience', 'milestones', 'initialTasks']
         };
 
-        const response = await runWithTokenCheck((ai) => ai.models.generateContent({
+        const response = await callGeminiAPI({
             model: "gemini-3-pro-preview",
-            contents: `Create a comprehensive project blueprint for this flow: "${prompt}". 
+            prompt: `Create a comprehensive project blueprint for this flow: "${prompt}". 
             Flesh out the name, a compelling description, identify the target audience,
             plan 3 - 5 major milestones, and list 5 - 8 initial setup and development tasks.`,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema,
-                temperature: 0.8,
-            }
-        }));
+            responseSchema,
+            temperature: 0.8
+        });
 
         const blueprint = JSON.parse(response.text || "{}");
         return {

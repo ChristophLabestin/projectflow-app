@@ -1,8 +1,18 @@
 import { httpsCallable } from "firebase/functions";
 import { functions, auth } from "./firebase";
 import { Project, Task, SearchResult, AISearchAnswer } from "../types";
-import { getAllWorkspaceProjects, getAllWorkspaceTasks, getAllWorkspaceIssues, getAllWorkspaceIdeas, getAIUsage, incrementAIUsage, incrementImageUsage } from "./dataService";
+import { getAllWorkspaceProjects, getAllWorkspaceTasks, getAllWorkspaceIssues, getAllWorkspaceIdeas, getAIUsage, incrementAIUsage, incrementImageUsage, getUserProfile, getActiveTenantId } from "./dataService";
 import { getAIResponseInstruction } from "../utils/aiLanguage";
+
+// Helper to get user API key
+const getApiKey = async (userId: string) => {
+    try {
+        const profile = await getUserProfile(userId, getActiveTenantId());
+        return profile?.geminiConfig?.apiKey;
+    } catch (e) {
+        return undefined;
+    }
+};
 
 /**
  * Helper to check if a query looks like a question
@@ -180,6 +190,8 @@ export const answerQuestionWithContext = async (
     }
 
     try {
+        const apiKey = await getApiKey(user.uid);
+
         // Fetch context data
         const [projects, tasks] = await Promise.all([
             getAllWorkspaceProjects(tenantId),
@@ -194,13 +206,15 @@ export const answerQuestionWithContext = async (
             contextStr: string;
             instruction: string;
             language: string;
+            apiKey?: string;
         }, any>(functions, 'askCora');
 
         const { data: result } = await askCoraFn({
             question,
             contextStr,
             instruction,
-            language
+            language,
+            apiKey
         });
 
         // Track usage (increment based on backend report)
@@ -250,8 +264,10 @@ export const generateAIImage = async (prompt: string): Promise<string[]> => {
     }
 
     try {
-        const generateImageFn = httpsCallable<{ prompt: string }, { images: string[] }>(functions, 'generateImage');
-        const { data } = await generateImageFn({ prompt });
+        const apiKey = await getApiKey(user.uid);
+
+        const generateImageFn = httpsCallable<{ prompt: string; apiKey?: string }, { images: string[] }>(functions, 'generateImage');
+        const { data } = await generateImageFn({ prompt, apiKey });
 
         if (!data.images || data.images.length === 0) {
             throw new Error("No images generated");
@@ -286,6 +302,8 @@ export const editAIImage = async (
     }
 
     try {
+        const apiKey = await getApiKey(user.uid);
+
         // Fetch image and convert to base64 if it's a URL
         let base64Data: string;
         let mimeType = 'image/jpeg';
@@ -325,13 +343,15 @@ export const editAIImage = async (
             image: string;
             mimeType: string;
             editMode: string;
+            apiKey?: string;
         }, { images: string[] }>(functions, 'editImage');
 
         const { data } = await editImageFn({
             prompt,
             image: base64Data,
             mimeType,
-            editMode
+            editMode,
+            apiKey
         });
 
         if (!data.images || data.images.length === 0) {
