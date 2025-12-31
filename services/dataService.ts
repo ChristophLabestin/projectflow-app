@@ -3893,11 +3893,14 @@ export const connectIntegration = async (projectId: string, platform: SocialPlat
             const { getInstagramAccounts, getInstagramProfile } = await import('./instagramService');
 
             const accounts = await getInstagramAccounts(accessToken);
+            console.log("Raw Facebook Accounts fetched:", JSON.stringify(accounts, null, 2));
 
             // Filter for accounts that have a linked Instagram Business Account
             const instagramAccounts = accounts.filter(acc => acc.instagram_business_account);
+            console.log("Filtered Instagram Business Accounts:", JSON.stringify(instagramAccounts, null, 2));
 
             if (instagramAccounts.length === 0) {
+                console.warn("No Instagram Business accounts found. Available accounts:", accounts.map(a => a.name));
                 throw new Error("No Instagram Business accounts found linked to your Facebook Pages. Please make sure your Instagram account is a Business account and linked to a Facebook Page.");
             }
 
