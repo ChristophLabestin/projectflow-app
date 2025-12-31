@@ -25,7 +25,7 @@ const path = require("path");
  * @param indexHtmlPath - Path to the index.html file for the landing page
  */
 function createBlogMetaFunction(db, indexHtmlPath) {
-    return functions.https.onRequest(async (req, res) => {
+    return functions.region('europe-west3').https.onRequest(async (req, res) => {
         // We inject meta tags for all requests (both users and crawlers)
         // This ensures consistency and avoids user-agent detection complexity
         // URL format: /blog/slug-or-id
