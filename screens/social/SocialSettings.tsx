@@ -90,7 +90,11 @@ export const SocialSettings = () => {
                         message: error.message,
                         name: 'FirebaseError',
                         customData: {
-                            serverResponse: serverResponse,
+                            // Validation requires 'operationType'
+                            operationType: 'signIn',
+                            // Validation requires '_serverResponse' specifically
+                            _serverResponse: serverResponse,
+                            serverResponse: serverResponse, // Keep for compatibility
                             appName: error.customData?.appName
                         }
                     };

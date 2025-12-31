@@ -10,6 +10,7 @@ import { sendInvitation } from './invitations';
 import { requestWaitlist, confirmWaitlist } from './waitlist';
 import { requestNewsletterSignup, confirmNewsletterSignup } from './newsletter-public';
 import { sendContactFormEmail } from './contact';
+import { askCora, generateImage, editImage } from './ai-service';
 
 
 export {
@@ -28,7 +29,10 @@ export {
     confirmWaitlist,
     requestNewsletterSignup,
     confirmNewsletterSignup,
-    sendContactFormEmail
+    sendContactFormEmail,
+    askCora,
+    generateImage,
+    editImage
 };
 export * from './passkeys';
 
