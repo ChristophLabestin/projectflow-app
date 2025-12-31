@@ -3899,28 +3899,48 @@ export const connectIntegration = async (projectId: string, platform: SocialPlat
             const { getInstagramAccounts, getInstagramProfile } = await import('./instagramService');
 
             const accounts = await getInstagramAccounts(accessToken);
-            console.log("Raw Facebook Accounts fetched:", JSON.stringify(accounts, null, 2));
 
-            // Filter for accounts that have a linked Instagram Business Account
-            const instagramAccounts = accounts.filter(acc => acc.instagram_business_account);
-            console.log("Filtered Instagram Business Accounts:", JSON.stringify(instagramAccounts, null, 2));
+            let selectedAccount: any;
+            let igBusinessId: string | undefined;
+            let profilePicUrl: string = '';
+            let username: string = '';
+            let pageId: string = '';
+            let pageAccessToken: string | undefined;
 
-            if (instagramAccounts.length === 0) {
-                console.warn("No Instagram Business accounts found. Available accounts:", accounts.map(a => a.name));
-                throw new Error("No Instagram Business accounts found linked to your Facebook Pages. Please make sure your Instagram account is a Business account and linked to a Facebook Page.");
+            if (platform === 'Instagram') {
+                // Filter for accounts that have a linked Instagram Business Account
+                const instagramAccounts = accounts.filter(acc => acc.instagram_business_account);
+
+                if (instagramAccounts.length === 0) {
+                    throw new Error("No Instagram Business accounts found linked to your Facebook Pages. Please make sure your Instagram account is a Business account and linked to a Facebook Page.");
+                }
+
+                // For V1, we just take the first one or we could add a selector UI.
+                selectedAccount = instagramAccounts[0];
+                igBusinessId = selectedAccount.instagram_business_account!.id;
+                pageId = selectedAccount.id; // Facebook Page ID
+
+                // Fetch detailed profile info to store
+                const profile = await getInstagramProfile(igBusinessId, accessToken);
+                profilePicUrl = profile.profile_picture_url;
+                username = profile.username;
+            } else {
+                // Facebook Page Connection logic
+                if (accounts.length === 0) {
+                    throw new Error("No Facebook Pages found. Please create a Facebook Page to connect.");
+                }
+
+                // For MVP, select the first page. Ideally, show a dropdown.
+                selectedAccount = accounts[0];
+                pageId = selectedAccount.id;
+                username = selectedAccount.name;
+                pageAccessToken = selectedAccount.access_token;
+                profilePicUrl = selectedAccount.picture?.data?.url || '';
             }
 
-            // For V1, we just take the first one or we could add a selector UI.
-            // Let's implement a simple prompt or just pick the first one for now as MVP.
-            const selectedAccount = instagramAccounts[0];
-            const igBusinessId = selectedAccount.instagram_business_account!.id;
-
-            // Fetch detailed profile info to store
-            const profile = await getInstagramProfile(igBusinessId, accessToken);
-
-            // Check if already connected
+            // Check if already connected (checking per platform)
             const existingIntegration = await new Promise<SocialIntegration | null>(resolve => {
-                const q = query(projectSubCollection(tenantId, projectId, SOCIAL_INTEGRATIONS), where("platform", "==", "Instagram"));
+                const q = query(projectSubCollection(tenantId, projectId, SOCIAL_INTEGRATIONS), where("platform", "==", platform));
                 const unsubscribe = onSnapshot(q, (snapshot) => {
                     if (!snapshot.empty) {
                         unsubscribe();
@@ -3932,29 +3952,33 @@ export const connectIntegration = async (projectId: string, platform: SocialPlat
                 });
             });
 
+            const integrationData: any = {
+                username: username || selectedAccount.name,
+                accessToken, // User access token (system level)
+                facebookPageId: pageId,
+                profilePictureUrl: profilePicUrl,
+                status: 'Connected',
+                connectedAt: new Date().toISOString()
+            };
+
+            if (pageAccessToken) {
+                // Store page-specific token for Facebook posting
+                integrationData.pageAccessToken = pageAccessToken;
+            }
+
+            if (igBusinessId) {
+                integrationData.instagramBusinessAccountId = igBusinessId;
+            }
+
             if (existingIntegration) {
                 // Update existing
-                await updateDoc(doc(projectSubCollection(tenantId, projectId, SOCIAL_INTEGRATIONS), existingIntegration.id), {
-                    username: profile.username || selectedAccount.name,
-                    accessToken,
-                    instagramBusinessAccountId: igBusinessId,
-                    facebookPageId: selectedAccount.id,
-                    profilePictureUrl: profile.profile_picture_url,
-                    status: 'Connected',
-                    connectedAt: new Date().toISOString()
-                });
+                await updateDoc(doc(projectSubCollection(tenantId, projectId, SOCIAL_INTEGRATIONS), existingIntegration.id), integrationData);
             } else {
                 await addDoc(projectSubCollection(tenantId, projectId, SOCIAL_INTEGRATIONS), {
                     projectId,
-                    platform: 'Instagram',
-                    username: profile.username || selectedAccount.name,
+                    platform: platform,
                     authUserId: auth.currentUser?.uid,
-                    accessToken,
-                    instagramBusinessAccountId: igBusinessId,
-                    facebookPageId: selectedAccount.id,
-                    profilePictureUrl: profile.profile_picture_url,
-                    status: 'Connected',
-                    connectedAt: new Date().toISOString()
+                    ...integrationData
                 });
             }
             return;

@@ -9,6 +9,12 @@ export interface InstagramAccount {
     instagram_business_account?: {
         id: string;
     };
+    access_token?: string;
+    picture?: {
+        data: {
+            url: string;
+        }
+    };
 }
 
 export interface InstagramMedia {
@@ -25,7 +31,7 @@ export interface InstagramMedia {
 
 export const getInstagramAccounts = async (accessToken: string): Promise<InstagramAccount[]> => {
     try {
-        const response = await fetch(`${GRAPH_API_BASE}/me/accounts?fields=name,instagram_business_account&access_token=${accessToken}`);
+        const response = await fetch(`${GRAPH_API_BASE}/me/accounts?fields=name,instagram_business_account,access_token,picture{url}&access_token=${accessToken}`);
         const data = await response.json();
 
         if (data.error) {
