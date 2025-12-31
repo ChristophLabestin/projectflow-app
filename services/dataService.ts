@@ -4015,6 +4015,35 @@ export const connectIntegration = async (projectId: string, platform: SocialPlat
                 throw new Error("Failed to initiate TikTok connection: " + e.message);
             }
         }
+
+        if (platform === 'YouTube') {
+            try {
+                const getAuthUrlFn = httpsCallable(functions, 'getYouTubeAuthUrl');
+                const response = await getAuthUrlFn({ projectId, tenantId }) as any;
+                const authUrl = response.data.url;
+
+                const width = 600;
+                const height = 700;
+                const left = (window.screen.width / 2) - (width / 2);
+                const top = (window.screen.height / 2) - (height / 2);
+
+                window.open(authUrl, 'youtube_auth', `width=${width},height=${height},top=${top},left=${left}`);
+
+                await new Promise<void>((resolve, reject) => {
+                    const handleMessage = (event: MessageEvent) => {
+                        if (event.data?.type === 'YOUTUBE_CONNECTED') {
+                            window.removeEventListener('message', handleMessage);
+                            resolve();
+                        }
+                    };
+                    window.addEventListener('message', handleMessage);
+                });
+                return;
+            } catch (e: any) {
+                console.error("YouTube Connect Failed", e);
+                throw new Error("Failed to initiate YouTube connection: " + e.message);
+            }
+        }
     } catch (error) {
         console.error("Social Auth failed:", error);
         throw error;

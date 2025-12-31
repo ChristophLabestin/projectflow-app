@@ -144,6 +144,11 @@
         "region": "europe-west3"
       },
       {
+        "source": "/youtubeCallback",
+        "function": "youtubeCallback",
+        "region": "europe-west3"
+      },
+      {
         "source": "/api/**",
         "function": "api",
         "region": "europe-west3"

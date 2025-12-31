@@ -3,11 +3,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.tiktokCallback = exports.getTikTokAuthUrl = void 0;
 const functions = require("firebase-functions");
 const init_1 = require("./init");
-const CLIENT_KEY = 'aw6g76sf9ks0fydb';
-const CLIENT_SECRET = 'BqixSWhlVlKX8mD6IJJOWz8ZPMjlm7RW';
+const CLIENT_KEY = 'sbaw900ci7fk07ygnz';
+const CLIENT_SECRET = 'shqFCCdjvbIgkeSPxBP0ZhKLtaDEOChJ';
 const getFunctionUrl = (name) => {
-    // We use the rewrite on the main domain
-    return `https://app.getprojectflow.com/${name}`;
+    const projectId = process.env.GCLOUD_PROJECT || 'project-manager-9d0ad';
+    const region = 'europe-west3';
+    return `https://${region}-${projectId}.cloudfunctions.net/${name}`;
 };
 exports.getTikTokAuthUrl = functions.region('europe-west3').https.onCall(async (data, context) => {
     if (!context.auth) {
@@ -27,7 +28,7 @@ exports.getTikTokAuthUrl = functions.region('europe-west3').https.onCall(async (
         csrf: csrfState
     };
     const state = Buffer.from(JSON.stringify(stateObj)).toString('base64');
-    const scopes = 'user.info.basic,video.list,video.upload';
+    const scopes = 'user.info.basic,video.publish,video.upload,video.list';
     const url = `https://www.tiktok.com/v2/auth/authorize/?client_key=${CLIENT_KEY}&response_type=code&scope=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
     return { url };
 });
@@ -71,7 +72,7 @@ exports.tiktokCallback = functions.region('europe-west3').https.onRequest(async 
             }
         });
         const userData = await userResp.json();
-        if (userData.error) {
+        if (userData.error && userData.error.code !== 'ok') {
             throw new Error(userData.error.message || JSON.stringify(userData));
         }
         const userInfo = userData.data.user;

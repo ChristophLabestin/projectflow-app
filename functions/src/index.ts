@@ -12,6 +12,7 @@ import { requestNewsletterSignup, confirmNewsletterSignup } from './newsletter-p
 import { sendContactFormEmail } from './contact';
 import { askCora, generateImage, editImage, callGemini } from './ai-service';
 import { getTikTokAuthUrl, tiktokCallback } from './tiktok';
+import { getYouTubeAuthUrl, youtubeCallback } from './youtube';
 
 
 export {
@@ -36,7 +37,9 @@ export {
     editImage,
     callGemini,
     getTikTokAuthUrl,
-    tiktokCallback
+    tiktokCallback,
+    getYouTubeAuthUrl,
+    youtubeCallback
 };
 export * from './passkeys';
 
