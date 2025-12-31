@@ -10,11 +10,6 @@ import { sendInvitation } from './invitations';
 import { requestWaitlist, confirmWaitlist } from './waitlist';
 import { requestNewsletterSignup, confirmNewsletterSignup } from './newsletter-public';
 import { sendContactFormEmail } from './contact';
-import { createBlogMetaFunction } from './blogMetaFunction';
-import * as path from 'path';
-import { db } from './init';
-
-const blogMeta = createBlogMetaFunction(db, path.join(__dirname, '../landing-page-index.html'));
 
 
 export {
@@ -33,8 +28,7 @@ export {
     confirmWaitlist,
     requestNewsletterSignup,
     confirmNewsletterSignup,
-    sendContactFormEmail,
-    blogMeta
+    sendContactFormEmail
 };
 export * from './passkeys';
 

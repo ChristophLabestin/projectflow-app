@@ -1,5 +1,8 @@
 import React from 'react';
+import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
+import { Card } from '../../ui/Card';
+import { Textarea } from '../../ui/Textarea';
 import { Idea } from '../../../types';
 import { generateSocialCampaignConceptAI } from '../../../services/geminiService';
 import { useLanguage } from '../../../context/LanguageContext';
@@ -104,190 +107,207 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
 
     return (
         <div className="h-full overflow-y-auto">
-            <div className="max-w-7xl mx-auto flex flex-col gap-6 pt-6 px-6 pb-20">
-                {/* Hero / Header */}
-                <div className="bg-gradient-to-br from-violet-100 via-fuchsia-50 to-white dark:from-violet-900/30 dark:via-fuchsia-900/10 dark:to-slate-900/50 rounded-3xl p-6 md:p-8 border border-violet-200 dark:border-violet-800/50 relative overflow-hidden shadow-xl shadow-violet-100 dark:shadow-none flex flex-col md:flex-row justify-between gap-6">
-                    <div className="absolute top-0 right-0 p-8 opacity-[0.03] dark:opacity-[0.05] pointer-events-none select-none">
-                        <span className="material-symbols-outlined text-[200px] text-violet-600 rotate-12 -translate-y-10 translate-x-10">lightbulb</span>
-                    </div>
-                    <div className="relative z-10">
-                        <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
-                            <div className="flex items-center gap-2 shrink-0">
-                                <div className="px-3 py-1 bg-violet-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-violet-200 dark:shadow-none">
-                                    {t('flowStages.socialCampaignConcept.hero.badge')}
-                                </div>
-                                <div className="h-[1px] w-8 bg-violet-200 dark:bg-violet-800 rounded-full" />
-                            </div>
-                            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-                                {t('flowStages.socialCampaignConcept.hero.title')}
-                            </h1>
+            <div className="max-w-7xl mx-auto flex flex-col gap-6 pt-6 px-6 pb-24">
+                <Card padding="lg" className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <Badge variant="secondary">{t('flowStages.socialCampaignConcept.hero.badge')}</Badge>
                         </div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 font-medium max-w-2xl leading-relaxed">
+                        <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-main)]">
+                            {t('flowStages.socialCampaignConcept.hero.title')}
+                        </h1>
+                        <p className="text-sm text-[var(--color-text-muted)] max-w-2xl">
                             {t('flowStages.socialCampaignConcept.hero.subtitle')}
                         </p>
                     </div>
-                    {/* AI Action */}
-                    <div className="relative z-10 flex flex-col justify-between items-end">
+                    <div className="flex items-center gap-2">
                         <Button
                             onClick={handleGenerateAI}
                             disabled={generating}
-                            className="h-10 px-5 rounded-xl bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm font-black text-[10px] uppercase tracking-[.2em] transition-all flex items-center gap-2"
+                            variant="secondary"
+                            size="sm"
+                            icon={
+                                <span className={`material-symbols-outlined text-[16px] ${generating ? 'animate-spin' : ''}`}>
+                                    {generating ? 'progress_activity' : 'auto_awesome'}
+                                </span>
+                            }
                         >
-                            <span className={`material-symbols-outlined text-[18px] ${generating ? 'animate-spin' : ''}`}>
-                                {generating ? 'progress_activity' : 'auto_awesome'}
-                            </span>
                             {generating ? t('flowStages.socialCampaignConcept.actions.dreaming') : t('flowStages.socialCampaignConcept.actions.aiSuggest')}
                         </Button>
                     </div>
-                </div>
+                </Card>
 
-                {/* Feedback Banner for Change Requests */}
                 {(isChangeReq || idea.lastRejectionReason) && (
-                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-2xl p-6 mb-6 animate-in slide-in-from-top-4 duration-500">
-                        <div className="flex items-start gap-4">
-                            <div className="size-10 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center shrink-0">
-                                <span className="material-symbols-outlined text-amber-600 dark:text-amber-400">edit_note</span>
+                    <Card className="border-l-4 border-l-amber-400">
+                        <div className="flex items-start gap-3">
+                            <div className="size-10 rounded-xl bg-amber-100/60 dark:bg-amber-900/30 flex items-center justify-center text-amber-600 dark:text-amber-300">
+                                <span className="material-symbols-outlined text-[18px]">edit_note</span>
                             </div>
-                            <div className="flex-1">
-                                <h3 className="font-bold text-amber-900 dark:text-amber-100 text-lg mb-1">{t('flowStages.socialCampaignConcept.changes.title')}</h3>
-                                <p className="text-sm font-medium text-amber-800/80 dark:text-amber-200/80 leading-relaxed">
+                            <div className="space-y-2">
+                                <h3 className="text-sm font-bold text-[var(--color-text-main)]">
+                                    {t('flowStages.socialCampaignConcept.changes.title')}
+                                </h3>
+                                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
                                     {idea.lastRejectionReason || t('flowStages.socialCampaignConcept.changes.default')}
                                 </p>
-                                <div className="mt-3 flex items-center gap-2">
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-amber-900/60 dark:text-amber-300/60">{t('flowStages.socialCampaignConcept.changes.action')}</span>
-                                    <span className="h-px w-8 bg-amber-200 dark:bg-amber-700"></span>
-                                    <span className="text-[10px] font-bold text-amber-800 dark:text-amber-200">{t('flowStages.socialCampaignConcept.changes.actionHint')}</span>
+                                <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-subtle)]">
+                                    <span>{t('flowStages.socialCampaignConcept.changes.action')}</span>
+                                    <span className="h-px w-8 bg-[var(--color-surface-border)]" />
+                                    <span className="text-[var(--color-text-muted)]">{t('flowStages.socialCampaignConcept.changes.actionHint')}</span>
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </Card>
                 )}
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    {/* Left Column: Core Definition */}
                     <div className="lg:col-span-8 space-y-6">
-                        {/* The Core Flow */}
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md hover:border-violet-300 dark:hover:border-violet-800">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="size-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center text-violet-600 dark:text-violet-400">
-                                    <span className="material-symbols-outlined text-xl">auto_awesome</span>
+                        <Card padding="md" className="space-y-4">
+                            <div className="flex items-center gap-3">
+                                <div className="size-9 rounded-lg bg-[var(--color-surface-hover)] text-[var(--color-text-subtle)] flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
                                 </div>
                                 <div>
-                                    <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">{t('flowStages.socialCampaignConcept.core.title')}</h3>
-                                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">{t('flowStages.socialCampaignConcept.core.subtitle')}</p>
+                                    <h3 className="text-base font-bold text-[var(--color-text-main)]">
+                                        {t('flowStages.socialCampaignConcept.core.title')}
+                                    </h3>
+                                    <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
+                                        {t('flowStages.socialCampaignConcept.core.subtitle')}
+                                    </p>
                                 </div>
                             </div>
-                            <textarea
-                                className="w-full min-h-[160px] bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-800 rounded-2xl p-5 text-base md:text-lg font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 transition-all resize-none leading-relaxed"
+                            <Textarea
+                                className="min-h-[160px] text-base leading-relaxed focus:border-[var(--color-primary)]"
                                 placeholder={t('flowStages.socialCampaignConcept.core.placeholder')}
                                 value={conceptData.bigIdea}
                                 onChange={(e) => updateConcept({ bigIdea: e.target.value })}
                             />
-                        </div>
+                        </Card>
 
-                        {/* Visual Direction & Mood */}
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl p-8 border border-slate-200 dark:border-slate-800 shadow-sm transition-all hover:shadow-md hover:border-violet-300 dark:hover:border-violet-800">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="size-10 rounded-xl bg-fuchsia-100 dark:bg-fuchsia-900/30 flex items-center justify-center text-fuchsia-600 dark:text-fuchsia-400">
-                                    <span className="material-symbols-outlined text-xl">palette</span>
+                        <Card padding="md" className="space-y-5">
+                            <div className="flex items-center gap-3">
+                                <div className="size-9 rounded-lg bg-[var(--color-surface-hover)] text-[var(--color-text-subtle)] flex items-center justify-center">
+                                    <span className="material-symbols-outlined text-[18px]">palette</span>
                                 </div>
                                 <div>
-                                    <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">{t('flowStages.socialCampaignConcept.visual.title')}</h3>
-                                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">{t('flowStages.socialCampaignConcept.visual.subtitle')}</p>
+                                    <h3 className="text-base font-bold text-[var(--color-text-main)]">
+                                        {t('flowStages.socialCampaignConcept.visual.title')}
+                                    </h3>
+                                    <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
+                                        {t('flowStages.socialCampaignConcept.visual.subtitle')}
+                                    </p>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div>
-                                    <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-3 block opacity-70">{t('flowStages.socialCampaignConcept.visual.descriptionLabel')}</label>
-                                    <textarea
-                                        className="w-full h-32 bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-800 rounded-2xl p-4 text-sm font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:border-fuchsia-500 focus:ring-4 focus:ring-fuchsia-500/10 transition-all resize-none leading-relaxed"
-                                        placeholder={t('flowStages.socialCampaignConcept.visual.descriptionPlaceholder')}
-                                        value={conceptData.visualDirection}
-                                        onChange={(e) => updateConcept({ visualDirection: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-3 block opacity-70">{t('flowStages.socialCampaignConcept.visual.moodLabel')}</label>
+                                <Textarea
+                                    label={t('flowStages.socialCampaignConcept.visual.descriptionLabel')}
+                                    className="min-h-[140px] focus:border-[var(--color-primary)]"
+                                    placeholder={t('flowStages.socialCampaignConcept.visual.descriptionPlaceholder')}
+                                    value={conceptData.visualDirection}
+                                    onChange={(e) => updateConcept({ visualDirection: e.target.value })}
+                                />
+                                <div className="flex flex-col gap-2">
+                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">
+                                        {t('flowStages.socialCampaignConcept.visual.moodLabel')}
+                                    </label>
                                     <div className="flex flex-wrap gap-2">
-                                        {MOODS.map((mood) => (
-                                            <button
-                                                key={mood.id}
-                                                onClick={() => updateConcept({ mood: mood.id })}
-                                                className={`px-3 py-2 text-[10px] font-black rounded-xl border-2 transition-all ${conceptData.mood === mood.id
-                                                    ? 'bg-fuchsia-600 text-white border-fuchsia-600 shadow-lg shadow-fuchsia-200 dark:shadow-none'
-                                                    : 'bg-white dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-500 hover:border-fuchsia-200'
-                                                    }`}
-                                            >
-                                                {mood.label}
-                                            </button>
-                                        ))}
+                                        {MOODS.map((mood) => {
+                                            const isActive = conceptData.mood === mood.id;
+                                            return (
+                                                <button
+                                                    key={mood.id}
+                                                    type="button"
+                                                    onClick={() => updateConcept({ mood: mood.id })}
+                                                    aria-pressed={isActive}
+                                                    className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${isActive
+                                                        ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-[var(--color-primary)]'
+                                                        : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] border-[var(--color-surface-border)] hover:border-[var(--color-text-subtle)] hover:text-[var(--color-text-main)]'
+                                                        }`}
+                                                >
+                                                    {mood.label}
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </Card>
                     </div>
 
-                    {/* Right Column: Hooks & Themes */}
                     <div className="lg:col-span-4 space-y-6">
-                        {/* Elevator Pitch / Hook */}
-                        <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest mb-4 opacity-50 flex items-center gap-2">
-                                <span className="material-symbols-outlined text-[16px]">anchor</span>
-                                {t('flowStages.socialCampaignConcept.hook.title')}
-                            </h3>
-                            <textarea
-                                className="w-full h-24 bg-slate-50 dark:bg-slate-800/50 border-2 border-slate-100 dark:border-slate-800 rounded-xl p-3 text-xs md:text-sm font-bold text-slate-700 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all resize-none leading-snug"
+                        <Card padding="md" className="space-y-3">
+                            <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)]">anchor</span>
+                                <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
+                                    {t('flowStages.socialCampaignConcept.hook.title')}
+                                </h3>
+                            </div>
+                            <Textarea
+                                className="min-h-[120px] focus:border-[var(--color-primary)]"
                                 placeholder={t('flowStages.socialCampaignConcept.hook.placeholder')}
                                 value={conceptData.hook}
                                 onChange={(e) => updateConcept({ hook: e.target.value })}
                             />
-                        </div>
+                        </Card>
 
-                        {/* Content Pillars / Themes */}
-                        <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest opacity-50 flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-[16px]">view_column</span>
-                                    {t('flowStages.socialCampaignConcept.themes.title')}
-                                </h3>
-                                <button onClick={addTheme} className="size-6 bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 text-slate-500 hover:text-violet-600 rounded-full flex items-center justify-center transition-all">
-                                    <span className="material-symbols-outlined text-[16px]">add</span>
-                                </button>
+                        <Card padding="md" className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)]">view_column</span>
+                                    <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
+                                        {t('flowStages.socialCampaignConcept.themes.title')}
+                                    </h3>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={addTheme}
+                                    title={t('flowStages.socialCampaignConcept.themes.placeholder')}
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">add</span>
+                                </Button>
                             </div>
 
                             <div className="space-y-3">
-                                {conceptData.themes.length === 0 && (
-                                    <div className="text-center py-6 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-xl">
-                                        <p className="text-[10px] font-bold text-slate-400 uppercase">{t('flowStages.socialCampaignConcept.themes.empty')}</p>
+                                {conceptData.themes.length === 0 ? (
+                                    <div className="rounded-xl border border-dashed border-[var(--color-surface-border)] p-4 text-center text-xs text-[var(--color-text-muted)]">
+                                        {t('flowStages.socialCampaignConcept.themes.empty')}
                                     </div>
+                                ) : (
+                                    conceptData.themes.map((theme, i) => (
+                                        <div key={i} className="flex items-center gap-2">
+                                            <span className="text-[10px] font-semibold text-[var(--color-text-subtle)] w-5 text-right">{i + 1}</span>
+                                            <input
+                                                type="text"
+                                                value={theme}
+                                                onChange={(e) => updateTheme(i, e.target.value)}
+                                                placeholder={t('flowStages.socialCampaignConcept.themes.placeholder').replace('{index}', `${i + 1}`)}
+                                                className="flex-1 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] px-3 py-2 text-sm text-[var(--color-text-main)] placeholder:text-[var(--color-text-subtle)] transition-colors focus:border-[var(--color-primary)]"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeTheme(i)}
+                                                className="p-1 rounded-lg text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                                            >
+                                                <span className="material-symbols-outlined text-[16px]">close</span>
+                                            </button>
+                                        </div>
+                                    ))
                                 )}
-                                {conceptData.themes.map((theme, i) => (
-                                    <div key={i} className="flex items-center gap-2 animate-in fade-in slide-in-from-left-2 duration-300">
-                                        <span className="text-[10px] font-black text-slate-300 w-4">{i + 1}</span>
-                                        <input
-                                            type="text"
-                                            value={theme}
-                                            onChange={(e) => updateTheme(i, e.target.value)}
-                                            className="flex-1 bg-slate-50 dark:bg-slate-800 border-b-2 border-slate-100 dark:border-slate-700 hover:border-violet-200 focus:border-violet-500 px-2 py-1.5 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none transition-all rounded-t-md"
-                                            placeholder={t('flowStages.socialCampaignConcept.themes.placeholder').replace('{index}', `${i + 1}`)}
-                                        />
-                                        <button onClick={() => removeTheme(i)} className="text-slate-300 hover:text-rose-500 transition-colors">
-                                            <span className="material-symbols-outlined text-[16px]">close</span>
-                                        </button>
-                                    </div>
-                                ))}
                             </div>
-                        </div>
+                        </Card>
 
-                        {/* Navigation Action */}
-                        <div className="pt-4">
+                        <div>
                             <Button
-                                className="w-full h-12 rounded-xl bg-slate-900 dark:bg-white hover:bg-violet-600 dark:hover:bg-violet-500 text-white dark:text-slate-900 hover:text-white font-black text-xs uppercase tracking-[.2em] shadow-lg shadow-slate-200 dark:shadow-none transition-all flex items-center justify-center gap-2 group"
+                                className="w-full"
+                                size="lg"
                                 onClick={() => onUpdate({ stage: 'Strategy' })}
                             >
                                 {t('flowStages.socialCampaignConcept.actions.advance')}
-                                <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                             </Button>
                         </div>
                     </div>

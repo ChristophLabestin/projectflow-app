@@ -3,7 +3,6 @@
     "scripts": {
         "lint": "eslint --ext .js,.ts .",
         "build": "tsc",
-        "postbuild": "cp ../dist/index.html ./landing-page-index.html || echo 'Warning: ../dist/index.html not found. Make sure to build the web app first.'",
         "build:watch": "tsc --watch",
         "serve": "npm run build && firebase emulators:start --only functions",
         "shell": "npm run build && firebase functions:shell",

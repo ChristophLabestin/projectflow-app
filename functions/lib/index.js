@@ -14,7 +14,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.blogMeta = exports.sendContactFormEmail = exports.confirmNewsletterSignup = exports.requestNewsletterSignup = exports.confirmWaitlist = exports.requestWaitlist = exports.sendInvitation = exports.onNotificationCreated = exports.manageCategories = exports.getCategories = exports.onBlogPostWrite = exports.getBlogPosts = exports.createBlogPost = exports.api = exports.newsletterUnsubscribe = exports.newsletterSubscribe = exports.testSMTPConnection = void 0;
+exports.sendContactFormEmail = exports.confirmNewsletterSignup = exports.requestNewsletterSignup = exports.confirmWaitlist = exports.requestWaitlist = exports.sendInvitation = exports.onNotificationCreated = exports.manageCategories = exports.getCategories = exports.onBlogPostWrite = exports.getBlogPosts = exports.createBlogPost = exports.api = exports.newsletterUnsubscribe = exports.newsletterSubscribe = exports.testSMTPConnection = void 0;
 require("./init"); // Ensure init runs
 const email_1 = require("./email");
 Object.defineProperty(exports, "testSMTPConnection", { enumerable: true, get: function () { return email_1.testSMTPConnection; } });
@@ -41,10 +41,5 @@ Object.defineProperty(exports, "requestNewsletterSignup", { enumerable: true, ge
 Object.defineProperty(exports, "confirmNewsletterSignup", { enumerable: true, get: function () { return newsletter_public_1.confirmNewsletterSignup; } });
 const contact_1 = require("./contact");
 Object.defineProperty(exports, "sendContactFormEmail", { enumerable: true, get: function () { return contact_1.sendContactFormEmail; } });
-const blogMetaFunction_1 = require("./blogMetaFunction");
-const path = require("path");
-const init_1 = require("./init");
-const blogMeta = (0, blogMetaFunction_1.createBlogMetaFunction)(init_1.db, path.join(__dirname, '../landing-page-index.html'));
-exports.blogMeta = blogMeta;
 __exportStar(require("./passkeys"), exports);
 //# sourceMappingURL=index.js.map
