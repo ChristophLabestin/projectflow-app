@@ -3835,7 +3835,16 @@ export const linkWithFacebook = async (): Promise<{ accessToken: string, user: a
     provider.addScope('public_profile');
 
     try {
-        const result = await linkWithPopup(user, provider);
+        // Check if already linked
+        const isLinked = user.providerData.some(p => p.providerId === 'facebook.com');
+
+        let result;
+        if (isLinked) {
+            result = await reauthenticateWithPopup(user, provider);
+        } else {
+            result = await linkWithPopup(user, provider);
+        }
+
         const credential = FacebookAuthProvider.credentialFromResult(result);
         if (!credential?.accessToken) {
             throw new Error("Failed to get Facebook access token");
