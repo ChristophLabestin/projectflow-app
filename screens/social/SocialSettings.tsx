@@ -124,22 +124,35 @@ export const SocialSettings = () => {
         }
     };
 
-    const handleMfaSuccess = async () => {
-        // Did success! The resolver.resolveSignIn() inside the modal has already
-        // completed the authentication/linking process. 
-        // We do NOT need to call handleConnect again (that causes the loop/conflict).
-
+    const handleMfaSuccess = async (credential?: any) => {
         setShowMfaModal(false);
         setMfaResolver(null);
+
+        // If we have a credential from the re-authentication/link, we can use its access token
+        // to complete the setup (which involves fetching Instagram pages) WITHOUT triggering
+        // another auth popup loop.
+        if (credential && pendingPlatform) {
+            try {
+                // Extract the Facebook Access Token from the credential
+                const fbCredential = FacebookAuthProvider.credentialFromResult(credential);
+                const accessToken = fbCredential?.accessToken;
+
+                if (accessToken) {
+                    await connectIntegration(projectId!, pendingPlatform, accessToken);
+                    showSuccess(t('social.settings.accounts.toast.connected'));
+                } else {
+                    console.warn("No access token found in MFA credential result");
+                    showSuccess("Linked! Please click 'Complete Setup' if needed.");
+                }
+            } catch (error) {
+                console.error("Post-MFA setup failed:", error);
+                showError("Linked, but setup failed. Click 'Complete Setup'.");
+            }
+        } else {
+            showSuccess(t('social.settings.accounts.toast.connected'));
+        }
+
         setPendingPlatform(null);
-
-        // Refresh the page state or show success
-        showSuccess(t('social.settings.accounts.toast.connected'));
-
-        // Use a small timeout to allow Firebase auth state to propagate if needed
-        setTimeout(() => {
-            // Force re-fetch of integrations if needed, handled by listeners usually
-        }, 1000);
     };
 
     const handleDisconnect = async (integrationId: string) => {

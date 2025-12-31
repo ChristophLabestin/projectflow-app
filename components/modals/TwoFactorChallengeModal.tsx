@@ -9,7 +9,7 @@ interface TwoFactorChallengeModalProps {
     isOpen: boolean;
     onClose: () => void;
     resolver: MultiFactorResolver | null;
-    onSuccess: () => void;
+    onSuccess: (credential?: any) => void;
 }
 
 export const TwoFactorChallengeModal: React.FC<TwoFactorChallengeModalProps> = ({ isOpen, onClose, resolver, onSuccess }) => {
@@ -25,9 +25,9 @@ export const TwoFactorChallengeModal: React.FC<TwoFactorChallengeModalProps> = (
         try {
             const hint = resolver.hints[0];
             const assertion = TotpMultiFactorGenerator.assertionForSignIn(hint.uid, verificationCode);
-            await resolver.resolveSignIn(assertion);
+            const result = await resolver.resolveSignIn(assertion);
             showSuccess('Verification successful!');
-            onSuccess();
+            onSuccess(result as any);
             onClose();
         } catch (error: any) {
             console.error(error);

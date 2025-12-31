@@ -3867,12 +3867,17 @@ export const linkWithFacebook = async (): Promise<{ accessToken: string, user: a
     }
 };
 
-export const connectIntegration = async (projectId: string, platform: SocialPlatform) => {
+export const connectIntegration = async (projectId: string, platform: SocialPlatform, existingAccessToken?: string) => {
     const tenantId = resolveTenantId();
 
     try {
         if (platform === 'Instagram' || platform === 'Facebook') {
-            const { accessToken } = await linkWithFacebook();
+            let accessToken = existingAccessToken;
+
+            if (!accessToken) {
+                const result = await linkWithFacebook();
+                accessToken = result.accessToken;
+            }
 
             // Dynamic import to avoid circular dependencies if any, or just standard import works if structured well.
             // Assuming instagramService is available.
