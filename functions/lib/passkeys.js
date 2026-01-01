@@ -109,7 +109,7 @@ exports.verifyPasskeyRegistration = functions.region(REGION).https.onCall(async 
         // Use a safe ID for the document
         // credentialID is a Buffer, convert to base64url or hex
         const credentialIDBase64 = id;
-        await init_1.db.collection('users').doc(userId).collection('passkeys').doc(credentialIDBase64).set(Object.assign(Object.assign({}, newPasskey), { credentialID: Buffer.from(id, 'base64url'), credentialPublicKey: Buffer.from(publicKey), createdAt: admin.firestore.FieldValue.serverTimestamp(), label: `Passkey (${(navigatorDetails === null || navigatorDetails === void 0 ? void 0 : navigatorDetails.platform) || 'Unknown Device'})` }));
+        await init_1.db.collection('users').doc(userId).collection('passkeys').doc(credentialIDBase64).set(Object.assign(Object.assign({}, newPasskey), { credentialID: Buffer.from(id, 'base64url'), credentialPublicKey: Buffer.from(publicKey), createdAt: admin.firestore.FieldValue.serverTimestamp(), label: data.deviceName || `Passkey (${(navigatorDetails === null || navigatorDetails === void 0 ? void 0 : navigatorDetails.platform) || 'Unknown Device'})` }));
         // Cleanup challenge
         await init_1.db.collection('users').doc(userId).collection('passkey_challenges').doc('current').delete();
         return { success: true };

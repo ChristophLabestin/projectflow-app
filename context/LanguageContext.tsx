@@ -4,6 +4,8 @@ import { auth } from '../services/firebase';
 import { getUserProfile, updateUserData } from '../services/dataService';
 import en from '../locales/en';
 import de from '../locales/de';
+import { en as legalEn } from '../locales/legal-en';
+import { de as legalDe } from '../locales/legal-de';
 import { enUS, de as deLocale } from 'date-fns/locale';
 import { Locale } from 'date-fns';
 
@@ -21,13 +23,13 @@ interface LanguageProviderState {
     setLanguage: (language: Language) => void;
     dateFormat: DateFormat;
     setDateFormat: (format: DateFormat) => void;
-    t: (key: string, fallback?: string) => string;
+    t: (key: string, fallback?: string) => any;
     dateLocale: Locale;
 }
 
-const translations: Record<Language, Record<string, string>> = {
-    en,
-    de,
+const translations: Record<Language, Record<string, any>> = {
+    en: { ...en, ...legalEn },
+    de: { ...de, ...legalDe },
 };
 
 const initialState: LanguageProviderState = {
@@ -91,10 +93,48 @@ export function LanguageProvider({
 
     const t = useMemo(() => {
         return (key: string, fallback?: string) => {
-            const translated = translations[language]?.[key];
-            if (translated) return translated;
-            const english = translations.en?.[key];
-            return english || fallback || key;
+            const currentTranslations = translations[language];
+
+            // 1. Try direct lookup (fast path for flat keys)
+            if (currentTranslations[key] !== undefined) {
+                return currentTranslations[key];
+            }
+
+            // 2. Try nested lookup (for structured legal keys)
+            const parts = key.split('.');
+            let value: any = currentTranslations;
+
+            for (const part of parts) {
+                if (value && typeof value === 'object' && part in value) {
+                    value = value[part];
+                } else {
+                    value = undefined;
+                    break;
+                }
+            }
+
+            if (value !== undefined) return value;
+
+
+            // 3. Fallback to English (Deep)
+            const englishTranslations = translations.en;
+            // 3a. Direct English lookup
+            if (englishTranslations[key] !== undefined) {
+                return englishTranslations[key];
+            }
+
+            // 3b. Nested English lookup
+            value = englishTranslations;
+            for (const part of parts) {
+                if (value && typeof value === 'object' && part in value) {
+                    value = value[part];
+                } else {
+                    value = undefined;
+                    break;
+                }
+            }
+
+            return value !== undefined ? value : (fallback || key);
         };
     }, [language]);
 

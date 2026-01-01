@@ -66,6 +66,7 @@ import { HelpCenterDrawer } from './components/help/HelpCenterDrawer';
 import { HelpCenterFloatingButton } from './components/help/HelpCenterFloatingButton';
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { useLanguage } from './context/LanguageContext';
+import LegalPage from './screens/LegalPage';
 
 const RequireAuth = ({ children }: { children?: React.ReactNode }) => {
     const location = useLocation();
@@ -84,7 +85,7 @@ const RequireAuth = ({ children }: { children?: React.ReactNode }) => {
 // Root Layout Component to host global modals dependent on Router
 const RootLayout = () => {
     const location = useLocation();
-    const isPublicRoute = /^(\/login|\/register|\/invite|\/invite-project|\/join|\/join-workspace|\/auth\/action)/.test(location.pathname);
+    const isPublicRoute = /^(\/login|\/register|\/invite|\/invite-project|\/join|\/join-workspace|\/auth\/action|\/legal)/.test(location.pathname);
 
     return (
         <>
@@ -151,6 +152,7 @@ const App = () => {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Login />} />
                 <Route path="/auth/action" element={<AuthAction />} />
+                <Route path="/legal/:type" element={<LegalPage />} />
                 <Route path="/invite/:tenantId" element={<InviteLanding />} />
                 <Route path="/invite-project/:projectId" element={<ProjectInviteLanding />} />
                 <Route path="/join/:inviteLinkId" element={<JoinProjectViaLink />} />

@@ -31,7 +31,6 @@ import { getUserProfile, linkWithGithub, resetUserOnboarding } from '../services
 import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
 import { registerPasskey, shouldAutoPrompt, setAutoPrompt } from '../services/passkeyService';
 import { Checkbox } from '../components/ui/Checkbox';
-import LegalOverlay, { LegalPageType } from '../components/LegalOverlay';
 import { AnimatePresence } from 'framer-motion';
 
 type SettingsTab = 'account' | 'preferences' | 'security' | 'general' | 'billing' | 'email' | 'integrations' | 'prebeta';
@@ -51,8 +50,7 @@ export const Settings = () => {
     const [aiUsage, setAiUsage] = useState<AIUsage | null>(null);
 
     // Legal Page State
-    const [showLegal, setShowLegal] = useState(false);
-    const [legalPage, setLegalPage] = useState<LegalPageType>('impressum');
+
 
     // Form State
     const [name, setName] = useState('');
@@ -1407,16 +1405,29 @@ export const Settings = () => {
 
                     {/* Legal Footer */}
                     <div className="mt-8 px-3 pt-6 border-t border-[var(--color-surface-border)]">
-                        <button
-                            onClick={() => {
-                                setLegalPage('impressum');
-                                setShowLegal(true);
-                            }}
-                            className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
-                        >
-                            <span className="material-symbols-outlined text-[16px]">gavel</span>
-                            {t('legal.titles.impressum')} / {t('legal.titles.privacy')}
-                        </button>
+                        <div className="flex flex-col gap-2">
+                            <Link
+                                to="/legal/impressum"
+                                className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-[16px]">gavel</span>
+                                {t('legal.titles.impressum')}
+                            </Link>
+                            <Link
+                                to="/legal/privacy"
+                                className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-[16px]">policy</span>
+                                {t('legal.titles.privacy')}
+                            </Link>
+                            <Link
+                                to="/legal/terms"
+                                className="flex items-center gap-2 text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
+                            >
+                                <span className="material-symbols-outlined text-[16px]">description</span>
+                                {t('legal.titles.terms')}
+                            </Link>
+                        </div>
                     </div>
                 </aside>
 
@@ -1524,13 +1535,6 @@ export const Settings = () => {
             />
 
             <AnimatePresence>
-                {showLegal && (
-                    <LegalOverlay
-                        page={legalPage}
-                        onClose={() => setShowLegal(false)}
-                        onNavigate={setLegalPage}
-                    />
-                )}
             </AnimatePresence>
         </div>
     );

@@ -110,9 +110,14 @@ export const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, placeho
                     <input
                         type="time"
                         className="w-full bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none transition-all text-[var(--color-text-main)]"
+                        value={value || ''}
                         onChange={(e) => {
                             onChange(e.target.value);
-                            setIsOpen(false);
+                        }}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                                setIsOpen(false);
+                            }
                         }}
                         onClick={(e) => e.stopPropagation()}
                     />

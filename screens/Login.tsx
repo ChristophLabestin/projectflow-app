@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, updateProfile, getMultiFactorResolver, TotpMultiFactorGenerator, signInWithCustomToken } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { bootstrapTenantForCurrentUser, getActiveTenantId } from '../services/dataService';
@@ -339,6 +339,21 @@ export const Login = () => {
                             {isRegister ? t('login.toggle.logIn') : t('login.toggle.createAccount')}
                         </button>
                     </p>
+
+                    <div className="mt-8 flex justify-center gap-6 text-xs text-[var(--color-text-muted)]">
+                        <Link
+                            to="/legal/privacy"
+                            className="hover:text-[var(--color-text-main)] transition-colors hover:underline"
+                        >
+                            {t('legal.nav.privacy')}
+                        </Link>
+                        <Link
+                            to="/legal/terms"
+                            className="hover:text-[var(--color-text-main)] transition-colors hover:underline"
+                        >
+                            {t('legal.nav.terms')}
+                        </Link>
+                    </div>
                 </div>
             </div>
         </div>
