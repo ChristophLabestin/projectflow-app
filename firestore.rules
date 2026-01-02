@@ -27,7 +27,9 @@ service cloud.firestore {
 
     // Check if user is at least a Viewer (any role)
     function isProjectMember(projectData) {
-      return request.auth.uid in projectData.roles;
+      return (projectData.roles != null && request.auth.uid in projectData.roles) ||
+             (projectData.memberIds != null && request.auth.uid in projectData.memberIds) ||
+             projectData.ownerId == request.auth.uid;
     }
 
     // Check if user is Owner or Editor
@@ -139,16 +141,16 @@ service cloud.firestore {
     match /social_assets/{docId} { allow read, write: if isResourceOwner(resource.data); }
 
     // --- Landing Page & Public Collections ---
-    
-    // Blog Posts: Publicly readable for the landing page/blog
-    // Writes are handled by Cloud Functions (API) or Admin SDK
-    match /blog_posts/{slug} {
-      allow read: if true;
-    }
 
-    // Note: 'waitlist', 'newsletter_pending', 'newsletter_subscribers', 'contact' 
-    // are managed exclusively via Cloud Functions (Admin SDK). 
-    // Direct client access is denied by default (match /{document=**}).
+    // Public Write Access (Landing Page Forms)
+    // Note: These allow unauthenticated writes. Ensure client-side validation or trigger-based validation exists.
+    match /waitlist/{email} { allow write: if true; }
+    match /newsletter/{email} { allow write: if true; }
+    match /contact_submissions/{doc} { allow create: if true; }
+
+    // Public Read Access (Content)
+    match /blog_posts/{post} { allow read: if true; }
+    match /news/{doc} { allow read: if true; }
     
     // Explicit deny for everything else (default)
     match /{document=**} {

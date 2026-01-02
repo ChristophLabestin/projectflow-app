@@ -1959,39 +1959,41 @@ export const getUserTasks = async (): Promise<Task[]> => {
     const user = auth.currentUser;
     if (!user) return [];
 
-    // Fallback Strategy: Scan current tenant projects manually.
-    // This avoids needing complex CollectionGroup indexes for now.
-
-    const tenantId = resolveTenantId();
-    const projectsRef = projectsCollection(tenantId);
-    let allProjects: Project[] = [];
     try {
-        const snap = await getDocs(projectsRef);
-        allProjects = snap.docs.map(d => ({ id: d.id, ...d.data() } as Project));
-    } catch (e) {
-        console.warn("Failed to fetch projects for user tasks", e);
+        // Fetch accessible projects efficiently (Owned + Shared)
+        // We reuse the existing functions which use filtered queries compatible with security rules.
+        const [myProjects, sharedProjects] = await Promise.all([
+            getUserProjects(),
+            getSharedProjects()
+        ]);
+
+        // Deduplicate in case of overlap (though logically distinct usually)
+        const allProjects = [...myProjects, ...sharedProjects];
+        const uniqueProjects = Array.from(new Map(allProjects.map(p => [p.id, p])).values());
+
+        const taskPromises = uniqueProjects.map(async p => {
+            try {
+                const projectTasks = await getProjectTasks(p.id, p.tenantId);
+                return projectTasks.map(t => ({ ...t, tenantId: p.tenantId }));
+            } catch (e) {
+                console.warn(`Failed to fetch tasks for project ${p.id}`, e);
+                return [];
+            }
+        });
+
+        const results = await Promise.all(taskPromises);
+        const allTasks = results.flat();
+
+        // Client-side filtering for assignment (Business Logic)
+        return allTasks.filter(t =>
+            t.assigneeId === user.uid ||
+            (t.assigneeIds && t.assigneeIds.includes(user.uid)) ||
+            (t.ownerId === user.uid && !t.assigneeId && (!t.assigneeIds || t.assigneeIds.length === 0))
+        );
+    } catch (error) {
+        console.error("getUserTasks failed", error);
+        return [];
     }
-
-    const relevantProjects = allProjects.filter(p => p.memberIds?.includes(user.uid) || p.ownerId === user.uid);
-
-    const taskPromises = relevantProjects.map(async p => {
-        try {
-            const projectTasks = await getProjectTasks(p.id, p.tenantId);
-            return projectTasks.map(t => ({ ...t, tenantId: p.tenantId }));
-        } catch (e) {
-            return [];
-        }
-    });
-
-    const results = await Promise.all(taskPromises);
-    const allTasks = results.flat();
-
-    // Filter to tasks where user is the assignee or owner (if no assignee)
-    return allTasks.filter(t =>
-        t.assigneeId === user.uid ||
-        (t.assigneeIds && t.assigneeIds.includes(user.uid)) ||
-        (t.ownerId === user.uid && !t.assigneeId && (!t.assigneeIds || t.assigneeIds.length === 0))
-    );
 };
 
 export const getUnassignedTasks = async (): Promise<Task[]> => {

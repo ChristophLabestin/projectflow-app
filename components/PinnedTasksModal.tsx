@@ -80,7 +80,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
     const [statusMenuOpen, setStatusMenuOpen] = useState(false);
     const statusMenuRef = useRef<HTMLDivElement | null>(null);
 
-    const { pinnedItems } = usePinnedTasks();
+    const { pinnedItems, unpinItem } = usePinnedTasks();
     const confirm = useConfirm();
     const { t } = useLanguage();
 
@@ -379,7 +379,38 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
     const currentStatus = item?.status || 'Open';
 
     if (loading) return <div className="p-8 text-center text-[var(--color-text-subtle)]">{t('pinnedTasks.loading')}</div>;
-    if (!item) return <div className="p-8 text-center text-[var(--color-text-subtle)]">{t('pinnedTasks.empty.itemNotFound')}</div>;
+    if (!item) {
+        const pinnedItem = pinnedItems.find(i => i.id === itemId);
+        if (pinnedItem) {
+            return (
+                <div className="flex flex-col items-center justify-center p-8 h-full text-center">
+                    <div className="w-16 h-16 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center mb-4">
+                        <span className="material-symbols-outlined text-3xl text-[var(--color-text-muted)]">sentiment_dissatisfied</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-2">{t('pinnedTasks.errors.unavailableTitle')}</h3>
+                    <p className="text-sm text-[var(--color-text-subtle)] mb-6 max-w-[250px]">
+                        {t('pinnedTasks.errors.unavailableBody')}
+                    </p>
+                    <div className="bg-[var(--color-surface-hover)] p-4 rounded-xl mb-6 w-full max-w-[300px] border border-[var(--color-surface-border)]">
+                        <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1">{t('pinnedTasks.errors.pinnedAs')}</p>
+                        <p className="font-medium text-[var(--color-text-main)] truncate">{pinnedItem.title}</p>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        onClick={() => {
+                            unpinItem(itemId);
+                            if (onClose) onClose();
+                        }}
+                        className="text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
+                    >
+                        <span className="material-symbols-outlined text-lg mr-2">keep_off</span>
+                        {t('pinnedTasks.actions.unpinBroken')}
+                    </Button>
+                </div>
+            );
+        }
+        return <div className="p-8 text-center text-[var(--color-text-subtle)]">{t('pinnedTasks.empty.itemNotFound')}</div>;
+    }
 
     return (
         <div className="flex flex-col h-full animate-fade-in">
