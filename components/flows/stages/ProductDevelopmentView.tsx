@@ -296,7 +296,10 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                                     >
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-3 flex-1">
-                                                <div className={`flex items-center justify-center size-6 rounded-full text-xs font-bold transition-colors ${pProgress === 100 ? 'bg-emerald-500 text-white' : 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'}`}>
+                                                <div className={`flex items-center justify-center size-6 rounded-full text-xs font-bold transition-colors ${pProgress === 100
+                                                        ? 'bg-emerald-500 text-white'
+                                                        : 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                                                    }`}>
                                                     {pProgress === 100 ? <span className="material-symbols-outlined text-[14px]">check</span> : i + 1}
                                                 </div>
                                                 <input
