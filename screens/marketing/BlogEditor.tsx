@@ -601,14 +601,14 @@ export const BlogEditor = () => {
                             {isPublishing && status === 'draft' ? 'Saving...' : 'Save as Draft'}
                         </button>
 
-                        <button
+                        <Button
                             onClick={() => handleSave('published')}
                             disabled={isPublishing}
-                            className="px-4 py-2 rounded-lg text-sm font-medium bg-[var(--color-primary)] text-white dark:text-black hover:bg-[var(--color-primary-hover)] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                            className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--color-primary-hover)] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed gap-2"
                         >
                             {isPublishing && status === 'published' && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
                             {isPublishing && status === 'published' ? 'Publishing...' : 'Publish Post'}
-                        </button>
+                        </Button>
                     </div>
                 </div>
 

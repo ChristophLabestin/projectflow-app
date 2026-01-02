@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { AdData } from '../../../../types';
 import { motion } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { Button } from '../../../ui/Button';
 
 interface ModuleProps {
     adData: Partial<AdData>;
@@ -61,13 +62,13 @@ export const WarRoomModule: React.FC<ModuleProps> = ({ adData, updateAdData, onN
                             <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-6">Target Zones</h3>
                             <div className="flex flex-wrap gap-3">
                                 {['North America', 'Europe', 'Australia'].map(region => (
-                                    <button
+                                    <Button
                                         key={region}
-                                        className="px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-bold hover:scale-105 transition-transform flex items-center gap-2 shadow-lg"
+                                        className="px-6 py-3 h-auto rounded-xl font-bold hover:scale-105 transition-transform flex items-center gap-2 shadow-lg"
                                     >
                                         <span className="material-symbols-outlined text-sm">check_circle</span>
                                         {region}
-                                    </button>
+                                    </Button>
                                 ))}
                                 <button className="px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-xl font-bold hover:bg-emerald-50 hover:text-emerald-600 transition-colors flex items-center gap-2 border-2 border-dashed border-slate-300 dark:border-slate-700">
                                     <span className="material-symbols-outlined text-sm">add</span>

@@ -233,7 +233,7 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                     {/* Advance Action */}
                     <div className="mt-4">
                         <Button
-                            className="w-full h-12 text-base justify-between group bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:opacity-90 shadow-lg hover:shadow-xl transition-all rounded-xl border-none"
+                            className="w-full h-12 text-base justify-between group hover:opacity-90 shadow-lg hover:shadow-xl transition-all rounded-xl border-none"
                             onClick={() => onUpdate({ stage: 'Development' })}
                         >
                             <span className="font-bold pl-1">{t('flowStages.productDefinition.actions.advance')}</span>

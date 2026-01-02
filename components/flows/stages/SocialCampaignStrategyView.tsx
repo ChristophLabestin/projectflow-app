@@ -543,7 +543,7 @@ export const SocialCampaignStrategyView: React.FC<SocialCampaignStrategyViewProp
                                 </div>
                                 <Button
                                     onClick={addPhase}
-                                    className="h-9 px-4 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-all"
+                                    className="h-9 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-all"
                                 >
                                     <span className="material-symbols-outlined text-[18px]">add</span>
                                     {t('flowStages.socialCampaignStrategy.timeline.addPhase')}
@@ -618,12 +618,13 @@ export const SocialCampaignStrategyView: React.FC<SocialCampaignStrategyViewProp
                                                                     <span className="material-symbols-outlined text-[16px]">delete</span>
                                                                     {t('flowStages.socialCampaignStrategy.timeline.deletePhase')}
                                                                 </button>
-                                                                <button
+                                                                <Button
                                                                     onClick={(e) => { e.stopPropagation(); setEditingPhaseId(null); }}
-                                                                    className="px-6 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest"
+                                                                    size="sm"
+                                                                    className="px-6 py-2 h-auto rounded-xl text-[10px] font-black uppercase tracking-widest"
                                                                 >
                                                                     {t('flowStages.socialCampaignStrategy.timeline.savePhase')}
-                                                                </button>
+                                                                </Button>
                                                             </div>
                                                         </div>
                                                     ) : (
@@ -863,12 +864,13 @@ export const SocialCampaignStrategyView: React.FC<SocialCampaignStrategyViewProp
                                                                 <span className="material-symbols-outlined text-[16px]">delete</span>
                                                                 {t('flowStages.socialCampaignStrategy.tactics.remove')}
                                                             </button>
-                                                            <button
+                                                            <Button
                                                                 onClick={(e) => { e.stopPropagation(); setEditingPlatformId(null); }}
-                                                                className="px-6 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md"
+                                                                size="sm"
+                                                                className="px-6 py-2 h-auto rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md"
                                                             >
                                                                 {t('flowStages.socialCampaignStrategy.tactics.save')}
-                                                            </button>
+                                                            </Button>
                                                         </div>
                                                     </div>
                                                 ) : (
@@ -1133,12 +1135,13 @@ export const SocialCampaignStrategyView: React.FC<SocialCampaignStrategyViewProp
                                                             <span className="material-symbols-outlined text-[16px]">delete</span>
                                                             {t('flowStages.socialCampaignStrategy.audience.remove')}
                                                         </button>
-                                                        <button
+                                                        <Button
                                                             onClick={(e) => { e.stopPropagation(); setEditingAudienceIndex(null); }}
-                                                            className="px-4 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-[10px] font-black uppercase tracking-widest"
+                                                            size="sm"
+                                                            className="px-4 py-1.5 h-auto rounded-lg text-[10px] font-black uppercase tracking-widest"
                                                         >
                                                             {t('flowStages.socialCampaignStrategy.audience.save')}
-                                                        </button>
+                                                        </Button>
                                                     </div>
                                                 </div>
                                             ) : (
@@ -1234,7 +1237,7 @@ export const SocialCampaignStrategyView: React.FC<SocialCampaignStrategyViewProp
                         {/* Navigation Action */}
                         <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
                             <Button
-                                className="w-full h-12 rounded-xl bg-slate-900 dark:bg-white hover:bg-rose-600 dark:hover:bg-rose-500 text-white dark:text-slate-900 hover:text-white font-black text-xs uppercase tracking-[.2em] shadow-lg shadow-slate-200 dark:shadow-none transition-all flex items-center justify-center gap-2 group"
+                                className="w-full h-12 rounded-xl hover:bg-rose-600 dark:hover:bg-rose-500 hover:text-white font-black text-xs uppercase tracking-[.2em] shadow-lg shadow-slate-200 dark:shadow-none transition-all flex items-center justify-center gap-2 group"
                                 onClick={() => onUpdate({ stage: 'Planning' })}
                             >
                                 {t('flowStages.socialCampaignStrategy.actions.advance')}

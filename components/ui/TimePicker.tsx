@@ -12,7 +12,7 @@ interface TimePickerProps {
 
 export const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, placeholder = "Select time", className = "", align = 'left', label }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [popoverPosition, setPopoverPosition] = useState({ top: 0, left: 0 });
+    const [popoverPosition, setPopoverPosition] = useState<{ top?: number; bottom?: number; left: number; transformOrigin?: string }>({ top: 0, left: 0 });
     const containerRef = useRef<HTMLDivElement>(null);
     const popoverRef = useRef<HTMLDivElement>(null);
 
@@ -21,6 +21,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, placeho
         if (isOpen && containerRef.current) {
             const rect = containerRef.current.getBoundingClientRect();
             const popoverWidth = 200;
+            const popoverHeight = 320; // Approximate height
 
             let left = align === 'right' ? rect.right - popoverWidth : rect.left;
             if (left + popoverWidth > window.innerWidth - 16) {
@@ -28,10 +29,22 @@ export const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, placeho
             }
             if (left < 16) left = 16;
 
-            setPopoverPosition({
-                top: rect.bottom + 8,
-                left: left,
-            });
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const showAbove = spaceBelow < popoverHeight;
+
+            if (showAbove) {
+                setPopoverPosition({
+                    bottom: window.innerHeight - rect.top + 8,
+                    left: left,
+                    transformOrigin: 'bottom left'
+                });
+            } else {
+                setPopoverPosition({
+                    top: rect.bottom + 8,
+                    left: left,
+                    transformOrigin: 'top left'
+                });
+            }
         }
     }, [isOpen, align]);
 
@@ -99,7 +112,9 @@ export const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, placeho
             style={{
                 position: 'fixed',
                 top: popoverPosition.top,
+                bottom: popoverPosition.bottom,
                 left: popoverPosition.left,
+                transformOrigin: popoverPosition.transformOrigin,
                 zIndex: 9999,
             }}
             className="p-2 bg-[var(--color-surface-card)] rounded-xl shadow-2xl border border-[var(--color-surface-border)] w-[200px] animate-scale-up"

@@ -9,6 +9,7 @@ import { MediaLibraryPage, mediaLibrarySections } from './pages/MediaLibraryPage
 import { SocialStudioPage, socialStudioSections } from './pages/SocialStudioPage';
 import { MarketingPage, marketingSections } from './pages/MarketingPage';
 import { AccountSettingsPage, accountSettingsSections } from './pages/AccountSettingsPage';
+import { SprintsPage, sprintsSections } from './pages/SprintsPage';
 
 export const helpCenterPages: HelpCenterPageDefinition[] = [
     {
@@ -37,6 +38,15 @@ export const helpCenterPages: HelpCenterPageDefinition[] = [
         keywords: ['tasks', 'issues', 'status', 'priority'],
         sections: tasksIssuesSections,
         component: TasksIssuesPage
+    },
+    {
+        id: 'sprints',
+        title: 'Sprints (Agile)',
+        description: 'Iterative delivery with backlogs, sprints, and boards.',
+        category: 'Workflows',
+        keywords: ['sprints', 'agile', 'scrum', 'backlog', 'kanban'],
+        sections: sprintsSections,
+        component: SprintsPage
     },
     {
         id: 'ideas-ai',
@@ -122,6 +132,9 @@ export const getHelpTargetForPath = (pathname: string): HelpCenterTarget => {
         return { pageId: 'account-settings' };
     }
     if (path.includes('/project/') || path.includes('/projects')) {
+        if (path.includes('/sprints')) {
+            return { pageId: 'sprints' };
+        }
         return { pageId: 'projects' };
     }
 

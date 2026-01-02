@@ -178,7 +178,7 @@ const ActionDock: React.FC<{
                 <Button variant="ghost" className="rounded-full hover:bg-amber-50 dark:hover:bg-amber-900/20 text-amber-600 text-xs px-4" onClick={onRequestChanges}>
                     {t('flowStages.socialCampaignReview.actions.requestChanges')}
                 </Button>
-                <Button onClick={onApprove} className="rounded-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:scale-105 active:scale-95 transition-all text-xs font-bold px-6 shadow-lg shadow-emerald-500/20">
+                <Button onClick={onApprove} className="rounded-full hover:scale-105 active:scale-95 transition-all text-xs font-bold px-6 shadow-lg shadow-emerald-500/20">
                     {t('flowStages.socialCampaignReview.actions.approve')}
                 </Button>
             </div>

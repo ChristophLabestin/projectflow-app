@@ -6,9 +6,11 @@ export interface Tenant {
     contactEmail?: string;
     smtpConfig?: SMTPConfig;
     members?: Member[];
+    roles?: { [userId: string]: WorkspaceRole }; // Map for O(1) access in rules
     createdAt?: any;
     updatedAt?: any;
     originIdeaId?: string;
+    AccessToModules?: string[];
 }
 
 export interface AIUsage {
@@ -23,6 +25,58 @@ export interface AIUsage {
 // Permission System Types
 export type ProjectRole = 'Owner' | 'Editor' | 'Viewer';
 export type WorkspaceRole = 'Owner' | 'Admin' | 'Member' | 'Guest';
+
+export type Permission =
+    // Project
+    | 'project.read'
+    | 'project.update'
+    | 'project.delete'
+    | 'project.invite'
+    | 'project.view_settings'
+    // Tasks
+    | 'task.create'
+    | 'task.update'
+    | 'task.delete'
+    | 'task.view'
+    | 'task.assign'
+    | 'task.comment'
+    // Issues
+    | 'issue.create'
+    | 'issue.update'
+    | 'issue.delete'
+    | 'issue.view'
+    // Ideas
+    | 'idea.create'
+    | 'idea.update'
+    | 'idea.delete'
+    | 'idea.view'
+    // Groups
+    | 'group.create'
+    | 'group.update'
+    | 'group.delete';
+
+export const ROLE_PERMISSIONS: Record<ProjectRole, Permission[]> = {
+    Owner: [
+        'project.read', 'project.update', 'project.delete', 'project.invite', 'project.view_settings',
+        'task.create', 'task.update', 'task.delete', 'task.view', 'task.assign', 'task.comment',
+        'issue.create', 'issue.update', 'issue.delete', 'issue.view',
+        'idea.create', 'idea.update', 'idea.delete', 'idea.view',
+        'group.create', 'group.update', 'group.delete'
+    ],
+    Editor: [
+        'project.read', 'project.invite', 'project.view_settings',
+        'task.create', 'task.update', 'task.delete', 'task.view', 'task.assign', 'task.comment',
+        'issue.create', 'issue.update', 'issue.delete', 'issue.view',
+        'idea.create', 'idea.update', 'idea.delete', 'idea.view',
+        'group.create', 'group.update', 'group.delete'
+    ],
+    Viewer: [
+        'project.read',
+        'task.view', 'task.comment',
+        'issue.view',
+        'idea.view'
+    ]
+};
 
 export interface ProjectMember {
     userId: string;
@@ -110,6 +164,7 @@ export interface Project {
     links?: { title: string; url: string; originIdeaId?: string; }[]; // Links shown in Overview
     externalResources?: { title: string; url: string; icon?: string; originIdeaId?: string; }[]; // Links shown in Sidebar
     members?: ProjectMember[]; // Team members with roles (replaces string[])
+    roles?: { [userId: string]: ProjectRole }; // Map for O(1) access in rules
     memberIds?: string[]; // IDs of all members for collectionGroup queries
     createdAt?: any; // Firestore Timestamp
     updatedAt?: any; // Firestore Timestamp
@@ -172,7 +227,7 @@ export interface Comment {
     originIdeaId?: string;
 }
 
-export type ProjectModule = 'tasks' | 'ideas' | 'mindmap' | 'activity' | 'issues' | 'milestones' | 'social' | 'marketing';
+export type ProjectModule = 'tasks' | 'ideas' | 'mindmap' | 'activity' | 'issues' | 'milestones' | 'social' | 'marketing' | 'accounting' | 'sprints';
 
 export interface Task {
     id: string;
@@ -201,6 +256,24 @@ export interface Task {
     completedAt?: any; // Firestore Timestamp
     originIdeaId?: string;
     dependencies?: string[]; // IDs of tasks that this task depends on
+    sprintId?: string; // Sprint ID
+}
+
+export interface Sprint {
+    id: string;
+    projectId: string;
+    name: string;
+    goal?: string;
+    startDate: string; // ISO
+    endDate: string; // ISO
+    status: 'Planning' | 'Active' | 'Completed' | 'Archived';
+    createdAt: any;
+    createdBy: string;
+    updatedAt: any;
+    originIdeaId?: string;
+    autoStart?: boolean; // If true, sprint automatically becomes Active on startDate
+    memberIds?: string[]; // IDs of users assigned to this sprint
+    joinRequests?: string[]; // IDs of users requesting to join
 }
 
 export interface SubTask {
@@ -712,6 +785,7 @@ export interface SocialPost {
     status: SocialPostStatus;
     scheduledFor?: string; // ISO string
     publishedAt?: string; // ISO string
+    error?: string;
     publishedUrl?: string; // New field
     createdBy: string;
     createdAt: any;

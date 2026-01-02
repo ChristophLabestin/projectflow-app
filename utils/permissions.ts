@@ -1,9 +1,10 @@
-import { ProjectRole, RoleCapabilities, Project, ProjectMember, WorkspaceRole, WorkspacePermissions, Tenant, Member } from '../types';
+import { ProjectRole, RoleCapabilities, Project, ProjectMember, WorkspaceRole, WorkspacePermissions, Tenant, Member, ROLE_PERMISSIONS as PROJECT_PERMISSIONS, Permission } from '../types';
 import { auth } from '../services/firebase';
 
 /**
  * Role Capabilities Matrix (Project)
  * Defines what each role can do in a project
+ * @deprecated Use ROLE_PERMISSIONS from types.ts and checkPermission(..., permission)
  */
 export const ROLE_CAPABILITIES: Record<ProjectRole, RoleCapabilities> = {
     Owner: {
@@ -90,7 +91,12 @@ export function getUserRole(project: Project | null, userId?: string): ProjectRo
     // Owner always has Owner role
     if (project.ownerId === userId) return 'Owner';
 
-    // Check if user is in members array
+    // 1. Check new roles map (O(1))
+    if (project.roles && project.roles[userId]) {
+        return project.roles[userId];
+    }
+
+    // 2. Fallback: Check if user is in members array
     if (!project.members || project.members.length === 0) return null;
 
     // Handle mixed format: iterate and check each member individually
@@ -144,6 +150,20 @@ export function getUserCapabilities(project: Project | null, userId?: string): R
     }
 
     return ROLE_CAPABILITIES[role];
+}
+
+/**
+ * Check if a user has a specific granular permission in a project
+ */
+export function hasPermission(
+    project: Project | null,
+    userId: string | undefined,
+    permission: Permission
+): boolean {
+    const role = getUserRole(project, userId);
+    if (!role) return false;
+
+    return PROJECT_PERMISSIONS[role].includes(permission);
 }
 
 // --- Workspace Permissions ---

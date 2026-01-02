@@ -13,7 +13,9 @@ import { sendContactFormEmail } from './contact';
 import { askCora, generateImage, editImage, callGemini } from './ai-service';
 import { getTikTokAuthUrl, tiktokCallback } from './tiktok';
 import { getYouTubeAuthUrl, youtubeCallback } from './youtube';
-import { checkScheduledPosts } from './scheduler';
+import { checkScheduledPosts, debugScheduler } from './scheduler';
+import { getFacebookAuthUrl, facebookCallback } from './facebook';
+
 
 
 export {
@@ -41,7 +43,10 @@ export {
     tiktokCallback,
     getYouTubeAuthUrl,
     youtubeCallback,
-    checkScheduledPosts
+    checkScheduledPosts,
+    debugScheduler,
+    getFacebookAuthUrl,
+    facebookCallback
 };
 export * from './passkeys';
 

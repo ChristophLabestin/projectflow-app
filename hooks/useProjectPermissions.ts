@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { Project, ProjectRole, RoleCapabilities } from '../types';
-import { getUserRole, getUserCapabilities, checkPermission } from '../utils/permissions';
+import { getUserRole, getUserCapabilities, checkPermission, hasPermission } from '../utils/permissions';
 import { auth } from '../services/firebase';
 
 /**
@@ -26,6 +26,7 @@ export function useProjectPermissions(project: Project | null) {
             capabilities,
             isOwner,
             can: (capability: keyof RoleCapabilities) => checkPermission(project, userId, capability),
+            hasPermission: (permission: import('../types').Permission) => hasPermission(project, userId, permission),
         };
     }, [project, currentUser?.uid]);
 

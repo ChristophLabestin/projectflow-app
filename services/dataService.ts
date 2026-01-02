@@ -498,7 +498,7 @@ const logActivity = async (
         user: payload.user || user.displayName || "User",
         userAvatar: payload.userAvatar || user.photoURL || "",
         action: payload.action,
-        target: payload.target,
+        target: payload.target || "Unknown",
         details: payload.details || "",
         relatedId: payload.relatedId || null,
         type: payload.type || "task",
@@ -1403,6 +1403,39 @@ export const joinProjectViaLink = async (
     );
 };
 
+// --- User Management ---
+
+export const getUsersByIds = async (userIds: string[], tenantId?: string): Promise<Member[]> => {
+    if (!userIds || userIds.length === 0) return [];
+
+    // Chunk the IDs into groups of 10 to avoid query limits
+    const chunks = [];
+    for (let i = 0; i < userIds.length; i += 10) {
+        chunks.push(userIds.slice(i, i + 10));
+    }
+
+    const members: Member[] = [];
+
+    for (const chunk of chunks) {
+        // Try global users collection first as it's the source of truth for profiles
+        const q = query(collection(db, USERS), where(documentId(), "in", chunk));
+        const snapshot = await getDocs(q);
+
+        snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            members.push({
+                uid: doc.id,
+                email: data.email,
+                displayName: data.displayName || 'Unknown User',
+                photoURL: data.photoURL,
+                // ... map other fields if needed
+            } as Member);
+        });
+    }
+
+    return members;
+};
+
 /**
  * Send an email invitation directly
  */
@@ -2101,7 +2134,11 @@ export const updateTaskFields = async (taskId: string, updates: Partial<Task>, p
     const oldData = taskSnap.data() as Task;
     const sanitized: Record<string, any> = {};
     Object.entries(updates).forEach(([key, value]) => {
-        if (value !== undefined) sanitized[key] = value;
+        if (value === null) {
+            sanitized[key] = deleteField();
+        } else if (value !== undefined) {
+            sanitized[key] = value;
+        }
     });
 
     if (sanitized.isCompleted !== undefined) {
@@ -3887,100 +3924,127 @@ export const connectIntegration = async (projectId: string, platform: SocialPlat
 
     try {
         if (platform === 'Instagram' || platform === 'Facebook') {
-            let accessToken = existingAccessToken;
 
-            if (!accessToken) {
-                const result = await linkWithFacebook();
-                accessToken = result.accessToken;
+            // 1. Initiate Headless Auth
+            const getAuthUrlFn = httpsCallable(functions, 'getFacebookAuthUrl');
+            const response = await getAuthUrlFn({ projectId, tenantId }) as any;
+            const authUrl = response.data.url;
+
+            const width = 600;
+            const height = 700;
+            const left = (window.screen.width / 2) - (width / 2);
+            const top = (window.screen.height / 2) - (height / 2);
+
+            const popup = window.open(authUrl, 'facebook_auth', `width=${width},height=${height},top=${top},left=${left}`);
+
+            if (!popup) {
+                throw new Error("Popup blocked. Please allow popups for this site.");
             }
 
-            // Dynamic import to avoid circular dependencies if any, or just standard import works if structured well.
-            // Assuming instagramService is available.
-            const { getInstagramAccounts, getInstagramProfile } = await import('./instagramService');
+            // 2. Wait for completion message
+            await new Promise<void>((resolve, reject) => {
+                const handleMessage = (event: MessageEvent) => {
+                    if (event.data?.type === 'FACEBOOK_CONNECTED') {
+                        window.removeEventListener('message', handleMessage);
+                        resolve();
+                    }
+                };
+                window.addEventListener('message', handleMessage);
 
+                // Poll check if popup closed without finishing
+                const timer = setInterval(() => {
+                    if (popup.closed) {
+                        clearInterval(timer);
+                        window.removeEventListener('message', handleMessage);
+                        // We don't reject here because sometimes it closes fast, but if we didn't get message it's a cancel.
+                        // Ideally we rely on user action or checking DB.
+                    }
+                }, 1000);
+            });
+
+            // 3. Find the 'PendingSetup' integration
+            // We wait a brief moment for Firestore to sync
+            await new Promise(r => setTimeout(r, 1000));
+
+            const integrationsRef = projectSubCollection(tenantId, projectId, SOCIAL_INTEGRATIONS);
+            const q = query(
+                integrationsRef,
+                where('platform', '==', 'FacebookData'),
+                where('status', '==', 'PendingSetup'),
+                orderBy('connectedAt', 'desc'),
+                limit(1)
+            );
+
+            const snapshot = await getDocs(q);
+
+            if (snapshot.empty) {
+                throw new Error("Connection successful, but failed to retrieve integration data. Please try again.");
+            }
+
+            const pendingDoc = snapshot.docs[0];
+            const pendingData = pendingDoc.data();
+            const accessToken = pendingData.accessToken;
+
+            // 4. Fetch Accounts using the new token
+            // Dynamic import
+            const { getInstagramAccounts, getInstagramProfile } = await import('./instagramService');
             const accounts = await getInstagramAccounts(accessToken);
 
-            let selectedAccount: any;
-            let igBusinessId: string | undefined;
-            let profilePicUrl: string = '';
-            let username: string = '';
-            let pageId: string = '';
-            let pageAccessToken: string | undefined;
+            let integrationData: any = {};
 
             if (platform === 'Instagram') {
-                // Filter for accounts that have a linked Instagram Business Account
                 const instagramAccounts = accounts.filter(acc => acc.instagram_business_account);
 
                 if (instagramAccounts.length === 0) {
+                    // Clean up pending doc
+                    await deleteDoc(pendingDoc.ref);
                     throw new Error("No Instagram Business accounts found linked to your Facebook Pages. Please make sure your Instagram account is a Business account and linked to a Facebook Page.");
                 }
 
-                // For V1, we just take the first one or we could add a selector UI.
-                selectedAccount = instagramAccounts[0];
-                igBusinessId = selectedAccount.instagram_business_account!.id;
-                pageId = selectedAccount.id; // Facebook Page ID
+                // Auto-select first for MVP
+                const selectedAccount = instagramAccounts[0];
+                const igBusinessId = selectedAccount.instagram_business_account!.id;
+                const pageId = selectedAccount.id;
 
-                // Fetch detailed profile info to store
                 const profile = await getInstagramProfile(igBusinessId, accessToken);
-                profilePicUrl = profile.profile_picture_url;
-                username = profile.username;
+
+                integrationData = {
+                    platform: 'Instagram',
+                    username: profile.username || pendingData.username,
+                    profilePictureUrl: profile.profile_picture_url || pendingData.profilePictureUrl,
+                    instagramBusinessAccountId: igBusinessId,
+                    facebookPageId: pageId,
+                    accessToken: accessToken,
+                    status: 'Connected',
+                    // Keep original fields
+                    authUserId: pendingData.authUserId,
+                    connectedAt: pendingData.connectedAt
+                };
+
             } else {
-                // Facebook Page Connection logic
+                // Facebook Page
                 if (accounts.length === 0) {
-                    throw new Error("No Facebook Pages found. Please create a Facebook Page to connect.");
+                    await deleteDoc(pendingDoc.ref);
+                    throw new Error("No Facebook Pages found.");
                 }
 
-                // For MVP, select the first page. Ideally, show a dropdown.
-                selectedAccount = accounts[0];
-                pageId = selectedAccount.id;
-                username = selectedAccount.name;
-                pageAccessToken = selectedAccount.access_token;
-                profilePicUrl = selectedAccount.picture?.data?.url || '';
+                const selectedAccount = accounts[0];
+
+                integrationData = {
+                    platform: 'Facebook',
+                    username: selectedAccount.name,
+                    profilePictureUrl: selectedAccount.picture?.data?.url || pendingData.profilePictureUrl,
+                    facebookPageId: selectedAccount.id,
+                    pageAccessToken: selectedAccount.access_token, // Page-specific token
+                    accessToken: accessToken, // User-level token back up
+                    status: 'Connected',
+                    authUserId: pendingData.authUserId,
+                    connectedAt: pendingData.connectedAt
+                };
             }
 
-            // Check if already connected (checking per platform)
-            const existingIntegration = await new Promise<SocialIntegration | null>(resolve => {
-                const q = query(projectSubCollection(tenantId, projectId, SOCIAL_INTEGRATIONS), where("platform", "==", platform));
-                const unsubscribe = onSnapshot(q, (snapshot) => {
-                    if (!snapshot.empty) {
-                        unsubscribe();
-                        resolve({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as SocialIntegration);
-                    } else {
-                        unsubscribe();
-                        resolve(null);
-                    }
-                });
-            });
-
-            const integrationData: any = {
-                username: username || selectedAccount.name,
-                accessToken, // User access token (system level)
-                facebookPageId: pageId,
-                profilePictureUrl: profilePicUrl,
-                status: 'Connected',
-                connectedAt: new Date().toISOString()
-            };
-
-            if (pageAccessToken) {
-                // Store page-specific token for Facebook posting
-                integrationData.pageAccessToken = pageAccessToken;
-            }
-
-            if (igBusinessId) {
-                integrationData.instagramBusinessAccountId = igBusinessId;
-            }
-
-            if (existingIntegration) {
-                // Update existing
-                await updateDoc(doc(projectSubCollection(tenantId, projectId, SOCIAL_INTEGRATIONS), existingIntegration.id), integrationData);
-            } else {
-                await addDoc(projectSubCollection(tenantId, projectId, SOCIAL_INTEGRATIONS), {
-                    projectId,
-                    platform: platform,
-                    authUserId: auth.currentUser?.uid,
-                    ...integrationData
-                });
-            }
+            // 5. Update the Pending Doc to be the Real Doc
+            await updateDoc(pendingDoc.ref, integrationData);
             return;
         }
 

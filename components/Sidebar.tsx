@@ -5,7 +5,6 @@ import { getProjectIdeas, getUserTasks } from '../services/dataService';
 import { useTheme } from '../context/ThemeContext';
 import { ProjectSwitcher } from './ProjectSwitcher';
 import { NotificationDropdown } from './NotificationDropdown';
-import { useUIState } from '../context/UIContext';
 import { WorkspaceTeamIndicator } from './WorkspaceTeamIndicator';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -106,7 +105,7 @@ const NavItem = ({
 export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) => {
     const user = auth.currentUser;
     const { theme } = useTheme();
-    const { setReleaseModalOpen } = useUIState();
+
     const { t } = useLanguage();
 
     // Data Loaders for badges
@@ -222,9 +221,9 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                                 const defaultNavItems = [
                                     { id: 'overview', path: '', icon: 'grid_view', label: t('nav.overview'), exact: true },
                                     { id: 'tasks', path: '/tasks', icon: 'checklist', label: t('nav.tasks'), moduleKey: 'tasks', badge: workspace.tasksCount },
-                                    { id: 'ideas', path: '/flows', icon: 'emoji_objects', label: t('nav.flows'), moduleKey: 'ideas', badge: workspace.ideasCount },
+                                    { id: 'sprints', path: '/sprints', icon: 'directions_run', label: t('nav.sprints'), moduleKey: 'sprints' },
                                     { id: 'issues', path: '/issues', icon: 'medication', label: t('nav.issues'), moduleKey: 'issues', badge: workspace.issuesCount },
-
+                                    { id: 'ideas', path: '/flows', icon: 'emoji_objects', label: t('nav.flows'), moduleKey: 'ideas', badge: workspace.ideasCount },
                                     { id: 'milestones', path: '/milestones', icon: 'outlined_flag', label: t('nav.milestones'), moduleKey: 'milestones' },
                                     { id: 'social', path: '/social', icon: 'campaign', label: t('nav.social'), moduleKey: 'social' },
                                     { id: 'marketing', path: '/marketing', icon: 'ads_click', label: t('nav.marketing'), moduleKey: 'marketing' },
@@ -315,16 +314,6 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
             {/* 3. Footer */}
             <div className="p-4 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-card)] space-y-4">
 
-                {/* Local-only Release To-Dos Link */}
-                {window.location.hostname === 'localhost' && (
-                    <button
-                        onClick={() => setReleaseModalOpen(true)}
-                        className="w-full flex items-center gap-2.5 px-3 py-2 text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors text-[12px] font-bold uppercase tracking-wider"
-                    >
-                        <span className="material-symbols-outlined text-[18px]">list_alt</span>
-                        <span>{t('sidebar.releaseTodos')}</span>
-                    </button>
-                )}
 
                 {/* Theme Toggle + Notification Bell Row */}
                 <div className="flex items-center justify-between">

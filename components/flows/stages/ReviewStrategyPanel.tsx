@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SocialPlatform } from '../../../types';
 import { PlatformIcon } from '../../../screens/social/components/PlatformIcon';
 import { useLanguage } from '../../../context/LanguageContext';
+import { Button } from '../../ui/Button';
 
 interface ReviewStrategyPanelProps {
     campaignData: any;
@@ -329,12 +330,13 @@ export const ReviewStrategyPanel: React.FC<ReviewStrategyPanelProps> = ({ campai
                                             </div>
 
                                             <div className="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-800">
-                                                <button
+                                                <Button
                                                     onClick={(e) => { e.stopPropagation(); setEditingPlatformId(null); }}
-                                                    className="px-4 py-1.5 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-lg text-[9px] font-black uppercase tracking-widest shadow-md"
+                                                    size="sm"
+                                                    className="px-4 py-1.5 h-auto rounded-lg text-[9px] font-black uppercase tracking-widest shadow-md"
                                                 >
                                                     {t('flowStages.reviewStrategyPanel.tactics.done')}
-                                                </button>
+                                                </Button>
                                             </div>
                                         </div>
                                     ) : (

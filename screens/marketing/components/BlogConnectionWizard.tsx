@@ -586,7 +586,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                                                 type="button"
                                                 onClick={() => toggleLanguage(lang.code)}
                                                 className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${isSelected
-                                                    ? 'bg-[var(--color-primary)] text-white dark:text-black border-[var(--color-primary)]'
+                                                    ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-[var(--color-primary)]'
                                                     : 'bg-[var(--color-surface-card)] text-[var(--color-text-main)] border-[var(--color-surface-border)] hover:border-[var(--color-primary)]'
                                                     }`}
                                             >

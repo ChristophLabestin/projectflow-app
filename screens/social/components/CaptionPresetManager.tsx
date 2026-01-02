@@ -168,7 +168,7 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
                                         onClick={() => setSelectedPlatform(p)}
                                         className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all
                                             ${selectedPlatform === p
-                                                ? 'bg-[var(--color-primary)] text-white shadow-lg shadow-[var(--color-primary)]/20'
+                                                ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] shadow-lg shadow-[var(--color-primary)]/20'
                                                 : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
                                             }`}
                                     >

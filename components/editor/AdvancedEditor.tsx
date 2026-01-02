@@ -408,7 +408,7 @@ export const AdvancedEditor: React.FC<AdvancedEditorProps> = ({
                     e.stopPropagation();
                     setIsDrawerOpen(true);
                 }}
-                className="absolute bottom-4 right-4 z-[999] p-3 rounded-full bg-[var(--color-primary)] text-white dark:text-black shadow-lg hover:bg-[var(--color-primary-hover)] transition-transform hover:scale-105 flex items-center justify-center"
+                className="absolute bottom-4 right-4 z-[999] p-3 rounded-full bg-[var(--color-primary)] text-[var(--color-primary-text)] shadow-lg hover:bg-[var(--color-primary-hover)] transition-transform hover:scale-105 flex items-center justify-center"
                 title="Open Commands"
             >
                 <Menu size={24} />

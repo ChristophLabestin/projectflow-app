@@ -5,6 +5,7 @@ import { useLanguage } from '../../../../context/LanguageContext';
 import { generateBlogPostAI, suggestBlogTopicsAI } from '../../../../services/geminiService';
 import { getProjectById } from '../../../../services/dataService';
 import { useToast } from '../../../../context/UIContext';
+import { Button } from '../../../../components/ui/Button';
 
 interface BlogAIModalProps {
     isOpen: boolean;
@@ -165,10 +166,10 @@ export const BlogAIModal: React.FC<BlogAIModalProps> = ({ isOpen, onClose, onGen
                     </div>
 
                     <div className="pt-2">
-                        <button
+                        <Button
                             onClick={handleGenerate}
                             disabled={isGenerating || !prompt.trim()}
-                            className="w-full py-3 rounded-lg bg-[var(--color-primary)] text-white font-medium hover:bg-[var(--color-primary-active)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            className="w-full py-3 rounded-lg font-medium hover:bg-[var(--color-primary-active)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed gap-2"
                         >
                             {isGenerating ? (
                                 <>
@@ -181,7 +182,7 @@ export const BlogAIModal: React.FC<BlogAIModalProps> = ({ isOpen, onClose, onGen
                                     <span>Generate Full Post</span>
                                 </>
                             )}
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </motion.div>

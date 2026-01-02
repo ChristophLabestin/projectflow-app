@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useOutletContext, useParams } from 'react-router-dom';
 import { Milestone } from '../types';
 import { MilestoneModal } from '../components/Milestones/MilestoneModal';
+import { MilestoneDetailModal } from '../components/Milestones/MilestoneDetailModal';
 import { useConfirm } from '../context/UIContext';
 import { subscribeProjectMilestones, deleteMilestone, updateMilestone } from '../services/dataService';
 import { db } from '../services/firebase';
@@ -20,9 +21,11 @@ export const ProjectMilestones = () => {
     const [milestones, setMilestones] = useState<Milestone[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [editingMilestone, setEditingMilestone] = useState<Milestone | undefined>(undefined);
+    const [viewingMilestone, setViewingMilestone] = useState<Milestone | undefined>(undefined);
     const [ideaLookup, setIdeaLookup] = useState<Record<string, string>>({});
-    const [taskStatusLookup, setTaskStatusLookup] = useState<Record<string, { isCompleted: boolean; hasSubtasks: boolean; dueDate?: string; priority?: string }>>({});
+    const [taskStatusLookup, setTaskStatusLookup] = useState<Record<string, { isCompleted: boolean; hasSubtasks: boolean; dueDate?: string; priority?: string; title: string }>>({});
     const [subtaskLookup, setSubtaskLookup] = useState<Record<string, { total: number; completed: number }>>({});
     const confirm = useConfirm();
 
@@ -56,14 +59,15 @@ export const ProjectMilestones = () => {
         // Subscribe to tasks for progress calculation
         const tasksQ = query(collectionGroup(db, 'tasks'), where('projectId', '==', projectId));
         const unsubTasks = onSnapshot(tasksQ, (snap) => {
-            const lookup: Record<string, { isCompleted: boolean; hasSubtasks: boolean; dueDate?: string; priority?: string }> = {};
+            const lookup: Record<string, { isCompleted: boolean; hasSubtasks: boolean; dueDate?: string; priority?: string; title: string }> = {};
             snap.forEach(doc => {
                 const data = doc.data();
                 lookup[doc.id] = {
                     isCompleted: data.isCompleted === true || data.status === 'Done',
                     hasSubtasks: false,
                     dueDate: data.dueDate,
-                    priority: data.priority
+                    priority: data.priority,
+                    title: data.title
                 };
             });
             setTaskStatusLookup(prev => ({ ...prev, ...lookup }));
@@ -349,8 +353,12 @@ export const ProjectMilestones = () => {
                                                             : 'border-[var(--color-surface-border)]'
                                                 }
                                             `}
+                                            onClick={() => {
+                                                setViewingMilestone(milestone);
+                                                setIsDetailModalOpen(true);
+                                            }}
                                         >
-                                            <div className="p-5">
+                                            <div className="p-5 cursor-pointer">
                                                 <div className={`flex items-start gap-4 ${isLeft ? 'md:flex-row-reverse' : ''}`}>
 
                                                     {/* Date Badge */}
@@ -479,20 +487,29 @@ export const ProjectMilestones = () => {
                                                         size="sm"
                                                         variant={isAchieved ? "outline" : "primary"}
                                                         className={isAchieved ? "border-emerald-200 text-emerald-600 hover:bg-emerald-50" : ""}
-                                                        onClick={() => handleStatusToggle(milestone)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleStatusToggle(milestone);
+                                                        }}
                                                     >
                                                         {isAchieved ? 'Mark Incomplete' : 'Achieve Milestone'}
                                                     </Button>
                                                     <div className="flex-1" />
                                                     <button
-                                                        onClick={() => handleEdit(milestone)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleEdit(milestone);
+                                                        }}
                                                         className="p-1.5 text-[var(--color-text-muted)] hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
                                                         title="Edit"
                                                     >
                                                         <span className="material-symbols-outlined text-[18px]">edit</span>
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDelete(milestone)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDelete(milestone);
+                                                        }}
                                                         className="p-1.5 text-[var(--color-text-muted)] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors"
                                                         title="Delete"
                                                     >
@@ -521,6 +538,23 @@ export const ProjectMilestones = () => {
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
                 milestone={editingMilestone}
+            />
+
+            <MilestoneDetailModal
+                isOpen={isDetailModalOpen}
+                onClose={() => {
+                    setIsDetailModalOpen(false);
+                    setViewingMilestone(undefined);
+                }}
+                milestone={viewingMilestone}
+                onEdit={(m) => {
+                    setEditingMilestone(m);
+                    setIsDetailModalOpen(false); // Close detail first
+                    setTimeout(() => setIsModalOpen(true), 100); // Slight delay for smooth transition
+                }}
+                taskStatusLookup={taskStatusLookup}
+                subtaskLookup={subtaskLookup}
+                ideaLookup={ideaLookup}
             />
         </div >
     );

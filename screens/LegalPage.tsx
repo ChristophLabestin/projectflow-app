@@ -12,10 +12,11 @@ const LegalPage: React.FC = () => {
     const navigate = useNavigate();
     const { t, language } = useLanguage();
 
-    const { t, language } = useLanguage();
+
 
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [activeSection, setActiveSection] = useState<string>('');
+    const contentRef = React.useRef<HTMLDivElement>(null);
 
     const page: LegalPageType = (type === 'privacy' || type === 'terms' || type === 'impressum') ? type : 'impressum';
 
@@ -147,18 +148,26 @@ const LegalPage: React.FC = () => {
                 });
             },
             {
-                rootMargin: '-20% 0px -60% 0px',
+                root: contentRef.current,
+                rootMargin: '-10% 0px -80% 0px', // Adjusted for better top-focused detection
                 threshold: 0
             }
         );
 
         const sections = page === 'privacy' ? appPrivacySections : termsSections;
-        sections.forEach(section => {
-            const element = document.getElementById(section.id);
-            if (element) observer.observe(element);
-        });
 
-        return () => observer.disconnect();
+        // Small delay to ensure DOM is ready
+        const timeoutId = setTimeout(() => {
+            sections.forEach(section => {
+                const element = document.getElementById(section.id);
+                if (element) observer.observe(element);
+            });
+        }, 100);
+
+        return () => {
+            observer.disconnect();
+            clearTimeout(timeoutId);
+        };
     }, [page, appPrivacySections, termsSections]);
 
     const renderContent = () => {
@@ -670,7 +679,10 @@ const LegalPage: React.FC = () => {
                 </AnimatePresence >
 
                 {/* Content Area */}
-                <div className="flex-1 p-6 md:p-16 lg:p-24 max-w-4xl relative overflow-y-auto h-full">
+                <div
+                    ref={contentRef}
+                    className="flex-1 p-6 md:p-16 lg:p-24 max-w-4xl relative overflow-y-auto h-full scroll-smooth"
+                >
                     {renderContent()}
                 </div>
             </div>

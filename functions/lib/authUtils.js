@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAuthToken = exports.validateAPIToken = exports.hashToken = void 0;
+exports.checkProjectPermission = exports.ROLE_PERMISSIONS = exports.getAuthToken = exports.validateAPIToken = exports.hashToken = void 0;
 const admin = require("firebase-admin");
 const crypto = require("crypto");
 const init_1 = require("./init");
@@ -91,4 +91,68 @@ const getAuthToken = (req) => {
     return ((_a = req.query) === null || _a === void 0 ? void 0 : _a.token) || ((_b = req.body) === null || _b === void 0 ? void 0 : _b.token) || '';
 };
 exports.getAuthToken = getAuthToken;
+exports.ROLE_PERMISSIONS = {
+    Owner: [
+        'project.read', 'project.update', 'project.delete', 'project.invite', 'project.view_settings',
+        'task.create', 'task.update', 'task.delete', 'task.view', 'task.assign', 'task.comment',
+        'issue.create', 'issue.update', 'issue.delete', 'issue.view',
+        'idea.create', 'idea.update', 'idea.delete', 'idea.view',
+        'group.create', 'group.update', 'group.delete'
+    ],
+    Editor: [
+        'project.read', 'project.invite', 'project.view_settings',
+        'task.create', 'task.update', 'task.delete', 'task.view', 'task.assign', 'task.comment',
+        'issue.create', 'issue.update', 'issue.delete', 'issue.view',
+        'idea.create', 'idea.update', 'idea.delete', 'idea.view',
+        'group.create', 'group.update', 'group.delete'
+    ],
+    Viewer: [
+        'project.read',
+        'task.view', 'task.comment',
+        'issue.view',
+        'idea.view'
+    ]
+};
+/**
+ * Verify if a user has a specific permission on a project.
+ * Fetches the project from Firestore to check roles.
+ */
+const checkProjectPermission = async (userId, projectId, permission) => {
+    try {
+        // Try to find project in tenants (we need to find the tenant first, or use Collection Group query?)
+        // Since we don't know the tenant, we might need to search or assume passed context.
+        // For optimization, let's look up project directly if possible.
+        // BUT projects are in subcollections of tenants.
+        // We can use a collection group query for the project ID to find it.
+        const projectsRef = init_1.db.collectionGroup('projects');
+        const querySnapshot = await projectsRef.where(admin.firestore.FieldPath.documentId(), '==', projectId).limit(1).get();
+        if (querySnapshot.empty)
+            return false;
+        const projectData = querySnapshot.docs[0].data();
+        // Check Owner field
+        if (projectData.ownerId === userId)
+            return true;
+        // Check Roles Map
+        const userRole = projectData.roles ? projectData.roles[userId] : null;
+        if (!userRole) {
+            // Check legacy members array
+            if (Array.isArray(projectData.members)) {
+                const member = projectData.members.find((m) => (typeof m === 'string' && m === userId) || (m.userId === userId));
+                if (member) {
+                    // Legacy member is Editor or specific role
+                    const legacyRole = typeof member === 'object' ? member.role : 'Editor';
+                    // Check if legacy role has permission
+                    return (exports.ROLE_PERMISSIONS[legacyRole] || []).includes(permission);
+                }
+            }
+            return false;
+        }
+        return (exports.ROLE_PERMISSIONS[userRole] || []).includes(permission);
+    }
+    catch (e) {
+        console.error('Permission check failed', e);
+        return false;
+    }
+};
+exports.checkProjectPermission = checkProjectPermission;
 //# sourceMappingURL=authUtils.js.map

@@ -9,6 +9,9 @@ import { generateAIImage, editAIImage } from '../../services/aiSearchService';
 import { getAIUsage } from '../../services/dataService';
 import { AIUsage } from '../../types';
 import { searchStockImages, getCuratedPhotos, triggerDownload, UnsplashImage } from '../../services/unsplashService';
+import { Button } from '../ui/Button';
+import { downloadFile } from '../../utils/download';
+
 
 interface MediaAsset {
     id: string;
@@ -702,6 +705,16 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
+                                                        downloadFile(asset.url, asset.name);
+                                                    }}
+                                                    className="size-8 rounded-lg bg-white shadow-lg text-zinc-600 hover:text-[var(--color-primary)] flex items-center justify-center transition-colors"
+                                                    title="Download"
+                                                >
+                                                    <span className="material-symbols-outlined text-[18px]">download</span>
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
                                                         setEditingImage(asset);
                                                     }}
                                                     className="size-8 rounded-lg bg-white shadow-lg text-zinc-600 hover:text-[var(--color-primary)] flex items-center justify-center transition-colors"
@@ -983,10 +996,10 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                         className="w-full pl-10 pr-4 py-3 bg-zinc-100 dark:bg-zinc-800 border-none rounded-xl focus:ring-2 focus:ring-[var(--color-primary)] outline-none transition-all placeholder:text-zinc-500"
                                     />
                                 </div>
-                                <button
+                                <Button
                                     type="submit"
                                     disabled={isStockLoading}
-                                    className="px-6 py-3 bg-[var(--color-primary)] text-white font-bold rounded-xl hover:brightness-110 shadow-lg shadow-[var(--color-primary)]/20 transition-all flex items-center gap-2"
+                                    className="px-6 py-3 font-bold rounded-xl hover:brightness-110 shadow-lg shadow-[var(--color-primary)]/20 transition-all gap-2"
                                 >
                                     {isStockLoading ? (
                                         <span className="material-symbols-outlined animate-spin">progress_activity</span>
@@ -994,7 +1007,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                         <span className="material-symbols-outlined">search</span>
                                     )}
                                     Search
-                                </button>
+                                </Button>
                             </form>
 
                             {/* Content Area */}

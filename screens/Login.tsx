@@ -243,10 +243,17 @@ export const Login = () => {
                                 </div>
 
                                 {isRegister && (
-                                    <Input label={t('login.label.fullName')} value={name} onChange={(e) => setName(e.target.value)} placeholder={t('login.placeholder.fullName')} />
+                                    <div className="p-3 mb-4 rounded bg-red-500/10 border border-red-500/20 text-red-500 text-sm font-medium flex items-start gap-2">
+                                        <span className="material-symbols-outlined text-lg mt-0.5">block</span>
+                                        <span>Registration is currently disabled. Please contact support if you need an account.</span>
+                                    </div>
                                 )}
-                                <Input label={t('login.label.email')} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('login.placeholder.email')} />
-                                <Input label={t('login.label.password')} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+
+                                {isRegister && (
+                                    <Input label={t('login.label.fullName')} value={name} onChange={(e) => setName(e.target.value)} placeholder={t('login.placeholder.fullName')} disabled={true} />
+                                )}
+                                <Input label={t('login.label.email')} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('login.placeholder.email')} disabled={isRegister} />
+                                <Input label={t('login.label.password')} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" disabled={isRegister} />
 
                                 {error && (
                                     <div className="p-3 rounded bg-[var(--color-error)]/10 border border-[var(--color-error)]/20 text-[var(--color-error)] text-sm font-medium flex items-center gap-2">
@@ -255,7 +262,7 @@ export const Login = () => {
                                     </div>
                                 )}
 
-                                <Button type="submit" loading={isLoading} variant="primary" className="w-full h-12 text-base shadow-xl">
+                                <Button type="submit" loading={isLoading} variant="primary" className="w-full h-12 text-base shadow-xl" disabled={isRegister || isLoading}>
                                     {isRegister ? t('login.action.createAccount') : t('login.action.signIn')}
                                 </Button>
                             </form>
@@ -321,17 +328,19 @@ export const Login = () => {
                         </Button>
                     )}
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <button onClick={handleGoogleSignIn} className="flex items-center justify-center gap-2 h-12 rounded-xl border border-[var(--color-surface-border)] hover:border-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-all font-medium text-sm text-[var(--color-text-main)]">
-                            <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
-                            Google
-                        </button>
-                        <button onClick={handleGithubSignIn} className="flex items-center justify-center gap-2 h-12 rounded-xl border border-[var(--color-surface-border)] hover:border-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-all font-medium text-sm text-[var(--color-text-main)]">
-                            {/* In dark mode, github icon needs inversion if it's black. SVG is usually black. */}
-                            <img src="https://www.svgrepo.com/show/512317/github-142.svg" className="w-5 h-5 dark:invert" alt="GitHub" />
-                            GitHub
-                        </button>
-                    </div>
+                    {!isRegister && (
+                        <div className="grid grid-cols-2 gap-4">
+                            <button onClick={handleGoogleSignIn} className="flex items-center justify-center gap-2 h-12 rounded-xl border border-[var(--color-surface-border)] hover:border-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-all font-medium text-sm text-[var(--color-text-main)]">
+                                <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
+                                Google
+                            </button>
+                            <button onClick={handleGithubSignIn} className="flex items-center justify-center gap-2 h-12 rounded-xl border border-[var(--color-surface-border)] hover:border-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-all font-medium text-sm text-[var(--color-text-main)]">
+                                {/* In dark mode, github icon needs inversion if it's black. SVG is usually black. */}
+                                <img src="https://www.svgrepo.com/show/512317/github-142.svg" className="w-5 h-5 dark:invert" alt="GitHub" />
+                                GitHub
+                            </button>
+                        </div>
+                    )}
 
                     <p className="text-center text-sm text-[var(--color-text-muted)] mt-8">
                         {isRegister ? t('login.toggle.hasAccount') : t('login.toggle.newToProjectFlow')}

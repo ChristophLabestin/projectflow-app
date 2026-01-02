@@ -14,6 +14,7 @@ import { useProjectPermissions } from '../../hooks/useProjectPermissions';
 import { useWorkspacePermissions } from '../../hooks/useWorkspacePermissions';
 import { getWorkspaceGroups } from '../../services/dataService';
 import { useLanguage } from '../../context/LanguageContext';
+import { useModuleAccess } from '../../hooks/useModuleAccess';
 
 import { auth } from '../../services/firebase';
 import { getUserProfile, linkWithGithub, updateUserData, getUserProjectNavPrefs, setUserProjectNavPrefs, ProjectNavPrefs } from '../../services/dataService';
@@ -38,6 +39,10 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
 }) => {
     const { can } = useProjectPermissions(project);
     const { t } = useLanguage();
+    const { hasAccess: isSocialAllowed } = useModuleAccess('social');
+    const { hasAccess: isMarketingAllowed } = useModuleAccess('marketing');
+    const { hasAccess: isAccountingAllowed } = useModuleAccess('accounting');
+    const { hasAccess: isSprintsAllowed } = useModuleAccess('sprints');
     const [activeTab, setActiveTab] = useState<Tab>(initialTab);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -77,12 +82,14 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     const [navHidden, setNavHidden] = useState<string[]>([]);
     const [draggedItem, setDraggedItem] = useState<string | null>(null);
 
+    // Module Access Checks (Must be at top level)
     // Default nav items
     const defaultNavItems = [
         { id: 'overview', icon: 'grid_view', label: t('nav.overview'), canHide: false },
         { id: 'tasks', icon: 'checklist', label: t('nav.tasks'), moduleKey: 'tasks' },
-        { id: 'ideas', icon: 'emoji_objects', label: t('nav.flows'), moduleKey: 'ideas' },
+        { id: 'sprints', icon: 'directions_run', label: t('nav.sprints'), moduleKey: 'sprints' },
         { id: 'issues', icon: 'medication', label: t('nav.issues'), moduleKey: 'issues' },
+        { id: 'ideas', icon: 'emoji_objects', label: t('nav.flows'), moduleKey: 'ideas' },
         { id: 'milestones', icon: 'outlined_flag', label: t('nav.milestones'), moduleKey: 'milestones' },
         { id: 'social', icon: 'campaign', label: t('nav.social'), moduleKey: 'social' },
         { id: 'marketing', icon: 'ads_click', label: t('nav.marketing'), moduleKey: 'marketing' },
@@ -137,8 +144,14 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 if (user && project.id) {
                     const prefs = await getUserProjectNavPrefs(user.uid, project.id, project.tenantId);
                     if (prefs) {
-                        setNavOrder(prefs.order);
-                        setNavHidden(prefs.hidden);
+                        // Merge any new nav items that weren't in the stored order
+                        const allIds = defaultNavItems.map(n => n.id);
+                        const storedOrder = prefs.order || [];
+                        const missingIds = allIds.filter(id => !storedOrder.includes(id));
+                        // Add missing items at the end while preserving user's custom order
+                        const mergedOrder = [...storedOrder, ...missingIds].filter(id => allIds.includes(id));
+                        setNavOrder(mergedOrder);
+                        setNavHidden(prefs.hidden || []);
                     } else {
                         // Default order
                         setNavOrder(defaultNavItems.map(n => n.id));
@@ -225,7 +238,9 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         groups: t('projectSettings.modules.groups'),
         activity: t('nav.activity'),
         social: t('nav.social'),
-        marketing: t('nav.marketing')
+        marketing: t('nav.marketing'),
+        accounting: t('nav.accounting') || 'Accounting',
+        sprints: t('nav.sprints') || 'Sprints'
     };
 
     const projectStatusLabels: Record<string, string> = {
@@ -302,24 +317,46 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                         {/* Visibility Settings - Only for Owners/Internal Members */}
                         {
                             canChangeVisibility && workspaceGroups.length > 0 && (
-                                <div className="pt-4 mt-4 border-t border-[var(--color-surface-border)]">
-                                    <label className="text-sm font-medium text-[var(--color-text-main)] mb-2 block">{t('projectSettings.visibility.title')}</label>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                                <div className="pt-6 mt-6 border-t border-[var(--color-surface-border)]">
+                                    <label className="text-base font-semibold text-[var(--color-text-main)] mb-3 block flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-[var(--color-text-subtle)]">visibility</span>
+                                        {t('projectSettings.visibility.title')}
+                                    </label>
+
+                                    <div className="grid grid-cols-1 gap-3 mb-4">
+                                        {/* Everyone Option */}
                                         <button
                                             type="button"
                                             onClick={() => { setVisibilityGroupIds([]); setIsPrivate(false); }}
-                                            className={`p-3 rounded-xl border text-left transition-all ${!isPrivate && visibilityGroupIds.length === 0
-                                                ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500'
-                                                : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:border-[var(--color-surface-border-hover)]'
+                                            className={`relative p-4 rounded-xl border text-left transition-all flex items-start gap-4 group ${!isPrivate && visibilityGroupIds.length === 0
+                                                ? 'bg-emerald-50/50 dark:bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500'
+                                                : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:border-[var(--color-text-subtle)] hover:bg-[var(--color-surface-hover)]'
                                                 }`}
                                         >
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className={`material-symbols-outlined text-lg ${!isPrivate && visibilityGroupIds.length === 0 ? 'text-emerald-600' : 'text-[var(--color-text-subtle)]'}`}>public</span>
-                                                <span className={`text-sm font-bold ${!isPrivate && visibilityGroupIds.length === 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-[var(--color-text-main)]'}`}>{t('projectSettings.visibility.everyone')}</span>
+                                            <div className={`mt-0.5 p-2 rounded-lg shrink-0 ${!isPrivate && visibilityGroupIds.length === 0
+                                                ? 'bg-emerald-100/50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                                                : 'bg-[var(--color-surface-hover)] text-[var(--color-text-subtle)] group-hover:text-[var(--color-text-main)]'
+                                                }`}>
+                                                <span className="material-symbols-outlined text-xl">public</span>
                                             </div>
-                                            <p className="text-xs text-[var(--color-text-muted)]">{t('projectSettings.visibility.everyoneDescription')}</p>
+                                            <div className="flex-1">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className={`font-semibold ${!isPrivate && visibilityGroupIds.length === 0
+                                                        ? 'text-emerald-900 dark:text-emerald-100'
+                                                        : 'text-[var(--color-text-main)]'
+                                                        }`}>{t('projectSettings.visibility.everyone')}</span>
+                                                    {(!isPrivate && visibilityGroupIds.length === 0) && (
+                                                        <span className="material-symbols-outlined text-emerald-600 text-[20px]">check_circle</span>
+                                                    )}
+                                                </div>
+                                                <p className={`text-sm ${!isPrivate && visibilityGroupIds.length === 0
+                                                    ? 'text-emerald-700/80 dark:text-emerald-300/80'
+                                                    : 'text-[var(--color-text-muted)]'
+                                                    }`}>{t('projectSettings.visibility.everyoneDescription')}</p>
+                                            </div>
                                         </button>
 
+                                        {/* Specific Groups Option */}
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -328,37 +365,71 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                     setVisibilityGroupIds([workspaceGroups[0].id]);
                                                 }
                                             }}
-                                            className={`p-3 rounded-xl border text-left transition-all ${!isPrivate && visibilityGroupIds.length > 0
-                                                ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]'
-                                                : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:border-[var(--color-surface-border-hover)]'
+                                            className={`relative p-4 rounded-xl border text-left transition-all flex items-start gap-4 group ${!isPrivate && visibilityGroupIds.length > 0
+                                                ? 'bg-[var(--color-primary)]/5 border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]'
+                                                : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:border-[var(--color-text-subtle)] hover:bg-[var(--color-surface-hover)]'
                                                 }`}
                                         >
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className={`material-symbols-outlined text-lg ${!isPrivate && visibilityGroupIds.length > 0 ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}>lock_person</span>
-                                                <span className={`text-sm font-bold ${!isPrivate && visibilityGroupIds.length > 0 ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}>{t('projectSettings.visibility.specificGroup')}</span>
+                                            <div className={`mt-0.5 p-2 rounded-lg shrink-0 ${!isPrivate && visibilityGroupIds.length > 0
+                                                ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                                                : 'bg-[var(--color-surface-hover)] text-[var(--color-text-subtle)] group-hover:text-[var(--color-text-main)]'
+                                                }`}>
+                                                <span className="material-symbols-outlined text-xl">lock_person</span>
                                             </div>
-                                            <p className="text-xs text-[var(--color-text-muted)]">{t('projectSettings.visibility.specificGroupDescription')}</p>
+                                            <div className="flex-1">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className={`font-semibold ${!isPrivate && visibilityGroupIds.length > 0
+                                                        ? 'text-[var(--color-primary)]'
+                                                        : 'text-[var(--color-text-main)]'
+                                                        }`}>{t('projectSettings.visibility.specificGroup')}</span>
+                                                    {(!isPrivate && visibilityGroupIds.length > 0) && (
+                                                        <span className="material-symbols-outlined text-[var(--color-primary)] text-[20px]">check_circle</span>
+                                                    )}
+                                                </div>
+                                                <p className={`text-sm ${!isPrivate && visibilityGroupIds.length > 0
+                                                    ? 'text-[var(--color-primary)]/80'
+                                                    : 'text-[var(--color-text-muted)]'
+                                                    }`}>{t('projectSettings.visibility.specificGroupDescription')}</p>
+                                            </div>
                                         </button>
 
+                                        {/* Private Option */}
                                         <button
                                             type="button"
                                             onClick={() => { setIsPrivate(true); setVisibilityGroupIds([]); }}
-                                            className={`p-3 rounded-xl border text-left transition-all ${isPrivate
-                                                ? 'bg-rose-50 dark:bg-rose-500/10 border-rose-500 ring-1 ring-rose-500'
-                                                : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:border-[var(--color-surface-border-hover)]'
+                                            className={`relative p-4 rounded-xl border text-left transition-all flex items-start gap-4 group ${isPrivate
+                                                ? 'bg-rose-50/50 dark:bg-rose-500/10 border-rose-500 ring-1 ring-rose-500'
+                                                : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:border-[var(--color-text-subtle)] hover:bg-[var(--color-surface-hover)]'
                                                 }`}
                                         >
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className={`material-symbols-outlined text-lg ${isPrivate ? 'text-rose-600' : 'text-[var(--color-text-subtle)]'}`}>lock</span>
-                                                <span className={`text-sm font-bold ${isPrivate ? 'text-rose-700 dark:text-rose-400' : 'text-[var(--color-text-main)]'}`}>{t('projectSettings.visibility.private')}</span>
+                                            <div className={`mt-0.5 p-2 rounded-lg shrink-0 ${isPrivate
+                                                ? 'bg-rose-100/50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400'
+                                                : 'bg-[var(--color-surface-hover)] text-[var(--color-text-subtle)] group-hover:text-[var(--color-text-main)]'
+                                                }`}>
+                                                <span className="material-symbols-outlined text-xl">lock</span>
                                             </div>
-                                            <p className="text-xs text-[var(--color-text-muted)]">{t('projectSettings.visibility.privateDescription')}</p>
+                                            <div className="flex-1">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className={`font-semibold ${isPrivate
+                                                        ? 'text-rose-900 dark:text-rose-100'
+                                                        : 'text-[var(--color-text-main)]'
+                                                        }`}>{t('projectSettings.visibility.private')}</span>
+                                                    {isPrivate && (
+                                                        <span className="material-symbols-outlined text-rose-600 text-[20px]">check_circle</span>
+                                                    )}
+                                                </div>
+                                                <p className={`text-sm ${isPrivate
+                                                    ? 'text-rose-700/80 dark:text-rose-300/80'
+                                                    : 'text-[var(--color-text-muted)]'
+                                                    }`}>{t('projectSettings.visibility.privateDescription')}</p>
+                                            </div>
                                         </button>
                                     </div>
 
                                     {!isPrivate && visibilityGroupIds.length > 0 && (
-                                        <div className="animate-fade-in bg-[var(--color-surface-hover)] rounded-xl p-3 border border-[var(--color-surface-border)]">
-                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2 block">
+                                        <div className="ml-14 animate-fade-in space-y-3">
+                                            <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider flex items-center gap-2">
+                                                <span className="w-4 h-px bg-[var(--color-surface-border)]"></span>
                                                 {t('projectSettings.visibility.allowedGroups')}
                                             </label>
                                             <div className="grid grid-cols-2 gap-2">
@@ -375,18 +446,20 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                                     setVisibilityGroupIds(prev => [...prev, group.id]);
                                                                 }
                                                             }}
-                                                            className={`p-2 rounded-lg flex items-center gap-2 border transition-all ${isSelected
-                                                                ? 'bg-white dark:bg-black/20 border-[var(--color-primary)] shadow-sm'
-                                                                : 'border-transparent hover:bg-black/5 dark:hover:bg-white/5'
+                                                            className={`p-2.5 rounded-lg flex items-center gap-3 border transition-all text-left ${isSelected
+                                                                ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-text-main)]'
+                                                                : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-text-subtle)]'
                                                                 }`}
                                                         >
                                                             <div
-                                                                className="size-2.5 rounded-full shrink-0"
+                                                                className="size-3 rounded-full shrink-0 ring-1 ring-white/20"
                                                                 style={{ backgroundColor: group.color || '#9ca3af' }}
                                                             />
-                                                            <span className="text-sm font-medium truncate">{group.name}</span>
+                                                            <div className="flex-1 min-w-0">
+                                                                <span className="text-sm font-medium truncate block">{group.name}</span>
+                                                            </div>
                                                             {isSelected && (
-                                                                <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)] ml-auto">check</span>
+                                                                <span className="material-symbols-outlined text-[18px] text-[var(--color-primary)] shrink-0">check</span>
                                                             )}
                                                         </button>
                                                     );
@@ -475,48 +548,60 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                     <div className="space-y-4 animate-in fade-in duration-300">
                         <p className="text-sm text-[var(--color-text-muted)]">{t('projectSettings.modules.description')}</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {['tasks', 'milestones', 'issues', 'ideas', 'groups', 'activity', 'social', 'marketing'].map((mod) => (
-                                <div
-                                    key={mod}
-                                    className={`
+                            {['tasks', 'sprints', 'issues', 'ideas', 'milestones', 'groups', 'activity', 'social', 'marketing', 'accounting'].map((mod) => {
+                                // Restricted Check
+                                // Restricted Check - using top-level hooks
+
+
+                                if (mod === 'social' && !isSocialAllowed) return null;
+                                if (mod === 'marketing' && !isMarketingAllowed) return null;
+                                if (mod === 'accounting' && !isAccountingAllowed) return null;
+
+                                return (
+                                    <div
+                                        key={mod}
+                                        className={`
                                         flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all
                                         ${modules.includes(mod as any)
-                                            ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 dark:bg-[var(--color-primary)]/10'
-                                            : 'border-[var(--color-surface-border)] hover:border-[var(--color-surface-border-hover)] hover:bg-[var(--color-surface-hover)]'
-                                        }
+                                                ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 dark:bg-[var(--color-primary)]/10'
+                                                : 'border-[var(--color-surface-border)] hover:border-[var(--color-surface-border-hover)] hover:bg-[var(--color-surface-hover)]'
+                                            }
                                     `}
-                                    onClick={() => {
-                                        if (modules.includes(mod as any)) {
-                                            setModules(modules.filter(m => m !== mod));
-                                        } else {
-                                            setModules([...modules, mod as any]);
-                                        }
-                                    }}
-                                >
-                                    <div className={`
+                                        onClick={() => {
+                                            if (modules.includes(mod as any)) {
+                                                setModules(modules.filter(m => m !== mod));
+                                            } else {
+                                                setModules([...modules, mod as any]);
+                                            }
+                                        }}
+                                    >
+                                        <div className={`
                                         size-10 rounded-lg flex items-center justify-center transition-colors
                                         ${modules.includes(mod as any) ? 'bg-black text-white dark:bg-white dark:text-black' : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'}
                                     `}>
-                                        <span className="material-symbols-outlined">
-                                            {mod === 'tasks' ? 'check_circle' :
-                                                mod === 'ideas' ? 'lightbulb' :
-                                                    mod === 'milestones' ? 'flag' :
-                                                        mod === 'social' ? 'campaign' :
-                                                            mod === 'marketing' ? 'ads_click' :
-                                                                mod === 'groups' ? 'groups' :
-                                                                    mod === 'activity' ? 'history' : 'bug_report'}
-                                        </span>
+                                            <span className="material-symbols-outlined">
+                                                {mod === 'tasks' ? 'check_circle' :
+                                                    mod === 'ideas' ? 'lightbulb' :
+                                                        mod === 'milestones' ? 'flag' :
+                                                            mod === 'social' ? 'campaign' :
+                                                                mod === 'marketing' ? 'ads_click' :
+                                                                    mod === 'accounting' ? 'receipt_long' :
+                                                                        mod === 'groups' ? 'groups' :
+                                                                            mod === 'sprints' ? 'directions_run' :
+                                                                                mod === 'activity' ? 'history' : 'bug_report'}
+                                            </span>
+                                        </div>
+                                        <div className="flex-1">
+                                            <p className="font-semibold text-sm text-[var(--color-text-main)]">{moduleLabels[mod] || mod}</p>
+                                        </div>
+                                        <Checkbox
+                                            checked={modules.includes(mod as any)}
+                                            readOnly
+                                            className="pointer-events-none"
+                                        />
                                     </div>
-                                    <div className="flex-1">
-                                        <p className="font-semibold text-sm text-[var(--color-text-main)]">{moduleLabels[mod] || mod}</p>
-                                    </div>
-                                    <Checkbox
-                                        checked={modules.includes(mod as any)}
-                                        readOnly
-                                        className="pointer-events-none"
-                                    />
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
                 );

@@ -8,8 +8,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install and Build
-        run: npm ci && npm run build
+      - name: Install
+        run: npm ci
+      - name: Theme lint
+        run: npm run lint:theme
+      - name: Build
+        run: npm run build
         env:
           VITE_FIREBASE_API_KEY: '${{ secrets.VITE_FIREBASE_API_KEY }}'
           VITE_FIREBASE_AUTH_DOMAIN: '${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}'

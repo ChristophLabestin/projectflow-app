@@ -448,7 +448,7 @@ const ProjectSpotlight: React.FC<{ project: Project; health: ProjectHealth; spot
                             size="lg"
                             className={`w-full h-12 rounded-xl border-none font-bold text-sm shadow-xl mt-1 ${state === 'critical' ? 'bg-rose-600 text-white hover:bg-rose-700' :
                                 state === 'warning' ? 'bg-amber-500 text-white hover:bg-amber-600' :
-                                    'bg-slate-900 text-white dark:bg-white dark:text-slate-950 hover:opacity-90'
+                                    'hover:opacity-90'
                                 }`}
                             icon={<span className="material-symbols-outlined text-lg">arrow_forward</span>}
                         >
@@ -933,7 +933,7 @@ export const ProjectsList = () => {
                                 <Link to="/create">
                                     <Button
                                         size="lg"
-                                        className="h-10 px-6 rounded-xl bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 border-none font-bold text-sm shadow-xl hover:shadow-2xl transition-all whitespace-nowrap"
+                                        className="h-10 px-6 rounded-xl hover:opacity-90 border-none font-bold text-sm shadow-xl hover:shadow-2xl transition-all whitespace-nowrap"
                                         icon={<span className="material-symbols-outlined text-lg">add</span>}
                                     >
                                         {t('projectsList.actions.newProject')}

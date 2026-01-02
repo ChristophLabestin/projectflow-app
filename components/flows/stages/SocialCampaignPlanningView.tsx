@@ -603,7 +603,7 @@ export const SocialCampaignPlanningView: React.FC<SocialCampaignPlanningViewProp
                         </div>
                         <Button
                             onClick={() => onUpdate({ stage: 'Submit' })}
-                            className="w-full h-12 rounded-xl bg-slate-900 dark:bg-white hover:bg-cyan-600 dark:hover:bg-cyan-500 text-white dark:text-slate-900 hover:text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all group"
+                            className="w-full h-12 rounded-xl hover:bg-cyan-600 dark:hover:bg-cyan-500 hover:text-white font-black text-xs uppercase tracking-widest gap-2 transition-all group"
                         >
                             {t('flowStages.socialCampaignPlanning.actions.advance')}
                             <span className="material-symbols-outlined text-base group-hover:translate-x-1 transition-transform">arrow_forward</span>

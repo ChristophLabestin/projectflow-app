@@ -437,7 +437,7 @@ export const MultiPlatformFanOutModal: React.FC<MultiPlatformFanOutModalProps> =
                                 <Button
                                     onClick={handleSubmit}
                                     disabled={loading || selectedPlatforms.length === 0}
-                                    className="bg-black hover:bg-gray-800 text-white dark:bg-white dark:hover:bg-gray-200 dark:text-black shadow-xl px-8 py-3 rounded-xl font-bold text-base transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="hover:bg-gray-800 dark:hover:bg-gray-200 shadow-xl px-8 py-3 rounded-xl font-bold text-base transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
                                     {loading ? (
                                         <div className="flex items-center gap-2">

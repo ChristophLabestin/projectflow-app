@@ -9,6 +9,7 @@ import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { ImageEditor } from '../components/MediaLibrary/ImageEditor';
+import { downloadFile } from '../utils/download';
 
 interface MediaAsset {
     id: string;
@@ -374,6 +375,23 @@ export const MediaLibraryPage: React.FC = () => {
                                         {/* Overlay */}
                                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex flex-col items-center justify-center gap-3 opacity-0 group-hover:opacity-100">
                                             <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(asset.url);
+                                                        showSuccess("Link copied to clipboard");
+                                                    }}
+                                                    className="size-10 rounded-xl bg-white text-zinc-600 flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
+                                                    title="Copy Link"
+                                                >
+                                                    <span className="material-symbols-outlined text-[20px]">link</span>
+                                                </button>
+                                                <button
+                                                    onClick={() => downloadFile(asset.url, asset.name)}
+                                                    className="size-10 rounded-xl bg-white text-zinc-600 flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
+                                                    title="Download"
+                                                >
+                                                    <span className="material-symbols-outlined text-[20px]">download</span>
+                                                </button>
                                                 <button
                                                     onClick={() => setEditingImage(asset)}
                                                     className="size-10 rounded-xl bg-white text-zinc-800 flex items-center justify-center hover:scale-110 transition-transform shadow-lg"

@@ -223,7 +223,7 @@ export const PaidAdsLiveView: React.FC<PaidAdsLiveViewProps> = ({ idea, onUpdate
                         <Button
                             onClick={handleConvertToCampaign}
                             isLoading={converting}
-                            className="flex-1 h-14 bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 font-black uppercase tracking-widest text-sm rounded-2xl shadow-xl hover:shadow-2xl transition-all"
+                            className="flex-1 h-14 hover:bg-slate-800 dark:hover:bg-slate-200 font-black uppercase tracking-widest text-sm rounded-2xl shadow-xl hover:shadow-2xl transition-all"
                         >
                             <span className="material-symbols-outlined mr-2">rocket_launch</span>
                             Launch Campaign

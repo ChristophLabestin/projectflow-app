@@ -21,7 +21,7 @@ const trackUsage = async (uid: string, tokens: number) => {
 
 // Initialize with process.env for standard Cloud Functions config
 // Ensure GEMINI_API_KEY is set in functions configuration
-// Pre-Beta: Optionally accept key from client
+// Pre-Alpha: Optionally accept key from client
 const getApiKey = (providedKey?: string) => {
     if (providedKey) return providedKey;
 

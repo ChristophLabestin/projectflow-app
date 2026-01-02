@@ -119,7 +119,7 @@ const MenuButton: React.FC<MenuButtonProps> = ({ onClick, isActive, icon, label,
         type="button"
         onClick={onClick}
         className={`p-1.5 rounded text-sm font-medium transition-colors flex items-center justify-center min-w-[28px] ${isActive
-            ? 'bg-[var(--color-primary)] text-white'
+            ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)]'
             : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'
             }`}
         title={tooltip}

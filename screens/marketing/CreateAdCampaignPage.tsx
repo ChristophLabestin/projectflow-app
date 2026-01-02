@@ -348,7 +348,7 @@ export const CreateAdCampaignPage = () => {
                                                 key={type}
                                                 onClick={() => setBudgetType(type)}
                                                 className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${budgetType === type
-                                                        ? 'bg-[var(--color-primary)] text-white dark:text-slate-900'
+                                                        ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)]'
                                                         : 'bg-[var(--color-surface-bg)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'
                                                     }`}
                                             >
@@ -406,7 +406,7 @@ export const CreateAdCampaignPage = () => {
                                         placeholder="Add a location..."
                                         className="flex-1 h-10 px-4 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
                                     />
-                                    <button onClick={handleAddLocation} className="px-4 bg-[var(--color-primary)] text-white rounded-xl font-bold text-sm">
+                                    <button onClick={handleAddLocation} className="px-4 bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded-xl font-bold text-sm">
                                         Add
                                     </button>
                                 </div>
@@ -450,7 +450,7 @@ export const CreateAdCampaignPage = () => {
                                                 key={g}
                                                 onClick={() => setTargeting(prev => ({ ...prev, genders: [g] }))}
                                                 className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${targeting.genders?.includes(g)
-                                                        ? 'bg-[var(--color-primary)] text-white'
+                                                        ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)]'
                                                         : 'bg-[var(--color-surface-bg)] text-[var(--color-text-muted)]'
                                                     }`}
                                             >
@@ -472,7 +472,7 @@ export const CreateAdCampaignPage = () => {
                                         placeholder="Add an interest..."
                                         className="flex-1 h-10 px-4 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
                                     />
-                                    <button onClick={handleAddInterest} className="px-4 bg-[var(--color-primary)] text-white rounded-xl font-bold text-sm">
+                                    <button onClick={handleAddInterest} className="px-4 bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded-xl font-bold text-sm">
                                         Add
                                     </button>
                                 </div>

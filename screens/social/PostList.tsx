@@ -15,7 +15,10 @@ export const PostList = () => {
     const navigate = useNavigate();
     const [posts, setPosts] = useState<SocialPost[]>([]);
     const [previewPost, setPreviewPost] = useState<SocialPost | null>(null);
-    const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid');
+    // View mode is less relevant with horizontal scroll groups, but we can keep it or force 'card' look for horizontal.
+    // The user requested horizontal scrolling, which implies a row of cards.
+    // We will stick to the card design for the horizontal scroll items.
+
     const { t, dateLocale, dateFormat } = useLanguage();
     const confirm = useConfirm();
 
@@ -47,32 +50,106 @@ export const PostList = () => {
         }
     };
 
+    const failedPosts = posts.filter(p => p.status === 'Failed');
+    const recentPosts = posts.filter(p => p.status !== 'Failed');
+
+    // Limit recent posts to 20
+    const displayedRecentPosts = recentPosts.slice(0, 20);
+    const hasMorePosts = recentPosts.length > 20;
+
+    const renderPostCard = (post: SocialPost, isFailed: boolean = false) => {
+        const hasMedia = post.assets && post.assets.length > 0;
+        const mainAsset = hasMedia ? post.assets[0] : null;
+
+        return (
+            <div
+                key={post.id}
+                className={`group relative flex-shrink-0 w-[280px] bg-[var(--color-surface-card)] border rounded-2xl overflow-hidden cursor-pointer hover:shadow-lg transition-all ${isFailed ? 'border-red-300 dark:border-red-800 ring-1 ring-red-100 dark:ring-red-900/30' : 'border-[var(--color-surface-border)] hover:border-[var(--color-primary-light)]'}`}
+                onClick={() => navigate(`/project/${projectId}/social/edit/${post.id}`)}
+            >
+                {/* Media / Thumbnail */}
+                <div className="aspect-square w-full bg-[var(--color-surface-hover)] relative overflow-hidden flex items-center justify-center">
+                    {mainAsset ? (
+                        mainAsset.type === 'video' ? (
+                            <video src={mainAsset.url} className="w-full h-full object-cover" muted />
+                        ) : (
+                            <img src={mainAsset.url} className="w-full h-full object-cover" loading="lazy" />
+                        )
+                    ) : (
+                        <span className="material-symbols-outlined text-4xl text-[var(--color-text-subtle)]">
+                            {post.format === 'Text' ? 'article' : 'image'}
+                        </span>
+                    )}
+
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+
+                    {/* Platform Badge */}
+                    <div className="absolute top-3 left-3 bg-white/90 dark:bg-black/80 backdrop-blur-sm p-1.5 rounded-lg shadow-sm">
+                        <div className="size-4">
+                            <PlatformIcon platform={post.platform} />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Content Info */}
+                <div className="p-4 flex flex-col h-[140px]">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className={`relative group/status flex items-center justify-center text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-md ${post.status === 'Published' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                            post.status === 'Scheduled' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                post.status === 'In Review' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
+                                    post.status === 'Failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                        'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'
+                            }`}>
+                            {getSocialPostStatusLabel(post.status, t)}
+                            {post.status === 'Failed' && post.error && (
+                                <div className="absolute bottom-full left-0 mb-2 hidden group-hover/status:block w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg z-50 normal-case font-normal text-left">
+                                    {post.error}
+                                    <div className="absolute top-full left-4 border-4 border-transparent border-t-gray-900" />
+                                </div>
+                            )}
+                        </span>
+                        {post.scheduledFor && (
+                            <span className="text-[10px] font-medium text-[var(--color-text-muted)] flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[12px]">calendar_month</span>
+                                {format(new Date(post.scheduledFor), 'MMM d')}
+                            </span>
+                        )}
+                    </div>
+
+                    <p className="text-sm text-[var(--color-text-main)] line-clamp-2 font-medium mb-3 flex-1">
+                        {post.content.caption || <span className="italic text-[var(--color-text-muted)] opacity-50">{t('social.postList.noCaption')}</span>}
+                    </p>
+
+                    <div className="flex items-center justify-between mt-auto text-xs text-[var(--color-text-muted)]">
+                        <div className="flex items-center gap-2">
+                            <span className="material-symbols-outlined text-[14px]">tag</span>
+                            <span>{post.content.hashtags?.length || 0}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Hover Actions */}
+                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                    <button
+                        onClick={(e) => handleDelete(e, post)}
+                        className="p-1.5 bg-white/90 dark:bg-black/80 backdrop-blur-sm border border-transparent hover:border-red-200 rounded-lg shadow-sm text-red-500 hover:text-red-600 hover:bg-red-50 transition-all"
+                        title={t('social.postForm.delete.title')}
+                    >
+                        <span className="material-symbols-outlined text-[18px]">delete</span>
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-10 pb-20">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="h2 mb-1">{t('social.postList.title')}</h1>
                     <p className="text-[var(--color-text-muted)]">{t('social.postList.subtitle')}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    {/* View Toggle */}
-                    <div className="flex bg-[var(--color-surface-hover)] p-1 rounded-lg border border-[var(--color-surface-border)]">
-                        <button
-                            onClick={() => setViewMode('grid')}
-                            className={`p-1.5 rounded-md flex items-center justify-center transition-all ${viewMode === 'grid' ? 'bg-[var(--color-surface-card)] shadow-sm text-[var(--color-primary)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
-                            title="Grid View"
-                        >
-                            <span className="material-symbols-outlined text-[20px]">grid_view</span>
-                        </button>
-                        <button
-                            onClick={() => setViewMode('list')}
-                            className={`p-1.5 rounded-md flex items-center justify-center transition-all ${viewMode === 'list' ? 'bg-[var(--color-surface-card)] shadow-sm text-[var(--color-primary)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
-                            title="List View"
-                        >
-                            <span className="material-symbols-outlined text-[20px]">view_list</span>
-                        </button>
-                    </div>
-
                     <Link
                         to={`/project/${projectId}/social/create`}
                         className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] font-bold rounded-lg hover:opacity-90 transition-opacity shadow-sm shadow-indigo-500/20"
@@ -97,121 +174,53 @@ export const PostList = () => {
                     </Link>
                 </div>
             ) : (
-                <div className={viewMode === 'grid' ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" : "space-y-3"}>
-                    {posts.map(post => {
-                        const hasMedia = post.assets && post.assets.length > 0;
-                        const mainAsset = hasMedia ? post.assets[0] : null;
+                <div className="space-y-10 animate-fade-in">
 
-                        // Unified Card Logic
-                        return (
-                            <div
-                                key={post.id}
-                                className={`group relative bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl overflow-hidden cursor-pointer hover:border-[var(--color-primary-light)] hover:shadow-lg transition-all ${viewMode === 'list' ? 'flex gap-4 p-4' : 'flex flex-col'}`}
-                                onClick={() => navigate(`/project/${projectId}/social/edit/${post.id}`)}
-                            >
-                                {/* Media / Thumbnail */}
-                                <div className={`${viewMode === 'list' ? 'size-24 rounded-xl' : 'aspect-square w-full'} bg-[var(--color-surface-hover)] relative overflow-hidden flex-shrink-0 flex items-center justify-center`}>
-                                    {mainAsset ? (
-                                        mainAsset.type === 'video' ? (
-                                            <video src={mainAsset.url} className="w-full h-full object-cover" muted />
-                                        ) : (
-                                            <img src={mainAsset.url} className="w-full h-full object-cover" loading="lazy" />
-                                        )
-                                    ) : (
-                                        <span className="material-symbols-outlined text-4xl text-[var(--color-text-subtle)]">
-                                            {post.format === 'Text' ? 'article' : 'image'}
-                                        </span>
-                                    )}
-
-                                    {/* Overlay for grid view interactions */}
-                                    {viewMode === 'grid' && (
-                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-                                    )}
-
-                                    {/* Platform Badge (Grid only, top left) */}
-                                    {viewMode === 'grid' && (
-                                        <div className="absolute top-3 left-3 bg-white/90 dark:bg-black/80 backdrop-blur-sm p-1.5 rounded-lg shadow-sm">
-                                            <div className="size-4">
-                                                <PlatformIcon platform={post.platform} />
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Content Info */}
-                                <div className={`flex-1 flex flex-col ${viewMode === 'grid' ? 'p-4' : ''}`}>
-                                    {/* Header (List only) */}
-                                    {viewMode === 'list' && (
-                                        <div className="flex items-center justify-between mb-1">
-                                            <div className="flex items-center gap-2">
-                                                <div className="size-5">
-                                                    <PlatformIcon platform={post.platform} />
-                                                </div>
-                                                <span className="text-sm font-bold text-[var(--color-text-main)]">{post.platform}</span>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Status Badge */}
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-md ${post.status === 'Published' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                                            post.status === 'Scheduled' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
-                                                post.status === 'In Review' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                                                    'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'
-                                            }`}>
-                                            {getSocialPostStatusLabel(post.status, t)}
-                                        </span>
-                                        {viewMode === 'grid' && post.scheduledFor && (
-                                            <span className="text-[10px] font-medium text-[var(--color-text-muted)] flex items-center gap-1">
-                                                <span className="material-symbols-outlined text-[12px]">calendar_month</span>
-                                                {format(new Date(post.scheduledFor), 'MMM d')}
-                                            </span>
-                                        )}
-                                    </div>
-
-                                    {/* Caption */}
-                                    <p className="text-sm text-[var(--color-text-main)] line-clamp-2 font-medium mb-3 flex-1">
-                                        {post.content.caption || <span className="italic text-[var(--color-text-muted)] opacity-50">{t('social.postList.noCaption')}</span>}
-                                    </p>
-
-                                    {/* Footer Info */}
-                                    <div className="flex items-center justify-between mt-auto text-xs text-[var(--color-text-muted)]">
-                                        <div className="flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-[14px]">tag</span>
-                                            <span>{post.content.hashtags?.length || 0}</span>
-                                        </div>
-                                        {viewMode === 'list' && post.scheduledFor && (
-                                            <span className="flex items-center gap-1">
-                                                <span className="material-symbols-outlined text-[14px]">calendar_month</span>
-                                                {format(new Date(post.scheduledFor), `${dateFormat} p`, { locale: dateLocale })}
-                                            </span>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Hover Actions (Absolute) */}
-                                <div className={`absolute ${viewMode === 'grid' ? 'top-3 right-3' : 'right-4 bottom-4'} opacity-0 group-hover:opacity-100 transition-opacity flex gap-2`}>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setPreviewPost(post);
-                                        }}
-                                        className="p-1.5 bg-white/90 dark:bg-black/80 backdrop-blur-sm border border-transparent hover:border-[var(--color-surface-border)] rounded-lg shadow-sm text-[var(--color-text-main)] hover:text-[var(--color-primary)] transition-all"
-                                        title={t('social.approvals.reviewBtn')}
-                                    >
-                                        <span className="material-symbols-outlined text-[18px]">visibility</span>
-                                    </button>
-                                    <button
-                                        onClick={(e) => handleDelete(e, post)}
-                                        className="p-1.5 bg-white/90 dark:bg-black/80 backdrop-blur-sm border border-transparent hover:border-red-200 rounded-lg shadow-sm text-red-500 hover:text-red-600 hover:bg-red-50 transition-all"
-                                        title={t('social.postForm.delete.title')}
-                                    >
-                                        <span className="material-symbols-outlined text-[18px]">delete</span>
-                                    </button>
-                                </div>
+                    {/* FAILED SECTION */}
+                    {failedPosts.length > 0 && (
+                        <section>
+                            <div className="flex items-center gap-2 mb-4 text-red-600 dark:text-red-400">
+                                <span className="material-symbols-outlined">error</span>
+                                <h3 className="text-lg font-bold">{t('social.postList.failedSection')}</h3>
+                                <span className="px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/30 text-xs font-bold">{failedPosts.length}</span>
                             </div>
-                        );
-                    })}
+                            <div className="flex overflow-x-auto pb-6 gap-6 scrollbar-hide -mx-6 px-6 sm:mx-0 sm:px-0">
+                                {failedPosts.map(post => renderPostCard(post, true))}
+                            </div>
+                        </section>
+                    )}
+
+                    {/* RECENT SECTION */}
+                    {recentPosts.length > 0 && (
+                        <section>
+                            <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center gap-2 text-[var(--color-text-main)]">
+                                    <span className="material-symbols-outlined">history</span>
+                                    <h3 className="text-lg font-bold">{t('social.postList.recentSection')}</h3>
+                                </div>
+                                <Link to={`/project/${projectId}/social/archive`} className="text-sm font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1">
+                                    {t('social.postList.viewArchive')}
+                                    <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                                </Link>
+                            </div>
+
+                            <div className="flex overflow-x-auto pb-6 gap-6 scrollbar-hide -mx-6 px-6 sm:mx-0 sm:px-0">
+                                {displayedRecentPosts.map(post => renderPostCard(post, false))}
+
+                                {hasMorePosts && (
+                                    <div
+                                        onClick={() => navigate(`/project/${projectId}/social/archive`)}
+                                        className="flex-shrink-0 w-[120px] bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-[var(--color-surface-pressed)] transition-colors group"
+                                    >
+                                        <div className="size-12 rounded-full bg-[var(--color-surface-card)] flex items-center justify-center shadow-sm mb-2 group-hover:scale-110 transition-transform">
+                                            <span className="material-symbols-outlined text-[var(--color-text-main)]">inventory_2</span>
+                                        </div>
+                                        <span className="text-xs font-bold text-[var(--color-text-muted)] text-center px-4">{t('social.postList.viewArchive')}</span>
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+                    )}
                 </div>
             )}
 

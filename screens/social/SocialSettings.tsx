@@ -441,7 +441,7 @@ export const SocialSettings = () => {
                                                     key={tone.id}
                                                     onClick={() => handleUpdateStrategy({ preferredTone: tone.id })}
                                                     className={`px-4 py-2 text-xs font-bold border rounded-lg transition-all ${strategy?.preferredTone === tone.id
-                                                        ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-sm'
+                                                        ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-[var(--color-primary)] shadow-sm'
                                                         : 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-primary)]/50'
                                                         }`}
                                                 >

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Search, Layout, Plus, Trash2, FileText, CheckCircle } from 'lucide-react';
 import { BlogTemplate, getBlogTemplates, saveBlogTemplate, deleteBlogTemplate } from '../../../services/blogService';
 import { useToast, useConfirm } from '../../../context/UIContext';
+import { Button } from '../../../components/ui/Button';
 
 interface TemplateManagerModalProps {
     isOpen: boolean;
@@ -116,13 +117,13 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                                         className="w-full pl-10 pr-4 py-2 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
                                     />
                                 </div>
-                                <button
+                                <Button
                                     onClick={() => setMode('save')}
-                                    className="px-4 py-2 bg-[var(--color-primary)] text-white rounded-lg text-sm font-medium hover:bg-[var(--color-primary-hover)] transition-colors flex items-center gap-2"
+                                    className="px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--color-primary-hover)] transition-colors gap-2"
                                 >
                                     <Plus size={16} />
                                     Save Current as Template
-                                </button>
+                                </Button>
                             </div>
 
                             {isLoading ? (
@@ -198,13 +199,13 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                                     >
                                         Cancel
                                     </button>
-                                    <button
+                                    <Button
                                         onClick={handleSaveTemplate}
                                         disabled={!newTemplateName.trim()}
-                                        className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-hover)] transition-colors disabled:opacity-50"
+                                        className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium hover:bg-[var(--color-primary-hover)] transition-colors disabled:opacity-50"
                                     >
                                         Save Template
-                                    </button>
+                                    </Button>
                                 </div>
                             </div>
                         </div>

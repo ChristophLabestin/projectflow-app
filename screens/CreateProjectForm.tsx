@@ -12,10 +12,14 @@ import { ProjectModule } from '../types';
 import { ImageCropper } from '../components/ui/ImageCropper';
 
 import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
+import { useModuleAccess } from '../hooks/useModuleAccess';
 
 export const CreateProjectForm = () => {
     const navigate = useNavigate();
     const { can } = useWorkspacePermissions();
+    const { hasAccess: isSocialAllowed } = useModuleAccess('social');
+    const { hasAccess: isMarketingAllowed } = useModuleAccess('marketing');
+    const { hasAccess: isAccountingAllowed } = useModuleAccess('accounting');
 
 
     const [step, setStep] = useState(1);
@@ -226,35 +230,44 @@ export const CreateProjectForm = () => {
                                 { id: 'ideas', label: 'Flows', desc: 'Brainstorming and concepts' },
                                 { id: 'activity', label: 'Activity', desc: 'Track project history' },
                                 { id: 'issues', label: 'Issues', desc: 'Bug tracking and tickets' },
-                            ].map((mod) => (
-                                <div key={mod.id}
-                                    onClick={() => {
-                                        const newModules = modules.includes(mod.id as any)
-                                            ? modules.filter(m => m !== mod.id)
-                                            : [...modules, mod.id as any];
-                                        setModules(newModules);
-                                    }}
-                                    className={`
+                                { id: 'social', label: 'Social', desc: 'Social media management' },
+                                { id: 'marketing', label: 'Marketing', desc: 'Campaigns and ads' },
+                                { id: 'accounting', label: 'Accounting', desc: 'Financial planning' },
+                            ].map((mod) => {
+                                if (mod.id === 'social' && !isSocialAllowed) return null;
+                                if (mod.id === 'marketing' && !isMarketingAllowed) return null;
+                                if (mod.id === 'accounting' && !isAccountingAllowed) return null;
+
+                                return (
+                                    <div key={mod.id}
+                                        onClick={() => {
+                                            const newModules = modules.includes(mod.id as any)
+                                                ? modules.filter(m => m !== mod.id)
+                                                : [...modules, mod.id as any];
+                                            setModules(newModules);
+                                        }}
+                                        className={`
                                         cursor-pointer p-3 rounded-lg border transition-all flex items-center gap-3
                                         ${modules.includes(mod.id as any)
-                                            ? 'border-[var(--color-text-main)] bg-[var(--color-surface-hover)]'
-                                            : 'border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'}
+                                                ? 'border-[var(--color-text-main)] bg-[var(--color-surface-hover)]'
+                                                : 'border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'}
                                     `}
-                                >
-                                    <div className={`
+                                    >
+                                        <div className={`
                                         size-5 rounded border flex items-center justify-center transition-colors
                                         ${modules.includes(mod.id as any)
-                                            ? 'bg-[var(--color-text-main)] border-[var(--color-text-main)]'
-                                            : 'border-[var(--color-text-subtle)]'}
+                                                ? 'bg-[var(--color-text-main)] border-[var(--color-text-main)]'
+                                                : 'border-[var(--color-text-subtle)]'}
                                     `}>
-                                        {modules.includes(mod.id as any) && <span className="material-symbols-outlined text-[var(--color-surface-bg)] text-[14px] font-bold">check</span>}
+                                            {modules.includes(mod.id as any) && <span className="material-symbols-outlined text-[var(--color-surface-bg)] text-[14px] font-bold">check</span>}
+                                        </div>
+                                        <div>
+                                            <h4 className="font-bold text-sm">{mod.label}</h4>
+                                            <p className="text-xs text-[var(--color-text-muted)]">{mod.desc}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h4 className="font-bold text-sm">{mod.label}</h4>
-                                        <p className="text-xs text-[var(--color-text-muted)]">{mod.desc}</p>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </Card>
 

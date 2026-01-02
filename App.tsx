@@ -10,6 +10,7 @@ import { Brainstorming } from './screens/Brainstorming';
 import { CreateProjectWizard } from './screens/CreateProjectWizard';
 import { ProjectOverview } from './screens/ProjectOverview';
 import { ProjectTasks } from './screens/ProjectTasks';
+import { ProjectSprints } from './screens/ProjectSprints';
 import { ProjectDetails } from './screens/ProjectDetails';
 import { ProjectTaskDetail } from './screens/ProjectTaskDetail';
 import { ProjectIssueDetail } from './screens/ProjectIssueDetail';
@@ -27,7 +28,7 @@ import { ProjectInviteLanding } from './screens/ProjectInviteLanding';
 import { JoinProjectViaLink } from './screens/JoinProjectViaLink';
 import { JoinWorkspaceViaLink } from './screens/JoinWorkspaceViaLink';
 import { Profile } from './screens/Profile';
-import { Settings } from './screens/Settings';
+
 import { Notifications } from './screens/Notifications';
 import { MediaLibraryPage } from './screens/MediaLibraryPage';
 import { PersonalTasksPage } from './screens/PersonalTasksPage';
@@ -44,6 +45,7 @@ import { CreateSocialPost } from './screens/social/CreateSocialPost';
 import { CreateCampaignPage } from './screens/social/CreateCampaignPage';
 import { SocialCampaignReviewPage } from './screens/social/SocialCampaignReviewPage';
 import { SocialApprovalsPage } from './screens/social/SocialApprovalsPage';
+import { SocialPostArchive } from './screens/social/SocialPostArchive';
 import { MarketingLayout } from './screens/marketing/MarketingLayout';
 import { MarketingDashboard } from './screens/marketing/MarketingDashboard';
 import { PaidAdsList } from './screens/marketing/PaidAdsList';
@@ -67,6 +69,8 @@ import { HelpCenterFloatingButton } from './components/help/HelpCenterFloatingBu
 import { LanguageSwitcher } from './components/LanguageSwitcher';
 import { useLanguage } from './context/LanguageContext';
 import LegalPage from './screens/LegalPage';
+import { useModuleAccess } from './hooks/useModuleAccess';
+import { AccountingPlaceholder } from './screens/AccountingPlaceholder';
 
 const RequireAuth = ({ children }: { children?: React.ReactNode }) => {
     const location = useLocation();
@@ -78,6 +82,29 @@ const RequireAuth = ({ children }: { children?: React.ReactNode }) => {
 
     if (!auth.currentUser) {
         return <Navigate to="/login" state={{ from: location }} replace />;
+    }
+    return <>{children}</>;
+};
+
+const RequireModuleAccess = ({ module, children }: { module: string; children?: React.ReactNode }) => {
+    const { hasAccess } = useModuleAccess(module);
+    const { t } = useLanguage();
+
+    if (!hasAccess) {
+        // Redirect or show access denied. 
+        // Redirecting to project overview or showing a friendly message.
+        // Since we are inside a route, returning <Navigate> works best.
+        // But we need the project ID to redirect to project root.
+        // We can just go UP one level '..', but safe is redirecting to '/projects' if standalone,
+        // or just render a "Not Allowed" message.
+        // Let's render a simple Access Denied message to match "not be able to navigate to the pages ... by entering the URL"
+        return (
+            <div className="flex flex-col items-center justify-center h-full p-10 text-center">
+                <span className="material-symbols-outlined text-4xl text-gray-400 mb-4">lock</span>
+                <h2 className="text-xl font-bold mb-2">{t('app.error.accessDenied')}</h2>
+                <p className="text-gray-500 max-w-sm">You do not have access to this module.</p>
+            </div>
+        );
     }
     return <>{children}</>;
 };
@@ -170,7 +197,7 @@ const App = () => {
                     <Route path="/team" element={<Team />} />
                     <Route path="/media" element={<MediaLibraryPage />} />
                     <Route path="/profile" element={<Profile />} />
-                    <Route path="/settings" element={<Settings />} />
+
                     <Route path="/personal-tasks" element={<PersonalTasksPage />} />
                     <Route path="/personal-tasks/:taskId" element={<PersonalTaskDetailPage />} />
 
@@ -187,7 +214,17 @@ const App = () => {
                         <Route path="issues" element={<ProjectIssues />} />
                         <Route path="issues/:issueId" element={<ProjectIssueDetail />} />
                         <Route path="milestones" element={<ProjectMilestones />} />
-                        <Route path="social" element={<SocialLayout />}>
+                        <Route path="sprints" element={
+                            <RequireModuleAccess module="sprints">
+                                <ProjectSprints />
+                            </RequireModuleAccess>
+                        } />
+
+                        <Route path="social" element={
+                            <RequireModuleAccess module="social">
+                                <SocialLayout />
+                            </RequireModuleAccess>
+                        }>
                             <Route index element={<SocialDashboard />} />
                             <Route path="campaigns" element={<CampaignList />} />
                             <Route path="campaigns/create" element={<CreateCampaignPage />} />
@@ -200,11 +237,32 @@ const App = () => {
                             <Route path="settings" element={<SocialSettings />} />
                             <Route path="assets" element={<SocialAssets />} />
                         </Route>
-                        <Route path="social/create" element={<CreateSocialPost />} />
-                        <Route path="social/edit/:postId" element={<CreateSocialPost />} />
-                        <Route path="social/approvals" element={<SocialApprovalsPage />} />
+                        <Route path="social/create" element={
+                            <RequireModuleAccess module="social">
+                                <CreateSocialPost />
+                            </RequireModuleAccess>
+                        } />
+                        <Route path="social/edit/:postId" element={
+                            <RequireModuleAccess module="social">
+                                <CreateSocialPost />
+                            </RequireModuleAccess>
+                        } />
+                        <Route path="social/approvals" element={
+                            <RequireModuleAccess module="social">
+                                <SocialApprovalsPage />
+                            </RequireModuleAccess>
+                        } />
+                        <Route path="social/archive" element={
+                            <RequireModuleAccess module="social">
+                                <SocialPostArchive />
+                            </RequireModuleAccess>
+                        } />
 
-                        <Route path="marketing" element={<MarketingLayout />}>
+                        <Route path="marketing" element={
+                            <RequireModuleAccess module="marketing">
+                                <MarketingLayout />
+                            </RequireModuleAccess>
+                        }>
                             <Route index element={<MarketingDashboard />} />
                             <Route path="ads" element={<PaidAdsList />} />
                             <Route path="ads/create" element={<CreateAdCampaignPage />} />
@@ -219,6 +277,13 @@ const App = () => {
                             <Route path="blog/:blogId" element={<BlogEditor />} />
                             <Route path="settings" element={<MarketingSettings />} />
                         </Route>
+
+                        <Route path="accounting" element={
+                            <RequireModuleAccess module="accounting">
+                                <AccountingPlaceholder />
+                            </RequireModuleAccess>
+                        } />
+
                     </Route>
                 </Route>
 

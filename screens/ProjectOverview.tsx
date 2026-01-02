@@ -5,7 +5,8 @@ import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { getProjectById, toggleTaskStatus, updateProjectFields, addActivityEntry, deleteProjectById, subscribeProjectTasks, subscribeProjectActivity, subscribeProjectIdeas, subscribeProjectIssues, getActiveTenantId, getLatestGeminiReport, saveGeminiReport, getProjectMembers, getSubTasks, sendTeamInvitation, generateInviteLink } from '../services/dataService';
 import { TaskCreateModal } from '../components/TaskCreateModal';
 import { generateProjectReport, getGeminiInsight } from '../services/geminiService';
-import { Activity, Idea, Project, Task, Issue, ProjectRole, GeminiReport, Milestone, ProjectGroup } from '../types';
+import { subscribeProjectSprints } from '../services/sprintService';
+import { Activity, Idea, Project, Task, Issue, ProjectRole, GeminiReport, Milestone, ProjectGroup, Sprint } from '../types';
 import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
 import { toMillis, timeAgo } from '../utils/time';
 import { auth, storage } from '../services/firebase';
@@ -69,6 +70,7 @@ const getModuleIcon = (name: string) => {
     if (name === 'issues') return { icon: 'bug_report', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10' };
     if (name === 'social') return { icon: 'campaign', color: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-50 dark:bg-pink-500/10' };
     if (name === 'marketing') return { icon: 'ads_click', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-500/10' };
+    if (name === 'sprints') return { icon: 'directions_run', color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-500/10' };
     if (name === 'activity') return { icon: 'history', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' };
     return { icon: 'more_horiz', color: 'text-slate-600 dark:text-slate-400', bg: 'bg-[var(--color-surface-hover)]' };
 };
@@ -92,6 +94,7 @@ export const ProjectOverview = () => {
     const [ideas, setIdeas] = useState<Idea[]>([]);
     const [issues, setIssues] = useState<Issue[]>([]);
     const [milestones, setMilestones] = useState<Milestone[]>([]);
+    const [sprints, setSprints] = useState<Sprint[]>([]);
     const [teamMemberProfiles, setTeamMemberProfiles] = useState<Array<{ id: string; displayName: string; photoURL?: string; role: string }>>([]);
     const [error, setError] = useState<string | null>(null);
     const [unauthorized, setUnauthorized] = useState(false);
@@ -268,6 +271,7 @@ export const ProjectOverview = () => {
                 const unsubIdeas = subscribeProjectIdeas(id, setIdeas, projData.tenantId);
                 const unsubIssues = subscribeProjectIssues(id, setIssues, projData.tenantId);
                 const unsubMilestones = subscribeProjectMilestones(id, setMilestones, projData.tenantId);
+                const unsubSprints = subscribeProjectSprints(id, setSprints, projData.tenantId);
 
                 return () => {
                     unsubTasks();
@@ -276,6 +280,7 @@ export const ProjectOverview = () => {
                     unsubIdeas();
                     unsubIssues();
                     unsubMilestones();
+                    unsubSprints();
                 };
             } catch (error) {
                 console.error(error);
@@ -476,6 +481,7 @@ export const ProjectOverview = () => {
                 action: 'updated project settings',
                 targetId: id,
                 targetName: project.title,
+                target: 'Project Settings',
                 metadata: {
                     changes: Object.keys(updatedFields)
                 }
@@ -503,6 +509,7 @@ export const ProjectOverview = () => {
                 action: 'updated project settings',
                 targetId: id,
                 targetName: project.title,
+                target: 'Project Settings',
                 metadata: {
                     changes: [field]
                 }
@@ -751,11 +758,11 @@ export const ProjectOverview = () => {
         })
         .sort((a, b) => b.timestamp - a.timestamp)
         .slice(0, 3);
-    const workloadMetric = hasIssuesModule
-        ? { label: t('projectOverview.workload.openIssues'), value: openIssues, icon: 'bug_report' }
-        : hasIdeasModule
-            ? { label: t('projectOverview.workload.flows'), value: ideas.length, icon: 'lightbulb' }
-            : { label: t('projectOverview.workload.completed'), value: completedTasks, icon: 'check_circle' };
+    const nextSprint = sprints
+        .filter(s => s.status === 'Planning')
+        .sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())[0];
+
+    const workloadMetric = { label: t('Next Sprint', 'Next Sprint'), value: nextSprint ? nextSprint.name : t('None', 'None'), icon: 'directions_run' };
 
     return (
         <>
@@ -902,7 +909,7 @@ export const ProjectOverview = () => {
 
 
                     {/* Banner Metrics Footer (Chronicle split up) */}
-                    <div data-onboarding-id="project-overview-metrics" className={`grid grid-cols-2 rounded-b-2xl ${project.modules?.includes('issues') ? 'md:grid-cols-5' : 'md:grid-cols-4'} border-t border-[var(--color-surface-border)] bg-[var(--color-surface-hover)]/30 divide-x divide-[var(--color-surface-border)]`}>
+                    <div data-onboarding-id="project-overview-metrics" className={`grid grid-cols-2 rounded-b-2xl md:grid-cols-5 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-hover)]/30 divide-x divide-[var(--color-surface-border)]`}>
                         {/* 1. Progress */}
                         <div className="py-3 px-6 flex items-center gap-4">
                             <span className="material-symbols-outlined text-[var(--color-primary)] text-[20px] shrink-0">speed</span>
@@ -1020,26 +1027,16 @@ export const ProjectOverview = () => {
                         </div>
 
                         {/* 4. Open Issues (only if module enabled) */}
-                        {project.modules?.includes('issues') && (
-                            <div className="py-3 px-6 flex items-center gap-4">
-                                <span className="material-symbols-outlined text-rose-500 text-[20px] shrink-0">bug_report</span>
-                                <div className="text-left min-w-0">
-                                    {(() => {
-                                        const openCount = issues.filter(i => !['Resolved', 'Closed'].includes(i.status)).length;
-                                        return (
-                                            <>
-                                                <div className="text-sm font-bold text-[var(--color-text-main)] leading-none mb-1">
-                                                    {openCount}
-                                                </div>
-                                                <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-tight truncate block">
-                                                    {openCount === 1 ? t('projectOverview.metrics.openIssue') : t('projectOverview.metrics.openIssues')}
-                                                </span>
-                                            </>
-                                        );
-                                    })()}
+                        {/* 4. Next Sprint (Replaces Issues) */}
+                        <div className="py-3 px-6 flex items-center gap-4">
+                            <span className="material-symbols-outlined text-orange-500 text-[20px] shrink-0">directions_run</span>
+                            <div className="text-left min-w-0">
+                                <div className="text-sm font-bold text-[var(--color-text-main)] leading-none mb-1">
+                                    {nextSprint ? nextSprint.name : t('None', 'None')}
                                 </div>
+                                <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-tight truncate block">{t('Next Sprint', 'Next Sprint')}</span>
                             </div>
-                        )}
+                        </div>
 
                         {/* 5. Next Deadline (always shown) */}
                         <div className="py-3 px-6 flex items-center gap-4">
@@ -1112,7 +1109,9 @@ export const ProjectOverview = () => {
                                                         ? 'text-emerald-600 dark:text-emerald-400'
                                                         : health.status === 'warning'
                                                             ? 'text-amber-600 dark:text-amber-400'
-                                                            : 'text-rose-600 dark:text-rose-400'
+                                                            : health.status === 'normal'
+                                                                ? 'text-blue-600 dark:text-blue-400'
+                                                                : 'text-rose-600 dark:text-rose-400'
                                                         }`}>
                                                         {healthStatusLabels[health.status] || health.status}
                                                     </div>

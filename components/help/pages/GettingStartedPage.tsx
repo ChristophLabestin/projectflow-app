@@ -399,13 +399,13 @@ export const GettingStartedPage = (_props: HelpCenterPageProps) => {
                 <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
                     <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">Hierarchy</div>
                     <div className="flex items-center gap-3 flex-wrap">
-                        <div className="px-4 py-2 rounded-xl bg-[var(--color-primary)] text-white font-bold text-sm">Workspace</div>
+                        <div className="px-4 py-2 rounded-xl bg-[var(--color-primary)] text-[var(--color-primary-text)] font-bold text-sm">Workspace</div>
                         <span className="material-symbols-outlined text-[var(--color-text-subtle)]">arrow_forward</span>
-                        <div className="px-4 py-2 rounded-xl bg-[var(--color-primary)]/80 text-white font-bold text-sm">Projects</div>
+                        <div className="px-4 py-2 rounded-xl bg-[var(--color-primary)]/80 text-[var(--color-primary-text)] font-bold text-sm">Projects</div>
                         <span className="material-symbols-outlined text-[var(--color-text-subtle)]">arrow_forward</span>
-                        <div className="px-4 py-2 rounded-xl bg-[var(--color-primary)]/60 text-white font-bold text-sm">Modules</div>
+                        <div className="px-4 py-2 rounded-xl bg-[var(--color-primary)]/60 text-[var(--color-primary-text)] font-bold text-sm">Modules</div>
                         <span className="material-symbols-outlined text-[var(--color-text-subtle)]">arrow_forward</span>
-                        <div className="px-4 py-2 rounded-xl bg-[var(--color-primary)]/40 text-white font-bold text-sm">Items</div>
+                        <div className="px-4 py-2 rounded-xl bg-[var(--color-primary)]/40 text-[var(--color-primary-text)] font-bold text-sm">Items</div>
                     </div>
                 </div>
 

@@ -311,7 +311,7 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
                         />
                         <button
                             onClick={handleSavePreset}
-                            className="bg-[var(--color-primary)] text-white px-2 hover:bg-[var(--color-primary-dark)]"
+                            className="bg-[var(--color-primary)] text-[var(--color-primary-text)] px-2 hover:bg-[var(--color-primary-dark)]"
                         >
                             <Check size={12} />
                         </button>
@@ -365,7 +365,7 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
                                             </div>
                                             <button
                                                 onClick={() => handleSaveColor('bg')}
-                                                className="px-3 py-1 bg-[var(--color-primary)] text-white dark:text-black text-xs font-medium rounded-lg hover:bg-[var(--color-primary-hover)]"
+                                                className="px-3 py-1 bg-[var(--color-primary)] text-[var(--color-primary-text)] text-xs font-medium rounded-lg hover:bg-[var(--color-primary-hover)]"
                                             >
                                                 Save
                                             </button>
@@ -420,7 +420,7 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
                                                 </div>
                                                 <button
                                                     onClick={() => handleSaveColor('border')}
-                                                    className="px-3 py-1 bg-[var(--color-primary)] text-white dark:text-black text-xs font-medium rounded-lg hover:bg-[var(--color-primary-hover)]"
+                                                    className="px-3 py-1 bg-[var(--color-primary)] text-[var(--color-primary-text)] text-xs font-medium rounded-lg hover:bg-[var(--color-primary-hover)]"
                                                 >
                                                     Save
                                                 </button>
@@ -513,7 +513,7 @@ export const CardMenu: React.FC<CardMenuProps> = ({ editor }) => {
                                             </div>
                                             <button
                                                 onClick={() => handleSaveColor('text')}
-                                                className="px-3 py-1 bg-[var(--color-primary)] text-white dark:text-black text-xs font-medium rounded-lg hover:bg-[var(--color-primary-hover)]"
+                                                className="px-3 py-1 bg-[var(--color-primary)] text-[var(--color-primary-text)] text-xs font-medium rounded-lg hover:bg-[var(--color-primary-hover)]"
                                             >
                                                 Save
                                             </button>

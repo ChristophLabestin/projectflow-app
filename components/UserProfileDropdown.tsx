@@ -4,6 +4,7 @@ import { auth } from '../services/firebase';
 import { signOut } from 'firebase/auth';
 import { subscribeUserStatusPreference, updateUserStatusPreference } from '../services/dataService';
 import { useLanguage } from '../context/LanguageContext';
+import { SettingsModal } from './SettingsModal';
 
 /**
  * User Profile Dropdown for the Topbar
@@ -13,6 +14,7 @@ export const UserProfileDropdown: React.FC = () => {
     const [isOpen, setIsOpen] = useState(false);
     const [isStatusSelectorOpen, setIsStatusSelectorOpen] = useState(false);
     const [statusPreference, setStatusPreference] = useState<'online' | 'busy' | 'idle' | 'offline'>('online');
+    const [showSettingsModal, setShowSettingsModal] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const statusSelectorRef = useRef<HTMLDivElement>(null);
     const navigate = useNavigate();
@@ -222,14 +224,16 @@ export const UserProfileDropdown: React.FC = () => {
                             <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">person</span>
                             <span className="text-sm font-medium">{t('user.viewProfile')}</span>
                         </Link>
-                        <Link
-                            to="/settings"
-                            onClick={closeAndNavigate}
-                            className="flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)] transition-colors"
+                        <button
+                            onClick={() => {
+                                closeAndNavigate();
+                                setShowSettingsModal(true);
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)] transition-colors text-left"
                         >
                             <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">settings</span>
                             <span className="text-sm font-medium">{t('user.settings')}</span>
-                        </Link>
+                        </button>
                         <Link
                             to="/media"
                             onClick={closeAndNavigate}
@@ -260,6 +264,12 @@ export const UserProfileDropdown: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            <SettingsModal
+                isOpen={showSettingsModal}
+                onClose={() => setShowSettingsModal(false)}
+            />
         </div>
     );
 };
+

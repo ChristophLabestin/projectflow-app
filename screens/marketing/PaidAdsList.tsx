@@ -5,6 +5,7 @@ import { subscribeProjectIdeas } from '../../services/dataService';
 import { AdCampaign, Idea, AdPlatform, AdCampaignStatus } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
 import { format } from 'date-fns';
+import { Button } from '../../components/ui/Button';
 
 // Platform configuration with colors and icons
 const PLATFORM_CONFIG: Record<AdPlatform, { color: string; bg: string; darkBg: string }> = {
@@ -130,13 +131,13 @@ export const PaidAdsList = () => {
                         <span className="material-symbols-outlined text-[18px]">lightbulb</span>
                         Flow Pipeline
                     </button>
-                    <button
+                    <Button
                         onClick={() => navigate(`/project/${projectId}/marketing/ads/create`)}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-[var(--color-primary)] text-white dark:text-slate-900 hover:bg-[var(--color-primary)]/90 shadow-lg shadow-[var(--color-primary)]/20 active:scale-95 rounded-xl text-sm font-bold transition-all"
+                        className="px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[var(--color-primary)]/90 shadow-lg shadow-[var(--color-primary)]/20 active:scale-95 transition-all gap-2"
                     >
                         <span className="material-symbols-outlined text-[18px]">add</span>
                         Create Campaign
-                    </button>
+                    </Button>
                 </div>
             </div>
 
@@ -531,12 +532,12 @@ const EmptyState = ({ onCreateClick, hasIdeas }: { onCreateClick: () => void; ha
                 : "Create your first ad campaign to start tracking performance across platforms."
             }
         </p>
-        <button
+        <Button
             onClick={onCreateClick}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[var(--color-primary)] text-white dark:text-slate-900 rounded-xl font-bold hover:opacity-90 transition-opacity"
+            className="px-6 py-3 rounded-xl font-bold hover:opacity-90 transition-opacity gap-2"
         >
             <span className="material-symbols-outlined">add</span>
             Create Campaign
-        </button>
+        </Button>
     </div>
 );

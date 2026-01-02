@@ -267,9 +267,9 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                             <span className="material-symbols-outlined text-[20px] text-indigo-500">calendar_view_week</span>
                             {t('flowStages.productDevelopment.roadmap.title')}
                         </div>
-                        <button onClick={addPhase} className="text-xs bg-[var(--color-primary)] text-white px-3 py-1.5 rounded-lg hover:bg-[var(--color-primary)]/90 shadow-sm flex items-center gap-1">
+                        <Button onClick={addPhase} size="sm" className="rounded-lg text-xs hover:bg-[var(--color-primary)]/90 shadow-sm gap-1">
                             <span className="material-symbols-outlined text-[14px]">add</span> {t('flowStages.productDevelopment.roadmap.addPhase')}
-                        </button>
+                        </Button>
                     </div>
 
                     <div className="p-4 flex-1 overflow-y-auto space-y-4">
@@ -370,7 +370,7 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                     {/* Advance Action */}
                     <div className="p-4 border-t border-[var(--color-surface-border)] shrink-0">
                         <Button
-                            className="w-full h-12 text-base justify-between group bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:opacity-90 shadow-lg hover:shadow-xl transition-all rounded-xl border-none"
+                            className="w-full h-12 text-base justify-between group hover:opacity-90 shadow-lg hover:shadow-xl transition-all rounded-xl border-none"
                             onClick={() => onUpdate({ stage: 'Concept' })}
                         >
                             <span className="font-bold pl-1">{t('flowStages.productDevelopment.actions.advance')}</span>

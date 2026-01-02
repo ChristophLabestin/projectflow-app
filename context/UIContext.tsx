@@ -30,8 +30,6 @@ interface UIContextType {
     closeToast: () => void;
     confirmation: ConfirmationState;
     closeConfirmation: (result: boolean) => void;
-    isReleaseModalOpen: boolean;
-    setReleaseModalOpen: (open: boolean) => void;
 
     // Global Task Create Modal
     isTaskCreateModalOpen: boolean;
@@ -70,7 +68,6 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
         resolve: null,
     });
 
-    const [isReleaseModalOpen, setReleaseModalOpen] = useState(false);
 
     // Task Modal State
     const [isTaskCreateModalOpen, setTaskCreateModalOpen] = useState(false);
@@ -165,8 +162,8 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
     }, [pinnedProject, isTaskCreateModalOpen, isIdeaCreateModalOpen, isIssueCreateModalOpen, openTaskCreateModal, closeTaskCreateModal, openIdeaCreateModal, closeIdeaCreateModal, openIssueCreateModal, closeIssueCreateModal]);
 
     const showToast = useCallback((message: string, type: ToastType = 'info', action?: { label: string; path: string }, details?: string) => {
-        // Intercept Pre-Beta Missing Key Error
-        if (message.includes('Pre-Beta: You must set your own Gemini API Key')) {
+        // Intercept Pre-Alpha Missing Key Error
+        if (message.includes('Pre-Alpha: You must set your own Gemini API Key')) {
             action = { label: 'Go to Settings', path: '/settings?tab=prebeta' };
         }
 
@@ -212,8 +209,7 @@ export const UIProvider = ({ children }: { children: ReactNode }) => {
             closeToast,
             confirmation,
             closeConfirmation,
-            isReleaseModalOpen,
-            setReleaseModalOpen,
+
             isTaskCreateModalOpen,
             taskCreateProjectId,
             openTaskCreateModal,

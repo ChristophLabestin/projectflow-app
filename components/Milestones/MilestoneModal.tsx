@@ -18,7 +18,7 @@ export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: Milest
     const [status, setStatus] = useState<'Pending' | 'Achieved' | 'Missed'>('Pending');
     const [linkedTaskIds, setLinkedTaskIds] = useState<string[]>([]);
     const [linkedInitiativeId, setLinkedInitiativeId] = useState<string>('');
-    const [riskRating, setRiskRating] = useState<'Low' | 'Medium' | 'High' | undefined>(undefined);
+
     const [availableTasks, setAvailableTasks] = useState<any[]>([]);
     const [availableInitiatives, setAvailableInitiatives] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
@@ -76,7 +76,7 @@ export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: Milest
                 setStatus(milestone.status);
                 setLinkedTaskIds(milestone.linkedTaskIds || []);
                 setLinkedInitiativeId(milestone.linkedInitiativeId || '');
-                setRiskRating(milestone.riskRating);
+
             } else {
                 // Reset for create mode
                 setTitle('');
@@ -85,7 +85,7 @@ export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: Milest
                 setStatus('Pending');
                 setLinkedTaskIds([]);
                 setLinkedInitiativeId('');
-                setRiskRating(undefined);
+
             }
         }
     }, [isOpen, milestone, projectId]);
@@ -102,8 +102,7 @@ export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: Milest
                     dueDate,
                     status,
                     linkedTaskIds,
-                    linkedInitiativeId,
-                    riskRating
+                    linkedInitiativeId
                 });
             } else {
                 await createMilestone(projectId, {
@@ -112,8 +111,7 @@ export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: Milest
                     dueDate,
                     status,
                     linkedTaskIds,
-                    linkedInitiativeId,
-                    riskRating
+                    linkedInitiativeId
                 });
             }
 
@@ -255,27 +253,6 @@ export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: Milest
                                     />
                                     <span className="text-sm truncate text-[var(--color-text-main)]">{task.title}</span>
                                 </label>
-                            ))}
-                        </div>
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-subtle)] mb-1">
-                            Risk Rating
-                        </label>
-                        <div className="flex bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg p-1">
-                            {(['Low', 'Medium', 'High'] as const).map((r) => (
-                                <button
-                                    key={r}
-                                    type="button"
-                                    onClick={() => setRiskRating(r)}
-                                    className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${riskRating === r
-                                        ? r === 'High' ? 'bg-red-500/20 text-red-500' : r === 'Medium' ? 'bg-amber-500/20 text-amber-500' : 'bg-green-500/20 text-green-500'
-                                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
-                                        } ${riskRating === r ? 'ring-1 ring-inset ring-current' : ''}`}
-                                >
-                                    {r}
-                                </button>
                             ))}
                         </div>
                     </div>

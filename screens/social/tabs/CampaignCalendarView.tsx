@@ -205,7 +205,7 @@ export const CampaignCalendarView: React.FC<CampaignCalendarViewProps> = ({ post
                             <button
                                 onClick={() => setShowFilters(!showFilters)}
                                 className={`p-2 rounded-md transition-all border flex items-center gap-2 text-xs font-medium ${selectedPlatforms.length > 0 || selectedStatuses.length > 0
-                                    ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
+                                    ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-[var(--color-primary)]'
                                     : 'bg-[var(--color-surface-card)] border-[var(--color-surface-border)] text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'
                                     }`}
                             >

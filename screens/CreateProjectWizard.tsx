@@ -16,6 +16,7 @@ import { ProjectModule, ProjectBlueprint, WorkspaceGroup } from '../types';
 import { useToast } from '../context/UIContext';
 import { auth, storage } from '../services/firebase'; // Added storage for manual uploads if needed (though MediaLibrary handles it)
 import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
+import { useModuleAccess } from '../hooks/useModuleAccess';
 
 const STEPS = [
     { id: 0, labelKey: 'createProjectWizard.steps.method' },
@@ -28,17 +29,23 @@ const STEPS = [
 
 const MODULE_OPTIONS = [
     { id: 'tasks', labelKey: 'createProjectWizard.modules.tasks.label', descKey: 'createProjectWizard.modules.tasks.desc', icon: 'check_circle' },
+    { id: 'sprints', labelKey: 'createProjectWizard.modules.sprints.label', descKey: 'createProjectWizard.modules.sprints.desc', icon: 'directions_run' },
     { id: 'issues', labelKey: 'createProjectWizard.modules.issues.label', descKey: 'createProjectWizard.modules.issues.desc', icon: 'bug_report' },
     { id: 'ideas', labelKey: 'createProjectWizard.modules.flows.label', descKey: 'createProjectWizard.modules.flows.desc', icon: 'lightbulb' },
     { id: 'milestones', labelKey: 'createProjectWizard.modules.milestones.label', descKey: 'createProjectWizard.modules.milestones.desc', icon: 'flag' },
     { id: 'social', labelKey: 'createProjectWizard.modules.social.label', descKey: 'createProjectWizard.modules.social.desc', icon: 'campaign' },
     { id: 'marketing', labelKey: 'createProjectWizard.modules.marketing.label', descKey: 'createProjectWizard.modules.marketing.desc', icon: 'ads_click' },
+    { id: 'accounting', labelKey: 'createProjectWizard.modules.accounting.label', descKey: 'createProjectWizard.modules.accounting.desc', icon: 'receipt_long' },
     { id: 'activity', labelKey: 'createProjectWizard.modules.activity.label', descKey: 'createProjectWizard.modules.activity.desc', icon: 'history' },
 ] as const;
 
 export const CreateProjectWizard = () => {
     const navigate = useNavigate();
+    const user = auth.currentUser;
     const { can } = useWorkspacePermissions();
+    const { hasAccess: isSocialAllowed } = useModuleAccess('social');
+    const { hasAccess: isMarketingAllowed } = useModuleAccess('marketing');
+    const { hasAccess: isAccountingAllowed } = useModuleAccess('accounting');
     const { showToast } = useToast();
     const { dateFormat, dateLocale, t } = useLanguage();
 
@@ -481,7 +488,23 @@ export const CreateProjectWizard = () => {
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-3">
-                                    {MODULE_OPTIONS.map(m => {
+                                    {[
+                                        { id: 'tasks', labelKey: 'createProjectWizard.modules.tasks.label', descKey: 'createProjectWizard.modules.tasks.desc', icon: 'check_circle' },
+                                        { id: 'sprints', labelKey: 'createProjectWizard.modules.sprints.label', descKey: 'createProjectWizard.modules.sprints.desc', icon: 'directions_run' },
+                                        { id: 'issues', labelKey: 'createProjectWizard.modules.issues.label', descKey: 'createProjectWizard.modules.issues.desc', icon: 'bug_report' },
+                                        { id: 'ideas', labelKey: 'createProjectWizard.modules.flows.label', descKey: 'createProjectWizard.modules.flows.desc', icon: 'lightbulb' },
+                                        { id: 'milestones', labelKey: 'createProjectWizard.modules.milestones.label', descKey: 'createProjectWizard.modules.milestones.desc', icon: 'flag' },
+                                        { id: 'activity', labelKey: 'createProjectWizard.modules.activity.label', descKey: 'createProjectWizard.modules.activity.desc', icon: 'history' },
+                                        { id: 'groups', labelKey: 'createProjectWizard.modules.groups.label', descKey: 'createProjectWizard.modules.groups.desc', icon: 'groups' },
+                                        { id: 'social', labelKey: 'createProjectWizard.modules.social.label', descKey: 'createProjectWizard.modules.social.desc', icon: 'campaign' },
+                                        { id: 'marketing', labelKey: 'createProjectWizard.modules.marketing.label', descKey: 'createProjectWizard.modules.marketing.desc', icon: 'ads_click' },
+                                        { id: 'accounting', labelKey: 'createProjectWizard.modules.accounting.label', descKey: 'createProjectWizard.modules.accounting.desc', icon: 'receipt_long' },
+                                    ].map((m) => {
+                                        // Restricted Check
+                                        if (m.id === 'social' && !isSocialAllowed) return null;
+                                        if (m.id === 'marketing' && !isMarketingAllowed) return null;
+                                        if (m.id === 'accounting' && !isAccountingAllowed) return null;
+
                                         const isActive = modules.includes(m.id as any);
                                         return (
                                             <button

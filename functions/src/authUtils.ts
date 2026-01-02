@@ -106,3 +106,79 @@ export const getAuthToken = (req: any): string => {
     // 2. Query param or body (fallback)
     return req.query?.token || req.body?.token || '';
 };
+
+// --- RBAC Helpers (Duplicate of types/permissions Logic for backend) ---
+
+export type ProjectRole = 'Owner' | 'Editor' | 'Viewer';
+
+export const ROLE_PERMISSIONS: Record<ProjectRole, string[]> = {
+    Owner: [
+        'project.read', 'project.update', 'project.delete', 'project.invite', 'project.view_settings',
+        'task.create', 'task.update', 'task.delete', 'task.view', 'task.assign', 'task.comment',
+        'issue.create', 'issue.update', 'issue.delete', 'issue.view',
+        'idea.create', 'idea.update', 'idea.delete', 'idea.view',
+        'group.create', 'group.update', 'group.delete'
+    ],
+    Editor: [
+        'project.read', 'project.invite', 'project.view_settings',
+        'task.create', 'task.update', 'task.delete', 'task.view', 'task.assign', 'task.comment',
+        'issue.create', 'issue.update', 'issue.delete', 'issue.view',
+        'idea.create', 'idea.update', 'idea.delete', 'idea.view',
+        'group.create', 'group.update', 'group.delete'
+    ],
+    Viewer: [
+        'project.read',
+        'task.view', 'task.comment',
+        'issue.view',
+        'idea.view'
+    ]
+};
+
+/**
+ * Verify if a user has a specific permission on a project.
+ * Fetches the project from Firestore to check roles.
+ */
+export const checkProjectPermission = async (userId: string, projectId: string, permission: string): Promise<boolean> => {
+    try {
+        // Try to find project in tenants (we need to find the tenant first, or use Collection Group query?)
+        // Since we don't know the tenant, we might need to search or assume passed context.
+        // For optimization, let's look up project directly if possible.
+        // BUT projects are in subcollections of tenants.
+        // We can use a collection group query for the project ID to find it.
+
+        const projectsRef = db.collectionGroup('projects');
+        const querySnapshot = await projectsRef.where(admin.firestore.FieldPath.documentId(), '==', projectId).limit(1).get();
+
+        if (querySnapshot.empty) return false;
+
+        const projectData = querySnapshot.docs[0].data();
+
+        // Check Owner field
+        if (projectData.ownerId === userId) return true;
+
+        // Check Roles Map
+        const userRole = projectData.roles ? projectData.roles[userId] : null;
+        if (!userRole) {
+            // Check legacy members array
+            if (Array.isArray(projectData.members)) {
+                const member = projectData.members.find((m: any) =>
+                    (typeof m === 'string' && m === userId) || (m.userId === userId)
+                );
+
+                if (member) {
+                    // Legacy member is Editor or specific role
+                    const legacyRole = typeof member === 'object' ? member.role : 'Editor';
+                    // Check if legacy role has permission
+                    return (ROLE_PERMISSIONS[legacyRole as ProjectRole] || []).includes(permission);
+                }
+            }
+            return false;
+        }
+
+        return (ROLE_PERMISSIONS[userRole as ProjectRole] || []).includes(permission);
+
+    } catch (e) {
+        console.error('Permission check failed', e);
+        return false;
+    }
+};

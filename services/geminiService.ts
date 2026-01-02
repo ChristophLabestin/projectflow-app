@@ -16,7 +16,7 @@ enum Type {
 }
 type Schema = any;
 
-// Helper to call generic Gemini Cloud Function with user's specific API Key if available (Pre-Beta)
+// Helper to call generic Gemini Cloud Function with user's specific API Key if available (Pre-Alpha)
 const callGeminiAPI = async (params: {
     prompt: string,
     systemInstruction?: string,
@@ -28,7 +28,7 @@ const callGeminiAPI = async (params: {
     const user = auth.currentUser;
     let apiKey = undefined;
 
-    // Pre-Beta: Fetch user's API key from profile
+    // Pre-Alpha: Fetch user's API key from profile
     if (user) {
         try {
             const profile = await getUserProfile(user.uid, getActiveTenantId());

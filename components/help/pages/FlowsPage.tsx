@@ -67,7 +67,7 @@ const PipelineStage = ({
         }`}>
         <div className="flex items-center gap-3 mb-2">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${isActive
-                ? 'bg-[var(--color-primary)] text-white'
+                ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)]'
                 : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'
                 }`}>
                 {stage}

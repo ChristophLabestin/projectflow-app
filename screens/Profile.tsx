@@ -142,7 +142,7 @@ export const Profile = () => {
                             </div>
 
                             <div className="flex items-center gap-3">
-                                <Button className="px-8 py-4 rounded-2xl font-bold bg-black dark:bg-white text-white dark:text-black hover:opacity-90 shadow-lg shadow-black/5 dark:shadow-white/5">
+                                <Button className="px-8 py-4 rounded-2xl font-bold hover:opacity-90 shadow-lg shadow-black/5 dark:shadow-white/5">
                                     {t('profile.actions.follow')}
                                 </Button>
                                 <Button variant="secondary" className="px-8 py-4 rounded-2xl font-bold border-[var(--color-surface-border)] bg-white dark:bg-black hover:bg-[var(--color-surface-hover)]">

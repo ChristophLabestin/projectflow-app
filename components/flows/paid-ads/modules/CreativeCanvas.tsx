@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AdData } from '../../../../types';
 import { motion } from 'framer-motion';
+import { Button } from '../../../ui/Button';
 
 interface ModuleProps {
     adData: Partial<AdData>;
@@ -112,9 +113,9 @@ export const CreativeCanvas: React.FC<ModuleProps> = ({ adData, updateAdData, on
                     <button onClick={onBack} className="px-6 py-3 font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
                         Back
                     </button>
-                    <button onClick={onNext} className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-6 py-3 rounded-xl font-bold shadow-lg hover:transform hover:translate-y-[-2px] transition-all">
+                    <Button onClick={onNext} className="px-6 py-3 rounded-xl font-bold shadow-lg hover:transform hover:translate-y-[-2px] transition-all">
                         Targeting & Budget
-                    </button>
+                    </Button>
                 </div>
             </div>
 

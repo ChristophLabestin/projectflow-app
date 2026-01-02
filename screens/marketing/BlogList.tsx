@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { fetchExternalBlogPosts, BlogPost, deleteBlogPost } from '../../services/blogService';
 import { subscribeMarketingSettings } from '../../services/marketingSettingsService';
 import { useToast, useConfirm } from '../../context/UIContext';
+import { Button } from '../../components/ui/Button';
 
 
 // Mock data for initial development
@@ -226,13 +227,13 @@ const BlogList = () => {
                         </button>
                     </div>
 
-                    <button
+                    <Button
                         onClick={handleCreate}
-                        className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-white dark:text-black rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors shadow-sm font-medium"
+                        className="px-4 py-2 rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors shadow-sm font-medium gap-2"
                     >
                         <span className="material-symbols-outlined text-[20px]">add</span>
                         Create New Post
-                    </button>
+                    </Button>
                 </div>
             </div>
 

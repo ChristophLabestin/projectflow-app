@@ -603,7 +603,7 @@ export const ProjectTasks = () => {
                                 push_pin
                             </span>
                         </button>
-                        <div className="size-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center text-[var(--color-text-main)] transition-all duration-300 group-hover:bg-[var(--color-primary)] group-hover:text-white group-hover:translate-x-1 shrink-0">
+                        <div className="size-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center text-[var(--color-text-main)] transition-all duration-300 group-hover:bg-[var(--color-primary)] group-hover:text-[var(--color-primary-text)] group-hover:translate-x-1 shrink-0">
                             <span className="material-symbols-outlined text-xl">east</span>
                         </div>
                     </div>

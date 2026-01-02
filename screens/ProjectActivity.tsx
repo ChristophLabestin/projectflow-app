@@ -15,7 +15,7 @@ const FilterTab = ({ label, active, onClick, icon }: { label: string; active: bo
         className={`
             flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all
             ${active
-                ? 'bg-[var(--color-primary)] text-white dark:text-black shadow-lg shadow-[var(--color-primary)]/20'
+                ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] shadow-lg shadow-[var(--color-primary)]/20'
                 : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-text-main)]'}
         `}
     >

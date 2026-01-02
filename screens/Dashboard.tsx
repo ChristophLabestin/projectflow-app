@@ -14,6 +14,7 @@ import { ScheduledTasksCard } from '../components/dashboard/ScheduledTasksCard';
 import { LatestMilestoneCard } from '../components/dashboard/LatestMilestoneCard';
 import { calculateProjectHealth, calculateWorkspaceHealth, ProjectHealth } from '../services/healthService';
 import { WorkspaceHealthCard } from '../components/dashboard/WorkspaceHealthCard';
+import { HealthIndicator } from '../components/project/HealthIndicator';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { OnboardingWelcomeModal } from '../components/onboarding/OnboardingWelcomeModal';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
@@ -26,6 +27,19 @@ const formatShortDate = (date: any, dateFormat: string, dateLocale: any) => {
     const d = toDate(date);
     if (!d) return '';
     return format(d, dateFormat, { locale: dateLocale });
+};
+
+const REVIEW_STAGES = new Set(['Review', 'Submit']);
+const TASK_STATUS_ORDER = ['In Progress', 'Review', 'Blocked', 'Todo', 'Open', 'Backlog', 'On Hold'];
+const TASK_STATUS_COLORS: Record<string, string> = {
+    'In Progress': '#6366f1',
+    'Review': '#f59e0b',
+    'Blocked': '#ef4444',
+    'Todo': '#0ea5e9',
+    'Open': '#3b82f6',
+    'Backlog': '#94a3b8',
+    'On Hold': '#64748b',
+    'Done': '#10b981'
 };
 
 
@@ -357,6 +371,16 @@ export const Dashboard = () => {
         'On Hold': t('dashboard.projectStatus.onHold'),
         Brainstorming: t('dashboard.projectStatus.brainstorming')
     }), [t]);
+    const taskStatusLabels = useMemo(() => ({
+        Backlog: t('tasks.status.backlog'),
+        Todo: t('tasks.status.todo'),
+        Open: t('tasks.status.open'),
+        'In Progress': t('tasks.status.inProgress'),
+        Review: t('tasks.status.review'),
+        'On Hold': t('tasks.status.onHold'),
+        Blocked: t('tasks.status.blocked'),
+        Done: t('tasks.status.done')
+    }), [t]);
     const taskPriorityLabels = useMemo(() => ({
         Urgent: t('tasks.priority.urgent'),
         High: t('tasks.priority.high'),
@@ -394,6 +418,20 @@ export const Dashboard = () => {
         ].filter(d => d.value > 0);
     }, [tasks, taskPriorityLabels]);
 
+    const taskStatusSummary = useMemo(() => {
+        const openTasks = tasks.filter(task => !task.isCompleted && task.status !== 'Done');
+        const counts: Record<string, number> = {};
+        openTasks.forEach(task => {
+            const status = task.status || 'Open';
+            counts[status] = (counts[status] || 0) + 1;
+        });
+        const remaining = Object.keys(counts).filter(status => !TASK_STATUS_ORDER.includes(status));
+        const items = [...TASK_STATUS_ORDER, ...remaining]
+            .map(status => ({ status, count: counts[status] || 0 }))
+            .filter(item => item.count > 0);
+        return { items, total: openTasks.length };
+    }, [tasks]);
+
     const statusBreakdown = useMemo(() => {
         const active = stats.activeProjects;
         const completed = stats.completedProjects;
@@ -406,33 +444,50 @@ export const Dashboard = () => {
         };
     }, [stats, projects.length]);
 
-    // Calculate Workspace Health
-    const workspaceHealth = useMemo(() => {
-        const tasksByProject: Record<string, Task[]> = {};
-        const issuesByProject: Record<string, Issue[]> = {};
-
-        tasks.forEach(t => {
-            if (!tasksByProject[t.projectId]) tasksByProject[t.projectId] = [];
-            tasksByProject[t.projectId].push(t);
+    const tasksByProject = useMemo(() => {
+        const map: Record<string, Task[]> = {};
+        tasks.forEach(task => {
+            if (!map[task.projectId]) map[task.projectId] = [];
+            map[task.projectId].push(task);
         });
+        return map;
+    }, [tasks]);
 
-        issues.forEach(i => {
-            if (!issuesByProject[i.projectId]) issuesByProject[i.projectId] = [];
-            issuesByProject[i.projectId].push(i);
+    const issuesByProject = useMemo(() => {
+        const map: Record<string, Issue[]> = {};
+        issues.forEach(issue => {
+            if (!map[issue.projectId]) map[issue.projectId] = [];
+            map[issue.projectId].push(issue);
         });
+        return map;
+    }, [issues]);
 
+    const projectHealthMap = useMemo(() => {
         const healthMap: Record<string, ProjectHealth> = {};
-        projects.forEach(p => {
-            healthMap[p.id] = calculateProjectHealth(
-                p,
-                tasksByProject[p.id] || [],
+        projects.forEach(project => {
+            healthMap[project.id] = calculateProjectHealth(
+                project,
+                tasksByProject[project.id] || [],
                 [], // Milestones not available in dashboard view currently
-                issuesByProject[p.id] || []
+                issuesByProject[project.id] || []
             );
         });
+        return healthMap;
+    }, [projects, tasksByProject, issuesByProject]);
 
-        return calculateWorkspaceHealth(projects.filter(p => p.status !== 'Completed'), healthMap);
-    }, [projects, tasks, issues]);
+    const projectsAtRisk = useMemo(() => {
+        return projects
+            .filter(project => project.status !== 'Completed')
+            .map(project => ({ project, health: projectHealthMap[project.id] }))
+            .filter(entry => entry.health.status === 'warning' || entry.health.status === 'critical')
+            .sort((a, b) => a.health.score - b.health.score)
+            .slice(0, 3);
+    }, [projects, projectHealthMap]);
+
+    // Calculate Workspace Health
+    const workspaceHealth = useMemo(() => {
+        return calculateWorkspaceHealth(projects.filter(p => p.status !== 'Completed'), projectHealthMap);
+    }, [projects, projectHealthMap]);
 
     // Hybrid Activity Feed: Combine real activities with synthetic ones from tasks/flows
     const displayActivities = useMemo(() => {
@@ -511,6 +566,59 @@ export const Dashboard = () => {
         return map;
     }, [projects]);
 
+    const currentUserId = auth.currentUser?.uid;
+
+    const overdueTasks = useMemo(() => {
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        return tasks.filter(task => {
+            if (task.isCompleted) return false;
+            const due = toDate(task.dueDate);
+            return due ? due.getTime() < startOfToday.getTime() : false;
+        });
+    }, [tasks]);
+
+    const dueTodayTasks = useMemo(() => {
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        const endOfToday = new Date(startOfToday);
+        endOfToday.setDate(startOfToday.getDate() + 1);
+        return tasks.filter(task => {
+            if (task.isCompleted) return false;
+            const due = toDate(task.dueDate);
+            if (!due) return false;
+            const dueTime = due.getTime();
+            return dueTime >= startOfToday.getTime() && dueTime < endOfToday.getTime();
+        });
+    }, [tasks]);
+
+    const blockedTasks = useMemo(
+        () => tasks.filter(task => !task.isCompleted && task.status === 'Blocked'),
+        [tasks]
+    );
+
+    const urgentTasks = useMemo(
+        () => tasks.filter(task => !task.isCompleted && task.priority === 'Urgent'),
+        [tasks]
+    );
+
+    const myOpenTasks = useMemo(() => {
+        if (!currentUserId) return [];
+        return tasks.filter(task => !task.isCompleted && (
+            task.assigneeId === currentUserId || (task.assigneeIds && task.assigneeIds.includes(currentUserId))
+        ));
+    }, [tasks, currentUserId]);
+
+    const urgentIssues = useMemo(
+        () => issues.filter(issue => issue.priority === 'Urgent' && issue.status !== 'Resolved' && issue.status !== 'Closed'),
+        [issues]
+    );
+
+    const reviewIdeas = useMemo(
+        () => ideas.filter(idea => REVIEW_STAGES.has(idea.stage)),
+        [ideas]
+    );
+
     const focusTasks = useMemo(() => {
         const open = tasks.filter(task => !task.isCompleted);
         return open
@@ -538,7 +646,85 @@ export const Dashboard = () => {
         [ideaTrend]
     );
 
-    const ideaSpotlight = useMemo(() => ideas.slice(0, 3), [ideas]);
+    const ideaSpotlight = useMemo(() => {
+        const sorted = [...ideas].sort((a, b) => {
+            const voteDiff = (b.votes || 0) - (a.votes || 0);
+            if (voteDiff !== 0) return voteDiff;
+            return toMillis(b.createdAt) - toMillis(a.createdAt);
+        });
+        const reviewFirst = sorted.filter(idea => REVIEW_STAGES.has(idea.stage));
+        return (reviewFirst.length > 0 ? reviewFirst : sorted).slice(0, 3);
+    }, [ideas]);
+
+    const focusMetrics = useMemo(() => {
+        const items = [
+            {
+                key: 'overdue',
+                label: t('dashboard.focus.overdue'),
+                value: overdueTasks.length,
+                icon: 'event_busy',
+                color: 'text-rose-500'
+            },
+            {
+                key: 'dueToday',
+                label: t('dashboard.focus.dueToday'),
+                value: dueTodayTasks.length,
+                icon: 'today',
+                color: 'text-amber-500'
+            },
+            {
+                key: 'blocked',
+                label: t('dashboard.focus.blocked'),
+                value: blockedTasks.length,
+                icon: 'block',
+                color: 'text-orange-500'
+            },
+            {
+                key: 'assigned',
+                label: t('dashboard.focus.assignedToMe'),
+                value: myOpenTasks.length,
+                icon: 'person',
+                color: 'text-indigo-500'
+            },
+            {
+                key: 'review',
+                label: t('dashboard.focus.reviewFlows'),
+                value: reviewIdeas.length,
+                icon: 'rate_review',
+                color: 'text-blue-500'
+            }
+        ];
+
+        if (hasIssuesModule) {
+            items.push({
+                key: 'urgentIssues',
+                label: t('dashboard.focus.urgentIssues'),
+                value: urgentIssues.length,
+                icon: 'report',
+                color: 'text-rose-500'
+            });
+        } else {
+            items.push({
+                key: 'urgentTasks',
+                label: t('dashboard.focus.urgentTasks'),
+                value: urgentTasks.length,
+                icon: 'priority_high',
+                color: 'text-rose-500'
+            });
+        }
+
+        return items;
+    }, [
+        blockedTasks.length,
+        dueTodayTasks.length,
+        hasIssuesModule,
+        myOpenTasks.length,
+        overdueTasks.length,
+        reviewIdeas.length,
+        t,
+        urgentIssues.length,
+        urgentTasks.length
+    ]);
 
     const chartOuterWidth = 720;
     const chartOuterHeight = 240;
@@ -777,227 +963,355 @@ export const Dashboard = () => {
                             ))}
                         </div>
 
+                        {/* Priority Snapshot + Risk Watch */}
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <Card padding="md" className="lg:col-span-2">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div>
+                                        <h3 className="h4">{t('dashboard.focus.title')}</h3>
+                                        <p className="text-xs text-[var(--color-text-subtle)]">{t('dashboard.focus.subtitle')}</p>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                    {focusMetrics.map(metric => (
+                                        <div
+                                            key={metric.key}
+                                            className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 hover:shadow-sm transition-shadow"
+                                        >
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-subtle)]">
+                                                    {metric.label}
+                                                </span>
+                                                <span className={`material-symbols-outlined text-sm ${metric.color}`}>{metric.icon}</span>
+                                            </div>
+                                            <div className={`text-2xl font-black ${metric.value > 0 ? 'text-[var(--color-text-main)]' : 'text-[var(--color-text-subtle)]'}`}>
+                                                {metric.value}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </Card>
+
+                            <Card padding="md" className="lg:col-span-1">
+                                <div className="flex items-start justify-between mb-4">
+                                    <div>
+                                        <h3 className="h4">{t('dashboard.risk.title')}</h3>
+                                        <p className="text-xs text-[var(--color-text-subtle)]">{t('dashboard.risk.subtitle')}</p>
+                                    </div>
+                                    <Link to="/projects" className="text-xs font-bold text-[var(--color-primary)] hover:underline">
+                                        {t('dashboard.risk.viewAll')}
+                                    </Link>
+                                </div>
+                                <div className="space-y-3">
+                                    {projectsAtRisk.length === 0 ? (
+                                        <div className="py-6 text-center text-sm text-[var(--color-text-muted)]">
+                                            {t('dashboard.risk.empty')}
+                                        </div>
+                                    ) : (
+                                        projectsAtRisk.map(({ project, health }) => {
+                                            const openTasks = (tasksByProject[project.id] || []).filter(task => !task.isCompleted).length;
+                                            const dueLabel = project.dueDate ? formatShortDate(project.dueDate, dateFormat, dateLocale) : '';
+                                            const dueText = dueLabel
+                                                ? t('dashboard.risk.due').replace('{date}', dueLabel)
+                                                : t('dashboard.risk.noDeadline');
+
+                                            return (
+                                                <Link
+                                                    key={project.id}
+                                                    to={`/project/${project.id}`}
+                                                    className="flex items-center gap-3 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 hover:border-[var(--color-primary)]/40 hover:bg-[var(--color-surface-hover)] transition-colors"
+                                                >
+                                                    <HealthIndicator health={health} size="sm" showLabel={false} />
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <p className="text-sm font-semibold text-[var(--color-text-main)] line-clamp-1">
+                                                                {project.title}
+                                                            </p>
+                                                            <Badge variant="outline" size="sm" className="text-[8px]">
+                                                                {projectStatusLabels[project.status as keyof typeof projectStatusLabels] || project.status}
+                                                            </Badge>
+                                                        </div>
+                                                        <div className="flex items-center gap-2 text-[10px] text-[var(--color-text-subtle)]">
+                                                            <span>{t('dashboard.risk.openTasks').replace('{count}', String(openTasks))}</span>
+                                                            <span>•</span>
+                                                            <span>{dueText}</span>
+                                                        </div>
+                                                    </div>
+                                                    <span className="material-symbols-outlined text-[16px] text-[var(--color-text-subtle)]">chevron_right</span>
+                                                </Link>
+                                            );
+                                        })
+                                    )}
+                                </div>
+                            </Card>
+                        </div>
 
                         {/* Main Content Grid - 3 Columns */}
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                            <Card data-onboarding-id="dashboard-trends" padding="none" className="lg:col-span-2 overflow-hidden bg-[var(--color-surface-card)] border-[var(--color-surface-border)] shadow-2xl flex flex-col min-h-[420px] group/chart-card">
-                                {/* Card Header Section */}
-                                <div className="p-6 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-paper)]/30 backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-10">
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <div className="p-1.5 rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
-                                                <span className="material-symbols-outlined text-sm">trending_up</span>
-                                            </div>
-                                            <h3 className="text-xl font-black tracking-tight text-[var(--color-text-main)]">{t('dashboard.trends.title')}</h3>
-                                        </div>
-                                        <p className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-[0.2em]">{t('dashboard.trends.subtitle')}</p>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 p-1 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)]">
-                                        <div className="px-3 py-1.5 rounded-lg bg-[var(--color-surface-card)] text-[var(--color-text-main)] text-[10px] font-bold shadow-sm border border-[var(--color-surface-border)]">{t('dashboard.trends.range.sevenDays')}</div>
-                                        <div className="px-3 py-1.5 rounded-lg text-[var(--color-text-subtle)] text-[10px] font-bold hover:bg-[var(--color-surface-hover)] cursor-not-allowed transition-colors">{t('dashboard.trends.range.thirtyDays')}</div>
-                                        <div className="px-3 py-1.5 rounded-lg text-[var(--color-text-subtle)] text-[10px] font-bold hover:bg-[var(--color-surface-hover)] cursor-not-allowed transition-colors">{t('dashboard.trends.range.all')}</div>
-                                    </div>
-                                </div>
-
-                                {/* Chart Body Section */}
-                                <div className="flex-1 relative bg-[var(--color-surface-paper)]/10 p-4">
-                                    {/* Decorative Mesh Background */}
-                                    <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
-                                        <div className="absolute -top-1/2 -left-1/4 w-full h-full bg-blue-500/20 blur-[120px] rounded-full"></div>
-                                        <div className="absolute -bottom-1/2 -right-1/4 w-full h-full bg-amber-500/20 blur-[120px] rounded-full"></div>
-                                    </div>
-
-                                    {/* Legend Row */}
-                                    <div className="flex items-center justify-between mb-3 relative z-10">
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex items-center gap-1.5">
-                                                <div className="size-2.5 rounded-full bg-amber-500"></div>
-                                                <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.tasks')}</span>
-                                            </div>
-                                            <div className="flex items-center gap-1.5">
-                                                <div className="size-2.5 rounded-full bg-blue-500"></div>
-                                                <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.flows')}</span>
-                                            </div>
-                                            {hasIssuesModule && (
-                                                <div className="flex items-center gap-1.5">
-                                                    <div className="size-2.5 rounded-full bg-rose-500"></div>
-                                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.issues')}</span>
+                            <div className="lg:col-span-2 space-y-6">
+                                <Card data-onboarding-id="dashboard-trends" padding="none" className="overflow-hidden bg-[var(--color-surface-card)] border-[var(--color-surface-border)] shadow-2xl flex flex-col min-h-[420px] group/chart-card">
+                                    {/* Card Header Section */}
+                                    <div className="p-6 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-paper)]/30 backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-10">
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <div className="p-1.5 rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+                                                    <span className="material-symbols-outlined text-sm">trending_up</span>
                                                 </div>
-                                            )}
+                                                <h3 className="text-xl font-black tracking-tight text-[var(--color-text-main)]">{t('dashboard.trends.title')}</h3>
+                                            </div>
+                                            <p className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-[0.2em]">{t('dashboard.trends.subtitle')}</p>
                                         </div>
-                                        <div className="text-right">
-                                            <span className="text-[9px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wide">{t('dashboard.trends.peakLabel')}</span>
-                                            <span className="text-sm font-black text-[var(--color-text-main)]">{maxTrendValue}</span>
+                                        <div className="flex items-center gap-1.5 p-1 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)]">
+                                            <div className="px-3 py-1.5 rounded-lg bg-[var(--color-surface-card)] text-[var(--color-text-main)] text-[10px] font-bold shadow-sm border border-[var(--color-surface-border)]">{t('dashboard.trends.range.sevenDays')}</div>
+                                            <div className="px-3 py-1.5 rounded-lg text-[var(--color-text-subtle)] text-[10px] font-bold hover:bg-[var(--color-surface-hover)] cursor-not-allowed transition-colors">{t('dashboard.trends.range.thirtyDays')}</div>
+                                            <div className="px-3 py-1.5 rounded-lg text-[var(--color-text-subtle)] text-[10px] font-bold hover:bg-[var(--color-surface-hover)] cursor-not-allowed transition-colors">{t('dashboard.trends.range.all')}</div>
                                         </div>
                                     </div>
 
-                                    <div className="h-[200px] relative">
-                                        <svg
-                                            ref={trendRef}
-                                            viewBox={`0 0 ${chartOuterWidth} ${chartOuterHeight}`}
-                                            className="w-full h-full select-none"
-                                            onMouseMove={handleTrendMove}
-                                            onMouseLeave={() => setHoverTrendIndex(null)}
-                                            preserveAspectRatio="xMidYMid meet"
-                                        >
-                                            <defs>
-                                                <linearGradient id="area-tasks" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.25" />
-                                                    <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
-                                                </linearGradient>
-                                                <linearGradient id="area-ideas" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
-                                                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-                                                </linearGradient>
-                                                <linearGradient id="area-issues" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.25" />
-                                                    <stop offset="100%" stopColor="#f43f5e" stopOpacity="0" />
-                                                </linearGradient>
-                                            </defs>
+                                    {/* Chart Body Section */}
+                                    <div className="flex-1 relative bg-[var(--color-surface-paper)]/10 p-4">
+                                        {/* Decorative Mesh Background */}
+                                        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
+                                            <div className="absolute -top-1/2 -left-1/4 w-full h-full bg-blue-500/20 blur-[120px] rounded-full"></div>
+                                            <div className="absolute -bottom-1/2 -right-1/4 w-full h-full bg-amber-500/20 blur-[120px] rounded-full"></div>
+                                        </div>
 
-                                            {/* Subtle Radial Polka Grid */}
-                                            <pattern id="dot-pattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                                                <circle cx="2" cy="2" r="0.8" fill="var(--color-surface-border)" opacity="0.4" />
-                                            </pattern>
-                                            <rect width="100%" height="100%" fill="url(#dot-pattern)" />
+                                        {/* Legend Row */}
+                                        <div className="flex items-center justify-between mb-3 relative z-10">
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className="size-2.5 rounded-full bg-amber-500"></div>
+                                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.tasks')}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <div className="size-2.5 rounded-full bg-blue-500"></div>
+                                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.flows')}</span>
+                                                </div>
+                                                {hasIssuesModule && (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <div className="size-2.5 rounded-full bg-rose-500"></div>
+                                                        <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.issues')}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="text-right">
+                                                <span className="text-[9px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wide">{t('dashboard.trends.peakLabel')}</span>
+                                                <span className="text-sm font-black text-[var(--color-text-main)]">{maxTrendValue}</span>
+                                            </div>
+                                        </div>
 
-                                            {/* Light Horizontal Grid */}
-                                            {[0, 0.25, 0.5, 0.75, 1].map((p) => {
-                                                const y = margin.top + innerHeight * p;
-                                                return (
-                                                    <line
-                                                        key={p}
-                                                        x1={margin.left}
-                                                        x2={margin.left + innerWidth}
-                                                        y1={y}
-                                                        y2={y}
-                                                        stroke="var(--color-surface-border)"
-                                                        strokeWidth="0.5"
-                                                        strokeDasharray="4 4"
-                                                        opacity="0.5"
-                                                    />
-                                                );
-                                            })}
+                                        <div className="h-[200px] relative">
+                                            <svg
+                                                ref={trendRef}
+                                                viewBox={`0 0 ${chartOuterWidth} ${chartOuterHeight}`}
+                                                className="w-full h-full select-none"
+                                                onMouseMove={handleTrendMove}
+                                                onMouseLeave={() => setHoverTrendIndex(null)}
+                                                preserveAspectRatio="xMidYMid meet"
+                                            >
+                                                <defs>
+                                                    <linearGradient id="area-tasks" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="0%" stopColor="#f59e0b" stopOpacity="0.25" />
+                                                        <stop offset="100%" stopColor="#f59e0b" stopOpacity="0" />
+                                                    </linearGradient>
+                                                    <linearGradient id="area-ideas" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.25" />
+                                                        <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
+                                                    </linearGradient>
+                                                    <linearGradient id="area-issues" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.25" />
+                                                        <stop offset="100%" stopColor="#f43f5e" stopOpacity="0" />
+                                                    </linearGradient>
+                                                </defs>
 
-                                            {/* Axis Lines */}
-                                            <line x1={margin.left} x2={margin.left + innerWidth} y1={margin.top + innerHeight} y2={margin.top + innerHeight} stroke="var(--color-surface-border)" strokeWidth="1" />
+                                                {/* Subtle Radial Polka Grid */}
+                                                <pattern id="dot-pattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+                                                    <circle cx="2" cy="2" r="0.8" fill="var(--color-surface-border)" opacity="0.4" />
+                                                </pattern>
+                                                <rect width="100%" height="100%" fill="url(#dot-pattern)" />
 
-                                            {/* Area Fills */}
-                                            <path d={`${getSmoothPath(taskTrend)} L${margin.left + innerWidth},${margin.top + innerHeight} L${margin.left},${margin.top + innerHeight} Z`} fill="url(#area-tasks)" />
-                                            <path d={`${getSmoothPath(ideaTrend)} L${margin.left + innerWidth},${margin.top + innerHeight} L${margin.left},${margin.top + innerHeight} Z`} fill="url(#area-ideas)" />
-                                            {hasIssuesModule && <path d={`${getSmoothPath(issueTrend)} L${margin.left + innerWidth},${margin.top + innerHeight} L${margin.left},${margin.top + innerHeight} Z`} fill="url(#area-issues)" />}
+                                                {/* Light Horizontal Grid */}
+                                                {[0, 0.25, 0.5, 0.75, 1].map((p) => {
+                                                    const y = margin.top + innerHeight * p;
+                                                    return (
+                                                        <line
+                                                            key={p}
+                                                            x1={margin.left}
+                                                            x2={margin.left + innerWidth}
+                                                            y1={y}
+                                                            y2={y}
+                                                            stroke="var(--color-surface-border)"
+                                                            strokeWidth="0.5"
+                                                            strokeDasharray="4 4"
+                                                            opacity="0.5"
+                                                        />
+                                                    );
+                                                })}
 
-                                            {/* Main Trend Lines */}
-                                            <path d={getSmoothPath(ideaTrend)} stroke="#3b82f6" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-                                            {hasIssuesModule && <path d={getSmoothPath(issueTrend)} stroke="#f43f5e" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />}
-                                            <path d={getSmoothPath(taskTrend)} stroke="#f59e0b" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                                                {/* Axis Lines */}
+                                                <line x1={margin.left} x2={margin.left + innerWidth} y1={margin.top + innerHeight} y2={margin.top + innerHeight} stroke="var(--color-surface-border)" strokeWidth="1" />
 
-                                            {/* Interaction Elements */}
+                                                {/* Area Fills */}
+                                                <path d={`${getSmoothPath(taskTrend)} L${margin.left + innerWidth},${margin.top + innerHeight} L${margin.left},${margin.top + innerHeight} Z`} fill="url(#area-tasks)" />
+                                                <path d={`${getSmoothPath(ideaTrend)} L${margin.left + innerWidth},${margin.top + innerHeight} L${margin.left},${margin.top + innerHeight} Z`} fill="url(#area-ideas)" />
+                                                {hasIssuesModule && <path d={`${getSmoothPath(issueTrend)} L${margin.left + innerWidth},${margin.top + innerHeight} L${margin.left},${margin.top + innerHeight} Z`} fill="url(#area-issues)" />}
+
+                                                {/* Main Trend Lines */}
+                                                <path d={getSmoothPath(ideaTrend)} stroke="#3b82f6" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+                                                {hasIssuesModule && <path d={getSmoothPath(issueTrend)} stroke="#f43f5e" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />}
+                                                <path d={getSmoothPath(taskTrend)} stroke="#f59e0b" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+
+                                                {/* Interaction Elements */}
+                                                {hoverTrendIndex !== null && (() => {
+                                                    const step = innerWidth / (trendDays - 1 || 1);
+                                                    const x = margin.left + hoverTrendIndex * step;
+                                                    const taskVal = taskTrend[hoverTrendIndex]?.value ?? 0;
+                                                    const ideaVal = ideaTrend[hoverTrendIndex]?.value ?? 0;
+                                                    const issueVal = hasIssuesModule ? (issueTrend[hoverTrendIndex]?.value ?? 0) : 0;
+
+                                                    const yTask = margin.top + innerHeight - (taskVal / maxTrendValue) * innerHeight;
+                                                    const yIdea = margin.top + innerHeight - (ideaVal / maxTrendValue) * innerHeight;
+                                                    const yIssue = margin.top + innerHeight - (issueVal / maxTrendValue) * innerHeight;
+
+                                                    return (
+                                                        <g>
+                                                            <line x1={x} x2={x} y1={margin.top} y2={margin.top + innerHeight} stroke="var(--color-primary)" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" />
+                                                            <circle cx={x} cy={yIdea} r={5} fill="#3b82f6" stroke="white" strokeWidth="2" />
+                                                            <circle cx={x} cy={yTask} r={5} fill="#f59e0b" stroke="white" strokeWidth="2" />
+                                                            {hasIssuesModule && <circle cx={x} cy={yIssue} r={5} fill="#f43f5e" stroke="white" strokeWidth={2} />}
+                                                        </g>
+                                                    );
+                                                })()}
+                                            </svg>
+
+                                            {/* HTML Tooltip - positioned outside SVG for proper rendering */}
                                             {hoverTrendIndex !== null && (() => {
                                                 const step = innerWidth / (trendDays - 1 || 1);
-                                                const x = margin.left + hoverTrendIndex * step;
+                                                const xPct = (hoverTrendIndex / (trendDays - 1)) * 100;
                                                 const taskVal = taskTrend[hoverTrendIndex]?.value ?? 0;
                                                 const ideaVal = ideaTrend[hoverTrendIndex]?.value ?? 0;
                                                 const issueVal = hasIssuesModule ? (issueTrend[hoverTrendIndex]?.value ?? 0) : 0;
-
-                                                const yTask = margin.top + innerHeight - (taskVal / maxTrendValue) * innerHeight;
-                                                const yIdea = margin.top + innerHeight - (ideaVal / maxTrendValue) * innerHeight;
-                                                const yIssue = margin.top + innerHeight - (issueVal / maxTrendValue) * innerHeight;
+                                                const isRight = xPct > 65;
 
                                                 return (
-                                                    <g>
-                                                        <line x1={x} x2={x} y1={margin.top} y2={margin.top + innerHeight} stroke="var(--color-primary)" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" />
-                                                        <circle cx={x} cy={yIdea} r={5} fill="#3b82f6" stroke="white" strokeWidth="2" />
-                                                        <circle cx={x} cy={yTask} r={5} fill="#f59e0b" stroke="white" strokeWidth="2" />
-                                                        {hasIssuesModule && <circle cx={x} cy={yIssue} r={5} fill="#f43f5e" stroke="white" strokeWidth={2} />}
-                                                    </g>
-                                                );
-                                            })()}
-                                        </svg>
-
-                                        {/* HTML Tooltip - positioned outside SVG for proper rendering */}
-                                        {hoverTrendIndex !== null && (() => {
-                                            const step = innerWidth / (trendDays - 1 || 1);
-                                            const xPct = (hoverTrendIndex / (trendDays - 1)) * 100;
-                                            const taskVal = taskTrend[hoverTrendIndex]?.value ?? 0;
-                                            const ideaVal = ideaTrend[hoverTrendIndex]?.value ?? 0;
-                                            const issueVal = hasIssuesModule ? (issueTrend[hoverTrendIndex]?.value ?? 0) : 0;
-                                            const isRight = xPct > 65;
-
-                                            return (
-                                                <div
-                                                    className="absolute top-2 z-20 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl p-3 shadow-xl backdrop-blur-md min-w-[120px] pointer-events-none"
-                                                    style={{ left: isRight ? 'auto' : `calc(${xPct}% + 20px)`, right: isRight ? `calc(${100 - xPct}% + 20px)` : 'auto' }}
-                                                >
-                                                    <div className="text-[9px] font-black text-[var(--color-text-subtle)] uppercase tracking-widest mb-2 border-b border-[var(--color-surface-border)] pb-1.5">
-                                                        {trendLabel(hoverTrendIndex)}
-                                                    </div>
-                                                    <div className="space-y-1.5">
-                                                        <div className="flex items-center justify-between gap-4">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <div className="size-2 rounded-full bg-amber-500"></div>
-                                                                <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.tasks')}</span>
-                                                            </div>
-                                                            <span className="text-xs font-black text-[var(--color-text-main)]">{taskVal}</span>
+                                                    <div
+                                                        className="absolute top-2 z-20 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl p-3 shadow-xl backdrop-blur-md min-w-[120px] pointer-events-none"
+                                                        style={{ left: isRight ? 'auto' : `calc(${xPct}% + 20px)`, right: isRight ? `calc(${100 - xPct}% + 20px)` : 'auto' }}
+                                                    >
+                                                        <div className="text-[9px] font-black text-[var(--color-text-subtle)] uppercase tracking-widest mb-2 border-b border-[var(--color-surface-border)] pb-1.5">
+                                                            {trendLabel(hoverTrendIndex)}
                                                         </div>
-                                                        <div className="flex items-center justify-between gap-4">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <div className="size-2 rounded-full bg-blue-500"></div>
-                                                                <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.flows')}</span>
-                                                            </div>
-                                                            <span className="text-xs font-black text-[var(--color-text-main)]">{ideaVal}</span>
-                                                        </div>
-                                                        {hasIssuesModule && (
+                                                        <div className="space-y-1.5">
                                                             <div className="flex items-center justify-between gap-4">
                                                                 <div className="flex items-center gap-1.5">
-                                                                    <div className="size-2 rounded-full bg-rose-500"></div>
-                                                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.issues')}</span>
+                                                                    <div className="size-2 rounded-full bg-amber-500"></div>
+                                                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.tasks')}</span>
                                                                 </div>
-                                                                <span className="text-xs font-black text-[var(--color-text-main)]">{issueVal}</span>
+                                                                <span className="text-xs font-black text-[var(--color-text-main)]">{taskVal}</span>
                                                             </div>
-                                                        )}
+                                                            <div className="flex items-center justify-between gap-4">
+                                                                <div className="flex items-center gap-1.5">
+                                                                    <div className="size-2 rounded-full bg-blue-500"></div>
+                                                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.flows')}</span>
+                                                                </div>
+                                                                <span className="text-xs font-black text-[var(--color-text-main)]">{ideaVal}</span>
+                                                            </div>
+                                                            {hasIssuesModule && (
+                                                                <div className="flex items-center justify-between gap-4">
+                                                                    <div className="flex items-center gap-1.5">
+                                                                        <div className="size-2 rounded-full bg-rose-500"></div>
+                                                                        <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.issues')}</span>
+                                                                    </div>
+                                                                    <span className="text-xs font-black text-[var(--color-text-main)]">{issueVal}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            );
-                                        })()}
+                                                );
+                                            })()}
+                                        </div>
                                     </div>
-                                </div>
 
-                                {/* Card Footer Section: Integrated Stats */}
-                                <div className="p-4 grid grid-cols-3 gap-2 bg-[var(--color-surface-bg)]/50 border-t border-[var(--color-surface-border)] rounded-b-2xl">
-                                    <div className="p-3 rounded-xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] hover:border-amber-500/30 transition-all group/stat">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-wider">{t('nav.tasks')}</span>
-                                            <span className="material-symbols-outlined text-[10px] text-amber-500 font-bold">check_circle</span>
+                                    {/* Card Footer Section: Integrated Stats */}
+                                    <div className="p-4 grid grid-cols-3 gap-2 bg-[var(--color-surface-bg)]/50 border-t border-[var(--color-surface-border)] rounded-b-2xl">
+                                        <div className="p-3 rounded-xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] hover:border-amber-500/30 transition-all group/stat">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-wider">{t('nav.tasks')}</span>
+                                                <span className="material-symbols-outlined text-[10px] text-amber-500 font-bold">check_circle</span>
+                                            </div>
+                                            <div className="flex items-baseline gap-1.5">
+                                                <span className="text-lg font-black text-[var(--color-text-main)] tracking-tight">{taskTrend.reduce((a, b) => a + b.value, 0)}</span>
+                                                <span className="text-[9px] font-bold text-emerald-500 font-mono">+12%</span>
+                                            </div>
                                         </div>
-                                        <div className="flex items-baseline gap-1.5">
-                                            <span className="text-lg font-black text-[var(--color-text-main)] tracking-tight">{taskTrend.reduce((a, b) => a + b.value, 0)}</span>
-                                            <span className="text-[9px] font-bold text-emerald-500 font-mono">+12%</span>
+                                        <div className="p-3 rounded-xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] hover:border-blue-500/30 transition-all group/stat">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-wider">{t('nav.flows')}</span>
+                                                <span className="material-symbols-outlined text-[10px] text-blue-500 font-bold">lightbulb</span>
+                                            </div>
+                                            <div className="flex items-baseline gap-1.5">
+                                                <span className="text-lg font-black text-[var(--color-text-main)] tracking-tight">{ideaTrend.reduce((a, b) => a + b.value, 0)}</span>
+                                                <span className="text-[9px] font-bold text-emerald-500 font-mono">+5%</span>
+                                            </div>
+                                        </div>
+                                        <div className="p-3 rounded-xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] hover:border-rose-500/30 transition-all group/stat">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-wider">{t('nav.issues')}</span>
+                                                <span className="material-symbols-outlined text-[10px] text-rose-500 font-bold">bug_report</span>
+                                            </div>
+                                            <div className="flex items-baseline gap-1.5">
+                                                <span className="text-lg font-black text-[var(--color-text-main)] tracking-tight">{hasIssuesModule ? issueTrend.reduce((a, b) => a + b.value, 0) : 0}</span>
+                                                <span className="text-[9px] font-bold text-[var(--color-text-subtle)] font-mono">0%</span>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="p-3 rounded-xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] hover:border-blue-500/30 transition-all group/stat">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-wider">{t('nav.flows')}</span>
-                                            <span className="material-symbols-outlined text-[10px] text-blue-500 font-bold">lightbulb</span>
+                                </Card>
+
+                                <Card padding="md" className="flex flex-col">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div>
+                                            <h3 className="h4">{t('dashboard.taskStatus.title')}</h3>
+                                            <p className="text-xs text-[var(--color-text-subtle)]">{t('dashboard.taskStatus.subtitle')}</p>
                                         </div>
-                                        <div className="flex items-baseline gap-1.5">
-                                            <span className="text-lg font-black text-[var(--color-text-main)] tracking-tight">{ideaTrend.reduce((a, b) => a + b.value, 0)}</span>
-                                            <span className="text-[9px] font-bold text-emerald-500 font-mono">+5%</span>
-                                        </div>
-                                    </div>
-                                    <div className="p-3 rounded-xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] hover:border-rose-500/30 transition-all group/stat">
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-wider">{t('nav.issues')}</span>
-                                            <span className="material-symbols-outlined text-[10px] text-rose-500 font-bold">bug_report</span>
-                                        </div>
-                                        <div className="flex items-baseline gap-1.5">
-                                            <span className="text-lg font-black text-[var(--color-text-main)] tracking-tight">{hasIssuesModule ? issueTrend.reduce((a, b) => a + b.value, 0) : 0}</span>
-                                            <span className="text-[9px] font-bold text-[var(--color-text-subtle)] font-mono">0%</span>
+                                        <div className="text-xs font-semibold text-[var(--color-text-subtle)]">
+                                            {t('dashboard.taskStatus.total').replace('{count}', String(taskStatusSummary.total))}
                                         </div>
                                     </div>
-                                </div>
-                            </Card>
+                                    <div className="space-y-3">
+                                        {taskStatusSummary.items.length === 0 ? (
+                                            <div className="py-6 text-center text-sm text-[var(--color-text-muted)]">
+                                                {t('dashboard.taskStatus.empty')}
+                                            </div>
+                                        ) : (
+                                            taskStatusSummary.items.map(item => {
+                                                const color = TASK_STATUS_COLORS[item.status] || 'var(--color-primary)';
+                                                const label = taskStatusLabels[item.status as keyof typeof taskStatusLabels] || item.status;
+                                                const total = taskStatusSummary.total || 1;
+                                                return (
+                                                    <div key={item.status} className="space-y-1">
+                                                        <div className="flex justify-between text-xs font-semibold">
+                                                            <span style={{ color }}>{label}</span>
+                                                            <span className="text-[var(--color-text-subtle)]">{item.count}</span>
+                                                        </div>
+                                                        <div className="h-2 w-full bg-[var(--color-surface-bg)] rounded-full overflow-hidden">
+                                                            <div
+                                                                className="h-full rounded-full transition-all duration-700 ease-out"
+                                                                style={{ width: `${(item.count / total) * 100}%`, backgroundColor: color }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                    <div className="mt-4 pt-4 border-t border-[var(--color-surface-border)] flex justify-end">
+                                        <Link to="/tasks" className="text-sm font-bold text-[var(--color-primary)] hover:text-indigo-700 transition-colors flex items-center gap-1 group">
+                                            {t('dashboard.taskStatus.manage')} <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                                        </Link>
+                                    </div>
+                                </Card>
+                            </div>
 
                             {/* 2. Workspace Health & Project Status (Span 1, Stacked) */}
                             <div className="lg:col-span-1 space-y-6">
@@ -1026,6 +1340,55 @@ export const Dashboard = () => {
                                             </div>
                                         ))}
                                         {projectStatusDistribution.length === 0 && <p className="text-sm text-[var(--color-text-muted)] text-center">{t('dashboard.status.empty')}</p>}
+                                    </div>
+                                </Card>
+
+                                <Card padding="md" className="flex flex-col">
+                                    <div className="flex items-start justify-between mb-4">
+                                        <div>
+                                            <h3 className="h4">{t('dashboard.flowSpotlight.title')}</h3>
+                                            <p className="text-xs text-[var(--color-text-subtle)]">{t('dashboard.flowSpotlight.subtitle')}</p>
+                                        </div>
+                                        <Badge variant="secondary" size="sm">
+                                            {t('nav.flows')}
+                                        </Badge>
+                                    </div>
+                                    <div className="space-y-3">
+                                        {ideaSpotlight.length === 0 ? (
+                                            <div className="py-6 text-center text-sm text-[var(--color-text-muted)]">
+                                                {t('dashboard.flowSpotlight.empty')}
+                                            </div>
+                                        ) : (
+                                            ideaSpotlight.map((idea) => {
+                                                const projectTitle = idea.projectId ? projectById.get(idea.projectId) : undefined;
+                                                const projectLabel = projectTitle || t('dashboard.issues.unknownProject');
+                                                const content = (
+                                                    <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-primary)]/40 transition-colors">
+                                                        <div className="min-w-0">
+                                                            <p className="text-sm font-semibold text-[var(--color-text-main)] line-clamp-1">
+                                                                {idea.title}
+                                                            </p>
+                                                            <div className="flex items-center gap-2 mt-1 text-[10px] text-[var(--color-text-subtle)]">
+                                                                <span className="uppercase tracking-wider">{idea.stage}</span>
+                                                                <span className="truncate">{projectLabel}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="material-symbols-outlined text-[16px] text-amber-500">star</span>
+                                                            <span className="text-xs font-bold text-[var(--color-text-main)]">{idea.votes || 0}</span>
+                                                        </div>
+                                                    </div>
+                                                );
+
+                                                return idea.projectId ? (
+                                                    <Link key={idea.id} to={`/project/${idea.projectId}/flows/${idea.id}`}>
+                                                        {content}
+                                                    </Link>
+                                                ) : (
+                                                    <div key={idea.id}>{content}</div>
+                                                );
+                                            })
+                                        )}
                                     </div>
                                 </Card>
                             </div>

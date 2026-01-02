@@ -418,7 +418,7 @@ export const CreateSocialPost = () => {
                                                             {p}
                                                         </span>
                                                         {platform === p && (
-                                                            <div className="absolute top-2 right-2 flex items-center justify-center w-5 h-5 bg-[var(--color-primary)] text-white dark:text-black rounded-full scale-in animate-scale-up">
+                                                            <div className="absolute top-2 right-2 flex items-center justify-center w-5 h-5 bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded-full scale-in animate-scale-up">
                                                                 <span className="material-symbols-outlined text-[14px] font-bold">check</span>
                                                             </div>
                                                         )}

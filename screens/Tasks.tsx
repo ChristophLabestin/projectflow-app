@@ -247,7 +247,7 @@ export const Tasks = () => {
                             {projectTitle && (
                                 <div
                                     onClick={(e) => { e.stopPropagation(); navigate(`/project/${task.projectId}`); }}
-                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-300 hover:bg-[var(--color-primary)] hover:text-white transition-colors cursor-pointer"
+                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-300 hover:bg-[var(--color-primary)] hover:text-[var(--color-primary-text)] transition-colors cursor-pointer"
                                 >
                                     <span className="size-1.5 rounded-full bg-slate-400 group-hover:bg-white/80" />
                                     {projectTitle}

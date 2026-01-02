@@ -386,7 +386,7 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
                                     onClick={handleGeneratePlaybook}
                                     isLoading={generating}
                                     disabled={strategy.channels.length === 0}
-                                    className="h-11 px-6 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 border-none shadow-xl shadow-slate-200 dark:shadow-none hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                                    className="h-11 px-6 rounded-xl border-none shadow-xl shadow-slate-200 dark:shadow-none hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
                                 >
                                     <span className={`material-symbols-outlined text-[20px] ${generating ? 'animate-spin' : ''}`}>
                                         {generating ? 'progress_activity' : 'bolt'}

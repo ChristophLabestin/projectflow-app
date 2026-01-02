@@ -141,7 +141,7 @@ export const SocialStudioView: React.FC<SocialStudioViewProps> = ({ idea, onUpda
                     <div className="relative z-10 flex flex-col justify-end">
                         <Button
                             onClick={() => onUpdate({ stage: 'Distribution' })} // Maps to SocialPerformanceView
-                            className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-200 shadow-lg shadow-slate-200 dark:shadow-none h-12 px-6 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-3"
+                            className="hover:bg-slate-800 dark:hover:bg-slate-200 shadow-lg shadow-slate-200 dark:shadow-none h-12 px-6 rounded-xl font-bold text-xs uppercase tracking-wider flex items-center gap-3"
                         >
                             {t('flowStages.socialStudio.actions.advance')}
                             <span className="material-symbols-outlined">arrow_forward</span>

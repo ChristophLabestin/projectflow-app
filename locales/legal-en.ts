@@ -1213,7 +1213,7 @@ export const en = {
                 },
                 payment: {
                     title: "7.7 Payment Processor",
-                    text: "This is only relevant if ProjectFlow charges for subscriptions or purchases. At present, ProjectFlow is in a pre-release or free beta stage (as implied by references to “Pre-Beta” in the code). If in the future we start charging for the Service, we would integrate a payment processor (like Stripe) to handle billing. That would involve sharing minimal personal data such as your email and maybe name with the payment provider, and of course any payment information you provide would go directly to them. We would update our policy at that time to reflect the specific processor and scope of data. For now, you can assume no payment data is collected by us."
+                    text: "This is only relevant if ProjectFlow charges for subscriptions or purchases. At present, ProjectFlow is in a pre-release or free beta stage (as implied by references to “Pre-Alpha” in the code). If in the future we start charging for the Service, we would integrate a payment processor (like Stripe) to handle billing. That would involve sharing minimal personal data such as your email and maybe name with the payment provider, and of course any payment information you provide would go directly to them. We would update our policy at that time to reflect the specific processor and scope of data. For now, you can assume no payment data is collected by us."
                 },
                 dpa: {
                     title: "7.8 Data Processing Agreements",

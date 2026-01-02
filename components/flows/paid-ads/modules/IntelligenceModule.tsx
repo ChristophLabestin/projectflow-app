@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AdData } from '../../../../types';
 import { motion } from 'framer-motion';
+import { Button } from '../../../ui/Button';
 
 interface ModuleProps {
     adData: Partial<AdData>;
@@ -195,13 +196,13 @@ export const IntelligenceModule: React.FC<ModuleProps> = ({ adData, updateAdData
                                 >
                                     Scan Again
                                 </button>
-                                <button
+                                <Button
                                     onClick={onNext}
-                                    className="flex-1 px-8 py-4 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl font-black uppercase tracking-widest shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                                    className="flex-1 px-8 py-4 rounded-xl font-black uppercase tracking-widest shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all gap-3"
                                 >
                                     Enter Creative Studio
                                     <span className="material-symbols-outlined">arrow_forward</span>
-                                </button>
+                                </Button>
                             </div>
                         </div>
                     </motion.div>
