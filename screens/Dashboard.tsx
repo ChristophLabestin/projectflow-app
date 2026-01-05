@@ -663,35 +663,35 @@ export const Dashboard = () => {
                 label: t('dashboard.focus.overdue'),
                 value: overdueTasks.length,
                 icon: 'event_busy',
-                color: 'text-rose-500'
+                color: '#f43f5e' // rose-500
             },
             {
                 key: 'dueToday',
                 label: t('dashboard.focus.dueToday'),
                 value: dueTodayTasks.length,
                 icon: 'today',
-                color: 'text-amber-500'
+                color: '#f59e0b' // amber-500
             },
             {
                 key: 'blocked',
                 label: t('dashboard.focus.blocked'),
                 value: blockedTasks.length,
                 icon: 'block',
-                color: 'text-orange-500'
+                color: '#f97316' // orange-500
             },
             {
                 key: 'assigned',
                 label: t('dashboard.focus.assignedToMe'),
                 value: myOpenTasks.length,
                 icon: 'person',
-                color: 'text-indigo-500'
+                color: '#6366f1' // indigo-500
             },
             {
                 key: 'review',
                 label: t('dashboard.focus.reviewFlows'),
                 value: reviewIdeas.length,
                 icon: 'rate_review',
-                color: 'text-blue-500'
+                color: '#3b82f6' // blue-500
             }
         ];
 
@@ -701,7 +701,7 @@ export const Dashboard = () => {
                 label: t('dashboard.focus.urgentIssues'),
                 value: urgentIssues.length,
                 icon: 'report',
-                color: 'text-rose-500'
+                color: '#f43f5e' // rose-500
             });
         } else {
             items.push({
@@ -709,7 +709,7 @@ export const Dashboard = () => {
                 label: t('dashboard.focus.urgentTasks'),
                 value: urgentTasks.length,
                 icon: 'priority_high',
-                color: 'text-rose-500'
+                color: '#f43f5e' // rose-500
             });
         }
 
@@ -936,19 +936,19 @@ export const Dashboard = () => {
                         {/* New Widget Cards Row */}
                         <div data-onboarding-id="dashboard-kpis" className="kpi-grid">
                             {kpiCards.map((stat) => (
-                                <Card key={stat.key} padding="md" className="relative overflow-hidden group hover:shadow-lg transition-all border-l-4" style={{ borderLeftColor: stat.color }}>
-                                    <div className="flex flex-col h-full justify-between">
-                                        <div className="flex justify-between items-start mb-2">
+                                <Card key={stat.key} padding="md" className="kpi-card" style={{ borderLeftColor: stat.color }}>
+                                    <div className="kpi-content">
+                                        <div className="kpi-header">
                                             <div>
-                                                <p className="text-sm font-medium text-[var(--color-text-muted)] uppercase tracking-wide">{stat.label}</p>
-                                                <h3 className="text-3xl font-bold mt-1 text-[var(--color-text-main)]">{stat.value}</h3>
+                                                <p className="kpi-label">{stat.label}</p>
+                                                <h3 className="kpi-value">{stat.value}</h3>
                                             </div>
-                                            <div className={`p-2 rounded-lg bg-opacity-10`} style={{ backgroundColor: `${stat.color}20`, color: stat.color }}>
+                                            <div className="kpi-icon-wrapper" style={{ backgroundColor: `${stat.color}20`, color: stat.color }}>
                                                 <span className="material-symbols-outlined">{stat.icon}</span>
                                             </div>
                                         </div>
 
-                                        <div className="mt-4">
+                                        <div className="kpi-sparkline-area">
                                             <Sparkline
                                                 data={stat.series.map(s => s.value)}
                                                 width={140}
@@ -956,20 +956,20 @@ export const Dashboard = () => {
                                                 color={stat.color}
                                                 fill={true}
                                             />
-                                            <p className="text-xs text-[var(--color-text-subtle)] mt-2 font-medium">{stat.caption}</p>
+                                            <p className="kpi-caption">{stat.caption}</p>
                                         </div>
                                     </div>
                                 </Card>
                             ))}
                         </div>
 
-                        {/* Priority Snapshot + Risk Watch */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <Card padding="md" className="lg:col-span-2">
-                                <div className="flex items-start justify-between mb-4">
-                                    <div>
+                        {/* Priority Snapshot & Risk Section (Explicit 50/50) */}
+                        <div className="section-grid-equal">
+                            <Card padding="md" className="grid-col-span-1">
+                                <div className="section-header-row">
+                                    <div className="title-group">
                                         <h3 className="h4">{t('dashboard.focus.title')}</h3>
-                                        <p className="text-xs text-[var(--color-text-subtle)]">{t('dashboard.focus.subtitle')}</p>
+                                        <p className="subtitle">{t('dashboard.focus.subtitle')}</p>
                                     </div>
                                 </div>
                                 <div className="focus-grid">
@@ -982,7 +982,7 @@ export const Dashboard = () => {
                                                 <span className="label">
                                                     {metric.label}
                                                 </span>
-                                                <span className={`material-symbols-outlined text-sm ${metric.color}`}>{metric.icon}</span>
+                                                <span className="material-symbols-outlined text-sm" style={{ color: metric.color }}>{metric.icon}</span>
                                             </div>
                                             <div className={`value ${metric.value === 0 ? 'zero' : ''}`}>
                                                 {metric.value}
@@ -992,19 +992,19 @@ export const Dashboard = () => {
                                 </div>
                             </Card>
 
-                            <Card padding="md" className="lg:col-span-1">
-                                <div className="flex items-start justify-between mb-4">
-                                    <div>
+                            <Card padding="md" className="attention-card grid-col-span-1">
+                                <div className="section-header-row">
+                                    <div className="title-group">
                                         <h3 className="h4">{t('dashboard.risk.title')}</h3>
-                                        <p className="text-xs text-[var(--color-text-subtle)]">{t('dashboard.risk.subtitle')}</p>
+                                        <p className="subtitle">{t('dashboard.risk.subtitle')}</p>
                                     </div>
-                                    <Link to="/projects" className="text-xs font-bold text-[var(--color-primary)] hover:underline">
+                                    <Link to="/projects" className="action-link">
                                         {t('dashboard.risk.viewAll')}
                                     </Link>
                                 </div>
                                 <div className="risk-list">
                                     {projectsAtRisk.length === 0 ? (
-                                        <div className="py-6 text-center text-sm text-[var(--color-text-muted)]">
+                                        <div className="empty-state-simple">
                                             {t('dashboard.risk.empty')}
                                         </div>
                                     ) : (
@@ -1022,16 +1022,16 @@ export const Dashboard = () => {
                                                     className="risk-item"
                                                 >
                                                     <HealthIndicator health={health} size="sm" showLabel={false} />
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <p className="text-sm font-semibold text-[var(--color-text-main)] line-clamp-1">
+                                                    <div className="risk-content">
+                                                        <div className="title-row">
+                                                            <p>
                                                                 {project.title}
                                                             </p>
                                                             <Badge variant="outline" size="sm" className="text-[8px]">
                                                                 {projectStatusLabels[project.status as keyof typeof projectStatusLabels] || project.status}
                                                             </Badge>
                                                         </div>
-                                                        <div className="flex items-center gap-2 text-[10px] text-[var(--color-text-subtle)]">
+                                                        <div className="meta-row">
                                                             <span>{t('dashboard.risk.openTasks').replace('{count}', String(openTasks))}</span>
                                                             <span>•</span>
                                                             <span>{dueText}</span>
@@ -1046,58 +1046,58 @@ export const Dashboard = () => {
                             </Card>
                         </div>
 
-                        {/* Main Content Grid - 3 Columns */}
-                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-                            <div className="lg:col-span-2 space-y-6">
-                                <Card data-onboarding-id="dashboard-trends" padding="none" className="overflow-hidden bg-[var(--color-surface-card)] border-[var(--color-surface-border)] shadow-2xl flex flex-col min-h-[420px] group/chart-card">
+                        {/* Consolidated Metrics Area: Trends/Tasks (2/3) vs Health/Donut/Spotlight (1/3) */}
+                        <div className="section-grid-2-1">
+                            {/* Left Column: Metrics & Velocity (2/3) */}
+                            <div className="grid-col-span-2 card-stack-gap">
+                                <Card data-onboarding-id="dashboard-trends" padding="none" className="chart-card">
                                     {/* Card Header Section */}
-                                    <div className="p-6 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-paper)]/30 backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-4 z-10">
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <div className="p-1.5 rounded-lg bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+                                    <div className="chart-header">
+                                        <div className="chart-title-group">
+                                            <div className="chart-title-row">
+                                                <div className="icon-box">
                                                     <span className="material-symbols-outlined text-sm">trending_up</span>
                                                 </div>
-                                                <h3 className="text-xl font-black tracking-tight text-[var(--color-text-main)]">{t('dashboard.trends.title')}</h3>
+                                                <h3>{t('dashboard.trends.title')}</h3>
                                             </div>
-                                            <p className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-[0.2em]">{t('dashboard.trends.subtitle')}</p>
+                                            <p className="subtitle">{t('dashboard.trends.subtitle')}</p>
                                         </div>
-                                        <div className="flex items-center gap-1.5 p-1 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)]">
-                                            <div className="px-3 py-1.5 rounded-lg bg-[var(--color-surface-card)] text-[var(--color-text-main)] text-[10px] font-bold shadow-sm border border-[var(--color-surface-border)]">{t('dashboard.trends.range.sevenDays')}</div>
-                                            <div className="px-3 py-1.5 rounded-lg text-[var(--color-text-subtle)] text-[10px] font-bold hover:bg-[var(--color-surface-hover)] cursor-not-allowed transition-colors">{t('dashboard.trends.range.thirtyDays')}</div>
-                                            <div className="px-3 py-1.5 rounded-lg text-[var(--color-text-subtle)] text-[10px] font-bold hover:bg-[var(--color-surface-hover)] cursor-not-allowed transition-colors">{t('dashboard.trends.range.all')}</div>
+                                        <div className="chart-controls">
+                                            <div className="control-btn active">{t('dashboard.trends.range.sevenDays')}</div>
+                                            <div className="control-btn disabled">{t('dashboard.trends.range.thirtyDays')}</div>
+                                            <div className="control-btn disabled">{t('dashboard.trends.range.all')}</div>
                                         </div>
                                     </div>
 
                                     {/* Chart Body Section */}
-                                    <div className="flex-1 relative bg-[var(--color-surface-paper)]/10 p-4">
+                                    <div className="chart-body">
                                         {/* Decorative Mesh Background */}
-                                        <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
-                                            <div className="absolute -top-1/2 -left-1/4 w-full h-full bg-blue-500/20 blur-[120px] rounded-full"></div>
-                                            <div className="absolute -bottom-1/2 -right-1/4 w-full h-full bg-amber-500/20 blur-[120px] rounded-full"></div>
+                                        <div className="chart-mesh-bg">
+                                            <div className="blob-1"></div>
+                                            <div className="blob-2"></div>
                                         </div>
 
                                         {/* Legend Row */}
-                                        <div className="flex items-center justify-between mb-3 relative z-10">
-                                            <div className="flex items-center gap-4">
-                                                <div className="flex items-center gap-1.5">
-                                                    <div className="size-2.5 rounded-full bg-amber-500"></div>
-                                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.tasks')}</span>
+                                        <div className="chart-legend">
+                                            <div className="legend-group">
+                                                <div className="legend-item">
+                                                    <div className="dot" style={{ backgroundColor: '#f59e0b' }}></div>
+                                                    <span>{t('nav.tasks')}</span>
                                                 </div>
-                                                <div className="flex items-center gap-1.5">
-                                                    <div className="size-2.5 rounded-full bg-blue-500"></div>
-                                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.flows')}</span>
+                                                <div className="legend-item">
+                                                    <div className="dot" style={{ backgroundColor: '#3b82f6' }}></div>
+                                                    <span>{t('nav.flows')}</span>
                                                 </div>
                                                 {hasIssuesModule && (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <div className="size-2.5 rounded-full bg-rose-500"></div>
-                                                        <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.issues')}</span>
+                                                    <div className="legend-item">
+                                                        <div className="dot" style={{ backgroundColor: '#f43f5e' }}></div>
+                                                        <span>{t('nav.issues')}</span>
                                                     </div>
                                                 )}
                                             </div>
-                                            <div className="text-right">
-                                                <span className="text-[9px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wide">{t('dashboard.trends.peakLabel')}</span>
-                                                <span className="text-sm font-black text-[var(--color-text-main)]">{maxTrendValue}</span>
+                                            <div className="chart-peak">
+                                                <span className="label">{t('dashboard.trends.peakLabel')}</span>
+                                                <span className="value">{maxTrendValue}</span>
                                             </div>
                                         </div>
 
@@ -1234,53 +1234,55 @@ export const Dashboard = () => {
                                     </div>
 
                                     {/* Card Footer Section: Integrated Stats */}
-                                    <div className="p-4 grid grid-cols-3 gap-2 bg-[var(--color-surface-bg)]/50 border-t border-[var(--color-surface-border)] rounded-b-2xl">
-                                        <div className="p-3 rounded-xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] hover:border-amber-500/30 transition-all group/stat">
-                                            <div className="flex items-center justify-between mb-1">
-                                                <span className="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-wider">{t('nav.tasks')}</span>
+                                    <div className="chart-footer">
+                                        <div className="footer-stat">
+                                            <div className="stat-header">
+                                                <span className="stat-label">{t('nav.tasks')}</span>
                                                 <span className="material-symbols-outlined text-[10px] text-amber-500 font-bold">check_circle</span>
                                             </div>
-                                            <div className="flex items-baseline gap-1.5">
-                                                <span className="text-lg font-black text-[var(--color-text-main)] tracking-tight">{taskTrend.reduce((a, b) => a + b.value, 0)}</span>
-                                                <span className="text-[9px] font-bold text-emerald-500 font-mono">+12%</span>
+                                            <div className="stat-main">
+                                                <span className="val">{taskTrend.reduce((a, b) => a + b.value, 0)}</span>
+                                                <span className="delta text-emerald-500">+12%</span>
                                             </div>
                                         </div>
-                                        <div className="p-3 rounded-xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] hover:border-blue-500/30 transition-all group/stat">
-                                            <div className="flex items-center justify-between mb-1">
-                                                <span className="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-wider">{t('nav.flows')}</span>
+                                        <div className="footer-stat">
+                                            <div className="stat-header">
+                                                <span className="stat-label">{t('nav.flows')}</span>
                                                 <span className="material-symbols-outlined text-[10px] text-blue-500 font-bold">lightbulb</span>
                                             </div>
-                                            <div className="flex items-baseline gap-1.5">
-                                                <span className="text-lg font-black text-[var(--color-text-main)] tracking-tight">{ideaTrend.reduce((a, b) => a + b.value, 0)}</span>
-                                                <span className="text-[9px] font-bold text-emerald-500 font-mono">+5%</span>
+                                            <div className="stat-main">
+                                                <span className="val">{ideaTrend.reduce((a, b) => a + b.value, 0)}</span>
+                                                <span className="delta text-emerald-500">+5%</span>
                                             </div>
                                         </div>
-                                        <div className="p-3 rounded-xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] hover:border-rose-500/30 transition-all group/stat">
-                                            <div className="flex items-center justify-between mb-1">
-                                                <span className="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-wider">{t('nav.issues')}</span>
-                                                <span className="material-symbols-outlined text-[10px] text-rose-500 font-bold">bug_report</span>
+                                        {hasIssuesModule && (
+                                            <div className="footer-stat">
+                                                <div className="stat-header">
+                                                    <span className="stat-label">{t('nav.issues')}</span>
+                                                    <span className="material-symbols-outlined text-[10px] text-rose-500 font-bold">bug_report</span>
+                                                </div>
+                                                <div className="stat-main">
+                                                    <span className="val">{issueTrend.reduce((a, b) => a + b.value, 0)}</span>
+                                                    <span className="delta text-[var(--color-text-subtle)]">0%</span>
+                                                </div>
                                             </div>
-                                            <div className="flex items-baseline gap-1.5">
-                                                <span className="text-lg font-black text-[var(--color-text-main)] tracking-tight">{hasIssuesModule ? issueTrend.reduce((a, b) => a + b.value, 0) : 0}</span>
-                                                <span className="text-[9px] font-bold text-[var(--color-text-subtle)] font-mono">0%</span>
-                                            </div>
-                                        </div>
+                                        )}
                                     </div>
                                 </Card>
 
-                                <Card padding="md" className="flex flex-col">
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div>
+                                <Card padding="md" className="card-stack">
+                                    <div className="section-header-row">
+                                        <div className="title-group">
                                             <h3 className="h4">{t('dashboard.taskStatus.title')}</h3>
-                                            <p className="text-xs text-[var(--color-text-subtle)]">{t('dashboard.taskStatus.subtitle')}</p>
+                                            <p className="subtitle">{t('dashboard.taskStatus.subtitle')}</p>
                                         </div>
-                                        <div className="text-xs font-semibold text-[var(--color-text-subtle)]">
+                                        <div className="meta-text">
                                             {t('dashboard.taskStatus.total').replace('{count}', String(taskStatusSummary.total))}
                                         </div>
                                     </div>
-                                    <div className="space-y-3">
+                                    <div className="status-list">
                                         {taskStatusSummary.items.length === 0 ? (
-                                            <div className="py-6 text-center text-sm text-[var(--color-text-muted)]">
+                                            <div className="empty-state-simple">
                                                 {t('dashboard.taskStatus.empty')}
                                             </div>
                                         ) : (
@@ -1289,14 +1291,14 @@ export const Dashboard = () => {
                                                 const label = taskStatusLabels[item.status as keyof typeof taskStatusLabels] || item.status;
                                                 const total = taskStatusSummary.total || 1;
                                                 return (
-                                                    <div key={item.status} className="space-y-1">
-                                                        <div className="flex justify-between text-xs font-semibold">
+                                                    <div key={item.status} className="status-item">
+                                                        <div className="header">
                                                             <span style={{ color }}>{label}</span>
-                                                            <span className="text-[var(--color-text-subtle)]">{item.count}</span>
+                                                            <span className="count">{item.count}</span>
                                                         </div>
-                                                        <div className="h-2 w-full bg-[var(--color-surface-bg)] rounded-full overflow-hidden">
+                                                        <div className="bar-bg">
                                                             <div
-                                                                className="h-full rounded-full transition-all duration-700 ease-out"
+                                                                className="bar-fill"
                                                                 style={{ width: `${(item.count / total) * 100}%`, backgroundColor: color }}
                                                             />
                                                         </div>
@@ -1305,57 +1307,56 @@ export const Dashboard = () => {
                                             })
                                         )}
                                     </div>
-                                    <div className="mt-4 pt-4 border-t border-[var(--color-surface-border)] flex justify-end">
-                                        <Link to="/tasks" className="text-sm font-bold text-[var(--color-primary)] hover:text-indigo-700 transition-colors flex items-center gap-1 group">
-                                            {t('dashboard.taskStatus.manage')} <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                                    <div className="card-bottom-action">
+                                        <Link to="/tasks" className="view-all-link">
+                                            {t('dashboard.taskStatus.manage')} <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
                                         </Link>
                                     </div>
                                 </Card>
                             </div>
 
-                            {/* 2. Workspace Health & Project Status (Span 1, Stacked) */}
-                            <div className="lg:col-span-1 space-y-6">
-
+                            {/* Right Column: Health & Spotlight (1/3) */}
+                            <div className="grid-col-span-1 card-stack-gap">
                                 <div data-onboarding-id="dashboard-health">
                                     <WorkspaceHealthCard health={workspaceHealth} projectCount={projects.length} />
                                 </div>
 
-                                <Card data-onboarding-id="dashboard-status" padding="md" className="flex flex-col items-center justify-center">
-                                    <div className="relative flex items-center justify-center mb-6">
+                                <Card data-onboarding-id="dashboard-status" padding="md" className="donut-container">
+                                    <div className="donut-wrapper">
                                         <DonutChart data={projectStatusDistribution} size={140} thickness={12} />
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                                            <span className="text-2xl font-bold text-[var(--color-text-main)]">{projects.length}</span>
-                                            <span className="text-xs text-[var(--color-text-muted)] uppercase">{t('nav.projects')}</span>
+                                        <div className="center-text">
+                                            <span className="val">{projects.length}</span>
+                                            <span className="lbl">{t('nav.projects')}</span>
                                         </div>
                                     </div>
-                                    <div className="w-full space-y-2">
-                                        <h3 className="h4 text-center mb-4">{t('dashboard.status.title')}</h3>
+                                    <div className="donut-legend">
+                                        <h3 className="h4 donut-legend-header">{t('dashboard.status.title')}</h3>
                                         {projectStatusDistribution.map((item) => (
-                                            <div key={item.name} className="flex items-center justify-between p-2 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors text-sm">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="size-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                                                    <span className="font-medium text-[var(--color-text-main)]">{item.name}</span>
+                                            <div key={item.name} className="legend-row">
+                                                <div className="info">
+                                                    <span className="dot" style={{ backgroundColor: item.color }} />
+                                                    <span className="name">{item.name}</span>
                                                 </div>
-                                                <span className="font-bold text-[var(--color-text-main)]">{item.value}</span>
+                                                <span className="val">{item.value}</span>
                                             </div>
                                         ))}
-                                        {projectStatusDistribution.length === 0 && <p className="text-sm text-[var(--color-text-muted)] text-center">{t('dashboard.status.empty')}</p>}
+                                        {projectStatusDistribution.length === 0 && <p className="empty-state-simple">{t('dashboard.status.empty')}</p>}
                                     </div>
                                 </Card>
 
-                                <Card padding="md" className="flex flex-col">
-                                    <div className="flex items-start justify-between mb-4">
-                                        <div>
+                                <Card padding="md" className="card-stack">
+                                    <div className="section-header-row">
+                                        <div className="title-group">
                                             <h3 className="h4">{t('dashboard.flowSpotlight.title')}</h3>
-                                            <p className="text-xs text-[var(--color-text-subtle)]">{t('dashboard.flowSpotlight.subtitle')}</p>
+                                            <p className="subtitle">{t('dashboard.flowSpotlight.subtitle')}</p>
                                         </div>
                                         <Badge variant="secondary" size="sm">
                                             {t('nav.flows')}
                                         </Badge>
                                     </div>
-                                    <div className="space-y-3">
+                                    <div className="flow-list">
                                         {ideaSpotlight.length === 0 ? (
-                                            <div className="py-6 text-center text-sm text-[var(--color-text-muted)]">
+                                            <div className="empty-state-simple">
                                                 {t('dashboard.flowSpotlight.empty')}
                                             </div>
                                         ) : (
@@ -1363,25 +1364,25 @@ export const Dashboard = () => {
                                                 const projectTitle = idea.projectId ? projectById.get(idea.projectId) : undefined;
                                                 const projectLabel = projectTitle || t('dashboard.issues.unknownProject');
                                                 const content = (
-                                                    <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-primary)]/40 transition-colors">
-                                                        <div className="min-w-0">
-                                                            <p className="text-sm font-semibold text-[var(--color-text-main)] line-clamp-1">
+                                                    <div className="flow-item">
+                                                        <div className="content">
+                                                            <p className="title">
                                                                 {idea.title}
                                                             </p>
-                                                            <div className="flex items-center gap-2 mt-1 text-[10px] text-[var(--color-text-subtle)]">
-                                                                <span className="uppercase tracking-wider">{idea.stage}</span>
-                                                                <span className="truncate">{projectLabel}</span>
+                                                            <div className="meta">
+                                                                <span className="stage">{idea.stage}</span>
+                                                                <span className="project">{projectLabel}</span>
                                                             </div>
                                                         </div>
-                                                        <div className="flex items-center gap-1">
+                                                        <div className="votes">
                                                             <span className="material-symbols-outlined text-[16px] text-amber-500">star</span>
-                                                            <span className="text-xs font-bold text-[var(--color-text-main)]">{idea.votes || 0}</span>
+                                                            <span className="count">{idea.votes || 0}</span>
                                                         </div>
                                                     </div>
                                                 );
 
                                                 return idea.projectId ? (
-                                                    <Link key={idea.id} to={`/project/${idea.projectId}/flows/${idea.id}`}>
+                                                    <Link key={idea.id} to={`/project/${idea.projectId}/flows/${idea.id}`} className="flow-item">
                                                         {content}
                                                     </Link>
                                                 ) : (
@@ -1392,76 +1393,79 @@ export const Dashboard = () => {
                                     </div>
                                 </Card>
                             </div>
+                        </div>
 
 
-
-                            {/* 3. Row 3: Workload, Deadlines (2 Columns) - Attention moved to Sidebar */}
-                            <div className="lg:col-span-3 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {/* 3. Row 3: Workload, Deadlines (2 Columns) - Attention moved to Sidebar */}
+                        <div className="grid-col-span-full">
+                            <div className="grid-cols-responsive">
 
                                 {/* 3a. Workload (1 Col) */}
-                                <Card data-onboarding-id="dashboard-workload" padding="md" className="flex flex-col justify-between">
-                                    <div className="flex items-center justify-between mb-4">
+                                <Card data-onboarding-id="dashboard-workload" padding="md" className="card-stack">
+                                    <div className="section-header-row">
                                         <h3 className="h4">{t('dashboard.workload.title')}</h3>
-                                        <span className="text-xs text-[var(--color-text-muted)]">
+                                        <span className="meta-text">
                                             {t('dashboard.workload.pending').replace('{count}', String(tasks.filter(t => !t.isCompleted).length))}
                                         </span>
                                     </div>
-                                    <div className="space-y-4">
+                                    <div className="status-list">
                                         {taskPriorityDistribution.map(item => (
-                                            <div key={item.name} className="space-y-1">
-                                                <div className="flex justify-between text-xs font-semibold">
+                                            <div key={item.name} className="status-item">
+                                                <div className="header">
                                                     <span style={{ color: item.color }}>{item.name}</span>
-                                                    <span className="text-[var(--color-text-subtle)]">{item.value}</span>
+                                                    <span className="count">{item.value}</span>
                                                 </div>
-                                                <div className="h-2 w-full bg-[var(--color-surface-bg)] rounded-full overflow-hidden">
+                                                <div className="bar-bg">
                                                     <div
-                                                        className="h-full rounded-full transition-all duration-700 ease-out"
+                                                        className="bar-fill"
                                                         style={{ width: `${(item.value / (tasks.filter(t => !t.isCompleted).length || 1)) * 100}%`, backgroundColor: item.color }}
                                                     />
                                                 </div>
                                             </div>
                                         ))}
-                                        {taskPriorityDistribution.length === 0 && <p className="text-sm text-[var(--color-text-muted)] text-center py-4">{t('dashboard.workload.empty')}</p>}
+                                        {taskPriorityDistribution.length === 0 && <p className="empty-state-simple">{t('dashboard.workload.empty')}</p>}
                                     </div>
-                                    <div className="mt-4 pt-4 border-t border-[var(--color-surface-border)] flex justify-end">
-                                        <Link to="/tasks" className="text-sm font-bold text-[var(--color-primary)] hover:text-indigo-700 transition-colors flex items-center gap-1 group">
-                                            {t('dashboard.workload.manage')} <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
+                                    <div className="card-bottom-action mt-auto">
+                                        <Link to="/tasks" className="view-all-link">
+                                            {t('dashboard.workload.manage')} <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
                                         </Link>
                                     </div>
                                 </Card>
 
                                 {/* 3b. Upcoming Deadlines (1 Col) */}
-                                <Card data-onboarding-id="dashboard-deadlines" padding="md" className="flex flex-col">
+                                <Card data-onboarding-id="dashboard-deadlines" padding="md" className="card-stack">
                                     <h3 className="h4 mb-4">{t('dashboard.deadlines.title')}</h3>
-                                    <div className="flex-1 space-y-0 divide-y divide-[var(--color-surface-border)] -mx-2 px-2">
+                                    <div className="recent-tasks-list-nested">
                                         {focusTasks.slice(0, 4).map(task => { // Showing top 4
-                                            const priorityColor = task.priority === 'Urgent' ? 'text-red-500' : task.priority === 'High' ? 'text-orange-500' : 'text-blue-500';
+                                            const priorityColor = task.priority === 'Urgent' ? 'text-rose-500' : task.priority === 'High' ? 'text-orange-500' : 'text-blue-500';
                                             const due = toDate(task.dueDate);
                                             const isOverdue = due && due.getTime() < Date.now();
 
                                             return (
-                                                <Link key={task.id} to={`/project/${task.projectId}/tasks/${task.id}`} className="block py-3 first:pt-2 last:pb-2 hover:bg-[var(--color-surface-hover)] -mx-2 px-4 rounded-lg transition-colors group">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="min-w-0 flex-1 pr-3">
-                                                            <p className="text-sm font-medium text-[var(--color-text-main)] truncate group-hover:text-[var(--color-primary)] transition-colors">{task.title}</p>
-                                                            <div className="flex items-center gap-2 mt-0.5">
-                                                                <span className={`text-[10px] font-bold uppercase tracking-wider ${priorityColor}`}>
-                                                                    {(task.priority && taskPriorityLabels[task.priority]) || task.priority || t('tasks.priority.medium')}
-                                                                </span>
-                                                                {due && (
-                                                                    <span className={`text-[10px] ${isOverdue ? 'text-red-500 font-bold' : 'text-[var(--color-text-muted)]'}`}>
-                                                                        {format(due, 'MMM d', { locale: dateLocale })}
+                                                <Link key={task.id} to={`/project/${task.projectId}/tasks/${task.id}`} className="recent-task-item">
+                                                    <div className="content">
+                                                        <div className="flex-between-center">
+                                                            <div>
+                                                                <p className="title">{task.title}</p>
+                                                                <div className="task-item-meta">
+                                                                    <span className={`priority-tag ${priorityColor}`}>
+                                                                        {(task.priority && taskPriorityLabels[task.priority]) || task.priority || t('tasks.priority.medium')}
                                                                     </span>
-                                                                )}
+                                                                    {due && (
+                                                                        <span className={`date-tag ${isOverdue ? 'overdue' : ''}`}>
+                                                                            {format(due, 'MMM d', { locale: dateLocale })}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
                                                             </div>
+                                                            <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)]">chevron_right</span>
                                                         </div>
-                                                        <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)] opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0">chevron_right</span>
                                                     </div>
                                                 </Link>
                                             );
                                         })}
                                         {focusTasks.length === 0 && (
-                                            <div className="py-8 text-center text-sm text-[var(--color-text-muted)]">
+                                            <div className="empty-state-simple">
                                                 {t('dashboard.deadlines.empty')}
                                             </div>
                                         )}
@@ -1469,154 +1473,148 @@ export const Dashboard = () => {
                                 </Card>
 
                             </div>
-
-                            {/* 4. Recent Projects (Full Row - Span 3) */}
-                            <div data-onboarding-id="dashboard-active-projects" className="lg:col-span-3">
-                                <div className="flex items-center justify-between mb-6">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg text-indigo-600 dark:text-indigo-400">
-                                            <span className="material-symbols-outlined">folder_open</span>
-                                        </div>
-                                        <h3 className="h3">{t('dashboard.projects.title')}</h3>
-                                    </div>
-                                    <div className="flex justify-end gap-4">
-                                        <Link to="/projects" className="text-sm font-bold text-[var(--color-primary)] hover:text-indigo-700 transition-colors flex items-center gap-1 group">
-                                            {t('dashboard.projects.viewAll')} <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                                        </Link>
-                                        <Link to="/create">
-                                            <Button
-                                                size="md"
-                                                className="rounded-xl px-6 font-bold shadow-lg shadow-indigo-500/20 bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:opacity-90 border-none"
-                                                icon={<span className="material-symbols-outlined">add</span>}
-                                            >
-                                                {t('dashboard.projects.newProject')}
-                                            </Button>
-                                        </Link>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {recentProjects.length === 0 ? (
-                                        <div className="col-span-3 p-12 text-center text-[var(--color-text-subtle)] border-2 border-dashed border-[var(--color-surface-border)] rounded-2xl bg-[var(--color-surface-bg)]/50">
-                                            <div className="mb-4 inline-flex p-4 rounded-full bg-[var(--color-surface-hover)]">
-                                                <span className="material-symbols-outlined text-4xl opacity-50">post_add</span>
-                                            </div>
-                                            <p className="text-lg font-medium">{t('dashboard.projects.empty.title')}</p>
-                                            <p className="text-sm mt-1">{t('dashboard.projects.empty.description')}</p>
-                                        </div>
-                                    ) : (
-                                        recentProjects.slice(0, 3).map((proj) => {
-                                            const projTasks = tasks.filter((t) => t.projectId === proj.id);
-                                            const completed = projTasks.filter((t) => t.isCompleted).length;
-                                            const total = projTasks.length;
-                                            const pct = total > 0 ? Math.round((completed / total) * 100) : (proj.progress || 0);
-
-                                            const isBrainstorming = proj.status === 'Brainstorming' || proj.status === 'Planning';
-                                            const isCompleted = proj.status === 'Completed';
-
-                                            let icon = 'folder';
-                                            let iconClass = 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border-indigo-100 dark:border-indigo-500/20';
-                                            let progressColor = 'bg-indigo-500';
-
-                                            if (isBrainstorming) {
-                                                icon = 'lightbulb';
-                                                iconClass = 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20';
-                                                progressColor = 'bg-amber-500';
-                                            } else if (isCompleted) {
-                                                icon = 'check_circle';
-                                                iconClass = 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20';
-                                                progressColor = 'bg-emerald-500';
-                                            }
-
-                                            return (
-                                                <Link key={proj.id} to={`/project/${proj.id}`} className="group block h-full">
-                                                    <Card padding="none" hoverable className="project-card">
-
-                                                        {/* Cover Image Area */}
-                                                        <div className="cover-area">
-                                                            {proj.coverImage ? (
-                                                                <>
-                                                                    <div className="overlay" />
-                                                                    <img src={proj.coverImage} className="cover-image" alt="" />
-                                                                </>
-                                                            ) : (
-                                                                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-500/20" />
-                                                            )}
-
-                                                            <div className="status-badge">
-                                                                <Badge variant={isCompleted ? 'success' : isBrainstorming ? 'secondary' : 'primary'} className="backdrop-blur-md bg-white/90 dark:bg-black/50 shadow-sm border-0">
-                                                                    {projectStatusLabels[proj.status as keyof typeof projectStatusLabels] || proj.status}
-                                                                </Badge>
-                                                            </div>
-                                                        </div>
-
-                                                        <div className="content-area">
-                                                            {/* Floating Icon */}
-                                                            <div className="icon-wrapper">
-                                                                {proj.squareIcon ? (
-                                                                    <div className="icon-box">
-                                                                        <img src={proj.squareIcon} alt="" />
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className={`icon-box ${iconClass}`}>
-                                                                        <span className="material-symbols-outlined text-2xl">{icon}</span>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-
-                                                            <div className="project-info">
-                                                                <h3 className="project-title">
-                                                                    {proj.title}
-                                                                </h3>
-                                                                {proj.description && (
-                                                                    <p className="project-desc">
-                                                                        {proj.description}
-                                                                    </p>
-                                                                )}
-                                                            </div>
-
-                                                            {/* Progress */}
-                                                            <div className="space-y-2 mb-4">
-                                                                <div className="flex items-center justify-between text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">
-                                                                    <span>{t('dashboard.projects.progress')}</span>
-                                                                    <span>{pct}%</span>
-                                                                </div>
-                                                                <div className="w-full bg-[var(--color-surface-border)] rounded-full h-1.5 overflow-hidden">
-                                                                    <div
-                                                                        className={`h-full rounded-full transition-all duration-700 ease-out ${progressColor}`}
-                                                                        style={{ width: `${pct}%` }}
-                                                                    />
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Footer members */}
-                                                            <div className="flex items-center justify-between mt-auto pt-4 border-t border-[var(--color-surface-border)]">
-                                                                <MemberAvatars projectId={proj.id} />
-                                                                <span className="material-symbols-outlined text-[var(--color-text-subtle)] group-hover:text-[var(--color-primary)] group-hover:translate-x-1 transition-all">arrow_forward</span>
-                                                            </div>
-                                                        </div>
-                                                    </Card>
-                                                </Link>
-                                            );
-                                        })
-                                    )}
-                                </div>
-                            </div>
-
                         </div>
 
-                    </div>
+                        {/* 4. Recent Projects (Full Row) */}
+                        <div data-onboarding-id="dashboard-active-projects" className="grid-col-span-full">
+                            <div className="title-group flex-center-gap">
+                                <div className="project-header-icon">
+                                    <span className="material-symbols-outlined">folder_open</span>
+                                </div>
+                                <h3 className="h3">{t('dashboard.projects.title')}</h3>
+                            </div>
+                            <div className="flex-center-gap">
+                                <Link to="/projects" className="view-all-link">
+                                    {t('dashboard.projects.viewAll')} <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                                </Link>
+                                <Link to="/create">
+                                    <Button
+                                        size="md"
+                                        className="rounded-xl px-6 font-bold shadow-lg bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:opacity-90 border-none"
+                                        icon={<span className="material-symbols-outlined">add</span>}
+                                    >
+                                        {t('dashboard.projects.newProject')}
+                                    </Button>
+                                </Link>
+                            </div>
+                        </div>
+                        <div className="grid-cols-3">
+                            {recentProjects.length === 0 ? (
+                                <div className="col-span-3 p-12 text-center text-[var(--color-text-subtle)] border-2 border-dashed border-[var(--color-surface-border)] rounded-2xl bg-[var(--color-surface-bg)]/50">
+                                    <div className="mb-4 inline-flex p-4 rounded-full bg-[var(--color-surface-hover)]">
+                                        <span className="material-symbols-outlined text-4xl opacity-50">post_add</span>
+                                    </div>
+                                    <p className="text-lg font-medium">{t('dashboard.projects.empty.title')}</p>
+                                    <p className="text-sm mt-1">{t('dashboard.projects.empty.description')}</p>
+                                </div>
+                            ) : (
+                                recentProjects.slice(0, 3).map((proj) => {
+                                    const projTasks = tasks.filter((t) => t.projectId === proj.id);
+                                    const completed = projTasks.filter((t) => t.isCompleted).length;
+                                    const total = projTasks.length;
+                                    const pct = total > 0 ? Math.round((completed / total) * 100) : (proj.progress || 0);
 
+                                    const isBrainstorming = proj.status === 'Brainstorming' || proj.status === 'Planning';
+                                    const isCompleted = proj.status === 'Completed';
+
+                                    let icon = 'folder';
+                                    let iconClass = 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border-indigo-100 dark:border-indigo-500/20';
+                                    let progressColor = 'bg-indigo-500';
+
+                                    if (isBrainstorming) {
+                                        icon = 'lightbulb';
+                                        iconClass = 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20';
+                                        progressColor = 'bg-amber-500';
+                                    } else if (isCompleted) {
+                                        icon = 'check_circle';
+                                        iconClass = 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20';
+                                        progressColor = 'bg-emerald-500';
+                                    }
+
+                                    return (
+                                        <Link key={proj.id} to={`/project/${proj.id}`} className="group block h-full">
+                                            <Card padding="none" hoverable className="project-card">
+
+                                                {/* Cover Image Area */}
+                                                <div className="cover-area">
+                                                    {proj.coverImage ? (
+                                                        <>
+                                                            <div className="overlay" />
+                                                            <img src={proj.coverImage} className="cover-image" alt="" />
+                                                        </>
+                                                    ) : (
+                                                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-500/20" />
+                                                    )}
+
+                                                    <div className="status-badge">
+                                                        <Badge variant={isCompleted ? 'success' : isBrainstorming ? 'secondary' : 'primary'} className="backdrop-blur-md bg-white/90 dark:bg-black/50 shadow-sm border-0">
+                                                            {projectStatusLabels[proj.status as keyof typeof projectStatusLabels] || proj.status}
+                                                        </Badge>
+                                                    </div>
+                                                </div>
+
+                                                <div className="content-area">
+                                                    {/* Floating Icon */}
+                                                    <div className="icon-wrapper">
+                                                        {proj.squareIcon ? (
+                                                            <div className="icon-box">
+                                                                <img src={proj.squareIcon} alt="" />
+                                                            </div>
+                                                        ) : (
+                                                            <div className={`icon-box ${iconClass}`}>
+                                                                <span className="material-symbols-outlined text-2xl">{icon}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="project-info">
+                                                        <h3 className="project-title">
+                                                            {proj.title}
+                                                        </h3>
+                                                        {proj.description && (
+                                                            <p className="project-desc">
+                                                                {proj.description}
+                                                            </p>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Progress */}
+                                                    <div className="space-y-2 mb-4">
+                                                        <div className="flex items-center justify-between text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">
+                                                            <span>{t('dashboard.projects.progress')}</span>
+                                                            <span>{pct}%</span>
+                                                        </div>
+                                                        <div className="w-full bg-[var(--color-surface-border)] rounded-full h-1.5 overflow-hidden">
+                                                            <div
+                                                                className={`h-full rounded-full transition-all duration-700 ease-out ${progressColor}`}
+                                                                style={{ width: `${pct}%` }}
+                                                            />
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Footer members */}
+                                                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-[var(--color-surface-border)]">
+                                                        <MemberAvatars projectId={proj.id} />
+                                                        <span className="material-symbols-outlined text-[var(--color-text-subtle)] group-hover:text-[var(--color-primary)] group-hover:translate-x-1 transition-all">arrow_forward</span>
+                                                    </div>
+                                                </div>
+                                            </Card>
+                                        </Link>
+                                    );
+                                })
+                            )}
+                        </div>
+                    </div>
 
                     {/* Right Column: Sidebar Widgets */}
                     <div className="dashboard-sidebar-col">
 
-                        {/* 1. Mini Calendar with View Toggle */}
-                        <Card data-onboarding-id="dashboard-calendar" padding="md">
-                            <div className="flex flex-col gap-3 mb-4">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="font-bold text-base text-[var(--color-text-main)]">
+                        <Card data-onboarding-id="dashboard-calendar" padding="md" className="calendar-widget">
+                            <div className="calendar-header">
+                                <div className="top-row">
+                                    <h3>
                                         {format(currentDate, 'MMMM yyyy', { locale: dateLocale })}
-                                        <span className="ml-2 text-[10px] text-[var(--color-text-subtle)] font-normal bg-[var(--color-surface-hover)] px-1.5 py-0.5 rounded-full">
+                                        <span className="badge">
                                             {calendarView === 'month' ? (
                                                 <>
                                                     W{getWeekNumber(new Date(currentDate.getFullYear(), currentDate.getMonth(), 1))}
@@ -1628,22 +1626,15 @@ export const Dashboard = () => {
                                             )}
                                         </span>
                                     </h3>
-                                    <div className="flex gap-1">
-                                        <button
-                                            onClick={handlePrevDate}
-                                            className="p-1 hover:bg-[var(--color-surface-hover)] rounded-md text-[var(--color-text-subtle)]"
-                                        >
+                                    <div className="nav-controls">
+                                        <button onClick={handlePrevDate}>
                                             <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                                         </button>
-                                        <button
-                                            onClick={handleNextDate}
-                                            className="p-1 hover:bg-[var(--color-surface-hover)] rounded-md text-[var(--color-text-subtle)]"
-                                        >
+                                        <button onClick={handleNextDate}>
                                             <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                                         </button>
                                     </div>
                                 </div>
-
                             </div>
 
                             <div className="calendar-grid-header">
@@ -1698,17 +1689,17 @@ export const Dashboard = () => {
                                 })()}
                             </div>
 
-                            {/* Segmented Control for View Switch - Moved Bottom & Taller */}
-                            <div className="flex p-0.5 bg-[var(--color-surface-hover)] rounded-md mt-2">
+                            {/* Segmented Control for View Switch */}
+                            <div className="view-toggle">
                                 <button
                                     onClick={() => calendarView !== 'month' && toggleCalendarView()}
-                                    className={`flex-1 py-[5px] text-[9px] font-bold uppercase tracking-wider rounded transition-all ${calendarView === 'month' ? 'bg-[var(--color-surface-paper)] text-[var(--color-text-main)] shadow-sm' : 'text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)]'}`}
+                                    className={calendarView === 'month' ? 'active' : ''}
                                 >
                                     {t('dashboard.calendar.month')}
                                 </button>
                                 <button
                                     onClick={() => calendarView !== 'week' && toggleCalendarView()}
-                                    className={`flex-1 py-[5px] text-[9px] font-bold uppercase tracking-wider rounded transition-all ${calendarView === 'week' ? 'bg-[var(--color-surface-paper)] text-[var(--color-text-main)] shadow-sm' : 'text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)]'}`}
+                                    className={calendarView === 'week' ? 'active' : ''}
                                 >
                                     {t('dashboard.calendar.week')}
                                 </button>
@@ -1727,37 +1718,37 @@ export const Dashboard = () => {
                         )}
 
                         {/* 2. Enhanced Live Activity (Hybrid Data) */}
-                        <Card data-onboarding-id="dashboard-live-activity" padding="none" className="max-h-[400px] flex flex-col">
-                            <div className="p-4 border-b border-[var(--color-surface-border)] flex justify-between items-center">
+                        <Card data-onboarding-id="dashboard-live-activity" padding="none" className="activity-feed-card">
+                            <div className="header">
                                 <h3 className="h5">{t('dashboard.activity.title')}</h3>
-                                <span className="relative flex h-2 w-2">
-                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                                </span>
+                                <div className="status-ping">
+                                    <div className="ping-circle" />
+                                    <div className="status-dot" />
+                                </div>
                             </div>
-                            <div className="overflow-y-auto p-2 space-y-1">
+                            <div className="feed-container">
                                 {displayActivities.length === 0 ? (
-                                    <div className="p-8 text-center text-sm text-[var(--color-text-subtle)]">{t('dashboard.activity.empty')}</div>
+                                    <div className="empty-state-simple">{t('dashboard.activity.empty')}</div>
                                 ) : (
                                     displayActivities.map(item => (
-                                        <div key={item.id} className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors group">
-                                            <div className="mt-0.5">
+                                        <div key={item.id} className="activity-item">
+                                            <div className="avatar">
                                                 {item.userAvatar ? (
-                                                    <img src={item.userAvatar} alt="" className="size-8 rounded-full border border-[var(--color-surface-border)] object-cover" />
+                                                    <img src={item.userAvatar} alt="" />
                                                 ) : (
-                                                    <div className="size-8 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-xs font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800">
+                                                    <div className="placeholder bg-indigo-100 text-indigo-600">
                                                         {(item.user || t('dashboard.activity.userFallback')).charAt(0)}
                                                     </div>
                                                 )}
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <p className="text-sm text-[var(--color-text-main)] leading-snug">
-                                                    <span className="font-semibold">{item.user}</span> <span className="text-[var(--color-text-muted)]">
+                                            <div className="content">
+                                                <p>
+                                                    <span className="user">{item.user}</span> <span className="action">
                                                         {item.action || t('dashboard.activity.fallbackAction')}
                                                     </span> <br />
-                                                    <span className="font-medium text-[var(--color-text-main)] group-hover:text-[var(--color-primary)] transition-colors">{item.target}</span>
+                                                    <span className="target">{item.target}</span>
                                                 </p>
-                                                <p className="text-[10px] text-[var(--color-text-subtle)] mt-1">
+                                                <p className="time">
                                                     {item.createdAt
                                                         ? format(new Date(toMillis(item.createdAt)), 'p', { locale: dateLocale })
                                                         : t('dashboard.activity.justNow')}
@@ -1770,12 +1761,12 @@ export const Dashboard = () => {
                         </Card>
 
                         {/* 3. Attention Needed (Moved Here) */}
-                        <Card data-onboarding-id="dashboard-attention" padding="md" className="flex flex-col border-l-4 border-l-rose-500">
-                            <div className="flex items-center justify-between mb-4">
+                        <Card data-onboarding-id="dashboard-attention" padding="md" className="attention-card">
+                            <div className="section-header-row">
                                 <h3 className="h5 text-rose-600 dark:text-rose-400">{t('dashboard.attention.title')}</h3>
                                 <span className="material-symbols-outlined text-rose-500 text-[20px]">warning</span>
                             </div>
-                            <div className="flex-1 overflow-y-auto pr-1 space-y-3">
+                            <div className="attention-list">
                                 {(() => {
                                     const blockedTasks = tasks.filter(t => t.status === 'Blocked');
                                     const urgentTasks = tasks.filter(t => t.priority === 'Urgent' && !t.isCompleted);
@@ -1783,19 +1774,19 @@ export const Dashboard = () => {
 
                                     if (attentionItems.length === 0) {
                                         return (
-                                            <div className="flex flex-col items-center justify-center text-center py-4 opacity-70">
+                                            <div className="empty-state-simple">
                                                 <span className="material-symbols-outlined text-3xl text-emerald-500 mb-2">check_circle</span>
-                                                <p className="text-xs text-[var(--color-text-muted)]">{t('dashboard.attention.allClear')}</p>
+                                                <p>{t('dashboard.attention.allClear')}</p>
                                             </div>
                                         );
                                     }
 
                                     return attentionItems.map(item => (
-                                        <Link key={item.id} to={`/project/${item.projectId}/tasks/${item.id}`} className="block p-3 rounded-lg bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/30 hover:shadow-sm transition-shadow">
-                                            <p className="text-[10px] font-bold text-rose-700 dark:text-rose-300 mb-0.5 uppercase">
+                                        <Link key={item.id} to={`/project/${item.projectId}/tasks/${item.id}`} className="attention-item">
+                                            <p className="type">
                                                 {item.status === 'Blocked' ? t('dashboard.attention.blocked') : t('dashboard.attention.urgent')}
                                             </p>
-                                            <p className="text-sm font-medium text-[var(--color-text-main)] line-clamp-2">{item.title}</p>
+                                            <p className="title">{item.title}</p>
                                         </Link>
                                     ));
                                 })()}
@@ -1804,45 +1795,45 @@ export const Dashboard = () => {
 
                         {/* 4. Recently Added Tasks (Restored) */}
                         <Card data-onboarding-id="dashboard-recent-tasks" padding="md">
-                            <div className="flex items-center justify-between mb-4">
+                            <div className="section-header-row">
                                 <h3 className="h5">{t('dashboard.recent.title')}</h3>
-                                <Link to="/tasks" className="text-xs font-bold text-[var(--color-primary)] hover:underline">{t('dashboard.recent.viewAll')}</Link>
+                                <Link to="/tasks" className="view-all-link">{t('dashboard.recent.viewAll')}</Link>
                             </div>
-                            <div className="space-y-3">
+                            <div className="recent-tasks-list">
                                 {tasks
                                     .sort((a, b) => (toMillis(b.createdAt) || 0) - (toMillis(a.createdAt) || 0))
                                     .slice(0, 5)
                                     .map(task => (
-                                        <Link key={task.id} to={`/project/${task.projectId}/tasks/${task.id}`} className="flex items-start gap-3 group">
-                                            <div className={`mt-1 size-2 rounded-full flex-shrink-0 ${task.priority === 'Urgent' ? 'bg-red-500' : task.priority === 'High' ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
-                                            <div className="min-w-0 flex-1">
-                                                <p className="text-sm font-medium text-[var(--color-text-main)] line-clamp-1 group-hover:text-[var(--color-primary)] transition-colors">{task.title}</p>
-                                                <p className="text-xs text-[var(--color-text-muted)]">
+                                        <Link key={task.id} to={`/project/${task.projectId}/tasks/${task.id}`} className="recent-task-item">
+                                            <div className={`priority-dot ${task.priority === 'Urgent' ? 'bg-red-500' : task.priority === 'High' ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
+                                            <div className="content">
+                                                <p className="title">{task.title}</p>
+                                                <p className="date">
                                                     {formatShortDate(new Date(toMillis(task.createdAt)), dateFormat, dateLocale)}
                                                 </p>
                                             </div>
                                         </Link>
                                     ))}
-                                {tasks.length === 0 && <p className="text-sm text-[var(--color-text-muted)] text-center py-4">{t('dashboard.recent.empty')}</p>}
+                                {tasks.length === 0 && <p className="empty-state-simple">{t('dashboard.recent.empty')}</p>}
                             </div>
                         </Card>
 
                         {/* Recent Issues (Conditional) */}
                         {hasIssuesModule && issues.length > 0 && (
                             <Card data-onboarding-id="dashboard-recent-issues" padding="none">
-                                <div className="p-4 border-b border-[var(--color-surface-border)] flex justify-between items-center">
+                                <div className="section-header-row">
                                     <h3 className="h5">{t('dashboard.issues.title')}</h3>
                                 </div>
-                                <div className="divide-y divide-[var(--color-surface-border)]">
+                                <div className="status-list">
                                     {issues.slice(0, 4).map((issue) => (
-                                        <div key={issue.id} className="p-3">
-                                            <div className="flex items-start gap-2">
+                                        <div key={issue.id} className="status-item">
+                                            <div className="flex-center-gap">
                                                 <span className={`material-symbols-outlined text-[18px] ${issue.status === 'Resolved' ? 'text-emerald-500' : 'text-rose-500'}`}>
                                                     {issue.status === 'Resolved' ? 'check_circle' : 'error'}
                                                 </span>
-                                                <div className="min-w-0">
-                                                    <p className="text-sm font-medium truncate text-[var(--color-text-main)]">{issue.title}</p>
-                                                    <p className="text-xs text-[var(--color-text-muted)] truncate">{projectById.get(issue.projectId) || t('dashboard.issues.unknownProject')}</p>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="title">{issue.title}</p>
+                                                    <p className="subtitle">{projectById.get(issue.projectId) || t('dashboard.issues.unknownProject')}</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -1853,7 +1844,7 @@ export const Dashboard = () => {
 
                     </div>
                 </div>
-            </div>
+            </div >
             <OnboardingWelcomeModal
                 isOpen={showOnboardingWelcome}
                 title={t('onboarding.dashboard.welcome.title')}
