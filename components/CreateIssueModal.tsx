@@ -123,7 +123,7 @@ export const CreateIssueModal: React.FC<CreateIssueModalProps> = ({
             onClick={onClose}
         >
             <div
-                className="w-full max-w-xl bg-[var(--color-surface-card)] rounded-2xl shadow-2xl border border-[var(--color-surface-border)] animate-scale-up overflow-hidden"
+                className="w-full max-w-xl bg-card rounded-2xl shadow-2xl border border-surface animate-scale-up overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
                 <form onSubmit={handleSubmit}>
@@ -136,7 +136,7 @@ export const CreateIssueModal: React.FC<CreateIssueModalProps> = ({
                             placeholder={t('createIssue.placeholder.title')}
                             autoFocus
                             maxLength={100}
-                            className="w-full text-2xl font-semibold bg-transparent border-none outline-none text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)]/50"
+                            className="w-full text-2xl font-semibold bg-transparent border-none outline-none text-main placeholder:text-muted/50"
                         />
                     </div>
 
@@ -146,19 +146,19 @@ export const CreateIssueModal: React.FC<CreateIssueModalProps> = ({
                         <div className="relative group">
                             <button
                                 type="button"
-                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-[var(--color-surface-hover)] ${priorityConfig[priority].color}`}
+                                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors hover:bg-surface-hover ${priorityConfig[priority].color}`}
                             >
                                 <span className="material-symbols-outlined text-[16px]">flag</span>
                                 {priorityLabels[priority]}
                                 <span className="material-symbols-outlined text-[14px] opacity-50">expand_more</span>
                             </button>
-                            <div className="absolute left-0 top-full mt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-lg shadow-xl py-1 min-w-[120px] z-10">
+                            <div className="absolute left-0 top-full mt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all bg-card border border-surface rounded-lg shadow-xl py-1 min-w-[120px] z-10">
                                 {(['Urgent', 'High', 'Medium', 'Low'] as const).map(p => (
                                     <button
                                         key={p}
                                         type="button"
                                         onClick={() => setPriority(p)}
-                                        className={`w-full px-3 py-1.5 text-left text-xs font-medium flex items-center gap-2 hover:bg-[var(--color-surface-hover)] ${priority === p ? priorityConfig[p].color : 'text-[var(--color-text-main)]'}`}
+                                        className={`w-full px-3 py-1.5 text-left text-xs font-medium flex items-center gap-2 hover:bg-surface-hover ${priority === p ? priorityConfig[p].color : 'text-main'}`}
                                     >
                                         <span className={`size-2 rounded-full ${priorityConfig[p].bg} ${priorityConfig[p].color.replace('text-', 'bg-')}`} />
                                         {priorityLabels[p]}
@@ -171,19 +171,19 @@ export const CreateIssueModal: React.FC<CreateIssueModalProps> = ({
                         <div className="relative group">
                             <button
                                 type="button"
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]"
+                                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-muted transition-colors hover:bg-surface-hover hover:text-main"
                             >
                                 <span className="material-symbols-outlined text-[16px]">radio_button_unchecked</span>
                                 {statusLabels[status]}
                                 <span className="material-symbols-outlined text-[14px] opacity-50">expand_more</span>
                             </button>
-                            <div className="absolute left-0 top-full mt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-lg shadow-xl py-1 min-w-[130px] z-10">
+                            <div className="absolute left-0 top-full mt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all bg-card border border-surface rounded-lg shadow-xl py-1 min-w-[130px] z-10">
                                 {(['Open', 'In Progress', 'Resolved', 'Closed'] as const).map(s => (
                                     <button
                                         key={s}
                                         type="button"
                                         onClick={() => setStatus(s)}
-                                        className={`w-full px-3 py-1.5 text-left text-xs font-medium hover:bg-[var(--color-surface-hover)] ${status === s ? 'text-[var(--color-accent)]' : 'text-[var(--color-text-main)]'}`}
+                                        className={`w-full px-3 py-1.5 text-left text-xs font-medium hover:bg-surface-hover ${status === s ? 'text-primary' : 'text-main'}`}
                                     >
                                         {statusLabels[s]}
                                     </button>
@@ -199,14 +199,14 @@ export const CreateIssueModal: React.FC<CreateIssueModalProps> = ({
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder={t('createIssue.placeholder.description')}
                             rows={3}
-                            className="w-full px-3 py-2.5 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] text-sm text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-accent)] transition-colors resize-none"
+                            className="w-full px-3 py-2.5 rounded-xl bg-surface border border-surface text-sm text-main placeholder:text-muted outline-none focus:border-[var(--color-accent)] transition-colors resize-none"
                         />
                     </div>
 
                     {/* Assignees */}
                     <div className="px-6 pb-4">
                         <div className="space-y-2">
-                            <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">{t('createIssue.labels.assignees')}</label>
+                            <label className="text-xs font-medium text-muted uppercase tracking-wider">{t('createIssue.labels.assignees')}</label>
                             <MultiAssigneeSelector
                                 projectId={projectId}
                                 assigneeIds={assigneeIds}
@@ -221,32 +221,32 @@ export const CreateIssueModal: React.FC<CreateIssueModalProps> = ({
                     <div className="px-6 pb-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">{t('createIssue.labels.startDate')}</label>
+                                <label className="text-xs font-medium text-muted uppercase tracking-wider">{t('createIssue.labels.startDate')}</label>
                                 <input
                                     type="date"
                                     value={startDate}
                                     onChange={(e) => setStartDate(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] text-sm text-[var(--color-text-main)] outline-none focus:border-[var(--color-accent)] transition-colors"
+                                    className="w-full px-3 py-2 rounded-xl bg-surface border border-surface text-sm text-main outline-none focus:border-[var(--color-accent)] transition-colors"
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">{t('createIssue.labels.dueDate')}</label>
+                                <label className="text-xs font-medium text-muted uppercase tracking-wider">{t('createIssue.labels.dueDate')}</label>
                                 <input
                                     type="date"
                                     value={dueDate}
                                     onChange={(e) => setDueDate(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] text-sm text-[var(--color-text-main)] outline-none focus:border-[var(--color-accent)] transition-colors"
+                                    className="w-full px-3 py-2 rounded-xl bg-surface border border-surface text-sm text-main outline-none focus:border-[var(--color-accent)] transition-colors"
                                 />
                             </div>
                         </div>
                     </div>
 
                     {/* Footer */}
-                    <div className="px-6 py-4 border-t border-[var(--color-surface-border)] flex items-center justify-between bg-[var(--color-surface-bg)]/50">
-                        <span className="text-xs text-[var(--color-text-muted)] flex items-center gap-1">
-                            <kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface-hover)] font-mono text-[10px]">⌥</kbd>
+                    <div className="px-6 py-4 border-t border-surface flex items-center justify-between bg-surface/50">
+                        <span className="text-xs text-muted flex items-center gap-1">
+                            <kbd className="px-1.5 py-0.5 rounded bg-surface-hover font-mono text-[10px]">⌥</kbd>
                             <span>+</span>
-                            <kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface-hover)] font-mono text-[10px]">B</kbd>
+                            <kbd className="px-1.5 py-0.5 rounded bg-surface-hover font-mono text-[10px]">B</kbd>
                             <span className="ml-1">{t('createIssue.hint.togglePin')}</span>
                         </span>
                         <div className="flex items-center gap-3">
@@ -260,7 +260,7 @@ export const CreateIssueModal: React.FC<CreateIssueModalProps> = ({
                                 onClick={() => setPinOnCreate(!pinOnCreate)}
                                 className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${pinOnCreate
                                     ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
-                                    : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'
+                                    : 'text-muted hover:bg-surface-hover hover:text-main'
                                     }`}
                             >
                                 <span className="material-symbols-outlined text-[16px]">{pinOnCreate ? 'keep' : 'keep_off'}</span>

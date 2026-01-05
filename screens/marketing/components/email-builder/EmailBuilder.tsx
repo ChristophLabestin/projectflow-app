@@ -93,8 +93,8 @@ const getBlockIcon = (type: string) => {
 
 const LayerDragPreview = ({ block }: { block: EmailBlock }) => {
     return (
-        <div className="flex items-center gap-1.5 py-1.5 px-3 bg-white dark:bg-zinc-800 rounded shadow-lg border border-[var(--color-primary)] opacity-90 w-48">
-            <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">{getBlockIcon(block.type)}</span>
+        <div className="flex items-center gap-1.5 py-1.5 px-3 bg-white dark:bg-zinc-800 rounded shadow-lg border border-primary opacity-90 w-48">
+            <span className="material-symbols-outlined text-[16px] text-primary">{getBlockIcon(block.type)}</span>
             <span className="text-xs font-medium truncate">{block.type.charAt(0).toUpperCase() + block.type.slice(1)}</span>
         </div>
     );
@@ -103,11 +103,11 @@ const LayerDragPreview = ({ block }: { block: EmailBlock }) => {
 const BlockCategory = ({ title, children }: any) => (
     <div className="space-y-3 w-full">
         <div className="flex items-center gap-2 px-1">
-            <div className="h-px flex-1 bg-[var(--color-surface-border)] opacity-50" />
-            <h4 className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] whitespace-nowrap">
+            <div className="h-px flex-1 bg-surface-border opacity-50" />
+            <h4 className="text-[10px] font-bold uppercase tracking-wider text-muted whitespace-nowrap">
                 {title}
             </h4>
-            <div className="h-px flex-1 bg-[var(--color-surface-border)] opacity-50" />
+            <div className="h-px flex-1 bg-surface-border opacity-50" />
         </div>
         <div className="grid grid-cols-2 gap-2.5 w-full">
             {children}
@@ -118,10 +118,10 @@ const BlockCategory = ({ title, children }: any) => (
 const ToolButton = ({ icon, label, onClick }: any) => (
     <button
         onClick={onClick}
-        className="w-full flex flex-col items-center justify-center p-3.5 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)] transition-all duration-200 gap-2 group text-[var(--color-text-subtle)] hover:shadow-md hover:-translate-y-0.5"
+        className="w-full flex flex-col items-center justify-center p-3.5 rounded-xl border border-surface bg-card hover:border-primary hover:bg-surface-hover hover:text-primary transition-all duration-200 gap-2 group text-subtle hover:shadow-md hover:-translate-y-0.5"
     >
-        <div className="size-9 flex items-center justify-center rounded-lg bg-[var(--color-surface-paper)] border border-[var(--color-surface-border)] group-hover:border-[var(--color-primary)]/30 group-hover:bg-white/50 dark:group-hover:bg-black/20 transition-colors">
-            <span className="material-symbols-outlined text-[22px] text-[var(--color-text-muted)] group-hover:text-inherit">
+        <div className="size-9 flex items-center justify-center rounded-lg bg-surface-paper border border-surface group-hover:border-primary/30 group-hover:bg-white/50 dark:group-hover:bg-black/20 transition-colors">
+            <span className="material-symbols-outlined text-[22px] text-muted group-hover:text-inherit">
                 {icon}
             </span>
         </div>
@@ -156,7 +156,7 @@ const DroppableCanvas = ({ id, children, viewMode, canvasWidth = 640 }: { id: st
                 ...(viewMode !== 'mobile' ? { width: `${canvasWidth}px` } : {}),
                 colorScheme: 'light', // Force light mode for emails
             }}
-            className={`bg-white text-black shadow-xl rounded-sm transition-all duration-300 relative ${isOver ? 'ring-4 ring-[var(--color-primary)]/20' : ''
+            className={`bg-white text-black shadow-xl rounded-sm transition-all duration-300 relative ${isOver ? 'ring-4 ring-primary/20' : ''
                 } ${width}`}
         >
             <div className="min-h-[600px]">
@@ -900,15 +900,15 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
     const builderContent = (
         <div
             id="email-builder-container"
-            className={`flex overflow-hidden bg-[var(--color-surface-bg)] font-sans ${isMaximized
+            className={`flex overflow-hidden bg-surface font-sans ${isMaximized
                 ? 'fixed inset-0 z-[9999] h-screen w-screen'
-                : 'border border-[var(--color-surface-border)] rounded-xl shadow-sm relative h-[calc(100vh-80px)]'
+                : 'border border-surface rounded-xl shadow-sm relative h-[calc(100vh-80px)]'
                 }`}
         >
             {/* Left Sidebar */}
-            <div className="w-72 border-r border-[var(--color-surface-border)] bg-[var(--color-surface-paper)] flex flex-col z-10">
+            <div className="w-72 border-r border-surface bg-surface-paper flex flex-col z-10">
                 {/* Template Name Header */}
-                <div className="px-4 h-[41px] flex items-center border-b border-[var(--color-surface-border)] bg-[var(--color-surface-card)]">
+                <div className="px-4 h-[41px] flex items-center border-b border-surface bg-card">
                     <div className="flex items-center justify-between gap-2 w-full">
                         {isEditingName ? (
                             <input
@@ -922,41 +922,41 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                                 onKeyDown={(e) => {
                                     if (e.key === 'Enter') setIsEditingName(false);
                                 }}
-                                className="flex-1 bg-transparent text-[10px] font-black uppercase tracking-[0.1em] text-[var(--color-primary)] outline-none"
+                                className="flex-1 bg-transparent text-[10px] font-black uppercase tracking-[0.1em] text-primary outline-none"
                                 style={{ padding: 0, margin: 0, border: 'none', height: '100%', lineHeight: '1' }}
                             />
                         ) : (
                             <div
                                 onClick={() => setIsEditingName(true)}
-                                className="flex-1 text-[10px] font-black uppercase tracking-[0.1em] text-[var(--color-text-main)] truncate cursor-pointer hover:text-[var(--color-primary)] transition-colors group/name flex items-center gap-2"
+                                className="flex-1 text-[10px] font-black uppercase tracking-[0.1em] text-main truncate cursor-pointer hover:text-primary transition-colors group/name flex items-center gap-2"
                                 style={{ lineHeight: '1' }}
                             >
                                 <span className="truncate">{templateName}</span>
                                 <span className="material-symbols-outlined text-[12px] opacity-0 group-hover/name:opacity-40 transition-opacity">edit</span>
                             </div>
                         )}
-                        <span className="material-symbols-outlined text-[14px] text-[var(--color-text-muted)] opacity-20">inventory_2</span>
+                        <span className="material-symbols-outlined text-[14px] text-muted opacity-20">inventory_2</span>
                     </div>
                 </div>
 
-                <div className="flex border-b border-[var(--color-surface-border)]">
+                <div className="flex border-b border-surface">
                     <button
                         onClick={() => setSidebarTab('layers')}
-                        className={`flex-1 p-3 text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 transition-all ${sidebarTab === 'layers' ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)] bg-[var(--color-surface-card)]' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'}`}
+                        className={`flex-1 p-3 text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 transition-all ${sidebarTab === 'layers' ? 'text-primary border-b-2 border-primary bg-card' : 'text-muted hover:bg-surface-hover'}`}
                     >
                         <span className="material-symbols-outlined text-[18px]">layers</span>
                         Layers
                     </button>
                     <button
                         onClick={() => setSidebarTab('blocks')}
-                        className={`flex-1 p-3 text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 transition-all ${sidebarTab === 'blocks' ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)] bg-[var(--color-surface-card)]' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'}`}
+                        className={`flex-1 p-3 text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 transition-all ${sidebarTab === 'blocks' ? 'text-primary border-b-2 border-primary bg-card' : 'text-muted hover:bg-surface-hover'}`}
                     >
                         <span className="material-symbols-outlined text-[18px]">widgets</span>
                         Blocks
                     </button>
                     <button
                         onClick={() => setSidebarTab('variables')}
-                        className={`flex-1 p-3 text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 transition-all ${sidebarTab === 'variables' ? 'text-[var(--color-primary)] border-b-2 border-[var(--color-primary)] bg-[var(--color-surface-card)]' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'}`}
+                        className={`flex-1 p-3 text-xs font-bold uppercase tracking-wide flex items-center justify-center gap-2 transition-all ${sidebarTab === 'variables' ? 'text-primary border-b-2 border-primary bg-card' : 'text-muted hover:bg-surface-hover'}`}
                     >
                         <span className="material-symbols-outlined text-[18px]">data_object</span>
                         Vars
@@ -1028,14 +1028,14 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
             {/* Center Canvas */}
             <div className="flex-1 flex flex-col bg-zinc-100 dark:bg-zinc-900/50 relative">
                 {/* Toolbar */}
-                <div className="h-14 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-card)] grid grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6 shadow-sm z-10 gap-4">
+                <div className="h-14 border-b border-surface bg-card grid grid-cols-[1fr_auto_1fr] items-center px-4 sm:px-6 shadow-sm z-10 gap-4">
                     {/* Left: View Controls & History */}
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-0.5">
-                            <button onClick={undo} disabled={!canUndo} className={`p-1.5 rounded-lg transition-colors ${!canUndo ? 'opacity-20 cursor-not-allowed' : 'hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)]'}`} title="Undo">
+                            <button onClick={undo} disabled={!canUndo} className={`p-1.5 rounded-lg transition-colors ${!canUndo ? 'opacity-20 cursor-not-allowed' : 'hover:bg-surface-hover text-main'}`} title="Undo">
                                 <span className="material-symbols-outlined text-[18px]">undo</span>
                             </button>
-                            <button onClick={redo} disabled={!canRedo} className={`p-1.5 rounded-lg transition-colors ${!canRedo ? 'opacity-20 cursor-not-allowed' : 'hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)]'}`} title="Redo">
+                            <button onClick={redo} disabled={!canRedo} className={`p-1.5 rounded-lg transition-colors ${!canRedo ? 'opacity-20 cursor-not-allowed' : 'hover:bg-surface-hover text-main'}`} title="Redo">
                                 <span className="material-symbols-outlined text-[18px]">redo</span>
                             </button>
                         </div>
@@ -1044,26 +1044,26 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                     {/* Center: Status Indicator */}
                     <div className="flex justify-center relative">
                         <div
-                            className="px-3 py-1.5 bg-[var(--color-surface-sunken)]/50 border border-[var(--color-surface-border)] rounded-full flex items-center gap-2 transition-all min-w-[200px] justify-center cursor-pointer hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-primary)]/30 group/status shadow-inner"
+                            className="px-3 py-1.5 bg-surface-sunken/50 border border-surface rounded-full flex items-center gap-2 transition-all min-w-[200px] justify-center cursor-pointer hover:bg-surface-hover hover:border-primary/30 group/status shadow-inner"
                             onClick={handleHistoryToggle}
                         >
                             {isSavingDraft ? (
                                 <div className="flex items-center gap-2">
-                                    <span className="material-symbols-outlined animate-spin text-[14px] text-[var(--color-primary)]">sync</span>
-                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Cloud Saving...</span>
+                                    <span className="material-symbols-outlined animate-spin text-[14px] text-primary">sync</span>
+                                    <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Cloud Saving...</span>
                                 </div>
                             ) : lastSaved ? (
                                 <div className="flex items-center gap-2">
                                     <span className="material-symbols-outlined text-green-500 text-[14px]">check_circle</span>
-                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider whitespace-nowrap">
+                                    <span className="text-[10px] font-bold text-muted uppercase tracking-wider whitespace-nowrap">
                                         Synced <span className="opacity-40 font-mono ml-1">{lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                     </span>
-                                    <span className="material-symbols-outlined text-[14px] text-[var(--color-text-muted)] group-hover/status:text-[var(--color-primary)] transition-colors ml-1">history</span>
+                                    <span className="material-symbols-outlined text-[14px] text-muted group-hover/status:text-primary transition-colors ml-1">history</span>
                                 </div>
                             ) : (
                                 <div className="flex items-center gap-2 opacity-50">
                                     <span className="material-symbols-outlined text-[14px]">cloud_off</span>
-                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Unsaved Changes</span>
+                                    <span className="text-[10px] font-bold text-muted uppercase tracking-wider">Unsaved Changes</span>
                                     <span className="material-symbols-outlined text-[14px] ml-1">history</span>
                                 </div>
                             )}
@@ -1071,13 +1071,13 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
 
                         {/* History Dropdown */}
                         {isHistoryOpen && (
-                            <div className="absolute top-full mt-2 w-80 bg-white dark:bg-zinc-900 border border-[var(--color-surface-border)] rounded-2xl shadow-2xl z-[100] overflow-hidden flex flex-col max-h-[500px] animate-in slide-in-from-top-2 duration-200">
-                                <div className="px-5 py-4 border-b border-[var(--color-surface-border)] flex items-center justify-between bg-[var(--color-surface-card)]">
+                            <div className="absolute top-full mt-2 w-80 bg-white dark:bg-zinc-900 border border-surface rounded-2xl shadow-2xl z-[100] overflow-hidden flex flex-col max-h-[500px] animate-in slide-in-from-top-2 duration-200">
+                                <div className="px-5 py-4 border-b border-surface flex items-center justify-between bg-card">
                                     <div className="flex flex-col gap-0.5">
-                                        <h3 className="text-[10px] font-black text-[var(--color-text-muted)] uppercase tracking-widest">Version History</h3>
-                                        <p className="text-[9px] text-[var(--color-text-muted)] opacity-50 uppercase font-bold tracking-tighter">Recent snapshots</p>
+                                        <h3 className="text-[10px] font-black text-muted uppercase tracking-widest">Version History</h3>
+                                        <p className="text-[9px] text-muted opacity-50 uppercase font-bold tracking-tighter">Recent snapshots</p>
                                     </div>
-                                    <button onClick={() => setIsHistoryOpen(false)} className="size-8 rounded-full hover:bg-[var(--color-surface-sunken)] flex items-center justify-center transition-colors group/close">
+                                    <button onClick={() => setIsHistoryOpen(false)} className="size-8 rounded-full hover:bg-surface-sunken flex items-center justify-center transition-colors group/close">
                                         <span className="material-symbols-outlined text-[18px] opacity-40 group-hover/close:opacity-100 transition-all group-hover/close:rotate-90">close</span>
                                     </button>
                                 </div>
@@ -1085,10 +1085,10 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                                     {isLoadingHistory ? (
                                         <div className="p-16 flex flex-col items-center gap-4">
                                             <div className="relative">
-                                                <span className="material-symbols-outlined text-[40px] text-[var(--color-primary)]/20 animate-pulse">history</span>
-                                                <span className="material-symbols-outlined animate-spin text-[24px] text-[var(--color-primary)] absolute inset-0 flex items-center justify-center">sync</span>
+                                                <span className="material-symbols-outlined text-[40px] text-primary/20 animate-pulse">history</span>
+                                                <span className="material-symbols-outlined animate-spin text-[24px] text-primary absolute inset-0 flex items-center justify-center">sync</span>
                                             </div>
-                                            <span className="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-[0.2em] animate-pulse">Syncing Archive</span>
+                                            <span className="text-[9px] font-black text-muted uppercase tracking-[0.2em] animate-pulse">Syncing Archive</span>
                                         </div>
                                     ) : draftHistory.length > 0 ? (
                                         <div className="divide-y divide-[var(--color-surface-border)]/10 dark:divide-zinc-800/40">
@@ -1096,11 +1096,11 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                                                 <button
                                                     key={draft.id}
                                                     onClick={() => loadDraft(draft)}
-                                                    className="w-full px-5 py-4 text-left hover:bg-[var(--color-primary)]/[0.03] flex items-center justify-between group transition-all"
+                                                    className="w-full px-5 py-4 text-left hover:bg-primary/[0.03] flex items-center justify-between group transition-all"
                                                 >
                                                     <div className="flex flex-col gap-1 min-w-0 pr-4">
                                                         <div className="flex items-center gap-2">
-                                                            <span className="text-xs font-black text-[var(--color-text-main)] group-hover:text-[var(--color-primary)] transition-colors uppercase tracking-tight truncate">
+                                                            <span className="text-xs font-black text-main group-hover:text-primary transition-colors uppercase tracking-tight truncate">
                                                                 {draft.name || 'Unnamed Template'}
                                                             </span>
                                                             {idx === 0 && (
@@ -1108,13 +1108,13 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                                                             )}
                                                         </div>
                                                         <div className="flex items-center gap-3">
-                                                            <div className="flex items-center gap-1 text-[var(--color-text-muted)] opacity-60">
+                                                            <div className="flex items-center gap-1 text-muted opacity-60">
                                                                 <span className="material-symbols-outlined text-[11px]">schedule</span>
                                                                 <span className="text-[9px] font-bold uppercase tracking-tight">
                                                                     {draft.updatedAt?.toDate ? draft.updatedAt.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Recent'}
                                                                 </span>
                                                             </div>
-                                                            <div className="flex items-center gap-1 text-[var(--color-text-muted)] opacity-60">
+                                                            <div className="flex items-center gap-1 text-muted opacity-60">
                                                                 <span className="material-symbols-outlined text-[11px]">calendar_today</span>
                                                                 <span className="text-[9px] font-bold uppercase tracking-tight">
                                                                     {draft.updatedAt?.toDate ? format(draft.updatedAt.toDate(), 'MMM d', { locale: dateLocale }) : 'Today'}
@@ -1123,7 +1123,7 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-2">
-                                                        <div className="size-9 rounded-full bg-zinc-100 dark:bg-zinc-100 flex items-center justify-center group-hover:bg-[var(--color-primary)] transition-all shadow-sm border border-[var(--color-surface-border)]/30 dark:border-white/10">
+                                                        <div className="size-9 rounded-full bg-zinc-100 dark:bg-zinc-100 flex items-center justify-center group-hover:bg-primary transition-all shadow-sm border border-surface/30 dark:border-white/10">
                                                             <span className="material-symbols-outlined text-[18px] !text-zinc-900 group-hover:!text-white group-hover:rotate-[-45deg] transition-all">history_toggle_off</span>
                                                         </div>
                                                     </div>
@@ -1132,11 +1132,11 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                                         </div>
                                     ) : (
                                         <div className="p-16 text-center">
-                                            <div className="size-20 rounded-full bg-[var(--color-surface-sunken)] flex items-center justify-center mx-auto mb-6 border border-[var(--color-surface-border)]/40 shadow-inner">
-                                                <span className="material-symbols-outlined text-[32px] text-[var(--color-text-muted)] opacity-20">history_edu</span>
+                                            <div className="size-20 rounded-full bg-surface-sunken flex items-center justify-center mx-auto mb-6 border border-surface/40 shadow-inner">
+                                                <span className="material-symbols-outlined text-[32px] text-muted opacity-20">history_edu</span>
                                             </div>
-                                            <p className="text-[10px] font-black text-[var(--color-text-muted)] uppercase tracking-[0.2em]">History Empty</p>
-                                            <p className="text-[9px] text-[var(--color-text-muted)] opacity-40 uppercase font-bold tracking-tight mt-1">Changes will appear here</p>
+                                            <p className="text-[10px] font-black text-muted uppercase tracking-[0.2em]">History Empty</p>
+                                            <p className="text-[9px] text-muted opacity-40 uppercase font-bold tracking-tight mt-1">Changes will appear here</p>
                                         </div>
                                     )}
                                 </div>
@@ -1149,21 +1149,21 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                         <button
                             onClick={() => setIsMaximized(!isMaximized)}
                             title={isMaximized ? 'Exit Focus Mode' : 'Focus Mode'}
-                            className="p-2 rounded-lg hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors flex items-center"
+                            className="p-2 rounded-lg hover:bg-surface-hover text-muted hover:text-main transition-colors flex items-center"
                         >
                             <span className="material-symbols-outlined text-[20px]">{isMaximized ? 'close_fullscreen' : 'open_in_full'}</span>
                         </button>
 
-                        <div className="h-6 w-px bg-[var(--color-surface-border)] mx-1" />
+                        <div className="h-6 w-px bg-surface-border mx-1" />
 
                         <button
                             onClick={onCancel}
-                            className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
+                            className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-muted hover:text-main transition-colors"
                         >
                             Cancel
                         </button>
 
-                        <div className="flex items-center gap-2 border-l border-[var(--color-surface-border)] pl-3 ml-1">
+                        <div className="flex items-center gap-2 border-l border-surface pl-3 ml-1">
                             {onSaveDraft && (
                                 <button
                                     onClick={() => {
@@ -1174,7 +1174,7 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                                         }
                                     }}
                                     disabled={isSavingDraft}
-                                    className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider border border-[var(--color-surface-border)] dark:border-zinc-700 text-[var(--color-text-main)] dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:!text-zinc-100 rounded-lg transition-all flex items-center gap-2 whitespace-nowrap"
+                                    className="px-4 py-2 text-[11px] font-bold uppercase tracking-wider border border-surface dark:border-zinc-700 text-main dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:!text-zinc-100 rounded-lg transition-all flex items-center gap-2 whitespace-nowrap"
                                 >
                                     {isSavingDraft ? <span className="material-symbols-outlined animate-spin text-[14px]">sync</span> : null}
                                     Save Draft
@@ -1182,7 +1182,7 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                             )}
                             <button
                                 onClick={() => onSave(blocks, variables, templateName)}
-                                className={`flex items-center gap-2 px-5 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary)]/90 text-[var(--color-primary-text)] rounded-lg text-[11px] font-black uppercase tracking-widest shadow-lg shadow-[var(--color-primary)]/20 transition-all ${saving ? 'opacity-70 cursor-not-allowed' : 'hover:scale-[1.02] active:scale-[0.98]'}`}
+                                className={`flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary/90 text-on-primary rounded-lg text-[11px] font-black uppercase tracking-widest shadow-lg shadow-[var(--color-primary)]/20 transition-all ${saving ? 'opacity-70 cursor-not-allowed' : 'hover:scale-[1.02] active:scale-[0.98]'}`}
                             >
                                 {saving ? <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> : <span className="material-symbols-outlined text-[18px]">rocket_launch</span>}
                                 Publish
@@ -1222,7 +1222,7 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                             (activeDragItem as any)._dragSource === 'layer' ? (
                                 <LayerDragPreview block={activeDragItem} />
                             ) : (
-                                <div className="p-4 bg-white/90 shadow-xl rounded ring-2 ring-[var(--color-primary)]"><BlockRenderer block={activeDragItem} variables={variables} /></div>
+                                <div className="p-4 bg-white/90 shadow-xl rounded ring-2 ring-primary"><BlockRenderer block={activeDragItem} variables={variables} /></div>
                             )
                         ) : null}
                     </DragOverlay>
@@ -1231,10 +1231,10 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                 {/* Naming Modal */}
                 {isNamingModalOpen && (
                     <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                        <div className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-[var(--color-surface-border)] rounded-2xl shadow-2xl overflow-hidden p-6 space-y-6">
+                        <div className="w-full max-w-sm bg-white dark:bg-zinc-900 border border-surface rounded-2xl shadow-2xl overflow-hidden p-6 space-y-6">
                             <div className="space-y-1">
-                                <h3 className="text-sm font-black text-[var(--color-text-main)] uppercase tracking-tight">Name Template</h3>
-                                <p className="text-[10px] text-[var(--color-text-muted)] font-medium uppercase tracking-widest opacity-60">Give this draft a clear title to recognize it later.</p>
+                                <h3 className="text-sm font-black text-main uppercase tracking-tight">Name Template</h3>
+                                <p className="text-[10px] text-muted font-medium uppercase tracking-widest opacity-60">Give this draft a clear title to recognize it later.</p>
                             </div>
 
                             <div className="space-y-4">
@@ -1243,7 +1243,7 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                                     value={templateName === 'Unnamed Template' ? '' : templateName}
                                     onChange={(e) => setTemplateName(e.target.value)}
                                     placeholder="e.g. Monthly Newsletter"
-                                    className="w-full px-4 py-2.5 bg-[var(--color-surface-sunken)] border border-[var(--color-surface-border)] rounded-xl text-xs font-bold uppercase tracking-widest outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 transition-all"
+                                    className="w-full px-4 py-2.5 bg-surface-sunken border border-surface rounded-xl text-xs font-bold uppercase tracking-widest outline-none focus:ring-2 focus:ring-primary/30 transition-all"
                                     onKeyDown={(e) => {
                                         if (e.key === 'Enter' && templateName.trim()) {
                                             setIsNamingModalOpen(false);
@@ -1256,7 +1256,7 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                             <div className="flex items-center justify-between pt-2">
                                 <button
                                     onClick={() => setIsNamingModalOpen(false)}
-                                    className="text-[10px] font-black uppercase tracking-widest text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
+                                    className="text-[10px] font-black uppercase tracking-widest text-muted hover:text-main transition-colors"
                                 >
                                     Cancel
                                 </button>
@@ -1266,7 +1266,7 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
                                         setIsNamingModalOpen(false);
                                         onSaveDraft?.(blocks, variables, templateName);
                                     }}
-                                    className="px-6 py-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] text-[11px] font-black uppercase tracking-widest rounded-lg shadow-lg hover:shadow-[var(--color-primary)]/40 transition-all disabled:opacity-50 disabled:grayscale"
+                                    className="px-6 py-2 bg-primary text-on-primary text-[11px] font-black uppercase tracking-widest rounded-lg shadow-lg hover:shadow-[var(--color-primary)]/40 transition-all disabled:opacity-50 disabled:grayscale"
                                 >
                                     Save
                                 </button>
@@ -1277,7 +1277,7 @@ export const EmailBuilder: React.FC<EmailBuilderProps> = ({ initialBlocks = [], 
             </div>
 
             {/* Right Sidebar: Properties */}
-            <div className="w-80 border-l border-[var(--color-surface-border)] bg-[var(--color-surface-paper)] overflow-y-auto z-10">
+            <div className="w-80 border-l border-surface bg-surface-paper overflow-y-auto z-10">
                 {selectedBlock ? (
                     <PropertiesPanel
                         block={selectedBlock}

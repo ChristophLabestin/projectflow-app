@@ -1,0 +1,277 @@
+@use '../../../styles/tokens';
+
+.priority-select {
+    position: relative;
+    display: inline-block;
+    width: 100%;
+
+    // --- Shared Styling Logic ---
+    @mixin priority-style($color-text, $bg-light, $bg-dark, $border-light, $border-dark) {
+        color: $color-text;
+        background-color: $bg-light;
+        border: 1px solid $border-light;
+
+        // Dark Mode Overrides
+        [data-theme='dark'] & {
+            background-color: $bg-dark;
+            border-color: $border-dark;
+            // Ensure contrast for text if needed, but usually the passed $color-text handles it
+        }
+    }
+
+    // --- Options ---
+    &__option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: all 0.1s ease;
+
+        // Default (Unselected) State
+        background-color: var(--color-surface-card);
+        border: 1px solid var(--color-surface-border);
+        color: var(--color-text-muted);
+
+        &:hover {
+            background-color: var(--color-surface-hover);
+            transform: translateY(-1px);
+            color: var(--color-text-main);
+        }
+
+        &--selected {
+            box-shadow: var(--shadow-sm);
+        }
+
+        // Priority Variants (Applied when selected OR to trigger)
+        // We scope these to specific modifiers for clean application.
+
+        &--low {
+            // Low specific icon color when NOT selected
+            color: var(--color-text-muted);
+        }
+
+        &--medium {
+            color: var(--color-blue-600);
+
+            [data-theme='dark'] & {
+                color: var(--color-blue-500);
+            }
+        }
+
+        &--high {
+            color: var(--color-warning);
+        }
+
+        &--urgent {
+            color: var(--color-error);
+        }
+
+        // Selected State Overrides (Solid/Tinted Backgrounds)
+        &--selected.priority-select__option--low {
+            @include priority-style(var(--color-text-main),
+                var(--color-surface-hover),
+                rgba(255, 255, 255, 0.1),
+                var(--color-surface-border),
+                rgba(255, 255, 255, 0.2));
+        }
+
+        &--selected.priority-select__option--medium {
+            @include priority-style(var(--color-blue-600),
+                var(--color-blue-100),
+                rgba(59, 130, 246, 0.2),
+                var(--color-blue-500),
+                rgba(59, 130, 246, 0.5));
+
+            [data-theme='dark'] & {
+                color: #60a5fa;
+            }
+        }
+
+        &--selected.priority-select__option--high {
+            @include priority-style(var(--color-warning),
+                #fffbeb,
+                rgba(245, 158, 11, 0.2),
+                var(--color-warning),
+                rgba(245, 158, 11, 0.5));
+        }
+
+        &--selected.priority-select__option--urgent {
+            @include priority-style(var(--color-error),
+                #fef2f2,
+                rgba(239, 68, 68, 0.2),
+                var(--color-error),
+                rgba(239, 68, 68, 0.5));
+        }
+    }
+
+    // --- Trigger (Always looks like a selected option) ---
+    &__trigger {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 8px 12px;
+        border-radius: var(--radius-md);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        min-width: 140px;
+
+        &:hover {
+            background-color: var(--color-surface-hover);
+        }
+
+        // Default Disabled State
+        &--disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        // Apply EXACT same styles as selected options
+        &--low {
+            @include priority-style(var(--color-text-main),
+                var(--color-surface-hover),
+                rgba(255, 255, 255, 0.1),
+                var(--color-surface-border),
+                rgba(255, 255, 255, 0.2));
+        }
+
+        &--medium {
+            @include priority-style(var(--color-blue-600),
+                var(--color-blue-100),
+                rgba(59, 130, 246, 0.2),
+                var(--color-blue-500),
+                rgba(59, 130, 246, 0.5));
+
+            [data-theme='dark'] & {
+                color: #60a5fa;
+            }
+        }
+
+        &--high {
+            @include priority-style(var(--color-warning),
+                #fffbeb,
+                rgba(245, 158, 11, 0.2),
+                var(--color-warning),
+                rgba(245, 158, 11, 0.5));
+        }
+
+        &--urgent {
+            @include priority-style(var(--color-error),
+                #fef2f2,
+                rgba(239, 68, 68, 0.2),
+                var(--color-error),
+                rgba(239, 68, 68, 0.5));
+        }
+    }
+
+    &__value {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        color: inherit; // Inherit color from trigger/option parent
+    }
+
+    &__chevron {
+        transition: transform 0.2s ease;
+        opacity: 0.7;
+
+        &--open {
+            transform: rotate(180deg);
+        }
+    }
+
+    &__popover {
+        position: absolute;
+        top: calc(100% + 8px);
+        left: 0;
+        width: 100%;
+        min-width: 220px;
+        background-color: var(--color-surface-card);
+        border: 1px solid var(--color-surface-border);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-lg);
+        padding: 8px;
+        z-index: 50;
+        animation: slideDown 0.15s ease-out forwards;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    &__option-content {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.02em;
+    }
+
+    &__check {
+        margin-left: auto;
+    }
+
+    // Backdrop for click-outside
+    &__backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 49;
+    }
+
+    // --- Group Variant (Horizontal Radio Buttons) ---
+    &--group {
+        display: flex;
+        gap: 8px;
+        width: 100%;
+
+        .priority-select__option {
+            flex: 1 1 0px; // Ensure truly equal width regardless of content
+            justify-content: center;
+            padding: 10px 16px;
+
+            // In group mode, unselected options are transparent background + subtle transparent border to avoid layout shift
+            background-color: var(--color-surface-hover); // Match text-input field background
+            border: 1px solid transparent;
+
+            &:hover {
+                background-color: var(--color-surface-hover);
+                border-color: var(--color-text-muted);
+                transform: none; // Disable the default lift effect for group items
+            }
+
+            // Selected state is handled by the shared &--selected styles above!
+        }
+
+        .priority-select__option-content {
+            gap: 8px;
+            font-size: 0.8rem;
+            justify-content: center;
+        }
+
+        .priority-select__check {
+            display: none;
+        }
+    }
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

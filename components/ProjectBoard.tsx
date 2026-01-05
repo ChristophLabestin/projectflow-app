@@ -111,7 +111,7 @@ export const ProjectBoard: React.FC<ProjectBoardProps> = ({ tasks, renderTask, s
                     >
                         <div className="flex items-center gap-2">
                             <div className={`size-2 rounded-full ${col.style.dotColor}`} />
-                            <h3 className="text-sm font-black uppercase tracking-widest text-[var(--color-text-main)]">
+                            <h3 className="text-sm font-black uppercase tracking-widest text-main">
                                 {col.title}
                             </h3>
                         </div>

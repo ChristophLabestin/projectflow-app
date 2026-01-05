@@ -55,7 +55,7 @@ export const AssigneeSelector: React.FC<AssigneeSelectorProps> = ({ projectId, v
 
     return (
         <div className="flex flex-col gap-1">
-            {label && <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">{label}</label>}
+            {label && <label className="text-xs font-bold text-muted uppercase tracking-wider ml-1">{label}</label>}
             <Select
                 value={value || ''}
                 onChange={(e) => {

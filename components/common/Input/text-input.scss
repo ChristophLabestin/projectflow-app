@@ -1,0 +1,99 @@
+@use '../../../styles/tokens';
+
+.text-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+
+    &__label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--color-text-main);
+        cursor: pointer; // Indicates interaction with the input
+        transition: color var(--transition-fast);
+    }
+
+    // Light up label on group hover too? Optional but nice.
+    &:hover &__label {
+        color: var(--color-text-main);
+    }
+
+    &__help {
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+        margin: 0;
+    }
+
+    &__error {
+        font-size: 0.75rem;
+        color: var(--color-error);
+        margin: 0;
+    }
+}
+
+.text-input {
+    width: 100%;
+    height: 40px;
+    padding: 0 12px;
+    font-size: 0.9375rem;
+    font-family: inherit;
+    color: var(--color-text-main);
+    background-color: var(--color-surface-hover); // Filled background
+    border: 1px solid transparent; // Transparent border to prevent layout shift on focus
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+
+    &__right-element {
+        position: absolute;
+        top: 50%;
+        right: 8px;
+        transform: translateY(-50%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-text-subtle);
+    }
+
+    &__left-element {
+        position: absolute;
+        top: 50%;
+        left: 8px;
+        transform: translateY(-50%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-text-subtle);
+    }
+
+    &::placeholder {
+        color: var(--color-text-subtle);
+    }
+
+    // Hover on self OR parent group
+    &:hover:not(:disabled),
+    .text-input-group:hover &:not(:disabled) {
+        background-color: var(--color-primary-fade);
+    }
+
+    &:focus {
+        outline: none;
+        background-color: var(--color-surface-card);
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 2px var(--color-primary-fade);
+    }
+
+    &--error {
+        border-color: var(--color-error);
+
+        &:focus {
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1); // Error color generic fade
+        }
+    }
+
+    &:disabled {
+        background-color: var(--color-surface-hover);
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
+}

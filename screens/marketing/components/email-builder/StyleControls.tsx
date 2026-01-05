@@ -7,15 +7,15 @@ export const SettingsGroup = ({ title, children, defaultOpen = true }: { title: 
     const sectionId = useId();
 
     return (
-        <div className="border-b border-[var(--color-surface-border)] last:border-0">
+        <div className="border-b border-surface last:border-0">
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 aria-expanded={isOpen}
                 aria-controls={sectionId}
-                className="flex items-center justify-between w-full py-2.5 px-4 text-left hover:bg-[var(--color-surface-hover)] transition-colors focus:outline-none"
+                className="flex items-center justify-between w-full py-2.5 px-4 text-left hover:bg-surface-hover transition-colors focus:outline-none"
             >
-                <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">{title}</span>
-                <span className={`material-symbols-outlined text-[16px] text-[var(--color-text-muted)] transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`}>
+                <span className="text-[10px] font-bold text-muted uppercase tracking-widest">{title}</span>
+                <span className={`material-symbols-outlined text-[16px] text-muted transition-transform duration-200 ${isOpen ? '' : '-rotate-90'}`}>
                     expand_more
                 </span>
             </button>
@@ -47,7 +47,7 @@ interface ControlRowProps {
 export const ControlRow = ({ label, htmlFor, children, vertical = false, icon, onLabelMouseDown }: ControlRowProps) => (
     <div className={`flex ${vertical ? 'flex-col gap-1.5' : 'flex-row items-center justify-between gap-3'}`}>
         <div
-            className={`flex items-center gap-1.5 text-[11px] text-[var(--color-text-muted)] font-medium shrink-0 ${onLabelMouseDown ? 'cursor-ew-resize select-none hover:text-[var(--color-primary)] transition-colors' : ''}`}
+            className={`flex items-center gap-1.5 text-[11px] text-muted font-medium shrink-0 ${onLabelMouseDown ? 'cursor-ew-resize select-none hover:text-primary transition-colors' : ''}`}
             onMouseDown={onLabelMouseDown}
         >
             {icon && <span className="material-symbols-outlined text-[14px]">{icon}</span>}
@@ -116,18 +116,18 @@ export const ScrubbableInput = ({ id, label, icon, value, onChange, min = -1000,
                 onMouseDown={handleMouseDown}
             >
                 {icon && <span className="material-symbols-outlined text-[12px] opacity-40">{icon}</span>}
-                <label htmlFor={inputId} className="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-widest group-focus-within/input:text-[var(--color-primary)] transition-colors">
+                <label htmlFor={inputId} className="text-[9px] font-black text-muted uppercase tracking-widest group-focus-within/input:text-primary transition-colors">
                     {label}
                 </label>
             </div>
-            <div className="relative flex items-center bg-[var(--color-surface-sunken)] rounded border border-[var(--color-surface-border)] group-hover/input:border-[var(--color-primary)]/30 focus-within:ring-2 focus-within:ring-[var(--color-primary)]/10 focus-within:border-[var(--color-primary)]/50 transition-all">
+            <div className="relative flex items-center bg-surface-sunken rounded border border-surface group-hover/input:border-primary/30 focus-within:ring-2 focus-within:ring-primary/10 focus-within:border-primary/50 transition-all">
                 <input
                     id={inputId}
                     type={isNumeric ? "number" : "text"}
                     value={value ?? ''}
                     placeholder={placeholder}
                     onChange={(e) => onChange(isNumeric ? (e.target.value === '' ? undefined : Number(e.target.value)) : e.target.value)}
-                    className={`w-full ${(units && units.length > 0) || unit ? 'pr-8' : 'pr-2'} pl-2 py-1.5 text-[10px] font-mono bg-transparent border-none outline-none appearance-none text-[var(--color-text-main)]`}
+                    className={`w-full ${(units && units.length > 0) || unit ? 'pr-8' : 'pr-2'} pl-2 py-1.5 text-[10px] font-mono bg-transparent border-none outline-none appearance-none text-main`}
                 />
                 {units && units.length > 0 ? (
                     <button
@@ -146,12 +146,12 @@ export const ScrubbableInput = ({ id, label, icon, value, onChange, min = -1000,
                                 onChange(nextUnit === '' ? numericPart : `${numericPart}${nextUnit}`);
                             }
                         }}
-                        className="absolute right-2 text-[8px] font-black text-[var(--color-text-muted)] opacity-50 uppercase hover:opacity-100 hover:text-[var(--color-primary)] transition-all px-1 cursor-pointer select-none"
+                        className="absolute right-2 text-[8px] font-black text-muted opacity-50 uppercase hover:opacity-100 hover:text-primary transition-all px-1 cursor-pointer select-none"
                     >
                         {units.find(u => String(value).endsWith(u)) || (value === 'auto' ? 'auto' : (unit || 'px'))}
                     </button>
                 ) : unit && (
-                    <span className="absolute right-2 text-[8px] font-black text-[var(--color-text-muted)] opacity-30 uppercase select-none pointer-events-none">
+                    <span className="absolute right-2 text-[8px] font-black text-muted opacity-30 uppercase select-none pointer-events-none">
                         {unit}
                     </span>
                 )}
@@ -193,24 +193,24 @@ export const SliderInput = ({ id, label, value, onChange, min = 0, max = 100, st
                     className="flex items-center gap-1.5 cursor-ew-resize select-none"
                     onMouseDown={handleMouseDown}
                 >
-                    <label htmlFor={inputId} className="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-widest group-focus-within/slider:text-[var(--color-primary)] transition-colors">
+                    <label htmlFor={inputId} className="text-[9px] font-black text-muted uppercase tracking-widest group-focus-within/slider:text-primary transition-colors">
                         {label}
                     </label>
                 </div>
-                <div className="flex items-center gap-0.5 bg-[var(--color-surface-sunken)] px-1.5 py-0.5 rounded border border-[var(--color-surface-border)]">
+                <div className="flex items-center gap-0.5 bg-surface-sunken px-1.5 py-0.5 rounded border border-surface">
                     <input
                         type="number"
                         value={value ?? 0}
                         onChange={(e) => onChange(Number(e.target.value))}
                         className="w-10 h-3 text-right text-[9px] font-mono bg-transparent border-none outline-none appearance-none"
                     />
-                    <span className="text-[8px] text-[var(--color-text-muted)] font-black opacity-30">{unit}</span>
+                    <span className="text-[8px] text-muted font-black opacity-30">{unit}</span>
                 </div>
             </div>
             <div className="relative flex items-center h-4 px-1">
                 <div className="absolute inset-x-1 h-0.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
                     <div
-                        className="h-full bg-[var(--color-primary)] transition-all duration-75"
+                        className="h-full bg-primary transition-all duration-75"
                         style={{ width: `${(((value || 0) - min) / (max - min)) * 100}%` }}
                     />
                 </div>
@@ -242,8 +242,8 @@ interface SegmentedControlProps {
 export const SegmentedControl = ({ label, value, options, onChange }: SegmentedControlProps) => {
     return (
         <div className={label ? 'space-y-1.5' : ''}>
-            {label && <div className="text-[11px] text-[var(--color-text-muted)] font-medium">{label}</div>}
-            <div className="flex p-0.5 bg-[var(--color-surface-sunken)] rounded-md border border-[var(--color-surface-border)]" role="group">
+            {label && <div className="text-[11px] text-muted font-medium">{label}</div>}
+            <div className="flex p-0.5 bg-surface-sunken rounded-md border border-surface" role="group">
                 {options.map((opt) => (
                     <button
                         key={String(opt.value)}
@@ -252,8 +252,8 @@ export const SegmentedControl = ({ label, value, options, onChange }: SegmentedC
                         aria-pressed={value === opt.value}
                         title={opt.ariaLabel}
                         className={`flex-1 flex items-center justify-center px-2 py-1.5 rounded-[4px] text-[10px] font-bold transition-all ${value === opt.value
-                            ? 'bg-white dark:bg-zinc-700 text-[var(--color-primary)] shadow-sm'
-                            : 'text-[var(--color-text-muted)] hover:bg-black/5 dark:hover:bg-white/5'
+                            ? 'bg-white dark:bg-zinc-700 text-primary shadow-sm'
+                            : 'text-muted hover:bg-black/5 dark:hover:bg-white/5'
                             }`}
                     >
                         {opt.icon ? <span className="material-symbols-outlined text-[16px]">{opt.icon}</span> : opt.text}
@@ -291,7 +291,7 @@ export const ColorPicker = ({ label, value, onChange }: ColorPickerProps) => {
                         value={value || ''}
                         onChange={(e) => onChange(e.target.value)}
                         placeholder="None"
-                        className="flex-1 bg-transparent text-[10px] font-mono border-none outline-none text-[var(--color-text-main)] uppercase"
+                        className="flex-1 bg-transparent text-[10px] font-mono border-none outline-none text-main uppercase"
                     />
                 </div>
                 <div className="flex flex-wrap gap-1">
@@ -300,7 +300,7 @@ export const ColorPicker = ({ label, value, onChange }: ColorPickerProps) => {
                             key={c}
                             onClick={() => onChange(c)}
                             title={c}
-                            className={`size-3 rounded-full border border-black/5 dark:border-white/5 transition-transform hover:scale-125 ${value === c ? 'ring-1 ring-[var(--color-primary)] ring-offset-1 dark:ring-offset-zinc-900' : ''}`}
+                            className={`size-3 rounded-full border border-black/5 dark:border-white/5 transition-transform hover:scale-125 ${value === c ? 'ring-1 ring-primary ring-offset-1 dark:ring-offset-zinc-900' : ''}`}
                             style={{ backgroundColor: c === 'transparent' ? 'white' : c }}
                         >
                             {c === 'transparent' && <div className="w-full h-px bg-red-500 rotate-45" />}
@@ -324,10 +324,10 @@ export const BoxModelControl = ({ styles, onChange, onBulkChange }: { styles: Em
 
     return (
         <div className="flex flex-col items-center gap-4 py-2">
-            <div className="relative w-full max-w-[180px] aspect-[1.6/1] bg-[var(--color-surface-sunken)] rounded-md border border-[var(--color-surface-border)] overflow-hidden">
+            <div className="relative w-full max-w-[180px] aspect-[1.6/1] bg-surface-sunken rounded-md border border-surface overflow-hidden">
                 {/* Visual Guide Labels */}
-                <div className="absolute inset-4 border border-dashed border-[var(--color-text-muted)]/20 rounded-sm flex items-center justify-center">
-                    <span className="text-[8px] font-black text-[var(--color-text-muted)]/30 uppercase tracking-widest pointer-events-none">Content</span>
+                <div className="absolute inset-4 border border-dashed border-muted/20 rounded-sm flex items-center justify-center">
+                    <span className="text-[8px] font-black text-muted/30 uppercase tracking-widest pointer-events-none">Content</span>
                 </div>
 
                 {/* Interaction Points */}
@@ -397,7 +397,7 @@ export const BoxModelControl = ({ styles, onChange, onBulkChange }: { styles: Em
                             }}
                         >
                             <div className="flex flex-col items-center">
-                                <span className="text-[9px] font-bold text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)] transition-colors">{value}</span>
+                                <span className="text-[9px] font-bold text-muted group-hover:text-primary transition-colors">{value}</span>
                                 <span className="text-[7px] font-black opacity-30 uppercase">{p.label}</span>
                             </div>
                         </div>
@@ -407,25 +407,25 @@ export const BoxModelControl = ({ styles, onChange, onBulkChange }: { styles: Em
 
             <div className="grid grid-cols-4 gap-1 w-full mt-2">
                 <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-1 px-1 py-1 bg-[var(--color-surface-sunken)] rounded border border-[var(--color-surface-border)] focus-within:border-[var(--color-primary)]/50 transition-colors">
+                    <div className="flex items-center gap-1 px-1 py-1 bg-surface-sunken rounded border border-surface focus-within:border-primary/50 transition-colors">
                         <span className="text-[8px] font-black opacity-30 select-none">T</span>
                         <input type="number" value={styles.paddingTop || 0} onChange={e => onChange('paddingTop', Number(e.target.value))} className="w-full text-[10px] font-mono bg-transparent outline-none text-right" />
                     </div>
                 </div>
                 <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-1 px-1 py-1 bg-[var(--color-surface-sunken)] rounded border border-[var(--color-surface-border)] focus-within:border-[var(--color-primary)]/50 transition-colors">
+                    <div className="flex items-center gap-1 px-1 py-1 bg-surface-sunken rounded border border-surface focus-within:border-primary/50 transition-colors">
                         <span className="text-[8px] font-black opacity-30 select-none">B</span>
                         <input type="number" value={styles.paddingBottom || 0} onChange={e => onChange('paddingBottom', Number(e.target.value))} className="w-full text-[10px] font-mono bg-transparent outline-none text-right" />
                     </div>
                 </div>
                 <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-1 px-1 py-1 bg-[var(--color-surface-sunken)] rounded border border-[var(--color-surface-border)] focus-within:border-[var(--color-primary)]/50 transition-colors">
+                    <div className="flex items-center gap-1 px-1 py-1 bg-surface-sunken rounded border border-surface focus-within:border-primary/50 transition-colors">
                         <span className="text-[8px] font-black opacity-30 select-none">L</span>
                         <input type="number" value={styles.paddingLeft || 0} onChange={e => onChange('paddingLeft', Number(e.target.value))} className="w-full text-[10px] font-mono bg-transparent outline-none text-right" />
                     </div>
                 </div>
                 <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-1 px-1 py-1 bg-[var(--color-surface-sunken)] rounded border border-[var(--color-surface-border)] focus-within:border-[var(--color-primary)]/50 transition-colors">
+                    <div className="flex items-center gap-1 px-1 py-1 bg-surface-sunken rounded border border-surface focus-within:border-primary/50 transition-colors">
                         <span className="text-[8px] font-black opacity-30 select-none">R</span>
                         <input type="number" value={styles.paddingRight || 0} onChange={e => onChange('paddingRight', Number(e.target.value))} className="w-full text-[10px] font-mono bg-transparent outline-none text-right" />
                     </div>
@@ -450,7 +450,7 @@ export const TypographyControl = ({ styles, onChange, hideDivider }: { styles: E
                     id={fontFamilyId}
                     value={styles.fontFamily || ''}
                     onChange={(e) => onChange('fontFamily', e.target.value)}
-                    className="w-full px-2 py-1.5 text-[10px] font-bold rounded bg-[var(--color-surface-sunken)] border border-[var(--color-surface-border)] focus:border-[var(--color-primary)] outline-none appearance-none cursor-pointer"
+                    className="w-full px-2 py-1.5 text-[10px] font-bold rounded bg-surface-sunken border border-surface focus:border-primary outline-none appearance-none cursor-pointer"
                 >
                     <option value="">Default</option>
                     <option value="'Inter', sans-serif">Inter</option>
@@ -500,7 +500,7 @@ export const TypographyControl = ({ styles, onChange, hideDivider }: { styles: E
                 />
             </div>
 
-            <div className={`flex gap-2 ${hideDivider ? '' : 'pt-2 border-t border-[var(--color-surface-border)]/30'}`}>
+            <div className={`flex gap-2 ${hideDivider ? '' : 'pt-2 border-t border-surface/30'}`}>
                 <SegmentedControl
                     label="Align"
                     value={styles.textAlign || 'left'}
@@ -513,33 +513,33 @@ export const TypographyControl = ({ styles, onChange, hideDivider }: { styles: E
                     ]}
                 />
                 <div className="flex flex-col gap-1.5 w-full">
-                    <div className="text-[11px] text-[var(--color-text-muted)] font-medium">Decoration</div>
+                    <div className="text-[11px] text-muted font-medium">Decoration</div>
                     <div className="flex gap-1">
                         <button
                             onClick={() => onChange('textTransform', styles.textTransform === 'uppercase' ? 'none' : 'uppercase')}
                             title="Uppercase"
-                            className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${styles.textTransform === 'uppercase' ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-primary)]/30'}`}
+                            className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${styles.textTransform === 'uppercase' ? 'bg-primary/10 border-primary text-primary' : 'border-surface text-muted hover:border-primary/30'}`}
                         >
                             <span className="material-symbols-outlined text-[16px]">abc</span>
                         </button>
                         <button
                             onClick={() => onChange('fontStyle', styles.fontStyle === 'italic' ? 'normal' : 'italic')}
                             title="Italic"
-                            className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${styles.fontStyle === 'italic' ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-primary)]/30'}`}
+                            className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${styles.fontStyle === 'italic' ? 'bg-primary/10 border-primary text-primary' : 'border-surface text-muted hover:border-primary/30'}`}
                         >
                             <span className="material-symbols-outlined text-[16px]">format_italic</span>
                         </button>
                         <button
                             onClick={() => onChange('textDecoration', styles.textDecoration === 'underline' ? 'none' : 'underline')}
                             title="Underline"
-                            className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${styles.textDecoration === 'underline' ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-primary)]/30'}`}
+                            className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${styles.textDecoration === 'underline' ? 'bg-primary/10 border-primary text-primary' : 'border-surface text-muted hover:border-primary/30'}`}
                         >
                             <span className="material-symbols-outlined text-[16px]">format_underlined</span>
                         </button>
                         <button
                             onClick={() => onChange('textDecoration', styles.textDecoration === 'line-through' ? 'none' : 'line-through')}
                             title="Strikethrough"
-                            className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${styles.textDecoration === 'line-through' ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-primary)]/30'}`}
+                            className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${styles.textDecoration === 'line-through' ? 'bg-primary/10 border-primary text-primary' : 'border-surface text-muted hover:border-primary/30'}`}
                         >
                             <span className="material-symbols-outlined text-[16px]">format_strikethrough</span>
                         </button>
@@ -600,17 +600,17 @@ export const BorderControl = ({ styles, onChange }: { styles: EmailBlockStyle, o
         <div className="space-y-4">
             <div className="space-y-1.5">
                 <div className="flex items-center justify-between px-1">
-                    <label className="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-widest">Radius</label>
+                    <label className="text-[9px] font-black text-muted uppercase tracking-widest">Radius</label>
                     <button
                         onClick={() => setShowIndividualCorners(!showIndividualCorners)}
-                        className={`material-symbols-outlined text-[14px] transition-colors ${showIndividualCorners ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)] opacity-40 hover:opacity-100'}`}
+                        className={`material-symbols-outlined text-[14px] transition-colors ${showIndividualCorners ? 'text-primary' : 'text-muted opacity-40 hover:opacity-100'}`}
                     >
                         {showIndividualCorners ? 'grid_view' : 'rounded_corner'}
                     </button>
                 </div>
 
                 {showIndividualCorners ? (
-                    <div className="grid grid-cols-2 gap-2 p-2 bg-[var(--color-surface-sunken)]/50 rounded-lg border border-[var(--color-surface-border)] shadow-inner">
+                    <div className="grid grid-cols-2 gap-2 p-2 bg-surface-sunken/50 rounded-lg border border-surface shadow-inner">
                         <ScrubbableInput label="TL" value={styles.borderTopLeftRadius ?? styles.borderRadius ?? 0} onChange={v => onChange('borderTopLeftRadius', v)} unit="px" />
                         <ScrubbableInput label="TR" value={styles.borderTopRightRadius ?? styles.borderRadius ?? 0} onChange={v => onChange('borderTopRightRadius', v)} unit="px" />
                         <ScrubbableInput label="BL" value={styles.borderBottomLeftRadius ?? styles.borderRadius ?? 0} onChange={v => onChange('borderBottomLeftRadius', v)} unit="px" />
@@ -621,7 +621,7 @@ export const BorderControl = ({ styles, onChange }: { styles: EmailBlockStyle, o
                 )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-[var(--color-surface-border)]/30">
+            <div className="grid grid-cols-2 gap-3 pt-2 border-t border-surface/30">
                 <ScrubbableInput label="Weight" icon="line_weight" value={styles.borderWidth ?? 0} onChange={(v) => onChange('borderWidth', v)} max={20} />
                 <SegmentedControl
                     label="Style"
@@ -678,7 +678,7 @@ export const LayoutControl = ({ styles, onChange }: { styles: EmailBlockStyle, o
                 unit="px"
             />
         </div>
-        <div className="space-y-3 pt-3 border-t border-[var(--color-surface-border)]/50">
+        <div className="space-y-3 pt-3 border-t border-surface/50">
             <SegmentedControl
                 label="Align"
                 value={styles.alignItems || 'stretch'}

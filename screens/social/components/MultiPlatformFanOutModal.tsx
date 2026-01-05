@@ -208,28 +208,28 @@ export const MultiPlatformFanOutModal: React.FC<MultiPlatformFanOutModalProps> =
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-fade-in p-4 sm:p-6">
-            <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col border border-[var(--color-surface-border)] overflow-hidden relative">
+            <div className="bg-white dark:bg-[#1e1e1e] rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col border border-surface overflow-hidden relative">
 
                 {/* Decorative Elements */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none -mr-16 -mt-16" />
                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-pink-500/10 rounded-full blur-3xl pointer-events-none -ml-16 -mb-16" />
 
                 {/* Header */}
-                <div className="px-6 py-4 border-b border-[var(--color-surface-border)] flex justify-between items-center z-10 text-[var(--color-text-main)] relative">
+                <div className="px-6 py-4 border-b border-surface flex justify-between items-center z-10 text-main relative">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
                             <span className="material-symbols-outlined">hub</span>
                         </div>
                         <div>
                             <h2 className="text-xl font-bold tracking-tight">{t('social.fanOut.title')}</h2>
-                            <p className="text-xs text-[var(--color-text-muted)] font-medium">
+                            <p className="text-xs text-muted font-medium">
                                 {t('social.fanOut.subtitle').replace('{count}', String(selectedPlatforms.length))}
                             </p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-[var(--color-surface-hover)] transition-colors text-[var(--color-text-muted)]"
+                        className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-surface-hover transition-colors text-muted"
                     >
                         <span className="material-symbols-outlined text-xl">close</span>
                     </button>
@@ -238,10 +238,10 @@ export const MultiPlatformFanOutModal: React.FC<MultiPlatformFanOutModalProps> =
                 <div className="flex flex-1 overflow-hidden z-10 relative">
 
                     {/* Sidebar: Platform Navigator */}
-                    <div className="w-64 border-r border-[var(--color-surface-border)] flex flex-col p-4 gap-4 overflow-y-auto custom-scrollbar">
+                    <div className="w-64 border-r border-surface flex flex-col p-4 gap-4 overflow-y-auto custom-scrollbar">
 
                         <div className="space-y-1">
-                            <h3 className="text-xs font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mb-3 px-2">{t('social.fanOut.targetPlatforms')}</h3>
+                            <h3 className="text-xs font-bold text-subtle uppercase tracking-wider mb-3 px-2">{t('social.fanOut.targetPlatforms')}</h3>
                             {selectedPlatforms.map(p => {
                                 const isActive = activePlatform === p;
                                 const isSelected = selectedPlatforms.includes(p);
@@ -253,8 +253,8 @@ export const MultiPlatformFanOutModal: React.FC<MultiPlatformFanOutModalProps> =
                                         key={p}
                                         onClick={() => setActivePlatform(p)}
                                         className={`group relative flex items-center gap-3 px-3 py-3 rounded-xl cursor-pointer transition-all duration-200 border ${isActive
-                                            ? 'bg-[var(--color-surface-hover)]/50 border-[var(--color-surface-border)] shadow-sm scale-[1.02]'
-                                            : 'border-transparent hover:bg-[var(--color-surface-hover)] hover:scale-[1.01]'
+                                            ? 'bg-surface-hover/50 border-surface shadow-sm scale-[1.02]'
+                                            : 'border-transparent hover:bg-surface-hover hover:scale-[1.01]'
                                             }`}
                                     >
                                         {/* Selection Checkbox */}
@@ -280,7 +280,7 @@ export const MultiPlatformFanOutModal: React.FC<MultiPlatformFanOutModalProps> =
                                         </div>
 
                                         {/* Label */}
-                                        <span className={`text-sm font-medium ${isActive ? 'text-[var(--color-text-main)]' : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-text-main)]'}`}>
+                                        <span className={`text-sm font-medium ${isActive ? 'text-main' : 'text-muted group-hover:text-main'}`}>
                                             {p}
                                         </span>
 
@@ -292,11 +292,11 @@ export const MultiPlatformFanOutModal: React.FC<MultiPlatformFanOutModalProps> =
                         </div>
 
                         {/* Divider */}
-                        <div className="h-px bg-[var(--color-surface-border)] my-2" />
+                        <div className="h-px bg-surface-border my-2" />
 
                         {/* Add Platform Section */}
                         <div className="space-y-2">
-                            <h3 className="text-xs font-bold text-[var(--color-text-subtle)] uppercase tracking-wider px-2">{t('social.fanOut.addPlatform')}</h3>
+                            <h3 className="text-xs font-bold text-subtle uppercase tracking-wider px-2">{t('social.fanOut.addPlatform')}</h3>
                             <div className="grid grid-cols-2 gap-2">
                                 {ALL_PLATFORMS
                                     .filter(p => !selectedPlatforms.includes(p) && !unavailablePlatforms.includes(p))
@@ -304,7 +304,7 @@ export const MultiPlatformFanOutModal: React.FC<MultiPlatformFanOutModalProps> =
                                         <button
                                             key={p}
                                             onClick={() => handleAddPlatform(p)}
-                                            className="px-2 py-2 text-xs font-medium rounded-lg border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors flex items-center justify-center gap-1"
+                                            className="px-2 py-2 text-xs font-medium rounded-lg border border-surface hover:bg-surface-hover text-muted hover:text-main transition-colors flex items-center justify-center gap-1"
                                         >
                                             <span className="material-symbols-outlined text-[14px]">add</span> {p}
                                         </button>
@@ -314,7 +314,7 @@ export const MultiPlatformFanOutModal: React.FC<MultiPlatformFanOutModalProps> =
                             {/* Drafted Platforms */}
                             {unavailablePlatforms.length > 0 && (
                                 <div className="mt-4 pt-4 border-t border-[var(--color-surface-order)]">
-                                    <h3 className="text-xs font-bold text-[var(--color-text-subtle)] uppercase tracking-wider px-2 mb-2">{t('social.fanOut.alreadyDrafted')}</h3>
+                                    <h3 className="text-xs font-bold text-subtle uppercase tracking-wider px-2 mb-2">{t('social.fanOut.alreadyDrafted')}</h3>
                                     <div className="flex flex-wrap gap-1.5 px-1">
                                         {unavailablePlatforms.map(p => (
                                             <span key={p} className="px-2 py-1 bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-[10px] font-bold uppercase rounded-md flex items-center gap-1 border border-green-200 dark:border-green-900/30">
@@ -339,15 +339,15 @@ export const MultiPlatformFanOutModal: React.FC<MultiPlatformFanOutModalProps> =
                                             {getPlatformIcon(activePlatform)}
                                         </div>
                                         <div>
-                                            <h1 className="text-3xl font-bold text-[var(--color-text-main)] tracking-tight">{activePlatform}</h1>
-                                            <p className="text-sm font-medium text-[var(--color-text-muted)]">{t('social.fanOut.customize')}</p>
+                                            <h1 className="text-3xl font-bold text-main tracking-tight">{activePlatform}</h1>
+                                            <p className="text-sm font-medium text-muted">{t('social.fanOut.customize')}</p>
                                         </div>
                                     </div>
 
                                     {/* Caption Editor (Full Width) */}
                                     <div className="mb-8 space-y-3 group">
                                         <div className="flex justify-between items-end">
-                                            <label className="text-sm font-bold text-[var(--color-text-secondary)] uppercase tracking-wide">{t('social.fanOut.primaryCaption')}</label>
+                                            <label className="text-sm font-bold text-muted uppercase tracking-wide">{t('social.fanOut.primaryCaption')}</label>
                                             <button
                                                 onClick={() => handleApplyToAll('caption')}
                                                 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md"
@@ -362,7 +362,7 @@ export const MultiPlatformFanOutModal: React.FC<MultiPlatformFanOutModalProps> =
                                                 onChange={(e) => handleCustomize('caption', e.target.value)}
                                                 rows={5}
                                                 placeholder={t('social.fanOut.captionPlaceholder').replace('{platform}', activePlatform)}
-                                                className="w-full p-5 rounded-2xl border-gray-200 dark:border-gray-700 bg-[var(--color-surface-card)] text-base leading-relaxed focus:ring-4 focus:ring-indigo-500/10 shadow-sm transition-all resize-none"
+                                                className="w-full p-5 rounded-2xl border-gray-200 dark:border-gray-700 bg-card text-base leading-relaxed focus:ring-4 focus:ring-indigo-500/10 shadow-sm transition-all resize-none"
                                             />
                                             <div className="absolute bottom-4 right-4 text-[10px] font-bold text-gray-400 bg-white/50 dark:bg-black/50 px-2 py-1 rounded-full backdrop-blur-sm">
                                                 {customizations[activePlatform].caption.length}
@@ -376,7 +376,7 @@ export const MultiPlatformFanOutModal: React.FC<MultiPlatformFanOutModalProps> =
                                         {/* Hashtags */}
                                         <div className="space-y-3 group h-full flex flex-col">
                                         <div className="flex justify-between items-end">
-                                            <label className="text-sm font-bold text-[var(--color-text-secondary)] uppercase tracking-wide">{t('social.fanOut.hashtags')}</label>
+                                            <label className="text-sm font-bold text-muted uppercase tracking-wide">{t('social.fanOut.hashtags')}</label>
                                             <button
                                                 onClick={() => handleApplyToAll('hashtags')}
                                                 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-indigo-50 dark:bg-indigo-900/30 px-2 py-1 rounded-md"
@@ -392,14 +392,14 @@ export const MultiPlatformFanOutModal: React.FC<MultiPlatformFanOutModalProps> =
                                                 onChange={(e) => handleCustomize('hashtags', e.target.value)}
                                                 rows={4}
                                                 placeholder={t('social.fanOut.hashtagsPlaceholder')}
-                                                className="w-full h-full pl-8 p-4 rounded-2xl border-gray-200 dark:border-gray-700 bg-[var(--color-surface-card)] text-indigo-600 dark:text-indigo-400 font-medium resize-none shadow-sm focus:ring-4 focus:ring-indigo-500/10"
+                                                className="w-full h-full pl-8 p-4 rounded-2xl border-gray-200 dark:border-gray-700 bg-card text-indigo-600 dark:text-indigo-400 font-medium resize-none shadow-sm focus:ring-4 focus:ring-indigo-500/10"
                                             />
                                         </div>
                                     </div>
 
                                         {/* Visual Description */}
                                         <div className="space-y-3 h-full flex flex-col">
-                                            <label className="text-sm font-bold text-[var(--color-text-secondary)] uppercase tracking-wide flex items-center gap-2">
+                                            <label className="text-sm font-bold text-muted uppercase tracking-wide flex items-center gap-2">
                                                 {t('social.fanOut.visualPrompt')}
                                                 <span className="material-symbols-outlined text-[14px] text-purple-500">auto_awesome</span>
                                             </label>
@@ -418,22 +418,22 @@ export const MultiPlatformFanOutModal: React.FC<MultiPlatformFanOutModalProps> =
                                 </div>
                             </div>
                         ) : (
-                            <div className="flex h-full items-center justify-center flex-col text-[var(--color-text-muted)] p-8 text-center">
-                                <div className="w-20 h-20 rounded-3xl bg-[var(--color-surface-hover)] flex items-center justify-center mb-6 shadow-sm">
+                            <div className="flex h-full items-center justify-center flex-col text-muted p-8 text-center">
+                                <div className="w-20 h-20 rounded-3xl bg-surface-hover flex items-center justify-center mb-6 shadow-sm">
                                     <span className="material-symbols-outlined text-4xl opacity-40">ads_click</span>
                                 </div>
-                                <h3 className="text-xl font-bold text-[var(--color-text-main)] mb-2">{t('social.fanOut.selectPlatform')}</h3>
+                                <h3 className="text-xl font-bold text-main mb-2">{t('social.fanOut.selectPlatform')}</h3>
                                 <p className="max-w-xs mx-auto text-sm">{t('social.fanOut.selectPlatformHint')}</p>
                             </div>
                         )}
 
                         {/* Bottom Action Bar */}
-                        <div className="absolute bottom-0 left-0 right-0 p-5 bg-white/90 dark:bg-[#1e1e1e]/90 backdrop-blur-xl border-t border-[var(--color-surface-border)] flex items-center justify-between z-20 shadow-[-10px_-10px_30px_rgba(0,0,0,0.05)]">
-                            <div className="text-sm font-medium text-[var(--color-text-muted)] px-4">
+                        <div className="absolute bottom-0 left-0 right-0 p-5 bg-white/90 dark:bg-[#1e1e1e]/90 backdrop-blur-xl border-t border-surface flex items-center justify-between z-20 shadow-[-10px_-10px_30px_rgba(0,0,0,0.05)]">
+                            <div className="text-sm font-medium text-muted px-4">
                                 {t('social.fanOut.creating').replace('{count}', String(selectedPlatforms.length))}
                             </div>
                             <div className="flex gap-4">
-                                <Button variant="ghost" onClick={onClose} className="hover:bg-gray-100 dark:hover:bg-white/5 text-[var(--color-text-main)]">{t('social.fanOut.cancel')}</Button>
+                                <Button variant="ghost" onClick={onClose} className="hover:bg-gray-100 dark:hover:bg-white/5 text-main">{t('social.fanOut.cancel')}</Button>
                                 <Button
                                     onClick={handleSubmit}
                                     disabled={loading || selectedPlatforms.length === 0}

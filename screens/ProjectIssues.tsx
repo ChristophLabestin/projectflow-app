@@ -219,7 +219,7 @@ export const ProjectIssues = () => {
                     group relative flex flex-col md:flex-row md:items-center gap-4 p-5 rounded-[24px] border transition-all duration-300 cursor-pointer
                     ${isClosed
                         ? 'bg-slate-50/50 dark:bg-white/[0.01] border-slate-100 dark:border-white/5 opacity-80'
-                        : 'bg-white dark:bg-white/[0.03] border-black/5 dark:border-white/5 hover:border-[var(--color-primary)]/30 hover:shadow-xl hover:shadow-black/5 hover:-translate-y-0.5'
+                        : 'bg-white dark:bg-white/[0.03] border-black/5 dark:border-white/5 hover:border-primary/30 hover:shadow-xl hover:shadow-black/5 hover:-translate-y-0.5'
                     }
                 `}
             >
@@ -230,7 +230,7 @@ export const ProjectIssues = () => {
                         ${isClosed
                             ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
                             : issue.priority === 'Urgent' ? 'bg-rose-500/10 border-rose-500/20 text-rose-500 animate-pulse'
-                                : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-[var(--color-text-muted)]'}
+                                : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-muted'}
                     `}>
                         <span className="material-symbols-outlined text-[20px]">
                             {isClosed ? 'check_circle' : 'bug_report'}
@@ -239,10 +239,10 @@ export const ProjectIssues = () => {
 
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center flex-wrap gap-2 mb-2">
-                            <span className="text-xs font-mono font-bold text-[var(--color-text-muted)] opacity-60">
+                            <span className="text-xs font-mono font-bold text-muted opacity-60">
                                 #{issue.id.slice(0, 4).toUpperCase()}
                             </span>
-                            <h4 className={`text-lg font-bold truncate transition-all duration-300 ${isClosed ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)] group-hover:text-[var(--color-primary)]'}`}>
+                            <h4 className={`text-lg font-bold truncate transition-all duration-300 ${isClosed ? 'text-muted line-through' : 'text-main group-hover:text-primary'}`}>
                                 {issue.title}
                             </h4>
                             {issue.priority && (
@@ -283,7 +283,7 @@ export const ProjectIssues = () => {
                             </div>
 
                             {/* Date */}
-                            <div className="flex items-center gap-1 text-[11px] font-bold text-[var(--color-text-muted)] opacity-70">
+                            <div className="flex items-center gap-1 text-[11px] font-bold text-muted opacity-70">
                                 <span className="material-symbols-outlined text-[14px]">calendar_today</span>
                                 {format(new Date(toMillis(issue.createdAt)), dateFormat, { locale: dateLocale })}
                             </div>
@@ -354,7 +354,7 @@ export const ProjectIssues = () => {
                         className={`
                             size-10 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0
                             bg-slate-100 dark:bg-white/5
-                            ${isPinned(issue.id) ? 'opacity-100 text-[var(--color-primary)]' : 'opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] shadow-sm'}
+                            ${isPinned(issue.id) ? 'opacity-100 text-primary' : 'opacity-0 group-hover:opacity-100 text-muted shadow-sm'}
                         `}
                         title={isPinned(issue.id) ? t('projectIssues.actions.unpinTitle') : t('projectIssues.actions.pinTitle')}
                     >
@@ -362,7 +362,7 @@ export const ProjectIssues = () => {
                             push_pin
                         </span>
                     </button>
-                    <div className="size-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center text-[var(--color-text-main)] transition-all duration-300 group-hover:bg-[var(--color-primary)] group-hover:text-[var(--color-primary-text)] group-hover:translate-x-1 shrink-0">
+                    <div className="size-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center text-main transition-all duration-300 group-hover:bg-primary group-hover:text-on-primary group-hover:translate-x-1 shrink-0">
                         <span className="material-symbols-outlined text-xl">east</span>
                     </div>
                 </div>
@@ -372,7 +372,7 @@ export const ProjectIssues = () => {
 
     if (loading) return (
         <div className="flex items-center justify-center p-12">
-            <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-3xl">rotate_right</span>
+            <span className="material-symbols-outlined text-subtle animate-spin text-3xl">rotate_right</span>
         </div>
     );
 
@@ -382,10 +382,10 @@ export const ProjectIssues = () => {
                 {/* Premium Header */}
                 <div data-onboarding-id="project-issues-header" className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
                     <div>
-                        <h1 className="text-4xl font-black text-[var(--color-text-main)] tracking-tight mb-2">
-                            {t('projectIssues.header.title')} <span className="text-[var(--color-primary)]">{t('projectIssues.header.titleEmphasis')}</span>
+                        <h1 className="text-4xl font-black text-main tracking-tight mb-2">
+                            {t('projectIssues.header.title')} <span className="text-primary">{t('projectIssues.header.titleEmphasis')}</span>
                         </h1>
-                        <p className="text-[var(--color-text-muted)] text-lg font-medium opacity-80">
+                        <p className="text-muted text-lg font-medium opacity-80">
                             {project?.name
                                 ? t('projectIssues.header.subtitleWithProject').replace('{project}', project.name)
                                 : t('projectIssues.header.subtitleFallback')}
@@ -417,7 +417,7 @@ export const ProjectIssues = () => {
                             <div className="relative z-10">
                                 <p className={`text-xs font-bold text-${stat.color}-600 dark:text-${stat.color}-400 uppercase tracking-[0.1em] mb-2`}>{stat.label}</p>
                                 <div className="flex items-baseline gap-3">
-                                    <p className="text-4xl font-black text-[var(--color-text-main)]">{stat.val}</p>
+                                    <p className="text-4xl font-black text-main">{stat.val}</p>
                                     {stat.progress !== undefined && (
                                         <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30">
                                             {stat.progress}%
@@ -440,8 +440,8 @@ export const ProjectIssues = () => {
                                     className={`
                                     relative flex-1 lg:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all capitalize z-10
                                     ${filter === f
-                                            ? 'text-[var(--color-primary)]'
-                                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}
+                                            ? 'text-primary'
+                                            : 'text-muted hover:text-main'}
                                 `}
                                 >
                                     {filter === f && (
@@ -459,9 +459,9 @@ export const ProjectIssues = () => {
                             value={search}
                             onChange={(e) => setSearch(e.target.value)}
                             placeholder={t('projectIssues.search.placeholder')}
-                            className="w-full bg-white/60 dark:bg-black/40 backdrop-blur-2xl border-none ring-1 ring-black/5 dark:ring-white/10 focus:ring-2 focus:ring-[var(--color-primary)] rounded-2xl pl-12 pr-6 py-4 text-sm font-medium transition-all outline-none"
+                            className="w-full bg-white/60 dark:bg-black/40 backdrop-blur-2xl border-none ring-1 ring-black/5 dark:ring-white/10 focus:ring-2 focus:ring-primary rounded-2xl pl-12 pr-6 py-4 text-sm font-medium transition-all outline-none"
                         />
-                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] group-focus-within:text-[var(--color-primary)] transition-colors">search</span>
+                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-primary transition-colors">search</span>
                     </div>
                 </div>
 
@@ -472,8 +472,8 @@ export const ProjectIssues = () => {
                             <div className="size-24 bg-gradient-to-br from-rose-500/10 to-indigo-500/10 rounded-full flex items-center justify-center mb-6 ring-8 ring-indigo-500/5">
                                 <span className="material-symbols-outlined text-5xl text-rose-500 animate-pulse">bug_report</span>
                             </div>
-                            <h3 className="text-2xl font-bold text-[var(--color-text-main)] mb-2">{t('projectIssues.empty.title')}</h3>
-                            <p className="text-[var(--color-text-muted)] max-w-sm font-medium opacity-70">
+                            <h3 className="text-2xl font-bold text-main mb-2">{t('projectIssues.empty.title')}</h3>
+                            <p className="text-muted max-w-sm font-medium opacity-70">
                                 {t('projectIssues.empty.description')}
                             </p>
                             <Button
@@ -496,10 +496,10 @@ export const ProjectIssues = () => {
                 {/* Create Issue Modal */}
                 {showNewIssueModal && createPortal(
                     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                        <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-[var(--color-surface-border)] animate-in fade-in zoom-in-95 duration-200">
+                        <div className="bg-card rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-surface animate-in fade-in zoom-in-95 duration-200">
                             <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold text-[var(--color-text-main)]">{t('projectIssues.modal.title')}</h2>
-                                <button onClick={() => setShowNewIssueModal(false)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors">
+                                <h2 className="text-xl font-bold text-main">{t('projectIssues.modal.title')}</h2>
+                                <button onClick={() => setShowNewIssueModal(false)} className="text-muted hover:text-main transition-colors">
                                     <span className="material-symbols-outlined">close</span>
                                 </button>
                             </div>
@@ -536,7 +536,7 @@ export const ProjectIssues = () => {
                                         <option value="Urgent">{t('tasks.priority.urgent')}</option>
                                     </Select>
                                     <div className="space-y-1">
-                                        <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase ml-1">{t('projectIssues.modal.fields.assignees')}</label>
+                                        <label className="text-xs font-bold text-muted uppercase ml-1">{t('projectIssues.modal.fields.assignees')}</label>
                                         <MultiAssigneeSelector
                                             projectId={id!}
                                             assigneeIds={newIssueAssigneeIds}

@@ -43,7 +43,7 @@ export const VariablePicker: React.FC<VariablePickerProps> = ({ variables, onSel
                                 className="w-full text-left px-3 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded flex items-center justify-between group"
                             >
                                 <span className="font-medium text-zinc-700 dark:text-zinc-300">{v.label}</span>
-                                <span className="font-mono text-xs text-[var(--color-primary)] bg-[var(--color-primary)]/5 px-1 rounded truncate max-w-[100px]">
+                                <span className="font-mono text-xs text-primary bg-primary/5 px-1 rounded truncate max-w-[100px]">
                                     {'{{'}{v.name}{'}}'}
                                 </span>
                             </button>

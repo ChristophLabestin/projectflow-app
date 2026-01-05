@@ -3,10 +3,11 @@ import { useNavigate, useLocation, useSearchParams, Link } from 'react-router-do
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword, GoogleAuthProvider, GithubAuthProvider, signInWithPopup, updateProfile, getMultiFactorResolver, TotpMultiFactorGenerator, signInWithCustomToken } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import { bootstrapTenantForCurrentUser, getActiveTenantId } from '../services/dataService';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
+import { Button } from '../components/common/Button/Button';
+import { TextInput } from '../components/common/Input/TextInput';
 import { useLanguage } from '../context/LanguageContext';
 import { loginWithPasskey, shouldAutoPrompt } from '../services/passkeyService';
+import './login.scss';
 
 export const Login = () => {
     const { t } = useLanguage();
@@ -81,7 +82,7 @@ export const Login = () => {
                 setMfaResolver(resolver);
                 setShowMfaStep(true);
             } else if (err.code === 'auth/invalid-credential') {
-                setError("Invalid email or password. Please double-check your credentials.");
+                setError(t('login.error.invalidCredentials'));
             } else {
                 setError(err.message || t('login.error.generic'));
             }
@@ -104,7 +105,7 @@ export const Login = () => {
             await handleAuthSuccess();
         } catch (err: any) {
             console.error(err);
-            setError(err.message || "Invalid 2FA code. Please try again.");
+            setError(err.message || t('login.error.mfaInvalid'));
         } finally {
             setIsLoading(false);
         }
@@ -170,198 +171,204 @@ export const Login = () => {
     }, [isRegister]); // Run once on mount/mode switch if conditions met
 
     return (
-        <div className="min-h-screen w-full flex bg-[var(--color-surface-bg)] text-[var(--color-text-main)] font-sans">
+        <div className="login-page">
             {/* Left Side - Brand (Monochrome) */}
-            <div className="hidden lg:flex w-1/2 p-12 bg-zinc-950 text-white relative overflow-hidden flex-col justify-between border-r border-zinc-900">
-                {/* Subtle Grid Pattern */}
-                <div className="absolute inset-0 opacity-10"
-                    style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '40px 40px' }}
-                />
-
-                <div className="relative z-10">
-                    <div className="flex items-center gap-3 mb-8">
-                        <div className="size-10 rounded-lg bg-white text-black flex items-center justify-center font-bold text-xl shadow-[0_0_15px_rgba(255,255,255,0.3)]">
-                            PF
-                        </div>
-                        <span className="font-bold text-xl tracking-tight">ProjectFlow</span>
+            <div className="login-page__hero">
+                <div className="login-page__hero-content">
+                    <div className="login-page__brand">
+                        <div className="login-page__brand-mark">PF</div>
+                        <span className="login-page__brand-name">{t('app.brand')}</span>
                     </div>
-                </div>
 
-                <div className="relative z-10 max-w-lg">
-                    <h1 className="text-6xl font-extrabold tracking-tighter leading-tight mb-6">
-                        {t('login.hero.line1')}<br />{t('login.hero.line2')}<br />{t('login.hero.line3')}
-                    </h1>
-                    <p className="text-xl text-zinc-400 font-light leading-relaxed mb-12">
-                        {t('login.hero.subtitle')}
-                    </p>
+                    <div>
+                        <h1 className="login-page__hero-title">
+                            {t('login.hero.line1')}<br />{t('login.hero.line2')}<br />{t('login.hero.line3')}
+                        </h1>
+                        <p className="login-page__hero-subtitle">
+                            {t('login.hero.subtitle')}
+                        </p>
 
-                    <div className="space-y-6">
-                        <div className="flex items-start gap-4">
-                            <div className="mt-1 size-8 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
-                                <span className="material-symbols-outlined text-sm">check</span>
+                        <div className="login-page__feature-list">
+                            <div className="login-page__feature">
+                                <div className="login-page__feature-icon">
+                                    <span className="material-symbols-outlined">check</span>
+                                </div>
+                                <div>
+                                    <h3 className="login-page__feature-title">{t('login.hero.feature.tasks.title')}</h3>
+                                    <p className="login-page__feature-text">{t('login.hero.feature.tasks.detail')}</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="font-bold text-lg">{t('login.hero.feature.tasks.title')}</h3>
-                                <p className="text-zinc-500 text-sm">{t('login.hero.feature.tasks.detail')}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-start gap-4">
-                            <div className="mt-1 size-8 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
-                                <span className="material-symbols-outlined text-sm">hub</span>
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-lg">{t('login.hero.feature.flows.title')}</h3>
-                                <p className="text-zinc-500 text-sm">{t('login.hero.feature.flows.detail')}</p>
+                            <div className="login-page__feature">
+                                <div className="login-page__feature-icon">
+                                    <span className="material-symbols-outlined">hub</span>
+                                </div>
+                                <div>
+                                    <h3 className="login-page__feature-title">{t('login.hero.feature.flows.title')}</h3>
+                                    <p className="login-page__feature-text">{t('login.hero.feature.flows.detail')}</p>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <div className="relative z-10 text-xs text-zinc-600 uppercase tracking-widest">
-                    &copy; 2024 ProjectFlow Scorp.
+                    <div className="login-page__hero-footer">
+                        {t('login.footer.copyright')}
+                    </div>
                 </div>
             </div>
 
             {/* Right Side - Form */}
-            <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-12 bg-[var(--color-surface-bg)]">
-                <div className="w-full max-w-sm space-y-8">
+            <div className="login-page__panel">
+                <div className="login-page__panel-inner">
                     {!showMfaStep ? (
                         <>
-                            <div className="text-center md:text-left">
-                                <h2 className="text-3xl font-bold tracking-tight mb-2 text-[var(--color-text-main)]">
+                            <div className="login-page__heading">
+                                <h2 className="login-page__title">
                                     {isRegister ? t('login.heading.register') : t('login.heading.login')}
                                 </h2>
-                                <p className="text-[var(--color-text-muted)]">
+                                <p className="login-page__subtitle">
                                     {isRegister ? t('login.subheading.register') : t('login.subheading.login')}
                                 </p>
                             </div>
 
-                            <form onSubmit={handleSubmit} className="space-y-5">
-                                <div className="p-3 mb-4 rounded bg-amber-500/10 border border-amber-500/20 text-amber-500 text-sm font-medium flex items-start gap-2">
-                                    <span className="material-symbols-outlined text-lg mt-0.5">warning</span>
+                            <form onSubmit={handleSubmit} className="login-page__form">
+                                <div className="login-page__notice login-page__notice--warning">
+                                    <span className="material-symbols-outlined">warning</span>
                                     <span>{t('login.warning.preBeta')}</span>
                                 </div>
 
                                 {isRegister && (
-                                    <div className="p-3 mb-4 rounded bg-red-500/10 border border-red-500/20 text-red-500 text-sm font-medium flex items-start gap-2">
-                                        <span className="material-symbols-outlined text-lg mt-0.5">block</span>
-                                        <span>Registration is currently disabled. Please contact support if you need an account.</span>
+                                    <div className="login-page__notice login-page__notice--danger">
+                                        <span className="material-symbols-outlined">block</span>
+                                        <span>{t('login.warning.registrationDisabled')}</span>
                                     </div>
                                 )}
 
                                 {isRegister && (
-                                    <Input label={t('login.label.fullName')} value={name} onChange={(e) => setName(e.target.value)} placeholder={t('login.placeholder.fullName')} disabled={true} />
+                                    <TextInput
+                                        label={t('login.label.fullName')}
+                                        value={name}
+                                        onChange={(e) => setName(e.target.value)}
+                                        placeholder={t('login.placeholder.fullName')}
+                                        disabled
+                                    />
                                 )}
-                                <Input label={t('login.label.email')} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t('login.placeholder.email')} disabled={isRegister} />
-                                <Input label={t('login.label.password')} type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" disabled={isRegister} />
+                                <TextInput
+                                    label={t('login.label.email')}
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    placeholder={t('login.placeholder.email')}
+                                    disabled={isRegister}
+                                />
+                                <TextInput
+                                    label={t('login.label.password')}
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder={t('login.placeholder.password')}
+                                    disabled={isRegister}
+                                />
 
                                 {error && (
-                                    <div className="p-3 rounded bg-[var(--color-error)]/10 border border-[var(--color-error)]/20 text-[var(--color-error)] text-sm font-medium flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-lg">error</span>
+                                    <div className="login-page__error">
+                                        <span className="material-symbols-outlined">error</span>
                                         {error}
                                     </div>
                                 )}
 
-                                <Button type="submit" loading={isLoading} variant="primary" className="w-full h-12 text-base shadow-xl" disabled={isRegister || isLoading}>
+                                <Button type="submit" isLoading={isLoading} className="login-page__primary" disabled={isRegister || isLoading}>
                                     {isRegister ? t('login.action.createAccount') : t('login.action.signIn')}
                                 </Button>
                             </form>
                         </>
                     ) : (
-                        <div className="space-y-6 animate-in slide-in-from-right duration-300">
-                            <div className="text-center md:text-left">
-                                <h2 className="text-3xl font-bold tracking-tight mb-2 text-[var(--color-text-main)]">
-                                    Verify your identity
-                                </h2>
-                                <p className="text-[var(--color-text-muted)]">
-                                    Enter the 6-digit code from your authenticator app.
-                                </p>
+                        <div className="login-page__mfa">
+                            <div className="login-page__heading">
+                                <h2 className="login-page__title">{t('login.mfa.title')}</h2>
+                                <p className="login-page__subtitle">{t('login.mfa.subtitle')}</p>
                             </div>
 
-                            <form onSubmit={handleMfaSubmit} className="space-y-5">
-                                <Input
-                                    label="Security Code"
+                            <form onSubmit={handleMfaSubmit} className="login-page__form">
+                                <TextInput
+                                    label={t('login.mfa.label')}
                                     value={mfaCode}
                                     onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                    placeholder="000 000"
-                                    className="text-center text-2xl tracking-[0.5em] font-mono"
+                                    placeholder={t('login.mfa.placeholder')}
+                                    style={{ textAlign: 'center', letterSpacing: '0.35em', fontSize: '1.5rem' }}
                                     autoFocus
                                 />
 
                                 {error && (
-                                    <div className="p-3 rounded bg-[var(--color-error)]/10 border border-[var(--color-error)]/20 text-[var(--color-error)] text-sm font-medium flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-lg">error</span>
+                                    <div className="login-page__error">
+                                        <span className="material-symbols-outlined">error</span>
                                         {error}
                                     </div>
                                 )}
 
-                                <Button type="submit" loading={isLoading} variant="primary" className="w-full h-12 text-base shadow-xl" disabled={mfaCode.length !== 6}>
-                                    Verify & Sign In
-                                </Button>
-
-                                <button
-                                    type="button"
-                                    onClick={() => { setShowMfaStep(false); setMfaCode(''); setMfaResolver(null); }}
-                                    className="w-full text-sm font-bold text-[var(--color-primary)] hover:underline"
-                                >
-                                    Back to Login
-                                </button>
+                                <div className="login-page__mfa-actions">
+                                    <Button type="submit" isLoading={isLoading} className="login-page__primary" disabled={mfaCode.length !== 6}>
+                                        {t('login.mfa.submit')}
+                                    </Button>
+                                    <button
+                                        type="button"
+                                        onClick={() => { setShowMfaStep(false); setMfaCode(''); setMfaResolver(null); }}
+                                        className="login-page__ghost-button"
+                                    >
+                                        {t('login.mfa.back')}
+                                    </button>
+                                </div>
                             </form>
                         </div>
                     )}
 
-                    <div className="relative flex items-center justify-center py-2">
-                        <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-[var(--color-surface-border)]"></div></div>
-                        <div className="relative bg-[var(--color-surface-bg)] px-4 text-xs font-semibold text-[var(--color-text-subtle)] uppercase tracking-widest">{t('login.divider.orContinue')}</div>
-                    </div>
+                    <div className="login-page__divider">{t('login.divider.orContinue')}</div>
 
                     {!isRegister && (
                         <Button
                             type="button"
                             variant="secondary"
-                            className="w-full h-12 mb-4"
+                            className="login-page__primary"
                             onClick={handlePasskeySignIn}
                             disabled={isLoading}
+                            icon={<span className="material-symbols-outlined">fingerprint</span>}
                         >
-                            <span className="material-symbols-outlined mr-2">fingerprint</span>
                             {t('passkey.login.action')}
                         </Button>
                     )}
 
                     {!isRegister && (
-                        <div className="grid grid-cols-2 gap-4">
-                            <button onClick={handleGoogleSignIn} className="flex items-center justify-center gap-2 h-12 rounded-xl border border-[var(--color-surface-border)] hover:border-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-all font-medium text-sm text-[var(--color-text-main)]">
-                                <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
-                                Google
-                            </button>
-                            <button onClick={handleGithubSignIn} className="flex items-center justify-center gap-2 h-12 rounded-xl border border-[var(--color-surface-border)] hover:border-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-all font-medium text-sm text-[var(--color-text-main)]">
-                                {/* In dark mode, github icon needs inversion if it's black. SVG is usually black. */}
-                                <img src="https://www.svgrepo.com/show/512317/github-142.svg" className="w-5 h-5 dark:invert" alt="GitHub" />
-                                GitHub
-                            </button>
+                        <div className="login-page__social-grid">
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                className="login-page__social-button"
+                                onClick={handleGoogleSignIn}
+                                icon={<img src="https://www.svgrepo.com/show/475656/google-color.svg" className="login-page__social-icon" alt={t('login.social.google')} />}
+                            >
+                                {t('login.social.google')}
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                className="login-page__social-button"
+                                onClick={handleGithubSignIn}
+                                icon={<img src="https://www.svgrepo.com/show/512317/github-142.svg" className="login-page__social-icon login-page__social-icon--invert" alt={t('login.social.github')} />}
+                            >
+                                {t('login.social.github')}
+                            </Button>
                         </div>
                     )}
 
-                    <p className="text-center text-sm text-[var(--color-text-muted)] mt-8">
+                    <p className="login-page__toggle">
                         {isRegister ? t('login.toggle.hasAccount') : t('login.toggle.newToProjectFlow')}
-                        <button onClick={() => { setIsRegister(!isRegister); setError(''); }} className="ml-1 font-bold text-[var(--color-primary)] hover:underline">
+                        <button onClick={() => { setIsRegister(!isRegister); setError(''); }}>
                             {isRegister ? t('login.toggle.logIn') : t('login.toggle.createAccount')}
                         </button>
                     </p>
 
-                    <div className="mt-8 flex justify-center gap-6 text-xs text-[var(--color-text-muted)]">
-                        <Link
-                            to="/legal/privacy"
-                            className="hover:text-[var(--color-text-main)] transition-colors hover:underline"
-                        >
-                            {t('legal.nav.privacy')}
-                        </Link>
-                        <Link
-                            to="/legal/terms"
-                            className="hover:text-[var(--color-text-main)] transition-colors hover:underline"
-                        >
-                            {t('legal.nav.terms')}
-                        </Link>
+                    <div className="login-page__legal-links">
+                        <Link to="/legal/privacy">{t('legal.nav.privacy')}</Link>
+                        <Link to="/legal/terms">{t('legal.nav.terms')}</Link>
                     </div>
                 </div>
             </div>

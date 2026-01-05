@@ -87,16 +87,16 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
 
     return (
         <div className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="w-full max-w-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-full max-w-2xl bg-card border border-surface rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                 {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-[var(--color-surface-border)]">
+                <div className="flex items-center justify-between p-6 border-b border-surface">
                     <h2 className="text-xl font-bold flex items-center gap-2">
-                        <Layout className="text-[var(--color-primary)]" />
+                        <Layout className="text-primary" />
                         Template Manager
                     </h2>
                     <button
                         onClick={onClose}
-                        className="p-2 rounded-full hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] transition-colors"
+                        className="p-2 rounded-full hover:bg-surface-hover text-muted transition-colors"
                     >
                         <X size={20} />
                     </button>
@@ -108,13 +108,13 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                         <div className="space-y-6">
                             <div className="flex gap-4">
                                 <div className="relative flex-1">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]" size={16} />
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={16} />
                                     <input
                                         type="text"
                                         placeholder="Search templates..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                                        className="w-full pl-10 pr-4 py-2 bg-surface border border-surface rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none"
                                     />
                                 </div>
                                 <Button
@@ -128,10 +128,10 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
 
                             {isLoading ? (
                                 <div className="flex items-center justify-center h-40">
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-primary)]"></div>
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                                 </div>
                             ) : filteredTemplates.length === 0 ? (
-                                <div className="text-center py-12 text-[var(--color-text-muted)]">
+                                <div className="text-center py-12 text-muted">
                                     <Layout size={48} className="mx-auto mb-4 opacity-20" />
                                     <p>No templates found.</p>
                                     <p className="text-sm mt-1">Save your current layout as a template to get started.</p>
@@ -147,10 +147,10 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                                                     onClose();
                                                 }
                                             }}
-                                            className="group relative p-4 rounded-xl border border-[var(--color-surface-border)] hover:border-[var(--color-primary)] bg-[var(--color-surface-bg)] cursor-pointer transition-all hover:shadow-md"
+                                            className="group relative p-4 rounded-xl border border-surface hover:border-primary bg-surface cursor-pointer transition-all hover:shadow-md"
                                         >
                                             <div className="flex items-start justify-between mb-3">
-                                                <div className="p-2 rounded-lg bg-[var(--color-surface-card)] text-[var(--color-primary)]">
+                                                <div className="p-2 rounded-lg bg-card text-primary">
                                                     <FileText size={20} />
                                                 </div>
                                                 <button
@@ -161,8 +161,8 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                                                     <Trash2 size={16} />
                                                 </button>
                                             </div>
-                                            <h3 className="font-semibold text-[var(--color-text-main)] mb-1">{template.name}</h3>
-                                            <p className="text-xs text-[var(--color-text-muted)]">
+                                            <h3 className="font-semibold text-main mb-1">{template.name}</h3>
+                                            <p className="text-xs text-muted">
                                                 Created {new Date(template.createdAt).toLocaleDateString()}
                                             </p>
                                         </div>
@@ -175,19 +175,19 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                     {mode === 'save' && (
                         <div className="max-w-md mx-auto py-8">
                             <h3 className="text-lg font-semibold mb-2">Save as Template</h3>
-                            <p className="text-sm text-[var(--color-text-muted)] mb-6">
+                            <p className="text-sm text-muted mb-6">
                                 Create a reusable template from your current editor content.
                             </p>
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="block text-xs font-medium text-[var(--color-text-muted)] mb-1 uppercase">Template Name</label>
+                                    <label className="block text-xs font-medium text-muted mb-1 uppercase">Template Name</label>
                                     <input
                                         type="text"
                                         value={newTemplateName}
                                         onChange={(e) => setNewTemplateName(e.target.value)}
                                         placeholder="e.g., Monthly Newsletter Layout"
-                                        className="w-full p-3 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                                        className="w-full p-3 bg-surface border border-surface rounded-xl text-sm focus:ring-2 focus:ring-primary outline-none"
                                         autoFocus
                                     />
                                 </div>
@@ -195,7 +195,7 @@ export const TemplateManagerModal: React.FC<TemplateManagerModalProps> = ({
                                 <div className="flex gap-3 pt-4">
                                     <button
                                         onClick={() => setMode('list')}
-                                        className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                                        className="flex-1 px-4 py-2.5 rounded-xl text-sm font-medium border border-surface text-muted hover:bg-surface-hover transition-colors"
                                     >
                                         Cancel
                                     </button>

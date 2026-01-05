@@ -109,7 +109,7 @@ export const PaidAdsList = () => {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full">
-                <span className="material-symbols-outlined animate-spin text-3xl text-[var(--color-primary)]">progress_activity</span>
+                <span className="material-symbols-outlined animate-spin text-3xl text-primary">progress_activity</span>
             </div>
         );
     }
@@ -120,20 +120,20 @@ export const PaidAdsList = () => {
             {/* Header Section */}
             <div className="flex flex-col md:flex-row items-start md:items-end justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-black text-[var(--color-text-main)] tracking-tight">Paid Advertising</h1>
-                    <p className="text-[var(--color-text-muted)] font-medium">Manage campaigns across Google, Meta, LinkedIn, and TikTok.</p>
+                    <h1 className="text-3xl font-black text-main tracking-tight">Paid Advertising</h1>
+                    <p className="text-muted font-medium">Manage campaigns across Google, Meta, LinkedIn, and TikTok.</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <button
                         onClick={() => navigate(`/project/${projectId}/flows?pipeline=Marketing`)}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-[var(--color-surface-hover)] text-[var(--color-text-main)] hover:bg-[var(--color-surface-card)] rounded-xl text-sm font-bold transition-all border border-[var(--color-surface-border)]"
+                        className="flex items-center gap-2 px-4 py-2.5 bg-surface-hover text-main hover:bg-card rounded-xl text-sm font-bold transition-all border border-surface"
                     >
                         <span className="material-symbols-outlined text-[18px]">lightbulb</span>
                         Flow Pipeline
                     </button>
                     <Button
                         onClick={() => navigate(`/project/${projectId}/marketing/ads/create`)}
-                        className="px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[var(--color-primary)]/90 shadow-lg shadow-[var(--color-primary)]/20 active:scale-95 transition-all gap-2"
+                        className="px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-primary/90 shadow-lg shadow-[var(--color-primary)]/20 active:scale-95 transition-all gap-2"
                     >
                         <span className="material-symbols-outlined text-[18px]">add</span>
                         Create Campaign
@@ -197,16 +197,16 @@ export const PaidAdsList = () => {
                 <div className="xl:col-span-8 space-y-6">
 
                     {/* Filters */}
-                    <div className="flex flex-wrap items-center gap-3 p-4 bg-[var(--color-surface-card)] rounded-2xl border border-[var(--color-surface-border)]">
+                    <div className="flex flex-wrap items-center gap-3 p-4 bg-card rounded-2xl border border-surface">
                         <div className="flex-1 min-w-[200px]">
                             <div className="relative">
-                                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] text-[18px]">search</span>
+                                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted text-[18px]">search</span>
                                 <input
                                     type="text"
                                     placeholder="Search campaigns..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full h-10 pl-10 pr-4 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                                    className="w-full h-10 pl-10 pr-4 bg-surface border border-surface rounded-xl text-sm focus:ring-2 focus:ring-primary outline-none"
                                 />
                             </div>
                         </div>
@@ -214,7 +214,7 @@ export const PaidAdsList = () => {
                         <select
                             value={filterPlatform}
                             onChange={(e) => setFilterPlatform(e.target.value as AdPlatform | 'All')}
-                            className="h-10 px-3 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl text-sm font-medium"
+                            className="h-10 px-3 bg-surface border border-surface rounded-xl text-sm font-medium"
                         >
                             <option value="All">All Platforms</option>
                             <option value="Google">Google</option>
@@ -226,7 +226,7 @@ export const PaidAdsList = () => {
                         <select
                             value={filterStatus}
                             onChange={(e) => setFilterStatus(e.target.value as AdCampaignStatus | 'All')}
-                            className="h-10 px-3 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl text-sm font-medium"
+                            className="h-10 px-3 bg-surface border border-surface rounded-xl text-sm font-medium"
                         >
                             <option value="All">All Status</option>
                             <option value="Enabled">Active</option>
@@ -260,14 +260,14 @@ export const PaidAdsList = () => {
                 <div className="xl:col-span-4 space-y-6">
 
                     {/* Platform Breakdown */}
-                    <div className="bg-[var(--color-surface-card)] rounded-2xl border border-[var(--color-surface-border)] p-5">
-                        <h3 className="text-sm font-bold text-[var(--color-text-main)] mb-4 flex items-center gap-2">
+                    <div className="bg-card rounded-2xl border border-surface p-5">
+                        <h3 className="text-sm font-bold text-main mb-4 flex items-center gap-2">
                             <span className="material-symbols-outlined text-[16px] text-purple-500">pie_chart</span>
                             Platform Breakdown
                         </h3>
                         <div className="space-y-3">
                             {platformBreakdown.length === 0 ? (
-                                <p className="text-xs text-[var(--color-text-muted)] text-center py-4">No campaign data yet</p>
+                                <p className="text-xs text-muted text-center py-4">No campaign data yet</p>
                             ) : (
                                 platformBreakdown.map(([platform, data]) => {
                                     const total = stats.totalSpend || 1;
@@ -282,17 +282,17 @@ export const PaidAdsList = () => {
                                                 >
                                                     {platform[0]}
                                                 </div>
-                                                <span className="font-semibold text-[var(--color-text-main)]">{platform}</span>
-                                                <span className="text-[var(--color-text-muted)]">({data.count})</span>
+                                                <span className="font-semibold text-main">{platform}</span>
+                                                <span className="text-muted">({data.count})</span>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <div className="w-16 h-1.5 bg-[var(--color-surface-bg)] rounded-full overflow-hidden">
+                                                <div className="w-16 h-1.5 bg-surface rounded-full overflow-hidden">
                                                     <div
                                                         className="h-full rounded-full transition-all"
                                                         style={{ width: `${pct}%`, backgroundColor: config?.color }}
                                                     />
                                                 </div>
-                                                <span className="font-bold text-[var(--color-text-muted)] w-8 text-right">{pct}%</span>
+                                                <span className="font-bold text-muted w-8 text-right">{pct}%</span>
                                             </div>
                                         </div>
                                     );
@@ -303,12 +303,12 @@ export const PaidAdsList = () => {
 
                     {/* Ready to Convert from Flow */}
                     {ideas.length > 0 && (
-                        <div className="bg-[var(--color-surface-card)] rounded-2xl border border-[var(--color-surface-border)] p-5">
-                            <h3 className="text-sm font-bold text-[var(--color-text-main)] mb-4 flex items-center gap-2">
+                        <div className="bg-card rounded-2xl border border-surface p-5">
+                            <h3 className="text-sm font-bold text-main mb-4 flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[16px] text-amber-500">lightbulb</span>
                                 Ready to Launch
                             </h3>
-                            <p className="text-xs text-[var(--color-text-muted)] mb-4">
+                            <p className="text-xs text-muted mb-4">
                                 Approved marketing flows ready to become ad campaigns.
                             </p>
                             <div className="space-y-2">
@@ -316,20 +316,20 @@ export const PaidAdsList = () => {
                                     <Link
                                         key={idea.id}
                                         to={`/project/${projectId}/flows/${idea.id}`}
-                                        className="flex items-center gap-3 p-3 bg-[var(--color-surface-bg)] hover:bg-[var(--color-surface-hover)] rounded-xl transition-colors group"
+                                        className="flex items-center gap-3 p-3 bg-surface hover:bg-surface-hover rounded-xl transition-colors group"
                                     >
                                         <div className="size-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 text-amber-600 flex items-center justify-center shrink-0">
                                             <span className="material-symbols-outlined text-[16px]">campaign</span>
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm font-bold text-[var(--color-text-main)] truncate group-hover:text-[var(--color-primary)]">
+                                            <p className="text-sm font-bold text-main truncate group-hover:text-primary">
                                                 {idea.title}
                                             </p>
-                                            <p className="text-[10px] text-[var(--color-text-muted)] uppercase font-bold">
+                                            <p className="text-[10px] text-muted uppercase font-bold">
                                                 {idea.stage}
                                             </p>
                                         </div>
-                                        <span className="material-symbols-outlined text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)] group-hover:translate-x-1 transition-all text-[18px]">
+                                        <span className="material-symbols-outlined text-muted group-hover:text-primary group-hover:translate-x-1 transition-all text-[18px]">
                                             arrow_forward
                                         </span>
                                     </Link>
@@ -338,7 +338,7 @@ export const PaidAdsList = () => {
                             {ideas.length > 4 && (
                                 <Link
                                     to={`/project/${projectId}/flows?pipeline=Marketing`}
-                                    className="block text-center text-xs font-bold text-[var(--color-primary)] mt-3 hover:underline"
+                                    className="block text-center text-xs font-bold text-primary mt-3 hover:underline"
                                 >
                                     View all {ideas.length} ideas →
                                 </Link>
@@ -390,7 +390,7 @@ const StatCard = ({
     positive?: boolean;
     trend: number | null;
 }) => (
-    <div className="bg-[var(--color-surface-card)] p-4 rounded-2xl border border-[var(--color-surface-border)] flex flex-col">
+    <div className="bg-card p-4 rounded-2xl border border-surface flex flex-col">
         <div className="flex items-center justify-between mb-2">
             <span className={`material-symbols-outlined text-xl ${color}`}>{icon}</span>
             {trend !== null && (
@@ -400,10 +400,10 @@ const StatCard = ({
                 </span>
             )}
         </div>
-        <div className={`text-xl font-black ${positive === false ? 'text-red-500' : 'text-[var(--color-text-main)]'}`}>
+        <div className={`text-xl font-black ${positive === false ? 'text-red-500' : 'text-main'}`}>
             {value}
         </div>
-        <div className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide mt-1">{label}</div>
+        <div className="text-[10px] font-bold text-muted uppercase tracking-wide mt-1">{label}</div>
     </div>
 );
 
@@ -423,7 +423,7 @@ const CampaignCard = ({
     return (
         <Link
             to={`/project/${projectId}/marketing/ads/${campaign.id}`}
-            className="block bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 hover:border-[var(--color-primary)] transition-all group"
+            className="block bg-card border border-surface rounded-2xl p-5 hover:border-primary transition-all group"
         >
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
                 <div className="flex items-center gap-3">
@@ -434,10 +434,10 @@ const CampaignCard = ({
                         {campaign.platform[0]}
                     </div>
                     <div>
-                        <h3 className="font-bold text-lg text-[var(--color-text-main)] group-hover:text-[var(--color-primary)] transition-colors">
+                        <h3 className="font-bold text-lg text-main group-hover:text-primary transition-colors">
                             {campaign.name}
                         </h3>
-                        <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] mt-0.5">
+                        <div className="flex items-center gap-2 text-xs text-muted mt-0.5">
                             <span className={`px-2 py-0.5 rounded-full font-bold ${statusConfig.bg} ${statusConfig.color}`}>
                                 {statusConfig.label}
                             </span>
@@ -458,10 +458,10 @@ const CampaignCard = ({
 
                 <div className="flex items-center gap-4">
                     <div className="text-right">
-                        <p className="text-sm font-bold text-[var(--color-text-main)]">
+                        <p className="text-sm font-bold text-main">
                             ${campaign.spend?.toLocaleString() || 0}
                         </p>
-                        <p className="text-[10px] text-[var(--color-text-muted)] uppercase font-bold">Spent</p>
+                        <p className="text-[10px] text-muted uppercase font-bold">Spent</p>
                     </div>
                     <button
                         onClick={(e) => {
@@ -485,11 +485,11 @@ const CampaignCard = ({
             {/* Budget Progress */}
             {campaign.budgetTotal && campaign.budgetTotal > 0 && (
                 <div className="mb-4">
-                    <div className="flex justify-between text-[10px] text-[var(--color-text-muted)] mb-1">
+                    <div className="flex justify-between text-[10px] text-muted mb-1">
                         <span>Budget Progress</span>
                         <span>${campaign.spend?.toLocaleString() || 0} / ${campaign.budgetTotal.toLocaleString()}</span>
                     </div>
-                    <div className="h-1.5 bg-[var(--color-surface-bg)] rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-surface rounded-full overflow-hidden">
                         <div
                             className={`h-full rounded-full transition-all ${budgetProgress > 90 ? 'bg-red-500' : budgetProgress > 70 ? 'bg-amber-500' : 'bg-emerald-500'}`}
                             style={{ width: `${Math.min(budgetProgress, 100)}%` }}
@@ -499,7 +499,7 @@ const CampaignCard = ({
             )}
 
             {/* Metrics Grid */}
-            <div className="grid grid-cols-4 gap-3 pt-4 border-t border-[var(--color-surface-border)]">
+            <div className="grid grid-cols-4 gap-3 pt-4 border-t border-surface">
                 <MetricCell label="Impressions" value={campaign.metrics?.impressions?.toLocaleString() || 0} />
                 <MetricCell label="CTR" value={`${campaign.metrics?.ctr?.toFixed(2) || 0}%`} />
                 <MetricCell label="Conversions" value={campaign.metrics?.conversions || 0} />
@@ -515,18 +515,18 @@ const CampaignCard = ({
 
 const MetricCell = ({ label, value, highlight }: { label: string; value: string | number; highlight?: boolean }) => (
     <div>
-        <p className="text-[10px] text-[var(--color-text-muted)] uppercase font-bold">{label}</p>
-        <p className={`font-bold text-sm ${highlight ? 'text-emerald-500' : 'text-[var(--color-text-main)]'}`}>{value}</p>
+        <p className="text-[10px] text-muted uppercase font-bold">{label}</p>
+        <p className={`font-bold text-sm ${highlight ? 'text-emerald-500' : 'text-main'}`}>{value}</p>
     </div>
 );
 
 const EmptyState = ({ onCreateClick, hasIdeas }: { onCreateClick: () => void; hasIdeas: boolean }) => (
-    <div className="text-center py-16 bg-[var(--color-surface-card)] rounded-2xl border-2 border-dashed border-[var(--color-surface-border)]">
-        <div className="inline-flex p-4 rounded-full bg-[var(--color-surface-bg)] text-[var(--color-text-muted)] mb-4">
+    <div className="text-center py-16 bg-card rounded-2xl border-2 border-dashed border-surface">
+        <div className="inline-flex p-4 rounded-full bg-surface text-muted mb-4">
             <span className="material-symbols-outlined text-4xl">campaign</span>
         </div>
-        <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-2">No ad campaigns yet</h3>
-        <p className="text-sm text-[var(--color-text-muted)] max-w-md mx-auto mb-6">
+        <h3 className="text-lg font-bold text-main mb-2">No ad campaigns yet</h3>
+        <p className="text-sm text-muted max-w-md mx-auto mb-6">
             {hasIdeas
                 ? "Convert your approved marketing flows into ad campaigns, or create a new one from scratch."
                 : "Create your first ad campaign to start tracking performance across platforms."

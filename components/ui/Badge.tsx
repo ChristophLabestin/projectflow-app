@@ -15,7 +15,7 @@ export const Badge = ({ children, variant = 'default', size = 'md', className = 
     let variantStyles = "";
 
     if (variant === 'default') {
-        variantStyles = "bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] border-[var(--color-surface-border)]";
+        variantStyles = "bg-surface-hover text-muted border-surface";
     } else if (variant === 'primary') {
         variantStyles = "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 border-indigo-100 dark:border-indigo-800";
     } else if (variant === 'secondary') {
@@ -27,7 +27,7 @@ export const Badge = ({ children, variant = 'default', size = 'md', className = 
     } else if (variant === 'error') {
         variantStyles = "bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-300 border-rose-100 dark:border-rose-800";
     } else if (variant === 'outline') {
-        variantStyles = "bg-transparent text-[var(--color-text-subtle)] border-[var(--color-surface-border)]";
+        variantStyles = "bg-transparent text-subtle border-surface";
     }
 
     const sizeStyles = size === 'sm' ? 'px-1.5 py-0 text-[10px]' : 'px-2.5 py-0.5 text-[11px]';

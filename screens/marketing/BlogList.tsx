@@ -185,18 +185,18 @@ const BlogList = () => {
             {/* Header */}
             <div className="flex items-center justify-between shrink-0">
                 <div>
-                    <h1 className="text-2xl font-bold text-[var(--color-text-main)]">Blog Posts</h1>
-                    <p className="text-sm text-[var(--color-text-muted)]">Manage your blog content and publications</p>
+                    <h1 className="text-2xl font-bold text-main">Blog Posts</h1>
+                    <p className="text-sm text-muted">Manage your blog content and publications</p>
                 </div>
                 <div className="flex items-center gap-3">
                     {/* Language Filter - Only show if languages are configured */}
                     {supportedLanguages.length > 1 && (
                         <div className="flex items-center gap-2">
-                            <span className="text-xs text-[var(--color-text-muted)]">Language:</span>
+                            <span className="text-xs text-muted">Language:</span>
                             <select
                                 value={selectedLanguage}
                                 onChange={(e) => setSelectedLanguage(e.target.value)}
-                                className="px-3 py-1.5 text-sm bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg focus:border-[var(--color-primary)] outline-none"
+                                className="px-3 py-1.5 text-sm bg-surface border border-surface rounded-lg focus:border-primary outline-none"
                             >
                                 <option value="all">All Languages</option>
                                 {supportedLanguages.map(lang => (
@@ -206,12 +206,12 @@ const BlogList = () => {
                         </div>
                     )}
 
-                    <div className="flex items-center p-1 bg-[var(--color-surface-hover)] rounded-lg">
+                    <div className="flex items-center p-1 bg-surface-hover rounded-lg">
                         <button
                             onClick={() => setViewMode('grid')}
                             className={`p-1.5 rounded-md transition-all ${viewMode === 'grid'
-                                ? 'bg-white shadow-sm text-[var(--color-text-main)] dark:bg-[var(--color-surface-card)]'
-                                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                                ? 'bg-white shadow-sm text-main dark:bg-card'
+                                : 'text-muted hover:text-main'}`}
                             title="Grid View"
                         >
                             <span className="material-symbols-outlined text-[20px]">grid_view</span>
@@ -219,8 +219,8 @@ const BlogList = () => {
                         <button
                             onClick={() => setViewMode('list')}
                             className={`p-1.5 rounded-md transition-all ${viewMode === 'list'
-                                ? 'bg-white shadow-sm text-[var(--color-text-main)] dark:bg-[var(--color-surface-card)]'
-                                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                                ? 'bg-white shadow-sm text-main dark:bg-card'
+                                : 'text-muted hover:text-main'}`}
                             title="List View"
                         >
                             <span className="material-symbols-outlined text-[20px]">view_list</span>
@@ -240,7 +240,7 @@ const BlogList = () => {
             {/* Grid */}
             {isLoading && (
                 <div className="flex justify-center p-12">
-                    <span className="material-symbols-outlined animate-spin text-4xl text-[var(--color-primary)]">progress_activity</span>
+                    <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
                 </div>
             )}
 
@@ -261,7 +261,7 @@ const BlogList = () => {
                             <div
                                 key={blog.id}
                                 onClick={() => handleEdit(blog.id)}
-                                className="group relative flex flex-col bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl overflow-hidden hover:shadow-md hover:border-[var(--color-primary-light)] transition-all cursor-pointer h-[280px]"
+                                className="group relative flex flex-col bg-card border border-surface rounded-xl overflow-hidden hover:shadow-md hover:border-[var(--color-primary-light)] transition-all cursor-pointer h-[280px]"
                             >
                                 {/* Status Badge */}
                                 <div className="absolute top-3 right-3 z-10">
@@ -283,8 +283,8 @@ const BlogList = () => {
                                                 }
                                             }}
                                             className={`px-3 py-1 rounded-full text-xs font-bold backdrop-blur-md shadow-sm transition-all uppercase tracking-wide ${langItem.id === blog.id
-                                                ? 'bg-white text-[var(--color-primary)] ring-1 ring-[var(--color-primary)]/10 dark:text-black'
-                                                : 'bg-white/90 text-[var(--color-text-muted)] hover:bg-white hover:text-[var(--color-primary)] dark:text-black/70 dark:hover:text-black'
+                                                ? 'bg-white text-primary ring-1 ring-primary/10 dark:text-black'
+                                                : 'bg-white/90 text-muted hover:bg-white hover:text-primary dark:text-black/70 dark:hover:text-black'
                                                 }`}
                                             title={`Switch to ${langItem.lang.toUpperCase()}`}
                                         >
@@ -303,7 +303,7 @@ const BlogList = () => {
                                 </button>
 
                                 {/* Cover Image */}
-                                <div className="h-40 bg-[var(--color-surface-hover)] relative overflow-hidden">
+                                <div className="h-40 bg-surface-hover relative overflow-hidden">
                                     {blog.coverImage ? (
                                         <img
                                             src={blog.coverImage}
@@ -311,7 +311,7 @@ const BlogList = () => {
                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                                         />
                                     ) : (
-                                        <div className="w-full h-full flex items-center justify-center text-[var(--color-text-muted)]">
+                                        <div className="w-full h-full flex items-center justify-center text-muted">
                                             <span className="material-symbols-outlined text-5xl opacity-20">image</span>
                                         </div>
                                     )}
@@ -319,23 +319,23 @@ const BlogList = () => {
 
                                 {/* Content */}
                                 <div className="flex-1 p-4 flex flex-col">
-                                    <h3 className="text-lg font-semibold text-[var(--color-text-main)] mb-2 line-clamp-1 group-hover:text-[var(--color-primary)] transition-colors">
+                                    <h3 className="text-lg font-semibold text-main mb-2 line-clamp-1 group-hover:text-primary transition-colors">
                                         {blog.title}
                                     </h3>
-                                    <p className="text-sm text-[var(--color-text-muted)] line-clamp-2 mb-auto">
+                                    <p className="text-sm text-muted line-clamp-2 mb-auto">
                                         {blog.excerpt}
                                     </p>
 
                                     {/* Category Badge */}
                                     {blog.category && (
                                         <div className="mt-3">
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] border border-[var(--color-surface-border)]">
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-surface-hover text-muted border border-surface">
                                                 {blog.category.name}
                                             </span>
                                         </div>
                                     )}
 
-                                    <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] mt-4">
+                                    <div className="flex items-center justify-between text-xs text-muted mt-4">
                                         <span>{typeof blog.author === 'object' ? blog.author.name : blog.author}</span>
                                         <span>{format(new Date(blog.createdAt), 'MMM d, yyyy')}</span>
                                     </div>
@@ -346,25 +346,25 @@ const BlogList = () => {
                         {/* Create New Card (Placeholder style) */}
                         <button
                             onClick={handleCreate}
-                            className="flex flex-col items-center justify-center gap-3 h-[280px] border-2 border-dashed border-[var(--color-surface-border)] rounded-xl hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] transition-all group text-[var(--color-text-muted)] hover:text-[var(--color-primary)]"
+                            className="flex flex-col items-center justify-center gap-3 h-[280px] border-2 border-dashed border-surface rounded-xl hover:border-primary hover:bg-surface-hover transition-all group text-muted hover:text-primary"
                         >
-                            <div className="w-12 h-12 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center group-hover:bg-[var(--color-primary-light)] transition-colors">
+                            <div className="w-12 h-12 rounded-full bg-surface-hover flex items-center justify-center group-hover:bg-[var(--color-primary-light)] transition-colors">
                                 <span className="material-symbols-outlined text-2xl">add</span>
                             </div>
                             <span className="font-medium">Create New Blog</span>
                         </button>
                     </div>
                 ) : (
-                    <div className="bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl overflow-hidden">
+                    <div className="bg-card border border-surface rounded-xl overflow-hidden">
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
-                                <thead className="bg-[var(--color-surface-bg)] border-b border-[var(--color-surface-border)]">
+                                <thead className="bg-surface border-b border-surface">
                                     <tr>
-                                        <th className="py-3 px-4 font-medium text-[var(--color-text-muted)] w-1/2">Post</th>
-                                        <th className="py-3 px-4 font-medium text-[var(--color-text-muted)]">Author</th>
-                                        <th className="py-3 px-4 font-medium text-[var(--color-text-muted)]">Status</th>
-                                        <th className="py-3 px-4 font-medium text-[var(--color-text-muted)]">Date</th>
-                                        <th className="py-3 px-4 font-medium text-[var(--color-text-muted)] text-right">Actions</th>
+                                        <th className="py-3 px-4 font-medium text-muted w-1/2">Post</th>
+                                        <th className="py-3 px-4 font-medium text-muted">Author</th>
+                                        <th className="py-3 px-4 font-medium text-muted">Status</th>
+                                        <th className="py-3 px-4 font-medium text-muted">Date</th>
+                                        <th className="py-3 px-4 font-medium text-muted text-right">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-[var(--color-surface-border)]">
@@ -372,22 +372,22 @@ const BlogList = () => {
                                         <tr
                                             key={blog.id}
                                             onClick={() => handleEdit(blog.id)}
-                                            className="hover:bg-[var(--color-surface-hover)] cursor-pointer transition-colors group"
+                                            className="hover:bg-surface-hover cursor-pointer transition-colors group"
                                         >
                                             <td className="py-3 px-4">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-10 h-10 rounded-lg bg-[var(--color-surface-hover)] overflow-hidden shrink-0">
+                                                    <div className="w-10 h-10 rounded-lg bg-surface-hover overflow-hidden shrink-0">
                                                         {blog.coverImage ? (
                                                             <img src={blog.coverImage} alt="" className="w-full h-full object-cover" />
                                                         ) : (
                                                             <div className="w-full h-full flex items-center justify-center">
-                                                                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]/50">image</span>
+                                                                <span className="material-symbols-outlined text-[18px] text-muted/50">image</span>
                                                             </div>
                                                         )}
                                                     </div>
                                                     <div>
-                                                        <div className="font-medium text-[var(--color-text-main)] group-hover:text-[var(--color-primary)] transition-colors">{blog.title}</div>
-                                                        <div className="text-xs text-[var(--color-text-muted)] line-clamp-1 max-w-[300px]">{blog.excerpt}</div>
+                                                        <div className="font-medium text-main group-hover:text-primary transition-colors">{blog.title}</div>
+                                                        <div className="text-xs text-muted line-clamp-1 max-w-[300px]">{blog.excerpt}</div>
                                                         <div className="flex flex-wrap gap-1 mt-1">
                                                             {blog.availableLanguages && blog.availableLanguages.length > 0 ? (
                                                                 blog.availableLanguages.map((langItem: any) => (
@@ -419,7 +419,7 @@ const BlogList = () => {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="py-3 px-4 text-[var(--color-text-muted)]">{typeof blog.author === 'object' ? blog.author.name : blog.author}</td>
+                                            <td className="py-3 px-4 text-muted">{typeof blog.author === 'object' ? blog.author.name : blog.author}</td>
                                             <td className="py-3 px-4">
                                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${blog.status === 'published'
                                                     ? 'bg-emerald-500/10 text-emerald-600'
@@ -433,13 +433,13 @@ const BlogList = () => {
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="py-3 px-4 text-[var(--color-text-muted)]">
+                                            <td className="py-3 px-4 text-muted">
                                                 {format(new Date(blog.createdAt), 'MMM d, yyyy')}
                                             </td>
                                             <td className="py-3 px-4 text-right">
                                                 <button
                                                     onClick={(e) => handleDelete(e, blog.id)}
-                                                    className="p-1.5 rounded-md text-[var(--color-text-muted)] hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
+                                                    className="p-1.5 rounded-md text-muted hover:text-red-500 hover:bg-red-50 transition-colors opacity-0 group-hover:opacity-100"
                                                     title="Delete"
                                                 >
                                                     <span className="material-symbols-outlined text-[20px]">delete</span>
@@ -449,8 +449,8 @@ const BlogList = () => {
                                     ))}
                                     {filteredBlogs.length === 0 && (
                                         <tr>
-                                            <td colSpan={5} className="py-12 text-center text-[var(--color-text-muted)]">
-                                                No blog posts found. <button onClick={handleCreate} className="text-[var(--color-primary)] hover:underline">Create your first post</button>
+                                            <td colSpan={5} className="py-12 text-center text-muted">
+                                                No blog posts found. <button onClick={handleCreate} className="text-primary hover:underline">Create your first post</button>
                                             </td>
                                         </tr>
                                     )}

@@ -301,11 +301,11 @@ export const MarketingSettings: React.FC = () => {
         <button
             onClick={() => setActiveTab(id)}
             className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === id
-                ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] shadow-sm'
-                : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'
+                ? 'bg-surface-hover text-main shadow-sm'
+                : 'text-muted hover:bg-surface-hover hover:text-main'
                 }`}
         >
-            <span className={`material-symbols-outlined text-[20px] ${activeTab === id ? 'text-[var(--color-primary)]' : ''}`}>{icon}</span>
+            <span className={`material-symbols-outlined text-[20px] ${activeTab === id ? 'text-primary' : ''}`}>{icon}</span>
             {label}
         </button>
     );
@@ -315,7 +315,7 @@ export const MarketingSettings: React.FC = () => {
             <div className="flex flex-col md:flex-row gap-8 items-start">
                 {/* Sidebar */}
                 <aside className="w-full md:w-56 shrink-0 space-y-1">
-                    <h1 className="text-xl font-display font-bold text-[var(--color-text-main)] px-2 mb-4">Marketing Settings</h1>
+                    <h1 className="text-xl font-display font-bold text-main px-2 mb-4">Marketing Settings</h1>
                     <NavItem id="data" label="Data Models" icon="database" />
                     <NavItem id="email" label="Email Delivery" icon="mail" />
                     <NavItem id="embed" label="Newsletter Embed" icon="code" />
@@ -333,36 +333,36 @@ export const MarketingSettings: React.FC = () => {
                             {/* Recipient Data Model */}
                             <Card className="p-6">
                                 <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-[var(--color-primary)]">group</span>
+                                    <span className="material-symbols-outlined text-primary">group</span>
                                     Recipient Data Model
                                 </h3>
-                                <p className="text-sm text-[var(--color-text-muted)] mb-4">
+                                <p className="text-sm text-muted mb-4">
                                     Define what data fields are available for recipients. System columns cannot be deleted.
                                 </p>
 
                                 <div className="space-y-2 mb-4">
                                     {/* System columns */}
                                     {systemRecipientColumns.map((col) => (
-                                        <div key={col.key} className="flex items-center justify-between p-3 bg-[var(--color-surface-bg)] rounded-lg border border-[var(--color-surface-border)]">
+                                        <div key={col.key} className="flex items-center justify-between p-3 bg-surface rounded-lg border border-surface">
                                             <div className="flex items-center gap-3">
                                                 <span className="text-sm font-medium">{col.label}</span>
-                                                <span className="text-xs text-[var(--color-text-muted)] bg-[var(--color-surface-hover)] px-2 py-0.5 rounded">System</span>
+                                                <span className="text-xs text-muted bg-surface-hover px-2 py-0.5 rounded">System</span>
                                             </div>
-                                            <span className="text-xs text-[var(--color-text-muted)]">{col.type}</span>
+                                            <span className="text-xs text-muted">{col.type}</span>
                                         </div>
                                     ))}
                                     {/* Custom columns */}
                                     {recipientColumns.filter(c => !c.isSystem).map((col) => (
-                                        <div key={col.id} className="flex items-center justify-between p-3 bg-[var(--color-surface-bg)] rounded-lg border border-[var(--color-surface-border)]">
+                                        <div key={col.id} className="flex items-center justify-between p-3 bg-surface rounded-lg border border-surface">
                                             <div className="flex items-center gap-3">
                                                 <span className="text-sm font-medium">{col.label}</span>
-                                                <span className="text-xs text-[var(--color-text-muted)]">({col.key})</span>
+                                                <span className="text-xs text-muted">({col.key})</span>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <span className="text-xs text-[var(--color-text-muted)]">{col.type}</span>
+                                                <span className="text-xs text-muted">{col.type}</span>
                                                 <button
                                                     onClick={() => handleDeleteRecipientColumn(col.id)}
-                                                    className="p-1 text-[var(--color-text-muted)] hover:text-red-500 transition-colors"
+                                                    className="p-1 text-muted hover:text-red-500 transition-colors"
                                                 >
                                                     <span className="material-symbols-outlined text-[18px]">delete</span>
                                                 </button>
@@ -384,7 +384,7 @@ export const MarketingSettings: React.FC = () => {
                                     <div className="w-32">
                                         <label className="block text-sm font-medium mb-1">Type</label>
                                         <select
-                                            className="w-full px-3 py-2 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg focus:outline-none focus:border-[var(--color-primary)] text-sm"
+                                            className="w-full px-3 py-2 bg-surface border border-surface rounded-lg focus:outline-none focus:border-primary text-sm"
                                             value={newRecipientColumn.type}
                                             onChange={(e) => setNewRecipientColumn(prev => ({ ...prev, type: e.target.value as any }))}
                                         >
@@ -404,36 +404,36 @@ export const MarketingSettings: React.FC = () => {
                             {/* Group Data Model */}
                             <Card className="p-6">
                                 <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-[var(--color-primary)]">folder_shared</span>
+                                    <span className="material-symbols-outlined text-primary">folder_shared</span>
                                     Group Data Model
                                 </h3>
-                                <p className="text-sm text-[var(--color-text-muted)] mb-4">
+                                <p className="text-sm text-muted mb-4">
                                     Define what data fields are available for recipient groups.
                                 </p>
 
                                 <div className="space-y-2 mb-4">
                                     {/* System columns */}
                                     {systemGroupColumns.map((col) => (
-                                        <div key={col.key} className="flex items-center justify-between p-3 bg-[var(--color-surface-bg)] rounded-lg border border-[var(--color-surface-border)]">
+                                        <div key={col.key} className="flex items-center justify-between p-3 bg-surface rounded-lg border border-surface">
                                             <div className="flex items-center gap-3">
                                                 <span className="text-sm font-medium">{col.label}</span>
-                                                <span className="text-xs text-[var(--color-text-muted)] bg-[var(--color-surface-hover)] px-2 py-0.5 rounded">System</span>
+                                                <span className="text-xs text-muted bg-surface-hover px-2 py-0.5 rounded">System</span>
                                             </div>
-                                            <span className="text-xs text-[var(--color-text-muted)]">{col.type}</span>
+                                            <span className="text-xs text-muted">{col.type}</span>
                                         </div>
                                     ))}
                                     {/* Custom columns */}
                                     {groupColumns.filter(c => !c.isSystem).map((col) => (
-                                        <div key={col.id} className="flex items-center justify-between p-3 bg-[var(--color-surface-bg)] rounded-lg border border-[var(--color-surface-border)]">
+                                        <div key={col.id} className="flex items-center justify-between p-3 bg-surface rounded-lg border border-surface">
                                             <div className="flex items-center gap-3">
                                                 <span className="text-sm font-medium">{col.label}</span>
-                                                <span className="text-xs text-[var(--color-text-muted)]">({col.key})</span>
+                                                <span className="text-xs text-muted">({col.key})</span>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <span className="text-xs text-[var(--color-text-muted)]">{col.type}</span>
+                                                <span className="text-xs text-muted">{col.type}</span>
                                                 <button
                                                     onClick={() => handleDeleteGroupColumn(col.id)}
-                                                    className="p-1 text-[var(--color-text-muted)] hover:text-red-500 transition-colors"
+                                                    className="p-1 text-muted hover:text-red-500 transition-colors"
                                                 >
                                                     <span className="material-symbols-outlined text-[18px]">delete</span>
                                                 </button>
@@ -455,7 +455,7 @@ export const MarketingSettings: React.FC = () => {
                                     <div className="w-32">
                                         <label className="block text-sm font-medium mb-1">Type</label>
                                         <select
-                                            className="w-full px-3 py-2 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg focus:outline-none focus:border-[var(--color-primary)] text-sm"
+                                            className="w-full px-3 py-2 bg-surface border border-surface rounded-lg focus:outline-none focus:border-primary text-sm"
                                             value={newGroupColumn.type}
                                             onChange={(e) => setNewGroupColumn(prev => ({ ...prev, type: e.target.value as any }))}
                                         >
@@ -479,10 +479,10 @@ export const MarketingSettings: React.FC = () => {
                             {/* SMTP Configuration */}
                             <Card className="p-6">
                                 <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-[var(--color-primary)]">mail</span>
+                                    <span className="material-symbols-outlined text-primary">mail</span>
                                     Email Delivery (SMTP)
                                 </h3>
-                                <p className="text-sm text-[var(--color-text-muted)] mb-4">
+                                <p className="text-sm text-muted mb-4">
                                     Choose how emails are sent for this project's marketing campaigns.
                                 </p>
 
@@ -492,8 +492,8 @@ export const MarketingSettings: React.FC = () => {
                                         <label
                                             key={option.value}
                                             className={`flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all ${smtpSource === option.value
-                                                ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                                                : 'border-[var(--color-surface-border)] hover:border-[var(--color-primary)]/50'
+                                                ? 'border-primary bg-primary/5'
+                                                : 'border-surface hover:border-primary/50'
                                                 }`}
                                         >
                                             <input
@@ -506,9 +506,9 @@ export const MarketingSettings: React.FC = () => {
                                             />
                                             <div className="flex-1">
                                                 <div className="font-medium">{option.label}</div>
-                                                <div className="text-sm text-[var(--color-text-muted)]">{option.description}</div>
+                                                <div className="text-sm text-muted">{option.description}</div>
                                                 {option.value === 'workspace' && workspaceSMTP && (
-                                                    <div className="mt-2 text-xs text-[var(--color-text-muted)] flex items-center gap-1">
+                                                    <div className="mt-2 text-xs text-muted flex items-center gap-1">
                                                         <span className="material-symbols-outlined text-[14px] text-green-500">check_circle</span>
                                                         Configured: {workspaceSMTP.host}
                                                     </div>
@@ -526,7 +526,7 @@ export const MarketingSettings: React.FC = () => {
 
                                 {/* Project SMTP Config */}
                                 {smtpSource === 'project' && (
-                                    <div className="space-y-4 p-4 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)]">
+                                    <div className="space-y-4 p-4 bg-surface rounded-xl border border-surface">
                                         <div className="grid grid-cols-2 gap-4">
                                             <Input
                                                 label="SMTP Host"
@@ -573,7 +573,7 @@ export const MarketingSettings: React.FC = () => {
                                                         onChange={(e) => setSmtpConfig(prev => ({ ...prev, secure: e.target.checked }))}
                                                         className="w-4 h-4"
                                                     />
-                                                    <span className="text-sm text-[var(--color-text-muted)]">Use TLS/SSL</span>
+                                                    <span className="text-sm text-muted">Use TLS/SSL</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -608,21 +608,21 @@ export const MarketingSettings: React.FC = () => {
                             {/* Newsletter Embed Form */}
                             <Card className="p-6">
                                 <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-[var(--color-primary)]">code</span>
+                                    <span className="material-symbols-outlined text-primary">code</span>
                                     Newsletter Embed Form
                                 </h3>
-                                <p className="text-sm text-[var(--color-text-muted)] mb-4">
+                                <p className="text-sm text-muted mb-4">
                                     Customize and copy this HTML to embed a newsletter signup form on your website. Generate an API token in Settings → API.
                                 </p>
 
                                 {/* Customization Options */}
                                 {groups.length > 0 && (
-                                    <div className="mb-4 p-4 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg">
+                                    <div className="mb-4 p-4 bg-surface border border-surface rounded-lg">
                                         <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-[var(--color-primary)] text-[18px]">tune</span>
+                                            <span className="material-symbols-outlined text-primary text-[18px]">tune</span>
                                             Auto-assign to Groups
                                         </h4>
-                                        <p className="text-xs text-[var(--color-text-muted)] mb-3">
+                                        <p className="text-xs text-muted mb-3">
                                             New subscribers from this form will automatically be added to the selected groups.
                                         </p>
                                         <div className="flex flex-wrap gap-2">
@@ -640,8 +640,8 @@ export const MarketingSettings: React.FC = () => {
                                                             }
                                                         }}
                                                         className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm cursor-pointer transition-all border ${isSelected
-                                                            ? 'bg-[var(--color-primary)] text-black border-[var(--color-primary)]'
-                                                            : 'bg-[var(--color-surface-card)] text-[var(--color-text-main)] border-[var(--color-surface-border)] hover:border-[var(--color-primary)]'
+                                                            ? 'bg-primary text-black border-primary'
+                                                            : 'bg-card text-main border-surface hover:border-primary'
                                                             }`}
                                                     >
                                                         {isSelected && (
@@ -673,29 +673,29 @@ export const MarketingSettings: React.FC = () => {
                                     </Button>
                                 </div>
 
-                                <div className="p-4 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg space-y-4">
+                                <div className="p-4 bg-surface border border-surface rounded-lg space-y-4">
                                     <h4 className="font-medium text-sm flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-[var(--color-primary)] text-[18px]">api</span>
+                                        <span className="material-symbols-outlined text-primary text-[18px]">api</span>
                                         API Reference
                                     </h4>
 
                                     <div className="grid gap-3 text-sm">
                                         <div>
-                                            <p className="text-xs text-[var(--color-text-muted)] mb-1">Endpoint</p>
+                                            <p className="text-xs text-muted mb-1">Endpoint</p>
                                             <code className="text-xs bg-zinc-900 text-zinc-100 px-2 py-1 rounded font-mono block">
                                                 POST {window.location.origin}/api/newsletter/subscribe
                                             </code>
                                         </div>
 
                                         <div>
-                                            <p className="text-xs text-[var(--color-text-muted)] mb-1">Project ID</p>
+                                            <p className="text-xs text-muted mb-1">Project ID</p>
                                             <code className="text-xs bg-zinc-900 text-zinc-100 px-2 py-1 rounded font-mono block">
                                                 {projectId || 'Not available'}
                                             </code>
                                         </div>
 
                                         <div>
-                                            <p className="text-xs text-[var(--color-text-muted)] mb-1">Request Body (JSON)</p>
+                                            <p className="text-xs text-muted mb-1">Request Body (JSON)</p>
                                             <pre className="text-xs bg-zinc-900 text-zinc-100 px-3 py-2 rounded font-mono overflow-x-auto">
                                                 {`{
   "token": "pfat_your_api_token",
@@ -709,7 +709,7 @@ export const MarketingSettings: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    <p className="text-xs text-[var(--color-text-muted)]">
+                                    <p className="text-xs text-muted">
                                         <strong>Required:</strong> token, email, projectId • <strong>Optional:</strong> firstName, lastName, groupIds
                                     </p>
                                 </div>
@@ -727,10 +727,10 @@ export const MarketingSettings: React.FC = () => {
                                     <div className="flex justify-between items-start mb-6">
                                         <div>
                                             <h3 className="font-semibold text-lg flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-[var(--color-primary)]">api</span>
+                                                <span className="material-symbols-outlined text-primary">api</span>
                                                 Content API Integration
                                             </h3>
-                                            <p className="text-sm text-[var(--color-text-muted)] mt-1">
+                                            <p className="text-sm text-muted mt-1">
                                                 Connect to any external REST API to check sync status and configure resources like Posts and Categories.
                                             </p>
                                         </div>
@@ -747,19 +747,19 @@ export const MarketingSettings: React.FC = () => {
                                                 </div>
                                                 <div>
                                                     <div className="font-medium text-green-500">Active Connection</div>
-                                                    <div className="text-sm text-[var(--color-text-muted)]">{apiSettings.baseUrl}</div>
+                                                    <div className="text-sm text-muted">{apiSettings.baseUrl}</div>
                                                 </div>
                                             </div>
 
                                             <div className="grid grid-cols-2 gap-4">
-                                                <div className="p-4 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)]">
-                                                    <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Resources</div>
+                                                <div className="p-4 bg-surface rounded-xl border border-surface">
+                                                    <div className="text-xs text-muted uppercase tracking-wider mb-1">Resources</div>
                                                     <div className="font-mono text-sm capitalize">
                                                         {Object.keys(apiSettings.resources).join(', ') || 'None'}
                                                     </div>
                                                 </div>
-                                                <div className="p-4 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)]">
-                                                    <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Headers</div>
+                                                <div className="p-4 bg-surface rounded-xl border border-surface">
+                                                    <div className="text-xs text-muted uppercase tracking-wider mb-1">Headers</div>
                                                     <div className="font-mono text-sm truncate" title={apiSettings.headers}>
                                                         {apiSettings.headers !== '{}' ? 'Configured' : 'None'}
                                                     </div>
@@ -768,8 +768,8 @@ export const MarketingSettings: React.FC = () => {
 
                                             {/* Languages */}
                                             {apiSettings.supportedLanguages && apiSettings.supportedLanguages.length > 0 && (
-                                                <div className="p-4 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)]">
-                                                    <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Multi-Language Support</div>
+                                                <div className="p-4 bg-surface rounded-xl border border-surface">
+                                                    <div className="text-xs text-muted uppercase tracking-wider mb-2">Multi-Language Support</div>
                                                     <div className="flex flex-wrap gap-2">
                                                         {apiSettings.supportedLanguages.map(lang => (
                                                             <span
@@ -785,8 +785,8 @@ export const MarketingSettings: React.FC = () => {
 
                                             {/* Data Model Fields */}
                                             {apiSettings.dataModel && (
-                                                <div className="p-4 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)]">
-                                                    <div className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Configured Data Model Fields</div>
+                                                <div className="p-4 bg-surface rounded-xl border border-surface">
+                                                    <div className="text-xs text-muted uppercase tracking-wider mb-2">Configured Data Model Fields</div>
                                                     <div className="flex flex-wrap gap-1.5">
                                                         {['id', 'title', 'slug', 'content', 'excerpt', 'coverImage', 'language', 'author', 'category', 'tags', 'status', 'publishedAt', 'url'].map(field => {
                                                             const fieldLower = field.toLowerCase();
@@ -806,7 +806,7 @@ export const MarketingSettings: React.FC = () => {
                                                                     key={field}
                                                                     className={`px-2 py-0.5 rounded text-xs font-medium ${isDetected
                                                                             ? 'bg-green-500/10 text-green-600 dark:text-green-400'
-                                                                            : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] opacity-50'
+                                                                            : 'bg-surface-hover text-muted opacity-50'
                                                                         }`}
                                                                 >
                                                                     {isDetected && '✓ '}{field}
@@ -818,7 +818,7 @@ export const MarketingSettings: React.FC = () => {
                                             )}
                                         </div>
                                     ) : (
-                                        <div className="flex flex-col items-center justify-center py-12 text-center text-[var(--color-text-muted)] bg-[var(--color-surface-bg)] rounded-xl border border-dashed border-[var(--color-surface-border)]">
+                                        <div className="flex flex-col items-center justify-center py-12 text-center text-muted bg-surface rounded-xl border border-dashed border-surface">
                                             <span className="material-symbols-outlined text-4xl mb-3 opacity-50">hub</span>
                                             <h3 className="font-medium mb-1">No API Connected</h3>
                                             <p className="text-sm max-w-xs mx-auto mb-4">
@@ -844,9 +844,9 @@ export const MarketingSettings: React.FC = () => {
                     {activeTab === 'analytics' && (
                         <Card className="p-6">
                             <div className="text-center py-12">
-                                <span className="material-symbols-outlined text-6xl text-[var(--color-text-muted)] mb-4 block">analytics</span>
+                                <span className="material-symbols-outlined text-6xl text-muted mb-4 block">analytics</span>
                                 <h3 className="font-semibold text-lg mb-2">Campaign Analytics</h3>
-                                <p className="text-[var(--color-text-muted)] max-w-md mx-auto mb-4">
+                                <p className="text-muted max-w-md mx-auto mb-4">
                                     Track open rates, click-through rates, conversions, and subscriber growth over time.
                                 </p>
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-sm font-medium">
@@ -861,9 +861,9 @@ export const MarketingSettings: React.FC = () => {
                     {activeTab === 'automation' && (
                         <Card className="p-6">
                             <div className="text-center py-12">
-                                <span className="material-symbols-outlined text-6xl text-[var(--color-text-muted)] mb-4 block">bolt</span>
+                                <span className="material-symbols-outlined text-6xl text-muted mb-4 block">bolt</span>
                                 <h3 className="font-semibold text-lg mb-2">Email Automation</h3>
-                                <p className="text-[var(--color-text-muted)] max-w-md mx-auto mb-4">
+                                <p className="text-muted max-w-md mx-auto mb-4">
                                     Create automated email sequences, drip campaigns, and trigger-based workflows.
                                 </p>
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-sm font-medium">
@@ -878,9 +878,9 @@ export const MarketingSettings: React.FC = () => {
                     {activeTab === 'preferences' && (
                         <Card className="p-6">
                             <div className="text-center py-12">
-                                <span className="material-symbols-outlined text-6xl text-[var(--color-text-muted)] mb-4 block">tune</span>
+                                <span className="material-symbols-outlined text-6xl text-muted mb-4 block">tune</span>
                                 <h3 className="font-semibold text-lg mb-2">Marketing Preferences</h3>
-                                <p className="text-[var(--color-text-muted)] max-w-md mx-auto mb-4">
+                                <p className="text-muted max-w-md mx-auto mb-4">
                                     Configure unsubscribe pages, preference centers, and compliance settings.
                                 </p>
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded-full text-sm font-medium">

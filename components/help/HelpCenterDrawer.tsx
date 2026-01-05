@@ -215,7 +215,7 @@ export const HelpCenterDrawer = () => {
             <div
                 className={`
                     absolute right-0 top-0 h-full
-                    bg-[var(--color-surface-card)] border-l border-[var(--color-surface-border)]
+                    bg-card border-l border-surface
                     shadow-2xl flex flex-col transition-[transform,width] duration-200
                     ${isOpen ? 'translate-x-0' : 'translate-x-full'}
                 `}
@@ -224,15 +224,15 @@ export const HelpCenterDrawer = () => {
                 aria-modal="true"
                 aria-label={t('help.drawer.title')}
             >
-                <div className="flex items-start justify-between px-5 py-4 border-b border-[var(--color-surface-border)]">
+                <div className="flex items-start justify-between px-5 py-4 border-b border-surface">
                     <div>
-                        <div className="text-lg font-bold text-[var(--color-text-main)]">{t('help.drawer.title')}</div>
-                        <div className="text-xs text-[var(--color-text-muted)]">{t('help.drawer.subtitle')}</div>
+                        <div className="text-lg font-bold text-main">{t('help.drawer.title')}</div>
+                        <div className="text-xs text-muted">{t('help.drawer.subtitle')}</div>
                     </div>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={() => setIsExpanded((prev) => !prev)}
-                            className="p-1 rounded-full text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)] transition-colors"
+                            className="p-1 rounded-full text-muted hover:bg-surface-hover hover:text-main transition-colors"
                             aria-label={isExpanded ? t('help.drawer.collapse') : t('help.drawer.expand')}
                             aria-pressed={isExpanded}
                             title={isExpanded ? t('help.drawer.collapseTitle') : t('help.drawer.expandTitle')}
@@ -243,7 +243,7 @@ export const HelpCenterDrawer = () => {
                         </button>
                         <button
                             onClick={closeHelpCenter}
-                            className="p-1 rounded-full text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)] transition-colors"
+                            className="p-1 rounded-full text-muted hover:bg-surface-hover hover:text-main transition-colors"
                             aria-label={t('help.drawer.close')}
                         >
                             <span className="material-symbols-outlined text-[20px]">close</span>
@@ -251,7 +251,7 @@ export const HelpCenterDrawer = () => {
                     </div>
                 </div>
 
-                <div className="px-5 py-4 border-b border-[var(--color-surface-border)]">
+                <div className="px-5 py-4 border-b border-surface">
                     <Input
                         ref={searchInputRef}
                         icon="search"
@@ -270,24 +270,24 @@ export const HelpCenterDrawer = () => {
                 <div className="flex-1 overflow-hidden">
                     {normalizedQuery ? (
                         <div className="h-full overflow-y-auto px-5 py-4 space-y-4">
-                            <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+                            <div className="text-[10px] font-bold uppercase tracking-wider text-muted">
                                 {t('help.drawer.searchResults')}
                             </div>
                             {searchResults.length === 0 && (
                                 <div className="space-y-3">
-                                    <div className="text-sm text-[var(--color-text-muted)] bg-[var(--color-surface-bg)] border border-dashed border-[var(--color-surface-border)] rounded-xl p-4">
+                                    <div className="text-sm text-muted bg-surface border border-dashed border-surface rounded-xl p-4">
                                         {t('help.drawer.noResults')}
                                     </div>
-                                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-4 space-y-3">
+                                    <div className="rounded-2xl border border-surface bg-surface p-4 space-y-3">
                                         <div className="flex items-start gap-3">
-                                            <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">
+                                            <span className="material-symbols-outlined text-[20px] text-subtle">
                                                 auto_awesome
                                             </span>
                                             <div>
-                                                <div className="text-sm font-semibold text-[var(--color-text-main)]">
+                                                <div className="text-sm font-semibold text-main">
                                                     {t('help.drawer.askAiTitle')}
                                                 </div>
-                                                <div className="text-xs text-[var(--color-text-muted)] mt-1">
+                                                <div className="text-xs text-muted mt-1">
                                                     {t('help.drawer.askAiSubtitle')}
                                                 </div>
                                             </div>
@@ -296,19 +296,19 @@ export const HelpCenterDrawer = () => {
                                             type="button"
                                             onClick={handleAiSearch}
                                             disabled={isAiLoading}
-                                            className="w-full text-left rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] hover:bg-[var(--color-surface-hover)] transition-colors px-3 py-2 text-sm font-semibold text-[var(--color-text-main)] disabled:opacity-60"
+                                            className="w-full text-left rounded-xl border border-surface bg-card hover:bg-surface-hover transition-colors px-3 py-2 text-sm font-semibold text-main disabled:opacity-60"
                                         >
                                             {isAiLoading
                                                 ? t('help.drawer.askAiLoading')
                                                 : t('help.drawer.askAiPrompt').replace('{query}', trimmedQuery)}
                                         </button>
                                         {aiError && (
-                                            <div className="text-xs text-[var(--color-error)]">
+                                            <div className="text-xs text-error">
                                                 {aiError}
                                             </div>
                                         )}
                                         {aiAnswer && (
-                                            <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 text-xs text-[var(--color-text-muted)] leading-relaxed">
+                                            <div className="rounded-xl border border-surface bg-card p-3 text-xs text-muted leading-relaxed">
                                                 {aiAnswer}
                                             </div>
                                         )}
@@ -319,21 +319,21 @@ export const HelpCenterDrawer = () => {
                                 <button
                                     key={result.key}
                                     onClick={() => handleResultClick(result)}
-                                    className="w-full text-left rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] hover:bg-[var(--color-surface-hover)] transition-colors p-4"
+                                    className="w-full text-left rounded-2xl border border-surface bg-surface hover:bg-surface-hover transition-colors p-4"
                                 >
                                     <div className="flex items-center justify-between gap-2">
-                                        <div className="text-sm font-semibold text-[var(--color-text-main)]">
+                                        <div className="text-sm font-semibold text-main">
                                             {result.title}
                                         </div>
-                                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted">
                                             {result.type === 'page' ? t('help.drawer.resultPage') : t('help.drawer.resultSection')}
                                         </span>
                                     </div>
-                                    <div className="text-xs text-[var(--color-text-muted)] mt-1">
+                                    <div className="text-xs text-muted mt-1">
                                         {result.context}
                                     </div>
                                     {result.detail && (
-                                        <div className="text-[11px] text-[var(--color-text-subtle)] mt-2">
+                                        <div className="text-[11px] text-subtle mt-2">
                                             {result.detail}
                                         </div>
                                     )}
@@ -342,10 +342,10 @@ export const HelpCenterDrawer = () => {
                         </div>
                     ) : (
                         <div className="h-full grid grid-cols-1 md:grid-cols-[240px_minmax(0,1fr)] overflow-hidden">
-                            <aside className="border-r border-[var(--color-surface-border)] h-full overflow-y-auto px-4 py-4 space-y-5">
+                            <aside className="border-r border-surface h-full overflow-y-auto px-4 py-4 space-y-5">
                                 {categories.map(([category, pages]) => (
                                     <div key={category} className="space-y-2">
-                                        <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">
                                             {resolveCategoryLabel(category)}
                                         </div>
                                         <div className="space-y-2">
@@ -360,8 +360,8 @@ export const HelpCenterDrawer = () => {
                                                             className={`
                                                                 w-full text-left px-3 py-2 rounded-xl text-sm font-semibold transition-colors flex items-center justify-between gap-2
                                                                 ${isActive
-                                                                    ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)]'
-                                                                    : 'text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'
+                                                                    ? 'bg-primary text-on-primary'
+                                                                    : 'text-main hover:bg-surface-hover'
                                                                 }
                                                             `}
                                                         >
@@ -371,15 +371,15 @@ export const HelpCenterDrawer = () => {
                                                             </span>
                                                         </button>
                                                         {isExpandedNav && (
-                                                            <div className="ml-2 pl-3 border-l border-[var(--color-surface-border)] space-y-1">
+                                                            <div className="ml-2 pl-3 border-l border-surface space-y-1">
                                                                 {page.sections.map(section => (
                                                                     <button
                                                                         key={`${page.id}-${section.id}`}
                                                                         onClick={() => setActiveSection(section.id)}
                                                                         className={`w-full text-left text-xs px-2 py-1 rounded-lg transition-colors ${
                                                                             activeSectionId === section.id
-                                                                                ? 'text-[var(--color-primary)] bg-[var(--color-surface-hover)]'
-                                                                                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                                                                                ? 'text-primary bg-surface-hover'
+                                                                                : 'text-muted hover:text-main'
                                                                         }`}
                                                                     >
                                                                         {section.title}

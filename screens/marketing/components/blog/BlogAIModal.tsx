@@ -79,15 +79,15 @@ export const BlogAIModal: React.FC<BlogAIModalProps> = ({ isOpen, onClose, onGen
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className="relative bg-[var(--color-surface-card)] w-full max-w-2xl rounded-xl shadow-2xl border border-[var(--color-surface-border)] overflow-hidden"
+                className="relative bg-card w-full max-w-2xl rounded-xl shadow-2xl border border-surface overflow-hidden"
             >
                 {/* Header */}
-                <div className="p-4 border-b border-[var(--color-surface-border)] flex items-center justify-between bg-[var(--color-surface-bg)]">
-                    <div className="flex items-center gap-2 text-[var(--color-primary)]">
+                <div className="p-4 border-b border-surface flex items-center justify-between bg-surface">
+                    <div className="flex items-center gap-2 text-primary">
                         <Sparkles size={20} className="fill-current" />
                         <h3 className="font-semibold text-lg">CORA Blog Assistant</h3>
                     </div>
-                    <button onClick={onClose} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors">
+                    <button onClick={onClose} className="text-muted hover:text-main transition-colors">
                         <X size={20} />
                     </button>
                 </div>
@@ -95,18 +95,18 @@ export const BlogAIModal: React.FC<BlogAIModalProps> = ({ isOpen, onClose, onGen
                 {/* Body */}
                 <div className="p-6 space-y-6">
                     <div className="space-y-2">
-                        <label className="text-sm font-medium text-[var(--color-text-main)]">What should the blog post be about?</label>
+                        <label className="text-sm font-medium text-main">What should the blog post be about?</label>
                         <textarea
                             value={prompt}
                             onChange={(e) => setPrompt(e.target.value)}
                             placeholder="E.g. The future of remote work in 2025 and why async communication is key..."
-                            className="w-full h-32 p-3 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] resize-none"
+                            className="w-full h-32 p-3 rounded-lg border border-surface bg-surface text-main placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-primary resize-none"
                         />
                         <div className="flex justify-end">
                             <button
                                 onClick={handleSuggestTopics}
                                 disabled={isSuggestingTopics || !projectId}
-                                className="text-xs text-[var(--color-primary)] font-medium hover:underline flex items-center gap-1 disabled:opacity-50"
+                                className="text-xs text-primary font-medium hover:underline flex items-center gap-1 disabled:opacity-50"
                             >
                                 {isSuggestingTopics ? (
                                     <span className="material-symbols-outlined animate-spin text-[14px]">progress_activity</span>
@@ -120,16 +120,16 @@ export const BlogAIModal: React.FC<BlogAIModalProps> = ({ isOpen, onClose, onGen
 
                     {suggestedTopics.length > 0 && (
                         <div className="space-y-2">
-                            <label className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wider">Suggested Topics</label>
+                            <label className="text-xs font-medium text-muted uppercase tracking-wider">Suggested Topics</label>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 {suggestedTopics.map((topic, i) => (
                                     <button
                                         key={i}
                                         onClick={() => setPrompt(topic.title)}
-                                        className="text-left p-3 rounded-lg border border-[var(--color-surface-border)] hover:border-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 transition-all group"
+                                        className="text-left p-3 rounded-lg border border-surface hover:border-primary hover:bg-primary/5 transition-all group"
                                     >
-                                        <div className="font-medium text-sm text-[var(--color-text-main)] group-hover:text-[var(--color-primary)]">{topic.title}</div>
-                                        <div className="text-xs text-[var(--color-text-muted)] mt-1">{topic.rationale}</div>
+                                        <div className="font-medium text-sm text-main group-hover:text-primary">{topic.title}</div>
+                                        <div className="text-xs text-muted mt-1">{topic.rationale}</div>
                                     </button>
                                 ))}
                             </div>
@@ -138,11 +138,11 @@ export const BlogAIModal: React.FC<BlogAIModalProps> = ({ isOpen, onClose, onGen
 
                     <div className="flex gap-4">
                         <div className="flex-1 space-y-2">
-                            <label className="text-sm font-medium text-[var(--color-text-main)]">Language</label>
+                            <label className="text-sm font-medium text-main">Language</label>
                             <select
                                 value={selectedLanguage}
                                 onChange={(e) => setSelectedLanguage(e.target.value as 'en' | 'de')}
-                                className="w-full p-2.5 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] text-[var(--color-text-main)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] appearance-none"
+                                className="w-full p-2.5 rounded-lg border border-surface bg-surface text-main focus:outline-none focus:ring-1 focus:ring-primary appearance-none"
                             >
                                 <option value="en">English (English)</option>
                                 <option value="de">German (Deutsch)</option>
@@ -150,12 +150,12 @@ export const BlogAIModal: React.FC<BlogAIModalProps> = ({ isOpen, onClose, onGen
                         </div>
 
                         <div className="space-y-2">
-                            <label className="text-sm font-medium text-[var(--color-text-main)]">Web Search</label>
+                            <label className="text-sm font-medium text-main">Web Search</label>
                             <button
                                 onClick={() => setUseSearch(!useSearch)}
                                 className={`flex items-center gap-2 p-2.5 rounded-lg border transition-all ${useSearch
-                                    ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]'
-                                    : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] text-[var(--color-text-muted)]'
+                                    ? 'bg-primary/10 border-primary text-primary'
+                                    : 'bg-surface border-surface text-muted'
                                     }`}
                                 title="Enable Google Search for sources"
                             >

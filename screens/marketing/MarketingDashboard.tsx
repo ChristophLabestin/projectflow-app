@@ -34,7 +34,7 @@ export const MarketingDashboard = () => {
         <div className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Marketing Funnel */}
-                <div className="bg-[var(--color-surface-card)] rounded-xl border border-[var(--color-surface-border)] p-6">
+                <div className="bg-card rounded-xl border border-surface p-6">
                     <h3 className="h4 mb-6">Marketing Funnel</h3>
                     <div className="space-y-4">
                         {funnel.map((stage, index) => {
@@ -53,13 +53,13 @@ export const MarketingDashboard = () => {
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="h-8 bg-[var(--color-surface-hover)] rounded-md overflow-hidden relative">
+                                    <div className="h-8 bg-surface-hover rounded-md overflow-hidden relative">
                                         <div
-                                            className="h-full bg-[var(--color-primary)] opacity-20 absolute top-0 left-0"
+                                            className="h-full bg-primary opacity-20 absolute top-0 left-0"
                                             style={{ width: `${widthPercent}%` }}
                                         ></div>
                                         <div
-                                            className="h-full bg-[var(--color-primary)] opacity-60 absolute top-0 left-0 rounded-r-md transition-all duration-500 ease-out"
+                                            className="h-full bg-primary opacity-60 absolute top-0 left-0 rounded-r-md transition-all duration-500 ease-out"
                                             style={{ width: `${widthPercent * 0.8}%` }} // Main bar slightly shorter for visual effect
                                         ></div>
                                     </div>
@@ -71,28 +71,28 @@ export const MarketingDashboard = () => {
 
                 {/* Strategy Overview & Budget */}
                 <div className="space-y-6">
-                    <div className="bg-[var(--color-surface-card)] rounded-xl border border-[var(--color-surface-border)] p-6">
+                    <div className="bg-card rounded-xl border border-surface p-6">
                         <h3 className="h4 mb-4">Total Budget</h3>
                         <div className="flex items-end gap-2 mb-2">
                             <span className="text-3xl font-bold">${totalSpent.toLocaleString()}</span>
-                            <span className="text-[var(--color-text-muted)] mb-1"> / ${totalBudget.toLocaleString()}</span>
+                            <span className="text-muted mb-1"> / ${totalBudget.toLocaleString()}</span>
                         </div>
-                        <div className="w-full h-3 bg-[var(--color-surface-hover)] rounded-full overflow-hidden">
+                        <div className="w-full h-3 bg-surface-hover rounded-full overflow-hidden">
                             <div
                                 className="h-full bg-green-500 rounded-full transition-all duration-500"
                                 style={{ width: `${Math.min(budgetUtilization, 100)}%` }}
                             ></div>
                         </div>
-                        <p className="text-xs text-[var(--color-text-muted)] mt-2 text-right">{budgetUtilization.toFixed(1)}% Utilized</p>
+                        <p className="text-xs text-muted mt-2 text-right">{budgetUtilization.toFixed(1)}% Utilized</p>
                     </div>
 
-                    <div className="bg-[var(--color-surface-card)] rounded-xl border border-[var(--color-surface-border)] p-6">
+                    <div className="bg-card rounded-xl border border-surface p-6">
                         <h3 className="h4 mb-6">Budget Allocation</h3>
                         <div className="h-48">
                             {budgetData.length > 0 ? (
                                 <BarChart data={budgetData} />
                             ) : (
-                                <div className="h-full flex items-center justify-center text-[var(--color-text-muted)]">
+                                <div className="h-full flex items-center justify-center text-muted">
                                     No active strategy campaigns.
                                 </div>
                             )}
@@ -102,24 +102,24 @@ export const MarketingDashboard = () => {
             </div>
 
             {/* Strategy Calendar (Simplified List for now) */}
-            <div className="bg-[var(--color-surface-card)] rounded-xl border border-[var(--color-surface-border)] p-6">
+            <div className="bg-card rounded-xl border border-surface p-6">
                 <div className="flex justify-between items-center mb-6">
                     <h3 className="h4">Marketing Calendar</h3>
-                    <button className="text-sm text-[var(--color-primary)] hover:underline">View Full Calendar</button>
+                    <button className="text-sm text-primary hover:underline">View Full Calendar</button>
                 </div>
                 <div className="space-y-3">
                     {campaigns.length === 0 && (
-                        <p className="text-[var(--color-text-muted)] text-center py-4">No scheduled campaigns.</p>
+                        <p className="text-muted text-center py-4">No scheduled campaigns.</p>
                     )}
                     {campaigns.map(c => (
-                        <div key={c.id} className="flex items-center gap-4 p-3 border-b border-[var(--color-surface-border)] last:border-0 hover:bg-[var(--color-surface-hover)] rounded transition-colors">
-                            <div className="flex flex-col items-center justify-center w-12 h-12 bg-[var(--color-surface-hover)] rounded-lg text-xs font-bold shrink-0">
-                                <span className="text-[var(--color-primary)]">{new Date(c.startDate || new Date()).getDate()}</span>
-                                <span className="text-[var(--color-text-muted)] uppercase">{new Date(c.startDate || new Date()).toLocaleString('default', { month: 'short' })}</span>
+                        <div key={c.id} className="flex items-center gap-4 p-3 border-b border-surface last:border-0 hover:bg-surface-hover rounded transition-colors">
+                            <div className="flex flex-col items-center justify-center w-12 h-12 bg-surface-hover rounded-lg text-xs font-bold shrink-0">
+                                <span className="text-primary">{new Date(c.startDate || new Date()).getDate()}</span>
+                                <span className="text-muted uppercase">{new Date(c.startDate || new Date()).toLocaleString('default', { month: 'short' })}</span>
                             </div>
                             <div className="flex-1">
                                 <h4 className="font-bold text-sm">{c.name}</h4>
-                                <p className="text-xs text-[var(--color-text-muted)] line-clamp-1">{c.description}</p>
+                                <p className="text-xs text-muted line-clamp-1">{c.description}</p>
                             </div>
                             <div className="flex gap-2">
                                 {c.channels.map(ch => (

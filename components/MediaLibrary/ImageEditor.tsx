@@ -131,7 +131,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel,
 
     return createPortal(
         <div className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/90 backdrop-blur-sm">
-            <div className="w-[1100px] h-[800px] max-w-[95vw] max-h-[90vh] bg-[var(--color-surface-card)] rounded-xl flex overflow-hidden shadow-2xl">
+            <div className="w-[1100px] h-[800px] max-w-[95vw] max-h-[90vh] bg-card rounded-xl flex overflow-hidden shadow-2xl">
                 {/* Canvas Area */}
                 <div className="flex-1 relative bg-black flex items-center justify-center p-8 overflow-hidden">
                     <div className="relative max-h-full max-w-full">
@@ -161,22 +161,22 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel,
                 </div>
 
                 {/* Controls Sidebar */}
-                <div className="w-80 bg-[var(--color-surface-paper)] border-l border-[var(--color-surface-border)] flex flex-col">
+                <div className="w-80 bg-surface-paper border-l border-surface flex flex-col">
                     {/* Header */}
-                    <div className="p-4 border-b border-[var(--color-surface-border)] flex justify-between items-center">
+                    <div className="p-4 border-b border-surface flex justify-between items-center">
                         <h3 className="font-bold">Edit Image</h3>
-                        <button onClick={onCancel} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]">
+                        <button onClick={onCancel} className="text-muted hover:text-main">
                             <span className="material-symbols-outlined">close</span>
                         </button>
                     </div>
 
                     {/* Tabs */}
-                    <div className="flex border-b border-[var(--color-surface-border)]">
+                    <div className="flex border-b border-surface">
                         <button
                             onClick={() => setActiveTab('crop')}
                             className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'crop'
-                                ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-muted hover:text-main'
                                 }`}
                         >
                             <div className="flex items-center justify-center gap-2">
@@ -187,8 +187,8 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel,
                         <button
                             onClick={() => setActiveTab('filters')}
                             className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'filters'
-                                ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-muted hover:text-main'
                                 }`}
                         >
                             <div className="flex items-center justify-center gap-2">
@@ -210,8 +210,8 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel,
                                                 key={ratio.label}
                                                 onClick={() => setAspect(ratio.value)}
                                                 className={`py-2 text-[10px] font-bold border rounded-lg transition-all ${aspect === ratio.value
-                                                    ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-[var(--color-primary-text)]'
-                                                    : 'bg-white text-zinc-600 border-zinc-200 hover:border-[var(--color-primary)]/50'
+                                                    ? 'bg-primary border-primary text-on-primary'
+                                                    : 'bg-white text-zinc-600 border-zinc-200 hover:border-primary/50'
                                                     }`}
                                             >
                                                 {ratio.label}
@@ -270,7 +270,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel,
                                         setRotation(0);
                                         setAspect(undefined);
                                     }}
-                                    className="w-full py-2 text-xs font-medium text-[var(--color-text-muted)] border border-zinc-200 dark:border-zinc-700 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-center gap-2"
+                                    className="w-full py-2 text-xs font-medium text-muted border border-zinc-200 dark:border-zinc-700 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors flex items-center justify-center gap-2"
                                 >
                                     <span className="material-symbols-outlined text-[16px]">restart_alt</span>
                                     Reset Crop & Orientation
@@ -306,7 +306,7 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel,
                                 ))}
                                 <button
                                     onClick={() => setFilters(DEFAULT_FILTERS)}
-                                    className="w-full py-2 text-xs font-medium text-[var(--color-primary)] border border-[var(--color-primary)] rounded hover:bg-[var(--color-primary)]/5"
+                                    className="w-full py-2 text-xs font-medium text-primary border border-primary rounded hover:bg-primary/5"
                                 >
                                     Reset Filters
                                 </button>
@@ -315,11 +315,11 @@ export const ImageEditor: React.FC<ImageEditorProps> = ({ src, onSave, onCancel,
                     </div>
 
                     {/* Footer */}
-                    <div className="p-4 border-t border-[var(--color-surface-border)] flex gap-2">
+                    <div className="p-4 border-t border-surface flex gap-2">
                         <button
                             onClick={handleSave}
                             disabled={isProcessing || !completedCrop}
-                            className="flex-1 py-2.5 bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded-lg font-medium hover:brightness-110 flex items-center justify-center gap-2 disabled:opacity-50"
+                            className="flex-1 py-2.5 bg-primary text-on-primary rounded-lg font-medium hover:brightness-110 flex items-center justify-center gap-2 disabled:opacity-50"
                         >
                             {isProcessing && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
                             Save Changes

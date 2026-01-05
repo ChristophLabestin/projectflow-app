@@ -128,15 +128,15 @@ export const PinnedProjectPill = () => {
                 className={`
                     group flex items-center gap-2 h-8 pl-1 pr-2.5 rounded-lg transition-all border
                     ${isOpen
-                        ? 'bg-[var(--color-surface-hover)] border-[var(--color-surface-border)] shadow-inner'
-                        : 'bg-[var(--color-surface-bg)] border-transparent hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-surface-border)]'
+                        ? 'bg-surface-hover border-surface shadow-inner'
+                        : 'bg-surface border-transparent hover:bg-surface-hover hover:border-surface'
                     }
                 `}
                 title={`${t('pinned.pinnedProject', 'Pinned Project')}: ${pinnedProject.title}`}
             >
                 {/* Project Icon */}
                 <div className={`
-                    size-6 rounded-md flex items-center justify-center overflow-hidden shrink-0 border border-transparent group-hover:border-[var(--color-surface-border)] transition-all
+                    size-6 rounded-md flex items-center justify-center overflow-hidden shrink-0 border border-transparent group-hover:border-surface transition-all
                     ${pinnedProject.squareIcon ? 'bg-transparent' : 'bg-gradient-to-br from-indigo-500 to-purple-600'}
                     font-bold text-white text-[10px]
                 `}>
@@ -148,13 +148,13 @@ export const PinnedProjectPill = () => {
                 </div>
 
                 <div className="flex flex-col items-start leading-tight max-w-[120px] hidden sm:flex">
-                    <span className="text-[12px] font-bold text-[var(--color-text-main)] truncate w-full">{pinnedProject.title}</span>
-                    <span className="text-[10px] text-[var(--color-text-muted)] group-hover:text-[var(--color-text-subtle)] transition-colors">
+                    <span className="text-[12px] font-bold text-main truncate w-full">{pinnedProject.title}</span>
+                    <span className="text-[10px] text-muted group-hover:text-subtle transition-colors">
                         {health ? `${health.score} ${t('pinned.healthScore')}` : t('pinned.loading')}
                     </span>
                 </div>
 
-                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)] group-hover:text-[var(--color-text-main)] transition-colors">
+                <span className="material-symbols-outlined text-[18px] text-muted group-hover:text-main transition-colors">
                     {isOpen ? 'expand_less' : 'expand_more'}
                 </span>
             </button>
@@ -163,7 +163,7 @@ export const PinnedProjectPill = () => {
             {isOpen && createPortal(
                 <div
                     id="pinned-project-dropdown"
-                    className="fixed z-[100] w-[360px] rounded-2xl shadow-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] overflow-hidden origin-top animate-in fade-in zoom-in-95 duration-200"
+                    className="fixed z-[100] w-[360px] rounded-2xl shadow-2xl border border-surface bg-card overflow-hidden origin-top animate-in fade-in zoom-in-95 duration-200"
                     style={{
                         top: dropdownCoords.top,
                         left: dropdownCoords.left,
@@ -171,15 +171,15 @@ export const PinnedProjectPill = () => {
                     }}
                 >
                     {/* Header */}
-                    <div className="relative px-5 py-4 border-b border-[var(--color-surface-border)] bg-gradient-to-r from-[var(--color-surface-card)] to-[var(--color-surface-bg)] overflow-hidden">
+                    <div className="relative px-5 py-4 border-b border-surface bg-gradient-to-r from-[var(--color-surface-card)] to-[var(--color-surface-bg)] overflow-hidden">
                         <div className="absolute -top-10 -right-8 opacity-[0.08] pointer-events-none">
                             <span className="material-symbols-outlined text-[140px]">insights</span>
                         </div>
 
                         <div className="relative z-10 flex items-start gap-4">
                             <div className={`
-                                size-11 rounded-2xl flex items-center justify-center overflow-hidden shrink-0 border border-[var(--color-surface-border)]
-                                ${pinnedProject.squareIcon ? 'bg-[var(--color-surface-paper)]' : 'bg-gradient-to-br from-indigo-500 to-purple-600'}
+                                size-11 rounded-2xl flex items-center justify-center overflow-hidden shrink-0 border border-surface
+                                ${pinnedProject.squareIcon ? 'bg-surface-paper' : 'bg-gradient-to-br from-indigo-500 to-purple-600'}
                                 font-bold text-white text-sm
                             `}>
                                 {pinnedProject.squareIcon ? (
@@ -190,36 +190,36 @@ export const PinnedProjectPill = () => {
                             </div>
 
                             <div className="min-w-0">
-                                <div className="text-[10px] uppercase tracking-[0.3em] text-[var(--color-text-subtle)] font-bold">
+                                <div className="text-[10px] uppercase tracking-[0.3em] text-subtle font-bold">
                                     {t('pinned.pinnedProject', 'Pinned Project')}
                                 </div>
-                                <h4 className="text-sm font-bold text-[var(--color-text-main)] line-clamp-1">{pinnedProject.title}</h4>
-                                <div className="text-[11px] text-[var(--color-text-muted)]">
+                                <h4 className="text-sm font-bold text-main line-clamp-1">{pinnedProject.title}</h4>
+                                <div className="text-[11px] text-muted">
                                     {health ? `${health.score} ${t('pinned.healthScore')}` : t('pinned.loading')}
                                 </div>
                             </div>
 
-                            <div className="ml-auto flex flex-col items-center justify-center size-14 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-paper)] shadow-sm shrink-0">
+                            <div className="ml-auto flex flex-col items-center justify-center size-14 rounded-2xl border border-surface bg-surface-paper shadow-sm shrink-0">
                                 <span className={`text-lg font-black ${getHealthColor(health?.status)}`}>{health?.score || 0}</span>
-                                <span className="text-[8px] font-bold text-[var(--color-text-subtle)] uppercase">{t('pinned.score')}</span>
+                                <span className="text-[8px] font-bold text-subtle uppercase">{t('pinned.score')}</span>
                             </div>
                         </div>
 
                         <div className="mt-3 flex items-center gap-2">
                             <Badge status={health?.status} />
-                            <span className="text-[10px] text-[var(--color-text-muted)] font-medium uppercase tracking-wider">
+                            <span className="text-[10px] text-muted font-medium uppercase tracking-wider">
                                 {health ? `${t(`trend.${health.trend}`)} ${t('pinned.trend')}` : t('pinned.loading')}
                             </span>
                         </div>
 
                         <div className={`mt-4 grid gap-2 ${stats.length > 2 ? 'grid-cols-3' : 'grid-cols-2'}`}>
                             {stats.map(stat => (
-                                <div key={stat.id} className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-paper)] px-3 py-2">
-                                    <div className="flex items-center gap-2 text-[var(--color-text-subtle)] text-[11px] font-medium">
+                                <div key={stat.id} className="rounded-xl border border-surface bg-surface-paper px-3 py-2">
+                                    <div className="flex items-center gap-2 text-subtle text-[11px] font-medium">
                                         <span className="material-symbols-outlined text-[14px]">{stat.icon}</span>
                                         <span className="uppercase tracking-wider">{stat.label}</span>
                                     </div>
-                                    <div className="text-lg font-black text-[var(--color-text-main)] leading-tight mt-1">
+                                    <div className="text-lg font-black text-main leading-tight mt-1">
                                         {stat.value}
                                     </div>
                                 </div>
@@ -228,8 +228,8 @@ export const PinnedProjectPill = () => {
                     </div>
 
                     {/* Health Factors */}
-                    <div className="px-5 py-4 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-paper)]">
-                        <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-[var(--color-text-subtle)]">
+                    <div className="px-5 py-4 border-b border-surface bg-surface-paper">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.3em] text-subtle">
                             {t('pinned.healthScore')}
                         </div>
                         {health && health.factors.length > 0 ? (
@@ -237,26 +237,26 @@ export const PinnedProjectPill = () => {
                                 {health.factors.slice(0, 2).map(factor => {
                                     const { label, description } = getHealthFactorText(factor, t);
                                     return (
-                                        <div key={factor.id} className="flex gap-2 items-start bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] p-3 rounded-xl">
+                                        <div key={factor.id} className="flex gap-2 items-start bg-card border border-surface p-3 rounded-xl">
                                             <div className={`mt-1 size-2 rounded-full shrink-0 ${factor.type === 'positive' ? 'bg-emerald-500' : factor.type === 'negative' ? 'bg-rose-500' : 'bg-slate-400'}`} />
-                                            <p className="text-[11px] text-[var(--color-text-muted)] leading-tight">
-                                                <span className="font-bold text-[var(--color-text-main)]">{label}:</span> {description}
+                                            <p className="text-[11px] text-muted leading-tight">
+                                                <span className="font-bold text-main">{label}:</span> {description}
                                             </p>
                                         </div>
                                     );
                                 })}
                             </div>
                         ) : (
-                            <div className="mt-3 text-xs text-[var(--color-text-muted)]">{t('pinned.loading')}</div>
+                            <div className="mt-3 text-xs text-muted">{t('pinned.loading')}</div>
                         )}
                     </div>
 
                     {/* Quick Actions Grid */}
-                    <div className="px-4 py-3 bg-[var(--color-surface-bg)]">
+                    <div className="px-4 py-3 bg-surface">
                         <div className="grid grid-cols-3 gap-2">
                         <button
                             onClick={() => handleAction(() => openTaskCreateModal(pinnedProject.id))}
-                            className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl border border-transparent bg-[var(--color-surface-card)] hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-surface-border)] transition-all group/btn"
+                            className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl border border-transparent bg-card hover:bg-surface-hover hover:border-surface transition-all group/btn"
                         >
                             <div className="size-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center group-hover/btn:scale-110 transition-transform">
                                 <span className="material-symbols-outlined text-[18px]">add_task</span>
@@ -267,7 +267,7 @@ export const PinnedProjectPill = () => {
                         {(modules.includes('ideas') || modules.length === 0) && (
                             <button
                                 onClick={() => handleAction(() => openIdeaCreateModal(pinnedProject.id))}
-                                className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl border border-transparent bg-[var(--color-surface-card)] hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-surface-border)] transition-all group/btn"
+                                className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl border border-transparent bg-card hover:bg-surface-hover hover:border-surface transition-all group/btn"
                             >
                                 <div className="size-8 rounded-full bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover/btn:scale-110 transition-transform">
                                     <span className="material-symbols-outlined text-[18px]">lightbulb</span>
@@ -279,7 +279,7 @@ export const PinnedProjectPill = () => {
                         {(modules.includes('issues') || modules.length === 0) && (
                             <button
                                 onClick={() => handleAction(() => openIssueCreateModal(pinnedProject.id))}
-                                className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl border border-transparent bg-[var(--color-surface-card)] hover:bg-[var(--color-surface-hover)] hover:border-[var(--color-surface-border)] transition-all group/btn"
+                                className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl border border-transparent bg-card hover:bg-surface-hover hover:border-surface transition-all group/btn"
                             >
                                 <div className="size-8 rounded-full bg-rose-100 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400 flex items-center justify-center group-hover/btn:scale-110 transition-transform">
                                     <span className="material-symbols-outlined text-[18px]">bug_report</span>
@@ -291,17 +291,17 @@ export const PinnedProjectPill = () => {
                     </div>
 
                     {/* Navigation Footer */}
-                    <div className="p-3 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-card)] flex gap-2">
+                    <div className="p-3 border-t border-surface bg-card flex gap-2">
                         <button
                             onClick={() => handleAction(() => navigate(`/project/${pinnedProject.id}`))}
-                            className="flex-1 h-8 rounded-lg bg-[var(--color-surface-paper)] border border-[var(--color-surface-border)] hover:border-indigo-500 hover:text-indigo-500 text-xs font-semibold text-[var(--color-text-muted)] transition-all shadow-sm flex items-center justify-center gap-2"
+                            className="flex-1 h-8 rounded-lg bg-surface-paper border border-surface hover:border-indigo-500 hover:text-indigo-500 text-xs font-semibold text-muted transition-all shadow-sm flex items-center justify-center gap-2"
                         >
                             <span className="material-symbols-outlined text-[16px]">dashboard</span>
                             {t('quickActions.overview')}
                         </button>
                         <button
                             onClick={() => handleAction(() => navigate(`/project/${pinnedProject.id}/tasks`))}
-                            className="flex-1 h-8 rounded-lg bg-[var(--color-surface-paper)] border border-[var(--color-surface-border)] hover:border-indigo-500 hover:text-indigo-500 text-xs font-semibold text-[var(--color-text-muted)] transition-all shadow-sm flex items-center justify-center gap-2"
+                            className="flex-1 h-8 rounded-lg bg-surface-paper border border-surface hover:border-indigo-500 hover:text-indigo-500 text-xs font-semibold text-muted transition-all shadow-sm flex items-center justify-center gap-2"
                         >
                             <span className="material-symbols-outlined text-[16px]">list_alt</span>
                             {t('quickActions.tasks')}

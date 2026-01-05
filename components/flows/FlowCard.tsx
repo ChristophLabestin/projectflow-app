@@ -28,7 +28,7 @@ const TYPE_COLORS: Record<string, string> = {
     'UX': 'bg-teal-500/10 text-teal-600 dark:text-teal-400',
     'Architecture': 'bg-orange-500/10 text-orange-600 dark:text-orange-400',
     'Research': 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
-    'default': 'bg-[var(--color-primary)]/10 text-[var(--color-text-main)]',
+    'default': 'bg-primary/10 text-main',
 };
 
 export const FlowCard: React.FC<FlowCardProps> = ({ flow, onClick, isOverlay }) => {
@@ -190,13 +190,13 @@ export const FlowCard: React.FC<FlowCardProps> = ({ flow, onClick, isOverlay }) 
                 }}
             >
                 <div className={`
-                    relative bg-[var(--color-surface-paper)] rounded-xl
-                    border border-[var(--color-surface-border)]
+                    relative bg-surface-paper rounded-xl
+                    border border-surface
                     shadow-[0_2px_8px_-2px_rgba(0,0,0,0.05)] dark:shadow-none
                     transition-all duration-200 ease-out
                     hover:shadow-[0_8px_16px_-4px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_8px_16px_-4px_rgba(0,0,0,0.3)]
-                    hover:-translate-y-0.5 hover:border-[var(--color-primary)]/30
-                    ${isOverlay ? 'shadow-2xl scale-105 rotate-2 cursor-grabbing ring-1 ring-[var(--color-primary)]' : 'cursor-grab active:cursor-grabbing'}
+                    hover:-translate-y-0.5 hover:border-primary/30
+                    ${isOverlay ? 'shadow-2xl scale-105 rotate-2 cursor-grabbing ring-1 ring-primary' : 'cursor-grab active:cursor-grabbing'}
                 `}>
                     <div className="p-3 flex flex-col gap-2">
                         {/* Header: Title & AI Badge */}
@@ -216,7 +216,7 @@ export const FlowCard: React.FC<FlowCardProps> = ({ flow, onClick, isOverlay }) 
                                         </span>
                                     )}
                                 </div>
-                                <h4 className="font-semibold text-[var(--color-text-main)] text-sm leading-snug line-clamp-2 group-hover/card:text-[var(--color-primary)] transition-colors">
+                                <h4 className="font-semibold text-main text-sm leading-snug line-clamp-2 group-hover/card:text-primary transition-colors">
                                     {flow.title}
                                 </h4>
                             </div>
@@ -224,7 +224,7 @@ export const FlowCard: React.FC<FlowCardProps> = ({ flow, onClick, isOverlay }) 
 
                         {/* Description */}
                         {flow.description && (
-                            <p className="text-xs text-[var(--color-text-muted)] line-clamp-2 leading-relaxed">
+                            <p className="text-xs text-muted line-clamp-2 leading-relaxed">
                                 {flow.description}
                             </p>
                         )}
@@ -234,9 +234,9 @@ export const FlowCard: React.FC<FlowCardProps> = ({ flow, onClick, isOverlay }) 
                             <div className="flex items-center gap-1">
                                 {/* Like/Dislike Buttons */}
                                 <button
-                                    className={`flex items-center gap-1 p-1 rounded hover:bg-[var(--color-surface-hover)] transition-colors ${liked
+                                    className={`flex items-center gap-1 p-1 rounded hover:bg-surface-hover transition-colors ${liked
                                         ? 'text-emerald-500'
-                                        : 'text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)]'
+                                        : 'text-subtle hover:text-main'
                                         }`}
                                     onClick={handleLike}
                                     onPointerDown={(e) => e.stopPropagation()} // Prevent drag start
@@ -250,9 +250,9 @@ export const FlowCard: React.FC<FlowCardProps> = ({ flow, onClick, isOverlay }) 
                                 </button>
 
                                 <button
-                                    className={`flex items-center gap-1 justify-center p-1 rounded hover:bg-[var(--color-surface-hover)] transition-colors ${disliked
+                                    className={`flex items-center gap-1 justify-center p-1 rounded hover:bg-surface-hover transition-colors ${disliked
                                         ? 'text-rose-500'
-                                        : 'text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)]'
+                                        : 'text-subtle hover:text-main'
                                         }`}
                                     onClick={handleDislike}
                                     onPointerDown={(e) => e.stopPropagation()}
@@ -268,7 +268,7 @@ export const FlowCard: React.FC<FlowCardProps> = ({ flow, onClick, isOverlay }) 
                                 {/* Comments Button */}
                                 <button
                                     ref={commentButtonRef}
-                                    className={`comment-trigger-btn flex items-center gap-1 p-1 rounded hover:bg-[var(--color-surface-hover)] transition-colors ml-1 ${showComments ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)]'
+                                    className={`comment-trigger-btn flex items-center gap-1 p-1 rounded hover:bg-surface-hover transition-colors ml-1 ${showComments ? 'text-primary bg-primary/10' : 'text-subtle hover:text-main'
                                         }`}
                                     onClick={handleCommentClick}
                                     onPointerDown={(e) => e.stopPropagation()}
@@ -310,7 +310,7 @@ export const FlowCard: React.FC<FlowCardProps> = ({ flow, onClick, isOverlay }) 
             {showComments && (
                 <Portal>
                     <div
-                        className="flow-comment-popover fixed z-50 w-80 bg-[var(--color-surface-paper)] rounded-xl border border-[var(--color-surface-border)] shadow-xl animate-in fade-in zoom-in-95 duration-100 p-4"
+                        className="flow-comment-popover fixed z-50 w-80 bg-surface-paper rounded-xl border border-surface shadow-xl animate-in fade-in zoom-in-95 duration-100 p-4"
                         style={{
                             top: popoverPosition.top,
                             left: popoverPosition.left,
@@ -319,9 +319,9 @@ export const FlowCard: React.FC<FlowCardProps> = ({ flow, onClick, isOverlay }) 
                         }}
                     >
                         {/* Header */}
-                        <div className="flex items-center justify-between mb-3 border-b border-[var(--color-surface-border)] pb-2">
-                            <h4 className="text-xs font-bold text-[var(--color-text-main)]">{t('flows.comments.title')}</h4>
-                            <button onClick={() => setShowComments(false)} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]">
+                        <div className="flex items-center justify-between mb-3 border-b border-surface pb-2">
+                            <h4 className="text-xs font-bold text-main">{t('flows.comments.title')}</h4>
+                            <button onClick={() => setShowComments(false)} className="text-muted hover:text-main">
                                 <span className="material-symbols-outlined text-[16px]">close</span>
                             </button>
                         </div>

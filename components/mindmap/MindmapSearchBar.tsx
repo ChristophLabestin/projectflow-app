@@ -90,10 +90,10 @@ export const MindmapSearchBar = memo(function MindmapSearchBar({ isOpen, onClose
 
     return (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-40 w-full max-w-md px-4">
-            <div className="bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl shadow-xl overflow-hidden">
+            <div className="bg-card border border-surface rounded-2xl shadow-xl overflow-hidden">
                 {/* Search Input */}
-                <div className="flex items-center gap-3 px-4 py-3 border-b border-[var(--color-surface-border)]">
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">search</span>
+                <div className="flex items-center gap-3 px-4 py-3 border-b border-surface">
+                    <span className="material-symbols-outlined text-[20px] text-muted">search</span>
                     <input
                         ref={inputRef}
                         type="text"
@@ -101,19 +101,19 @@ export const MindmapSearchBar = memo(function MindmapSearchBar({ isOpen, onClose
                         value={query}
                         onChange={e => { setQuery(e.target.value); setSelectedIndex(0); }}
                         onKeyDown={handleKeyDown}
-                        className="flex-1 bg-transparent text-[var(--color-text-main)] placeholder-[var(--color-text-muted)] outline-none text-sm"
+                        className="flex-1 bg-transparent text-main placeholder-[var(--color-text-muted)] outline-none text-sm"
                     />
                     {query && (
                         <button
                             onClick={() => setQuery('')}
-                            className="p-1 rounded-lg hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]"
+                            className="p-1 rounded-lg hover:bg-surface-hover text-muted"
                         >
                             <span className="material-symbols-outlined text-[16px]">close</span>
                         </button>
                     )}
                     <button
                         onClick={onClose}
-                        className="px-2 py-1 text-xs font-medium text-[var(--color-text-muted)] bg-[var(--color-surface-hover)] rounded-lg"
+                        className="px-2 py-1 text-xs font-medium text-muted bg-surface-hover rounded-lg"
                     >
                         ESC
                     </button>
@@ -123,7 +123,7 @@ export const MindmapSearchBar = memo(function MindmapSearchBar({ isOpen, onClose
                 {query.length > 0 && (
                     <div className="max-h-64 overflow-y-auto">
                         {results.length === 0 ? (
-                            <div className="px-4 py-6 text-center text-sm text-[var(--color-text-muted)]">
+                            <div className="px-4 py-6 text-center text-sm text-muted">
                                 <span className="material-symbols-outlined text-3xl mb-2 block opacity-50">search_off</span>
                                 No nodes found
                             </div>
@@ -136,11 +136,11 @@ export const MindmapSearchBar = memo(function MindmapSearchBar({ isOpen, onClose
                                         w-full flex items-center gap-3 px-4 py-3 text-left transition-colors
                                         ${index === selectedIndex
                                             ? 'bg-indigo-50 dark:bg-indigo-900/30'
-                                            : 'hover:bg-[var(--color-surface-hover)]'
+                                            : 'hover:bg-surface-hover'
                                         }
                                     `}
                                 >
-                                    <div className="w-8 h-8 rounded-xl bg-[var(--color-surface-hover)] flex items-center justify-center">
+                                    <div className="w-8 h-8 rounded-xl bg-surface-hover flex items-center justify-center">
                                         <span className={`material-symbols-outlined text-[16px] ${node.type === 'project' ? 'text-indigo-500' :
                                                 node.type === 'group' ? 'text-violet-500' :
                                                     node.type === 'idea' ? 'text-amber-500' :
@@ -157,10 +157,10 @@ export const MindmapSearchBar = memo(function MindmapSearchBar({ isOpen, onClose
                                         </span>
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <div className="font-medium text-sm text-[var(--color-text-main)] truncate">
+                                        <div className="font-medium text-sm text-main truncate">
                                             {node.label}
                                         </div>
-                                        <div className="text-xs text-[var(--color-text-muted)] flex items-center gap-2">
+                                        <div className="text-xs text-muted flex items-center gap-2">
                                             <span className="capitalize">{node.type}</span>
                                             {node.groupName && (
                                                 <>
@@ -170,7 +170,7 @@ export const MindmapSearchBar = memo(function MindmapSearchBar({ isOpen, onClose
                                             )}
                                         </div>
                                     </div>
-                                    <span className="material-symbols-outlined text-[16px] text-[var(--color-text-subtle)]">arrow_forward</span>
+                                    <span className="material-symbols-outlined text-[16px] text-subtle">arrow_forward</span>
                                 </button>
                             ))
                         )}
@@ -179,7 +179,7 @@ export const MindmapSearchBar = memo(function MindmapSearchBar({ isOpen, onClose
 
                 {/* Helper text */}
                 {query.length === 0 && (
-                    <div className="px-4 py-4 text-xs text-[var(--color-text-muted)] text-center">
+                    <div className="px-4 py-4 text-xs text-muted text-center">
                         Type to search • ↑↓ Navigate • Enter to select
                     </div>
                 )}

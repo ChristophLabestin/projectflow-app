@@ -76,12 +76,12 @@ export const CreateMarketingCampaignModal: React.FC<CreateMarketingCampaignModal
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl w-full max-w-md shadow-2xl p-6">
+            <div className="bg-card border border-surface rounded-xl w-full max-w-md shadow-2xl p-6">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="h4">
                         {type === 'ad' ? 'New Ad Campaign' : 'New Email Campaign'}
                     </h2>
-                    <button onClick={onClose} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]">
+                    <button onClick={onClose} className="text-muted hover:text-main">
                         <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
@@ -91,7 +91,7 @@ export const CreateMarketingCampaignModal: React.FC<CreateMarketingCampaignModal
                         <label className="block text-sm font-medium mb-1">Campaign Name</label>
                         <input
                             type="text"
-                            className="w-full px-3 py-2 rounded-lg bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)]"
+                            className="w-full px-3 py-2 rounded-lg bg-surface border border-surface"
                             value={name}
                             onChange={e => setName(e.target.value)}
                             required
@@ -103,7 +103,7 @@ export const CreateMarketingCampaignModal: React.FC<CreateMarketingCampaignModal
                             <div>
                                 <label className="block text-sm font-medium mb-1">Platform</label>
                                 <select
-                                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)]"
+                                    className="w-full px-3 py-2 rounded-lg bg-surface border border-surface"
                                     value={platform}
                                     onChange={e => setPlatform(e.target.value)}
                                 >
@@ -117,7 +117,7 @@ export const CreateMarketingCampaignModal: React.FC<CreateMarketingCampaignModal
                                 <div>
                                     <label className="block text-sm font-medium mb-1">Objective</label>
                                     <select
-                                        className="w-full px-3 py-2 rounded-lg bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)]"
+                                        className="w-full px-3 py-2 rounded-lg bg-surface border border-surface"
                                         value={objective}
                                         onChange={e => setObjective(e.target.value)}
                                     >
@@ -130,10 +130,10 @@ export const CreateMarketingCampaignModal: React.FC<CreateMarketingCampaignModal
                                 <div>
                                     <label className="block text-sm font-medium mb-1">Daily Budget</label>
                                     <div className="relative">
-                                        <span className="absolute left-3 top-2 text-[var(--color-text-muted)]">$</span>
+                                        <span className="absolute left-3 top-2 text-muted">$</span>
                                         <input
                                             type="number"
-                                            className="w-full pl-6 pr-3 py-2 rounded-lg bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)]"
+                                            className="w-full pl-6 pr-3 py-2 rounded-lg bg-surface border border-surface"
                                             value={budgetDaily}
                                             onChange={e => setBudgetDaily(e.target.value)}
                                         />
@@ -149,7 +149,7 @@ export const CreateMarketingCampaignModal: React.FC<CreateMarketingCampaignModal
                                 <label className="block text-sm font-medium mb-1">Subject Line</label>
                                 <input
                                     type="text"
-                                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)]"
+                                    className="w-full px-3 py-2 rounded-lg bg-surface border border-surface"
                                     value={subject}
                                     onChange={e => setSubject(e.target.value)}
                                     required
@@ -159,7 +159,7 @@ export const CreateMarketingCampaignModal: React.FC<CreateMarketingCampaignModal
                                 <label className="block text-sm font-medium mb-1">Sender Name</label>
                                 <input
                                     type="text"
-                                    className="w-full px-3 py-2 rounded-lg bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)]"
+                                    className="w-full px-3 py-2 rounded-lg bg-surface border border-surface"
                                     value={senderName}
                                     onChange={e => setSenderName(e.target.value)}
                                     required
@@ -172,13 +172,13 @@ export const CreateMarketingCampaignModal: React.FC<CreateMarketingCampaignModal
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 text-sm font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
+                            className="px-4 py-2 text-sm font-medium text-muted hover:text-main transition-colors"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
-                            className="px-4 py-2 text-sm font-bold bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded-lg hover:opacity-90 disabled:opacity-50"
+                            className="px-4 py-2 text-sm font-bold bg-primary text-on-primary rounded-lg hover:opacity-90 disabled:opacity-50"
                             disabled={loading}
                         >
                             {loading ? 'Creating...' : 'Create Campaign'}

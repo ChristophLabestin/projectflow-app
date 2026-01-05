@@ -16,8 +16,8 @@ export const Card = ({ children, className = '', padding = 'md', hoverable = fal
     return (
         <div
             className={`
-                bg-[var(--color-surface-card)] 
-                border border-[var(--color-surface-border)] 
+                bg-card 
+                border border-surface 
                 rounded-[var(--radius-lg)] 
                 shadow-sm 
                 ${hoverable ? 'hover:shadow-md transition-shadow duration-200 cursor-pointer' : ''} 

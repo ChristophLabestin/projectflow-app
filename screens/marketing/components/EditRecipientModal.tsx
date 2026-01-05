@@ -79,10 +79,10 @@ export const EditRecipientModal: React.FC<EditRecipientModalProps> = ({ isOpen, 
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl w-full max-w-md shadow-2xl p-6">
+            <div className="bg-card border border-surface rounded-xl w-full max-w-md shadow-2xl p-6">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="h4">Edit Recipient</h2>
-                    <button onClick={onClose} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]">
+                    <button onClick={onClose} className="text-muted hover:text-main">
                         <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
@@ -115,7 +115,7 @@ export const EditRecipientModal: React.FC<EditRecipientModalProps> = ({ isOpen, 
                         <div>
                             <label className="block text-sm font-medium mb-1">Gender</label>
                             <select
-                                className="w-full px-3 py-2 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg focus:outline-none focus:border-[var(--color-primary)] text-sm"
+                                className="w-full px-3 py-2 bg-surface border border-surface rounded-lg focus:outline-none focus:border-primary text-sm"
                                 value={gender}
                                 onChange={e => setGender(e.target.value as any)}
                             >
@@ -129,7 +129,7 @@ export const EditRecipientModal: React.FC<EditRecipientModalProps> = ({ isOpen, 
                         <div>
                             <label className="block text-sm font-medium mb-1">Status</label>
                             <select
-                                className="w-full px-3 py-2 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg focus:outline-none focus:border-[var(--color-primary)] text-sm"
+                                className="w-full px-3 py-2 bg-surface border border-surface rounded-lg focus:outline-none focus:border-primary text-sm"
                                 value={status}
                                 onChange={e => setStatus(e.target.value as any)}
                             >
@@ -154,7 +154,7 @@ export const EditRecipientModal: React.FC<EditRecipientModalProps> = ({ isOpen, 
                                             onClick={() => toggleGroup(group.id)}
                                             className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border-2 ${isSelected
                                                     ? 'text-white border-transparent'
-                                                    : 'bg-transparent border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-text-muted)]'
+                                                    : 'bg-transparent border-surface text-muted hover:border-muted'
                                                 }`}
                                             style={isSelected ? { backgroundColor: group.color || '#6366f1', borderColor: group.color || '#6366f1' } : {}}
                                         >

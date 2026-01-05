@@ -113,7 +113,7 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
         >
             <div className="space-y-5">
                 {/* Add New Label Form / Compacted */}
-                <form onSubmit={handleAddLabel} className="space-y-4 p-3.5 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)]">
+                <form onSubmit={handleAddLabel} className="space-y-4 p-3.5 rounded-xl bg-surface border border-surface">
                     <div className="flex flex-col gap-3">
                         <Input
                             label={t('projectLabels.new.label')}
@@ -149,15 +149,15 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
 
                 {/* Labels List / More Compact */}
                 <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-widest block px-1">{t('projectLabels.list.title')}</label>
+                    <label className="text-[10px] font-bold text-subtle uppercase tracking-widest block px-1">{t('projectLabels.list.title')}</label>
                     <div className="space-y-1.5 max-h-[300px] overflow-y-auto px-1 custom-scrollbar">
                         {loading ? (
-                            <div className="py-8 text-center text-[var(--color-text-muted)] animate-pulse">{t('projectLabels.loading')}</div>
+                            <div className="py-8 text-center text-muted animate-pulse">{t('projectLabels.loading')}</div>
                         ) : labels.length === 0 ? (
-                            <div className="py-8 text-center text-[var(--color-text-muted)] italic text-sm">{t('projectLabels.empty')}</div>
+                            <div className="py-8 text-center text-muted italic text-sm">{t('projectLabels.empty')}</div>
                         ) : (
                             labels.map(label => (
-                                <div key={label.id} className={`flex flex-col p-1.5 rounded-lg transition-all border ${editingLabelId === label.id ? 'bg-[var(--color-surface-card)] border-[var(--color-surface-border)] shadow-sm' : 'hover:bg-[var(--color-surface-hover)] border-transparent group'}`}>
+                                <div key={label.id} className={`flex flex-col p-1.5 rounded-lg transition-all border ${editingLabelId === label.id ? 'bg-card border-surface shadow-sm' : 'hover:bg-surface-hover border-transparent group'}`}>
                                     <div className="flex items-center gap-2.5">
                                         <div className="size-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: label.color || '#64748b' }} />
                                         <div className="flex-1">
@@ -166,7 +166,7 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
                                                     autoFocus
                                                     value={editName}
                                                     onChange={(e) => setEditName(e.target.value)}
-                                                    className="bg-transparent border-none outline-none text-sm font-semibold w-full text-[var(--color-text-main)]"
+                                                    className="bg-transparent border-none outline-none text-sm font-semibold w-full text-main"
                                                     placeholder={t('projectLabels.edit.placeholder')}
                                                     onKeyDown={(e) => {
                                                         if (e.key === 'Enter') handleUpdateLabel(label.id, { name: editName.trim(), color: editColor });
@@ -175,7 +175,7 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
                                                 />
                                             ) : (
                                                 <span
-                                                    className="text-sm font-medium text-[var(--color-text-main)] cursor-pointer"
+                                                    className="text-sm font-medium text-main cursor-pointer"
                                                     onClick={() => {
                                                         setEditingLabelId(label.id);
                                                         setEditName(label.name);
@@ -191,7 +191,7 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
                                                 <div className="flex items-center gap-0.5">
                                                     <button
                                                         onClick={() => setEditingLabelId(null)}
-                                                        className="p-1 rounded-md hover:bg-[var(--color-surface-bg)] text-[var(--color-text-muted)]"
+                                                        className="p-1 rounded-md hover:bg-surface text-muted"
                                                         title={t('common.cancel')}
                                                     >
                                                         <span className="material-symbols-outlined text-[16px]">close</span>
@@ -199,7 +199,7 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
                                                     <button
                                                         onClick={() => handleUpdateLabel(label.id, { name: editName.trim(), color: editColor })}
                                                         disabled={!editName.trim() || isSaving}
-                                                        className="p-1 rounded-md hover:bg-[var(--color-primary)]/10 text-[var(--color-primary)]"
+                                                        className="p-1 rounded-md hover:bg-primary/10 text-primary"
                                                         title={t('projectLabels.actions.save')}
                                                     >
                                                         <span className="material-symbols-outlined text-[16px]">check</span>
@@ -213,13 +213,13 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
                                                             setEditName(label.name);
                                                             setEditColor(label.color || PRESET_COLORS[0]);
                                                         }}
-                                                        className="p-1 rounded-md hover:bg-[var(--color-surface-bg)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+                                                        className="p-1 rounded-md hover:bg-surface text-muted hover:text-main"
                                                     >
                                                         <span className="material-symbols-outlined text-[16px]">edit</span>
                                                     </button>
                                                     <button
                                                         onClick={() => handleDeleteLabel(label.id)}
-                                                        className="p-1 rounded-md hover:bg-[var(--color-surface-bg)] text-[var(--color-text-muted)] hover:text-rose-500"
+                                                        className="p-1 rounded-md hover:bg-surface text-muted hover:text-rose-500"
                                                     >
                                                         <span className="material-symbols-outlined text-[16px]">delete</span>
                                                     </button>
@@ -229,7 +229,7 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
                                     </div>
 
                                     {editingLabelId === label.id && (
-                                        <div className="mt-2 pt-2 border-t border-[var(--color-surface-border)]">
+                                        <div className="mt-2 pt-2 border-t border-surface">
                                             <div className="flex flex-wrap gap-1">
                                                 {PRESET_COLORS.map(color => (
                                                     <button

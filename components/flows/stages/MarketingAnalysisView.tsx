@@ -59,11 +59,11 @@ export const MarketingAnalysisView: React.FC<MarketingAnalysisViewProps> = ({ id
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-            <div className="col-span-1 lg:col-span-2 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-[var(--color-surface-border)] shadow-sm p-6">
+            <div className="col-span-1 lg:col-span-2 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-surface shadow-sm p-6">
                 <div className="mb-6 flex items-center justify-between">
                     <div>
-                        <h2 className="text-xl font-extrabold text-[var(--color-text-main)] tracking-tight">{t('flowStages.marketingAnalysis.title')}</h2>
-                        <p className="text-xs text-[var(--color-text-muted)] mt-1">{t('flowStages.marketingAnalysis.subtitle')}</p>
+                        <h2 className="text-xl font-extrabold text-main tracking-tight">{t('flowStages.marketingAnalysis.title')}</h2>
+                        <p className="text-xs text-muted mt-1">{t('flowStages.marketingAnalysis.subtitle')}</p>
                     </div>
                     <Button size="sm" variant="ghost" onClick={() => setIsEditing(!isEditing)}>
                         {isEditing ? t('flowStages.marketingAnalysis.actions.save') : t('flowStages.marketingAnalysis.actions.edit')}
@@ -78,18 +78,18 @@ export const MarketingAnalysisView: React.FC<MarketingAnalysisViewProps> = ({ id
                 </div>
 
                 <div className="flex-1">
-                    <h3 className="font-bold text-[var(--color-text-main)] mb-2">{t('flowStages.marketingAnalysis.takeaways.title')}</h3>
+                    <h3 className="font-bold text-main mb-2">{t('flowStages.marketingAnalysis.takeaways.title')}</h3>
                     <textarea
                         value={analysis.keyTakeaways}
                         onChange={(e) => updateAnalysis({ keyTakeaways: e.target.value })}
-                        className="w-full h-40 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-4 py-3 focus:ring-1 focus:ring-green-500 outline-none text-sm leading-relaxed resize-none"
+                        className="w-full h-40 bg-surface border border-surface rounded-lg px-4 py-3 focus:ring-1 focus:ring-green-500 outline-none text-sm leading-relaxed resize-none"
                         placeholder={t('flowStages.marketingAnalysis.takeaways.placeholder')}
                     />
                 </div>
             </div>
 
-            <div className="col-span-1 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-[var(--color-surface-border)] shadow-sm p-6 overflow-hidden">
-                <h3 className="font-bold text-[var(--color-text-main)] mb-4">{t('flowStages.marketingAnalysis.verdict.title')}</h3>
+            <div className="col-span-1 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-surface shadow-sm p-6 overflow-hidden">
+                <h3 className="font-bold text-main mb-4">{t('flowStages.marketingAnalysis.verdict.title')}</h3>
 
                 <div className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 rounded-xl p-6 text-center mb-6">
                     <div className="text-xs font-bold uppercase text-emerald-600 mb-2">{t('flowStages.marketingAnalysis.verdict.roiLabel')}</div>

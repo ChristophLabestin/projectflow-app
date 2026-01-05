@@ -1,0 +1,150 @@
+@use '../../../styles/tokens';
+
+.select-input {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    position: relative; // Context for popover
+
+    &--open {
+        z-index: 20; // Elevate above siblings when open
+    }
+
+    &__label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--color-text-main);
+    }
+
+    &__trigger {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 8px 12px;
+        background-color: var(--color-surface-hover); // Match text-input
+        border: 1px solid transparent; // Override UA border, allow hover overrides
+        border-radius: var(--radius-md);
+        font-size: 0.95rem;
+        color: var(--color-text-main);
+        cursor: pointer;
+        transition: all var(--transition-fast); // Match text-input
+        height: 40px; // Match standard input height
+
+        &:hover {
+            background-color: rgba(0, 0, 0, 0.05); // Match text-input darken effect
+            // border-color: var(--color-text-muted); // Removed border hover effect to match input
+        }
+
+        &:focus {
+            outline: none;
+            background-color: var(--color-surface-card); // Match text-input focus state
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 2px var(--color-pattern-dot);
+        }
+
+        /* Placeholder style when nothing selected */
+        &[data-placeholder="true"] {
+            color: var(--color-text-muted);
+        }
+
+        &--disabled {
+            background-color: var(--color-surface-bg);
+            opacity: 0.6;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        &--error {
+            border-color: var(--color-error);
+
+            &:focus {
+                box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
+            }
+        }
+    }
+
+    &__trigger-content {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    &__icon {
+        color: var(--color-text-muted);
+        transition: transform 0.2s ease;
+
+        &--open {
+            transform: rotate(180deg);
+        }
+    }
+
+    &__popover {
+        // Position logic handled by inline styles in JS (Portal)
+        max-height: 250px;
+        overflow-y: auto;
+        background-color: var(--color-surface-card);
+        // border: 1px solid var(--color-surface-border); // Removed as per user request
+        border-radius: var(--radius-md);
+        box-shadow: var(--shadow-lg);
+        z-index: 9999;
+        padding: 4px;
+        animation: fadeIn 0.15s ease-out;
+
+        // Remove transform transitions since position is updated manually
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(-4px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    &__option {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        font-size: 0.95rem;
+        color: var(--color-text-main);
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: background-color 0.1s ease;
+
+        &:hover,
+        &--highlighted {
+            background-color: var(--color-surface-hover);
+        }
+
+        &--selected {
+            background-color: var(--color-surface-hover);
+            font-weight: 500;
+            color: var(--color-primary);
+        }
+
+        &--disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    }
+
+    &__check {
+        color: var(--color-primary);
+    }
+
+    &__error-text {
+        font-size: 0.75rem;
+        color: var(--color-error);
+        margin-top: 2px;
+    }
+}

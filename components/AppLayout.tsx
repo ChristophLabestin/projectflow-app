@@ -286,7 +286,7 @@ export const AppLayout = () => {
     }, [location.pathname, project, taskTitle, campaignName, t]);
 
     return (
-        <div className="flex h-screen w-full bg-[var(--color-surface-bg)] overflow-hidden">
+        <div className="flex h-screen w-full bg-surface overflow-hidden">
             {/* Sidebar Desktop */}
             <div className="hidden md:flex flex-shrink-0 h-full">
                 <Sidebar
@@ -311,7 +311,7 @@ export const AppLayout = () => {
                         className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
                         onClick={() => setNavOpen(false)}
                     />
-                    <div className="relative w-4/5 max-w-xs h-full bg-[var(--color-surface-card)] shadow-2xl animate-fade-in-left">
+                    <div className="relative w-4/5 max-w-xs h-full bg-card shadow-2xl animate-fade-in-left">
                         <Sidebar
                             isDrawer
                             onClose={() => setNavOpen(false)}

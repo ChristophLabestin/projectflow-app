@@ -82,7 +82,7 @@ export const SocialCalendar = () => {
         const days = eachDayOfInterval({ start: startDate, end: endDate });
 
         return (
-            <div className="grid grid-cols-7 gap-px bg-[var(--color-surface-border)] rounded-lg overflow-hidden border border-[var(--color-surface-border)]">
+            <div className="grid grid-cols-7 gap-px bg-surface-border rounded-lg overflow-hidden border border-surface">
                 {[
                     t('social.calendar.weekdays.sun'),
                     t('social.calendar.weekdays.mon'),
@@ -92,7 +92,7 @@ export const SocialCalendar = () => {
                     t('social.calendar.weekdays.fri'),
                     t('social.calendar.weekdays.sat')
                 ].map(day => (
-                    <div key={day} className="bg-[var(--color-surface-card)] p-2 text-center text-xs font-semibold text-[var(--color-text-muted)] uppercase">
+                    <div key={day} className="bg-card p-2 text-center text-xs font-semibold text-muted uppercase">
                         {day}
                     </div>
                 ))}
@@ -111,10 +111,10 @@ export const SocialCalendar = () => {
                             onDragOver={handleDragOver}
                             onDrop={(e) => handleDrop(e, day)}
                             onClick={() => handleDayClick(day)}
-                            className={`min-h-[140px] bg-[var(--color-surface-card)] p-2 transition-colors hover:bg-[var(--color-surface-hover)] cursor-pointer ${!isCurrentMonth ? 'opacity-50' : ''}`}
+                            className={`min-h-[140px] bg-card p-2 transition-colors hover:bg-surface-hover cursor-pointer ${!isCurrentMonth ? 'opacity-50' : ''}`}
                         >
                             <div className="flex justify-between items-start mb-1">
-                                <span className={`text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-black text-white dark:bg-white dark:text-black' : 'text-[var(--color-text-main)]'}`}>
+                                <span className={`text-sm font-medium w-6 h-6 flex items-center justify-center rounded-full ${isToday ? 'bg-black text-white dark:bg-white dark:text-black' : 'text-main'}`}>
                                     {format(day, 'd', { locale: dateLocale })}
                                 </span>
                             </div>
@@ -151,19 +151,19 @@ export const SocialCalendar = () => {
         const hours = Array.from({ length: 24 }, (_, i) => i);
 
         return (
-            <div className="flex flex-col h-[calc(100vh-180px)] overflow-hidden bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-lg">
+            <div className="flex flex-col h-[calc(100vh-180px)] overflow-hidden bg-card border border-surface rounded-lg">
                 {/* Week Header */}
-                <div className="grid grid-cols-8 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-hover)]">
-                    <div className="p-2 border-r border-[var(--color-surface-border)]"></div>
+                <div className="grid grid-cols-8 border-b border-surface bg-surface-hover">
+                    <div className="p-2 border-r border-surface"></div>
                     {days.map(day => {
                         const isToday = isSameDay(day, new Date());
                         return (
-                            <div key={day.toISOString()} className={`p-2 text-center border-r border-[var(--color-surface-border)] last:border-0 ${isToday ? 'bg-[var(--color-surface-hover)]' : ''}`}>
-                                <div className={`text-xs font-semibold uppercase mb-1 ${isToday ? 'text-[var(--color-text-main)]' : 'text-[var(--color-text-muted)]'}`}>
+                            <div key={day.toISOString()} className={`p-2 text-center border-r border-surface last:border-0 ${isToday ? 'bg-surface-hover' : ''}`}>
+                                <div className={`text-xs font-semibold uppercase mb-1 ${isToday ? 'text-main' : 'text-muted'}`}>
                                     {format(day, 'EEE', { locale: dateLocale })}
                                 </div>
                                 <div className="flex justify-center">
-                                    <span className={`text-lg font-bold w-8 h-8 flex items-center justify-center rounded-full ${isToday ? 'bg-black text-white dark:bg-white dark:text-black' : 'text-[var(--color-text-main)]'}`}>
+                                    <span className={`text-lg font-bold w-8 h-8 flex items-center justify-center rounded-full ${isToday ? 'bg-black text-white dark:bg-white dark:text-black' : 'text-main'}`}>
                                         {format(day, 'd', { locale: dateLocale })}
                                     </span>
                                 </div>
@@ -175,9 +175,9 @@ export const SocialCalendar = () => {
                 {/* Time Grid with Scroll */}
                 <div className="flex-1 overflow-y-auto custom-scrollbar relative">
                     {hours.map(hour => (
-                        <div key={hour} className="grid grid-cols-8 h-20 border-b border-[var(--color-surface-border)]/50">
+                        <div key={hour} className="grid grid-cols-8 h-20 border-b border-surface/50">
                             {/* Time Label */}
-                            <div className="border-r border-[var(--color-surface-border)] text-xs text-[var(--color-text-muted)] p-2 text-right">
+                            <div className="border-r border-surface text-xs text-muted p-2 text-right">
                                 {format(new Date().setHours(hour, 0), 'p', { locale: dateLocale })}
                             </div>
 
@@ -205,11 +205,11 @@ export const SocialCalendar = () => {
                                             const dateStr = format(clickedDate, 'yyyy-MM-dd');
                                             navigate(`/project/${projectId}/social/create?date=${dateStr}`);
                                         }}
-                                        className="border-r border-[var(--color-surface-border)] last:border-0 relative hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer group"
+                                        className="border-r border-surface last:border-0 relative hover:bg-surface-hover transition-colors cursor-pointer group"
                                     >
                                         {/* Add Button on Hover */}
                                         <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 pointer-events-none">
-                                            <span className="material-symbols-outlined text-[var(--color-text-muted)]">add</span>
+                                            <span className="material-symbols-outlined text-muted">add</span>
                                         </div>
 
                                         {postsInSlot.map(post => (
@@ -242,16 +242,16 @@ export const SocialCalendar = () => {
         <div className="space-y-4 h-full flex flex-col">
             <div className="flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-4">
-                    <div className="flex bg-[var(--color-surface-card)] rounded-lg border border-[var(--color-surface-border)] p-1">
+                    <div className="flex bg-card rounded-lg border border-surface p-1">
                         <button
                             onClick={handlePrev}
-                            className="p-1 hover:bg-[var(--color-surface-hover)] rounded"
+                            className="p-1 hover:bg-surface-hover rounded"
                         >
                             <span className="material-symbols-outlined">chevron_left</span>
                         </button>
                         <button
                             onClick={handleNext}
-                            className="p-1 hover:bg-[var(--color-surface-hover)] rounded"
+                            className="p-1 hover:bg-surface-hover rounded"
                         >
                             <span className="material-symbols-outlined">chevron_right</span>
                         </button>
@@ -267,21 +267,21 @@ export const SocialCalendar = () => {
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => setCurrentDate(new Date())}
-                        className="px-3 py-1.5 text-sm font-medium bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors"
+                        className="px-3 py-1.5 text-sm font-medium bg-card border border-surface rounded-lg hover:bg-surface-hover transition-colors"
                     >
                         {t('social.calendar.today')}
                     </button>
 
-                    <div className="flex bg-[var(--color-surface-card)] rounded-lg border border-[var(--color-surface-border)] p-1">
+                    <div className="flex bg-card rounded-lg border border-surface p-1">
                         <button
                             onClick={() => setView('month')}
-                            className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${view === 'month' ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}`}
+                            className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${view === 'month' ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm' : 'text-muted hover:text-main hover:bg-surface-hover'}`}
                         >
                             {t('social.calendar.month')}
                         </button>
                         <button
                             onClick={() => setView('week')}
-                            className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${view === 'week' ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}`}
+                            className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${view === 'week' ? 'bg-black text-white dark:bg-white dark:text-black shadow-sm' : 'text-muted hover:text-main hover:bg-surface-hover'}`}
                         >
                             {t('social.calendar.week')}
                         </button>

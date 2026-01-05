@@ -1,0 +1,8 @@
+@use '../../../styles/tokens';
+
+.divider {
+    border: none;
+    border-top: 1px solid var(--color-surface-border);
+    margin: 0;
+    width: 100%;
+}

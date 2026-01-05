@@ -27,17 +27,17 @@ export const GlobalSettingsPanel = ({ settings, onChange, viewMode, onViewModeCh
     };
 
     return (
-        <div className="h-full bg-[var(--color-surface-paper)] border-l border-[var(--color-surface-border)] shadow-xl overflow-y-auto custom-scrollbar w-[320px]">
+        <div className="h-full bg-surface-paper border-l border-surface shadow-xl overflow-y-auto custom-scrollbar w-[320px]">
 
             {/* Header */}
-            <header className="px-5 py-4 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-card)]">
+            <header className="px-5 py-4 border-b border-surface bg-card">
                 <div className="flex items-center gap-3">
                     <div className="size-9 rounded-lg bg-gradient-to-br from-[var(--color-primary)]/20 to-[var(--color-primary)]/5 flex items-center justify-center">
-                        <span className="material-symbols-outlined text-[var(--color-primary)] text-xl">settings</span>
+                        <span className="material-symbols-outlined text-primary text-xl">settings</span>
                     </div>
                     <div>
-                        <h2 className="text-sm font-bold text-[var(--color-text-main)]">Global Settings</h2>
-                        <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Canvas & Theme Defaults</p>
+                        <h2 className="text-sm font-bold text-main">Global Settings</h2>
+                        <p className="text-[10px] text-muted uppercase tracking-wider">Canvas & Theme Defaults</p>
                     </div>
                 </div>
             </header>
@@ -79,7 +79,7 @@ export const GlobalSettingsPanel = ({ settings, onChange, viewMode, onViewModeCh
                             id="global-font"
                             value={settings.fontFamily}
                             onChange={(e) => handleChange('fontFamily', e.target.value)}
-                            className="w-full max-w-[180px] px-2.5 py-2 text-xs rounded-lg bg-[var(--color-surface-sunken)] border border-[var(--color-surface-border)] focus:border-[var(--color-primary)] outline-none"
+                            className="w-full max-w-[180px] px-2.5 py-2 text-xs rounded-lg bg-surface-sunken border border-surface focus:border-primary outline-none"
                         >
                             <option value="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">System UI</option>
                             <option value="'Helvetica Neue', Helvetica, Arial, sans-serif">Helvetica</option>

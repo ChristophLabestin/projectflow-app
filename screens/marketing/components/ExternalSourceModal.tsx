@@ -142,10 +142,10 @@ export const ExternalSourceModal: React.FC<ExternalSourceModalProps> = ({ isOpen
 
     return (
         <div className="fixed inset-0 z-[50] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl max-w-2xl w-full border border-[var(--color-surface-border)] flex flex-col max-h-[90vh]">
-                <div className="flex justify-between items-center p-6 border-b border-[var(--color-surface-border)]">
+            <div className="bg-card rounded-2xl shadow-2xl max-w-2xl w-full border border-surface flex flex-col max-h-[90vh]">
+                <div className="flex justify-between items-center p-6 border-b border-surface">
                     <h2 className="text-xl font-bold">Connect External Database</h2>
-                    <button onClick={onClose} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]">
+                    <button onClick={onClose} className="text-muted hover:text-main">
                         <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
@@ -159,7 +159,7 @@ export const ExternalSourceModal: React.FC<ExternalSourceModalProps> = ({ isOpen
                                     <select
                                         value={method}
                                         onChange={(e) => setMethod(e.target.value as any)}
-                                        className="bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-3 py-2"
+                                        className="bg-surface border border-surface rounded-lg px-3 py-2"
                                     >
                                         <option value="GET">GET</option>
                                         <option value="POST">POST</option>
@@ -167,7 +167,7 @@ export const ExternalSourceModal: React.FC<ExternalSourceModalProps> = ({ isOpen
                                     <input
                                         type="url"
                                         placeholder="https://api.myservice.com/users"
-                                        className="flex-1 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-3 py-2 w-full"
+                                        className="flex-1 bg-surface border border-surface rounded-lg px-3 py-2 w-full"
                                         value={url}
                                         onChange={(e) => setUrl(e.target.value)}
                                     />
@@ -177,13 +177,13 @@ export const ExternalSourceModal: React.FC<ExternalSourceModalProps> = ({ isOpen
                             <div>
                                 <label className="block text-sm font-medium mb-1">Headers (JSON)</label>
                                 <textarea
-                                    className="w-full h-32 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-3 py-2 font-mono text-xs"
+                                    className="w-full h-32 bg-surface border border-surface rounded-lg px-3 py-2 font-mono text-xs"
                                     value={headers}
                                     onChange={(e) => setHeaders(e.target.value)}
                                 />
                             </div>
 
-                            <div className="bg-[var(--color-surface-hover)] p-4 rounded-lg text-sm text-[var(--color-text-muted)]">
+                            <div className="bg-surface-hover p-4 rounded-lg text-sm text-muted">
                                 <p><strong>Note:</strong> ensure CORS is enabled on the target server if calling directly from the browser, or use a proxy.</p>
                             </div>
                         </>
@@ -191,15 +191,15 @@ export const ExternalSourceModal: React.FC<ExternalSourceModalProps> = ({ isOpen
 
                     {step === 2 && (
                         <div className="space-y-4">
-                            <p className="text-sm text-[var(--color-text-muted)]">Found {fetchedData.length} records. Map the fields to import.</p>
+                            <p className="text-sm text-muted">Found {fetchedData.length} records. Map the fields to import.</p>
 
                             {fetchedData.length > 0 && Object.keys(fetchedData[0]).map(key => (
                                 <div key={key} className="grid grid-cols-2 gap-4 items-center">
-                                    <div className="text-sm font-medium">{key} <span className="text-xs text-[var(--color-text-muted)] font-normal">({typeof fetchedData[0][key]})</span></div>
+                                    <div className="text-sm font-medium">{key} <span className="text-xs text-muted font-normal">({typeof fetchedData[0][key]})</span></div>
                                     <select
                                         value={columnMapping[key] || ''}
                                         onChange={(e) => setColumnMapping(prev => ({ ...prev, [key]: e.target.value }))}
-                                        className="bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded px-2 py-1.5 w-full text-sm"
+                                        className="bg-surface border border-surface rounded px-2 py-1.5 w-full text-sm"
                                     >
                                         <option value="">Select Field...</option>
                                         <option value="SKIP">Skip</option>
@@ -213,7 +213,7 @@ export const ExternalSourceModal: React.FC<ExternalSourceModalProps> = ({ isOpen
                     )}
                 </div>
 
-                <div className="p-6 border-t border-[var(--color-surface-border)] flex justify-end gap-3 bg-[var(--color-surface-bg)] rounded-b-2xl">
+                <div className="p-6 border-t border-surface flex justify-end gap-3 bg-surface rounded-b-2xl">
                     <Button variant="ghost" onClick={onClose}>Cancel</Button>
                     {step === 1 ? (
                         <Button variant="primary" onClick={handleTestConnection} isLoading={isLoading}>

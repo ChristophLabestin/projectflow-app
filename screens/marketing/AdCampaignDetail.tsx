@@ -95,7 +95,7 @@ export const AdCampaignDetail = () => {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full">
-                <span className="material-symbols-outlined animate-spin text-3xl text-[var(--color-primary)]">progress_activity</span>
+                <span className="material-symbols-outlined animate-spin text-3xl text-primary">progress_activity</span>
             </div>
         );
     }
@@ -103,9 +103,9 @@ export const AdCampaignDetail = () => {
     if (!campaign) {
         return (
             <div className="flex flex-col items-center justify-center h-full gap-4">
-                <span className="material-symbols-outlined text-4xl text-[var(--color-text-muted)]">error</span>
-                <p className="text-[var(--color-text-muted)]">Campaign not found</p>
-                <Link to={`/project/${projectId}/marketing/ads`} className="text-[var(--color-primary)] font-bold hover:underline">
+                <span className="material-symbols-outlined text-4xl text-muted">error</span>
+                <p className="text-muted">Campaign not found</p>
+                <Link to={`/project/${projectId}/marketing/ads`} className="text-primary font-bold hover:underline">
                     ← Back to Campaigns
                 </Link>
             </div>
@@ -124,7 +124,7 @@ export const AdCampaignDetail = () => {
                 <div className="flex items-center gap-4">
                     <Link
                         to={`/project/${projectId}/marketing/ads`}
-                        className="w-10 h-10 rounded-xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:border-[var(--color-text-muted)] transition-all"
+                        className="w-10 h-10 rounded-xl bg-card border border-surface flex items-center justify-center text-muted hover:text-main hover:border-muted transition-all"
                     >
                         <span className="material-symbols-outlined">arrow_back</span>
                     </Link>
@@ -136,12 +136,12 @@ export const AdCampaignDetail = () => {
                     </div>
                     <div>
                         <div className="flex items-center gap-2 mb-1">
-                            <h1 className="text-2xl font-black text-[var(--color-text-main)]">{campaign.name}</h1>
+                            <h1 className="text-2xl font-black text-main">{campaign.name}</h1>
                             <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${statusConfig.bg} ${statusConfig.color}`}>
                                 {statusConfig.label}
                             </span>
                         </div>
-                        <div className="flex items-center gap-3 text-sm text-[var(--color-text-muted)]">
+                        <div className="flex items-center gap-3 text-sm text-muted">
                             <span>{platformConfig.name}</span>
                             <span>•</span>
                             <span>{campaign.objective}</span>
@@ -166,14 +166,14 @@ export const AdCampaignDetail = () => {
                     </button>
                     <Link
                         to={`/project/${projectId}/marketing/ads/${campaign.id}/edit`}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] hover:border-[var(--color-primary)] text-[var(--color-text-main)] rounded-xl text-sm font-bold transition-all"
+                        className="flex items-center gap-2 px-4 py-2.5 bg-card border border-surface hover:border-primary text-main rounded-xl text-sm font-bold transition-all"
                     >
                         <span className="material-symbols-outlined text-[18px]">edit</span>
                         Edit
                     </Link>
                     <button
                         onClick={handleDelete}
-                        className="w-10 h-10 rounded-xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-red-500 hover:border-red-500 transition-all"
+                        className="w-10 h-10 rounded-xl bg-card border border-surface flex items-center justify-center text-muted hover:text-red-500 hover:border-red-500 transition-all"
                     >
                         <span className="material-symbols-outlined">delete</span>
                     </button>
@@ -182,8 +182,8 @@ export const AdCampaignDetail = () => {
 
             {/* Campaign Description */}
             {campaign.description && (
-                <div className="bg-[var(--color-surface-card)] rounded-2xl border border-[var(--color-surface-border)] p-5">
-                    <p className="text-[var(--color-text-main)]">{campaign.description}</p>
+                <div className="bg-card rounded-2xl border border-surface p-5">
+                    <p className="text-main">{campaign.description}</p>
                 </div>
             )}
 
@@ -204,25 +204,25 @@ export const AdCampaignDetail = () => {
 
             {/* Budget Progress */}
             {campaign.budgetTotal && campaign.budgetTotal > 0 && (
-                <div className="bg-[var(--color-surface-card)] rounded-2xl border border-[var(--color-surface-border)] p-5">
+                <div className="bg-card rounded-2xl border border-surface p-5">
                     <div className="flex justify-between items-center mb-3">
-                        <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                        <h3 className="font-bold text-main flex items-center gap-2">
                             <span className="material-symbols-outlined text-[18px] text-blue-500">account_balance_wallet</span>
                             Budget Progress
                         </h3>
-                        <span className="text-sm font-bold text-[var(--color-text-muted)]">
+                        <span className="text-sm font-bold text-muted">
                             ${campaign.spend?.toLocaleString() || 0} / ${campaign.budgetTotal.toLocaleString()}
-                            <span className="ml-2 text-[var(--color-text-subtle)]">({budgetProgress.toFixed(1)}%)</span>
+                            <span className="ml-2 text-subtle">({budgetProgress.toFixed(1)}%)</span>
                         </span>
                     </div>
-                    <div className="h-3 bg-[var(--color-surface-bg)] rounded-full overflow-hidden">
+                    <div className="h-3 bg-surface rounded-full overflow-hidden">
                         <div
                             className={`h-full rounded-full transition-all ${budgetProgress > 90 ? 'bg-red-500' : budgetProgress > 70 ? 'bg-amber-500' : 'bg-emerald-500'
                                 }`}
                             style={{ width: `${Math.min(budgetProgress, 100)}%` }}
                         />
                     </div>
-                    <div className="flex justify-between text-xs text-[var(--color-text-muted)] mt-2">
+                    <div className="flex justify-between text-xs text-muted mt-2">
                         <span>Daily: ${campaign.budgetDaily?.toLocaleString() || 'Not set'}</span>
                         <span>
                             {campaign.endDate
@@ -240,12 +240,12 @@ export const AdCampaignDetail = () => {
                 {/* Ad Sets (coming soon placeholder) */}
                 <div className="xl:col-span-2 space-y-4">
                     <div className="flex items-center justify-between">
-                        <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                        <h3 className="font-bold text-main flex items-center gap-2">
                             <span className="material-symbols-outlined text-[18px] text-purple-500">layers</span>
                             Ad Sets
                         </h3>
                         <button
-                            className="text-xs font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1"
+                            className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
                             disabled
                         >
                             <span className="material-symbols-outlined text-[14px]">add</span>
@@ -254,27 +254,27 @@ export const AdCampaignDetail = () => {
                     </div>
 
                     {adSets.length === 0 ? (
-                        <div className="bg-[var(--color-surface-card)] rounded-2xl border-2 border-dashed border-[var(--color-surface-border)] p-8 text-center">
-                            <span className="material-symbols-outlined text-4xl text-[var(--color-text-muted)] opacity-50 mb-2">layers</span>
-                            <p className="text-sm text-[var(--color-text-muted)]">No ad sets yet</p>
-                            <p className="text-xs text-[var(--color-text-subtle)] mt-1">Ad sets help organize targeting and creatives</p>
+                        <div className="bg-card rounded-2xl border-2 border-dashed border-surface p-8 text-center">
+                            <span className="material-symbols-outlined text-4xl text-muted opacity-50 mb-2">layers</span>
+                            <p className="text-sm text-muted">No ad sets yet</p>
+                            <p className="text-xs text-subtle mt-1">Ad sets help organize targeting and creatives</p>
                         </div>
                     ) : (
                         <div className="space-y-3">
                             {adSets.map(adSet => (
                                 <div
                                     key={adSet.id}
-                                    className="bg-[var(--color-surface-card)] rounded-xl border border-[var(--color-surface-border)] p-4 hover:border-[var(--color-primary)] transition-all cursor-pointer"
+                                    className="bg-card rounded-xl border border-surface p-4 hover:border-primary transition-all cursor-pointer"
                                 >
                                     <div className="flex items-center justify-between">
                                         <div>
-                                            <h4 className="font-bold text-[var(--color-text-main)]">{adSet.name}</h4>
+                                            <h4 className="font-bold text-main">{adSet.name}</h4>
                                             <span className={`text-xs font-bold ${adSet.status === 'Enabled' ? 'text-emerald-500' : 'text-gray-500'}`}>
                                                 {adSet.status}
                                             </span>
                                         </div>
                                         {adSet.budgetDaily && (
-                                            <span className="text-sm font-bold text-[var(--color-text-muted)]">
+                                            <span className="text-sm font-bold text-muted">
                                                 ${adSet.budgetDaily}/day
                                             </span>
                                         )}
@@ -290,8 +290,8 @@ export const AdCampaignDetail = () => {
 
                     {/* Origin Flow */}
                     {originIdea && (
-                        <div className="bg-[var(--color-surface-card)] rounded-2xl border border-[var(--color-surface-border)] p-5">
-                            <h3 className="font-bold text-[var(--color-text-main)] mb-3 flex items-center gap-2">
+                        <div className="bg-card rounded-2xl border border-surface p-5">
+                            <h3 className="font-bold text-main mb-3 flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[18px] text-purple-500">lightbulb</span>
                                 Origin Flow
                             </h3>
@@ -319,8 +319,8 @@ export const AdCampaignDetail = () => {
 
                     {/* Linked Social Posts */}
                     {linkedPosts.length > 0 && (
-                        <div className="bg-[var(--color-surface-card)] rounded-2xl border border-[var(--color-surface-border)] p-5">
-                            <h3 className="font-bold text-[var(--color-text-main)] mb-3 flex items-center gap-2">
+                        <div className="bg-card rounded-2xl border border-surface p-5">
+                            <h3 className="font-bold text-main mb-3 flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[18px] text-rose-500">share</span>
                                 Linked Social Posts
                             </h3>
@@ -329,16 +329,16 @@ export const AdCampaignDetail = () => {
                                     <Link
                                         key={post.id}
                                         to={`/project/${projectId}/social/edit/${post.id}`}
-                                        className="flex items-center gap-3 p-3 bg-[var(--color-surface-bg)] hover:bg-[var(--color-surface-hover)] rounded-xl transition-colors group"
+                                        className="flex items-center gap-3 p-3 bg-surface hover:bg-surface-hover rounded-xl transition-colors group"
                                     >
                                         <div className="size-8 rounded-lg bg-rose-100 dark:bg-rose-900/30 text-rose-600 flex items-center justify-center text-xs font-bold">
                                             {post.platform[0]}
                                         </div>
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-xs font-bold text-[var(--color-text-main)] truncate">
+                                            <p className="text-xs font-bold text-main truncate">
                                                 {post.content?.caption?.slice(0, 40) || 'Untitled post'}...
                                             </p>
-                                            <p className="text-[10px] text-[var(--color-text-muted)]">
+                                            <p className="text-[10px] text-muted">
                                                 {post.platform} • {post.status}
                                             </p>
                                         </div>
@@ -349,15 +349,15 @@ export const AdCampaignDetail = () => {
                     )}
 
                     {/* Campaign Details */}
-                    <div className="bg-[var(--color-surface-card)] rounded-2xl border border-[var(--color-surface-border)] p-5">
-                        <h3 className="font-bold text-[var(--color-text-main)] mb-3 flex items-center gap-2">
+                    <div className="bg-card rounded-2xl border border-surface p-5">
+                        <h3 className="font-bold text-main mb-3 flex items-center gap-2">
                             <span className="material-symbols-outlined text-[18px] text-blue-500">info</span>
                             Details
                         </h3>
                         <div className="space-y-3 text-sm">
                             <div className="flex justify-between">
-                                <span className="text-[var(--color-text-muted)]">Created</span>
-                                <span className="font-medium text-[var(--color-text-main)]">
+                                <span className="text-muted">Created</span>
+                                <span className="font-medium text-main">
                                     {campaign.createdAt?.toDate
                                         ? format(campaign.createdAt.toDate(), dateFormat, { locale: dateLocale })
                                         : 'Unknown'
@@ -365,13 +365,13 @@ export const AdCampaignDetail = () => {
                                 </span>
                             </div>
                             <div className="flex justify-between">
-                                <span className="text-[var(--color-text-muted)]">Budget Type</span>
-                                <span className="font-medium text-[var(--color-text-main)]">{campaign.budgetType}</span>
+                                <span className="text-muted">Budget Type</span>
+                                <span className="font-medium text-main">{campaign.budgetType}</span>
                             </div>
                             {campaign.targetAudience?.locations && campaign.targetAudience.locations.length > 0 && (
                                 <div className="flex justify-between">
-                                    <span className="text-[var(--color-text-muted)]">Locations</span>
-                                    <span className="font-medium text-[var(--color-text-main)]">
+                                    <span className="text-muted">Locations</span>
+                                    <span className="font-medium text-main">
                                         {campaign.targetAudience.locations.slice(0, 2).join(', ')}
                                         {campaign.targetAudience.locations.length > 2 && ` +${campaign.targetAudience.locations.length - 2}`}
                                     </span>
@@ -387,9 +387,9 @@ export const AdCampaignDetail = () => {
 
 // Sub-components
 const MetricCard = ({ label, value, icon, color }: { label: string; value: string | number; icon: string; color: string }) => (
-    <div className="bg-[var(--color-surface-card)] rounded-2xl border border-[var(--color-surface-border)] p-4">
+    <div className="bg-card rounded-2xl border border-surface p-4">
         <span className={`material-symbols-outlined text-xl mb-2 block ${color}`}>{icon}</span>
-        <div className="text-xl font-black text-[var(--color-text-main)]">{value}</div>
-        <div className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide mt-1">{label}</div>
+        <div className="text-xl font-black text-main">{value}</div>
+        <div className="text-[10px] font-bold text-muted uppercase tracking-wide mt-1">{label}</div>
     </div>
 );

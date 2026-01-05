@@ -11,7 +11,7 @@ export const BarChart: React.FC<BarChartProps> = ({ data, height = 160, color = 
     const maxValue = Math.max(...data.map(d => d.value), 1); // Prevent div by zero
 
     if (data.length === 0) {
-        return <div className="text-center text-[var(--color-text-muted)] py-10">No activity data</div>;
+        return <div className="text-center text-muted py-10">No activity data</div>;
     }
 
     return (
@@ -30,9 +30,9 @@ export const BarChart: React.FC<BarChartProps> = ({ data, height = 160, color = 
                                 }}
                             >
                                 {item.value > 0 && (
-                                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-[var(--color-surface-card)] shadow-lg border border-[var(--color-surface-border)] px-2 py-1 rounded text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none whitespace-nowrap">
+                                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-card shadow-lg border border-surface px-2 py-1 rounded text-xs font-bold opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none whitespace-nowrap">
                                         {item.value} posts
-                                        <div className="text-[10px] text-[var(--color-text-muted)] font-normal">{item.label}</div>
+                                        <div className="text-[10px] text-muted font-normal">{item.label}</div>
                                     </div>
                                 )}
                             </div>

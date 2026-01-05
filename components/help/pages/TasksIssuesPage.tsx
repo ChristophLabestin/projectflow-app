@@ -75,23 +75,23 @@ const StatusColumn = ({
     count: number;
     description: string;
 }) => (
-    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 min-w-[160px]">
+    <div className="rounded-2xl border border-surface bg-card p-4 min-w-[160px]">
         <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
                 <span className={`w-3 h-3 rounded-full ${color}`} />
-                <span className="text-sm font-bold text-[var(--color-text-main)]">{status}</span>
+                <span className="text-sm font-bold text-main">{status}</span>
             </div>
-            <span className="px-2 py-0.5 rounded-full bg-[var(--color-surface-hover)] text-[10px] font-bold text-[var(--color-text-muted)]">
+            <span className="px-2 py-0.5 rounded-full bg-surface-hover text-[10px] font-bold text-muted">
                 {count}
             </span>
         </div>
-        <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">{description}</p>
+        <p className="text-xs text-muted leading-relaxed">{description}</p>
     </div>
 );
 
 const TransitionArrow = () => (
     <div className="flex-shrink-0 flex items-center">
-        <span className="material-symbols-outlined text-[var(--color-text-subtle)] text-[20px]">arrow_forward</span>
+        <span className="material-symbols-outlined text-subtle text-[20px]">arrow_forward</span>
     </div>
 );
 
@@ -106,17 +106,17 @@ const FieldRow = ({
     required?: boolean;
     description: string;
 }) => (
-    <div className="flex items-start gap-4 py-3 border-b border-[var(--color-surface-border)] last:border-0">
+    <div className="flex items-start gap-4 py-3 border-b border-surface last:border-0">
         <div className="flex-shrink-0 w-[120px]">
-            <span className="text-sm font-semibold text-[var(--color-text-main)]">{field}</span>
+            <span className="text-sm font-semibold text-main">{field}</span>
             {required && <span className="ml-1 text-rose-500 text-xs">*</span>}
         </div>
         <div className="flex-shrink-0 w-[80px]">
-            <span className="px-2 py-0.5 rounded-full bg-[var(--color-surface-hover)] text-[10px] font-medium text-[var(--color-text-muted)]">
+            <span className="px-2 py-0.5 rounded-full bg-surface-hover text-[10px] font-medium text-muted">
                 {type}
             </span>
         </div>
-        <div className="flex-1 text-sm text-[var(--color-text-muted)]">{description}</div>
+        <div className="flex-1 text-sm text-muted">{description}</div>
     </div>
 );
 
@@ -131,12 +131,12 @@ const PriorityBadge = ({
     icon: string;
     usage: string;
 }) => (
-    <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4">
+    <div className="rounded-xl border border-surface bg-card p-4">
         <div className="flex items-center gap-2 mb-2">
             <span className={`material-symbols-outlined text-[18px] ${color}`}>{icon}</span>
-            <span className="text-sm font-bold text-[var(--color-text-main)]">{level}</span>
+            <span className="text-sm font-bold text-main">{level}</span>
         </div>
-        <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">{usage}</p>
+        <p className="text-xs text-muted leading-relaxed">{usage}</p>
     </div>
 );
 
@@ -153,17 +153,17 @@ const IssueTypeCard = ({
     description: string;
     examples: string[];
 }) => (
-    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5 space-y-3">
+    <div className="rounded-2xl border border-surface bg-card p-5 space-y-3">
         <div className="flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center`}>
                 <span className="material-symbols-outlined text-[20px] text-white">{icon}</span>
             </div>
-            <span className="text-sm font-bold text-[var(--color-text-main)]">{type}</span>
+            <span className="text-sm font-bold text-main">{type}</span>
         </div>
-        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">{description}</p>
+        <p className="text-sm text-muted leading-relaxed">{description}</p>
         <div className="flex flex-wrap gap-2">
             {examples.map((ex, i) => (
-                <span key={i} className="px-2 py-1 rounded-lg bg-[var(--color-surface-hover)] text-[10px] font-medium text-[var(--color-text-muted)]">
+                <span key={i} className="px-2 py-1 rounded-lg bg-surface-hover text-[10px] font-medium text-muted">
                     {ex}
                 </span>
             ))}
@@ -182,15 +182,15 @@ const ViewCard = ({
     description: string;
     bestFor: string;
 }) => (
-    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+    <div className="rounded-2xl border border-surface bg-card p-5">
         <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-xl bg-[var(--color-primary)]/10 flex items-center justify-center">
-                <span className="material-symbols-outlined text-[20px] text-[var(--color-primary)]">{icon}</span>
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px] text-primary">{icon}</span>
             </div>
-            <span className="text-sm font-bold text-[var(--color-text-main)]">{name}</span>
+            <span className="text-sm font-bold text-main">{name}</span>
         </div>
-        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">{description}</p>
-        <div className="mt-3 flex items-center gap-2 text-xs text-[var(--color-primary)]">
+        <p className="text-sm text-muted leading-relaxed">{description}</p>
+        <div className="mt-3 flex items-center gap-2 text-xs text-primary">
             <span className="material-symbols-outlined text-[14px]">recommend</span>
             {bestFor}
         </div>
@@ -198,9 +198,9 @@ const ViewCard = ({
 );
 
 const FilterChip = ({ label, icon }: { label: string; icon: string }) => (
-    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]">
-        <span className="material-symbols-outlined text-[14px] text-[var(--color-text-muted)]">{icon}</span>
-        <span className="text-xs font-medium text-[var(--color-text-muted)]">{label}</span>
+    <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-surface bg-card">
+        <span className="material-symbols-outlined text-[14px] text-muted">{icon}</span>
+        <span className="text-xs font-medium text-muted">{label}</span>
     </div>
 );
 
@@ -232,18 +232,18 @@ const BulkActionCard = ({
     description: string;
     shortcut?: string;
 }) => (
-    <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 flex items-start gap-3">
-        <span className="material-symbols-outlined text-[18px] text-[var(--color-primary)]">{icon}</span>
+    <div className="rounded-xl border border-surface bg-card p-4 flex items-start gap-3">
+        <span className="material-symbols-outlined text-[18px] text-primary">{icon}</span>
         <div className="flex-1">
             <div className="flex items-center justify-between">
-                <span className="text-sm font-semibold text-[var(--color-text-main)]">{action}</span>
+                <span className="text-sm font-semibold text-main">{action}</span>
                 {shortcut && (
-                    <span className="px-2 py-0.5 rounded-lg bg-[var(--color-surface-hover)] text-[10px] font-mono text-[var(--color-text-muted)]">
+                    <span className="px-2 py-0.5 rounded-lg bg-surface-hover text-[10px] font-mono text-muted">
                         {shortcut}
                     </span>
                 )}
             </div>
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">{description}</p>
+            <p className="text-xs text-muted mt-1">{description}</p>
         </div>
     </div>
 );
@@ -256,14 +256,14 @@ export const TasksIssuesPage = (_props: HelpCenterPageProps) => {
     return (
         <div className="px-6 py-6 space-y-10">
             {/* Hero Section with Kanban Preview */}
-            <div className="rounded-[28px] border border-[var(--color-surface-border)] bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] p-6">
-                <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">
+            <div className="rounded-[28px] border border-surface bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] p-6">
+                <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">
                     Tasks and Issues
                 </div>
-                <h2 className="text-3xl font-bold text-[var(--color-text-main)] mt-3">
+                <h2 className="text-3xl font-bold text-main mt-3">
                     Turn Work into Visible Execution
                 </h2>
-                <p className="text-sm text-[var(--color-text-muted)] mt-3 leading-relaxed max-w-2xl">
+                <p className="text-sm text-muted mt-3 leading-relaxed max-w-2xl">
                     Tasks capture what needs to happen. Issues capture what could stop it. This guide covers every field,
                     status, workflow, and feature to help you execute with clarity.
                 </p>
@@ -281,21 +281,21 @@ export const TasksIssuesPage = (_props: HelpCenterPageProps) => {
             </div>
 
             {/* SECTION: Task Fields Reference */}
-            <section data-section-id="task-fields" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+            <section data-section-id="task-fields" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Reference</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Task Fields Reference</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Reference</div>
+                        <h3 className="text-xl font-bold text-main mt-2">Task Fields Reference</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             Complete documentation of every field available when creating or editing a task.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">checklist</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">checklist</span>
                 </div>
 
                 {/* Core Fields */}
-                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                <div className="rounded-2xl border border-surface bg-card p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-muted mb-4">
                         Core Fields
                     </div>
                     <div className="space-y-0">
@@ -309,8 +309,8 @@ export const TasksIssuesPage = (_props: HelpCenterPageProps) => {
                 </div>
 
                 {/* Extended Fields */}
-                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                <div className="rounded-2xl border border-surface bg-card p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-muted mb-4">
                         Extended Fields
                     </div>
                     <div className="space-y-0">
@@ -326,21 +326,21 @@ export const TasksIssuesPage = (_props: HelpCenterPageProps) => {
             </section>
 
             {/* SECTION: Status Workflow */}
-            <section data-section-id="status-workflow" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
+            <section data-section-id="status-workflow" className="help-section rounded-3xl border border-surface bg-card p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Workflow</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Status Workflow</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Workflow</div>
+                        <h3 className="text-xl font-bold text-main mt-2">Status Workflow</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             Tasks move through statuses as work progresses. Understanding the flow helps teams stay aligned.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">timeline</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">timeline</span>
                 </div>
 
                 {/* Status Flow Diagram */}
-                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                <div className="rounded-2xl border border-surface bg-surface p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-muted mb-4">
                         Status Flow
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -405,16 +405,16 @@ export const TasksIssuesPage = (_props: HelpCenterPageProps) => {
             </section>
 
             {/* SECTION: Priority System */}
-            <section data-section-id="priority-system" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+            <section data-section-id="priority-system" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Urgency</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Priority System</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Urgency</div>
+                        <h3 className="text-xl font-bold text-main mt-2">Priority System</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             Priority communicates urgency. Use it consistently so team members trust the signal.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">priority_high</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">priority_high</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -456,16 +456,16 @@ export const TasksIssuesPage = (_props: HelpCenterPageProps) => {
             </section>
 
             {/* SECTION: Issues and Blockers */}
-            <section data-section-id="issues-blockers" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
+            <section data-section-id="issues-blockers" className="help-section rounded-3xl border border-surface bg-card p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Risk</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Issues and Blockers</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Risk</div>
+                        <h3 className="text-xl font-bold text-main mt-2">Issues and Blockers</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             Issues are blockers, bugs, or risks that can delay delivery. Track them separately for visibility.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">report_problem</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">report_problem</span>
                 </div>
 
                 {/* Issue Types */}
@@ -501,8 +501,8 @@ export const TasksIssuesPage = (_props: HelpCenterPageProps) => {
                 </div>
 
                 {/* Issue Status Flow */}
-                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                <div className="rounded-2xl border border-surface bg-surface p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-muted mb-4">
                         Issue Lifecycle
                     </div>
                     <div className="flex items-center gap-3 flex-wrap">
@@ -518,74 +518,74 @@ export const TasksIssuesPage = (_props: HelpCenterPageProps) => {
             </section>
 
             {/* SECTION: Checklists and Subtasks */}
-            <section data-section-id="checklists-subtasks" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+            <section data-section-id="checklists-subtasks" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Breakdown</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Checklists and Subtasks</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Breakdown</div>
+                        <h3 className="text-xl font-bold text-main mt-2">Checklists and Subtasks</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             Break large tasks into smaller pieces. Track progress as you complete each step.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">task_alt</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">task_alt</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Checklist Demo */}
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                    <div className="rounded-2xl border border-surface bg-card p-5">
+                        <div className="text-xs font-bold uppercase tracking-wider text-muted mb-4">
                             Example Checklist
                         </div>
                         <div className="space-y-3">
                             <div className="flex items-center gap-3">
                                 <span className="material-symbols-outlined text-[18px] text-emerald-500">check_box</span>
-                                <span className="text-sm text-[var(--color-text-muted)] line-through">Research requirements</span>
+                                <span className="text-sm text-muted line-through">Research requirements</span>
                             </div>
                             <div className="flex items-center gap-3">
                                 <span className="material-symbols-outlined text-[18px] text-emerald-500">check_box</span>
-                                <span className="text-sm text-[var(--color-text-muted)] line-through">Create initial design</span>
+                                <span className="text-sm text-muted line-through">Create initial design</span>
                             </div>
                             <div className="flex items-center gap-3">
-                                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)]">check_box_outline_blank</span>
-                                <span className="text-sm text-[var(--color-text-main)]">Implement functionality</span>
+                                <span className="material-symbols-outlined text-[18px] text-subtle">check_box_outline_blank</span>
+                                <span className="text-sm text-main">Implement functionality</span>
                             </div>
                             <div className="flex items-center gap-3">
-                                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)]">check_box_outline_blank</span>
-                                <span className="text-sm text-[var(--color-text-main)]">Write tests</span>
+                                <span className="material-symbols-outlined text-[18px] text-subtle">check_box_outline_blank</span>
+                                <span className="text-sm text-main">Write tests</span>
                             </div>
                             <div className="flex items-center gap-3">
-                                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)]">check_box_outline_blank</span>
-                                <span className="text-sm text-[var(--color-text-main)]">Code review</span>
+                                <span className="material-symbols-outlined text-[18px] text-subtle">check_box_outline_blank</span>
+                                <span className="text-sm text-main">Code review</span>
                             </div>
                         </div>
                         <div className="mt-4 flex items-center gap-2">
-                            <div className="flex-1 h-2 rounded-full bg-[var(--color-surface-hover)] overflow-hidden">
+                            <div className="flex-1 h-2 rounded-full bg-surface-hover overflow-hidden">
                                 <div className="h-full w-[40%] bg-emerald-500 rounded-full" />
                             </div>
-                            <span className="text-xs font-bold text-[var(--color-text-muted)]">40%</span>
+                            <span className="text-xs font-bold text-muted">40%</span>
                         </div>
                     </div>
 
                     {/* Best Practices */}
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                    <div className="rounded-2xl border border-surface bg-card p-5">
+                        <div className="text-xs font-bold uppercase tracking-wider text-muted mb-4">
                             Best Practices
                         </div>
-                        <div className="space-y-4 text-sm text-[var(--color-text-muted)]">
+                        <div className="space-y-4 text-sm text-muted">
                             <div className="flex items-start gap-3">
-                                <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>
+                                <span className="material-symbols-outlined text-[16px] text-primary">check</span>
                                 <span>Keep checklist items small and completable in one session</span>
                             </div>
                             <div className="flex items-start gap-3">
-                                <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>
+                                <span className="material-symbols-outlined text-[16px] text-primary">check</span>
                                 <span>Use checklists for acceptance criteria on larger tasks</span>
                             </div>
                             <div className="flex items-start gap-3">
-                                <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>
+                                <span className="material-symbols-outlined text-[16px] text-primary">check</span>
                                 <span>If an item needs its own assignee or due date, make it a subtask</span>
                             </div>
                             <div className="flex items-start gap-3">
-                                <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>
+                                <span className="material-symbols-outlined text-[16px] text-primary">check</span>
                                 <span>Check items off as you complete them to show progress</span>
                             </div>
                         </div>
@@ -594,55 +594,55 @@ export const TasksIssuesPage = (_props: HelpCenterPageProps) => {
             </section>
 
             {/* SECTION: Comments and Mentions */}
-            <section data-section-id="comments-mentions" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
+            <section data-section-id="comments-mentions" className="help-section rounded-3xl border border-surface bg-card p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Collaboration</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Comments and Mentions</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Collaboration</div>
+                        <h3 className="text-xl font-bold text-main mt-2">Comments and Mentions</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             Communicate directly on tasks. Use @mentions to notify specific people.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">chat</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">chat</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Mention Syntax */}
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                    <div className="rounded-2xl border border-surface bg-surface p-5">
+                        <div className="text-xs font-bold uppercase tracking-wider text-muted mb-4">
                             Mention Syntax
                         </div>
                         <div className="space-y-4">
-                            <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3">
-                                <code className="text-sm text-[var(--color-primary)]">@username</code>
-                                <p className="text-xs text-[var(--color-text-muted)] mt-1">Notify a specific person</p>
+                            <div className="rounded-xl border border-surface bg-card p-3">
+                                <code className="text-sm text-primary">@username</code>
+                                <p className="text-xs text-muted mt-1">Notify a specific person</p>
                             </div>
-                            <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3">
-                                <code className="text-sm text-[var(--color-primary)]">@team</code>
-                                <p className="text-xs text-[var(--color-text-muted)] mt-1">Notify the entire project team</p>
+                            <div className="rounded-xl border border-surface bg-card p-3">
+                                <code className="text-sm text-primary">@team</code>
+                                <p className="text-xs text-muted mt-1">Notify the entire project team</p>
                             </div>
-                            <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3">
-                                <code className="text-sm text-[var(--color-primary)]">@assignee</code>
-                                <p className="text-xs text-[var(--color-text-muted)] mt-1">Notify whoever is assigned to this task</p>
+                            <div className="rounded-xl border border-surface bg-card p-3">
+                                <code className="text-sm text-primary">@assignee</code>
+                                <p className="text-xs text-muted mt-1">Notify whoever is assigned to this task</p>
                             </div>
                         </div>
                     </div>
 
                     {/* Notification Behavior */}
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
-                        <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                    <div className="rounded-2xl border border-surface bg-surface p-5">
+                        <div className="text-xs font-bold uppercase tracking-wider text-muted mb-4">
                             Notification Behavior
                         </div>
                         <div className="space-y-3 text-sm">
-                            <div className="flex items-center gap-3 text-[var(--color-text-muted)]">
-                                <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">notifications</span>
+                            <div className="flex items-center gap-3 text-muted">
+                                <span className="material-symbols-outlined text-[16px] text-primary">notifications</span>
                                 In-app notification for all mentions
                             </div>
-                            <div className="flex items-center gap-3 text-[var(--color-text-muted)]">
+                            <div className="flex items-center gap-3 text-muted">
                                 <span className="material-symbols-outlined text-[16px] text-sky-500">mail</span>
                                 Email notification (if enabled in settings)
                             </div>
-                            <div className="flex items-center gap-3 text-[var(--color-text-muted)]">
+                            <div className="flex items-center gap-3 text-muted">
                                 <span className="material-symbols-outlined text-[16px] text-amber-500">schedule</span>
                                 Batched if user has digest mode on
                             </div>
@@ -656,16 +656,16 @@ export const TasksIssuesPage = (_props: HelpCenterPageProps) => {
             </section>
 
             {/* SECTION: Views and Filters */}
-            <section data-section-id="views-filters" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+            <section data-section-id="views-filters" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Organization</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Views and Filters</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Organization</div>
+                        <h3 className="text-xl font-bold text-main mt-2">Views and Filters</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             Organize tasks the way you work. Switch views and apply filters to focus on what matters.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">view_agenda</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">view_agenda</span>
                 </div>
 
                 {/* View Types */}
@@ -685,8 +685,8 @@ export const TasksIssuesPage = (_props: HelpCenterPageProps) => {
                 </div>
 
                 {/* Available Filters */}
-                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                <div className="rounded-2xl border border-surface bg-card p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-muted mb-4">
                         Available Filters
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -704,25 +704,25 @@ export const TasksIssuesPage = (_props: HelpCenterPageProps) => {
                 </div>
 
                 {/* Saved Views */}
-                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                <div className="rounded-2xl border border-surface bg-surface p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-muted mb-4">
                         Saved Views
                     </div>
-                    <p className="text-sm text-[var(--color-text-muted)] leading-relaxed mb-4">
+                    <p className="text-sm text-muted leading-relaxed mb-4">
                         Create saved views to quickly switch between different filter combinations. Views are personal by default
                         but can be shared with the team.
                     </p>
                     <div className="flex flex-wrap gap-2">
-                        <span className="px-3 py-1.5 rounded-lg bg-[var(--color-primary)]/10 text-sm font-medium text-[var(--color-primary)]">
+                        <span className="px-3 py-1.5 rounded-lg bg-primary/10 text-sm font-medium text-primary">
                             My Tasks
                         </span>
-                        <span className="px-3 py-1.5 rounded-lg bg-[var(--color-surface-hover)] text-sm font-medium text-[var(--color-text-muted)]">
+                        <span className="px-3 py-1.5 rounded-lg bg-surface-hover text-sm font-medium text-muted">
                             Urgent This Week
                         </span>
-                        <span className="px-3 py-1.5 rounded-lg bg-[var(--color-surface-hover)] text-sm font-medium text-[var(--color-text-muted)]">
+                        <span className="px-3 py-1.5 rounded-lg bg-surface-hover text-sm font-medium text-muted">
                             Blocked Items
                         </span>
-                        <span className="px-3 py-1.5 rounded-lg bg-[var(--color-surface-hover)] text-sm font-medium text-[var(--color-text-muted)]">
+                        <span className="px-3 py-1.5 rounded-lg bg-surface-hover text-sm font-medium text-muted">
                             + New View
                         </span>
                     </div>
@@ -730,16 +730,16 @@ export const TasksIssuesPage = (_props: HelpCenterPageProps) => {
             </section>
 
             {/* SECTION: Bulk Actions */}
-            <section data-section-id="bulk-actions" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
+            <section data-section-id="bulk-actions" className="help-section rounded-3xl border border-surface bg-card p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Efficiency</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Bulk Actions</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Efficiency</div>
+                        <h3 className="text-xl font-bold text-main mt-2">Bulk Actions</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             Work with multiple items at once. Select, update, and manage in batches.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">select_all</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">select_all</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

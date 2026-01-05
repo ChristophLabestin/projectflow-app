@@ -58,10 +58,10 @@ export const VariableManager: React.FC<VariableManagerProps> = ({ variables, onC
     };
 
     return (
-        <div className="flex flex-col h-full bg-[var(--color-surface-paper)] font-sans">
-            <div className="p-4 border-b border-[var(--color-surface-border)]">
-                <h3 className="text-sm font-bold uppercase tracking-widest text-[var(--color-text-muted)]">Variables</h3>
-                <p className="text-xs text-[var(--color-text-muted)] mt-1">Define dynamic values to use in your template such as {'{{firstName}}'}.</p>
+        <div className="flex flex-col h-full bg-surface-paper font-sans">
+            <div className="p-4 border-b border-surface">
+                <h3 className="text-sm font-bold uppercase tracking-widest text-muted">Variables</h3>
+                <p className="text-xs text-muted mt-1">Define dynamic values to use in your template such as {'{{firstName}}'}.</p>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -71,7 +71,7 @@ export const VariableManager: React.FC<VariableManagerProps> = ({ variables, onC
                         <div key={v.id} className="p-3 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-lg group">
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <div className="font-mono text-xs font-bold text-[var(--color-primary)] bg-[var(--color-primary)]/10 px-1.5 py-0.5 rounded inline-block mb-1">
+                                    <div className="font-mono text-xs font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded inline-block mb-1">
                                         {'{{'}{v.name}{'}}'}
                                     </div>
                                     <div className="text-sm font-medium">{v.label}</div>
@@ -100,7 +100,7 @@ export const VariableManager: React.FC<VariableManagerProps> = ({ variables, onC
                 {!isAdding && (
                     <button
                         onClick={() => setIsAdding(true)}
-                        className="w-full py-2 border-2 border-dashed border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-bold text-zinc-500 hover:border-[var(--color-primary)] hover:text-[var(--color-primary)] transition-colors flex items-center justify-center gap-2"
+                        className="w-full py-2 border-2 border-dashed border-zinc-200 dark:border-zinc-700 rounded-lg text-xs font-bold text-zinc-500 hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
                     >
                         <span className="material-symbols-outlined text-[16px]">add</span>
                         Add Variable
@@ -108,7 +108,7 @@ export const VariableManager: React.FC<VariableManagerProps> = ({ variables, onC
                 )}
 
                 {isAdding && (
-                    <div className="bg-[var(--color-surface-card)] rounded-lg border border-[var(--color-surface-border)] p-4 space-y-3 shadow-lg animate-in fade-in slide-in-from-bottom-2">
+                    <div className="bg-card rounded-lg border border-surface p-4 space-y-3 shadow-lg animate-in fade-in slide-in-from-bottom-2">
                         <div className="space-y-1">
                             <label className="text-xs font-bold text-zinc-500">Variable Name (Key)</label>
                             <input
@@ -157,7 +157,7 @@ export const VariableManager: React.FC<VariableManagerProps> = ({ variables, onC
                         <div className="flex gap-2 pt-2">
                             <button
                                 onClick={handleSave}
-                                className="flex-1 py-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] text-xs font-bold rounded hover:brightness-110"
+                                className="flex-1 py-2 bg-primary text-on-primary text-xs font-bold rounded hover:brightness-110"
                             >
                                 {editingId ? 'Update' : 'Create'}
                             </button>

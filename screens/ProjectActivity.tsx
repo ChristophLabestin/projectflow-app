@@ -15,8 +15,8 @@ const FilterTab = ({ label, active, onClick, icon }: { label: string; active: bo
         className={`
             flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-all
             ${active
-                ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] shadow-lg shadow-[var(--color-primary)]/20'
-                : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-border)] hover:text-[var(--color-text-main)]'}
+                ? 'bg-primary text-on-primary shadow-lg shadow-[var(--color-primary)]/20'
+                : 'bg-surface-hover text-muted hover:bg-surface-border hover:text-main'}
         `}
     >
         {icon && <span className="material-symbols-outlined text-[18px]">{icon}</span>}
@@ -51,7 +51,7 @@ export const ProjectActivity = () => {
 
     if (loading) return (
         <div className="flex items-center justify-center p-12">
-            <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-3xl">rotate_right</span>
+            <span className="material-symbols-outlined text-subtle animate-spin text-3xl">rotate_right</span>
         </div>
     );
 
@@ -62,24 +62,24 @@ export const ProjectActivity = () => {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pt-10">
                     <div>
                         <div className="flex items-center gap-4 mb-2">
-                            <Link to={`/project/${id}`} className="group flex items-center justify-center size-9 rounded-xl bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] hover:border-[var(--color-primary)] transition-all">
-                                <span className="material-symbols-outlined text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)] text-[20px]">arrow_back</span>
+                            <Link to={`/project/${id}`} className="group flex items-center justify-center size-9 rounded-xl bg-surface-hover border border-surface hover:border-primary transition-all">
+                                <span className="material-symbols-outlined text-muted group-hover:text-primary text-[20px]">arrow_back</span>
                             </Link>
                             <div>
-                                <h1 className="h2 text-[var(--color-text-main)] leading-none mb-1">Activity Log</h1>
-                                <p className="text-[var(--color-text-muted)] text-sm">Track progress and changes in real-time.</p>
+                                <h1 className="h2 text-main leading-none mb-1">Activity Log</h1>
+                                <p className="text-muted text-sm">Track progress and changes in real-time.</p>
                             </div>
                         </div>
                     </div>
 
                     <div className="relative group">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-[var(--color-text-subtle)] group-focus-within:text-[var(--color-primary)] transition-colors">search</span>
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-subtle group-focus-within:text-primary transition-colors">search</span>
                         <input
                             type="text"
                             placeholder="Search logs..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 pr-4 py-2 bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] rounded-xl text-sm w-full md:w-64 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]/50 transition-all font-medium text-[var(--color-text-main)]"
+                            className="pl-10 pr-4 py-2 bg-surface-hover border border-surface rounded-xl text-sm w-full md:w-64 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 transition-all font-medium text-main"
                         />
                     </div>
                 </div>
@@ -98,24 +98,24 @@ export const ProjectActivity = () => {
                 <div className="space-y-12">
                     {Object.keys(groupedActivities).length === 0 ? (
                         <div className="flex flex-col items-center justify-center text-center py-24 opacity-60">
-                            <div className="size-20 rounded-3xl bg-[var(--color-surface-hover)] border-2 border-dashed border-[var(--color-surface-border)] flex items-center justify-center mb-6">
-                                <span className="material-symbols-outlined text-4xl text-[var(--color-text-subtle)]">history_toggle_off</span>
+                            <div className="size-20 rounded-3xl bg-surface-hover border-2 border-dashed border-surface flex items-center justify-center mb-6">
+                                <span className="material-symbols-outlined text-4xl text-subtle">history_toggle_off</span>
                             </div>
-                            <h3 className="h3 text-[var(--color-text-main)] mb-2">No activity recorded</h3>
-                            <p className="text-[var(--color-text-muted)] max-w-xs text-sm">We couldn't find any activities matching your current filters.</p>
+                            <h3 className="h3 text-main mb-2">No activity recorded</h3>
+                            <p className="text-muted max-w-xs text-sm">We couldn't find any activities matching your current filters.</p>
                         </div>
                     ) : (
                         Object.entries(groupedActivities).map(([date, items]) => (
                             <div key={date} className="relative">
                                 {/* Sticky header with better blend */}
-                                <div className="sticky top-0 z-20 bg-[var(--color-background)]/80 backdrop-blur-md py-4 mb-4 border-b border-[var(--color-surface-border)]/10">
-                                    <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--color-text-subtle)] flex items-center gap-4">
+                                <div className="sticky top-0 z-20 bg-surface/80 backdrop-blur-md py-4 mb-4 border-b border-surface/10">
+                                    <h3 className="text-[10px] font-bold uppercase tracking-[0.2em] text-subtle flex items-center gap-4">
                                         <span className="relative z-10">{date}</span>
-                                        <div className="h-px flex-1 bg-[var(--color-surface-border)]/50" />
+                                        <div className="h-px flex-1 bg-surface-border/50" />
                                     </h3>
                                 </div>
 
-                                <div className="space-y-10 ml-6 relative border-l border-[var(--color-surface-border)] pb-4">
+                                <div className="space-y-10 ml-6 relative border-l border-surface pb-4">
                                     {items.map((item) => {
                                         const { icon, color, bg } = activityIcon(item.type, item.action);
                                         const hasDetails = item.details && cleanText(item.details).toLowerCase() !== cleanText(item.target).toLowerCase();
@@ -136,27 +136,27 @@ export const ProjectActivity = () => {
                                                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                                                             <div className="flex items-center gap-2">
                                                                 {item.userAvatar ? (
-                                                                    <img src={item.userAvatar} alt={item.user} className="size-6 rounded-full object-cover ring-1 ring-[var(--color-surface-border)] shadow-sm" />
+                                                                    <img src={item.userAvatar} alt={item.user} className="size-6 rounded-full object-cover ring-1 ring-surface shadow-sm" />
                                                                 ) : (
-                                                                    <div className="size-6 rounded-full bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] flex items-center justify-center">
-                                                                        <span className="material-symbols-outlined text-[14px] text-[var(--color-text-subtle)]">person</span>
+                                                                    <div className="size-6 rounded-full bg-surface-hover border border-surface flex items-center justify-center">
+                                                                        <span className="material-symbols-outlined text-[14px] text-subtle">person</span>
                                                                     </div>
                                                                 )}
-                                                                <span className="font-bold text-[var(--color-text-main)] text-sm">{item.user}</span>
+                                                                <span className="font-bold text-main text-sm">{item.user}</span>
                                                             </div>
-                                                            <span className="text-sm text-[var(--color-text-muted)]">{item.action}</span>
-                                                            <span className="text-sm font-semibold text-[var(--color-text-main)] transition-colors group-hover:text-[var(--color-primary)]">
+                                                            <span className="text-sm text-muted">{item.action}</span>
+                                                            <span className="text-sm font-semibold text-main transition-colors group-hover:text-primary">
                                                                 {cleanText(item.target)}
                                                             </span>
                                                         </div>
-                                                        <span className="text-[11px] font-bold text-[var(--color-text-subtle)] whitespace-nowrap pt-0.5">
+                                                        <span className="text-[11px] font-bold text-subtle whitespace-nowrap pt-0.5">
                                                             {format(new Date(toMillis(item.createdAt)), 'p', { locale: dateLocale })}
                                                         </span>
                                                     </div>
 
                                                     {hasDetails && (
-                                                        <div className="p-3.5 rounded-xl bg-[var(--color-surface-hover)]/40 border border-[var(--color-surface-border)] group-hover:bg-[var(--color-surface-hover)] group-hover:border-[var(--color-primary)]/20 transition-all">
-                                                            <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+                                                        <div className="p-3.5 rounded-xl bg-surface-hover/40 border border-surface group-hover:bg-surface-hover group-hover:border-primary/20 transition-all">
+                                                            <p className="text-sm text-muted leading-relaxed">
                                                                 {cleanText(item.details)}
                                                             </p>
                                                         </div>

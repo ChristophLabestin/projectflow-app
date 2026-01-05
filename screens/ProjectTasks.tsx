@@ -311,7 +311,7 @@ export const ProjectTasks = () => {
                             ? 'bg-orange-50/30 dark:bg-orange-500/5 border-orange-200 dark:border-orange-500/20' // Blocked style
                             : task.convertedIdeaId
                                 ? 'bg-gradient-to-r from-indigo-50/50 to-white dark:from-indigo-950/10 dark:to-transparent border-indigo-100 dark:border-indigo-500/20 hover:shadow-xl hover:shadow-indigo-500/10'
-                                : 'bg-white dark:bg-white/[0.03] border-black/5 dark:border-white/5 hover:border-[var(--color-primary)]/30 hover:shadow-xl hover:shadow-black/5 hover:-translate-y-0.5'
+                                : 'bg-white dark:bg-white/[0.03] border-black/5 dark:border-white/5 hover:border-primary/30 hover:shadow-xl hover:shadow-black/5 hover:-translate-y-0.5'
                     }
                 `}
             >
@@ -333,7 +333,7 @@ export const ProjectTasks = () => {
 
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center flex-wrap gap-2 mb-2">
-                            <h4 className={`text-lg font-bold truncate transition-all duration-300 ${task.isCompleted ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)] group-hover:text-[var(--color-primary)]'}`}>
+                            <h4 className={`text-lg font-bold truncate transition-all duration-300 ${task.isCompleted ? 'text-muted line-through' : 'text-main group-hover:text-primary'}`}>
                                 {task.title}
                             </h4>
                             {task.convertedIdeaId && (
@@ -372,7 +372,7 @@ export const ProjectTasks = () => {
                                             {blockedBy.map(t => (
                                                 <div key={t.id} className="flex items-center gap-2">
                                                     <span className="material-symbols-outlined text-[12px] text-orange-400">lock</span>
-                                                    <span className="text-xs font-medium truncate text-[var(--color-text-main)] w-full">
+                                                    <span className="text-xs font-medium truncate text-main w-full">
                                                         {t.title}
                                                     </span>
                                                 </div>
@@ -523,7 +523,7 @@ export const ProjectTasks = () => {
                                     const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
                                     return (
                                         <div
-                                            className="h-full absolute top-0 left-0 rounded-full transition-all duration-1000 bg-[var(--color-primary)] shadow-[0_0_10px_rgba(var(--color-primary-rgb),0.5)]"
+                                            className="h-full absolute top-0 left-0 rounded-full transition-all duration-1000 bg-primary shadow-[0_0_10px_rgba(var(--color-primary-rgb),0.5)]"
                                             style={{ width: `${pct}%` }}
                                         />
                                     );
@@ -552,7 +552,7 @@ export const ProjectTasks = () => {
 
                     {showDueDate && dueDate && (
                         <div className={`flex flex-col gap-1.5 ${isBoard ? 'w-full px-1' : 'w-full md:w-32'}`}>
-                            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${isOverdue ? 'border-rose-500/30 bg-rose-500/10 text-rose-500' : 'border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] text-[var(--color-text-main)]'}`}>
+                            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${isOverdue ? 'border-rose-500/30 bg-rose-500/10 text-rose-500' : 'border-surface bg-surface text-main'}`}>
                                 <span className="material-symbols-outlined text-[16px]">event</span>
                                 <div className="flex flex-col">
                                     <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-70">{t('projectTasks.timeline.due')}</span>
@@ -603,7 +603,7 @@ export const ProjectTasks = () => {
                                 push_pin
                             </span>
                         </button>
-                        <div className="size-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center text-[var(--color-text-main)] transition-all duration-300 group-hover:bg-[var(--color-primary)] group-hover:text-[var(--color-primary-text)] group-hover:translate-x-1 shrink-0">
+                        <div className="size-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center text-main transition-all duration-300 group-hover:bg-primary group-hover:text-on-primary group-hover:translate-x-1 shrink-0">
                             <span className="material-symbols-outlined text-xl">east</span>
                         </div>
                     </div>
@@ -614,7 +614,7 @@ export const ProjectTasks = () => {
 
     if (loading) return (
         <div className="flex items-center justify-center p-12">
-            <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-3xl">rotate_right</span>
+            <span className="material-symbols-outlined text-subtle animate-spin text-3xl">rotate_right</span>
         </div>
     );
 
@@ -625,10 +625,10 @@ export const ProjectTasks = () => {
                 {/* Premium Header */}
                 <div data-onboarding-id="project-tasks-header" className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
                     <div>
-                        <h1 className="text-4xl font-black text-[var(--color-text-main)] tracking-tight mb-2">
-                            {t('projectTasks.header.title')} <span className="text-[var(--color-primary)]">{t('projectTasks.header.titleEmphasis')}</span>
+                        <h1 className="text-4xl font-black text-main tracking-tight mb-2">
+                            {t('projectTasks.header.title')} <span className="text-primary">{t('projectTasks.header.titleEmphasis')}</span>
                         </h1>
-                        <p className="text-[var(--color-text-muted)] text-lg font-medium opacity-80">
+                        <p className="text-muted text-lg font-medium opacity-80">
                             {project?.name
                                 ? t('projectTasks.header.subtitleWithProject').replace('{project}', project.name)
                                 : t('projectTasks.header.subtitleFallback')}
@@ -662,7 +662,7 @@ export const ProjectTasks = () => {
                             <div className="relative z-10">
                                 <p className={`text-xs font-bold text-${stat.color}-600 dark:text-${stat.color}-400 uppercase tracking-[0.1em] mb-2`}>{stat.label}</p>
                                 <div className="flex items-baseline gap-3">
-                                    <p className="text-4xl font-black text-[var(--color-text-main)]">{stat.val}</p>
+                                    <p className="text-4xl font-black text-main">{stat.val}</p>
                                     {stat.progress !== undefined && (
                                         <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30">
                                             {stat.progress}%
@@ -685,8 +685,8 @@ export const ProjectTasks = () => {
                                     className={`
                                     relative flex-1 lg:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all capitalize z-10
                                     ${filter === f
-                                            ? 'text-[var(--color-primary)] bg-white dark:bg-white/10 shadow-sm'
-                                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}
+                                            ? 'text-primary bg-white dark:bg-white/10 shadow-sm'
+                                            : 'text-muted hover:text-main'}
                                 `}
                                 >
                                     {filterLabels[f]}
@@ -702,8 +702,8 @@ export const ProjectTasks = () => {
                                     className={`
                                     relative flex-1 lg:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all capitalize z-10 flex items-center gap-2
                                     ${view === v
-                                            ? 'text-[var(--color-primary)] bg-white dark:bg-white/10 shadow-sm'
-                                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}
+                                            ? 'text-primary bg-white dark:bg-white/10 shadow-sm'
+                                            : 'text-muted hover:text-main'}
                                 `}
                                 >
                                     <span className="material-symbols-outlined text-lg">{v === 'list' ? 'format_list_bulleted' : 'dashboard'}</span>
@@ -714,15 +714,15 @@ export const ProjectTasks = () => {
 
                         {/* Sort Dropdown */}
                         <div className="relative group/sort">
-                            <button className="flex items-center gap-2 bg-white/60 dark:bg-white/5 backdrop-blur-md px-4 py-4 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm text-sm font-bold text-[var(--color-text-main)] hover:border-[var(--color-primary)]/30 transition-all">
+                            <button className="flex items-center gap-2 bg-white/60 dark:bg-white/5 backdrop-blur-md px-4 py-4 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm text-sm font-bold text-main hover:border-primary/30 transition-all">
                                 <span className="material-symbols-outlined text-lg">sort</span>
                                 <span className="hidden sm:inline">{t('projectTasks.sort.label')}</span>
-                                <span className="text-[var(--color-primary)] capitalize">
+                                <span className="text-primary capitalize">
                                     {sortLabels[sortBy]}
                                 </span>
                                 <span className="material-symbols-outlined text-sm opacity-50">expand_more</span>
                             </button>
-                            <div className="absolute top-full left-0 mt-2 opacity-0 invisible group-hover/sort:opacity-100 group-hover/sort:visible transition-all bg-white dark:bg-[#1E1E1E] border border-[var(--color-surface-border)] rounded-xl shadow-2xl py-2 min-w-[160px] z-50">
+                            <div className="absolute top-full left-0 mt-2 opacity-0 invisible group-hover/sort:opacity-100 group-hover/sort:visible transition-all bg-white dark:bg-[#1E1E1E] border border-surface rounded-xl shadow-2xl py-2 min-w-[160px] z-50">
                                 {([
                                     { value: 'priority', label: t('projectTasks.sort.priority'), icon: 'flag' },
                                     { value: 'dueDate', label: t('projectTasks.sort.dueDate'), icon: 'event' },
@@ -732,7 +732,7 @@ export const ProjectTasks = () => {
                                     <button
                                         key={opt.value}
                                         onClick={() => setSortBy(opt.value)}
-                                        className={`w-full px-4 py-2 text-left text-sm font-medium flex items-center gap-3 hover:bg-[var(--color-surface-hover)] transition-colors ${sortBy === opt.value ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/5' : 'text-[var(--color-text-main)]'}`}
+                                        className={`w-full px-4 py-2 text-left text-sm font-medium flex items-center gap-3 hover:bg-surface-hover transition-colors ${sortBy === opt.value ? 'text-primary bg-primary/5' : 'text-main'}`}
                                     >
                                         <span className="material-symbols-outlined text-lg">{opt.icon}</span>
                                         {opt.label}
@@ -751,9 +751,9 @@ export const ProjectTasks = () => {
                             value={search}
                             onChange={handleSearchChange}
                             placeholder={t('projectTasks.search.placeholder')}
-                            className="w-full bg-white/60 dark:bg-white/5 backdrop-blur-md border-black/5 dark:border-white/5 ring-1 ring-black/5 dark:ring-white/10 focus:ring-2 focus:ring-[var(--color-primary)] rounded-2xl pl-12 pr-6 py-4 text-sm font-medium transition-all outline-none"
+                            className="w-full bg-white/60 dark:bg-white/5 backdrop-blur-md border-black/5 dark:border-white/5 ring-1 ring-black/5 dark:ring-white/10 focus:ring-2 focus:ring-primary rounded-2xl pl-12 pr-6 py-4 text-sm font-medium transition-all outline-none"
                         />
-                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] group-focus-within:text-[var(--color-primary)] transition-colors">search</span>
+                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-primary transition-colors">search</span>
                     </div>
                 </div>
 
@@ -764,8 +764,8 @@ export const ProjectTasks = () => {
                             <div className="size-24 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-full flex items-center justify-center mb-6 ring-8 ring-indigo-500/5">
                                 <span className="material-symbols-outlined text-5xl text-indigo-500 animate-pulse">explore_off</span>
                             </div>
-                            <h3 className="text-2xl font-bold text-[var(--color-text-main)] mb-2">{t('projectTasks.empty.title')}</h3>
-                            <p className="text-[var(--color-text-muted)] max-w-sm font-medium opacity-70">
+                            <h3 className="text-2xl font-bold text-main mb-2">{t('projectTasks.empty.title')}</h3>
+                            <p className="text-muted max-w-sm font-medium opacity-70">
                                 {t('projectTasks.empty.description')}
                             </p>
                             {can('canManageTasks') && (

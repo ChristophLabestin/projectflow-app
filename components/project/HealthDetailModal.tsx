@@ -133,7 +133,7 @@ export const HealthDetailModal: React.FC<HealthDetailModalProps> = ({
                 className={`relative w-full max-w-2xl ${theme.shadow} animate-in zoom-in-95 fade-in duration-300`}
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className={`w-full relative rounded-3xl overflow-hidden border ${theme.border} bg-white dark:bg-[var(--color-surface-card)] ring-1 ${theme.ring}`}>
+                <div className={`w-full relative rounded-3xl overflow-hidden border ${theme.border} bg-white dark:bg-card ring-1 ${theme.ring}`}>
                     {/* Gradient Background */}
                     <div className={`absolute inset-0 bg-gradient-to-br ${theme.gradient} opacity-50`} />
 

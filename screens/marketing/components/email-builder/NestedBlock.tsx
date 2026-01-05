@@ -37,7 +37,7 @@ const DroppableColumn = ({ id, children, span = 1 }: { id: string, children: Rea
         <div
             ref={setNodeRef}
             className={`flex flex-col gap-0 border border-dashed transition-all duration-150 ${isOver
-                ? 'border-[var(--color-primary)] bg-blue-50/50 dark:bg-blue-900/20'
+                ? 'border-primary bg-blue-50/50 dark:bg-blue-900/20'
                 : 'border-zinc-200/60 dark:border-zinc-700/60'
                 }`}
             style={{ gridColumn: `span ${span}` }}
@@ -60,7 +60,7 @@ const DroppableFlex = ({ id, block, children }: { id: string, block: EmailBlock,
     return (
         <div
             ref={setNodeRef}
-            className={`transition-all duration-150 ${isOver ? 'bg-[var(--color-primary)]/5 ring-2 ring-[var(--color-primary)]/50 ring-inset' : ''}`}
+            className={`transition-all duration-150 ${isOver ? 'bg-primary/5 ring-2 ring-primary/50 ring-inset' : ''}`}
             style={{
                 display: 'flex',
                 flexDirection: styles.flexDirection || 'row',
@@ -94,7 +94,7 @@ const DroppableDiv = ({ id, block, children }: { id: string, block: EmailBlock, 
     return (
         <div
             ref={setNodeRef}
-            className={`transition-all duration-150 ${isOver ? 'bg-[var(--color-primary)]/5 ring-2 ring-[var(--color-primary)]/50 ring-inset' : ''} ${!React.Children.count(children) ? 'border border-dashed border-zinc-200/60 dark:border-zinc-700/60' : ''}`}
+            className={`transition-all duration-150 ${isOver ? 'bg-primary/5 ring-2 ring-primary/50 ring-inset' : ''} ${!React.Children.count(children) ? 'border border-dashed border-zinc-200/60 dark:border-zinc-700/60' : ''}`}
             style={{
                 display: 'flex',
                 flexDirection: styles.flexDirection || 'column',

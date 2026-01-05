@@ -92,7 +92,7 @@ export const RichTextModal = ({ isOpen, initialContent, onSave, onClose, variabl
                 {/* Draggable Header */}
                 <div className="modal-header flex items-center justify-between px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700 cursor-move select-none">
                     <div className="flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[var(--color-primary)] text-lg">edit_note</span>
+                        <span className="material-symbols-outlined text-primary text-lg">edit_note</span>
                         <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Rich Text Editor</h3>
                     </div>
                     <div className="flex items-center gap-1">
@@ -125,7 +125,7 @@ export const RichTextModal = ({ isOpen, initialContent, onSave, onClose, variabl
                     </button>
                     <button
                         onClick={handleSave}
-                        className="px-4 py-2 text-sm font-bold text-[var(--color-primary-text)] bg-[var(--color-primary)] hover:opacity-90 rounded-lg shadow-sm transition-all"
+                        className="px-4 py-2 text-sm font-bold text-on-primary bg-primary hover:opacity-90 rounded-lg shadow-sm transition-all"
                     >
                         Save Changes
                     </button>

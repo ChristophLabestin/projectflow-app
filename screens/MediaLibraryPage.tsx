@@ -260,8 +260,8 @@ export const MediaLibraryPage: React.FC = () => {
     if (loading) {
         return (
             <div className="flex flex-col items-center justify-center p-20 gap-4">
-                <span className="material-symbols-outlined text-4xl animate-spin text-[var(--color-primary)]">progress_activity</span>
-                <p className="text-[var(--color-text-muted)] font-medium">Loading your media library...</p>
+                <span className="material-symbols-outlined text-4xl animate-spin text-primary">progress_activity</span>
+                <p className="text-muted font-medium">Loading your media library...</p>
             </div>
         );
     }
@@ -271,28 +271,28 @@ export const MediaLibraryPage: React.FC = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
                 <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-[var(--color-primary)] font-black tracking-widest text-xs uppercase">
-                        <span className="h-px w-8 bg-[var(--color-primary)]/30" />
+                    <div className="flex items-center gap-2 text-primary font-black tracking-widest text-xs uppercase">
+                        <span className="h-px w-8 bg-primary/30" />
                         Workspace
                     </div>
-                    <h1 className="text-4xl font-black text-[var(--color-text-main)] tracking-tight">Media Library</h1>
-                    <p className="text-[var(--color-text-muted)] max-w-lg font-medium">
+                    <h1 className="text-4xl font-black text-main tracking-tight">Media Library</h1>
+                    <p className="text-muted max-w-lg font-medium">
                         All your project assets in one place, synchronized and ready for use.
                     </p>
                 </div>
 
                 <div className="flex items-center gap-3">
                     {isUploading && (
-                        <div className="flex items-center gap-2 px-4 py-2 bg-[var(--color-surface-hover)] rounded-xl border border-[var(--color-surface-border)] animate-pulse">
-                            <span className="material-symbols-outlined text-[18px] animate-spin text-[var(--color-primary)]">progress_activity</span>
-                            <span className="text-xs font-bold text-[var(--color-text-muted)]">Uploading...</span>
+                        <div className="flex items-center gap-2 px-4 py-2 bg-surface-hover rounded-xl border border-surface animate-pulse">
+                            <span className="material-symbols-outlined text-[18px] animate-spin text-primary">progress_activity</span>
+                            <span className="text-xs font-bold text-muted">Uploading...</span>
                         </div>
                     )}
                     <Button
                         variant="primary"
                         onClick={() => triggerUpload('uncategorized')}
                         disabled={isUploading}
-                        className="bg-[var(--color-primary)] hover:brightness-110 shadow-lg shadow-[var(--color-primary)]/20"
+                        className="bg-primary hover:brightness-110 shadow-lg shadow-[var(--color-primary)]/20"
                     >
                         <span className="material-symbols-outlined text-[20px] mr-2">upload</span>
                         Upload Media
@@ -310,12 +310,12 @@ export const MediaLibraryPage: React.FC = () => {
             />
 
             {assets.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-32 text-center bg-[var(--color-surface-card)] rounded-3xl border-2 border-dashed border-[var(--color-surface-border)]">
-                    <div className="size-20 rounded-2xl bg-[var(--color-surface-hover)] flex items-center justify-center mb-6">
-                        <span className="material-symbols-outlined text-4xl text-[var(--color-text-muted)]">perm_media</span>
+                <div className="flex flex-col items-center justify-center py-32 text-center bg-card rounded-3xl border-2 border-dashed border-surface">
+                    <div className="size-20 rounded-2xl bg-surface-hover flex items-center justify-center mb-6">
+                        <span className="material-symbols-outlined text-4xl text-muted">perm_media</span>
                     </div>
-                    <h3 className="text-xl font-bold text-[var(--color-text-main)] mb-2">Your library is empty</h3>
-                    <p className="text-[var(--color-text-muted)] max-w-sm font-medium">
+                    <h3 className="text-xl font-bold text-main mb-2">Your library is empty</h3>
+                    <p className="text-muted max-w-sm font-medium">
                         Images you upload in your projects or generate with AI will appear here.
                     </p>
                 </div>
@@ -324,8 +324,8 @@ export const MediaLibraryPage: React.FC = () => {
                     {groupedAssets.map(([pid, group]) => (
                         <section key={pid} className="space-y-6">
                             <div className="flex items-center gap-4">
-                                <div className={`size-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden border border-[var(--color-surface-border)]
-                                    ${group.project?.squareIcon ? 'bg-[var(--color-surface-bg)]' : 'bg-[var(--color-surface-card)] dark:bg-white'}
+                                <div className={`size-10 rounded-xl flex items-center justify-center shadow-lg overflow-hidden border border-surface
+                                    ${group.project?.squareIcon ? 'bg-surface' : 'bg-card dark:bg-white'}
                                 `}>
                                     {group.project?.squareIcon ? (
                                         <img
@@ -344,11 +344,11 @@ export const MediaLibraryPage: React.FC = () => {
                                 </div>
                                 <div>
                                     <Link to={`/project/${pid}`} className="hover:underline decoration-[var(--color-primary)]">
-                                        <h2 className="text-xl font-bold text-[var(--color-text-main)] hover:text-[var(--color-primary)] transition-colors">
+                                        <h2 className="text-xl font-bold text-main hover:text-primary transition-colors">
                                             {group.project?.title || 'Uncategorized Workspace Assets'}
                                         </h2>
                                     </Link>
-                                    <p className="text-xs text-[var(--color-text-muted)] font-bold uppercase tracking-wider">
+                                    <p className="text-xs text-muted font-bold uppercase tracking-wider">
                                         {group.assets.length} {group.assets.length === 1 ? 'Asset' : 'Assets'}
                                     </p>
                                 </div>
@@ -357,7 +357,7 @@ export const MediaLibraryPage: React.FC = () => {
                                     onClick={() => triggerUpload(pid)}
                                     disabled={isUploading}
                                     title={`Upload to ${group.project?.title || 'Workspace'}`}
-                                    className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 transition-all disabled:opacity-30"
+                                    className="p-2 rounded-lg text-muted hover:text-primary hover:bg-primary/5 transition-all disabled:opacity-30"
                                 >
                                     <span className="material-symbols-outlined text-[22px]">cloud_upload</span>
                                 </button>
@@ -365,7 +365,7 @@ export const MediaLibraryPage: React.FC = () => {
 
                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
                                 {group.assets.map((asset) => (
-                                    <div key={asset.id} className="group relative aspect-square rounded-2xl overflow-hidden bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] hover:border-[var(--color-primary)] transition-all shadow-sm hover:shadow-xl">
+                                    <div key={asset.id} className="group relative aspect-square rounded-2xl overflow-hidden bg-card border border-surface hover:border-primary transition-all shadow-sm hover:shadow-xl">
                                         <img
                                             src={asset.url}
                                             alt={asset.name}

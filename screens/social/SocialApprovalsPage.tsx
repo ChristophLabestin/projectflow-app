@@ -71,7 +71,7 @@ export const SocialApprovalsPage = () => {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-full">
-                <span className="material-symbols-outlined animate-spin text-3xl text-[var(--color-primary)]">progress_activity</span>
+                <span className="material-symbols-outlined animate-spin text-3xl text-primary">progress_activity</span>
             </div>
         );
     }
@@ -83,23 +83,23 @@ export const SocialApprovalsPage = () => {
                     <div className="flex items-center gap-2 mb-1">
                         <button
                             onClick={() => navigate(`/project/${projectId}/social`)}
-                            className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
+                            className="text-muted hover:text-main transition-colors"
                         >
                             <span className="material-symbols-outlined">arrow_back</span>
                         </button>
-                        <h1 className="text-2xl font-black text-[var(--color-text-main)] tracking-tight">{t('social.approvals.title')}</h1>
+                        <h1 className="text-2xl font-black text-main tracking-tight">{t('social.approvals.title')}</h1>
                     </div>
-                    <p className="text-[var(--color-text-muted)] font-medium ml-8">{t('social.approvals.subtitle')}</p>
+                    <p className="text-muted font-medium ml-8">{t('social.approvals.subtitle')}</p>
                 </div>
             </div>
 
             {posts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 bg-[var(--color-surface-card)] rounded-3xl border border-[var(--color-surface-border)] border-dashed">
+                <div className="flex flex-col items-center justify-center py-20 bg-card rounded-3xl border border-surface border-dashed">
                     <div className="size-20 bg-emerald-50 dark:bg-emerald-900/20 rounded-full flex items-center justify-center mb-6">
                         <span className="material-symbols-outlined text-4xl text-emerald-500">check_circle</span>
                     </div>
-                    <h3 className="text-xl font-bold text-[var(--color-text-main)] mb-2">{t('social.approvals.emptyTitle')}</h3>
-                    <p className="text-[var(--color-text-muted)] max-w-md text-center">{t('social.approvals.emptySubtitle')}</p>
+                    <h3 className="text-xl font-bold text-main mb-2">{t('social.approvals.emptyTitle')}</h3>
+                    <p className="text-muted max-w-md text-center">{t('social.approvals.emptySubtitle')}</p>
                     <Button
                         className="mt-6"
                         variant="secondary"
@@ -111,18 +111,18 @@ export const SocialApprovalsPage = () => {
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {posts.map(post => (
-                        <Card key={post.id} className="group relative overflow-hidden transition-all hover:shadow-lg border-[var(--color-surface-border)] hover:border-[var(--color-primary-light)]">
+                        <Card key={post.id} className="group relative overflow-hidden transition-all hover:shadow-lg border-surface hover:border-[var(--color-primary-light)]">
                             {/* Header */}
                             <div className="flex items-center justify-between mb-4">
                                 <div className="flex items-center gap-2">
-                                    <div className="size-8 rounded-lg bg-[var(--color-surface-bg)] flex items-center justify-center border border-[var(--color-surface-border)]">
+                                    <div className="size-8 rounded-lg bg-surface flex items-center justify-center border border-surface">
                                         <div className="size-4">
                                             <PlatformIcon platform={post.platform} />
                                         </div>
                                     </div>
                                     <div>
-                                        <div className="text-xs font-bold text-[var(--color-text-main)]">{post.platform}</div>
-                                        <div className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">{post.format}</div>
+                                        <div className="text-xs font-bold text-main">{post.platform}</div>
+                                        <div className="text-[10px] text-muted uppercase tracking-wider">{post.format}</div>
                                     </div>
                                 </div>
                                 <div className="px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
@@ -132,15 +132,15 @@ export const SocialApprovalsPage = () => {
 
                             {/* Content Preview */}
                             <div className="space-y-3 mb-6">
-                                <p className="text-sm text-[var(--color-text-main)] line-clamp-3 min-h-[3rem]">
-                                    {post.content.caption || <span className="italic text-[var(--color-text-muted)]">{t('social.post.noCaption')}</span>}
+                                <p className="text-sm text-main line-clamp-3 min-h-[3rem]">
+                                    {post.content.caption || <span className="italic text-muted">{t('social.post.noCaption')}</span>}
                                 </p>
                                 {post.assets && post.assets.length > 0 && (
-                                    <div className="h-32 w-full rounded-lg bg-[var(--color-surface-bg)] bg-cover bg-center border border-[var(--color-surface-border)]"
+                                    <div className="h-32 w-full rounded-lg bg-surface bg-cover bg-center border border-surface"
                                         style={{ backgroundImage: `url(${post.assets[0].url})` }}
                                     />
                                 )}
-                                <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                                <div className="flex items-center gap-2 text-xs text-muted">
                                     <span className="material-symbols-outlined text-[16px]">schedule</span>
                                     {post.scheduledFor
                                         ? format(new Date(post.scheduledFor), 'MMM d, h:mm a', { locale: dateLocale })
@@ -156,7 +156,7 @@ export const SocialApprovalsPage = () => {
                                         e.stopPropagation();
                                         setPreviewPost(post);
                                     }}
-                                    className="p-1.5 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-lg shadow-sm hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors"
+                                    className="p-1.5 bg-card border border-surface rounded-lg shadow-sm hover:bg-surface-hover text-muted hover:text-primary transition-colors"
                                     title={t('social.approvals.reviewBtn')}
                                 >
                                     <span className="material-symbols-outlined text-[18px]">visibility</span>
@@ -164,7 +164,7 @@ export const SocialApprovalsPage = () => {
                             </div>
 
                             {/* Actions */}
-                            <div className="flex gap-2 mt-auto pt-4 border-t border-[var(--color-surface-border)]">
+                            <div className="flex gap-2 mt-auto pt-4 border-t border-surface">
                                 <Button
                                     className="flex-1"
                                     variant="primary"

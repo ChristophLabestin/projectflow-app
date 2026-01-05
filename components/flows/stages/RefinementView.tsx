@@ -77,8 +77,8 @@ export const RefinementView: React.FC<RefinementViewProps> = ({ idea, onUpdate }
         field: 'impact' | 'effort'
     ) => (
         <div className="space-y-2">
-            <span className="text-xs font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">{label}</span>
-            <div className="flex bg-[var(--color-surface-hover)] p-1 rounded-lg">
+            <span className="text-xs font-bold text-subtle uppercase tracking-wider">{label}</span>
+            <div className="flex bg-surface-hover p-1 rounded-lg">
                 {options.map((option) => {
                     const isSelected = value === option;
                     return (
@@ -87,7 +87,7 @@ export const RefinementView: React.FC<RefinementViewProps> = ({ idea, onUpdate }
                             onClick={() => onUpdate({ [field]: option })}
                             className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold transition-all duration-200 ${isSelected
                                 ? `${colors[option]} shadow-sm transform scale-100`
-                                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-white/50 dark:hover:bg-white/5'
+                                : 'text-muted hover:text-main hover:bg-white/50 dark:hover:bg-white/5'
                                 }`}
                         >
                             {levelLabels[option as keyof typeof levelLabels] || option}
@@ -104,8 +104,8 @@ export const RefinementView: React.FC<RefinementViewProps> = ({ idea, onUpdate }
             {/* Top Bar: Generate Action */}
             <div className="flex items-center justify-between shrink-0 px-1">
                 <div>
-                    <h2 className="text-lg font-bold text-[var(--color-text-main)]">{t('flowStages.refinement.title')}</h2>
-                    <p className="text-xs text-[var(--color-text-muted)]">{t('flowStages.refinement.subtitle')}</p>
+                    <h2 className="text-lg font-bold text-main">{t('flowStages.refinement.title')}</h2>
+                    <p className="text-xs text-muted">{t('flowStages.refinement.subtitle')}</p>
                 </div>
                 <Button
                     variant="primary"
@@ -124,21 +124,21 @@ export const RefinementView: React.FC<RefinementViewProps> = ({ idea, onUpdate }
                 {/* Left Panel: Core Attributes (4 cols) */}
                 <div className="lg:col-span-4 flex flex-col gap-6 h-full">
                     {/* Description Editor */}
-                    <div className="bg-[var(--color-surface-paper)] p-4 rounded-xl border border-[var(--color-surface-border)] shadow-sm flex flex-col gap-3 flex-1 min-h-[300px]">
-                        <div className="flex items-center gap-2 text-[var(--color-text-main)] font-semibold border-b border-[var(--color-surface-border)] pb-2 shrink-0">
-                            <span className="material-symbols-outlined text-[18px] text-[var(--color-primary)]">subject</span>
+                    <div className="bg-surface-paper p-4 rounded-xl border border-surface shadow-sm flex flex-col gap-3 flex-1 min-h-[300px]">
+                        <div className="flex items-center gap-2 text-main font-semibold border-b border-surface pb-2 shrink-0">
+                            <span className="material-symbols-outlined text-[18px] text-primary">subject</span>
                             {t('flowStages.refinement.summary.title')}
                         </div>
                         <textarea
                             value={idea.description}
                             onChange={(e) => onUpdate({ description: e.target.value })}
-                            className="flex-1 w-full bg-transparent border-none focus:ring-0 p-0 resize-none text-sm leading-relaxed text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] focus:outline-none"
+                            className="flex-1 w-full bg-transparent border-none focus:ring-0 p-0 resize-none text-sm leading-relaxed text-main placeholder-[var(--color-text-subtle)] focus:outline-none"
                             placeholder={t('flowStages.refinement.summary.placeholder')}
                         />
                     </div>
 
                     {/* Impact & Effort */}
-                    <div className="bg-[var(--color-surface-paper)] p-4 rounded-xl border border-[var(--color-surface-border)] shadow-sm space-y-6 shrink-0">
+                    <div className="bg-surface-paper p-4 rounded-xl border border-surface shadow-sm space-y-6 shrink-0">
                         {renderPillSelector(
                             t('flowStages.refinement.impact.title'),
                             idea.impact,
@@ -165,7 +165,7 @@ export const RefinementView: React.FC<RefinementViewProps> = ({ idea, onUpdate }
                     </div>
 
                     {/* Footer Action - Advance */}
-                    <div className="mt-auto pt-4 border-t border-[var(--color-surface-border)] shrink-0">
+                    <div className="mt-auto pt-4 border-t border-surface shrink-0">
                         <Button
                             className="w-full h-12 text-base justify-between group bg-[var(--color-text-main)] text-[var(--color-surface-bg)] hover:bg-[var(--color-text-main)]/90 shadow-lg hover:shadow-xl transition-all rounded-xl"
                             onClick={() => onUpdate({ stage: 'Concept' })}

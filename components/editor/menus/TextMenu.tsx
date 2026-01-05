@@ -92,7 +92,7 @@ export const TextMenu: React.FC<TextMenuProps> = ({ editor }) => {
 
     return (
         <div
-            className="fixed z-[100000] flex items-center gap-1 p-1 rounded-lg bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-xl pointer-events-auto transform -translate-x-1/2 -translate-y-full mb-2"
+            className="fixed z-[100000] flex items-center gap-1 p-1 rounded-lg bg-card border border-surface shadow-xl pointer-events-auto transform -translate-x-1/2 -translate-y-full mb-2"
             style={{ top: position.top, left: position.left }}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
@@ -104,14 +104,14 @@ export const TextMenu: React.FC<TextMenuProps> = ({ editor }) => {
                         value={linkUrl}
                         onChange={(e) => setLinkUrl(e.target.value)}
                         placeholder="https://..."
-                        className="text-sm p-1 rounded border border-[var(--color-surface-border)] bg-transparent text-[var(--color-text-main)] w-40"
+                        className="text-sm p-1 rounded border border-surface bg-transparent text-main w-40"
                         autoFocus
                         onKeyDown={(e) => e.key === 'Enter' && setLink()}
                     />
-                    <button onClick={setLink} className="p-1 hover:bg-[var(--color-surface-hover)] rounded text-[var(--color-success)]">
+                    <button onClick={setLink} className="p-1 hover:bg-surface-hover rounded text-success">
                         <check size={14} />
                     </button>
-                    <button onClick={() => setShowLinkInput(false)} className="p-1 hover:bg-[var(--color-surface-hover)] rounded text-[var(--color-text-muted)]">
+                    <button onClick={() => setShowLinkInput(false)} className="p-1 hover:bg-surface-hover rounded text-muted">
                         <span className="material-symbols-outlined text-[14px]">close</span>
                     </button>
                 </div>
@@ -119,7 +119,7 @@ export const TextMenu: React.FC<TextMenuProps> = ({ editor }) => {
                 <div className="flex items-center gap-1 p-1">
                     <button
                         onClick={() => editor.chain().focus().unsetColor().run()}
-                        className="px-1.5 py-0.5 text-[10px] font-medium rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)] border border-black/10"
+                        className="px-1.5 py-0.5 text-[10px] font-medium rounded hover:bg-surface-hover text-main border border-black/10"
                         title="Reset Color"
                     >
                         Auto
@@ -132,14 +132,14 @@ export const TextMenu: React.FC<TextMenuProps> = ({ editor }) => {
                             style={{ backgroundColor: color }}
                         />
                     ))}
-                    <div className="relative w-5 h-5 rounded-full overflow-hidden border border-[var(--color-surface-border)]">
+                    <div className="relative w-5 h-5 rounded-full overflow-hidden border border-surface">
                         <input
                             type="color"
                             onChange={(e) => setTextColor(e.target.value)}
                             className="absolute inset-[-4px] w-[150%] h-[150%] p-0 border-none cursor-pointer"
                         />
                     </div>
-                    <button onClick={() => setShowColorMenu(false)} className="p-1 hover:bg-[var(--color-surface-hover)] rounded text-[var(--color-text-muted)] ml-1">
+                    <button onClick={() => setShowColorMenu(false)} className="p-1 hover:bg-surface-hover rounded text-muted ml-1">
                         <span className="material-symbols-outlined text-[14px]">close</span>
                     </button>
                 </div>
@@ -147,55 +147,55 @@ export const TextMenu: React.FC<TextMenuProps> = ({ editor }) => {
                 <>
                     <button
                         onClick={() => editor.chain().focus().toggleBold().run()}
-                        className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] transition-colors ${editor.isActive('bold') ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'}`}
+                        className={`p-1.5 rounded hover:bg-surface-hover transition-colors ${editor.isActive('bold') ? 'text-primary' : 'text-muted'}`}
                     >
                         <Bold size={16} />
                     </button>
                     <button
                         onClick={() => editor.chain().focus().toggleItalic().run()}
-                        className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] transition-colors ${editor.isActive('italic') ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'}`}
+                        className={`p-1.5 rounded hover:bg-surface-hover transition-colors ${editor.isActive('italic') ? 'text-primary' : 'text-muted'}`}
                     >
                         <Italic size={16} />
                     </button>
                     <button
                         onClick={() => editor.chain().focus().toggleUnderline().run()}
-                        className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] transition-colors ${editor.isActive('underline') ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'}`}
+                        className={`p-1.5 rounded hover:bg-surface-hover transition-colors ${editor.isActive('underline') ? 'text-primary' : 'text-muted'}`}
                     >
                         <Underline size={16} />
                     </button>
                     <button
                         onClick={() => editor.chain().focus().toggleStrike().run()}
-                        className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] transition-colors ${editor.isActive('strike') ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'}`}
+                        className={`p-1.5 rounded hover:bg-surface-hover transition-colors ${editor.isActive('strike') ? 'text-primary' : 'text-muted'}`}
                     >
                         <Strikethrough size={16} />
                     </button>
 
-                    <div className="w-px h-4 bg-[var(--color-surface-border)] mx-1" />
+                    <div className="w-px h-4 bg-surface-border mx-1" />
 
                     <button
                         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                        className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] transition-colors ${editor.isActive('heading', { level: 2 }) ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'}`}
+                        className={`p-1.5 rounded hover:bg-surface-hover transition-colors ${editor.isActive('heading', { level: 2 }) ? 'text-primary' : 'text-muted'}`}
                     >
                         <Heading2 size={16} />
                     </button>
 
                     <button
                         onClick={() => editor.chain().focus().toggleCode().run()}
-                        className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] transition-colors ${editor.isActive('code') ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'}`}
+                        className={`p-1.5 rounded hover:bg-surface-hover transition-colors ${editor.isActive('code') ? 'text-primary' : 'text-muted'}`}
                     >
                         <Code size={16} />
                     </button>
 
                     <button
                         onClick={toggleColorMenu}
-                        className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] transition-colors ${editor.getAttributes('textStyle').color ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'}`}
+                        className={`p-1.5 rounded hover:bg-surface-hover transition-colors ${editor.getAttributes('textStyle').color ? 'text-primary' : 'text-muted'}`}
                     >
                         <span className="font-serif font-bold text-lg" style={{ color: editor.getAttributes('textStyle').color }}>A</span>
                     </button>
 
                     <button
                         onClick={toggleLink}
-                        className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] transition-colors ${editor.isActive('link') ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'}`}
+                        className={`p-1.5 rounded hover:bg-surface-hover transition-colors ${editor.isActive('link') ? 'text-primary' : 'text-muted'}`}
                     >
                         <LinkIcon size={16} />
                     </button>

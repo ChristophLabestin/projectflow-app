@@ -20,37 +20,37 @@ const NODE_CONFIGS: Record<string, {
     group: {
         icon: 'category',
         colorClass: 'text-violet-600 dark:text-violet-400',
-        bgClass: 'bg-[var(--color-surface-card)]',
-        borderColor: 'border-[var(--color-surface-border)]',
+        bgClass: 'bg-card',
+        borderColor: 'border-surface',
     },
     idea: {
         icon: 'lightbulb',
         colorClass: 'text-amber-600 dark:text-amber-400',
-        bgClass: 'bg-[var(--color-surface-card)]',
+        bgClass: 'bg-card',
         borderColor: 'border-amber-200 dark:border-amber-800/50',
     },
     task: {
         icon: 'task_alt',
         colorClass: 'text-emerald-600 dark:text-emerald-400',
-        bgClass: 'bg-[var(--color-surface-card)]',
+        bgClass: 'bg-card',
         borderColor: 'border-emerald-200 dark:border-emerald-800/50',
     },
     issue: {
         icon: 'bug_report',
         colorClass: 'text-rose-600 dark:text-rose-400',
-        bgClass: 'bg-[var(--color-surface-card)]',
+        bgClass: 'bg-card',
         borderColor: 'border-rose-200 dark:border-rose-800/50',
     },
     milestone: {
         icon: 'flag',
         colorClass: 'text-blue-600 dark:text-blue-400',
-        bgClass: 'bg-[var(--color-surface-card)]',
+        bgClass: 'bg-card',
         borderColor: 'border-blue-200 dark:border-blue-800/50',
     },
     campaign: {
         icon: 'campaign',
         colorClass: 'text-pink-600 dark:text-pink-400',
-        bgClass: 'bg-[var(--color-surface-card)]',
+        bgClass: 'bg-card',
         borderColor: 'border-pink-200 dark:border-pink-800/50',
     },
 };
@@ -110,9 +110,9 @@ function CollapseButton({ collapsed, onClick }: { collapsed?: boolean; onClick: 
     return (
         <button
             onClick={(e) => { e.stopPropagation(); onClick(); }}
-            className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] flex items-center justify-center hover:bg-[var(--color-surface-hover)] transition-colors z-10 shadow-sm"
+            className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-6 h-6 rounded-full bg-card border border-surface flex items-center justify-center hover:bg-surface-hover transition-colors z-10 shadow-sm"
         >
-            <span className="material-symbols-outlined text-[14px] text-[var(--color-text-muted)]">
+            <span className="material-symbols-outlined text-[14px] text-muted">
                 {collapsed ? 'expand_more' : 'expand_less'}
             </span>
         </button>
@@ -246,26 +246,26 @@ export const MindmapNode = memo(function MindmapNode({ node, hasChildren }: Mind
 
             {/* Type Icon & Label */}
             <div className="flex items-center gap-1.5 mb-1">
-                <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${isProjectNode ? 'bg-indigo-100 dark:bg-indigo-900/50' : 'bg-[var(--color-surface-hover)]'}`}>
+                <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${isProjectNode ? 'bg-indigo-100 dark:bg-indigo-900/50' : 'bg-surface-hover'}`}>
                     <span className={`material-symbols-outlined text-[14px] ${config.colorClass}`}>
                         {config.icon}
                     </span>
                 </div>
                 {!isProjectNode && (
-                    <span className="text-[10px] font-medium uppercase tracking-wider text-[var(--color-text-muted)]">
+                    <span className="text-[10px] font-medium uppercase tracking-wider text-muted">
                         {node.type}
                     </span>
                 )}
             </div>
 
             {/* Title */}
-            <span className={`font-semibold text-center leading-tight max-w-[160px] truncate text-[var(--color-text-main)] ${isProjectNode ? 'text-base' : 'text-sm'}`}>
+            <span className={`font-semibold text-center leading-tight max-w-[160px] truncate text-main ${isProjectNode ? 'text-base' : 'text-sm'}`}>
                 {node.label}
             </span>
 
             {/* Group name for ideas */}
             {node.groupName && node.type === 'idea' && (
-                <span className="text-[10px] text-[var(--color-text-muted)] mt-0.5 truncate max-w-[140px]">
+                <span className="text-[10px] text-muted mt-0.5 truncate max-w-[140px]">
                     {node.groupName}
                 </span>
             )}

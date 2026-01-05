@@ -155,24 +155,24 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
             <div className="space-y-4">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectTeam.title')}</h3>
-                        <p className="text-sm text-[var(--color-text-muted)]">{t('projectTeam.subtitle')}</p>
+                        <h3 className="text-lg font-bold text-main">{t('projectTeam.title')}</h3>
+                        <p className="text-sm text-muted">{t('projectTeam.subtitle')}</p>
                     </div>
                 </div>
 
-                <div className="border border-[var(--color-surface-border)] rounded-xl overflow-hidden">
+                <div className="border border-surface rounded-xl overflow-hidden">
                     {loading ? (
-                        <div className="p-8 text-center text-[var(--color-text-muted)]">
+                        <div className="p-8 text-center text-muted">
                             <span className="material-symbols-outlined animate-spin text-2xl">progress_activity</span>
                         </div>
                     ) : members.length === 0 ? (
-                        <div className="p-8 text-center text-[var(--color-text-muted)]">
+                        <div className="p-8 text-center text-muted">
                             <p>{t('projectTeam.empty')}</p>
                         </div>
                     ) : (
                         <div className="divide-y divide-[var(--color-surface-border)]">
                             {members.map((member) => (
-                                <div key={member.userId} className="p-4 flex items-center justify-between bg-[var(--color-surface-card)] hover:bg-[var(--color-surface-hover)]/50 transition-colors">
+                                <div key={member.userId} className="p-4 flex items-center justify-between bg-card hover:bg-surface-hover/50 transition-colors">
                                     <div className="flex items-center gap-3">
                                         <div className="size-10 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center shrink-0">
                                             {member.photoURL ? (
@@ -182,8 +182,8 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
                                             )}
                                         </div>
                                         <div>
-                                            <p className="font-semibold text-sm text-[var(--color-text-main)]">{member.displayName} {auth.currentUser?.uid === member.userId && <span className="text-[var(--color-text-subtle)] text-xs font-normal">({t('common.you')})</span>}</p>
-                                            <p className="text-xs text-[var(--color-text-muted)]">{member.email}</p>
+                                            <p className="font-semibold text-sm text-main">{member.displayName} {auth.currentUser?.uid === member.userId && <span className="text-subtle text-xs font-normal">({t('common.you')})</span>}</p>
+                                            <p className="text-xs text-muted">{member.email}</p>
                                         </div>
                                     </div>
 
@@ -201,7 +201,7 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
                                                 </Select>
                                                 <button
                                                     onClick={() => handleRemoveMember(member.userId)}
-                                                    className="p-1.5 text-[var(--color-text-subtle)] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                    className="p-1.5 text-subtle hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                                     title={t('projectTeam.actions.remove')}
                                                 >
                                                     <span className="material-symbols-outlined text-[20px]">person_remove</span>
@@ -221,15 +221,15 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
             {/* Invite Section */}
             {canManage && (
                 <div className="space-y-4">
-                    <div className="h-px bg-[var(--color-surface-border)]" />
+                    <div className="h-px bg-surface-border" />
                     <div className="flex items-center justify-between">
                         <div>
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectTeam.invite.title')}</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">{t('projectTeam.invite.subtitle')}</p>
+                            <h3 className="text-lg font-bold text-main">{t('projectTeam.invite.title')}</h3>
+                            <p className="text-sm text-muted">{t('projectTeam.invite.subtitle')}</p>
                         </div>
                     </div>
 
-                    <div className="bg-[var(--color-surface-hover)]/30 border border-[var(--color-surface-border)] rounded-xl p-4 space-y-4">
+                    <div className="bg-surface-hover/30 border border-surface rounded-xl p-4 space-y-4">
                         <div className="flex gap-3">
                             <Select
                                 value={inviteRole}
@@ -262,27 +262,27 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
                     {/* Active Invite Links */}
                     {inviteLinks.length > 0 && (
                         <div className="space-y-2">
-                            <h4 className="text-sm font-semibold text-[var(--color-text-main)]">{t('projectTeam.invite.active')}</h4>
+                            <h4 className="text-sm font-semibold text-main">{t('projectTeam.invite.active')}</h4>
                             <div className="space-y-2">
                                 {inviteLinks.map(link => (
-                                    <div key={link.id} className="flex items-center justify-between p-3 border border-[var(--color-surface-border)] rounded-lg bg-[var(--color-surface-card)]">
+                                    <div key={link.id} className="flex items-center justify-between p-3 border border-surface rounded-lg bg-card">
                                         <div className="flex items-center gap-3">
                                             <Badge variant="outline">{link.role}</Badge>
                                             <div className="flex flex-col">
-                                                <span className="text-xs text-[var(--color-text-muted)]">
+                                                <span className="text-xs text-muted">
                                                     {t('projectTeam.invite.expires').replace('{date}', format(new Date(link.expiresAt.toDate ? link.expiresAt.toDate() : link.expiresAt), dateFormat, { locale: dateLocale }))}
                                                 </span>
-                                                <span className="text-xs text-[var(--color-text-subtle)]">{t('projectTeam.invite.createdByYou')}</span>
+                                                <span className="text-xs text-subtle">{t('projectTeam.invite.createdByYou')}</span>
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <button
                                                 onClick={() => copyToClipboard(`${window.location.origin}/join/${link.id}?projectId=${project.id}&tenantId=${project.tenantId}`)}
-                                                className="text-xs font-medium text-[var(--color-primary)] hover:underline"
+                                                className="text-xs font-medium text-primary hover:underline"
                                             >
                                                 {t('projectTeam.invite.copyLink')}
                                             </button>
-                                            <div className="w-px h-3 bg-[var(--color-surface-border)]" />
+                                            <div className="w-px h-3 bg-surface-border" />
                                             <button
                                                 onClick={() => handleRevokeLink(link.id)}
                                                 className="text-xs font-medium text-red-500 hover:text-red-600 hover:underline"

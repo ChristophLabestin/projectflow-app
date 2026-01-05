@@ -18,11 +18,11 @@ const MenuBar = ({ editor }: { editor: any }) => {
     if (!editor) return null;
 
     return (
-        <div className="flex items-center gap-1 p-2 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] sticky top-0 z-10 backdrop-blur-sm bg-opacity-90">
+        <div className="flex items-center gap-1 p-2 border-b border-surface bg-surface sticky top-0 z-10 backdrop-blur-sm bg-opacity-90">
             <button
                 onClick={() => editor.chain().focus().toggleBold().run()}
                 disabled={!editor.can().chain().focus().toggleBold().run()}
-                className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] ${editor.isActive('bold') ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}
+                className={`p-1.5 rounded hover:bg-surface-hover ${editor.isActive('bold') ? 'bg-[var(--color-surface-active)] text-primary' : 'text-subtle'}`}
                 title={t('flowStages.concept.toolbar.bold')}
             >
                 <span className="material-symbols-outlined text-[18px]">format_bold</span>
@@ -30,51 +30,51 @@ const MenuBar = ({ editor }: { editor: any }) => {
             <button
                 onClick={() => editor.chain().focus().toggleItalic().run()}
                 disabled={!editor.can().chain().focus().toggleItalic().run()}
-                className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] ${editor.isActive('italic') ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}
+                className={`p-1.5 rounded hover:bg-surface-hover ${editor.isActive('italic') ? 'bg-[var(--color-surface-active)] text-primary' : 'text-subtle'}`}
                 title={t('flowStages.concept.toolbar.italic')}
             >
                 <span className="material-symbols-outlined text-[18px]">format_italic</span>
             </button>
-            <div className="w-px h-4 bg-[var(--color-surface-border)] mx-1" />
+            <div className="w-px h-4 bg-surface-border mx-1" />
             <button
                 onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-                className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] ${editor.isActive('heading', { level: 1 }) ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}
+                className={`p-1.5 rounded hover:bg-surface-hover ${editor.isActive('heading', { level: 1 }) ? 'bg-[var(--color-surface-active)] text-primary' : 'text-subtle'}`}
                 title={t('flowStages.concept.toolbar.heading1')}
             >
                 <span className="material-symbols-outlined text-[18px]">format_h1</span>
             </button>
             <button
                 onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-                className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] ${editor.isActive('heading', { level: 2 }) ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}
+                className={`p-1.5 rounded hover:bg-surface-hover ${editor.isActive('heading', { level: 2 }) ? 'bg-[var(--color-surface-active)] text-primary' : 'text-subtle'}`}
                 title={t('flowStages.concept.toolbar.heading2')}
             >
                 <span className="material-symbols-outlined text-[18px]">format_h2</span>
             </button>
             <button
                 onClick={() => editor.chain().focus().toggleBulletList().run()}
-                className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] ${editor.isActive('bulletList') ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}
+                className={`p-1.5 rounded hover:bg-surface-hover ${editor.isActive('bulletList') ? 'bg-[var(--color-surface-active)] text-primary' : 'text-subtle'}`}
                 title={t('flowStages.concept.toolbar.bullets')}
             >
                 <span className="material-symbols-outlined text-[18px]">format_list_bulleted</span>
             </button>
             <button
                 onClick={() => editor.chain().focus().toggleOrderedList().run()}
-                className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] ${editor.isActive('orderedList') ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}
+                className={`p-1.5 rounded hover:bg-surface-hover ${editor.isActive('orderedList') ? 'bg-[var(--color-surface-active)] text-primary' : 'text-subtle'}`}
                 title={t('flowStages.concept.toolbar.numbered')}
             >
                 <span className="material-symbols-outlined text-[18px]">format_list_numbered</span>
             </button>
-            <div className="w-px h-4 bg-[var(--color-surface-border)] mx-1" />
+            <div className="w-px h-4 bg-surface-border mx-1" />
             <button
                 onClick={() => editor.chain().focus().toggleBlockquote().run()}
-                className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] ${editor.isActive('blockquote') ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)]' : 'text-[var(--color-text-subtle)]'}`}
+                className={`p-1.5 rounded hover:bg-surface-hover ${editor.isActive('blockquote') ? 'bg-[var(--color-surface-active)] text-primary' : 'text-subtle'}`}
                 title={t('flowStages.concept.toolbar.quote')}
             >
                 <span className="material-symbols-outlined text-[18px]">format_quote</span>
             </button>
             <button
                 onClick={() => editor.chain().focus().setHorizontalRule().run()}
-                className={`p-1.5 rounded hover:bg-[var(--color-surface-hover)] text-[var(--color-text-subtle)]`}
+                className={`p-1.5 rounded hover:bg-surface-hover text-subtle`}
                 title={t('flowStages.concept.toolbar.divider')}
             >
                 <span className="material-symbols-outlined text-[18px]">horizontal_rule</span>
@@ -126,16 +126,16 @@ export const ConceptView: React.FC<ConceptViewProps> = ({ idea, onUpdate, chatHi
 
 
     return (
-        <div className="h-full flex flex-col bg-[var(--color-surface-paper)] rounded-2xl border border-[var(--color-surface-border)] overflow-hidden shadow-sm relative">
+        <div className="h-full flex flex-col bg-surface-paper rounded-2xl border border-surface overflow-hidden shadow-sm relative">
 
             {/* Toolbar Area */}
-            <div className="flex items-center justify-between border-b border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] pr-4">
+            <div className="flex items-center justify-between border-b border-surface bg-surface pr-4">
                 <MenuBar editor={editor} />
 
                 <div className="flex items-center gap-2">
 
                     {!idea.concept && (
-                        <span className="text-xs text-[var(--color-text-muted)] animate-pulse hidden md:inline">
+                        <span className="text-xs text-muted animate-pulse hidden md:inline">
                             {t('flowStages.concept.ready')}
                         </span>
                     )}
@@ -149,7 +149,7 @@ export const ConceptView: React.FC<ConceptViewProps> = ({ idea, onUpdate, chatHi
                     >
                         {t('flowStages.concept.actions.draftAi')}
                     </Button>
-                    <div className="w-px h-6 bg-[var(--color-surface-border)] mx-1" />
+                    <div className="w-px h-6 bg-surface-border mx-1" />
                     <Button
                         size="sm"
                         onClick={() => onUpdate({ stage: idea.type === 'Product' ? 'Launch' : 'Review' })}
@@ -165,12 +165,12 @@ export const ConceptView: React.FC<ConceptViewProps> = ({ idea, onUpdate, chatHi
             <div className="flex-1 flex overflow-hidden relative">
 
                 {/* Editor */}
-                <div className="flex-1 overflow-y-auto bg-[var(--color-surface-paper)] custom-scrollbar cursor-text relative" onClick={() => editor?.commands.focus()}>
+                <div className="flex-1 overflow-y-auto bg-surface-paper custom-scrollbar cursor-text relative" onClick={() => editor?.commands.focus()}>
                     <EditorContent editor={editor} className="h-full" />
 
                     {/* Loading Overlay */}
                     {generating && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--color-surface-paper)]/80 backdrop-blur-sm z-20 transition-all duration-300">
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-surface-paper/80 backdrop-blur-sm z-20 transition-all duration-300">
                             <div className="flex flex-col items-center gap-4 p-6 rounded-2xl bg-white/50 dark:bg-black/20 shadow-xl border border-white/20">
                                 <div className="relative">
                                     <span className="material-symbols-outlined text-5xl text-violet-500 animate-spin">progress_activity</span>
@@ -197,7 +197,7 @@ export const ConceptView: React.FC<ConceptViewProps> = ({ idea, onUpdate, chatHi
             </div>
 
             {/* Status Footer */}
-            <div className="bg-[var(--color-surface-bg)] border-t border-[var(--color-surface-border)] px-4 py-1.5 flex justify-between items-center text-[10px] text-[var(--color-text-subtle)] uppercase tracking-wider font-semibold select-none z-10">
+            <div className="bg-surface border-t border-surface px-4 py-1.5 flex justify-between items-center text-[10px] text-subtle uppercase tracking-wider font-semibold select-none z-10">
                 <span>{t('flowStages.concept.footer.markdown')}</span>
                 <span>{t('flowStages.concept.footer.words').replace('{count}', String(editor?.storage.characterCount?.words() || 0))}</span>
             </div>

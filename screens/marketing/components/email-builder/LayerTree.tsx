@@ -35,13 +35,13 @@ const getBlockIcon = (type: string) => {
 const ColumnDroppable = ({ id, children, label, onSelect, isSelected }: { id: string, children: React.ReactNode, label: string, onSelect: () => void, isSelected: boolean }) => {
     const { setNodeRef, isOver } = useDroppable({ id });
     return (
-        <div ref={setNodeRef} className={`flex flex-col ml-1 ${isOver ? 'bg-[var(--color-primary)]/10 ring-1 ring-[var(--color-primary)]/50' : ''}`}>
+        <div ref={setNodeRef} className={`flex flex-col ml-1 ${isOver ? 'bg-primary/10 ring-1 ring-primary/50' : ''}`}>
             <div
                 onClick={(e) => { e.stopPropagation(); onSelect(); }}
                 className={`flex items-center gap-1.5 py-1.5 px-2 text-[10px] uppercase font-bold select-none cursor-pointer transition-colors border-l-2
                     ${isSelected
-                        ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]'
-                        : 'border-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'
+                        ? 'bg-primary/10 border-primary text-primary'
+                        : 'border-transparent text-muted hover:bg-surface-hover hover:text-main'
                     }`}
             >
                 <div className="w-4 flex justify-center"><span className="material-symbols-outlined text-[14px] opacity-70">splitscreen_left</span></div>
@@ -58,7 +58,7 @@ const ColumnDroppable = ({ id, children, label, onSelect, isSelected }: { id: st
 const FlexDroppable = ({ id, children }: { id: string, children: React.ReactNode }) => {
     const { setNodeRef, isOver } = useDroppable({ id });
     return (
-        <div ref={setNodeRef} className={`flex flex-col ml-1 ${isOver ? 'bg-[var(--color-primary)]/10 ring-1 ring-[var(--color-primary)]/50' : ''}`}>
+        <div ref={setNodeRef} className={`flex flex-col ml-1 ${isOver ? 'bg-primary/10 ring-1 ring-primary/50' : ''}`}>
             {children}
             {React.Children.count(children) === 0 && (
                 <div className="pl-6 py-1 text-[10px] italic text-zinc-300">Empty Container</div>
@@ -108,7 +108,7 @@ const LayerNode: React.FC<{ block: EmailBlock; selectedId: string | null; onSele
                 {...attributes}
                 {...listeners}
                 className={`flex items-center gap-1.5 py-1.5 px-2 cursor-pointer text-xs font-medium transition-colors border-l-2 select-none group
-                    ${isSelected ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-transparent text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'}
+                    ${isSelected ? 'bg-primary/10 border-primary text-primary' : 'border-transparent text-muted hover:bg-surface-hover hover:text-main'}
                 `}
                 onClick={() => onSelect(block.id)}
             >

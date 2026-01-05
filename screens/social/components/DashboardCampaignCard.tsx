@@ -22,21 +22,21 @@ export const DashboardCampaignCard: React.FC<DashboardCampaignCardProps> = ({ ca
     const brandColor = campaign.color || '#E1306C';
 
     return (
-        <div className="bg-[var(--color-surface-card)] rounded-xl border border-[var(--color-surface-border)] overflow-hidden hover:shadow-lg transition-all group">
+        <div className="bg-card rounded-xl border border-surface overflow-hidden hover:shadow-lg transition-all group">
             <div className="h-2 w-full" style={{ backgroundColor: brandColor }} />
             <div className="p-5">
                 <div className="flex justify-between items-start mb-4">
                     <div>
-                        <h3 className="font-bold text-[var(--color-text-main)] group-hover:text-[var(--color-primary)] transition-colors">
+                        <h3 className="font-bold text-main group-hover:text-primary transition-colors">
                             {campaign.name}
                         </h3>
-                        <p className="text-xs text-[var(--color-text-muted)] line-clamp-1 mt-1">
+                        <p className="text-xs text-muted line-clamp-1 mt-1">
                             {campaign.goal}
                         </p>
                     </div>
                     <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${campaign.status === 'Active' ? 'bg-green-100 text-green-700' :
                         campaign.status === 'Planning' ? 'bg-blue-100 text-blue-700' :
-                            'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'
+                            'bg-surface-hover text-muted'
                         }`}>
                         {getSocialCampaignStatusLabel(campaign.status, t)}
                     </span>
@@ -46,12 +46,12 @@ export const DashboardCampaignCard: React.FC<DashboardCampaignCardProps> = ({ ca
                     {/* Progress */}
                     <div>
                         <div className="flex justify-between items-center mb-1.5">
-                            <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{t('social.dashboardCampaign.progress')}</span>
-                            <span className="text-[10px] font-bold text-[var(--color-text-main)]">
+                            <span className="text-[10px] font-bold text-muted uppercase tracking-wider">{t('social.dashboardCampaign.progress')}</span>
+                            <span className="text-[10px] font-bold text-main">
                                 {t('social.dashboardCampaign.postsCount').replace('{published}', String(publishedPosts)).replace('{total}', String(totalPosts))}
                             </span>
                         </div>
-                        <div className="h-1.5 w-full bg-[var(--color-surface-hover)] rounded-full overflow-hidden">
+                        <div className="h-1.5 w-full bg-surface-hover rounded-full overflow-hidden">
                             <div
                                 className="h-full transition-all duration-1000 ease-out"
                                 style={{
@@ -64,7 +64,7 @@ export const DashboardCampaignCard: React.FC<DashboardCampaignCardProps> = ({ ca
 
                     {/* Platforms */}
                     <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mr-1">{t('social.dashboardCampaign.platforms')}</span>
+                        <span className="text-[10px] font-bold text-muted uppercase tracking-wider mr-1">{t('social.dashboardCampaign.platforms')}</span>
                         <div className="flex gap-1.5">
                             {campaign.platforms?.map(platform => (
                                 <div key={platform} className="size-5" title={platform}>
@@ -75,8 +75,8 @@ export const DashboardCampaignCard: React.FC<DashboardCampaignCardProps> = ({ ca
                     </div>
                 </div>
 
-                <div className="flex items-center justify-between mt-5 pt-4 border-t border-[var(--color-surface-border)]">
-                    <div className="flex items-center gap-2 text-[10px] text-[var(--color-text-muted)]">
+                <div className="flex items-center justify-between mt-5 pt-4 border-t border-surface">
+                    <div className="flex items-center gap-2 text-[10px] text-muted">
                         <span className="material-symbols-outlined text-[14px]">calendar_today</span>
                         <span>
                             {t('social.dashboardCampaign.ends')
@@ -85,7 +85,7 @@ export const DashboardCampaignCard: React.FC<DashboardCampaignCardProps> = ({ ca
                     </div>
                     <Link
                         to={`/project/${projectId}/social/campaigns/${campaign.id}`}
-                        className="text-xs font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1"
+                        className="text-xs font-bold text-primary hover:underline flex items-center gap-1"
                     >
                         {t('social.dashboardCampaign.viewBoard')}
                         <span className="material-symbols-outlined text-[14px]">arrow_forward</span>

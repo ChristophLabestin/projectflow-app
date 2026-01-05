@@ -41,12 +41,12 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
                 <h3 className="text-xl font-bold text-violet-900 dark:text-violet-100 mb-2 transition-all duration-300 min-h-[30px]">
                     {stages[loadingStage]}
                 </h3>
-                <p className="text-[var(--color-text-muted)] text-sm max-w-xs mx-auto">
+                <p className="text-muted text-sm max-w-xs mx-auto">
                     CORA is simulating a VC & CTO review of your concept.
                 </p>
 
                 {/* Progress bar visual */}
-                <div className="w-64 h-1.5 bg-[var(--color-surface-hover)] rounded-full mt-8 overflow-hidden">
+                <div className="w-64 h-1.5 bg-surface-hover rounded-full mt-8 overflow-hidden">
                     <div className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 animate-[loading_2s_ease-in-out_infinite] w-1/3 rounded-full relative left-0"></div>
                 </div>
                 <style>{`
@@ -63,11 +63,11 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
     if (!analysis) {
         return (
             <div className="h-full flex flex-col items-center justify-center p-8 text-center opacity-60">
-                <div className="size-20 bg-[var(--color-surface-hover)] rounded-full flex items-center justify-center mb-6">
-                    <span className="material-symbols-outlined text-4xl text-[var(--color-text-subtle)]">analytics</span>
+                <div className="size-20 bg-surface-hover rounded-full flex items-center justify-center mb-6">
+                    <span className="material-symbols-outlined text-4xl text-subtle">analytics</span>
                 </div>
-                <h3 className="text-xl font-bold text-[var(--color-text-main)] mb-2">No Analysis Yet</h3>
-                <p className="text-[var(--color-text-muted)] max-w-md mb-8">
+                <h3 className="text-xl font-bold text-main mb-2">No Analysis Yet</h3>
+                <p className="text-muted max-w-md mb-8">
                     Run CORA analysis to estimate success probability, identify risks, and uncover potential wins.
                 </p>
                 <Button variant="primary" size="lg" onClick={onRunAnalysis} loading={loading} icon={<span className="material-symbols-outlined">network_intelligence</span>}>
@@ -102,8 +102,8 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
                 {/* 1. Success Probability Gauge */}
-                <div className="bg-[var(--color-surface-paper)] border border-[var(--color-surface-border)] rounded-2xl p-6 flex flex-col items-center justify-center relative overflow-hidden">
-                    <h4 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-4">Success Probability</h4>
+                <div className="bg-surface-paper border border-surface rounded-2xl p-6 flex flex-col items-center justify-center relative overflow-hidden">
+                    <h4 className="text-xs font-bold text-muted uppercase tracking-wider mb-4">Success Probability</h4>
                     <div className="relative size-32 flex items-center justify-center">
                         <svg className="size-full -rotate-90" viewBox="0 0 36 36">
                             {/* Background Circle */}
@@ -119,34 +119,34 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
                             />
                         </svg>
                         <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-3xl font-bold text-[var(--color-text-main)]">{successProbability}%</span>
+                            <span className="text-3xl font-bold text-main">{successProbability}%</span>
                         </div>
                     </div>
                 </div>
 
                 {/* 2. Market Fit Score */}
-                <div className="bg-[var(--color-surface-paper)] border border-[var(--color-surface-border)] rounded-2xl p-6 flex flex-col justify-between">
-                    <h4 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Market Fit</h4>
+                <div className="bg-surface-paper border border-surface rounded-2xl p-6 flex flex-col justify-between">
+                    <h4 className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Market Fit</h4>
                     <div className="flex-1 flex flex-col justify-end gap-2">
                         <div className="flex items-end justify-between mb-1">
-                            <span className="text-4xl font-bold text-[var(--color-text-main)]">{marketFitScore}<span className="text-lg text-[var(--color-text-muted)] font-normal">/10</span></span>
+                            <span className="text-4xl font-bold text-main">{marketFitScore}<span className="text-lg text-muted font-normal">/10</span></span>
                             <span className="material-symbols-outlined text-4xl text-[var(--color-surface-border)] opacity-20">storefront</span>
                         </div>
-                        <div className="h-3 w-full bg-[var(--color-surface-hover)] rounded-full overflow-hidden">
+                        <div className="h-3 w-full bg-surface-hover rounded-full overflow-hidden">
                             <div className={`h-full rounded-full ${getScoreColor(marketFitScore)}`} style={{ width: `${(marketFitScore / 10) * 100}%` }} />
                         </div>
                     </div>
                 </div>
 
                 {/* 3. Feasibility Score */}
-                <div className="bg-[var(--color-surface-paper)] border border-[var(--color-surface-border)] rounded-2xl p-6 flex flex-col justify-between">
-                    <h4 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Tech Feasibility</h4>
+                <div className="bg-surface-paper border border-surface rounded-2xl p-6 flex flex-col justify-between">
+                    <h4 className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Tech Feasibility</h4>
                     <div className="flex-1 flex flex-col justify-end gap-2">
                         <div className="flex items-end justify-between mb-1">
-                            <span className="text-4xl font-bold text-[var(--color-text-main)]">{technicalFeasibilityScore}<span className="text-lg text-[var(--color-text-muted)] font-normal">/10</span></span>
+                            <span className="text-4xl font-bold text-main">{technicalFeasibilityScore}<span className="text-lg text-muted font-normal">/10</span></span>
                             <span className="material-symbols-outlined text-4xl text-[var(--color-surface-border)] opacity-20">code</span>
                         </div>
-                        <div className="h-3 w-full bg-[var(--color-surface-hover)] rounded-full overflow-hidden">
+                        <div className="h-3 w-full bg-surface-hover rounded-full overflow-hidden">
                             <div className={`h-full rounded-full ${getScoreColor(technicalFeasibilityScore)}`} style={{ width: `${(technicalFeasibilityScore / 10) * 100}%` }} />
                         </div>
                     </div>
@@ -158,7 +158,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
                 <span className="material-symbols-outlined text-violet-600 mt-0.5">psychology_alt</span>
                 <div>
                     <h4 className="text-sm font-bold text-violet-900 dark:text-violet-300 mb-1">CORA Verdict</h4>
-                    <p className="text-sm text-[var(--color-text-main)] italic">"{recommendation}"</p>
+                    <p className="text-sm text-main italic">"{recommendation}"</p>
                 </div>
             </div>
 
@@ -166,18 +166,18 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Risks */}
                 <div>
-                    <h4 className="text-sm font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-subtle uppercase tracking-wider mb-4 flex items-center gap-2">
                         <span className="material-symbols-outlined text-[18px]">warning</span> Major Risks
                     </h4>
                     <div className="space-y-3">
                         {risks.map((risk, i) => (
-                            <div key={i} className="p-3 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] flex gap-3 items-start">
+                            <div key={i} className="p-3 rounded-xl border border-surface bg-surface flex gap-3 items-start">
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${getSeverityColor(risk.severity)}`}>
                                     {risk.severity}
                                 </span>
                                 <div>
-                                    <p className="text-sm font-bold text-[var(--color-text-main)] leading-tight mb-1">{risk.title}</p>
-                                    {risk.mitigation && <p className="text-xs text-[var(--color-text-muted)]">Tip: {risk.mitigation}</p>}
+                                    <p className="text-sm font-bold text-main leading-tight mb-1">{risk.title}</p>
+                                    {risk.mitigation && <p className="text-xs text-muted">Tip: {risk.mitigation}</p>}
                                 </div>
                             </div>
                         ))}
@@ -186,16 +186,16 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
 
                 {/* Wins */}
                 <div>
-                    <h4 className="text-sm font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-subtle uppercase tracking-wider mb-4 flex items-center gap-2">
                         <span className="material-symbols-outlined text-[18px]">trophy</span> Potential Wins
                     </h4>
                     <div className="space-y-3">
                         {wins.map((win, i) => (
-                            <div key={i} className="p-3 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] flex gap-3 items-start">
+                            <div key={i} className="p-3 rounded-xl border border-surface bg-surface flex gap-3 items-start">
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${getSeverityColor(win.impact)}`}>
                                     {win.impact}
                                 </span>
-                                <p className="text-sm font-bold text-[var(--color-text-main)] leading-tight pt-0.5">{win.title}</p>
+                                <p className="text-sm font-bold text-main leading-tight pt-0.5">{win.title}</p>
                             </div>
                         ))}
                     </div>

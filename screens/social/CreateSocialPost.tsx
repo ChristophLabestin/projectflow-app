@@ -301,8 +301,8 @@ export const CreateSocialPost = () => {
     const [currentStep, setCurrentStep] = useState(1);
 
     return (
-        <div className="flex items-center justify-center p-6 h-full w-full bg-[var(--color-bg-base)]">
-            <div className="w-full max-w-6xl h-[850px] bg-[var(--color-surface-card)] rounded-3xl shadow-2xl border border-[var(--color-surface-border)] flex overflow-hidden animate-fade-in relative">
+        <div className="flex items-center justify-center p-6 h-full w-full bg-surface">
+            <div className="w-full max-w-6xl h-[850px] bg-card rounded-3xl shadow-2xl border border-surface flex overflow-hidden animate-fade-in relative">
 
                 {/* Close Button */}
                 <button
@@ -313,10 +313,10 @@ export const CreateSocialPost = () => {
                 </button>
 
                 {/* LEFT: Form Panel */}
-                <div className="w-[50%] flex flex-col border-r border-[var(--color-surface-border)]">
+                <div className="w-[50%] flex flex-col border-r border-surface">
 
                     {/* Header with Stepper */}
-                    <div className="bg-[var(--color-surface-card)]">
+                    <div className="bg-card">
                         {rejectionReason && (
                             <div className="bg-red-50 dark:bg-red-900/20 border-b border-red-100 dark:border-red-900/30 px-8 py-3 flex items-start gap-3">
                                 <span className="material-symbols-outlined text-red-500 text-lg mt-0.5">error</span>
@@ -328,13 +328,13 @@ export const CreateSocialPost = () => {
                         )}
 
 
-                        <header className="px-8 py-6 border-b border-[var(--color-surface-border)]">
+                        <header className="px-8 py-6 border-b border-surface">
                             <div className="flex justify-between items-center mb-6">
                                 <div>
-                                    <h1 className="text-xl font-bold text-[var(--color-text-main)]">
+                                    <h1 className="text-xl font-bold text-main">
                                         {postId ? t('social.postForm.title.edit') : t('social.postForm.title.create')}
                                     </h1>
-                                    <p className="text-sm text-[var(--color-text-subtle)]">
+                                    <p className="text-sm text-subtle">
                                         {t('social.postForm.stepLabel')
                                             .replace('{current}', String(currentStep))
                                             .replace('{total}', String(STEPS.length))
@@ -344,7 +344,7 @@ export const CreateSocialPost = () => {
                                 {postId && (
                                     <button
                                         onClick={handleDeletePost}
-                                        className="w-10 h-10 flex items-center justify-center text-[var(--color-text-muted)] hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
+                                        className="w-10 h-10 flex items-center justify-center text-muted hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                                         title={t('social.postForm.delete.title')}
                                     >
                                         <span className="material-symbols-outlined text-[20px]">delete</span>
@@ -359,7 +359,7 @@ export const CreateSocialPost = () => {
                                         <div
                                             className={`flex-1 h-2 rounded-full transition-colors ${step.id <= currentStep
                                                 ? 'bg-gradient-to-r from-violet-600 to-indigo-600'
-                                                : 'bg-[var(--color-surface-hover)]'
+                                                : 'bg-surface-hover'
                                                 }`}
                                         />
                                     </div>
@@ -375,23 +375,23 @@ export const CreateSocialPost = () => {
                         {currentStep === 1 && (
                             <div className="space-y-6 animate-fade-in">
                                 <div className="space-y-4">
-                                    <label className="text-sm font-bold text-[var(--color-text-main)]">{t('social.postForm.campaignContext.label')}</label>
+                                    <label className="text-sm font-bold text-main">{t('social.postForm.campaignContext.label')}</label>
                                     <select
                                         value={campaignId}
                                         onChange={(e) => setCampaignId(e.target.value)}
-                                        className="w-full h-12 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl px-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                                        className="w-full h-12 bg-surface border border-surface rounded-xl px-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
                                     >
                                         <option value="">{t('social.postForm.campaignContext.none')}</option>
                                         {campaigns.map(c => (
                                             <option key={c.id} value={c.id}>{c.name}</option>
                                         ))}
                                     </select>
-                                    <p className="text-xs text-[var(--color-text-muted)]">{t('social.postForm.campaignContext.hint')}</p>
+                                    <p className="text-xs text-muted">{t('social.postForm.campaignContext.hint')}</p>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="col-span-2 space-y-4">
-                                        <label className="text-sm font-bold text-[var(--color-text-main)]">{t('social.postForm.platform.label')}</label>
+                                        <label className="text-sm font-bold text-main">{t('social.postForm.platform.label')}</label>
                                         <div className="grid grid-cols-3 gap-3">
                                             {['Instagram', 'Facebook', 'LinkedIn', 'TikTok', 'X', 'YouTube']
                                                 .filter(p => !strategy?.defaultPlatforms || strategy.defaultPlatforms.includes(p as SocialPlatform) || p === platform)
@@ -407,18 +407,18 @@ export const CreateSocialPost = () => {
                                                             }
                                                         }}
                                                         className={`h-24 rounded-2xl border flex flex-col items-center justify-center gap-3 transition-all relative overflow-hidden group ${platform === p
-                                                            ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 ring-1 ring-[var(--color-primary)] shadow-sm'
-                                                            : 'border-[var(--color-surface-border)] hover:border-[var(--color-text-muted)] bg-[var(--color-surface-card)]'
+                                                            ? 'border-primary bg-primary/5 ring-1 ring-primary shadow-sm'
+                                                            : 'border-surface hover:border-muted bg-card'
                                                             }`}
                                                     >
                                                         <div className="w-8 h-8 flex items-center justify-center pointer-events-none transform group-hover:scale-110 transition-transform">
                                                             <PlatformIcon platform={p as SocialPlatform} />
                                                         </div>
-                                                        <span className={`text-[10px] font-bold uppercase tracking-widest ${platform === p ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'}`}>
+                                                        <span className={`text-[10px] font-bold uppercase tracking-widest ${platform === p ? 'text-primary' : 'text-muted'}`}>
                                                             {p}
                                                         </span>
                                                         {platform === p && (
-                                                            <div className="absolute top-2 right-2 flex items-center justify-center w-5 h-5 bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded-full scale-in animate-scale-up">
+                                                            <div className="absolute top-2 right-2 flex items-center justify-center w-5 h-5 bg-primary text-on-primary rounded-full scale-in animate-scale-up">
                                                                 <span className="material-symbols-outlined text-[14px] font-bold">check</span>
                                                             </div>
                                                         )}
@@ -428,7 +428,7 @@ export const CreateSocialPost = () => {
                                     </div>
 
                                     <div className="col-span-2 space-y-4">
-                                        <label className="text-sm font-bold text-[var(--color-text-main)]">{t('social.postForm.format.label')}</label>
+                                        <label className="text-sm font-bold text-main">{t('social.postForm.format.label')}</label>
                                         <div className="flex flex-wrap gap-2">
                                             {(PLATFORM_FORMATS[platform] || ['Image']).map(fmt => (
                                                 <button
@@ -436,7 +436,7 @@ export const CreateSocialPost = () => {
                                                     onClick={() => setFormat(fmt as SocialPostFormat)}
                                                     className={`px-4 py-2 rounded-full text-xs font-bold border transition-all ${format === fmt
                                                         ? 'bg-indigo-600 text-white border-indigo-600'
-                                                        : 'bg-transparent border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-indigo-300'
+                                                        : 'bg-transparent border-surface text-muted hover:border-indigo-300'
                                                         }`}
                                                 >
                                                     {getSocialPostFormatLabel(fmt as SocialPostFormat, t)}
@@ -462,10 +462,10 @@ export const CreateSocialPost = () => {
                                         />
 
                                         <div>
-                                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-3 block">{t('social.postForm.video.thumbnailLabel')}</label>
+                                            <label className="text-xs font-semibold text-muted uppercase mb-3 block">{t('social.postForm.video.thumbnailLabel')}</label>
                                             <div className="flex gap-4">
                                                 {thumbnailUrl ? (
-                                                    <div className="relative aspect-video w-48 rounded-lg overflow-hidden bg-black/5 group border border-[var(--color-surface-border)] shrink-0">
+                                                    <div className="relative aspect-video w-48 rounded-lg overflow-hidden bg-black/5 group border border-surface shrink-0">
                                                         <img src={thumbnailUrl} className="w-full h-full object-cover" />
                                                         <button
                                                             onClick={() => setThumbnailUrl('')}
@@ -480,7 +480,7 @@ export const CreateSocialPost = () => {
                                                             setIsPickingThumbnail(true);
                                                             setShowAssetPicker(true);
                                                         }}
-                                                        className="aspect-video w-48 border-2 border-dashed border-[var(--color-surface-border)] rounded-xl flex flex-col items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-all shrink-0"
+                                                        className="aspect-video w-48 border-2 border-dashed border-surface rounded-xl flex flex-col items-center justify-center text-muted hover:bg-surface-hover hover:text-primary hover:border-primary transition-all shrink-0"
                                                     >
                                                         <span className="material-symbols-outlined text-2xl mb-1">add_photo_alternate</span>
                                                         <span className="text-xs font-bold">{t('social.postForm.video.upload')}</span>
@@ -500,7 +500,7 @@ export const CreateSocialPost = () => {
 
                                         <div>
                                             <div className="flex justify-between items-center mb-2">
-                                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase block">{t('social.postForm.video.scriptLabel')}</label>
+                                                <label className="text-xs font-semibold text-muted uppercase block">{t('social.postForm.video.scriptLabel')}</label>
                                                 <button
                                                     onClick={async () => {
                                                         if (!videoTitle) return;
@@ -535,8 +535,8 @@ export const CreateSocialPost = () => {
                                         {format !== 'Text' && (
                                             <div className="space-y-3">
                                                 <div className="flex justify-between items-center">
-                                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase">{t('social.postForm.media.label')}</label>
-                                                    <span className="text-[10px] text-[var(--color-text-muted)]">
+                                                    <label className="text-xs font-semibold text-muted uppercase">{t('social.postForm.media.label')}</label>
+                                                    <span className="text-[10px] text-muted">
                                                         {t('social.postForm.media.slotsRemaining')
                                                             .replace('{count}', String(Math.max(0, 10 - assets.length)))}
                                                     </span>
@@ -544,7 +544,7 @@ export const CreateSocialPost = () => {
 
                                                 <div className="grid grid-cols-4 gap-3">
                                                     {assets.map((asset, idx) => (
-                                                        <div key={idx} className="relative aspect-square rounded-xl overflow-hidden bg-black/5 group border border-[var(--color-surface-border)] shadow-sm">
+                                                        <div key={idx} className="relative aspect-square rounded-xl overflow-hidden bg-black/5 group border border-surface shadow-sm">
                                                             {asset.type === 'video' ? (
                                                                 <video src={asset.url} className="w-full h-full object-cover" muted playsInline />
                                                             ) : (
@@ -561,7 +561,7 @@ export const CreateSocialPost = () => {
                                                     ))}
                                                     <button
                                                         onClick={() => setShowAssetPicker(true)}
-                                                        className="aspect-square border-2 border-dashed border-[var(--color-surface-border)] rounded-xl flex flex-col items-center justify-center text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-all group"
+                                                        className="aspect-square border-2 border-dashed border-surface rounded-xl flex flex-col items-center justify-center text-muted hover:bg-surface-hover hover:text-primary hover:border-primary transition-all group"
                                                     >
                                                         <span className="material-symbols-outlined text-2xl mb-1 group-hover:scale-110 transition-transform">add_photo_alternate</span>
                                                         <span className="text-[10px] font-bold">{t('social.postForm.media.add')}</span>
@@ -574,7 +574,7 @@ export const CreateSocialPost = () => {
                                         <div className="space-y-3">
                                             <div className="flex justify-between items-center">
                                                 <div className="flex items-center gap-2">
-                                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase">{t('social.postForm.caption.label')}</label>
+                                                    <label className="text-xs font-semibold text-muted uppercase">{t('social.postForm.caption.label')}</label>
                                                     {projectId && (
                                                         <CaptionPresetPicker
                                                             projectId={projectId}
@@ -590,7 +590,7 @@ export const CreateSocialPost = () => {
                                                 </div>
                                                 {/* X/Twitter character limit */}
                                                 {platform === 'X' && (
-                                                    <span className={`text-xs font-mono ${caption.length > 280 ? 'text-red-500 font-bold' : 'text-[var(--color-text-muted)]'}`}>
+                                                    <span className={`text-xs font-mono ${caption.length > 280 ? 'text-red-500 font-bold' : 'text-muted'}`}>
                                                         {caption.length}/280
                                                     </span>
                                                 )}
@@ -613,7 +613,7 @@ export const CreateSocialPost = () => {
                                                 />
                                                 <button
                                                     onClick={() => setShowAIGenerator(true)}
-                                                    className="absolute bottom-3 right-3 px-3 py-1.5 bg-[var(--color-surface-hover)] text-[var(--color-text-main)] rounded-lg text-xs font-bold flex items-center gap-1.5 hover:bg-[var(--color-surface-pressed)] transition-colors border border-[var(--color-surface-border)]"
+                                                    className="absolute bottom-3 right-3 px-3 py-1.5 bg-surface-hover text-main rounded-lg text-xs font-bold flex items-center gap-1.5 hover:bg-[var(--color-surface-pressed)] transition-colors border border-surface"
                                                 >
                                                     <span className="material-symbols-outlined text-[14px] text-indigo-500">auto_awesome</span>
                                                     {t('social.postForm.caption.aiAssist')}
@@ -625,7 +625,7 @@ export const CreateSocialPost = () => {
                                         <div className="space-y-2">
                                             <div className="flex justify-between items-center">
                                                 <div className="flex items-center gap-2">
-                                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase">{t('social.postForm.hashtags.label')}</label>
+                                                    <label className="text-xs font-semibold text-muted uppercase">{t('social.postForm.hashtags.label')}</label>
                                                     {isOverLimit && (
                                                         <span className="flex items-center gap-1 text-[10px] font-black text-red-600 dark:text-red-400 animate-pulse bg-red-50 dark:bg-red-900/40 px-1.5 py-0.5 rounded">
                                                             <span className="material-symbols-outlined text-[14px]">warning</span>
@@ -668,7 +668,7 @@ export const CreateSocialPost = () => {
                                                 </div>
                                             </div>
 
-                                            <div className={`p-3 rounded-xl border transition-all bg-[var(--color-surface-bg)] ${isOverLimit ? 'border-red-500 ring-1 ring-red-500 bg-red-50/10' : 'border-[var(--color-surface-border)] focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500'}`}>
+                                            <div className={`p-3 rounded-xl border transition-all bg-surface ${isOverLimit ? 'border-red-500 ring-1 ring-red-500 bg-red-50/10' : 'border-surface focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500'}`}>
                                                 <div className="flex flex-wrap gap-2 mb-2">
                                                     {hashtags.map(tag => (
                                                         <span key={tag} className={`px-2 py-1 rounded text-xs font-bold flex items-center gap-1 ${isOverLimit ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' : 'bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'}`}>
@@ -689,7 +689,7 @@ export const CreateSocialPost = () => {
                                                     placeholder={hashtags.length === 0
                                                         ? t('social.postForm.hashtags.placeholderEmpty')
                                                         : t('social.postForm.hashtags.placeholderAdd')}
-                                                    className="w-full bg-transparent border-none focus:ring-0 p-0 text-sm font-medium placeholder:text-[var(--color-text-subtle)] placeholder:font-normal"
+                                                    className="w-full bg-transparent border-none focus:ring-0 p-0 text-sm font-medium placeholder:text-subtle placeholder:font-normal"
                                                 />
                                             </div>
                                         </div>
@@ -705,16 +705,16 @@ export const CreateSocialPost = () => {
                                     <div className="inline-flex p-4 rounded-full bg-green-100 dark:bg-green-900/20 text-green-600 mb-2">
                                         <span className="material-symbols-outlined text-4xl">check_circle</span>
                                     </div>
-                                    <h3 className="text-2xl font-bold text-[var(--color-text-main)]">{t('social.postForm.review.title')}</h3>
-                                    <p className="text-[var(--color-text-muted)] max-w-md mx-auto">
+                                    <h3 className="text-2xl font-bold text-main">{t('social.postForm.review.title')}</h3>
+                                    <p className="text-muted max-w-md mx-auto">
                                         {t('social.postForm.review.subtitle')
                                             .replace('{platform}', platform)
                                             .replace('{format}', getSocialPostFormatLabel(format, t))}
                                     </p>
                                 </div>
 
-                                <div className="bg-[var(--color-surface-hover)] p-6 rounded-2xl border border-[var(--color-surface-border)] max-w-md mx-auto w-full">
-                                    <h4 className="text-sm font-bold text-[var(--color-text-main)] mb-4 flex items-center gap-2">
+                                <div className="bg-surface-hover p-6 rounded-2xl border border-surface max-w-md mx-auto w-full">
+                                    <h4 className="text-sm font-bold text-main mb-4 flex items-center gap-2">
                                         <span className="material-symbols-outlined">calendar_clock</span>
                                         {t('social.postForm.review.scheduling')}
                                     </h4>
@@ -739,7 +739,7 @@ export const CreateSocialPost = () => {
 
                     </div>
 
-                    <footer className="px-8 py-5 border-t border-[var(--color-surface-border)] flex items-center justify-between bg-[var(--color-surface-card)]">
+                    <footer className="px-8 py-5 border-t border-surface flex items-center justify-between bg-card">
                         {currentStep > 1 ? (
                             <Button variant="ghost" onClick={() => setCurrentStep(prev => prev - 1)}>
                                 <span className="material-symbols-outlined mr-1">arrow_back</span>
@@ -755,7 +755,7 @@ export const CreateSocialPost = () => {
                                 variant="ghost"
                                 onClick={() => handleSubmit(false, 'Draft')}
                                 isLoading={loading}
-                                className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+                                className="text-muted hover:text-main"
                             >
                                 {isConcept ? t('social.postForm.actions.convertDraft') : t('social.postForm.actions.saveDraft')}
                             </Button>
@@ -782,13 +782,13 @@ export const CreateSocialPost = () => {
                 </div>
 
                 {/* RIGHT: Preview Panel */}
-                <div className="w-[50%] bg-[var(--color-bg-base)] flex flex-col items-center justify-center p-8 relative">
+                <div className="w-[50%] bg-surface flex flex-col items-center justify-center p-8 relative">
                     <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none" />
 
                     <div className="mb-6 text-center z-10">
-                        <h2 className="text-sm font-semibold text-[var(--color-text-subtle)] uppercase tracking-wider mb-1">{t('social.postForm.preview.title')}</h2>
-                        <div className="flex items-center justify-center gap-2 text-xs text-[var(--color-text-muted)]">
+                        <h2 className="text-sm font-semibold text-subtle uppercase tracking-wider mb-1">{t('social.postForm.preview.title')}</h2>
+                        <div className="flex items-center justify-center gap-2 text-xs text-muted">
                             <div className="w-5 h-5 flex-shrink-0">
                                 <PlatformIcon platform={platform} />
                             </div>
@@ -823,17 +823,17 @@ export const CreateSocialPost = () => {
                     </div>
 
                     {/* Preview Instructions */}
-                    <div className="mt-8 flex items-center gap-6 text-[var(--color-text-muted)] text-[11px] font-medium animate-fade-in">
+                    <div className="mt-8 flex items-center gap-6 text-muted text-[11px] font-medium animate-fade-in">
                         <div className="flex items-center gap-2">
-                            <kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] font-mono text-[10px] shadow-sm">{t('social.postForm.preview.hover')}</kbd>
+                            <kbd className="px-1.5 py-0.5 rounded bg-card border border-surface font-mono text-[10px] shadow-sm">{t('social.postForm.preview.hover')}</kbd>
                             <span>{t('social.postForm.preview.toPause')}</span>
                         </div>
-                        <div className="w-px h-3 bg-[var(--color-surface-border)]" />
+                        <div className="w-px h-3 bg-surface-border" />
                         <div className="flex items-center gap-2">
-                            <kbd className="px-1.5 py-0.5 rounded bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] font-mono text-[10px] shadow-sm">{t('social.postForm.preview.click')}</kbd>
+                            <kbd className="px-1.5 py-0.5 rounded bg-card border border-surface font-mono text-[10px] shadow-sm">{t('social.postForm.preview.click')}</kbd>
                             <span>{t('social.postForm.preview.toToggle')}</span>
                         </div>
-                        <div className="w-px h-3 bg-[var(--color-surface-border)]" />
+                        <div className="w-px h-3 bg-surface-border" />
                         <div className="flex items-center gap-2">
                             <span className={`w-1.5 h-1.5 rounded-full ${isStoryPlaying && !isPreviewHovered ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
                             <span className="uppercase tracking-widest text-[9px] font-bold w-14 inline-block">

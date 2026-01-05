@@ -60,18 +60,18 @@ export const GenericStageView: React.FC<GenericStageViewProps> = ({ idea, stageI
                 <div className="size-16 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
                     <span className="material-symbols-outlined text-3xl text-slate-400">construction</span>
                 </div>
-                <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-2">
+                <h3 className="text-lg font-bold text-main mb-2">
                     {t('flowStages.generic.title').replace('{stage}', stageLabel)}
                 </h3>
-                <p className="text-[var(--color-text-muted)] max-w-md mx-auto">
+                <p className="text-muted max-w-md mx-auto">
                     {t('flowStages.generic.subtitle').replace('{type}', typeLabel)}
                 </p>
             </div>
 
             <Card className="p-6">
-                <h4 className="font-bold text-[var(--color-text-main)] mb-4">{t('flowStages.generic.notesTitle')}</h4>
+                <h4 className="font-bold text-main mb-4">{t('flowStages.generic.notesTitle')}</h4>
                 <textarea
-                    className="w-full h-32 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl p-4 text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none transition-all resize-none"
+                    className="w-full h-32 bg-surface border border-surface rounded-xl p-4 text-sm focus:ring-2 focus:ring-primary outline-none transition-all resize-none"
                     placeholder={t('flowStages.generic.placeholder').replace('{stage}', stageLabel)}
                     defaultValue={idea.description}
                     onBlur={(e) => onUpdate({ description: e.target.value })}

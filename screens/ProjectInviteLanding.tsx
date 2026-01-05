@@ -2,34 +2,43 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { auth } from '../services/firebase';
 import { joinTenant, joinProject, setActiveTenantId } from '../services/dataService';
+import { useLanguage } from '../context/LanguageContext';
+import { Button } from '../components/common/Button/Button';
+import { Card } from '../components/common/Card/Card';
+import { Badge } from '../components/common/Badge/Badge';
+import './invite-landing.scss';
 
 export const ProjectInviteLanding = () => {
     const { projectId } = useParams<{ projectId: string }>();
     const [searchParams] = useSearchParams();
     const tenantId = searchParams.get('tenantId');
     const navigate = useNavigate();
-    const [status, setStatus] = useState<string | null>(null);
+    const { t } = useLanguage();
+    const [status, setStatus] = useState<{ tone: 'info' | 'success' | 'error'; message: string } | null>(null);
 
     useEffect(() => {
         const tryJoin = async () => {
             if (!projectId || !tenantId || !auth.currentUser) return;
             try {
-                setStatus('Joining workspace...');
+                setStatus({ tone: 'info', message: t('projectInvite.status.joinWorkspace') });
                 // Join as Guest first to prevent default 'Member' role
                 await joinTenant(tenantId, 'Guest');
 
-                setStatus('Joining project team...');
+                setStatus({ tone: 'info', message: t('projectInvite.status.joinProject') });
                 await joinProject(projectId, tenantId);
 
-                setStatus('Success! Redirecting...');
+                setStatus({ tone: 'success', message: t('projectInvite.status.success') });
                 navigate(`/project/${projectId}`);
             } catch (e: any) {
                 console.error(e);
-                setStatus(`Failed to join: ${e.message}`);
+                setStatus({
+                    tone: 'error',
+                    message: t('projectInvite.status.failed').replace('{error}', e.message || t('projectInvite.status.failedFallback')),
+                });
             }
         };
         tryJoin();
-    }, [projectId, tenantId, navigate]);
+    }, [projectId, tenantId, navigate, t]);
 
     const handleAccept = () => {
         if (!tenantId) return;
@@ -39,30 +48,34 @@ export const ProjectInviteLanding = () => {
     };
 
     if (!projectId || !tenantId) {
-        return <div className="p-8 text-center">Invalid project invite link.</div>;
+        return <div className="invite-landing">{t('projectInvite.error.invalidLink')}</div>;
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center px-6">
-            <div className="app-panel max-w-md w-full p-8 space-y-4 animate-fade-up">
-                <span className="app-pill w-fit animate-pulse">Checking Access...</span>
-                <h1 className="text-2xl font-display font-bold text-ink">Join Project</h1>
-                <p className="text-muted text-sm">
-                    You have been invited to collaborate on a project in workspace <span className="font-semibold text-ink">{tenantId}</span>.
+        <div className="invite-landing">
+            <Card className="invite-landing__card">
+                <Badge variant="neutral" className="invite-landing__badge">
+                    {t('projectInvite.badge')}
+                </Badge>
+                <h1 className="invite-landing__title">{t('projectInvite.title')}</h1>
+                <p className="invite-landing__description">
+                    {t('projectInvite.description').replace('{tenantId}', tenantId)}
                 </p>
-                {status && <div className="p-3 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-medium">{status}</div>}
+                {status && (
+                    <p className={`invite-landing__status invite-landing__status--${status.tone}`}>
+                        {status.message}
+                    </p>
+                )}
 
                 {!auth.currentUser && (
-                    <div className="pt-4">
-                        <button onClick={handleAccept} className="w-full h-11 btn-primary font-bold text-sm">
-                            Log In to Accept
-                        </button>
-                    </div>
+                    <Button onClick={handleAccept} className="invite-landing__action">
+                        {t('projectInvite.actions.login')}
+                    </Button>
                 )}
                 {auth.currentUser && !status && (
-                    <p className="text-sm text-muted">You are signed in. We are adding you to the team...</p>
+                    <p className="invite-landing__hint">{t('projectInvite.signedIn')}</p>
                 )}
-            </div>
+            </Card>
         </div>
     );
 };

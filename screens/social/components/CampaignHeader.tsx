@@ -38,7 +38,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
     const endDate = campaign.endDate ? format(new Date(campaign.endDate), dateFormat, { locale: dateLocale }) : t('social.campaignHeader.tbd');
 
     return (
-        <div className="relative shrink-0 border-b border-[var(--color-surface-border)] bg-[var(--color-bg-base)]">
+        <div className="relative shrink-0 border-b border-surface bg-surface">
             {/* Background Gradient - reduced opacity/height */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-30">
                 <div className="absolute inset-0 bg-gradient-to-r from-[var(--color-surface-card)] to-[var(--color-bg-base)]" />
@@ -53,17 +53,17 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
                         <div className="flex items-center gap-3 min-w-0">
                             <button
                                 onClick={onBack}
-                                className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors p-1.5 -ml-1.5 rounded-md hover:bg-[var(--color-surface-hover)]"
+                                className="text-muted hover:text-main transition-colors p-1.5 -ml-1.5 rounded-md hover:bg-surface-hover"
                                 title={t('social.campaignHeader.backTitle')}
                             >
                                 <span className="material-symbols-outlined text-[20px]">arrow_back</span>
                             </button>
 
-                            <h1 className="text-xl md:text-2xl font-bold text-[var(--color-text-main)] truncate tracking-tight">
+                            <h1 className="text-xl md:text-2xl font-bold text-main truncate tracking-tight">
                                 {campaign.name}
                             </h1>
 
-                            <div className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)]" style={{ color: brandColor, borderColor: `${brandColor}30` }}>
+                            <div className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-surface-hover border border-surface" style={{ color: brandColor, borderColor: `${brandColor}30` }}>
                                 {getSocialCampaignStatusLabel(campaign.status, t)}
                             </div>
                         </div>
@@ -72,20 +72,20 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
                         <div className="flex gap-2 items-center self-end md:self-auto pl-8 md:pl-0">
                             <button
                                 onClick={onEdit}
-                                className="h-8 w-8 flex items-center justify-center rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-colors border border-transparent hover:border-[var(--color-surface-border)]"
+                                className="h-8 w-8 flex items-center justify-center rounded-lg text-muted hover:text-main hover:bg-surface-hover transition-colors border border-transparent hover:border-surface"
                                 title={t('social.campaignHeader.editTitle')}
                             >
                                 <span className="material-symbols-outlined text-[18px]">edit</span>
                             </button>
 
-                            <div className="h-4 w-px bg-[var(--color-surface-border)] mx-1" />
+                            <div className="h-4 w-px bg-surface-border mx-1" />
 
                             <Button
                                 variant="secondary"
                                 onClick={onAIPlan}
                                 isLoading={isGenerating}
                                 icon={<span className="material-symbols-outlined text-[16px]">auto_awesome</span>}
-                                className="bg-[var(--color-surface-bg)] h-8 text-xs px-3 border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]"
+                                className="bg-surface h-8 text-xs px-3 border border-surface hover:bg-surface-hover"
                             >
                                 {t('social.campaignHeader.aiPlan')}
                             </Button>
@@ -94,7 +94,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
                                     variant="secondary"
                                     onClick={onViewPlannedContent}
                                     icon={<span className="material-symbols-outlined text-[16px]">table_chart</span>}
-                                    className="bg-[var(--color-surface-bg)] h-8 text-xs px-3 border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]"
+                                    className="bg-surface h-8 text-xs px-3 border border-surface hover:bg-surface-hover"
                                 >
                                     {t('social.campaignHeader.viewPlanned')}
                                 </Button>
@@ -112,7 +112,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
                     </div>
 
                     {/* Bottom Row: Meta Info (Cleaned up) */}
-                    <div className="flex items-center gap-6 text-xs text-[var(--color-text-muted)] ml-8 pl-1">
+                    <div className="flex items-center gap-6 text-xs text-muted ml-8 pl-1">
                         {/* Date Range */}
                         <div className="flex items-center gap-2">
                             <span className="material-symbols-outlined text-[16px]">calendar_today</span>
@@ -121,7 +121,7 @@ export const CampaignHeader: React.FC<CampaignHeaderProps> = ({
                             </span>
                         </div>
 
-                        <div className="h-3 w-px bg-[var(--color-surface-border)]" />
+                        <div className="h-3 w-px bg-surface-border" />
 
                         {/* Item Count */}
                         <div className="flex items-center gap-2">

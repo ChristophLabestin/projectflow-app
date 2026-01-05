@@ -56,17 +56,17 @@ export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', c
                 aria-hidden="true"
             />
             <div className={`
-                relative w-full ${sizeClasses[size]} bg-[var(--color-surface-card)] rounded-2xl shadow-xl 
-                border border-[var(--color-surface-border)] flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200 overflow-hidden
+                relative w-full ${sizeClasses[size]} bg-card rounded-2xl shadow-xl 
+                border border-surface flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200 overflow-hidden
             `}>
                 {!hideHeader && (
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-surface-border)]">
-                        <h2 className="text-lg font-bold text-[var(--color-text-main)]">
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-surface">
+                        <h2 className="text-lg font-bold text-main">
                             {title}
                         </h2>
                         <button
                             onClick={onClose}
-                            className="p-1 rounded-full text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)] transition-colors"
+                            className="p-1 rounded-full text-muted hover:bg-surface-hover hover:text-main transition-colors"
                         >
                             <span className="material-symbols-outlined text-[20px]">close</span>
                         </button>
@@ -78,7 +78,7 @@ export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', c
                 </div>
 
                 {footer && (
-                    <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] rounded-b-xl">
+                    <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-surface bg-surface rounded-b-xl">
                         {footer}
                     </div>
                 )}

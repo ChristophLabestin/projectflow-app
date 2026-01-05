@@ -64,11 +64,11 @@ export const PostList = () => {
         return (
             <div
                 key={post.id}
-                className={`group relative flex-shrink-0 w-[280px] bg-[var(--color-surface-card)] border rounded-2xl overflow-hidden cursor-pointer hover:shadow-lg transition-all ${isFailed ? 'border-red-300 dark:border-red-800 ring-1 ring-red-100 dark:ring-red-900/30' : 'border-[var(--color-surface-border)] hover:border-[var(--color-primary-light)]'}`}
+                className={`group relative flex-shrink-0 w-[280px] bg-card border rounded-2xl overflow-hidden cursor-pointer hover:shadow-lg transition-all ${isFailed ? 'border-red-300 dark:border-red-800 ring-1 ring-red-100 dark:ring-red-900/30' : 'border-surface hover:border-[var(--color-primary-light)]'}`}
                 onClick={() => navigate(`/project/${projectId}/social/edit/${post.id}`)}
             >
                 {/* Media / Thumbnail */}
-                <div className="aspect-square w-full bg-[var(--color-surface-hover)] relative overflow-hidden flex items-center justify-center">
+                <div className="aspect-square w-full bg-surface-hover relative overflow-hidden flex items-center justify-center">
                     {mainAsset ? (
                         mainAsset.type === 'video' ? (
                             <video src={mainAsset.url} className="w-full h-full object-cover" muted />
@@ -76,7 +76,7 @@ export const PostList = () => {
                             <img src={mainAsset.url} className="w-full h-full object-cover" loading="lazy" />
                         )
                     ) : (
-                        <span className="material-symbols-outlined text-4xl text-[var(--color-text-subtle)]">
+                        <span className="material-symbols-outlined text-4xl text-subtle">
                             {post.format === 'Text' ? 'article' : 'image'}
                         </span>
                     )}
@@ -98,7 +98,7 @@ export const PostList = () => {
                             post.status === 'Scheduled' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                                 post.status === 'In Review' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
                                     post.status === 'Failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                                        'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'
+                                        'bg-surface-hover text-muted'
                             }`}>
                             {getSocialPostStatusLabel(post.status, t)}
                             {post.status === 'Failed' && post.error && (
@@ -109,18 +109,18 @@ export const PostList = () => {
                             )}
                         </span>
                         {post.scheduledFor && (
-                            <span className="text-[10px] font-medium text-[var(--color-text-muted)] flex items-center gap-1">
+                            <span className="text-[10px] font-medium text-muted flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[12px]">calendar_month</span>
                                 {format(new Date(post.scheduledFor), 'MMM d')}
                             </span>
                         )}
                     </div>
 
-                    <p className="text-sm text-[var(--color-text-main)] line-clamp-2 font-medium mb-3 flex-1">
-                        {post.content.caption || <span className="italic text-[var(--color-text-muted)] opacity-50">{t('social.postList.noCaption')}</span>}
+                    <p className="text-sm text-main line-clamp-2 font-medium mb-3 flex-1">
+                        {post.content.caption || <span className="italic text-muted opacity-50">{t('social.postList.noCaption')}</span>}
                     </p>
 
-                    <div className="flex items-center justify-between mt-auto text-xs text-[var(--color-text-muted)]">
+                    <div className="flex items-center justify-between mt-auto text-xs text-muted">
                         <div className="flex items-center gap-2">
                             <span className="material-symbols-outlined text-[14px]">tag</span>
                             <span>{post.content.hashtags?.length || 0}</span>
@@ -147,12 +147,12 @@ export const PostList = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <h1 className="h2 mb-1">{t('social.postList.title')}</h1>
-                    <p className="text-[var(--color-text-muted)]">{t('social.postList.subtitle')}</p>
+                    <p className="text-muted">{t('social.postList.subtitle')}</p>
                 </div>
                 <div className="flex items-center gap-3">
                     <Link
                         to={`/project/${projectId}/social/create`}
-                        className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] font-bold rounded-lg hover:opacity-90 transition-opacity shadow-sm shadow-indigo-500/20"
+                        className="flex items-center gap-2 px-4 py-2 bg-primary text-on-primary font-bold rounded-lg hover:opacity-90 transition-opacity shadow-sm shadow-indigo-500/20"
                     >
                         <span className="material-symbols-outlined">add</span>
                         <span>{t('social.postList.newPost')}</span>
@@ -161,12 +161,12 @@ export const PostList = () => {
             </div>
 
             {posts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 bg-[var(--color-surface-card)] rounded-3xl border border-[var(--color-surface-border)] border-dashed">
-                    <div className="size-20 bg-[var(--color-surface-hover)] rounded-full flex items-center justify-center mb-6">
-                        <span className="material-symbols-outlined text-4xl text-[var(--color-text-muted)]">post_add</span>
+                <div className="flex flex-col items-center justify-center py-20 bg-card rounded-3xl border border-surface border-dashed">
+                    <div className="size-20 bg-surface-hover rounded-full flex items-center justify-center mb-6">
+                        <span className="material-symbols-outlined text-4xl text-muted">post_add</span>
                     </div>
-                    <h3 className="text-xl font-bold text-[var(--color-text-main)] mb-2">{t('social.postList.empty')}</h3>
-                    <p className="text-[var(--color-text-muted)] max-w-md text-center mb-6">{t('social.approvals.emptySubtitle')}</p>
+                    <h3 className="text-xl font-bold text-main mb-2">{t('social.postList.empty')}</h3>
+                    <p className="text-muted max-w-md text-center mb-6">{t('social.approvals.emptySubtitle')}</p>
                     <Link
                         to={`/project/${projectId}/social/create`}
                     >
@@ -194,11 +194,11 @@ export const PostList = () => {
                     {recentPosts.length > 0 && (
                         <section>
                             <div className="flex items-center justify-between mb-4">
-                                <div className="flex items-center gap-2 text-[var(--color-text-main)]">
+                                <div className="flex items-center gap-2 text-main">
                                     <span className="material-symbols-outlined">history</span>
                                     <h3 className="text-lg font-bold">{t('social.postList.recentSection')}</h3>
                                 </div>
-                                <Link to={`/project/${projectId}/social/archive`} className="text-sm font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1">
+                                <Link to={`/project/${projectId}/social/archive`} className="text-sm font-bold text-primary hover:underline flex items-center gap-1">
                                     {t('social.postList.viewArchive')}
                                     <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
                                 </Link>
@@ -210,12 +210,12 @@ export const PostList = () => {
                                 {hasMorePosts && (
                                     <div
                                         onClick={() => navigate(`/project/${projectId}/social/archive`)}
-                                        className="flex-shrink-0 w-[120px] bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-[var(--color-surface-pressed)] transition-colors group"
+                                        className="flex-shrink-0 w-[120px] bg-surface-hover border border-surface rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:bg-[var(--color-surface-pressed)] transition-colors group"
                                     >
-                                        <div className="size-12 rounded-full bg-[var(--color-surface-card)] flex items-center justify-center shadow-sm mb-2 group-hover:scale-110 transition-transform">
-                                            <span className="material-symbols-outlined text-[var(--color-text-main)]">inventory_2</span>
+                                        <div className="size-12 rounded-full bg-card flex items-center justify-center shadow-sm mb-2 group-hover:scale-110 transition-transform">
+                                            <span className="material-symbols-outlined text-main">inventory_2</span>
                                         </div>
-                                        <span className="text-xs font-bold text-[var(--color-text-muted)] text-center px-4">{t('social.postList.viewArchive')}</span>
+                                        <span className="text-xs font-bold text-muted text-center px-4">{t('social.postList.viewArchive')}</span>
                                     </div>
                                 )}
                             </div>

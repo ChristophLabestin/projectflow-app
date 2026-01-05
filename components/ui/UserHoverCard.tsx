@@ -27,7 +27,7 @@ export const UserHoverCard: React.FC<UserHoverCardProps> = ({ user, children }) 
                     <div>
                         <p className="text-sm font-bold text-gray-900 dark:text-gray-100 leading-tight">{user.displayName}</p>
                         {(user as any).title && (
-                            <p className="text-xs font-medium text-[var(--color-primary)] mb-0.5">{(user as any).title}</p>
+                            <p className="text-xs font-medium text-primary mb-0.5">{(user as any).title}</p>
                         )}
                         <p className="text-xs text-gray-500 dark:text-gray-400 capitalize flex items-center gap-1">
                             <span className={`size-2 rounded-full ${user.isOnline ? 'bg-emerald-500' : 'bg-gray-300'}`}></span>

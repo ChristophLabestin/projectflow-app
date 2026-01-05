@@ -137,13 +137,13 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
     ];
 
     const PrivacySelect = ({ label, value, onChange }: { label: string, value: PrivacyScope, onChange: (val: PrivacyScope) => void }) => (
-        <div className="flex items-center justify-between p-4 bg-[var(--color-surface-hover)]/30 border border-[var(--color-surface-border)] rounded-xl">
-            <span className="font-medium text-[var(--color-text-main)]">{label}</span>
+        <div className="flex items-center justify-between p-4 bg-surface-hover/30 border border-surface rounded-xl">
+            <span className="font-medium text-main">{label}</span>
             <div className="flex items-center gap-2">
                 <select
                     value={value || 'public'}
                     onChange={(e) => onChange(e.target.value as PrivacyScope)}
-                    className="bg-transparent text-sm font-bold text-[var(--color-text-main)] focus:outline-none cursor-pointer border-none text-right"
+                    className="bg-transparent text-sm font-bold text-main focus:outline-none cursor-pointer border-none text-right"
                 >
                     {SCOPES.map(scope => (
                         <option key={scope.value} value={scope.value}>{scope.label}</option>
@@ -159,18 +159,18 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                 return (
                     <div className="space-y-6 animate-in fade-in duration-300">
                         <div>
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-1">General Information</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">Update your profile details and visual assets.</p>
+                            <h3 className="text-lg font-bold text-main mb-1">General Information</h3>
+                            <p className="text-sm text-muted">Update your profile details and visual assets.</p>
                         </div>
                         <div className="space-y-4">
                             {/* Visual Assets Section */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-[var(--color-surface-border)]">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6 border-b border-surface">
                                 {/* Profile Picture */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-[var(--color-text-main)]">Profile Picture</label>
+                                    <label className="text-sm font-medium text-main">Profile Picture</label>
                                     <div className="flex items-center gap-4">
                                         <div
-                                            className="size-20 rounded-full overflow-hidden border-2 border-[var(--color-surface-border)] shadow-sm bg-[var(--color-surface-hover)] flex items-center justify-center cursor-pointer group relative"
+                                            className="size-20 rounded-full overflow-hidden border-2 border-surface shadow-sm bg-surface-hover flex items-center justify-center cursor-pointer group relative"
                                             onClick={() => { setMediaTarget('avatar'); setShowMediaLibrary(true); }}
                                         >
                                             {photoURL ? (
@@ -181,7 +181,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                                                     </div>
                                                 </>
                                             ) : (
-                                                <span className="material-symbols-outlined text-3xl text-[var(--color-text-muted)]">person</span>
+                                                <span className="material-symbols-outlined text-3xl text-muted">person</span>
                                             )}
                                         </div>
                                         <Button variant="ghost" size="sm" onClick={() => { setMediaTarget('avatar'); setShowMediaLibrary(true); }}>
@@ -192,9 +192,9 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
 
                                 {/* Cover Image */}
                                 <div className="space-y-2">
-                                    <label className="text-sm font-medium text-[var(--color-text-main)]">Cover Image</label>
+                                    <label className="text-sm font-medium text-main">Cover Image</label>
                                     <div
-                                        className="h-20 w-full rounded-xl overflow-hidden border border-[var(--color-surface-border)] shadow-sm bg-[var(--color-surface-hover)] flex items-center justify-center relative cursor-pointer group"
+                                        className="h-20 w-full rounded-xl overflow-hidden border border-surface shadow-sm bg-surface-hover flex items-center justify-center relative cursor-pointer group"
                                         onClick={() => { setMediaTarget('cover'); setShowMediaLibrary(true); }}
                                     >
                                         {coverURL ? (
@@ -207,7 +207,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                                                 </div>
                                             </>
                                         ) : (
-                                            <div className="flex flex-col items-center gap-1 text-[var(--color-text-muted)] scale-75">
+                                            <div className="flex flex-col items-center gap-1 text-muted scale-75">
                                                 <span className="material-symbols-outlined text-2xl">image</span>
                                                 <span className="text-xs">Upload Cover</span>
                                             </div>
@@ -251,8 +251,8 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                 return (
                     <div className="space-y-6 animate-in fade-in duration-300">
                         <div>
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-1">Privacy Settings</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">Control who can see different parts of your profile.</p>
+                            <h3 className="text-lg font-bold text-main mb-1">Privacy Settings</h3>
+                            <p className="text-sm text-muted">Control who can see different parts of your profile.</p>
                         </div>
 
                         <div className="space-y-2">
@@ -292,8 +292,8 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                 return (
                     <div className="space-y-6 animate-in fade-in duration-300">
                         <div>
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-1">Skills & Expertise</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">Add skills to help others find your expertise.</p>
+                            <h3 className="text-lg font-bold text-main mb-1">Skills & Expertise</h3>
+                            <p className="text-sm text-muted">Add skills to help others find your expertise.</p>
                         </div>
                         <div className="flex gap-2">
                             <Input
@@ -307,7 +307,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                         </div>
                         <div className="flex flex-wrap gap-2 pt-2">
                             {skills.map(skill => (
-                                <div key={skill} className="flex items-center gap-2 px-3 py-1.5 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded-lg text-sm font-medium border border-[var(--color-primary)]/20">
+                                <div key={skill} className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-lg text-sm font-medium border border-primary/20">
                                     {skill}
                                     <button onClick={() => removeSkill(skill)} className="hover:text-rose-500 transition-colors flex items-center">
                                         <span className="material-symbols-outlined text-[16px]">close</span>
@@ -315,7 +315,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                                 </div>
                             ))}
                             {skills.length === 0 && (
-                                <p className="text-sm text-[var(--color-text-muted)] italic">No skills added yet.</p>
+                                <p className="text-sm text-muted italic">No skills added yet.</p>
                             )}
                         </div>
                     </div>
@@ -328,7 +328,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
             <Modal isOpen={isOpen} onClose={onClose} title="Edit Profile" size="xl">
                 <div className="flex h-[600px] -m-6">
                     {/* Sidebar */}
-                    <div className="w-64 shrink-0 bg-[var(--color-surface-hover)]/30 border-r border-[var(--color-surface-border)] p-4 flex flex-col gap-1">
+                    <div className="w-64 shrink-0 bg-surface-hover/30 border-r border-surface p-4 flex flex-col gap-1">
                         {tabs.map(tab => (
                             <button
                                 key={tab.id}
@@ -336,8 +336,8 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                                 className={`
                                         flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
                                         ${activeTab === tab.id
-                                        ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
-                                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'}
+                                        ? 'bg-primary/10 text-primary'
+                                        : 'text-muted hover:bg-surface-hover hover:text-main'}
                                     `}
                             >
                                 <span className={`material-symbols-outlined text-[20px] ${activeTab === tab.id ? 'fill' : ''}`}>{tab.icon}</span>
@@ -352,7 +352,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({ isOp
                             {renderContent()}
                         </div>
                         {/* Footer */}
-                        <div className="shrink-0 p-4 border-t border-[var(--color-surface-border)] flex items-center justify-end gap-3 bg-[var(--color-surface-paper)]">
+                        <div className="shrink-0 p-4 border-t border-surface flex items-center justify-end gap-3 bg-surface-paper">
                             <Button variant="ghost" onClick={onClose}>Cancel</Button>
                             <Button variant="primary" onClick={handleSave} isLoading={saving}>Save Changes</Button>
                         </div>

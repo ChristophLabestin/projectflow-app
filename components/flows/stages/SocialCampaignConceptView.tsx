@@ -113,10 +113,10 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
                         <div className="flex flex-wrap items-center gap-2">
                             <Badge variant="secondary">{t('flowStages.socialCampaignConcept.hero.badge')}</Badge>
                         </div>
-                        <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-main)]">
+                        <h1 className="text-2xl md:text-3xl font-bold text-main">
                             {t('flowStages.socialCampaignConcept.hero.title')}
                         </h1>
-                        <p className="text-sm text-[var(--color-text-muted)] max-w-2xl">
+                        <p className="text-sm text-muted max-w-2xl">
                             {t('flowStages.socialCampaignConcept.hero.subtitle')}
                         </p>
                     </div>
@@ -144,16 +144,16 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
                                 <span className="material-symbols-outlined text-[18px]">edit_note</span>
                             </div>
                             <div className="space-y-2">
-                                <h3 className="text-sm font-bold text-[var(--color-text-main)]">
+                                <h3 className="text-sm font-bold text-main">
                                     {t('flowStages.socialCampaignConcept.changes.title')}
                                 </h3>
-                                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+                                <p className="text-sm text-muted leading-relaxed">
                                     {idea.lastRejectionReason || t('flowStages.socialCampaignConcept.changes.default')}
                                 </p>
-                                <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-text-subtle)]">
+                                <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-subtle">
                                     <span>{t('flowStages.socialCampaignConcept.changes.action')}</span>
-                                    <span className="h-px w-8 bg-[var(--color-surface-border)]" />
-                                    <span className="text-[var(--color-text-muted)]">{t('flowStages.socialCampaignConcept.changes.actionHint')}</span>
+                                    <span className="h-px w-8 bg-surface-border" />
+                                    <span className="text-muted">{t('flowStages.socialCampaignConcept.changes.actionHint')}</span>
                                 </div>
                             </div>
                         </div>
@@ -164,20 +164,20 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
                     <div className="lg:col-span-8 space-y-6">
                         <Card padding="md" className="space-y-4">
                             <div className="flex items-center gap-3">
-                                <div className="size-9 rounded-lg bg-[var(--color-surface-hover)] text-[var(--color-text-subtle)] flex items-center justify-center">
+                                <div className="size-9 rounded-lg bg-surface-hover text-subtle flex items-center justify-center">
                                     <span className="material-symbols-outlined text-[18px]">auto_awesome</span>
                                 </div>
                                 <div>
-                                    <h3 className="text-base font-bold text-[var(--color-text-main)]">
+                                    <h3 className="text-base font-bold text-main">
                                         {t('flowStages.socialCampaignConcept.core.title')}
                                     </h3>
-                                    <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
+                                    <p className="text-xs font-semibold text-muted uppercase tracking-wider">
                                         {t('flowStages.socialCampaignConcept.core.subtitle')}
                                     </p>
                                 </div>
                             </div>
                             <Textarea
-                                className="min-h-[160px] text-base leading-relaxed focus:border-[var(--color-primary)]"
+                                className="min-h-[160px] text-base leading-relaxed focus:border-primary"
                                 placeholder={t('flowStages.socialCampaignConcept.core.placeholder')}
                                 value={conceptData.bigIdea}
                                 onChange={(e) => updateConcept({ bigIdea: e.target.value })}
@@ -186,14 +186,14 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
 
                         <Card padding="md" className="space-y-5">
                             <div className="flex items-center gap-3">
-                                <div className="size-9 rounded-lg bg-[var(--color-surface-hover)] text-[var(--color-text-subtle)] flex items-center justify-center">
+                                <div className="size-9 rounded-lg bg-surface-hover text-subtle flex items-center justify-center">
                                     <span className="material-symbols-outlined text-[18px]">palette</span>
                                 </div>
                                 <div>
-                                    <h3 className="text-base font-bold text-[var(--color-text-main)]">
+                                    <h3 className="text-base font-bold text-main">
                                         {t('flowStages.socialCampaignConcept.visual.title')}
                                     </h3>
-                                    <p className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
+                                    <p className="text-xs font-semibold text-muted uppercase tracking-wider">
                                         {t('flowStages.socialCampaignConcept.visual.subtitle')}
                                     </p>
                                 </div>
@@ -202,13 +202,13 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <Textarea
                                     label={t('flowStages.socialCampaignConcept.visual.descriptionLabel')}
-                                    className="min-h-[140px] focus:border-[var(--color-primary)]"
+                                    className="min-h-[140px] focus:border-primary"
                                     placeholder={t('flowStages.socialCampaignConcept.visual.descriptionPlaceholder')}
                                     value={conceptData.visualDirection}
                                     onChange={(e) => updateConcept({ visualDirection: e.target.value })}
                                 />
                                 <div className="flex flex-col gap-2">
-                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">
+                                    <label className="text-xs font-semibold text-muted uppercase tracking-wider ml-1">
                                         {t('flowStages.socialCampaignConcept.visual.moodLabel')}
                                     </label>
                                     <div className="flex flex-wrap gap-2">
@@ -221,8 +221,8 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
                                                     onClick={() => updateConcept({ mood: mood.id })}
                                                     aria-pressed={isActive}
                                                     className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-colors ${isActive
-                                                        ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-[var(--color-primary)]'
-                                                        : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] border-[var(--color-surface-border)] hover:border-[var(--color-text-subtle)] hover:text-[var(--color-text-main)]'
+                                                        ? 'bg-primary text-on-primary border-primary'
+                                                        : 'bg-surface-hover text-muted border-surface hover:border-[var(--color-text-subtle)] hover:text-main'
                                                         }`}
                                                 >
                                                     {mood.label}
@@ -238,13 +238,13 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
                     <div className="lg:col-span-4 space-y-6">
                         <Card padding="md" className="space-y-3">
                             <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)]">anchor</span>
-                                <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
+                                <span className="material-symbols-outlined text-[18px] text-subtle">anchor</span>
+                                <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">
                                     {t('flowStages.socialCampaignConcept.hook.title')}
                                 </h3>
                             </div>
                             <Textarea
-                                className="min-h-[120px] focus:border-[var(--color-primary)]"
+                                className="min-h-[120px] focus:border-primary"
                                 placeholder={t('flowStages.socialCampaignConcept.hook.placeholder')}
                                 value={conceptData.hook}
                                 onChange={(e) => updateConcept({ hook: e.target.value })}
@@ -254,8 +254,8 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
                         <Card padding="md" className="space-y-4">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)]">view_column</span>
-                                    <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
+                                    <span className="material-symbols-outlined text-[18px] text-subtle">view_column</span>
+                                    <h3 className="text-xs font-semibold text-muted uppercase tracking-wider">
                                         {t('flowStages.socialCampaignConcept.themes.title')}
                                     </h3>
                                 </div>
@@ -273,24 +273,24 @@ export const SocialCampaignConceptView: React.FC<SocialCampaignConceptViewProps>
 
                             <div className="space-y-3">
                                 {conceptData.themes.length === 0 ? (
-                                    <div className="rounded-xl border border-dashed border-[var(--color-surface-border)] p-4 text-center text-xs text-[var(--color-text-muted)]">
+                                    <div className="rounded-xl border border-dashed border-surface p-4 text-center text-xs text-muted">
                                         {t('flowStages.socialCampaignConcept.themes.empty')}
                                     </div>
                                 ) : (
                                     conceptData.themes.map((theme, i) => (
                                         <div key={i} className="flex items-center gap-2">
-                                            <span className="text-[10px] font-semibold text-[var(--color-text-subtle)] w-5 text-right">{i + 1}</span>
+                                            <span className="text-[10px] font-semibold text-subtle w-5 text-right">{i + 1}</span>
                                             <input
                                                 type="text"
                                                 value={theme}
                                                 onChange={(e) => updateTheme(i, e.target.value)}
                                                 placeholder={t('flowStages.socialCampaignConcept.themes.placeholder').replace('{index}', `${i + 1}`)}
-                                                className="flex-1 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] px-3 py-2 text-sm text-[var(--color-text-main)] placeholder:text-[var(--color-text-subtle)] transition-colors focus:border-[var(--color-primary)]"
+                                                className="flex-1 rounded-lg border border-surface bg-surface px-3 py-2 text-sm text-main placeholder:text-subtle transition-colors focus:border-primary"
                                             />
                                             <button
                                                 type="button"
                                                 onClick={() => removeTheme(i)}
-                                                className="p-1 rounded-lg text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                                                className="p-1 rounded-lg text-subtle hover:text-main hover:bg-surface-hover transition-colors"
                                             >
                                                 <span className="material-symbols-outlined text-[16px]">close</span>
                                             </button>

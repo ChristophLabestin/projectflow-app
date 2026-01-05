@@ -70,8 +70,8 @@ export const ProductStrategyView: React.FC<ProductStrategyViewProps> = ({ idea, 
             {/* Header Area */}
             <div className="flex items-center justify-between shrink-0">
                 <div>
-                    <h2 className="text-xl font-bold text-[var(--color-text-main)]">{t('flowStages.productStrategy.title')}</h2>
-                    <p className="text-sm text-[var(--color-text-muted)]">{t('flowStages.productStrategy.subtitle')}</p>
+                    <h2 className="text-xl font-bold text-main">{t('flowStages.productStrategy.title')}</h2>
+                    <p className="text-sm text-muted">{t('flowStages.productStrategy.subtitle')}</p>
                 </div>
                 <Button
                     variant="primary"
@@ -91,15 +91,15 @@ export const ProductStrategyView: React.FC<ProductStrategyViewProps> = ({ idea, 
                 <div className="lg:col-span-5 flex flex-col gap-6">
 
                     {/* Vision Statement */}
-                    <div className="bg-[var(--color-surface-paper)] p-5 rounded-2xl border border-[var(--color-surface-border)] shadow-sm flex flex-col gap-3 min-h-[200px]">
-                        <div className="flex items-center gap-2 text-[var(--color-text-main)] font-bold border-b border-[var(--color-surface-border)] pb-3">
+                    <div className="bg-surface-paper p-5 rounded-2xl border border-surface shadow-sm flex flex-col gap-3 min-h-[200px]">
+                        <div className="flex items-center gap-2 text-main font-bold border-b border-surface pb-3">
                             <span className="material-symbols-outlined text-[20px] text-rose-500">visibility</span>
                             {t('flowStages.productStrategy.vision.title')}
                         </div>
                         <textarea
                             value={idea.description}
                             onChange={(e) => onUpdate({ description: e.target.value })}
-                            className="flex-1 w-full bg-transparent border-none focus:ring-0 p-0 resize-none text-sm leading-relaxed text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] focus:outline-none"
+                            className="flex-1 w-full bg-transparent border-none focus:ring-0 p-0 resize-none text-sm leading-relaxed text-main placeholder-[var(--color-text-subtle)] focus:outline-none"
                             placeholder={t('flowStages.productStrategy.vision.placeholder')}
                         />
                     </div>
@@ -110,15 +110,15 @@ export const ProductStrategyView: React.FC<ProductStrategyViewProps> = ({ idea, 
                     */}
 
                     {/* Strategic value / Market Fit */}
-                    <div className="bg-[var(--color-surface-paper)] p-5 rounded-2xl border border-[var(--color-surface-border)] shadow-sm space-y-6">
-                        <div className="flex items-center gap-2 text-[var(--color-text-main)] font-bold border-b border-[var(--color-surface-border)] pb-3">
+                    <div className="bg-surface-paper p-5 rounded-2xl border border-surface shadow-sm space-y-6">
+                        <div className="flex items-center gap-2 text-main font-bold border-b border-surface pb-3">
                             <span className="material-symbols-outlined text-[20px] text-amber-500">ads_click</span>
                             {t('flowStages.productStrategy.marketFit.title')}
                         </div>
 
                         <div className="space-y-4">
                             <div>
-                                <div className="flex justify-between text-xs font-semibold mb-2 text-[var(--color-text-subtle)]">
+                                <div className="flex justify-between text-xs font-semibold mb-2 text-subtle">
                                     <span>{t('flowStages.productStrategy.marketFit.demand')}</span>
                                     <span>{idea.riskWinAnalysis?.marketFitScore || 0}/10</span>
                                 </div>
@@ -141,7 +141,7 @@ export const ProductStrategyView: React.FC<ProductStrategyViewProps> = ({ idea, 
                             </div>
 
                             <div>
-                                <div className="flex justify-between text-xs font-semibold mb-2 text-[var(--color-text-subtle)]">
+                                <div className="flex justify-between text-xs font-semibold mb-2 text-subtle">
                                     <span>{t('flowStages.productStrategy.marketFit.feasibility')}</span>
                                     <span>{idea.riskWinAnalysis?.technicalFeasibilityScore || 0}/10</span>
                                 </div>

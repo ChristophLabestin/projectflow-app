@@ -1,0 +1,78 @@
+@use '../../../styles/tokens';
+
+.text-area-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+
+    &__label {
+        font-size: 0.875rem;
+        font-weight: 500;
+        color: var(--color-text-main);
+        cursor: pointer;
+        transition: color var(--transition-fast);
+    }
+
+    &:hover &__label {
+        color: var(--color-text-main);
+    }
+
+    &__help {
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+        margin: 0;
+    }
+
+    &__error {
+        font-size: 0.75rem;
+        color: var(--color-error);
+        margin: 0;
+    }
+}
+
+.text-area {
+    width: 100%;
+    min-height: 80px; // Default taller height
+    padding: 10px 12px; // Slightly more vertical padding for text block
+    font-size: 0.9375rem;
+    font-family: inherit;
+    line-height: 1.5;
+    color: var(--color-text-main);
+    background-color: var(--color-surface-hover); // Filled background match TextInput
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+    resize: vertical; // Allow vertical resize only by default
+
+    &::placeholder {
+        color: var(--color-text-subtle);
+    }
+
+    &:hover:not(:disabled),
+    .text-area-group:hover &:not(:disabled) {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    &:focus {
+        outline: none;
+        background-color: var(--color-surface-card);
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 2px var(--color-primary-fade);
+    }
+
+    &--error {
+        border-color: var(--color-error);
+
+        &:focus {
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
+        }
+    }
+
+    &:disabled {
+        background-color: var(--color-surface-hover);
+        cursor: not-allowed;
+        opacity: 0.7;
+        resize: none;
+    }
+}

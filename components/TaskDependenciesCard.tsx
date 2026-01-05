@@ -17,8 +17,8 @@ export const TaskDependenciesCard: React.FC<TaskDependenciesCardProps> = ({
     return (
         <div className="app-card p-4">
             <div className="flex items-center justify-between mb-3">
-                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">Dependencies</span>
-                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]">link</span>
+                <span className="text-[10px] font-bold text-subtle uppercase tracking-wider">Dependencies</span>
+                <span className="material-symbols-outlined text-[18px] text-muted">link</span>
             </div>
 
             {dependencies.length > 0 && (

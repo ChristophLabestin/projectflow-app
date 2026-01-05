@@ -378,22 +378,22 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
     const statusKind: StatusKind = itemType === 'issue' ? 'issue' : 'task';
     const currentStatus = item?.status || 'Open';
 
-    if (loading) return <div className="p-8 text-center text-[var(--color-text-subtle)]">{t('pinnedTasks.loading')}</div>;
+    if (loading) return <div className="p-8 text-center text-subtle">{t('pinnedTasks.loading')}</div>;
     if (!item) {
         const pinnedItem = pinnedItems.find(i => i.id === itemId);
         if (pinnedItem) {
             return (
                 <div className="flex flex-col items-center justify-center p-8 h-full text-center">
-                    <div className="w-16 h-16 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center mb-4">
-                        <span className="material-symbols-outlined text-3xl text-[var(--color-text-muted)]">sentiment_dissatisfied</span>
+                    <div className="w-16 h-16 rounded-full bg-surface-hover flex items-center justify-center mb-4">
+                        <span className="material-symbols-outlined text-3xl text-muted">sentiment_dissatisfied</span>
                     </div>
-                    <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-2">{t('pinnedTasks.errors.unavailableTitle')}</h3>
-                    <p className="text-sm text-[var(--color-text-subtle)] mb-6 max-w-[250px]">
+                    <h3 className="text-lg font-bold text-main mb-2">{t('pinnedTasks.errors.unavailableTitle')}</h3>
+                    <p className="text-sm text-subtle mb-6 max-w-[250px]">
                         {t('pinnedTasks.errors.unavailableBody')}
                     </p>
-                    <div className="bg-[var(--color-surface-hover)] p-4 rounded-xl mb-6 w-full max-w-[300px] border border-[var(--color-surface-border)]">
-                        <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1">{t('pinnedTasks.errors.pinnedAs')}</p>
-                        <p className="font-medium text-[var(--color-text-main)] truncate">{pinnedItem.title}</p>
+                    <div className="bg-surface-hover p-4 rounded-xl mb-6 w-full max-w-[300px] border border-surface">
+                        <p className="text-xs font-bold text-muted uppercase tracking-wider mb-1">{t('pinnedTasks.errors.pinnedAs')}</p>
+                        <p className="font-medium text-main truncate">{pinnedItem.title}</p>
                     </div>
                     <Button
                         variant="ghost"
@@ -409,7 +409,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                 </div>
             );
         }
-        return <div className="p-8 text-center text-[var(--color-text-subtle)]">{t('pinnedTasks.empty.itemNotFound')}</div>;
+        return <div className="p-8 text-center text-subtle">{t('pinnedTasks.empty.itemNotFound')}</div>;
     }
 
     return (
@@ -422,7 +422,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                         size-6 rounded-lg border-2 flex items-center justify-center transition-all mt-1
                         ${isCompleted
                             ? `${itemType === 'task' ? 'bg-green-500 border-green-500' : 'bg-emerald-500 border-emerald-500'} text-white`
-                            : `border-[var(--color-text-muted)] hover:${itemType === 'task' ? 'border-green-500' : 'border-emerald-500'} text-transparent`
+                            : `border-muted hover:${itemType === 'task' ? 'border-green-500' : 'border-emerald-500'} text-transparent`
                         }
                     `}
                     title={itemType === 'task' ? t('pinnedTasks.actions.markComplete') : t('pinnedTasks.actions.markResolved')}
@@ -449,7 +449,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                                     <span className={`material-symbols-outlined text-[10px] opacity-60 transition-transform ${statusMenuOpen ? 'rotate-180' : ''}`}>expand_more</span>
                                 </button>
                                 {statusMenuOpen && (
-                                    <div className="absolute left-0 top-full mt-2 w-52 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] shadow-lg p-1 z-20">
+                                    <div className="absolute left-0 top-full mt-2 w-52 rounded-xl border border-surface bg-card shadow-lg p-1 z-20">
                                         {(itemType === 'task' ? TASK_STATUS_OPTIONS : ISSUE_STATUS_OPTIONS).map((status) => (
                                             <button
                                                 key={status}
@@ -459,8 +459,8 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                                                     handleStatusChange(status);
                                                 }}
                                                 className={`w-full text-left flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-colors ${status === currentStatus
-                                                    ? 'bg-[var(--color-surface-hover)]'
-                                                    : 'hover:bg-[var(--color-surface-hover)]'
+                                                    ? 'bg-surface-hover'
+                                                    : 'hover:bg-surface-hover'
                                                     } ${getStatusStyle(status, statusKind)}`}
                                             >
                                                 <span className="material-symbols-outlined text-[12px]">
@@ -485,7 +485,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                     <div className="flex items-center justify-between mb-2">
                         <button
                             onClick={() => setIsDescExpanded(!isDescExpanded)}
-                            className="flex items-center gap-2 text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider hover:text-[var(--color-text-main)] transition-colors"
+                            className="flex items-center gap-2 text-xs font-bold text-muted uppercase tracking-wider hover:text-main transition-colors"
                         >
                             <span className="material-symbols-outlined text-[16px]">description</span>
                             {t('pinnedTasks.sections.description')}
@@ -496,7 +496,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                         {!isEditingDesc && (
                             <button
                                 onClick={() => { setIsEditingDesc(true); setIsDescExpanded(true); }}
-                                className="text-[10px] text-[var(--color-primary)] hover:underline font-medium"
+                                className="text-[10px] text-primary hover:underline font-medium"
                             >
                                 {t('pinnedTasks.actions.edit')}
                             </button>
@@ -509,7 +509,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                                 <textarea
                                     value={descValue}
                                     onChange={(e) => setDescValue(e.target.value)}
-                                    className="w-full h-24 p-3 text-sm bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl focus:ring-2 focus:ring-[var(--color-primary)]/20 outline-none resize-none"
+                                    className="w-full h-24 p-3 text-sm bg-surface border border-surface rounded-xl focus:ring-2 focus:ring-primary/20 outline-none resize-none"
                                     placeholder={t('pinnedTasks.placeholder.description')}
                                     autoFocus
                                 />
@@ -519,13 +519,13 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                                             setIsEditingDesc(false);
                                             setDescValue(item.description || "");
                                         }}
-                                        className="px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors"
+                                        className="px-3 py-1.5 text-xs font-medium text-muted hover:bg-surface-hover rounded-lg transition-colors"
                                     >
                                         {t('pinnedTasks.actions.cancel')}
                                     </button>
                                     <button
                                         onClick={handleSaveDescription}
-                                        className="px-3 py-1.5 text-xs font-medium bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors"
+                                        className="px-3 py-1.5 text-xs font-medium bg-primary text-on-primary rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors"
                                     >
                                         {t('pinnedTasks.actions.save')}
                                     </button>
@@ -533,13 +533,13 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                             </div>
                         ) : (
                             <div
-                                className="bg-[var(--color-surface-hover)]/50 p-3 rounded-xl border border-[var(--color-surface-border)] text-sm whitespace-pre-wrap text-[var(--color-text-main)] leading-relaxed group relative cursor-pointer hover:border-[var(--color-primary)]/30 transition-all"
+                                className="bg-surface-hover/50 p-3 rounded-xl border border-surface text-sm whitespace-pre-wrap text-main leading-relaxed group relative cursor-pointer hover:border-primary/30 transition-all"
                                 onClick={() => setIsEditingDesc(true)}
                                 title={t('pinnedTasks.description.clickToEdit')}
                             >
                                 {item.description || <span className="italic opacity-50">{t('pinnedTasks.description.empty')}</span>}
                                 <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <span className="material-symbols-outlined text-[14px] text-[var(--color-text-muted)]">edit</span>
+                                    <span className="material-symbols-outlined text-[14px] text-muted">edit</span>
                                 </div>
                             </div>
                         )
@@ -552,22 +552,22 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                 {itemType === 'task' ? (
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-semibold text-[var(--color-text-subtle)] uppercase tracking-wider">{t('pinnedTasks.sections.subtasks')}</h4>
+                            <h4 className="text-sm font-semibold text-subtle uppercase tracking-wider">{t('pinnedTasks.sections.subtasks')}</h4>
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => setShowCompletedSubtasks(!showCompletedSubtasks)}
-                                    className={`text-[10px] font-medium px-2 py-0.5 rounded-full transition-colors ${showCompletedSubtasks ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                                    className={`text-[10px] font-medium px-2 py-0.5 rounded-full transition-colors ${showCompletedSubtasks ? 'bg-primary/10 text-primary' : 'bg-surface-hover text-muted hover:text-main'}`}
                                 >
                                     {showCompletedSubtasks ? t('pinnedTasks.subtasks.hideDone') : t('pinnedTasks.subtasks.showAll')}
                                 </button>
-                                <span className="text-xs font-medium bg-[var(--color-surface-hover)] px-2 py-0.5 rounded-full text-[var(--color-text-muted)]">
+                                <span className="text-xs font-medium bg-surface-hover px-2 py-0.5 rounded-full text-muted">
                                     {subtasks.filter(s => s.isCompleted).length}/{subtasks.length}
                                 </span>
                             </div>
                         </div>
 
                         <form onSubmit={handleAddSubtask} className="mb-3 flex items-center gap-2 group">
-                            <span className="material-symbols-outlined text-[var(--color-text-muted)] group-focus-within:text-[var(--color-primary)]">add</span>
+                            <span className="material-symbols-outlined text-muted group-focus-within:text-primary">add</span>
                             <input
                                 type="text"
                                 value={newSubtaskTitle}
@@ -579,14 +579,14 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
 
                         <div className="space-y-1">
                             {subtasks.filter(sub => showCompletedSubtasks || !sub.isCompleted).map(sub => (
-                                <div key={sub.id} className="group flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors">
+                                <div key={sub.id} className="group flex items-center gap-3 p-2 rounded-lg hover:bg-surface-hover transition-colors">
                                     <button
                                         onClick={() => handleToggleSubtask(sub.id, sub.isCompleted)}
                                         className={`
                                             size-4 rounded border flex items-center justify-center transition-all shrink-0
                                             ${sub.isCompleted
                                                 ? 'bg-indigo-500 border-indigo-500 text-white'
-                                                : 'border-[var(--color-text-muted)] hover:border-indigo-500 text-transparent'
+                                                : 'border-muted hover:border-indigo-500 text-transparent'
                                             }
                                         `}
                                     >
@@ -599,7 +599,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                                                 autoFocus
                                                 type="text"
                                                 defaultValue={sub.title}
-                                                className="w-full bg-transparent p-0 pb-[3px] m-0 text-sm text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] leading-5 border-0 border-b focus:ring-0 focus:outline-none rounded-none animate-border-in"
+                                                className="w-full bg-transparent p-0 pb-[3px] m-0 text-sm text-main placeholder-[var(--color-text-subtle)] leading-5 border-0 border-b focus:ring-0 focus:outline-none rounded-none animate-border-in"
                                                 onBlur={(e) => handleSaveSubtaskTitle(sub.id, e.target.value)}
                                                 onKeyDown={(e) => {
                                                     if (e.key === 'Enter') handleSaveSubtaskTitle(sub.id, e.currentTarget.value);
@@ -609,7 +609,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                                         ) : (
                                             <span
                                                 onClick={() => setEditingSubtaskId(sub.id)}
-                                                className={`text-sm block cursor-text hover:text-[var(--color-primary)] transition-colors border-b border-transparent leading-5 ${sub.isCompleted ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)]'}`}
+                                                className={`text-sm block cursor-text hover:text-primary transition-colors border-b border-transparent leading-5 ${sub.isCompleted ? 'text-muted line-through' : 'text-main'}`}
                                             >
                                                 {sub.title}
                                             </span>
@@ -623,7 +623,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                                                 await deleteSubTask(sub.id, item.id, item.projectId);
                                             }
                                         }}
-                                        className="opacity-0 group-hover:opacity-100 p-1 text-[var(--color-text-muted)] hover:text-rose-500 transition-all"
+                                        className="opacity-0 group-hover:opacity-100 p-1 text-muted hover:text-rose-500 transition-all"
                                     >
                                         <span className="material-symbols-outlined text-[16px]">delete</span>
                                     </button>
@@ -635,7 +635,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                     <div className="space-y-6">
                         {/* Discussion / Comments for Issues */}
                         <div>
-                            <h4 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-3 flex items-center gap-2 tracking-wider">
+                            <h4 className="text-xs font-bold text-muted uppercase mb-3 flex items-center gap-2 tracking-wider">
                                 <span className="material-symbols-outlined text-[16px]">chat</span>
                                 {t('pinnedTasks.sections.discussion').replace('{count}', String(commentCount))}
                             </h4>
@@ -655,8 +655,8 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
 
                         {/* GitHub reference for Issues */}
                         {item.githubIssueNumber && (
-                            <div className="pt-4 border-t border-[var(--color-surface-border)]">
-                                <h4 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-3 flex items-center gap-2 tracking-wider">
+                            <div className="pt-4 border-t border-surface">
+                                <h4 className="text-xs font-bold text-muted uppercase mb-3 flex items-center gap-2 tracking-wider">
                                     <span className="material-symbols-outlined text-[16px] text-indigo-500">terminal</span>
                                     {t('pinnedTasks.sections.githubReference')}
                                 </h4>
@@ -664,21 +664,21 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                                     href={item.githubIssueUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] hover:border-indigo-500/50 transition-all group mb-3"
+                                    className="flex items-center justify-between p-2.5 rounded-xl bg-surface-hover border border-surface hover:border-indigo-500/50 transition-all group mb-3"
                                 >
                                     <div className="flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]">open_in_new</span>
-                                        <span className="text-xs font-bold text-[var(--color-text-main)]">
+                                        <span className="material-symbols-outlined text-[18px] text-muted">open_in_new</span>
+                                        <span className="text-xs font-bold text-main">
                                             {t('pinnedTasks.github.issueLabel').replace('{number}', String(item.githubIssueNumber))}
                                         </span>
                                     </div>
-                                    <span className="text-[10px] text-[var(--color-text-muted)]">{t('pinnedTasks.github.viewOnGithub')}</span>
+                                    <span className="text-[10px] text-muted">{t('pinnedTasks.github.viewOnGithub')}</span>
                                 </a>
 
                                 {loadingCommits ? (
                                     <div className="flex items-center gap-2 py-2">
-                                        <span className="material-symbols-outlined animate-spin text-[14px] text-[var(--color-primary)]">progress_activity</span>
-                                        <span className="text-[10px] text-[var(--color-text-muted)]">{t('pinnedTasks.github.searchingCommits')}</span>
+                                        <span className="material-symbols-outlined animate-spin text-[14px] text-primary">progress_activity</span>
+                                        <span className="text-[10px] text-muted">{t('pinnedTasks.github.searchingCommits')}</span>
                                     </div>
                                 ) : relatedCommits.length > 0 && (
                                     <div className="space-y-1.5 max-h-[150px] overflow-y-auto pr-1">
@@ -688,14 +688,14 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                                                 href={commit.html_url}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="block p-2 rounded-lg border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] transition-all"
+                                                className="block p-2 rounded-lg border border-surface hover:bg-surface-hover transition-all"
                                             >
-                                                <p className="text-[10px] font-medium text-[var(--color-text-main)] line-clamp-1">
+                                                <p className="text-[10px] font-medium text-main line-clamp-1">
                                                     {commit.commit.message}
                                                 </p>
                                                 <div className="flex items-center justify-between mt-1">
-                                                    <span className="text-[9px] text-[var(--color-text-muted)]">@{commit.author?.login}</span>
-                                                    <span className="text-[9px] font-mono text-[var(--color-text-subtle)]">{commit.sha.slice(0, 7)}</span>
+                                                    <span className="text-[9px] text-muted">@{commit.author?.login}</span>
+                                                    <span className="text-[9px] font-mono text-subtle">{commit.sha.slice(0, 7)}</span>
                                                 </div>
                                             </a>
                                         ))}
@@ -957,7 +957,7 @@ export const PinnedTasksModal = () => {
     if (isCompactMode && selectedItemId) {
         return (
             <div
-                className="fixed z-50 bg-[var(--color-surface-card)] rounded-2xl shadow-2xl border border-[var(--color-surface-border)] flex flex-col overflow-hidden"
+                className="fixed z-50 bg-card rounded-2xl shadow-2xl border border-surface flex flex-col overflow-hidden"
                 style={{
                     left: position.x,
                     top: position.y,
@@ -967,13 +967,13 @@ export const PinnedTasksModal = () => {
             >
                 {/* Compact Header - Draggable */}
                 <div
-                    className={`flex items-center justify-between gap-2 px-4 py-3 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                    className={`flex items-center justify-between gap-2 px-4 py-3 border-b border-surface bg-surface select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
                     onMouseDown={handleDragStart}
                 >
                     <div className="flex items-center gap-2 min-w-0">
-                        <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">drag_indicator</span>
+                        <span className="material-symbols-outlined text-[16px] text-muted">drag_indicator</span>
                         <span className="material-symbols-outlined text-[18px] text-amber-500">center_focus_strong</span>
-                        <span className="text-sm font-semibold text-[var(--color-text-main)] truncate">
+                        <span className="text-sm font-semibold text-main truncate">
                             {pinnedItems.find(i => i.id === selectedItemId)?.title || t('pinnedTasks.header.focusFallback')}
                         </span>
                     </div>
@@ -989,14 +989,14 @@ export const PinnedTasksModal = () => {
                                             navigate(`/project/${item.projectId}/${item.type === 'issue' ? 'issues' : 'tasks'}/${item.id}`);
                                         }
                                     }}
-                                    className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)] transition-colors"
+                                    className="p-1.5 rounded-lg text-muted hover:bg-surface-hover hover:text-main transition-colors"
                                     title={t('pinnedTasks.actions.openDetail')}
                                 >
                                     <span className="material-symbols-outlined text-[18px]">open_in_new</span>
                                 </button>
                                 <button
                                     onClick={() => setFocusItem(focusItemId === selectedItemId ? null : selectedItemId)}
-                                    className={`p-1.5 rounded-lg transition-colors ${focusItemId === selectedItemId ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'}`}
+                                    className={`p-1.5 rounded-lg transition-colors ${focusItemId === selectedItemId ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30' : 'text-muted hover:bg-surface-hover'}`}
                                     title={t('pinnedTasks.actions.toggleFocus')}
                                 >
                                     <span className="material-symbols-outlined text-[18px]">{focusItemId === selectedItemId ? 'center_focus_strong' : 'center_focus_weak'}</span>
@@ -1006,24 +1006,24 @@ export const PinnedTasksModal = () => {
                                         unpinItem(selectedItemId);
                                         if (pinnedItems.length <= 1) toggleModal();
                                     }}
-                                    className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/30 transition-colors"
+                                    className="p-1.5 rounded-lg text-muted hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/30 transition-colors"
                                     title={t('pinnedTasks.actions.unpin')}
                                 >
                                     <span className="material-symbols-outlined text-[18px]">keep_off</span>
                                 </button>
-                                <div className="w-[1px] h-4 bg-[var(--color-surface-border)] mx-1" />
+                                <div className="w-[1px] h-4 bg-surface-border mx-1" />
                             </>
                         )}
                         <button
                             onClick={() => setIsCompactMode(false)}
-                            className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)] transition-colors"
+                            className="p-1.5 rounded-lg text-muted hover:bg-surface-hover hover:text-main transition-colors"
                             title={t('pinnedTasks.actions.expand')}
                         >
                             <span className="material-symbols-outlined text-[18px]">open_in_full</span>
                         </button>
                         <button
                             onClick={toggleModal}
-                            className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/30 transition-colors"
+                            className="p-1.5 rounded-lg text-muted hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/30 transition-colors"
                             title={t('pinnedTasks.actions.close')}
                         >
                             <span className="material-symbols-outlined text-[18px]">close</span>
@@ -1043,17 +1043,17 @@ export const PinnedTasksModal = () => {
                 {/* Edge Resize Handles */}
                 {/* Right edge */}
                 <div
-                    className="absolute top-4 right-0 bottom-4 w-2 cursor-ew-resize hover:bg-[var(--color-primary)]/20 transition-colors"
+                    className="absolute top-4 right-0 bottom-4 w-2 cursor-ew-resize hover:bg-primary/20 transition-colors"
                     onMouseDown={(e) => handleResizeStart(e, 'e')}
                 />
                 {/* Left edge */}
                 <div
-                    className="absolute top-4 left-0 bottom-4 w-2 cursor-ew-resize hover:bg-[var(--color-primary)]/20 transition-colors"
+                    className="absolute top-4 left-0 bottom-4 w-2 cursor-ew-resize hover:bg-primary/20 transition-colors"
                     onMouseDown={(e) => handleResizeStart(e, 'w')}
                 />
                 {/* Bottom edge */}
                 <div
-                    className="absolute bottom-0 left-4 right-4 h-2 cursor-ns-resize hover:bg-[var(--color-primary)]/20 transition-colors"
+                    className="absolute bottom-0 left-4 right-4 h-2 cursor-ns-resize hover:bg-primary/20 transition-colors"
                     onMouseDown={(e) => handleResizeStart(e, 's')}
                 />
 
@@ -1063,7 +1063,7 @@ export const PinnedTasksModal = () => {
                     className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
                     onMouseDown={(e) => handleResizeStart(e, 'se')}
                 >
-                    <span className="material-symbols-outlined text-[12px] text-[var(--color-text-subtle)] rotate-[-45deg]">drag_handle</span>
+                    <span className="material-symbols-outlined text-[12px] text-subtle rotate-[-45deg]">drag_handle</span>
                 </div>
                 {/* Bottom Left */}
                 <div
@@ -1090,11 +1090,11 @@ export const PinnedTasksModal = () => {
             <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={toggleModal} />
 
             <div
-                className="relative w-full max-w-4xl bg-[var(--color-surface-card)] rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[70vh] animate-scale-up border border-[var(--color-surface-border)]"
+                className="relative w-full max-w-4xl bg-card rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[70vh] animate-scale-up border border-surface"
                 style={{ resize: 'both', overflow: 'hidden', minWidth: '400px', minHeight: '300px' }}
             >
                 {/* Header Bar with close button */}
-                <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-[var(--color-surface-card)]/80 backdrop-blur-sm px-1.5 py-1 rounded-xl border border-[var(--color-surface-border)] shadow-sm">
+                <div className="absolute top-3 right-3 z-10 flex items-center gap-1 bg-card/80 backdrop-blur-sm px-1.5 py-1 rounded-xl border border-surface shadow-sm">
                     {selectedItemId && (
                         <>
                             <button
@@ -1105,14 +1105,14 @@ export const PinnedTasksModal = () => {
                                         navigate(`/project/${item.projectId}/${item.type === 'issue' ? 'issues' : 'tasks'}/${item.id}`);
                                     }
                                 }}
-                                className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                                className="p-2 rounded-lg text-muted hover:text-main hover:bg-surface-hover transition-colors"
                                 title={t('pinnedTasks.actions.openDetail')}
                             >
                                 <span className="material-symbols-outlined text-[18px] leading-none flex items-center justify-center">open_in_new</span>
                             </button>
                             <button
                                 onClick={() => setFocusItem(focusItemId === selectedItemId ? null : selectedItemId)}
-                                className={`p-2 rounded-lg transition-colors flex items-center justify-center ${focusItemId === selectedItemId ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'}`}
+                                className={`p-2 rounded-lg transition-colors flex items-center justify-center ${focusItemId === selectedItemId ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30' : 'text-muted hover:bg-surface-hover hover:text-main'}`}
                                 title={focusItemId === selectedItemId ? t('pinnedTasks.actions.unsetFocus') : t('pinnedTasks.actions.setFocus')}
                             >
                                 <span className="material-symbols-outlined text-[18px] leading-none">{focusItemId === selectedItemId ? 'center_focus_strong' : 'center_focus_weak'}</span>
@@ -1122,15 +1122,15 @@ export const PinnedTasksModal = () => {
                                     unpinItem(selectedItemId);
                                     // Optionally select another item if this one is removed, handled by effect
                                 }}
-                                className="p-2 rounded-lg text-[var(--color-text-muted)] hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/30 transition-colors flex items-center justify-center"
+                                className="p-2 rounded-lg text-muted hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/30 transition-colors flex items-center justify-center"
                                 title={t('pinnedTasks.actions.unpin')}
                             >
                                 <span className="material-symbols-outlined text-[18px] leading-none">keep_off</span>
                             </button>
-                            <div className="w-[1px] h-5 bg-[var(--color-surface-border)] mx-1" />
+                            <div className="w-[1px] h-5 bg-surface-border mx-1" />
                             <button
                                 onClick={() => setIsCompactMode(true)}
-                                className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] transition-colors flex items-center justify-center"
+                                className="p-2 rounded-lg text-muted hover:text-main hover:bg-surface-hover transition-colors flex items-center justify-center"
                                 title={t('pinnedTasks.actions.compactMode')}
                             >
                                 <span className="material-symbols-outlined text-[18px] leading-none">picture_in_picture_alt</span>
@@ -1139,7 +1139,7 @@ export const PinnedTasksModal = () => {
                     )}
                     <button
                         onClick={toggleModal}
-                        className="p-2 rounded-lg text-[var(--color-text-muted)] hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors flex items-center justify-center"
+                        className="p-2 rounded-lg text-muted hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors flex items-center justify-center"
                         title={t('pinnedTasks.actions.closeEsc')}
                     >
                         <span className="material-symbols-outlined text-[18px] leading-none">close</span>
@@ -1147,17 +1147,17 @@ export const PinnedTasksModal = () => {
                 </div>
 
                 {/* Sidebar List */}
-                <div className="w-full md:w-1/3 bg-[var(--color-surface-bg)] border-r border-[var(--color-surface-border)] flex flex-col">
-                    <div className="p-4 border-b border-[var(--color-surface-border)] flex items-center justify-between">
+                <div className="w-full md:w-1/3 bg-surface border-r border-surface flex flex-col">
+                    <div className="p-4 border-b border-surface flex items-center justify-between">
                         <h2 className="text-lg font-bold flex items-center gap-2">
-                            <span className="material-symbols-outlined text-[var(--color-primary)]">push_pin</span>
+                            <span className="material-symbols-outlined text-primary">push_pin</span>
                             {t('pinnedTasks.header.quickAccess')}
                         </h2>
-                        <span className="text-xs font-mono text-[var(--color-text-muted)] bg-[var(--color-surface-hover)] px-2 py-1 rounded">⌘+Shift+F</span>
+                        <span className="text-xs font-mono text-muted bg-surface-hover px-2 py-1 rounded">⌘+Shift+F</span>
                     </div>
 
                     {/* Filter Tabs */}
-                    <div className="flex items-center gap-1 px-3 pb-2 border-b border-[var(--color-surface-border)]">
+                    <div className="flex items-center gap-1 px-3 pb-2 border-b border-surface">
                         {(['all', 'task', 'issue'] as const).map(tab => {
                             const count = tab === 'all' ? pinnedItems.length : pinnedItems.filter(i => i.type === tab || (tab === 'task' && i.type === 'personal-task')).length;
                             return (
@@ -1165,8 +1165,8 @@ export const PinnedTasksModal = () => {
                                     key={tab}
                                     onClick={() => setPinnedFilter(tab)}
                                     className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full transition-colors ${pinnedFilter === tab
-                                        ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
-                                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'
+                                        ? 'bg-primary/10 text-primary'
+                                        : 'text-muted hover:bg-surface-hover hover:text-main'
                                         }`}
                                 >
                                     {filterLabels[tab]} ({count})
@@ -1177,7 +1177,7 @@ export const PinnedTasksModal = () => {
 
                     <div className="flex-1 overflow-y-auto p-2 space-y-1">
                         {pinnedItems.filter(i => pinnedFilter === 'all' || i.type === pinnedFilter || (pinnedFilter === 'task' && i.type === 'personal-task')).length === 0 && (
-                            <div className="text-center p-8 text-[var(--color-text-muted)] text-sm">
+                            <div className="text-center p-8 text-muted text-sm">
                                 {pinnedFilter === 'all'
                                     ? t('pinnedTasks.empty.all')
                                     : pinnedFilter === 'task'
@@ -1204,12 +1204,12 @@ export const PinnedTasksModal = () => {
                                         ${isCompleting ? 'opacity-0 -translate-x-full overflow-hidden h-0 p-0 m-0 border-0' : ''}
                                         ${isAdding ? 'animate-[slideIn_0.4s_ease-out_forwards]' : ''}
                                         ${isSelected
-                                            ? 'bg-[var(--color-surface-card)] border-[var(--color-primary)]/30 shadow-sm'
-                                            : 'border-transparent hover:bg-[var(--color-surface-hover)]'
+                                            ? 'bg-card border-primary/30 shadow-sm'
+                                            : 'border-transparent hover:bg-surface-hover'
                                         }
                                     `}
                                 >
-                                    <div className={`relative shrink-0 flex items-center justify-center p-2 rounded-lg border ${isFocus ? 'bg-amber-500/10 border-amber-500/30' : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)]'}`}>
+                                    <div className={`relative shrink-0 flex items-center justify-center p-2 rounded-lg border ${isFocus ? 'bg-amber-500/10 border-amber-500/30' : 'bg-surface border-surface'}`}>
                                         <span className={`material-symbols-outlined text-[18px] ${isFocus ? 'text-amber-500' : (isIssue ? 'text-indigo-500' : 'text-cyan-500')}`}>
                                             {isIssue ? 'bug_report' : 'task_alt'}
                                         </span>
@@ -1218,7 +1218,7 @@ export const PinnedTasksModal = () => {
                                         )}
                                     </div>
                                     <div className="flex-1 min-w-0 py-0.5">
-                                        <p className={`text-sm font-semibold truncate ${isSelected ? 'text-[var(--color-text-main)]' : 'text-[var(--color-text-secondary)]'} ${isFocus ? 'text-amber-600 dark:text-amber-400' : ''}`}>
+                                        <p className={`text-sm font-semibold truncate ${isSelected ? 'text-main' : 'text-muted'} ${isFocus ? 'text-amber-600 dark:text-amber-400' : ''}`}>
                                             {item.title}
                                         </p>
                                         <div className="flex items-center gap-2 mt-1">
@@ -1227,7 +1227,7 @@ export const PinnedTasksModal = () => {
                                             </span>
 
                                             {item.priority && (
-                                                <span className="text-[9px] font-medium text-[var(--color-text-muted)]">
+                                                <span className="text-[9px] font-medium text-muted">
                                                     • {priorityLabels[item.priority] || item.priority}
                                                 </span>
                                             )}
@@ -1236,7 +1236,7 @@ export const PinnedTasksModal = () => {
 
                                     {/* Delete Button (Hover) */}
                                     <div
-                                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-[var(--color-text-muted)] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded z-10"
+                                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-muted hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded z-10"
                                         onClick={(e) => handleDeleteTask(e, item)}
                                         title={t('pinnedTasks.actions.delete')}
                                     >
@@ -1248,11 +1248,11 @@ export const PinnedTasksModal = () => {
                     </div>
 
                     {/* Add Personal Task Input */}
-                    <div className="p-3 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] relative overflow-hidden">
+                    <div className="p-3 border-t border-surface bg-surface relative overflow-hidden">
                         {/* Loading Overlay for the whole section if needed, or just specific feedback */}
                         {isCreatingTask && (
-                            <div className="absolute top-0 left-0 right-0 h-0.5 bg-[var(--color-surface-border)] overflow-hidden">
-                                <div className="h-full bg-[var(--color-primary)] animate-subtle-progress w-[30%]" />
+                            <div className="absolute top-0 left-0 right-0 h-0.5 bg-surface-border overflow-hidden">
+                                <div className="h-full bg-primary animate-subtle-progress w-[30%]" />
                             </div>
                         )}
 
@@ -1265,23 +1265,23 @@ export const PinnedTasksModal = () => {
                                     if (e.key === 'Enter') handleCreatePersonalTask();
                                 }}
                                 placeholder={t('pinnedTasks.placeholder.addPersonalTask')}
-                                className="w-full bg-[var(--color-surface-hover)] border-none rounded-lg py-2 pl-9 pr-3 text-sm focus:ring-2 focus:ring-[var(--color-primary)]/20 outline-none transition-all placeholder-[var(--color-text-muted)] disabled:opacity-50"
+                                className="w-full bg-surface-hover border-none rounded-lg py-2 pl-9 pr-3 text-sm focus:ring-2 focus:ring-primary/20 outline-none transition-all placeholder-[var(--color-text-muted)] disabled:opacity-50"
                                 disabled={isCreatingTask}
                             />
                             <div className="absolute left-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center size-5">
                                 {isCreatingTask ? (
-                                    <div className="size-4 border-2 border-[var(--color-primary)]/30 border-t-[var(--color-primary)] rounded-full animate-spin" />
+                                    <div className="size-4 border-2 border-primary/30 border-t-[var(--color-primary)] rounded-full animate-spin" />
                                 ) : (
-                                    <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)] group-focus-within:text-[var(--color-primary)] transition-colors">
+                                    <span className="material-symbols-outlined text-[18px] text-muted group-focus-within:text-primary transition-colors">
                                         add_circle
                                     </span>
                                 )}
                             </div>
                         </div>
-                        <div className="mt-1 text-[10px] text-[var(--color-text-subtle)] px-2 flex justify-between items-center">
+                        <div className="mt-1 text-[10px] text-subtle px-2 flex justify-between items-center">
                             <span>
                                 {pressEnterPrefix}
-                                <kbd className="font-mono bg-[var(--color-surface-card)] px-1 rounded">Enter</kbd>
+                                <kbd className="font-mono bg-card px-1 rounded">Enter</kbd>
                                 {pressEnterSuffix}
                             </span>
                         </div>
@@ -1289,7 +1289,7 @@ export const PinnedTasksModal = () => {
                 </div>
 
                 {/* Main Content (Clipboard) */}
-                <div className="flex-1 p-6 pt-14 flex flex-col min-w-0 bg-[var(--color-surface-card)]">
+                <div className="flex-1 p-6 pt-14 flex flex-col min-w-0 bg-card">
                     {/* Add styles for animations */}
                     <style>{`
                         @keyframes slideIn {
@@ -1311,7 +1311,7 @@ export const PinnedTasksModal = () => {
                             onComplete={handleItemCompletion}
                         />
                     ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center text-[var(--color-text-muted)]">
+                        <div className="flex-1 flex flex-col items-center justify-center text-muted">
                             <span className="material-symbols-outlined text-6xl opacity-20 mb-4">checklist</span>
                             <p>{t('pinnedTasks.empty.selectItem')}</p>
                         </div>

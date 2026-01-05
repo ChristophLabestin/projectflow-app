@@ -120,7 +120,7 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({
     return (
         <div
             onClick={onClick}
-            className={`group relative flex flex-col bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer ${className}`}
+            className={`group relative flex flex-col bg-card border border-surface rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all cursor-pointer ${className}`}
         >
             {/* Status Strip (if showing status or rejection) */}
             <div className={`h-1 w-full ${getPlatformColor(post.platform, undefined, post.rejectionReason).replace('border-l-', 'bg-')}`} />
@@ -132,7 +132,7 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({
                         {mediaUrl ? (
                             <img src={mediaUrl} alt={t('social.postCard.thumbnailAlt')} className="w-full h-full object-cover absolute inset-0" />
                         ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[var(--color-text-muted)]">
+                            <div className="w-full h-full flex items-center justify-center text-muted">
                                 <span className="material-symbols-outlined">image</span>
                             </div>
                         )}
@@ -153,7 +153,7 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({
                                 <PlatformIcon platform={post.platform} className="w-full h-full object-contain" />
                             </div>
                             {/* Title */}
-                            <h4 className="text-sm font-semibold text-[var(--color-text-main)] truncate block">
+                            <h4 className="text-sm font-semibold text-main truncate block">
                                 {post.videoConcept?.title || post.content.caption?.slice(0, 30) || t('social.postCard.untitledPost')}
                             </h4>
                         </div>
@@ -161,7 +161,7 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({
                         {onDelete && (
                             <button
                                 onClick={(e) => { e.stopPropagation(); onDelete(e); }}
-                                className="text-[var(--color-text-muted)] hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                className="text-muted hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
                             >
                                 <span className="material-symbols-outlined text-[16px]">close</span>
                             </button>
@@ -169,14 +169,14 @@ export const SocialPostCard: React.FC<SocialPostCardProps> = ({
                     </div>
 
                     {/* Caption Preview */}
-                    <p className="text-xs text-[var(--color-text-muted)] line-clamp-2 mb-3 leading-relaxed">
+                    <p className="text-xs text-muted line-clamp-2 mb-3 leading-relaxed">
                         {post.content.caption || t('social.postCard.noCaption')}
                     </p>
 
                     {/* Footer Meta */}
-                    <div className="mt-auto flex items-center justify-between pt-2 border-t border-[var(--color-surface-border)]">
+                    <div className="mt-auto flex items-center justify-between pt-2 border-t border-surface">
                         {/* Date */}
-                        <div className="flex items-center gap-1 text-[10px] text-[var(--color-text-muted)] font-medium">
+                        <div className="flex items-center gap-1 text-[10px] text-muted font-medium">
                             <span className="material-symbols-outlined text-[12px]">event</span>
                             {post.scheduledFor ? format(new Date(post.scheduledFor), 'MMM d', { locale: dateLocale }) : t('social.postCard.unscheduled')}
                         </div>

@@ -133,7 +133,7 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                     transition-all duration-300 ease-out bg-gradient-to-r border
                     ${isOpen
                         ? statusGradientClass
-                        : 'hover:bg-[var(--color-surface-hover)]/60 border-transparent'
+                        : 'hover:bg-surface-hover/60 border-transparent'
                     }
                 `}
             >
@@ -158,7 +158,7 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                                 {/* Avatar */}
                                 <div
                                     className={`
-                                        relative size-8 rounded-full border-2 border-[var(--color-surface-card)]
+                                        relative size-8 rounded-full border-2 border-card
                                         bg-cover bg-center shadow-lg
                                         ring-2 transition-all duration-300
                                         ${member.isOnline
@@ -184,7 +184,7 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                                 {/* Status indicator */}
                                 <div className={`
                                     absolute -bottom-0.5 -right-0.5 size-3 rounded-full 
-                                    border-2 border-[var(--color-surface-card)]
+                                    border-2 border-card
                                     shadow-sm transition-colors duration-300
                                     ${member.isOnline ? 'bg-emerald-500' : member.isIdle ? 'bg-amber-400' : 'bg-rose-500'}
                                 `} />
@@ -194,10 +194,10 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                         {/* +X more indicator */}
                         {extraCount > 0 && (
                             <div
-                                className="relative -ml-2 size-8 rounded-full bg-[var(--color-surface-hover)] border-2 border-[var(--color-surface-card)] flex items-center justify-center shadow-lg"
+                                className="relative -ml-2 size-8 rounded-full bg-surface-hover border-2 border-card flex items-center justify-center shadow-lg"
                                 style={{ zIndex: 0 }}
                             >
-                                <span className="text-[10px] font-bold text-[var(--color-text-muted)]">
+                                <span className="text-[10px] font-bold text-muted">
                                     +{extraCount}
                                 </span>
                             </div>
@@ -213,11 +213,11 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                                     <span className={`absolute inset-0 size-2 rounded-full ${statusIndicatorColor} animate-ping opacity-75`} />
                                 )}
                             </div>
-                            <span className="text-[13px] font-semibold text-[var(--color-text-main)]">
+                            <span className="text-[13px] font-semibold text-main">
                                 {t('workspaceTeam.activeCount').replace('{count}', String(filteredTotalActiveCount))}
                             </span>
                         </div>
-                        <span className="text-[10px] text-[var(--color-text-muted)] ml-3.5">
+                        <span className="text-[10px] text-muted ml-3.5">
                             {t('workspaceTeam.memberCount').replace('{count}', String(filteredTotalCount))}
                         </span>
                     </div>
@@ -225,7 +225,7 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
 
                 {/* Expand Indicator */}
                 <span className={`
-                    material-symbols-outlined text-[16px] text-[var(--color-text-muted)]
+                    material-symbols-outlined text-[16px] text-muted
                     transition-transform duration-300
                     ${isOpen ? 'rotate-180' : ''}
                 `}>
@@ -237,8 +237,8 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
             <div
                 className={`
                     absolute bottom-full left-0 w-[280px] mb-2
-                    bg-[var(--color-surface-card)] 
-                    border border-[var(--color-surface-border)]
+                    bg-card 
+                    border border-surface
                     rounded-2xl shadow-2xl
                     origin-bottom
                     transition-all duration-300 ease-out
@@ -253,14 +253,14 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                 <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${statusPanelGradient} pointer-events-none`} />
 
                 {/* Header */}
-                <div className="relative flex items-center justify-between px-4 py-3 border-b border-[var(--color-surface-border)]">
+                <div className="relative flex items-center justify-between px-4 py-3 border-b border-surface">
                     <div className="flex items-center gap-2.5">
                         <div className={`size-8 rounded-lg bg-gradient-to-br ${statusIconGradient} flex items-center justify-center shadow-lg ${statusShadowColor}`}>
                             <span className="material-symbols-outlined text-white text-[18px]">groups</span>
                         </div>
                         <div>
-                            <h4 className="text-sm font-bold text-[var(--color-text-main)]">{t('workspaceTeam.title')}</h4>
-                            <p className="text-[10px] text-[var(--color-text-muted)]">{t('workspaceTeam.memberCount').replace('{count}', String(filteredTotalCount))}</p>
+                            <h4 className="text-sm font-bold text-main">{t('workspaceTeam.title')}</h4>
+                            <p className="text-[10px] text-muted">{t('workspaceTeam.memberCount').replace('{count}', String(filteredTotalCount))}</p>
                         </div>
                     </div>
 
@@ -364,11 +364,11 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                         <div className="px-3">
                             <div className="flex items-center gap-2 px-2 py-1.5">
                                 <span className="size-2 rounded-full bg-slate-400 dark:bg-slate-500" />
-                                <span className="text-[10px] font-black uppercase tracking-widest text-[var(--color-text-muted)]">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-muted">
                                     {t('workspaceTeam.section.offline')}
                                 </span>
                                 <div className="flex-1 h-px bg-gradient-to-r from-slate-300/30 dark:from-slate-600/30 to-transparent" />
-                                <span className="text-[10px] font-bold text-[var(--color-text-muted)]">
+                                <span className="text-[10px] font-bold text-muted">
                                     {filteredOfflineMembers.length}
                                 </span>
                             </div>
@@ -388,10 +388,10 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                     {/* Empty state */}
                     {filteredTotalCount === 0 && (
                         <div className="flex flex-col items-center justify-center py-8 px-4 text-center">
-                            <span className="material-symbols-outlined text-4xl text-[var(--color-text-muted)] opacity-30 mb-2">
+                            <span className="material-symbols-outlined text-4xl text-muted opacity-30 mb-2">
                                 group_off
                             </span>
-                            <p className="text-sm text-[var(--color-text-muted)]">{t('workspaceTeam.empty')}</p>
+                            <p className="text-sm text-muted">{t('workspaceTeam.empty')}</p>
                         </div>
                     )}
                 </div>
@@ -407,9 +407,9 @@ export const WorkspaceTeamIndicator: React.FC<WorkspaceTeamIndicatorProps> = ({ 
                         relative flex items-center justify-center gap-2 
                         px-4 py-3 m-2 mt-0
                         bg-gradient-to-r from-[var(--color-surface-hover)] to-transparent
-                        rounded-xl border border-[var(--color-surface-border)]
-                        text-[var(--color-primary)] 
-                        hover:bg-[var(--color-primary)]/10 hover:border-[var(--color-primary)]/30
+                        rounded-xl border border-surface
+                        text-primary 
+                        hover:bg-primary/10 hover:border-primary/30
                         transition-all duration-200
                         group
                     "
@@ -441,7 +441,7 @@ const MemberRow: React.FC<{
                     ? 'hover:bg-amber-400/5'
                     : status === 'busy'
                         ? 'hover:bg-rose-500/5'
-                        : 'hover:bg-[var(--color-surface-hover)]/50'
+                        : 'hover:bg-surface-hover/50'
             }
         `}>
         {/* Avatar with status ring */}
@@ -464,7 +464,7 @@ const MemberRow: React.FC<{
                                 ? 'ring-amber-400'
                                 : status === 'busy'
                                     ? 'ring-rose-500'
-                                    : 'ring-[var(--color-surface-border)] opacity-70 grayscale-[30%]'
+                                    : 'ring-surface opacity-70 grayscale-[30%]'
                         }
                     `}
                 />
@@ -479,7 +479,7 @@ const MemberRow: React.FC<{
                             ? 'bg-gradient-to-br from-amber-400 to-orange-500 ring-amber-400'
                             : status === 'busy'
                                 ? 'bg-gradient-to-br from-rose-500 to-pink-500 ring-rose-500'
-                                : 'bg-gradient-to-br from-slate-400 to-slate-500 ring-[var(--color-surface-border)] opacity-70'
+                                : 'bg-gradient-to-br from-slate-400 to-slate-500 ring-surface opacity-70'
                     }
                 `}>
                     {member.displayName?.charAt(0)?.toUpperCase() || '?'}
@@ -489,7 +489,7 @@ const MemberRow: React.FC<{
             {/* Status dot */}
             <div className={`
                 absolute -bottom-0.5 -right-0.5 size-3 rounded-full 
-                border-2 border-[var(--color-surface-card)]
+                border-2 border-card
                 ${status === 'online' ? 'bg-emerald-500' : status === 'idle' ? 'bg-amber-400' : status === 'busy' ? 'bg-rose-500' : 'bg-slate-400'}
             `}>
                 {status === 'online' && (
@@ -503,12 +503,12 @@ const MemberRow: React.FC<{
             <div className="flex items-center gap-2">
                 <span className={`
                     text-[13px] font-semibold truncate
-                    ${status === 'offline' ? 'text-[var(--color-text-muted)]' : 'text-[var(--color-text-main)]'}
+                    ${status === 'offline' ? 'text-muted' : 'text-main'}
                 `}>
                     {member.displayName}
                 </span>
                 {isCurrentUser && (
-                    <span className="shrink-0 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider rounded bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+                    <span className="shrink-0 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-wider rounded bg-primary/10 text-primary">
                         {t('workspaceTeam.you')}
                     </span>
                 )}
@@ -521,7 +521,7 @@ const MemberRow: React.FC<{
                         ? 'text-amber-600 dark:text-amber-400'
                         : status === 'busy'
                             ? 'text-rose-600 dark:text-rose-400'
-                            : 'text-[var(--color-text-muted)]'
+                            : 'text-muted'
                 }
             `}>
                 {status === 'online'
@@ -540,7 +540,7 @@ const MemberRow: React.FC<{
                 shrink-0 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider rounded-md
                 ${member.role.toLowerCase() === 'owner' || member.role.toLowerCase() === 'admin'
                     ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
-                    : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'
+                    : 'bg-surface-hover text-muted'
                 }
             `}>
                 {member.role}

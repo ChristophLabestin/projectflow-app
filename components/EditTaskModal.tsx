@@ -56,14 +56,14 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
     return createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
             <div
-                className="w-full max-w-2xl bg-[var(--color-surface-card)] rounded-xl shadow-2xl animate-scale-up border border-[var(--color-surface-border)] flex flex-col max-h-[90vh] overflow-y-auto"
+                className="w-full max-w-2xl bg-card rounded-xl shadow-2xl animate-scale-up border border-surface flex flex-col max-h-[90vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="p-4 border-b border-[var(--color-surface-border)] flex justify-between items-center">
+                <div className="p-4 border-b border-surface flex justify-between items-center">
                     <div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)]">Edit Task</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-1">Update task details and assignments.</p>
+                        <h3 className="text-xl font-bold text-main">Edit Task</h3>
+                        <p className="text-sm text-muted mt-1">Update task details and assignments.</p>
                     </div>
                     <Button variant="ghost" onClick={onClose} size="sm">Close</Button>
                 </div>
@@ -80,7 +80,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
                         />
 
                         <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] ml-1">Description</label>
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted ml-1">Description</label>
                             <Textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
@@ -91,7 +91,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
                         </div>
 
                         <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] ml-1">Assignees</label>
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted ml-1">Assignees</label>
                             <MultiAssigneeSelector
                                 projectId={task.projectId}
                                 assigneeIds={assigneeIds}
@@ -103,7 +103,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
 
                     </div>
 
-                    <div className="flex justify-end gap-2 mt-8 pt-4 border-t border-[var(--color-surface-border)]">
+                    <div className="flex justify-end gap-2 mt-8 pt-4 border-t border-surface">
                         <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>Cancel</Button>
                         <Button type="submit" isLoading={loading} disabled={!title.trim()}>Save Changes</Button>
                     </div>

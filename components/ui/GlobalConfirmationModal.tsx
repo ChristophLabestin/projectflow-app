@@ -32,15 +32,15 @@ export const GlobalConfirmationModal = () => {
 
             {/* Modal */}
             <div className={`
-                 bg-[var(--color-surface-card)] rounded-2xl shadow-2xl 
-                 max-w-sm w-full p-6 relative border border-[var(--color-surface-border)]
+                 bg-card rounded-2xl shadow-2xl 
+                 max-w-sm w-full p-6 relative border border-surface
                  transform transition-all duration-300
                  ${confirmation.show ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}
             `}>
-                <h3 className="text-xl font-bold mb-2 text-[var(--color-text-main)]">
+                <h3 className="text-xl font-bold mb-2 text-main">
                     {confirmation.title}
                 </h3>
-                <p className="text-[var(--color-text-muted)] text-sm mb-6 leading-relaxed">
+                <p className="text-muted text-sm mb-6 leading-relaxed">
                     {confirmation.message}
                 </p>
 

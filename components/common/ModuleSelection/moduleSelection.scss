@@ -1,0 +1,137 @@
+@use '../../../styles/tokens';
+
+.module-selection {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+
+    &__item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px; // Uniform padding as requested (16px all around)
+        background-color: var(--color-surface-hover); // Default unselected bg (Light: F5F5F5 / Dark: 262626)
+        border: none; // Explicitly no border as requested
+        border-radius: var(--radius-lg); // Larger radius
+        cursor: pointer;
+        transition: all var(--transition-fast);
+        user-select: none;
+
+        // Unselected text colors
+        .module-selection__title {
+            color: var(--color-text-main);
+        }
+
+        .module-selection__desc {
+            color: var(--color-text-muted);
+        }
+
+        .module-selection__check {
+            border: 2px solid var(--color-text-subtle); // Outlined circle when unselected
+            color: transparent;
+        }
+
+        &:hover {
+            transform: translateY(-1px); // Subtle lift
+            // Slightly darken/lighten on hover to show interactivity if needed, 
+            // but keep it subtle.
+            filter: brightness(0.95);
+        }
+
+        &--selected {
+            background-color: var(--color-primary); // Selected bg (Light: #171717 / Dark: #fff)
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+            // Invert colors for selected state
+            .module-selection__title {
+                color: var(--color-text-ondark); // Light: White / Dark: Black
+            }
+
+            .module-selection__desc {
+                color: var(--color-text-ondark);
+                opacity: 0.7;
+            }
+
+            .module-selection__icon {
+                // Invert icon box
+                // If bg is dark (light mode), box should be lighter.
+                // If bg is white (dark mode), box should be light grey.
+                // We can use a transparent white overlay for simple inversion effect?
+                background-color: rgba(128, 128, 128, 0.2);
+                color: var(--color-text-ondark);
+            }
+
+            .module-selection__check {
+                background-color: transparent; // Circle itself is transparent? Or white?
+                // Screenshot shows just a checkmark in a circle. 
+                // Let's make the circle border match the text color, and checkmark same.
+                border-color: var(--color-text-ondark);
+                color: var(--color-text-ondark);
+            }
+        }
+    }
+
+    &__icon {
+        width: 40px; // Compact icon box
+        height: 40px;
+        // Unselected icon background
+        background-color: rgba(0, 0, 0, 0.05); // Subtle dark tint
+
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-text-main);
+        flex-shrink: 0;
+        transition: all var(--transition-fast);
+
+        svg {
+            width: 20px;
+            height: 20px;
+        }
+    }
+
+    &__info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 0; // Ensure no flex gap
+    }
+
+    &__title {
+        font-size: 0.9rem; // Smaller title
+        font-weight: 700;
+        margin-bottom: 0; // Removed margin
+        line-height: 1.2;
+        transition: color var(--transition-fast);
+    }
+
+    &__desc {
+        font-size: 0.75rem; // Smaller desc
+        line-height: 1.3;
+        transition: color var(--transition-fast);
+    }
+
+    &__check {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all var(--transition-fast);
+        flex-shrink: 0;
+
+        svg {
+            width: 14px;
+            height: 14px;
+        }
+    }
+}
+
+// Dark mode overrides if tokens aren't doing the full job automatically
+// Since --color-primary inverts in tokens, the logic above should hold.
+// Reference:
+// Light Mode: primary = #171717 (Dark). Selected Item = Dark. Text = White. Correct.
+// Dark Mode: primary = #ffffff (White). Selected Item = White. Text = Black. Correct.

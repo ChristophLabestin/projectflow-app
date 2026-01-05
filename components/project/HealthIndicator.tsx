@@ -147,7 +147,7 @@ export const HealthIndicator: React.FC<HealthIndicatorProps> = ({ health, size =
                             {recommendations.length > 0 && (
                                 <div className="mt-4 pt-4 border-t border-slate-100 dark:border-white/5">
                                     <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-2">{t('health.tooltip.recommendation')}</span>
-                                    <p className="text-[10px] font-bold text-[var(--color-primary)] leading-tight italic">
+                                    <p className="text-[10px] font-bold text-primary leading-tight italic">
                                         "{recommendations[0]}"
                                     </p>
                                 </div>
@@ -155,7 +155,7 @@ export const HealthIndicator: React.FC<HealthIndicatorProps> = ({ health, size =
 
                             {onOpenDetail && (
                                 <div className="mt-4 pt-3 border-t border-slate-100 dark:border-white/5 text-center">
-                                    <span className="text-[10px] font-bold text-[var(--color-primary)] flex items-center justify-center gap-1">
+                                    <span className="text-[10px] font-bold text-primary flex items-center justify-center gap-1">
                                         <span className="material-symbols-outlined text-[12px]">open_in_new</span>
                                         {t('health.tooltip.fullDetails')}
                                     </span>

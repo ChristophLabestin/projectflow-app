@@ -37,9 +37,9 @@ const DroppableColumn = ({ id, title, icon, color, count, children, className }:
             <div className={`flex items-center justify-between mb-3 px-1 sticky top-0 z-20 ${isOver ? 'scale-105' : ''} transition-transform`}>
                 <div className="flex items-center gap-2">
                     <span className={`material-symbols-outlined text-[20px]`} style={{ color: color }}>{icon}</span>
-                    <h3 className="font-bold text-sm text-[var(--color-text-main)] uppercase tracking-wide">{title}</h3>
+                    <h3 className="font-bold text-sm text-main uppercase tracking-wide">{title}</h3>
                 </div>
-                <span className="px-2 py-0.5 rounded-full bg-[var(--color-surface-hover)] text-[10px] font-bold text-[var(--color-text-muted)]">
+                <span className="px-2 py-0.5 rounded-full bg-surface-hover text-[10px] font-bold text-muted">
                     {count}
                 </span>
             </div>
@@ -47,12 +47,12 @@ const DroppableColumn = ({ id, title, icon, color, count, children, className }:
             {/* Drop Zone */}
             <div
                 ref={setNodeRef}
-                className={`flex-1 rounded-xl p-2 transition-colors border border-transparent overflow-y-auto custom-scrollbar ${isOver ? 'bg-[var(--color-surface-hover)]/50 border-[var(--color-primary)]/20' : 'bg-[var(--color-surface-bg)]/30'} `}
+                className={`flex-1 rounded-xl p-2 transition-colors border border-transparent overflow-y-auto custom-scrollbar ${isOver ? 'bg-surface-hover/50 border-primary/20' : 'bg-surface/30'} `}
             >
                 <div className="space-y-0 h-full"> {/* Space handled by draggable wrapper mb-3 */}
                     {children}
                     {count === 0 && (
-                        <div className="h-32 border border-dashed border-[var(--color-surface-border)] rounded-xl flex items-center justify-center text-[var(--color-text-muted)] bg-[var(--color-surface-card)]/30 opacity-60">
+                        <div className="h-32 border border-dashed border-surface rounded-xl flex items-center justify-center text-muted bg-card/30 opacity-60">
                             <span className="text-xs">{t('social.kanban.dropHere')}</span>
                         </div>
                     )}

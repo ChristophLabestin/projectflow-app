@@ -56,63 +56,63 @@ export const MoonshotGreenlightView: React.FC<MoonshotGreenlightViewProps> = ({ 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
             {/* Left Column: Summary & Resources */}
-            <div className="col-span-1 lg:col-span-2 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-[var(--color-surface-border)] shadow-sm p-6">
+            <div className="col-span-1 lg:col-span-2 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-surface shadow-sm p-6">
                 <div className="mb-6">
-                    <h2 className="text-xl font-extrabold text-[var(--color-text-main)] tracking-tight">{t('flowStages.moonshotGreenlight.title')}</h2>
-                    <p className="text-xs text-[var(--color-text-muted)] mt-1">{t('flowStages.moonshotGreenlight.subtitle')}</p>
+                    <h2 className="text-xl font-extrabold text-main tracking-tight">{t('flowStages.moonshotGreenlight.title')}</h2>
+                    <p className="text-xs text-muted mt-1">{t('flowStages.moonshotGreenlight.subtitle')}</p>
                     <div className="h-1 w-10 bg-lime-500 rounded-full mt-3" />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-8">
-                    <div className="p-4 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] space-y-2">
-                        <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase">{t('flowStages.moonshotGreenlight.resources.budget')}</label>
+                    <div className="p-4 rounded-xl bg-surface border border-surface space-y-2">
+                        <label className="text-xs font-bold text-muted uppercase">{t('flowStages.moonshotGreenlight.resources.budget')}</label>
                         <input
                             value={data.resourceReqs.budget}
                             onChange={(e) => updateResource('budget', e.target.value)}
                             placeholder={t('flowStages.moonshotGreenlight.resources.budgetPlaceholder')}
-                            className="w-full bg-transparent border-none p-0 text-xl font-bold text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] focus:ring-0"
+                            className="w-full bg-transparent border-none p-0 text-xl font-bold text-main placeholder-[var(--color-text-subtle)] focus:ring-0"
                         />
                     </div>
-                    <div className="p-4 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] space-y-2">
-                        <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase">{t('flowStages.moonshotGreenlight.resources.team')}</label>
+                    <div className="p-4 rounded-xl bg-surface border border-surface space-y-2">
+                        <label className="text-xs font-bold text-muted uppercase">{t('flowStages.moonshotGreenlight.resources.team')}</label>
                         <input
                             value={data.resourceReqs.personnel}
                             onChange={(e) => updateResource('personnel', e.target.value)}
                             placeholder={t('flowStages.moonshotGreenlight.resources.teamPlaceholder')}
-                            className="w-full bg-transparent border-none p-0 text-xl font-bold text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] focus:ring-0"
+                            className="w-full bg-transparent border-none p-0 text-xl font-bold text-main placeholder-[var(--color-text-subtle)] focus:ring-0"
                         />
                     </div>
-                    <div className="col-span-2 p-4 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] space-y-2">
-                        <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase">{t('flowStages.moonshotGreenlight.resources.timeline')}</label>
+                    <div className="col-span-2 p-4 rounded-xl bg-surface border border-surface space-y-2">
+                        <label className="text-xs font-bold text-muted uppercase">{t('flowStages.moonshotGreenlight.resources.timeline')}</label>
                         <input
                             value={data.resourceReqs.timeline}
                             onChange={(e) => updateResource('timeline', e.target.value)}
                             placeholder={t('flowStages.moonshotGreenlight.resources.timelinePlaceholder')}
-                            className="w-full bg-transparent border-none p-0 text-xl font-bold text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] focus:ring-0"
+                            className="w-full bg-transparent border-none p-0 text-xl font-bold text-main placeholder-[var(--color-text-subtle)] focus:ring-0"
                         />
                     </div>
                 </div>
 
                 <div className="flex-1 flex flex-col">
-                    <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-2">{t('flowStages.moonshotGreenlight.notes.label')}</label>
+                    <label className="text-xs font-bold text-muted uppercase mb-2">{t('flowStages.moonshotGreenlight.notes.label')}</label>
                     <textarea
                         value={data.decisionNotes}
                         onChange={(e) => updateData({ decisionNotes: e.target.value })}
-                        className="flex-1 w-full bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl p-4 focus:ring-1 focus:ring-lime-500 outline-none resize-none leading-relaxed"
+                        className="flex-1 w-full bg-surface border border-surface rounded-xl p-4 focus:ring-1 focus:ring-lime-500 outline-none resize-none leading-relaxed"
                         placeholder={t('flowStages.moonshotGreenlight.notes.placeholder')}
                     />
                 </div>
             </div>
 
             {/* Right Column: The Big Button */}
-            <div className="col-span-1 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-[var(--color-surface-border)] shadow-sm p-6 items-center justify-center text-center relative overflow-hidden">
+            <div className="col-span-1 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-surface shadow-sm p-6 items-center justify-center text-center relative overflow-hidden">
                 {/* Background Glow based on decision */}
                 <div className={`absolute inset-0 opacity-10 pointer-events-none transition-colors duration-500 ${data.decision === 'GO' ? 'bg-lime-500' :
                         data.decision === 'NO-GO' ? 'bg-rose-500' :
                             data.decision === 'PIVOT' ? 'bg-amber-500' : 'bg-transparent'
                     }`} />
 
-                <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-8">{t('flowStages.moonshotGreenlight.verdict.title')}</h3>
+                <h3 className="text-lg font-bold text-main mb-8">{t('flowStages.moonshotGreenlight.verdict.title')}</h3>
 
                 <div className="flex flex-col gap-4 w-full max-w-xs relative z-10">
                     <button

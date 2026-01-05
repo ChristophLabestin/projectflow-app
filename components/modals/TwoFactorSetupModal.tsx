@@ -180,8 +180,8 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                                 <span className="material-symbols-outlined">security</span>
                             </div>
                             <div>
-                                <h3 className="font-bold text-[var(--color-text-main)]">Secure your account</h3>
-                                <p className="text-sm text-[var(--color-text-muted)] mt-1">
+                                <h3 className="font-bold text-main">Secure your account</h3>
+                                <p className="text-sm text-muted mt-1">
                                     Two-factor authentication adds an extra layer of security to your account.
                                     Once enabled, you'll need to enter a code from your authenticator app when you sign in.
                                 </p>
@@ -195,7 +195,7 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
             case 'reauth':
                 return (
                     <div className="space-y-4">
-                        <p className="text-sm text-[var(--color-text-muted)]">
+                        <p className="text-sm text-muted">
                             Confirm your identity to continue.
                         </p>
 
@@ -206,8 +206,8 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                                         key={provider}
                                         onClick={() => setReauthProvider(provider)}
                                         className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${reauthProvider === provider
-                                            ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]'
-                                            : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'
+                                            ? 'bg-primary/10 border-primary text-primary'
+                                            : 'bg-surface border-surface hover:bg-surface-hover text-muted'
                                             }`}
                                     >
                                         <span className="material-symbols-outlined text-[16px]">
@@ -265,8 +265,8 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                                 <span className="material-symbols-outlined">mark_email_unread</span>
                             </div>
                             <div>
-                                <h3 className="font-bold text-[var(--color-text-main)]">Verify your email</h3>
-                                <p className="text-sm text-[var(--color-text-muted)] mt-1">
+                                <h3 className="font-bold text-main">Verify your email</h3>
+                                <p className="text-sm text-muted mt-1">
                                     Firebase requires a verified email address before you can enable two-factor authentication.
                                 </p>
                             </div>
@@ -281,12 +281,12 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                             >
                                 Send Verification Email
                             </Button>
-                            <p className="text-[10px] text-center text-[var(--color-text-muted)]">
+                            <p className="text-[10px] text-center text-muted">
                                 Once you've clicked the link in your email, click the button below.
                             </p>
                         </div>
 
-                        <div className="flex justify-between pt-4 border-t border-[var(--color-surface-border)]">
+                        <div className="flex justify-between pt-4 border-t border-surface">
                             <Button variant="ghost" onClick={() => setStep('reauth')}>Back</Button>
                             <Button onClick={handleCheckVerification} loading={loading}>
                                 I've Verified My Email
@@ -298,8 +298,8 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                 return (
                     <div className="space-y-6 text-center">
                         <div>
-                            <h3 className="font-bold text-[var(--color-text-main)] mb-2">Scan QR Code</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">
+                            <h3 className="font-bold text-main mb-2">Scan QR Code</h3>
+                            <p className="text-sm text-muted">
                                 Open your authenticator app (like Google Authenticator or Authy) and scan this code.
                             </p>
                         </div>
@@ -317,7 +317,7 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                         </div>
 
                         {secret && (
-                            <div className="text-xs text-[var(--color-text-muted)]">
+                            <div className="text-xs text-muted">
                                 <p>Can't scan?</p>
                                 <p className="font-mono mt-1 select-all bg-gray-100 dark:bg-gray-800 p-2 rounded inline-block">
                                     {secret.secretKey}
@@ -334,9 +334,9 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                 return (
                     <div className="space-y-4">
                         <div className="text-center mb-6">
-                            <span className="material-symbols-outlined text-4xl text-[var(--color-primary)] mb-2">lock_clock</span>
-                            <h3 className="font-bold text-[var(--color-text-main)]">Enter Verification Code</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">
+                            <span className="material-symbols-outlined text-4xl text-primary mb-2">lock_clock</span>
+                            <h3 className="font-bold text-main">Enter Verification Code</h3>
+                            <p className="text-sm text-muted">
                                 Enter the 6-digit code generated by your authenticator app.
                             </p>
                         </div>
@@ -367,8 +367,8 @@ export const TwoFactorSetupModal: React.FC<TwoFactorSetupModalProps> = ({ isOpen
                         <div className="size-16 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-4">
                             <span className="material-symbols-outlined text-3xl">check_circle</span>
                         </div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)]">Two-Factor Authentication Enabled</h3>
-                        <p className="text-[var(--color-text-muted)] max-w-xs mx-auto">
+                        <h3 className="text-xl font-bold text-main">Two-Factor Authentication Enabled</h3>
+                        <p className="text-muted max-w-xs mx-auto">
                             Your account is now more secure. You will be asked for a code when you sign in from a new device.
                         </p>
                         <div className="pt-6">

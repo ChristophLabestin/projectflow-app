@@ -176,26 +176,26 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
 
     return (
         <div className="flex flex-col gap-1 w-full" ref={wrapperRef}>
-            {label && <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">{label}</label>}
+            {label && <label className="text-xs font-bold text-muted uppercase tracking-wider ml-1">{label}</label>}
 
             <div className="relative">
                 {/* Trigger */}
                 <div
                     onClick={() => setIsOpen(!isOpen)}
                     className={`h-10 px-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between
-                    bg-[var(--color-surface-bg)] text-[var(--color-text-main)]
-                    ${isOpen ? 'border-[var(--color-text-subtle)]' : 'border-[var(--color-surface-border)] hover:border-[var(--color-text-subtle)]'}
+                    bg-surface text-main
+                    ${isOpen ? 'border-[var(--color-text-subtle)]' : 'border-surface hover:border-[var(--color-text-subtle)]'}
                     `}
                 >
                     {assigneeIds.length === 0 ? (
-                        <span className="text-sm text-[var(--color-text-subtle)]">Unassigned</span>
+                        <span className="text-sm text-subtle">Unassigned</span>
                     ) : (
                         <div className="flex items-center gap-2">
                             <div className="flex -space-x-2 overflow-hidden">
                                 {assigneeIds.slice(0, 4).map(uid => {
                                     const user = userMap[uid];
                                     return (
-                                        <div key={uid} className="inline-block size-6 rounded-full ring-2 ring-[var(--color-surface-bg)] bg-indigo-100 text-indigo-600 flex items-center justify-center overflow-hidden" title={user?.displayName}>
+                                        <div key={uid} className="inline-block size-6 rounded-full ring-2 ring-surface-bg bg-indigo-100 text-indigo-600 flex items-center justify-center overflow-hidden" title={user?.displayName}>
                                             {user?.photoURL ? (
                                                 <img src={user.photoURL} alt="" className="size-full object-cover" />
                                             ) : (
@@ -206,10 +206,10 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                                 })}
                             </div>
                             {assigneeIds.length > 4 && (
-                                <span className="text-xs font-medium text-[var(--color-text-muted)]">+{assigneeIds.length - 4}</span>
+                                <span className="text-xs font-medium text-muted">+{assigneeIds.length - 4}</span>
                             )}
                             {assigneeIds.length > 0 && assigneeIds.length <= 4 && (
-                                <span className="text-xs text-[var(--color-text-muted)] ml-1">
+                                <span className="text-xs text-muted ml-1">
                                     {assigneeIds.length === 1 ? userMap[assigneeIds[0]]?.displayName.split(' ')[0] : ''}
                                 </span>
                             )}
@@ -217,20 +217,20 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                     )}
 
                     {assignedGroupIds.length > 0 && (
-                        <div className="flex items-center gap-1 ml-2 pl-2 border-l border-[var(--color-surface-border)]">
+                        <div className="flex items-center gap-1 ml-2 pl-2 border-l border-surface">
                             <span className="material-symbols-outlined text-[16px] text-indigo-500">groups</span>
-                            <span className="text-xs font-medium text-[var(--color-text-main)]">{assignedGroupIds.length}</span>
+                            <span className="text-xs font-medium text-main">{assignedGroupIds.length}</span>
                         </div>
                     )}
 
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)] leading-none ml-auto">expand_more</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle leading-none ml-auto">expand_more</span>
                 </div>
 
                 {/* Dropdown */}
                 {isOpen && (
-                    <div className="absolute z-50 top-full mt-2 left-1/2 -translate-x-1/2 min-w-full w-72 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                        <div className="p-2 border-b border-[var(--color-surface-border)]">
-                            <div className="px-2 py-1.5 bg-[var(--color-surface-bg)] rounded-lg">
+                    <div className="absolute z-50 top-full mt-2 left-1/2 -translate-x-1/2 min-w-full w-72 bg-card border border-surface rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                        <div className="p-2 border-b border-surface">
+                            <div className="px-2 py-1.5 bg-surface rounded-lg">
                                 <Input
                                     ref={(input) => {
                                         // Manual focus on mount with preventScroll
@@ -249,7 +249,7 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                         </div>
                         <div className="max-h-60 overflow-y-auto p-1">
                             {filteredMembers.length === 0 ? (
-                                <div className="px-4 py-3 text-sm text-[var(--color-text-subtle)] text-center">No members found</div>
+                                <div className="px-4 py-3 text-sm text-subtle text-center">No members found</div>
                             ) : (
                                 filteredMembers.map(uid => {
                                     const user = userMap[uid];
@@ -258,9 +258,9 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                                         <div
                                             key={uid}
                                             onClick={() => toggleSelection(uid)}
-                                            className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-[var(--color-primary)]/10' : 'hover:bg-[var(--color-surface-hover)]'}`}
+                                            className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-primary/10' : 'hover:bg-surface-hover'}`}
                                         >
-                                            <div className={`size-4 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-[var(--color-primary)] border-[var(--color-primary)]' : 'border-[var(--color-text-muted)]'}`}>
+                                            <div className={`size-4 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-muted'}`}>
                                                 {isSelected && <span className="material-symbols-outlined text-[12px] text-white">check</span>}
                                             </div>
 
@@ -272,10 +272,10 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                                                 )}
                                             </div>
                                             <div className="flex flex-col min-w-0">
-                                                <span className={`text-sm font-medium truncate ${isSelected ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}>
+                                                <span className={`text-sm font-medium truncate ${isSelected ? 'text-primary' : 'text-main'}`}>
                                                     {user ? user.displayName : 'Unknown User'}
                                                 </span>
-                                                <span className="text-[10px] text-[var(--color-text-muted)] truncate">
+                                                <span className="text-[10px] text-muted truncate">
                                                     {user?.email || 'No email'}
                                                 </span>
                                             </div>
@@ -286,26 +286,26 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
 
                             {onGroupChange && filteredGroups.length > 0 && (
                                 <>
-                                    <div className="px-2 py-1 text-xs font-bold text-[var(--color-text-muted)] uppercase mt-2">Groups</div>
+                                    <div className="px-2 py-1 text-xs font-bold text-muted uppercase mt-2">Groups</div>
                                     {filteredGroups.map(group => {
                                         const isSelected = assignedGroupIds.includes(group.id);
                                         return (
                                             <div
                                                 key={group.id}
                                                 onClick={() => toggleGroupSelection(group.id)}
-                                                className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-[var(--color-primary)]/10' : 'hover:bg-[var(--color-surface-hover)]'}`}
+                                                className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-primary/10' : 'hover:bg-surface-hover'}`}
                                             >
-                                                <div className={`size-4 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-[var(--color-primary)] border-[var(--color-primary)]' : 'border-[var(--color-text-muted)]'}`}>
+                                                <div className={`size-4 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-muted'}`}>
                                                     {isSelected && <span className="material-symbols-outlined text-[12px] text-white">check</span>}
                                                 </div>
                                                 <div className="size-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 border border-indigo-200">
                                                     <span className="material-symbols-outlined text-[18px]">groups</span>
                                                 </div>
                                                 <div className="flex flex-col min-w-0">
-                                                    <span className={`text-sm font-medium truncate ${isSelected ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}>
+                                                    <span className={`text-sm font-medium truncate ${isSelected ? 'text-primary' : 'text-main'}`}>
                                                         {group.name}
                                                     </span>
-                                                    <span className="text-[10px] text-[var(--color-text-muted)] truncate">
+                                                    <span className="text-[10px] text-muted truncate">
                                                         {group.memberIds.length} members
                                                     </span>
                                                 </div>

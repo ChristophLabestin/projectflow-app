@@ -199,23 +199,23 @@ export const CreateAdCampaignPage = () => {
     if (initialLoading) {
         return (
             <div className="flex items-center justify-center h-full">
-                <span className="material-symbols-outlined animate-spin text-3xl text-[var(--color-primary)]">progress_activity</span>
+                <span className="material-symbols-outlined animate-spin text-3xl text-primary">progress_activity</span>
             </div>
         );
     }
 
     return (
-        <div className="flex items-center justify-center p-6 h-full w-full bg-[var(--color-bg-base)]">
-            <div className="w-full max-w-4xl bg-[var(--color-surface-card)] rounded-3xl shadow-2xl border border-[var(--color-surface-border)] overflow-hidden animate-fade-in">
+        <div className="flex items-center justify-center p-6 h-full w-full bg-surface">
+            <div className="w-full max-w-4xl bg-card rounded-3xl shadow-2xl border border-surface overflow-hidden animate-fade-in">
 
                 {/* Header */}
-                <header className="px-8 py-6 border-b border-[var(--color-surface-border)]">
+                <header className="px-8 py-6 border-b border-surface">
                     <div className="flex justify-between items-center mb-6">
                         <div>
-                            <h1 className="text-xl font-bold text-[var(--color-text-main)]">
+                            <h1 className="text-xl font-bold text-main">
                                 {isEditMode ? 'Edit Campaign' : 'Create Ad Campaign'}
                             </h1>
-                            <p className="text-sm text-[var(--color-text-subtle)]">
+                            <p className="text-sm text-subtle">
                                 Step {currentStep} of {STEPS.length}: {STEPS[currentStep - 1].label}
                             </p>
                         </div>
@@ -234,7 +234,7 @@ export const CreateAdCampaignPage = () => {
                                 <div
                                     className={`flex-1 h-2 rounded-full transition-colors ${step.id <= currentStep
                                             ? 'bg-gradient-to-r from-violet-600 to-indigo-600'
-                                            : 'bg-[var(--color-surface-hover)]'
+                                            : 'bg-surface-hover'
                                         }`}
                                 />
                             </div>
@@ -249,15 +249,15 @@ export const CreateAdCampaignPage = () => {
                     {currentStep === 1 && (
                         <div className="space-y-8 animate-fade-in">
                             <div className="space-y-4">
-                                <label className="text-sm font-bold text-[var(--color-text-main)]">Platform</label>
+                                <label className="text-sm font-bold text-main">Platform</label>
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     {PLATFORMS.map((p) => (
                                         <button
                                             key={p.value}
                                             onClick={() => setPlatform(p.value)}
                                             className={`p-4 rounded-2xl border-2 transition-all flex flex-col items-center gap-2 ${platform === p.value
-                                                    ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 ring-1 ring-[var(--color-primary)]'
-                                                    : 'border-[var(--color-surface-border)] hover:border-[var(--color-text-muted)]'
+                                                    ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                                                    : 'border-surface hover:border-muted'
                                                 }`}
                                         >
                                             <div
@@ -273,22 +273,22 @@ export const CreateAdCampaignPage = () => {
                             </div>
 
                             <div className="space-y-4">
-                                <label className="text-sm font-bold text-[var(--color-text-main)]">Campaign Objective</label>
+                                <label className="text-sm font-bold text-main">Campaign Objective</label>
                                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                                     {OBJECTIVES.map((obj) => (
                                         <button
                                             key={obj.value}
                                             onClick={() => setObjective(obj.value)}
                                             className={`p-4 rounded-xl border-2 transition-all text-left ${objective === obj.value
-                                                    ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                                                    : 'border-[var(--color-surface-border)] hover:border-[var(--color-text-muted)]'
+                                                    ? 'border-primary bg-primary/5'
+                                                    : 'border-surface hover:border-muted'
                                                 }`}
                                         >
-                                            <span className={`material-symbols-outlined text-xl mb-2 ${objective === obj.value ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'}`}>
+                                            <span className={`material-symbols-outlined text-xl mb-2 ${objective === obj.value ? 'text-primary' : 'text-muted'}`}>
                                                 {obj.icon}
                                             </span>
-                                            <h4 className="font-bold text-sm text-[var(--color-text-main)]">{obj.label}</h4>
-                                            <p className="text-[10px] text-[var(--color-text-muted)] mt-1">{obj.description}</p>
+                                            <h4 className="font-bold text-sm text-main">{obj.label}</h4>
+                                            <p className="text-[10px] text-muted mt-1">{obj.description}</p>
                                         </button>
                                     ))}
                                 </div>
@@ -296,8 +296,8 @@ export const CreateAdCampaignPage = () => {
 
                             {/* Link from Flow */}
                             {ideas.length > 0 && (
-                                <div className="space-y-3 pt-4 border-t border-[var(--color-surface-border)]">
-                                    <label className="text-sm font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                <div className="space-y-3 pt-4 border-t border-surface">
+                                    <label className="text-sm font-bold text-main flex items-center gap-2">
                                         <span className="material-symbols-outlined text-[16px] text-purple-500">lightbulb</span>
                                         Link from Flow (Optional)
                                     </label>
@@ -308,7 +308,7 @@ export const CreateAdCampaignPage = () => {
                                                 onClick={() => setOriginIdeaId(originIdeaId === idea.id ? undefined : idea.id)}
                                                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${originIdeaId === idea.id
                                                         ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 ring-1 ring-purple-500'
-                                                        : 'bg-[var(--color-surface-bg)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'
+                                                        : 'bg-surface text-muted hover:bg-surface-hover'
                                                     }`}
                                             >
                                                 {idea.title}
@@ -341,15 +341,15 @@ export const CreateAdCampaignPage = () => {
 
                             <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-3">
-                                    <label className="text-sm font-bold text-[var(--color-text-main)]">Budget Type</label>
+                                    <label className="text-sm font-bold text-main">Budget Type</label>
                                     <div className="flex gap-2">
                                         {(['Daily', 'Lifetime'] as const).map(type => (
                                             <button
                                                 key={type}
                                                 onClick={() => setBudgetType(type)}
                                                 className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${budgetType === type
-                                                        ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)]'
-                                                        : 'bg-[var(--color-surface-bg)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'
+                                                        ? 'bg-primary text-on-primary'
+                                                        : 'bg-surface text-muted hover:bg-surface-hover'
                                                     }`}
                                             >
                                                 {type}
@@ -359,11 +359,11 @@ export const CreateAdCampaignPage = () => {
                                 </div>
 
                                 <div>
-                                    <label className="text-sm font-bold text-[var(--color-text-main)] block mb-2">
+                                    <label className="text-sm font-bold text-main block mb-2">
                                         {budgetType === 'Daily' ? 'Daily Budget' : 'Total Budget'}
                                     </label>
                                     <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] font-bold">$</span>
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted font-bold">$</span>
                                         <input
                                             type="number"
                                             value={budgetType === 'Daily' ? budgetDaily : budgetTotal}
@@ -371,7 +371,7 @@ export const CreateAdCampaignPage = () => {
                                                 ? setBudgetDaily(Number(e.target.value))
                                                 : setBudgetTotal(Number(e.target.value))
                                             }
-                                            className="w-full h-12 pl-8 pr-4 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl text-sm font-bold focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                                            className="w-full h-12 pl-8 pr-4 bg-surface border border-surface rounded-xl text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
                                         />
                                     </div>
                                 </div>
@@ -396,7 +396,7 @@ export const CreateAdCampaignPage = () => {
                     {currentStep === 3 && (
                         <div className="space-y-6 animate-fade-in">
                             <div className="space-y-3">
-                                <label className="text-sm font-bold text-[var(--color-text-main)]">Locations</label>
+                                <label className="text-sm font-bold text-main">Locations</label>
                                 <div className="flex gap-2">
                                     <input
                                         type="text"
@@ -404,9 +404,9 @@ export const CreateAdCampaignPage = () => {
                                         onChange={(e) => setLocationInput(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddLocation())}
                                         placeholder="Add a location..."
-                                        className="flex-1 h-10 px-4 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                                        className="flex-1 h-10 px-4 bg-surface border border-surface rounded-xl text-sm focus:ring-2 focus:ring-primary outline-none"
                                     />
-                                    <button onClick={handleAddLocation} className="px-4 bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded-xl font-bold text-sm">
+                                    <button onClick={handleAddLocation} className="px-4 bg-primary text-on-primary rounded-xl font-bold text-sm">
                                         Add
                                     </button>
                                 </div>
@@ -424,34 +424,34 @@ export const CreateAdCampaignPage = () => {
 
                             <div className="grid grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold text-[var(--color-text-main)]">Age Range</label>
+                                    <label className="text-sm font-bold text-main">Age Range</label>
                                     <div className="flex items-center gap-3">
                                         <input
                                             type="number"
                                             value={targeting.ageMin}
                                             onChange={(e) => setTargeting(prev => ({ ...prev, ageMin: Number(e.target.value) }))}
-                                            className="w-20 h-10 px-3 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl text-sm text-center"
+                                            className="w-20 h-10 px-3 bg-surface border border-surface rounded-xl text-sm text-center"
                                         />
-                                        <span className="text-[var(--color-text-muted)]">to</span>
+                                        <span className="text-muted">to</span>
                                         <input
                                             type="number"
                                             value={targeting.ageMax}
                                             onChange={(e) => setTargeting(prev => ({ ...prev, ageMax: Number(e.target.value) }))}
-                                            className="w-20 h-10 px-3 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl text-sm text-center"
+                                            className="w-20 h-10 px-3 bg-surface border border-surface rounded-xl text-sm text-center"
                                         />
                                     </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                    <label className="text-sm font-bold text-[var(--color-text-main)]">Gender</label>
+                                    <label className="text-sm font-bold text-main">Gender</label>
                                     <div className="flex gap-2">
                                         {(['All', 'Male', 'Female'] as const).map(g => (
                                             <button
                                                 key={g}
                                                 onClick={() => setTargeting(prev => ({ ...prev, genders: [g] }))}
                                                 className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${targeting.genders?.includes(g)
-                                                        ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)]'
-                                                        : 'bg-[var(--color-surface-bg)] text-[var(--color-text-muted)]'
+                                                        ? 'bg-primary text-on-primary'
+                                                        : 'bg-surface text-muted'
                                                     }`}
                                             >
                                                 {g}
@@ -462,7 +462,7 @@ export const CreateAdCampaignPage = () => {
                             </div>
 
                             <div className="space-y-3">
-                                <label className="text-sm font-bold text-[var(--color-text-main)]">Interests</label>
+                                <label className="text-sm font-bold text-main">Interests</label>
                                 <div className="flex gap-2">
                                     <input
                                         type="text"
@@ -470,9 +470,9 @@ export const CreateAdCampaignPage = () => {
                                         onChange={(e) => setInterestInput(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddInterest())}
                                         placeholder="Add an interest..."
-                                        className="flex-1 h-10 px-4 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none"
+                                        className="flex-1 h-10 px-4 bg-surface border border-surface rounded-xl text-sm focus:ring-2 focus:ring-primary outline-none"
                                     />
-                                    <button onClick={handleAddInterest} className="px-4 bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded-xl font-bold text-sm">
+                                    <button onClick={handleAddInterest} className="px-4 bg-primary text-on-primary rounded-xl font-bold text-sm">
                                         Add
                                     </button>
                                 </div>
@@ -497,11 +497,11 @@ export const CreateAdCampaignPage = () => {
                                 <div className="inline-flex p-4 rounded-full bg-emerald-100 dark:bg-emerald-900/20 text-emerald-600 mb-3">
                                     <span className="material-symbols-outlined text-3xl">check_circle</span>
                                 </div>
-                                <h3 className="text-lg font-bold text-[var(--color-text-main)]">Review Your Campaign</h3>
-                                <p className="text-sm text-[var(--color-text-muted)]">Double-check everything before creating</p>
+                                <h3 className="text-lg font-bold text-main">Review Your Campaign</h3>
+                                <p className="text-sm text-muted">Double-check everything before creating</p>
                             </div>
 
-                            <div className="bg-[var(--color-surface-bg)] rounded-2xl p-6 space-y-4">
+                            <div className="bg-surface rounded-2xl p-6 space-y-4">
                                 <ReviewRow label="Campaign Name" value={name} />
                                 <ReviewRow label="Platform" value={PLATFORMS.find(p => p.value === platform)?.label || platform} />
                                 <ReviewRow label="Objective" value={OBJECTIVES.find(o => o.value === objective)?.label || objective} />
@@ -520,7 +520,7 @@ export const CreateAdCampaignPage = () => {
                 </div>
 
                 {/* Footer */}
-                <footer className="px-8 py-5 border-t border-[var(--color-surface-border)] flex items-center justify-between bg-[var(--color-surface-card)]">
+                <footer className="px-8 py-5 border-t border-surface flex items-center justify-between bg-card">
                     {currentStep > 1 ? (
                         <Button variant="ghost" onClick={() => setCurrentStep(prev => prev - 1)}>
                             <span className="material-symbols-outlined mr-1">arrow_back</span>
@@ -558,7 +558,7 @@ export const CreateAdCampaignPage = () => {
 
 const ReviewRow = ({ label, value }: { label: string; value: string }) => (
     <div className="flex justify-between items-center text-sm">
-        <span className="text-[var(--color-text-muted)]">{label}</span>
-        <span className="font-bold text-[var(--color-text-main)]">{value}</span>
+        <span className="text-muted">{label}</span>
+        <span className="font-bold text-main">{value}</span>
     </div>
 );

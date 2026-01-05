@@ -45,8 +45,8 @@ export const ProjectGroupManager: React.FC<ProjectGroupManagerProps> = ({ projec
         <div className="space-y-6 animate-in fade-in duration-300">
             <div className="flex items-center justify-between">
                 <div>
-                    <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectGroups.title')}</h3>
-                    <p className="text-sm text-[var(--color-text-muted)]">{t('projectGroups.subtitle')}</p>
+                    <h3 className="text-lg font-bold text-main">{t('projectGroups.title')}</h3>
+                    <p className="text-sm text-muted">{t('projectGroups.subtitle')}</p>
                 </div>
                 {canManage && (
                     <Button variant="primary" onClick={() => setIsCreateModalOpen(true)} icon={<span className="material-symbols-outlined">add</span>}>
@@ -57,24 +57,24 @@ export const ProjectGroupManager: React.FC<ProjectGroupManagerProps> = ({ projec
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {groups.map(group => (
-                    <div key={group.id} className="p-4 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] hover:border-[var(--color-primary)]/50 transition-all group">
+                    <div key={group.id} className="p-4 rounded-xl border border-surface bg-card hover:border-primary/50 transition-all group">
                         <div className="flex items-start justify-between mb-2">
                             <div className="flex items-center gap-2">
                                 <div className="size-4 rounded-full" style={{ backgroundColor: group.color || '#3b82f6' }} />
-                                <h4 className="font-bold text-[var(--color-text-main)] text-sm">{group.name}</h4>
+                                <h4 className="font-bold text-main text-sm">{group.name}</h4>
                             </div>
                             {canManage && (
                                 <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button onClick={() => handleEdit(group)} className="p-1 hover:bg-[var(--color-surface-hover)] rounded text-[var(--color-text-muted)] hover:text-[var(--color-primary)]">
+                                    <button onClick={() => handleEdit(group)} className="p-1 hover:bg-surface-hover rounded text-muted hover:text-primary">
                                         <span className="material-symbols-outlined text-[18px]">edit</span>
                                     </button>
-                                    <button onClick={() => handleDelete(group.id)} className="p-1 hover:bg-rose-100 rounded text-[var(--color-text-muted)] hover:text-rose-600">
+                                    <button onClick={() => handleDelete(group.id)} className="p-1 hover:bg-rose-100 rounded text-muted hover:text-rose-600">
                                         <span className="material-symbols-outlined text-[18px]">delete</span>
                                     </button>
                                 </div>
                             )}
                         </div>
-                        <p className="text-xs text-[var(--color-text-muted)] mb-3 line-clamp-1">{group.description || t('projectGroups.empty.description')}</p>
+                        <p className="text-xs text-muted mb-3 line-clamp-1">{group.description || t('projectGroups.empty.description')}</p>
 
                         <div className="flex items-center justify-between mt-auto">
                             <div className="flex -space-x-2 overflow-hidden">
@@ -82,22 +82,22 @@ export const ProjectGroupManager: React.FC<ProjectGroupManagerProps> = ({ projec
                                     <GroupMemberAvatar key={uid} uid={uid} tenantId={tenantId} />
                                 ))}
                                 {group.memberIds.length > 5 && (
-                                    <div className="size-6 rounded-full bg-[var(--color-surface-hover)] border-2 border-[var(--color-surface-card)] flex items-center justify-center text-[8px] font-bold text-[var(--color-text-muted)]">
+                                    <div className="size-6 rounded-full bg-surface-hover border-2 border-card flex items-center justify-center text-[8px] font-bold text-muted">
                                         +{group.memberIds.length - 5}
                                     </div>
                                 )}
                                 {group.memberIds.length === 0 && (
-                                    <span className="text-xs text-[var(--color-text-muted)] italic">{t('projectGroups.empty.members')}</span>
+                                    <span className="text-xs text-muted italic">{t('projectGroups.empty.members')}</span>
                                 )}
                             </div>
-                            <span className="text-[10px] text-[var(--color-text-subtle)] font-medium bg-[var(--color-surface-hover)] px-2 py-0.5 rounded-full">
+                            <span className="text-[10px] text-subtle font-medium bg-surface-hover px-2 py-0.5 rounded-full">
                                 {t('projectGroups.count.members').replace('{count}', String(group.memberIds.length))}
                             </span>
                         </div>
                     </div>
                 ))}
                 {groups.length === 0 && (
-                    <div className="col-span-full border border-dashed border-[var(--color-surface-border)] rounded-xl p-8 flex flex-col items-center justify-center text-center text-[var(--color-text-subtle)]">
+                    <div className="col-span-full border border-dashed border-surface rounded-xl p-8 flex flex-col items-center justify-center text-center text-subtle">
                         <span className="material-symbols-outlined text-4xl mb-2 opacity-30">groups</span>
                         <p className="text-sm">{t('projectGroups.empty.groups')}</p>
                     </div>
@@ -137,10 +137,10 @@ const GroupMemberAvatar: React.FC<{ uid: string, tenantId?: string }> = ({ uid, 
         fetch();
     }, [uid, tenantId]);
 
-    if (!profile) return <div className="size-6 rounded-full bg-slate-200 border-2 border-[var(--color-surface-card)] animate-pulse" />;
+    if (!profile) return <div className="size-6 rounded-full bg-slate-200 border-2 border-card animate-pulse" />;
 
     return (
-        <div className="size-6 rounded-full border-2 border-[var(--color-surface-card)] bg-indigo-100 flex items-center justify-center overflow-hidden" title={profile.displayName}>
+        <div className="size-6 rounded-full border-2 border-card bg-indigo-100 flex items-center justify-center overflow-hidden" title={profile.displayName}>
             {profile.photoURL ? (
                 <img src={profile.photoURL} alt="" className="size-full object-cover" />
             ) : (
@@ -236,7 +236,7 @@ const GroupFormModal: React.FC<GroupFormModalProps> = ({ isOpen, onClose, projec
                 <Input label={t('projectGroups.modal.fields.description')} value={description} onChange={(e) => setDescription(e.target.value)} placeholder={t('projectGroups.modal.fields.descriptionPlaceholder')} />
 
                 <div>
-                    <label className="text-sm font-medium text-[var(--color-text-main)] mb-2 block">{t('projectGroups.modal.fields.color')}</label>
+                    <label className="text-sm font-medium text-main mb-2 block">{t('projectGroups.modal.fields.color')}</label>
                     <div className="flex flex-wrap gap-2">
                         {colors.map(c => (
                             <button
@@ -251,27 +251,27 @@ const GroupFormModal: React.FC<GroupFormModalProps> = ({ isOpen, onClose, projec
                 </div>
 
                 <div>
-                    <label className="text-sm font-medium text-[var(--color-text-main)] mb-2 block">
+                    <label className="text-sm font-medium text-main mb-2 block">
                         {t('projectGroups.modal.fields.members').replace('{count}', String(selectedMembers.length))}
                     </label>
-                    <div className="max-h-48 overflow-y-auto border border-[var(--color-surface-border)] rounded-xl p-2 bg-[var(--color-surface-bg)] space-y-1">
+                    <div className="max-h-48 overflow-y-auto border border-surface rounded-xl p-2 bg-surface space-y-1">
                         {loadingMembers ? (
                             <div className="flex items-center justify-center p-4"><span className="material-symbols-outlined animate-spin">progress_activity</span></div>
                         ) : availableMembers.map(member => (
                             <div
                                 key={member.uid}
                                 onClick={() => toggleMember(member.uid)}
-                                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${selectedMembers.includes(member.uid) ? 'bg-[var(--color-primary)]/10' : 'hover:bg-[var(--color-surface-hover)]'}`}
+                                className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${selectedMembers.includes(member.uid) ? 'bg-primary/10' : 'hover:bg-surface-hover'}`}
                             >
-                                <div className={`size-4 rounded border flex items-center justify-center transition-colors ${selectedMembers.includes(member.uid) ? 'bg-[var(--color-primary)] border-[var(--color-primary)]' : 'border-[var(--color-text-muted)]'}`}>
+                                <div className={`size-4 rounded border flex items-center justify-center transition-colors ${selectedMembers.includes(member.uid) ? 'bg-primary border-primary' : 'border-muted'}`}>
                                     {selectedMembers.includes(member.uid) && <span className="material-symbols-outlined text-[10px] text-white">check</span>}
                                 </div>
                                 <div className="size-6 rounded-full bg-slate-200 overflow-hidden shrink-0">
                                     {member.photoURL ? <img src={member.photoURL} className="size-full object-cover" /> : <div className="flex items-center justify-center h-full text-[10px]">{member.displayName[0]}</div>}
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <p className={`text-sm font-medium truncate ${selectedMembers.includes(member.uid) ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}>{member.displayName}</p>
-                                    <p className="text-xs text-[var(--color-text-subtle)] truncate">{member.email}</p>
+                                    <p className={`text-sm font-medium truncate ${selectedMembers.includes(member.uid) ? 'text-primary' : 'text-main'}`}>{member.displayName}</p>
+                                    <p className="text-xs text-subtle truncate">{member.email}</p>
                                 </div>
                             </div>
                         ))}

@@ -25,35 +25,35 @@ export const InitiativeConversionModal: React.FC<InitiativeConversionModalProps>
 
     return (
         <div className="fixed inset-0 z[60] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl max-w-md w-full p-6 border border-[var(--color-surface-border)] animate-in zoom-in-95 duration-200">
+            <div className="bg-card rounded-2xl shadow-2xl max-w-md w-full p-6 border border-surface animate-in zoom-in-95 duration-200">
                 <div className="text-center mb-6">
                     <div className="size-12 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-3">
                         <span className="material-symbols-outlined text-2xl">rocket_launch</span>
                     </div>
-                    <h3 className="text-xl font-bold text-[var(--color-text-main)]">Launch Initiative</h3>
-                    <p className="text-sm text-[var(--color-text-muted)] mt-1">
+                    <h3 className="text-xl font-bold text-main">Launch Initiative</h3>
+                    <p className="text-sm text-muted mt-1">
                         Convert "<strong>{idea.title}</strong>" into a strategic initiative.
                     </p>
                 </div>
 
                 <div className="space-y-4 mb-8">
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-[11px] font-bold text-[var(--color-text-subtle)] uppercase">Start Date</label>
+                        <label className="text-[11px] font-bold text-subtle uppercase">Start Date</label>
                         <DatePicker
                             value={startDate}
                             onChange={setStartDate}
                             placeholder="Select start date..."
-                            className="bg-[var(--color-surface-bg)]"
+                            className="bg-surface"
                         />
                     </div>
 
                     <div className="flex flex-col gap-1.5">
-                        <label className="text-[11px] font-bold text-[var(--color-text-subtle)] uppercase">Target Completion</label>
+                        <label className="text-[11px] font-bold text-subtle uppercase">Target Completion</label>
                         <DatePicker
                             value={dueDate}
                             onChange={setDueDate}
                             placeholder="Select due date..."
-                            className="bg-[var(--color-surface-bg)]"
+                            className="bg-surface"
                         />
                     </div>
                 </div>

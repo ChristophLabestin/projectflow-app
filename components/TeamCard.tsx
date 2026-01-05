@@ -157,7 +157,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
                 <div className="flex items-center justify-between mb-4">
                     <div>
                         <h3 className="h4">Project Team</h3>
-                        <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                        <p className="text-xs text-muted mt-1">
                             {members.length} member{members.length !== 1 ? 's' : ''} · {activeMemberCount} active
                         </p>
                     </div>
@@ -205,7 +205,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
 
                 {loading ? (
                     <div className="flex items-center justify-center py-8">
-                        <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin">progress_activity</span>
+                        <span className="material-symbols-outlined text-subtle animate-spin">progress_activity</span>
                     </div>
                 ) : (
                     <div className="space-y-2">
@@ -226,7 +226,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
                             }
 
                             if (displayMembers.length === 0) {
-                                return <p className="text-sm text-[var(--color-text-muted)] text-center py-4">No team members yet.</p>;
+                                return <p className="text-sm text-muted text-center py-4">No team members yet.</p>;
                             }
 
                             return displayMembers.map((member, idx) => {
@@ -256,7 +256,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
                                 return (
                                     <div
                                         key={idx}
-                                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors group"
+                                        className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-hover transition-colors group"
                                     >
                                         <div className="relative">
                                             <UserHoverCard user={userForCard}>
@@ -264,7 +264,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
                                                     <img
                                                         src={photoURL}
                                                         alt={displayName}
-                                                        className={`size-10 rounded-full object-cover cursor-pointer border-2 transition-colors ${isOnline ? 'border-emerald-500' : isIdle ? 'border-amber-400' : isBusy ? 'border-rose-500' : 'border-[var(--color-surface-border)]'
+                                                        className={`size-10 rounded-full object-cover cursor-pointer border-2 transition-colors ${isOnline ? 'border-emerald-500' : isIdle ? 'border-amber-400' : isBusy ? 'border-rose-500' : 'border-surface'
                                                             }`}
                                                     />
                                                 ) : (
@@ -290,7 +290,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <div className="flex items-center gap-2">
-                                                <p className="text-sm font-medium text-[var(--color-text-main)] truncate">
+                                                <p className="text-sm font-medium text-main truncate">
                                                     {isCurrentUser ? `${displayName} (You)` : displayName}
                                                 </p>
                                                 {memberRole && (
@@ -309,7 +309,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
                                                     </span>
                                                 )}
                                             </div>
-                                            <p className="text-xs text-[var(--color-text-subtle)] flex items-center gap-1">
+                                            <p className="text-xs text-subtle flex items-center gap-1">
                                                 {isOnline ? (
                                                     <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
                                                         <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -354,7 +354,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
                 title="Remove Member"
             >
                 <div className="space-y-4">
-                    <p className="text-[var(--color-text-main)]">
+                    <p className="text-main">
                         Are you sure you want to remove this member from the project? They will lose access to all project resources.
                     </p>
                     <div className="flex justify-end gap-3">
@@ -373,7 +373,7 @@ export const TeamCard: React.FC<TeamCardProps> = ({ projectId, tenantId, onInvit
                 title="Leave Project"
             >
                 <div className="space-y-4">
-                    <p className="text-[var(--color-text-main)]">
+                    <p className="text-main">
                         Are you sure you want to leave <strong>{project?.title}</strong>? You will no longer have access to this project.
                     </p>
                     <div className="flex justify-end gap-3">

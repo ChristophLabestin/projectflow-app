@@ -143,23 +143,23 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
-            <div className="w-full max-w-4xl h-[80vh] bg-[var(--color-surface-card)] rounded-2xl shadow-2xl border border-[var(--color-surface-border)] flex flex-col overflow-hidden">
+            <div className="w-full max-w-4xl h-[80vh] bg-card rounded-2xl shadow-2xl border border-surface flex flex-col overflow-hidden">
                 {/* Header */}
-                <div className="px-6 py-4 border-b border-[var(--color-surface-border)] flex items-center justify-between">
+                <div className="px-6 py-4 border-b border-surface flex items-center justify-between">
                     <div>
-                        <h2 className="text-xl font-bold text-[var(--color-text-main)]">{t('social.captionPresetManager.title')}</h2>
-                        <p className="text-sm text-[var(--color-text-muted)]">{t('social.captionPresetManager.subtitle')}</p>
+                        <h2 className="text-xl font-bold text-main">{t('social.captionPresetManager.title')}</h2>
+                        <p className="text-sm text-muted">{t('social.captionPresetManager.subtitle')}</p>
                     </div>
-                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors">
+                    <button onClick={onClose} className="p-2 rounded-lg hover:bg-surface-hover transition-colors">
                         <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
 
                 <div className="flex-1 flex overflow-hidden">
                     {/* Left: Preset List */}
-                    <div className="w-2/3 border-r border-[var(--color-surface-border)] flex flex-col">
+                    <div className="w-2/3 border-r border-surface flex flex-col">
                         {/* Platform Tabs & Search */}
-                        <div className="p-4 border-b border-[var(--color-surface-border)] space-y-3">
+                        <div className="p-4 border-b border-surface space-y-3">
                             {/* Platform Pills */}
                             <div className="flex flex-wrap gap-2">
                                 {PLATFORMS.map(p => (
@@ -168,8 +168,8 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
                                         onClick={() => setSelectedPlatform(p)}
                                         className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-all
                                             ${selectedPlatform === p
-                                                ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] shadow-lg shadow-[var(--color-primary)]/20'
-                                                : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                                                ? 'bg-primary text-on-primary shadow-lg shadow-[var(--color-primary)]/20'
+                                                : 'bg-surface-hover text-muted hover:text-main'
                                             }`}
                                     >
                                         <span className="material-symbols-outlined text-[14px]">{PLATFORM_ICONS[p]}</span>
@@ -179,13 +179,13 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
                             </div>
                             {/* Search */}
                             <div className="relative">
-                                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] text-[18px]">search</span>
+                                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted text-[18px]">search</span>
                                 <input
                                     type="text"
                                     placeholder={t('social.captionPresetManager.searchPlaceholder')}
                                     value={searchQuery}
                                     onChange={e => setSearchQuery(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-2 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/50"
+                                    className="w-full pl-10 pr-4 py-2 bg-surface border border-surface rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
                                 />
                             </div>
                         </div>
@@ -193,7 +193,7 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
                         {/* Presets List */}
                         <div className="flex-1 overflow-y-auto p-4 space-y-4">
                             {Object.keys(groupedPresets).length === 0 ? (
-                                <div className="text-center py-12 text-[var(--color-text-muted)]">
+                                <div className="text-center py-12 text-muted">
                                     <span className="material-symbols-outlined text-4xl mb-2">description</span>
                                     <p>{t('social.captionPresetManager.empty.title')}</p>
                                     <p className="text-sm">{t('social.captionPresetManager.empty.subtitle')}</p>
@@ -201,39 +201,39 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
                             ) : (
                                 Object.entries(groupedPresets).map(([category, categoryPresets]) => (
                                     <div key={category}>
-                                        <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-2">{category}</h3>
+                                        <h3 className="text-xs font-semibold text-muted uppercase mb-2">{category}</h3>
                                         <div className="space-y-2">
                                             {categoryPresets.map(preset => (
                                                 <div
                                                     key={preset.id}
-                                                    className="p-4 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl hover:border-[var(--color-primary)]/50 transition-all group cursor-pointer"
+                                                    className="p-4 bg-surface border border-surface rounded-xl hover:border-primary/50 transition-all group cursor-pointer"
                                                     onClick={() => onSelectPreset?.(preset)}
                                                 >
                                                     <div className="flex items-start justify-between mb-2">
                                                         <div className="flex items-center gap-2">
-                                                            <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">
+                                                            <span className="material-symbols-outlined text-[16px] text-muted">
                                                                 {PLATFORM_ICONS[preset.platform]}
                                                             </span>
-                                                            <span className="font-semibold text-[var(--color-text-main)]">{preset.name}</span>
+                                                            <span className="font-semibold text-main">{preset.name}</span>
                                                         </div>
                                                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                             <button
                                                                 onClick={(e) => { e.stopPropagation(); handleEdit(preset); }}
-                                                                className="p-1.5 rounded-lg hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]"
+                                                                className="p-1.5 rounded-lg hover:bg-surface-hover text-muted"
                                                             >
                                                                 <span className="material-symbols-outlined text-[16px]">edit</span>
                                                             </button>
                                                             <button
                                                                 onClick={(e) => { e.stopPropagation(); handleDelete(preset); }}
-                                                                className="p-1.5 rounded-lg hover:bg-red-50 text-[var(--color-text-muted)] hover:text-red-600"
+                                                                className="p-1.5 rounded-lg hover:bg-red-50 text-muted hover:text-red-600"
                                                             >
                                                                 <span className="material-symbols-outlined text-[16px]">delete</span>
                                                             </button>
                                                         </div>
                                                     </div>
-                                                    <p className="text-sm text-[var(--color-text-muted)] line-clamp-2">{preset.content}</p>
+                                                    <p className="text-sm text-muted line-clamp-2">{preset.content}</p>
                                                     {preset.hashtags && preset.hashtags.length > 0 && (
-                                                        <p className="text-xs text-[var(--color-primary)] mt-2 truncate">{preset.hashtags.join(' ')}</p>
+                                                        <p className="text-xs text-primary mt-2 truncate">{preset.hashtags.join(' ')}</p>
                                                     )}
                                                 </div>
                                             ))}
@@ -247,11 +247,11 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
                     {/* Right: Create/Edit Form */}
                     <div className="w-1/3 p-6 flex flex-col">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="font-bold text-[var(--color-text-main)]">
+                            <h3 className="font-bold text-main">
                                 {editingPreset ? t('social.captionPresetManager.form.editTitle') : t('social.captionPresetManager.form.newTitle')}
                             </h3>
                             {(isCreating || editingPreset) && (
-                                <button onClick={resetForm} className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]">
+                                <button onClick={resetForm} className="text-xs text-muted hover:text-main">
                                     {t('social.captionPresetManager.form.cancel')}
                                 </button>
                             )}
@@ -277,7 +277,7 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
 
                             <div>
                                 <div className="flex justify-between items-center mb-1">
-                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase">{t('social.captionPresetManager.form.captionLabel')}</label>
+                                    <label className="text-xs font-semibold text-muted uppercase">{t('social.captionPresetManager.form.captionLabel')}</label>
                                     <button
                                         onClick={() => setShowAIGenerator(true)}
                                         className="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1"
@@ -296,7 +296,7 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
 
                             <div className="space-y-1">
                                 <div className="flex justify-between items-center">
-                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase">{t('social.captionPresetManager.form.hashtagsLabel')}</label>
+                                    <label className="text-xs font-semibold text-muted uppercase">{t('social.captionPresetManager.form.hashtagsLabel')}</label>
                                     <button
                                         onClick={async () => {
                                             if (!formContent) return;
@@ -333,7 +333,7 @@ export const CaptionPresetManager: React.FC<CaptionPresetManagerProps> = ({ isOp
                             />
                         </div>
 
-                        <div className="pt-4 mt-4 border-t border-[var(--color-surface-border)]">
+                        <div className="pt-4 mt-4 border-t border-surface">
                             <Button
                                 variant="primary"
                                 className="w-full"

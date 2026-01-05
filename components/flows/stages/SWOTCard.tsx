@@ -101,14 +101,14 @@ export const SWOTCard: React.FC<SWOTCardProps> = ({ title, icon, items, colorCla
             {/* Content List */}
             <div className="p-3 space-y-1 flex-1 overflow-y-auto max-h-[300px]">
                 {/* Add New Input */}
-                <div className="flex items-center gap-2 p-2 mb-1 rounded-lg border border-transparent focus-within:bg-white/40 dark:focus-within:bg-black/10 focus-within:border-[var(--color-surface-border)] transition-all">
+                <div className="flex items-center gap-2 p-2 mb-1 rounded-lg border border-transparent focus-within:bg-white/40 dark:focus-within:bg-black/10 focus-within:border-surface transition-all">
                     <span className={`material-symbols-outlined text-[18px] ${colors.icon} opacity-60`}>add</span>
                     <input
                         type="text"
                         value={newItem}
                         onChange={(e) => setNewItem(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleAddItem()}
-                        className={`flex-1 bg-transparent border-none focus:ring-0 p-0 text-sm ${colors.inputPlaceholder} text-[var(--color-text-main)] w-full`}
+                        className={`flex-1 bg-transparent border-none focus:ring-0 p-0 text-sm ${colors.inputPlaceholder} text-main w-full`}
                         placeholder={t('flowStages.refinement.swot.addPlaceholder')}
                     />
                 </div>
@@ -155,7 +155,7 @@ export const SWOTCard: React.FC<SWOTCardProps> = ({ title, icon, items, colorCla
                             {/* Actions */}
                             <button
                                 onClick={(e) => { e.stopPropagation(); onDelete(index); }}
-                                className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-[var(--color-text-muted)] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all shrink-0"
+                                className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-muted hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all shrink-0"
                             >
                                 <span className="material-symbols-outlined text-[16px]">close</span>
                             </button>

@@ -64,7 +64,7 @@ export const GroupCreateModal: React.FC<GroupCreateModalProps> = ({ isOpen, onCl
                 />
 
                 <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-[var(--color-text-secondary)]">Group Color</label>
+                    <label className="text-sm font-medium text-muted">Group Color</label>
                     <div className="flex gap-2 flex-wrap">
                         {colors.map(c => (
                             <button

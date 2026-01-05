@@ -108,12 +108,12 @@ export const OnboardingWelcomeModal = ({
                         </div>
                     </section>
 
-                    <aside className="relative px-6 py-8 sm:px-10 sm:py-12 border-t border-[var(--color-surface-border)] bg-white/80 backdrop-blur-sm lg:border-t-0 lg:border-l dark:border-slate-700/70 dark:bg-slate-900/70">
+                    <aside className="relative px-6 py-8 sm:px-10 sm:py-12 border-t border-surface bg-white/80 backdrop-blur-sm lg:border-t-0 lg:border-l dark:border-slate-700/70 dark:bg-slate-900/70">
                         <div className="text-[11px] font-bold uppercase tracking-[0.24em] text-slate-500 dark:text-slate-300">
                             {t('onboarding.tourPreview')}
                         </div>
                         <div className="relative mt-6 h-[260px]">
-                            <div className="absolute inset-x-0 top-0 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-4 shadow-md dark:border-slate-700/70 dark:bg-slate-900/60">
+                            <div className="absolute inset-x-0 top-0 rounded-2xl border border-surface bg-surface p-4 shadow-md dark:border-slate-700/70 dark:bg-slate-900/60">
                                 <div className="text-xs font-semibold text-slate-700 dark:text-slate-200">{t('onboarding.preview.kpi.title')}</div>
                                 <div className="mt-2 flex items-center gap-3">
                                     <div className="h-2 w-16 rounded-full bg-emerald-400/70" />
@@ -124,7 +124,7 @@ export const OnboardingWelcomeModal = ({
                                     {t('onboarding.preview.kpi.detail')}
                                 </div>
                             </div>
-                            <div className="absolute inset-x-4 top-20 -rotate-2 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-4 shadow-lg dark:border-slate-700/70 dark:bg-slate-900/60">
+                            <div className="absolute inset-x-4 top-20 -rotate-2 rounded-2xl border border-surface bg-surface p-4 shadow-lg dark:border-slate-700/70 dark:bg-slate-900/60">
                                 <div className="text-xs font-semibold text-slate-700 dark:text-slate-200">{t('onboarding.preview.focus.title')}</div>
                                 <div className="mt-2 grid grid-cols-3 gap-2 text-[10px]">
                                     <div className="rounded-lg bg-rose-100/80 p-2 text-rose-700 dark:bg-rose-500/20 dark:text-rose-200">{t('onboarding.preview.focus.urgent')}</div>
@@ -132,7 +132,7 @@ export const OnboardingWelcomeModal = ({
                                     <div className="rounded-lg bg-emerald-100/80 p-2 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-200">{t('onboarding.preview.focus.onTrack')}</div>
                                 </div>
                             </div>
-                            <div className="absolute inset-x-8 top-[150px] rotate-2 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-4 shadow-md dark:border-slate-700/70 dark:bg-slate-900/60">
+                            <div className="absolute inset-x-8 top-[150px] rotate-2 rounded-2xl border border-surface bg-surface p-4 shadow-md dark:border-slate-700/70 dark:bg-slate-900/60">
                                 <div className="text-xs font-semibold text-slate-700 dark:text-slate-200">{t('onboarding.preview.projects.title')}</div>
                                 <div className="mt-2 space-y-1 text-[11px] text-slate-500 dark:text-slate-300">
                                     <div>{t('onboarding.preview.projects.line1')}</div>
@@ -140,7 +140,7 @@ export const OnboardingWelcomeModal = ({
                                 </div>
                             </div>
                         </div>
-                        <div className="mt-6 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-4 text-xs text-[var(--color-text-muted)] leading-relaxed dark:border-slate-700/70 dark:bg-slate-900/60">
+                        <div className="mt-6 rounded-2xl border border-surface bg-surface p-4 text-xs text-muted leading-relaxed dark:border-slate-700/70 dark:bg-slate-900/60">
                             {t('onboarding.tip')}
                         </div>
                     </aside>

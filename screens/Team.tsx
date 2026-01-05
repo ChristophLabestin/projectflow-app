@@ -365,20 +365,20 @@ export const Team = () => {
         onRoleChange?: (role: string) => void,
         roleOptions?: { label: string, value: string }[]
     ) => (
-        <div key={u.id} className="flex items-center gap-4 px-4 py-3 hover:bg-[var(--color-surface-hover)] transition-colors rounded-lg group">
+        <div key={u.id} className="flex items-center gap-4 px-4 py-3 hover:bg-surface-hover transition-colors rounded-lg group">
             <div
                 className="w-10 h-10 rounded-full bg-center bg-cover bg-gray-200 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shrink-0"
                 style={{ backgroundImage: u.photoURL ? `url("${u.photoURL}")` : 'none' }}
             >
                 {!u.photoURL && (
-                    <div className="w-full h-full flex items-center justify-center text-[var(--color-text-subtle)] font-bold">
+                    <div className="w-full h-full flex items-center justify-center text-subtle font-bold">
                         {(u.displayName || '?').charAt(0).toUpperCase()}
                     </div>
                 )}
             </div>
             <div className="flex flex-col min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                    <span className="font-semibold text-[var(--color-text-main)] truncate">{u.displayName || t('team.members.fallbackName')}</span>
+                    <span className="font-semibold text-main truncate">{u.displayName || t('team.members.fallbackName')}</span>
 
                     {/* Workspace Owner Badge */}
                     {u.id === tenantId && (
@@ -402,7 +402,7 @@ export const Team = () => {
                     )}
                 </div>
                 {/* Email & Groups */}
-                <div className="flex items-center gap-2 text-xs text-[var(--color-text-subtle)] mt-1 flex-wrap">
+                <div className="flex items-center gap-2 text-xs text-subtle mt-1 flex-wrap">
                     <span className="truncate">{u.email || u.id}</span>
                     {u.groupIds && u.groupIds.map(gid => {
                         const grp = groups.find(g => g.id === gid);
@@ -445,7 +445,7 @@ export const Team = () => {
                 )}
                 {/* Show static role if logic prevents dropdown or not in dropdown mode */}
                 {(!showRoleDropdown || (!onRoleChange && (!can('canManageMembers') || u.id === tenantId))) && !contextRole && (
-                    <span className="text-xs font-medium text-[var(--color-text-muted)] border px-2 py-1 rounded">
+                    <span className="text-xs font-medium text-muted border px-2 py-1 rounded">
                         {roleLabels[u.role || 'Member'] || u.role || t('roles.member')}
                     </span>
                 )}
@@ -454,7 +454,7 @@ export const Team = () => {
                 {onRemove && u.id !== auth.currentUser?.uid && u.id !== tenantId && (
                     <button
                         onClick={onRemove}
-                        className="text-[var(--color-text-subtle)] hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                        className="text-subtle hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
                         title={t('team.members.actions.remove')}
                     >
                         <span className="material-symbols-outlined">delete</span>
@@ -470,11 +470,11 @@ export const Team = () => {
             <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
                     <div className="flex items-center gap-2 mb-1">
-                        <span className="material-symbols-outlined text-[var(--color-primary)]">groups</span>
-                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-primary)]">{t('team.header.workspace')}</span>
+                        <span className="material-symbols-outlined text-primary">groups</span>
+                        <span className="text-xs font-bold uppercase tracking-wider text-primary">{t('team.header.workspace')}</span>
                     </div>
-                    <h1 className="h2 text-[var(--color-text-main)]">{t('team.header.title')}</h1>
-                    <p className="text-[var(--color-text-muted)]">{t('team.header.subtitle')}</p>
+                    <h1 className="h2 text-main">{t('team.header.title')}</h1>
+                    <p className="text-muted">{t('team.header.subtitle')}</p>
                 </div>
                 <div>
                     {can('canManageMembers') && (
@@ -490,7 +490,7 @@ export const Team = () => {
             </div>
 
             {/* Tabs */}
-            <div className="flex items-center gap-1 border-b border-[var(--color-border)]">
+            <div className="flex items-center gap-1 border-b border-surface">
                 {[
                     { id: 'projects', label: t('team.tabs.projects'), icon: 'folder' },
                     { id: 'groups', label: t('team.tabs.groups'), icon: 'diversity_3' },
@@ -501,8 +501,8 @@ export const Team = () => {
                         key={tab.id}
                         onClick={() => setActiveTab(tab.id as any)}
                         className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
-                            ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                            : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                            ? 'border-primary text-primary'
+                            : 'border-transparent text-muted hover:text-main'
                             }`}
                     >
                         <span className="material-symbols-outlined text-[18px]">{tab.icon}</span>
@@ -518,10 +518,10 @@ export const Team = () => {
                         <section key={group.project.id}>
                             <div className="flex items-center justify-between mb-3 px-1">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 rounded bg-[var(--color-primary)]/10 text-[var(--color-primary)] flex items-center justify-center">
+                                    <div className="w-8 h-8 rounded bg-primary/10 text-primary flex items-center justify-center">
                                         <span className="material-symbols-outlined text-lg">folder</span>
                                     </div>
-                                    <h3 className="text-base font-bold text-[var(--color-text-main)]">
+                                    <h3 className="text-base font-bold text-main">
                                         {group.project.title || t('team.projects.untitled')}
                                     </h3>
                                 </div>
@@ -534,7 +534,7 @@ export const Team = () => {
                                     >
                                         {t('team.projects.goToProject')}
                                     </Button>
-                                    <span className="text-xs font-medium bg-[var(--color-surface-paper)] px-2 py-0.5 rounded-full text-[var(--color-text-muted)] border border-[var(--color-surface-border)]">
+                                    <span className="text-xs font-medium bg-surface-paper px-2 py-0.5 rounded-full text-muted border border-surface">
                                         {t('team.projects.memberCount').replace('{count}', String(group.users.length))}
                                     </span>
                                 </div>
@@ -565,7 +565,7 @@ export const Team = () => {
                                         );
                                     })
                                 ) : (
-                                    <div className="p-4 text-sm text-[var(--color-text-muted)] italic">{t('team.projects.emptyMembers')}</div>
+                                    <div className="p-4 text-sm text-muted italic">{t('team.projects.emptyMembers')}</div>
                                 )}
                             </Card>
                         </section>
@@ -575,7 +575,7 @@ export const Team = () => {
                         <section>
                             <div className="flex items-center gap-3 mb-3 px-1">
                                 <span className="material-symbols-outlined text-gray-400">domain</span>
-                                <h3 className="text-base font-bold text-[var(--color-text-main)]">{t('team.projects.unassigned')}</h3>
+                                <h3 className="text-base font-bold text-main">{t('team.projects.unassigned')}</h3>
                             </div>
                             <Card padding="none" className="flex flex-col gap-1 p-1">
                                 {workspaceUsers.map(u => renderUserRow(
@@ -622,7 +622,7 @@ export const Team = () => {
                                                 <h3 className="font-bold text-lg">{group.name}</h3>
                                             </div>
                                             {group.description && (
-                                                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+                                                <p className="text-sm text-muted leading-relaxed">
                                                     {group.description}
                                                 </p>
                                             )}
@@ -630,7 +630,7 @@ export const Team = () => {
                                         {can('canManageGroups') && (
                                             <button
                                                 onClick={() => handleDeleteGroup(group.id)}
-                                                className="text-[var(--color-text-subtle)] hover:text-rose-500 transition-colors"
+                                                className="text-subtle hover:text-rose-500 transition-colors"
                                                 title={t('team.groups.actions.delete')}
                                             >
                                                 <span className="material-symbols-outlined">delete</span>
@@ -639,14 +639,14 @@ export const Team = () => {
                                     </div>
 
                                     <div className="flex-1 flex flex-col gap-3">
-                                        <div className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] border-b border-[var(--color-border)] pb-2 flex justify-between items-center">
+                                        <div className="text-xs font-semibold uppercase tracking-wider text-muted border-b border-surface pb-2 flex justify-between items-center">
                                             <span>{t('team.groups.membersCount').replace('{count}', String(groupMembers.length))}</span>
                                         </div>
 
                                         <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
                                             {groupMembers.length > 0 ? (
                                                 groupMembers.map(m => (
-                                                    <div key={m.id} className="flex items-center justify-between group/item p-1 hover:bg-[var(--color-surface-hover)] rounded">
+                                                    <div key={m.id} className="flex items-center justify-between group/item p-1 hover:bg-surface-hover rounded">
                                                         <div className="flex items-center gap-2">
                                                             <div
                                                                 className="w-6 h-6 rounded-full bg-gray-200 bg-center bg-cover"
@@ -665,7 +665,7 @@ export const Team = () => {
                                                     </div>
                                                 ))
                                             ) : (
-                                                <p className="text-sm text-[var(--color-text-subtle)] italic">{t('team.groups.emptyMembers')}</p>
+                                                <p className="text-sm text-subtle italic">{t('team.groups.emptyMembers')}</p>
                                             )}
                                         </div>
 
@@ -698,7 +698,7 @@ export const Team = () => {
                             );
                         })}
                         {groups.length === 0 && (
-                            <div className="col-span-full text-center p-8 text-[var(--color-text-muted)] border-2 border-dashed border-[var(--color-border)] rounded-xl">
+                            <div className="col-span-full text-center p-8 text-muted border-2 border-dashed border-surface rounded-xl">
                                 <p>{t('team.groups.empty')}</p>
                             </div>
                         )}
@@ -712,8 +712,8 @@ export const Team = () => {
                     {/* Workspace Members Section */}
                     <section>
                         <div className="flex items-center gap-3 mb-3 px-1">
-                            <span className="material-symbols-outlined text-[var(--color-primary)]">badge</span>
-                            <h3 className="text-base font-bold text-[var(--color-text-main)]">{t('team.members.workspaceTitle')}</h3>
+                            <span className="material-symbols-outlined text-primary">badge</span>
+                            <h3 className="text-base font-bold text-main">{t('team.members.workspaceTitle')}</h3>
                         </div>
                         <Card padding="none" className="flex flex-col gap-1 p-1">
                             {users.filter(u => u.role !== 'Guest').map(u => renderUserRow(
@@ -723,7 +723,7 @@ export const Team = () => {
                                 can('canManageMembers') ? () => handleRemoveFromWorkspace(u.id) : undefined
                             ))}
                             {users.filter(u => u.role !== 'Guest').length === 0 && (
-                                <div className="p-4 text-sm text-[var(--color-text-muted)] italic">{t('team.members.emptyWorkspace')}</div>
+                                <div className="p-4 text-sm text-muted italic">{t('team.members.emptyWorkspace')}</div>
                             )}
                         </Card>
                     </section>
@@ -731,8 +731,8 @@ export const Team = () => {
                     {/* Guests Section */}
                     <section>
                         <div className="flex items-center gap-3 mb-3 px-1">
-                            <span className="material-symbols-outlined text-[var(--color-text-subtle)]">person_outline</span>
-                            <h3 className="text-base font-bold text-[var(--color-text-main)]">{t('team.members.guestsTitle')}</h3>
+                            <span className="material-symbols-outlined text-subtle">person_outline</span>
+                            <h3 className="text-base font-bold text-main">{t('team.members.guestsTitle')}</h3>
                         </div>
                         <Card padding="none" className="flex flex-col gap-1 p-1">
                             {users.filter(u => u.role === 'Guest').map(u => renderUserRow(
@@ -742,7 +742,7 @@ export const Team = () => {
                                 can('canManageMembers') ? () => handleRemoveFromWorkspace(u.id) : undefined
                             ))}
                             {users.filter(u => u.role === 'Guest').length === 0 && (
-                                <div className="p-4 text-sm text-[var(--color-text-muted)] italic">{t('team.members.emptyGuests')}</div>
+                                <div className="p-4 text-sm text-muted italic">{t('team.members.emptyGuests')}</div>
                             )}
                         </Card>
                     </section>
@@ -754,8 +754,8 @@ export const Team = () => {
                 <div className="space-y-6">
                     <div className="flex justify-between items-center">
                         <div>
-                            <h3 className="h4 text-[var(--color-text-main)]">{t('team.invites.title')}</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">{t('team.invites.subtitle')}</p>
+                            <h3 className="h4 text-main">{t('team.invites.title')}</h3>
+                            <p className="text-sm text-muted">{t('team.invites.subtitle')}</p>
                         </div>
                         <Button
                             onClick={() => setShowInviteModal(true)}
@@ -785,7 +785,7 @@ export const Team = () => {
                                                     <span className="material-symbols-outlined">{icon}</span>
                                                 </div>
                                                 <div>
-                                                    <h4 className="font-bold text-sm text-[var(--color-text-main)] leading-tight mb-1">
+                                                    <h4 className="font-bold text-sm text-main leading-tight mb-1">
                                                         {title}
                                                     </h4>
                                                     <div className="flex items-center gap-2">
@@ -793,7 +793,7 @@ export const Team = () => {
                                                             {roleLabels[link.role] || link.role}
                                                         </Badge>
                                                         {!isWorkspace && (
-                                                            <span className="text-[10px] text-[var(--color-text-subtle)] uppercase tracking-wider font-bold">
+                                                            <span className="text-[10px] text-subtle uppercase tracking-wider font-bold">
                                                                 {t('team.invites.projectBadge')}
                                                             </span>
                                                         )}
@@ -803,7 +803,7 @@ export const Team = () => {
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
-                                                className="text-[var(--color-text-subtle)] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 -mr-2 -mt-2"
+                                                className="text-subtle hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 -mr-2 -mt-2"
                                                 onClick={() => handleRevokeLink(link)}
                                                 title={t('team.invites.actions.revoke')}
                                             >
@@ -812,20 +812,20 @@ export const Team = () => {
                                         </div>
 
                                         <div className="grid grid-cols-2 gap-2 mb-4">
-                                            <div className="bg-[var(--color-surface-hover)] rounded-lg p-2">
-                                                <span className="block text-[10px] uppercase font-bold text-[var(--color-text-subtle)] mb-1">
+                                            <div className="bg-surface-hover rounded-lg p-2">
+                                                <span className="block text-[10px] uppercase font-bold text-subtle mb-1">
                                                     {t('team.invites.expires')}
                                                 </span>
-                                                <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+                                                <div className="flex items-center gap-1.5 text-xs text-muted">
                                                     <span className="material-symbols-outlined text-[14px]">event</span>
                                                     <span>{new Date(toMillis(link.expiresAt)).toLocaleString(locale, { dateStyle: 'short', timeStyle: 'short' })}</span>
                                                 </div>
                                             </div>
-                                            <div className="bg-[var(--color-surface-hover)] rounded-lg p-2">
-                                                <span className="block text-[10px] uppercase font-bold text-[var(--color-text-subtle)] mb-1">
+                                            <div className="bg-surface-hover rounded-lg p-2">
+                                                <span className="block text-[10px] uppercase font-bold text-subtle mb-1">
                                                     {t('team.invites.usage')}
                                                 </span>
-                                                <div className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+                                                <div className="flex items-center gap-1.5 text-xs text-muted">
                                                     <span className="material-symbols-outlined text-[14px]">group</span>
                                                     <span>{link.uses} / {link.maxUses || t('team.invites.unlimited')}</span>
                                                 </div>
@@ -833,7 +833,7 @@ export const Team = () => {
                                         </div>
                                     </div>
 
-                                    <div className="pt-3 border-t border-[var(--color-surface-border)]">
+                                    <div className="pt-3 border-t border-surface">
                                         {(() => {
                                             const url = link.type === 'workspace'
                                                 ? `${window.location.origin}/join-workspace/${link.id}?tenantId=${tenantId}`
@@ -846,10 +846,10 @@ export const Team = () => {
                                             const isCopied = copiedLinkId === link.id;
 
                                             return (
-                                                <div className="flex items-center gap-2 bg-[var(--color-surface-hover)] p-2 rounded text-xs font-mono text-[var(--color-text-subtle)] truncate relative group/link">
+                                                <div className="flex items-center gap-2 bg-surface-hover p-2 rounded text-xs font-mono text-subtle truncate relative group/link">
                                                     <span className="truncate flex-1">{finalUrl}</span>
                                                     <button
-                                                        className={`font-bold ml-2 transition-all ${isCopied ? 'text-emerald-600 dark:text-emerald-400 opacity-100' : 'text-[var(--color-primary)] opacity-0 group-hover/link:opacity-100'}`}
+                                                        className={`font-bold ml-2 transition-all ${isCopied ? 'text-emerald-600 dark:text-emerald-400 opacity-100' : 'text-primary opacity-0 group-hover/link:opacity-100'}`}
                                                         onClick={() => handleCopy(link.id, finalUrl)}
                                                     >
                                                         {isCopied ? t('common.copied') : t('common.copy')}
@@ -862,7 +862,7 @@ export const Team = () => {
                             );
                         })}
                         {inviteLinks.length === 0 && (
-                            <div className="col-span-full py-12 text-center text-[var(--color-text-muted)] border-2 border-dashed border-[var(--color-surface-border)] rounded-xl">
+                            <div className="col-span-full py-12 text-center text-muted border-2 border-dashed border-surface rounded-xl">
                                 <span className="material-symbols-outlined text-4xl opacity-50 mb-2">link_off</span>
                                 <p>{t('team.invites.empty')}</p>
                                 <Button variant="ghost" className="mt-2" onClick={() => setShowInviteModal(true)}>{t('team.invites.actions.createNow')}</Button>

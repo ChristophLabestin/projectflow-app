@@ -44,8 +44,8 @@ const PinnedTasksToggle = () => {
                 className={`
                     flex items-center justify-center size-8 rounded-lg transition-all duration-200
                     ${hasItems
-                        ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20'
-                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'
+                        ? 'text-primary bg-primary/10 hover:bg-primary/20'
+                        : 'text-muted hover:bg-surface-hover'
                     }
                 `}
                 title={t('topbar.pinnedTasks')}
@@ -65,7 +65,7 @@ const PinnedTasksToggle = () => {
                 <span className="material-symbols-outlined text-[16px] text-amber-600 dark:text-amber-400">center_focus_strong</span>
                 <span className="absolute -top-0.5 -right-0.5 size-1.5 bg-amber-500 rounded-full animate-pulse" />
             </div>
-            <span className="text-[10px] font-semibold text-[var(--color-text-main)] truncate max-w-[100px]">
+            <span className="text-[10px] font-semibold text-main truncate max-w-[100px]">
                 {focusItem.title}
             </span>
         </button>
@@ -94,15 +94,15 @@ export const TopBar: React.FC<TopBarProps> = ({ project, breadcrumbs, onOpenNav 
             sticky top-0 z-30 w-full h-14
             flex items-center justify-between 
             px-4
-            bg-[var(--color-surface-card)]/95 backdrop-blur-sm
-            border-b border-[var(--color-surface-border)]
+            bg-card/95 backdrop-blur-sm
+            border-b border-surface
             transition-all duration-200
         ">
             {/* LEFT: Navigation & Context */}
             <div className="flex items-center gap-3 min-w-0 flex-1">
                 <button
                     onClick={onOpenNav}
-                    className="md:hidden p-1.5 rounded-md text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-colors"
+                    className="md:hidden p-1.5 rounded-md text-muted hover:bg-surface-hover transition-colors"
                 >
                     <span className="material-symbols-outlined text-[20px]">menu</span>
                 </button>
@@ -121,17 +121,17 @@ export const TopBar: React.FC<TopBarProps> = ({ project, breadcrumbs, onOpenNav 
                     <AISearchBar />
                 </div>
 
-                <div className="h-4 w-px bg-[var(--color-surface-border)] mx-1 hidden sm:block" />
+                <div className="h-4 w-px bg-surface-border mx-1 hidden sm:block" />
 
                 <PinnedProjectPill />
 
-                <div className="hidden md:block w-px h-4 bg-[var(--color-surface-border)] mx-1" />
+                <div className="hidden md:block w-px h-4 bg-surface-border mx-1" />
 
                 <PinnedTasksToggle />
 
                 <button
                     onClick={handleOpenHelp}
-                    className="flex items-center justify-center size-8 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)] transition-colors"
+                    className="flex items-center justify-center size-8 rounded-lg text-muted hover:bg-surface-hover hover:text-main transition-colors"
                     title={t('topbar.helpCenter')}
                 >
                     <span className="material-symbols-outlined text-[20px]">help</span>

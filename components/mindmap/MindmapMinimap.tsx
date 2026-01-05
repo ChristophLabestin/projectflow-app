@@ -92,18 +92,18 @@ export const MindmapMinimap = memo(function MindmapMinimap() {
     if (!state.isMinimapVisible) return null;
 
     return (
-        <div className="absolute bottom-4 right-4 z-30 flex flex-col overflow-hidden rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-lg">
+        <div className="absolute bottom-4 right-4 z-30 flex flex-col overflow-hidden rounded-2xl bg-card border border-surface shadow-lg">
             {/* Header */}
-            <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-surface bg-surface">
                 <div className="flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-[14px] text-indigo-500">map</span>
-                    <span className="text-[11px] font-semibold text-[var(--color-text-main)] uppercase tracking-wide">
+                    <span className="text-[11px] font-semibold text-main uppercase tracking-wide">
                         Navigator
                     </span>
                 </div>
                 <button
                     onClick={toggleMinimap}
-                    className="p-1 -mr-1 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)] transition-colors"
+                    className="p-1 -mr-1 rounded-lg text-muted hover:bg-surface-hover hover:text-main transition-colors"
                 >
                     <span className="material-symbols-outlined text-[16px]">close</span>
                 </button>
@@ -217,8 +217,8 @@ export const MindmapMinimap = memo(function MindmapMinimap() {
             </div>
 
             {/* Footer stats */}
-            <div className="flex items-center justify-between px-3 py-1.5 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]">
-                <div className="flex items-center gap-3 text-[10px] text-[var(--color-text-muted)]">
+            <div className="flex items-center justify-between px-3 py-1.5 border-t border-surface bg-surface">
+                <div className="flex items-center gap-3 text-[10px] text-muted">
                     <span className="flex items-center gap-1">
                         <span className="w-2 h-2 rounded-full bg-indigo-500" />
                         {state.nodes.filter(n => n.type === 'project').length + state.nodes.filter(n => n.type === 'group').length} groups
@@ -228,7 +228,7 @@ export const MindmapMinimap = memo(function MindmapMinimap() {
                         {state.nodes.filter(n => n.type === 'idea').length} ideas
                     </span>
                 </div>
-                <span className="text-[10px] font-mono text-[var(--color-text-subtle)]">
+                <span className="text-[10px] font-mono text-subtle">
                     {Math.round(state.zoom * 100)}%
                 </span>
             </div>

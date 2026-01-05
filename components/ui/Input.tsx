@@ -1,5 +1,6 @@
 import React from 'react';
 import { useArrowReplacement } from '../../hooks/useArrowReplacement';
+import { TextInput } from '../common/Input/TextInput';
 
 type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
     label?: string;
@@ -10,48 +11,22 @@ type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
     ({ label, error, icon, className = '', onChange, ...props }, ref) => {
         const handleChange = useArrowReplacement(onChange);
-        return (
-            <div className="flex flex-col gap-1.5 w-full">
-                {label && (
-                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">
-                        {label}
-                    </label>
-                )}
-                <div className="relative group">
-                    {icon && (
-                        <div className="absolute left-3 inset-y-0 flex items-center justify-center text-[var(--color-text-subtle)] pointer-events-none group-focus-within:text-[var(--color-primary)] transition-colors">
-                            <span className="material-symbols-outlined text-[20px] leading-none">{icon}</span>
-                        </div>
-                    )}
-                    <input
-                        ref={ref}
-                        onChange={handleChange}
-                        className={`
-                            w-full 
-                            bg-[var(--color-surface-bg)] 
-                            border 
-                            text-[var(--color-text-main)] 
-                            rounded-xl 
-                            py-2.5 
-                            ${icon ? 'pl-10' : 'pl-3'} 
-                            pr-3 
-                            text-sm 
-                            placeholder-[var(--color-text-subtle)] 
-                            transition-all 
-                            focus:outline-none 
-                            focus:ring-0
-                            focus:ring-offset-0
-                            ${error ? 'border-[var(--color-error)]' : 'border-[var(--color-surface-border)]'}
-                            ${className}
-                        `}
+        const leftElement = icon ? (
+            <span className="material-symbols-outlined" aria-hidden="true">
+                {icon}
+            </span>
+        ) : undefined;
 
-                        {...props}
-                    />
-                </div>
-                {error && (
-                    <span className="text-xs text-[var(--color-error)] ml-1">{error}</span>
-                )}
-            </div>
+        return (
+            <TextInput
+                ref={ref}
+                label={label}
+                error={error}
+                leftElement={leftElement}
+                className={className}
+                onChange={handleChange}
+                {...props}
+            />
         );
     }
 );

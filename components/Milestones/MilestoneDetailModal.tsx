@@ -98,10 +98,10 @@ export const MilestoneDetailModal = ({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-            <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-fade-up ring-1 ring-white/10 flex flex-col max-h-[90vh]">
+            <div className="bg-card rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-fade-up ring-1 ring-white/10 flex flex-col max-h-[90vh]">
 
                 {/* Header */}
-                <div className="px-6 py-4 border-b border-[var(--color-surface-border)] flex items-center justify-between bg-[var(--color-surface-hover)]/30">
+                <div className="px-6 py-4 border-b border-surface flex items-center justify-between bg-surface-hover/30">
                     <div className="flex items-center gap-3">
                         <Badge variant={isAchieved ? 'success' : 'neutral'}>
                             {milestone.status}
@@ -114,7 +114,7 @@ export const MilestoneDetailModal = ({
                     </div>
                     <button
                         onClick={onClose}
-                        className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
+                        className="text-muted hover:text-main transition-colors"
                     >
                         <span className="material-symbols-outlined">close</span>
                     </button>
@@ -123,22 +123,22 @@ export const MilestoneDetailModal = ({
                 {/* Body */}
                 <div className="p-6 overflow-y-auto space-y-6">
                     <div>
-                        <h2 className="text-2xl font-bold text-[var(--color-text-main)] mb-2 font-display">
+                        <h2 className="text-2xl font-bold text-main mb-2 font-display">
                             {milestone.title}
                         </h2>
                         {milestone.description && (
-                            <p className="text-[var(--color-text-muted)] leading-relaxed whitespace-pre-wrap">
+                            <p className="text-muted leading-relaxed whitespace-pre-wrap">
                                 {milestone.description}
                             </p>
                         )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-[var(--color-surface-bg)] rounded-xl p-4 border border-[var(--color-surface-border)]">
-                            <h4 className="text-xs font-bold uppercase text-[var(--color-text-subtle)] mb-2 tracking-wider">Due Date</h4>
+                        <div className="bg-surface rounded-xl p-4 border border-surface">
+                            <h4 className="text-xs font-bold uppercase text-subtle mb-2 tracking-wider">Due Date</h4>
                             <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-[var(--color-primary)]">calendar_today</span>
-                                <span className="text-[var(--color-text-main)] font-medium">
+                                <span className="material-symbols-outlined text-primary">calendar_today</span>
+                                <span className="text-main font-medium">
                                     {milestone.dueDate
                                         ? format(new Date(milestone.dueDate), 'MMMM do, yyyy', { locale: dateLocale })
                                         : 'No due date set'}
@@ -146,23 +146,23 @@ export const MilestoneDetailModal = ({
                             </div>
                         </div>
 
-                        <div className="bg-[var(--color-surface-bg)] rounded-xl p-4 border border-[var(--color-surface-border)]">
-                            <h4 className="text-xs font-bold uppercase text-[var(--color-text-subtle)] mb-2 tracking-wider">Linked Initiative</h4>
+                        <div className="bg-surface rounded-xl p-4 border border-surface">
+                            <h4 className="text-xs font-bold uppercase text-subtle mb-2 tracking-wider">Linked Initiative</h4>
                             {milestone.linkedInitiativeId ? (
                                 <div className="flex items-center gap-2">
                                     <span className="material-symbols-outlined text-indigo-500">rocket_launch</span>
-                                    <span className="text-[var(--color-text-main)] font-medium truncate">
+                                    <span className="text-main font-medium truncate">
                                         {ideaLookup[milestone.linkedInitiativeId] || 'Unknown Initiative'}
                                     </span>
                                 </div>
                             ) : (
-                                <span className="text-[var(--color-text-muted)] text-sm">No initiative linked</span>
+                                <span className="text-muted text-sm">No initiative linked</span>
                             )}
                         </div>
                     </div>
 
                     <div>
-                        <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-3 flex items-center gap-2">
+                        <h3 className="text-lg font-bold text-main mb-3 flex items-center gap-2">
                             <span className="material-symbols-outlined">task</span>
                             Linked Tasks ({milestone.linkedTaskIds?.length || 0})
                         </h3>
@@ -178,17 +178,17 @@ export const MilestoneDetailModal = ({
                                     const isDone = task?.isCompleted;
 
                                     return (
-                                        <div key={tid} className="flex items-center justify-between p-3 bg-[var(--color-surface-bg)] rounded-lg border border-[var(--color-surface-border)]">
+                                        <div key={tid} className="flex items-center justify-between p-3 bg-surface rounded-lg border border-surface">
                                             <div className="flex items-center gap-3 overflow-hidden">
-                                                <div className={`size-5 rounded-full border-2 flex items-center justify-center shrink-0 ${isDone ? 'bg-emerald-500 border-emerald-500' : 'border-[var(--color-text-muted)]'}`}>
+                                                <div className={`size-5 rounded-full border-2 flex items-center justify-center shrink-0 ${isDone ? 'bg-emerald-500 border-emerald-500' : 'border-muted'}`}>
                                                     {isDone && <span className="material-symbols-outlined text-[12px] text-white">check</span>}
                                                 </div>
-                                                <span className={`text-sm truncate ${isDone ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)]'}`}>
+                                                <span className={`text-sm truncate ${isDone ? 'text-muted line-through' : 'text-main'}`}>
                                                     {title}
                                                 </span>
                                             </div>
                                             {sub && sub.total > 0 && (
-                                                <span className="text-xs text-[var(--color-text-muted)] shrink-0 bg-[var(--color-surface-hover)] px-2 py-1 rounded">
+                                                <span className="text-xs text-muted shrink-0 bg-surface-hover px-2 py-1 rounded">
                                                     {sub.completed}/{sub.total} subtasks
                                                 </span>
                                             )}
@@ -197,13 +197,13 @@ export const MilestoneDetailModal = ({
                                 })}
                             </div>
                         ) : (
-                            <p className="text-[var(--color-text-muted)] text-sm italic">No tasks linked to this milestone.</p>
+                            <p className="text-muted text-sm italic">No tasks linked to this milestone.</p>
                         )}
                     </div>
                 </div>
 
                 {/* Footer */}
-                <div className="p-4 border-t border-[var(--color-surface-border)] flex justify-end gap-3 bg-[var(--color-surface-hover)]/30">
+                <div className="p-4 border-t border-surface flex justify-end gap-3 bg-surface-hover/30">
                     <Button variant="outline" onClick={onClose}>
                         Close
                     </Button>

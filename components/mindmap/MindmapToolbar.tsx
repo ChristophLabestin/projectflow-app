@@ -41,7 +41,7 @@ const ToolbarButton = memo(function ToolbarButton({
                     ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-300'
                     : variant === 'danger'
                         ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20'
-                        : 'text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'
+                        : 'text-main hover:bg-surface-hover'
                 }
                 ${disabled ? 'opacity-40 cursor-not-allowed' : ''}
             `}
@@ -57,7 +57,7 @@ const ToolbarButton = memo(function ToolbarButton({
 // ============================================================================
 
 const ToolbarDivider = () => (
-    <div className="w-px h-6 bg-[var(--color-surface-border)] mx-1" />
+    <div className="w-px h-6 bg-surface-border mx-1" />
 );
 
 // ============================================================================
@@ -78,17 +78,17 @@ const LayoutDropdown = memo(function LayoutDropdown({ value, onChange }: LayoutD
             <button
                 onClick={() => setIsOpen(!isOpen)}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all
-                    text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]"
+                    text-main hover:bg-surface-hover"
             >
                 <span className="material-symbols-outlined text-[18px] text-indigo-500">{current.icon}</span>
                 <span className="hidden sm:inline">{current.label}</span>
-                <span className="material-symbols-outlined text-[14px] text-[var(--color-text-muted)]">expand_more</span>
+                <span className="material-symbols-outlined text-[14px] text-muted">expand_more</span>
             </button>
 
             {isOpen && (
                 <>
                     <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-                    <div className="absolute top-full left-0 mt-2 py-1.5 rounded-xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-xl z-50 min-w-[160px]">
+                    <div className="absolute top-full left-0 mt-2 py-1.5 rounded-xl bg-card border border-surface shadow-xl z-50 min-w-[160px]">
                         {LAYOUT_OPTIONS.map(option => (
                             <button
                                 key={option.value}
@@ -97,7 +97,7 @@ const LayoutDropdown = memo(function LayoutDropdown({ value, onChange }: LayoutD
                                     w-full flex items-center gap-2.5 px-3 py-2 text-sm transition-colors
                                     ${option.value === value
                                         ? 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300'
-                                        : 'text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'
+                                        : 'text-main hover:bg-surface-hover'
                                     }
                                 `}
                             >
@@ -151,13 +151,13 @@ export const MindmapToolbar = memo(function MindmapToolbar({
     return (
         <div className="absolute top-4 left-4 z-30 flex flex-wrap gap-2">
             {/* Navigation Group */}
-            <div className="flex items-center gap-0.5 p-1.5 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-md">
+            <div className="flex items-center gap-0.5 p-1.5 rounded-2xl bg-card border border-surface shadow-md">
                 <ToolbarButton
                     icon="remove"
                     onClick={() => setZoom(state.zoom - 0.15)}
                     tooltip="Zoom Out (-)"
                 />
-                <span className="px-2 text-xs font-mono text-[var(--color-text-muted)] min-w-[40px] text-center">
+                <span className="px-2 text-xs font-mono text-muted min-w-[40px] text-center">
                     {Math.round(state.zoom * 100)}%
                 </span>
                 <ToolbarButton
@@ -181,7 +181,7 @@ export const MindmapToolbar = memo(function MindmapToolbar({
             </div>
 
             {/* Layout Group */}
-            <div className="flex items-center gap-0.5 p-1.5 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-md">
+            <div className="flex items-center gap-0.5 p-1.5 rounded-2xl bg-card border border-surface shadow-md">
                 <LayoutDropdown
                     value={state.activeLayout}
                     onChange={onLayoutChange || setLayout}
@@ -189,7 +189,7 @@ export const MindmapToolbar = memo(function MindmapToolbar({
             </div>
 
             {/* AI Group */}
-            <div className="flex items-center gap-0.5 p-1.5 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-md">
+            <div className="flex items-center gap-0.5 p-1.5 rounded-2xl bg-card border border-surface shadow-md">
                 <ToolbarButton
                     icon={isAiLoading ? 'progress_activity' : 'auto_awesome'}
                     label="Auto-group"
@@ -200,7 +200,7 @@ export const MindmapToolbar = memo(function MindmapToolbar({
             </div>
 
             {/* History Group */}
-            <div className="flex items-center gap-0.5 p-1.5 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-md">
+            <div className="flex items-center gap-0.5 p-1.5 rounded-2xl bg-card border border-surface shadow-md">
                 <ToolbarButton
                     icon="undo"
                     onClick={undo}
@@ -216,7 +216,7 @@ export const MindmapToolbar = memo(function MindmapToolbar({
             </div>
 
             {/* View Toggles */}
-            <div className="flex items-center gap-0.5 p-1.5 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-md">
+            <div className="flex items-center gap-0.5 p-1.5 rounded-2xl bg-card border border-surface shadow-md">
                 <ToolbarButton
                     icon="grid_4x4"
                     onClick={toggleGrid}

@@ -159,21 +159,21 @@ export const CreateEmailPage = () => {
 
     return (
         <div className="w-full h-full flex items-center justify-center p-6 lg:p-8 bg-gradient-to-br from-[var(--color-surface-bg)] via-[var(--color-surface-bg)] to-zinc-100/30 dark:to-zinc-800/10 overflow-hidden">
-            <div className="w-full max-w-7xl h-full bg-[var(--color-surface-card)] rounded-3xl shadow-2xl border border-[var(--color-surface-border)] flex overflow-hidden animate-fade-in">
+            <div className="w-full max-w-7xl h-full bg-card rounded-3xl shadow-2xl border border-surface flex overflow-hidden animate-fade-in">
 
                 {/* LEFT: Form Panel */}
-                <div className="flex-[0.4] flex flex-col border-r border-[var(--color-surface-border)] min-w-[320px] max-w-[500px]">
-                    <header className="px-6 py-5 border-b border-[var(--color-surface-border)] flex items-center justify-between shrink-0">
+                <div className="flex-[0.4] flex flex-col border-r border-surface min-w-[320px] max-w-[500px]">
+                    <header className="px-6 py-5 border-b border-surface flex items-center justify-between shrink-0">
                         <div>
-                            <h1 className="text-xl font-bold text-[var(--color-text-main)]">New Email Campaign</h1>
+                            <h1 className="text-xl font-bold text-main">New Email Campaign</h1>
                             <div className="flex items-center gap-2 mt-2">
                                 {STEPS.map((step) => (
-                                    <div key={step.id} className={`flex items-center gap-2 ${currentStep === step.id ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'}`}>
-                                        <div className={`size-6 rounded-full flex items-center justify-center text-[10px] font-bold border ${currentStep === step.id ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'border-[var(--color-surface-border)]'}`}>
+                                    <div key={step.id} className={`flex items-center gap-2 ${currentStep === step.id ? 'text-primary' : 'text-muted'}`}>
+                                        <div className={`size-6 rounded-full flex items-center justify-center text-[10px] font-bold border ${currentStep === step.id ? 'border-primary bg-primary/10' : 'border-surface'}`}>
                                             {step.id + 1}
                                         </div>
                                         <span className="text-xs font-medium">{step.label}</span>
-                                        {step.id < STEPS.length - 1 && <div className="w-4 h-px bg-[var(--color-surface-border)]" />}
+                                        {step.id < STEPS.length - 1 && <div className="w-4 h-px bg-surface-border" />}
                                     </div>
                                 ))}
                             </div>
@@ -185,31 +185,31 @@ export const CreateEmailPage = () => {
                             <div className="space-y-6">
                                 <div className="space-y-1">
                                     <h2 className="text-lg font-bold">Select a Template</h2>
-                                    <p className="text-sm text-[var(--color-text-subtle)]">Choose a published template to start with.</p>
+                                    <p className="text-sm text-subtle">Choose a published template to start with.</p>
                                 </div>
 
                                 <div className="grid grid-cols-1 gap-4">
                                     {/* We will map templates here. For now, empty state or loading */}
                                     {loadingTemplates ? (
-                                        <div className="text-center py-10 text-[var(--color-text-muted)]">
+                                        <div className="text-center py-10 text-muted">
                                             <span className="material-symbols-outlined animate-spin mb-2">progress_activity</span>
                                             <p>Loading templates...</p>
                                         </div>
                                     ) : templates.length === 0 ? (
-                                        <div className="text-center py-10 text-[var(--color-text-muted)] border-2 border-dashed border-[var(--color-surface-border)] rounded-xl">
+                                        <div className="text-center py-10 text-muted border-2 border-dashed border-surface rounded-xl">
                                             <span className="material-symbols-outlined text-4xl mb-2 opacity-50">draft</span>
                                             <p>No published templates found.</p>
-                                            <button onClick={() => navigate('../builder')} className="mt-4 text-[var(--color-primary)] font-bold text-sm hover:underline">Create Template</button>
+                                            <button onClick={() => navigate('../builder')} className="mt-4 text-primary font-bold text-sm hover:underline">Create Template</button>
                                         </div>
                                     ) : (
                                         templates.map(tpl => (
                                             <button
                                                 key={tpl.id}
                                                 onClick={() => setSelectedTemplate(tpl)}
-                                                className={`text-left p-4 rounded-xl border transition-all hover:shadow-md w-full ${selectedTemplate?.id === tpl.id ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 ring-1 ring-[var(--color-primary)]' : 'border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] hover:border-[var(--color-primary)]/50'}`}
+                                                className={`text-left p-4 rounded-xl border transition-all hover:shadow-md w-full ${selectedTemplate?.id === tpl.id ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-surface bg-surface hover:border-primary/50'}`}
                                             >
-                                                <div className="font-bold text-[var(--color-text-main)]">{tpl.name}</div>
-                                                <div className="text-xs text-[var(--color-text-muted)] mt-1">Edited {format(new Date(tpl.updatedAt?.seconds * 1000 || Date.now()), 'MMM d, yyyy', { locale: dateLocale })}</div>
+                                                <div className="font-bold text-main">{tpl.name}</div>
+                                                <div className="text-xs text-muted mt-1">Edited {format(new Date(tpl.updatedAt?.seconds * 1000 || Date.now()), 'MMM d, yyyy', { locale: dateLocale })}</div>
                                             </button>
                                         ))
                                     )}
@@ -241,7 +241,7 @@ export const CreateEmailPage = () => {
                                 </div>
 
                                 {selectedTemplate?.variables && selectedTemplate.variables.length > 0 && (
-                                    <div className="pt-6 border-t border-[var(--color-surface-border)]">
+                                    <div className="pt-6 border-t border-surface">
                                         <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg flex items-start gap-3">
                                             <span className="material-symbols-outlined text-blue-500">info</span>
                                             <div>
@@ -258,7 +258,7 @@ export const CreateEmailPage = () => {
                             <div className="space-y-6">
                                 <div className="space-y-1">
                                     <h2 className="text-lg font-bold">Customize Variables</h2>
-                                    <p className="text-sm text-[var(--color-text-subtle)]">Fill in the values for the dynamic fields in this template.</p>
+                                    <p className="text-sm text-subtle">Fill in the values for the dynamic fields in this template.</p>
                                 </div>
                                 {selectedTemplate?.variables && selectedTemplate.variables.length > 0 ? (
                                     <div className="space-y-4">
@@ -279,14 +279,14 @@ export const CreateEmailPage = () => {
                                                                 setActiveVariableForMedia(variable.name);
                                                                 setIsMediaLibraryOpen(true);
                                                             }}
-                                                            className="px-3 bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] rounded-lg hover:brightness-95 transition-all text-zinc-500 hover:text-[var(--color-primary)] hover:border-[var(--color-primary)]"
+                                                            className="px-3 bg-surface-hover border border-surface rounded-lg hover:brightness-95 transition-all text-zinc-500 hover:text-primary hover:border-primary"
                                                             title="Select from Media Library"
                                                         >
                                                             <span className="material-symbols-outlined">perm_media</span>
                                                         </button>
                                                     </div>
                                                 ) : variable.type === 'richtext' ? (
-                                                    <div className="rounded-lg border border-[var(--color-surface-border)] overflow-hidden">
+                                                    <div className="rounded-lg border border-surface overflow-hidden">
                                                         <RichTextEditor
                                                             value={variableValues[variable.name] || ''}
                                                             onChange={val => setVariableValues(prev => ({ ...prev, [variable.name]: val }))}
@@ -304,7 +304,7 @@ export const CreateEmailPage = () => {
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="text-center py-10 text-[var(--color-text-muted)] border border-dashed border-[var(--color-surface-border)] rounded-xl">
+                                    <div className="text-center py-10 text-muted border border-dashed border-surface rounded-xl">
                                         <p>No variables found in this template.</p>
                                     </div>
                                 )}
@@ -312,7 +312,7 @@ export const CreateEmailPage = () => {
                         )}
                     </div>
 
-                    <footer className="px-6 py-5 border-t border-[var(--color-surface-border)] flex items-center justify-between shrink-0 bg-[var(--color-surface-bg)]">
+                    <footer className="px-6 py-5 border-t border-surface flex items-center justify-between shrink-0 bg-surface">
                         <Button variant="ghost" onClick={() => currentStep === 0 ? navigate(-1) : handleBack()}>
                             Back
                         </Button>
@@ -327,7 +327,7 @@ export const CreateEmailPage = () => {
                 </div>
 
                 {/* RIGHT: Preview Panel */}
-                <div className="flex-[0.6] bg-zinc-100 dark:bg-black/20 flex flex-col relative overflow-hidden border-l border-[var(--color-surface-border)]">
+                <div className="flex-[0.6] bg-zinc-100 dark:bg-black/20 flex flex-col relative overflow-hidden border-l border-surface">
                     <div className="absolute top-4 right-4 z-10 bg-white dark:bg-zinc-800 px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-zinc-200 dark:border-zinc-700 text-zinc-500">
                         Live Preview
                     </div>

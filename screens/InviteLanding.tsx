@@ -2,27 +2,33 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { auth } from '../services/firebase';
 import { joinTenant, setActiveTenantId } from '../services/dataService';
+import { useLanguage } from '../context/LanguageContext';
+import { Button } from '../components/common/Button/Button';
+import { Card } from '../components/common/Card/Card';
+import { Badge } from '../components/common/Badge/Badge';
+import './invite-landing.scss';
 
 export const InviteLanding = () => {
     const { tenantId } = useParams<{ tenantId: string }>();
     const navigate = useNavigate();
-    const [status, setStatus] = useState<string | null>(null);
+    const { t } = useLanguage();
+    const [status, setStatus] = useState<{ tone: 'info' | 'success' | 'error'; message: string } | null>(null);
 
     useEffect(() => {
         const tryAutoJoin = async () => {
             if (!tenantId || !auth.currentUser) return;
             try {
-                setStatus('Joining workspace...');
+                setStatus({ tone: 'info', message: t('inviteLanding.status.joining') });
                 await joinTenant(tenantId);
-                setStatus('Joined! Redirecting...');
+                setStatus({ tone: 'success', message: t('inviteLanding.status.joined') });
                 navigate('/');
             } catch (e) {
                 console.error(e);
-                setStatus('Could not join automatically. Try again.');
+                setStatus({ tone: 'error', message: t('inviteLanding.status.failed') });
             }
         };
         tryAutoJoin();
-    }, [tenantId, navigate]);
+    }, [tenantId, navigate, t]);
 
     const handleAccept = () => {
         if (!tenantId) return;
@@ -32,27 +38,33 @@ export const InviteLanding = () => {
     };
 
     if (!tenantId) {
-        return <div className="p-8 text-center">Invalid invite link.</div>;
+        return <div className="invite-landing">{t('inviteLanding.error.invalidLink')}</div>;
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center px-6">
-            <div className="app-panel max-w-md w-full p-8 space-y-4 animate-fade-up">
-                <span className="app-pill w-fit">Invitation</span>
-                <h1 className="text-2xl font-display font-bold text-ink">Join this Team</h1>
-                <p className="text-muted text-sm">
-                    You have been invited to join workspace <span className="font-semibold text-ink">{tenantId}</span>.
+        <div className="invite-landing">
+            <Card className="invite-landing__card">
+                <Badge variant="neutral" className="invite-landing__badge">
+                    {t('inviteLanding.badge')}
+                </Badge>
+                <h1 className="invite-landing__title">{t('inviteLanding.title')}</h1>
+                <p className="invite-landing__description">
+                    {t('inviteLanding.description').replace('{tenantId}', tenantId)}
                 </p>
-                {status && <div className="text-sm text-muted">{status}</div>}
+                {status && (
+                    <p className={`invite-landing__status invite-landing__status--${status.tone}`}>
+                        {status.message}
+                    </p>
+                )}
                 {!auth.currentUser && (
-                    <button onClick={handleAccept} className="w-full h-11 btn-primary font-bold text-sm">
-                        Accept & Continue
-                    </button>
+                    <Button onClick={handleAccept} className="invite-landing__action">
+                        {t('inviteLanding.actions.accept')}
+                    </Button>
                 )}
                 {auth.currentUser && (
-                    <p className="text-sm text-muted">You are signed in. Attempting to join automatically...</p>
+                    <p className="invite-landing__hint">{t('inviteLanding.signedIn')}</p>
                 )}
-            </div>
+            </Card>
         </div>
     );
 };

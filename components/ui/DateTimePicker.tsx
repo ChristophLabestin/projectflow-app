@@ -22,7 +22,7 @@ export const DateTimePicker: React.FC<DateTimePickerProps> = ({
     return (
         <div className={`flex flex-col gap-1.5 ${className}`}>
             {label && (
-                <label className="text-sm font-medium text-[var(--color-text-muted)]">
+                <label className="text-sm font-medium text-muted">
                     {label}
                 </label>
             )}

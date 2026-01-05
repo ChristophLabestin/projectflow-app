@@ -165,19 +165,19 @@ export const MarketingPlanningView: React.FC<MarketingPlanningViewProps> = ({ id
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
             {/* Left: Planning Configuration */}
-            <div className="col-span-1 lg:col-span-2 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-[var(--color-surface-border)] shadow-sm p-6 overflow-hidden">
+            <div className="col-span-1 lg:col-span-2 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-surface shadow-sm p-6 overflow-hidden">
                 <div className="mb-6 flex items-center justify-between">
                     <div>
-                        <h2 className="text-xl font-extrabold text-[var(--color-text-main)] tracking-tight">{t('flowStages.marketingPlanning.title')}</h2>
-                        <p className="text-xs text-[var(--color-text-muted)] mt-1">{t('flowStages.marketingPlanning.subtitle')}</p>
+                        <h2 className="text-xl font-extrabold text-main tracking-tight">{t('flowStages.marketingPlanning.title')}</h2>
+                        <p className="text-xs text-muted mt-1">{t('flowStages.marketingPlanning.subtitle')}</p>
                     </div>
                     {/* Channel Switcher */}
-                    <div className="flex bg-[var(--color-surface-bg)] rounded-lg p-1 border border-[var(--color-surface-border)]">
+                    <div className="flex bg-surface rounded-lg p-1 border border-surface">
                         <button
                             onClick={() => setActiveTab('Email')}
                             className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-2 ${activeTab === 'Email'
                                 ? 'bg-white shadow text-purple-600'
-                                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                                : 'text-muted hover:text-main'}`}
                         >
                             <span className="material-symbols-outlined text-[16px]">mail</span>
                             {tabLabels.Email}
@@ -186,7 +186,7 @@ export const MarketingPlanningView: React.FC<MarketingPlanningViewProps> = ({ id
                             onClick={() => setActiveTab('Ads')}
                             className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-2 ${activeTab === 'Ads'
                                 ? 'bg-white shadow text-purple-600'
-                                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                                : 'text-muted hover:text-main'}`}
                         >
                             <span className="material-symbols-outlined text-[16px]">ads_click</span>
                             {tabLabels.Ads}
@@ -199,22 +199,22 @@ export const MarketingPlanningView: React.FC<MarketingPlanningViewProps> = ({ id
                         <div className="space-y-6 animate-fadeIn">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.email.sender.label')}</label>
+                                    <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.email.sender.label')}</label>
                                     <input
                                         type="text"
                                         value={plan.emailSenderName}
                                         onChange={(e) => updatePlan({ emailSenderName: e.target.value })}
-                                        className="w-full text-sm bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-3 py-2.5 outline-none focus:ring-1 focus:ring-purple-500"
+                                        className="w-full text-sm bg-surface border border-surface rounded-lg px-3 py-2.5 outline-none focus:ring-1 focus:ring-purple-500"
                                         placeholder={t('flowStages.marketingPlanning.email.sender.placeholder')}
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.email.preheader.label')}</label>
+                                    <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.email.preheader.label')}</label>
                                     <input
                                         type="text"
                                         value={plan.emailPreheader}
                                         onChange={(e) => updatePlan({ emailPreheader: e.target.value })}
-                                        className="w-full text-sm bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-3 py-2.5 outline-none focus:ring-1 focus:ring-purple-500"
+                                        className="w-full text-sm bg-surface border border-surface rounded-lg px-3 py-2.5 outline-none focus:ring-1 focus:ring-purple-500"
                                         placeholder={t('flowStages.marketingPlanning.email.preheader.placeholder')}
                                     />
                                 </div>
@@ -222,25 +222,25 @@ export const MarketingPlanningView: React.FC<MarketingPlanningViewProps> = ({ id
 
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{t('flowStages.marketingPlanning.email.subjects.label')}</label>
+                                    <label className="text-xs font-bold text-muted uppercase tracking-wider">{t('flowStages.marketingPlanning.email.subjects.label')}</label>
                                     <button onClick={() => addToArray('emailSubjectLines')} className="text-xs text-purple-600 font-medium hover:text-purple-700">
                                         {t('flowStages.marketingPlanning.email.subjects.add')}
                                     </button>
                                 </div>
-                                {plan.emailSubjectLines.length === 0 && <p className="text-xs text-[var(--color-text-muted)] italic">{t('flowStages.marketingPlanning.email.subjects.empty')}</p>}
+                                {plan.emailSubjectLines.length === 0 && <p className="text-xs text-muted italic">{t('flowStages.marketingPlanning.email.subjects.empty')}</p>}
                                 {plan.emailSubjectLines.map((line, idx) => (
                                     <div key={idx} className="flex gap-2">
-                                        <div className="flex items-center justify-center size-9 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg text-xs font-bold text-[var(--color-text-muted)]">
+                                        <div className="flex items-center justify-center size-9 bg-surface border border-surface rounded-lg text-xs font-bold text-muted">
                                             {String.fromCharCode(65 + idx)}
                                         </div>
                                         <input
                                             type="text"
                                             value={line}
                                             onChange={(e) => updateArrayItem('emailSubjectLines', idx, e.target.value)}
-                                            className="flex-1 text-sm bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-3 py-2 outline-none focus:border-purple-500"
+                                            className="flex-1 text-sm bg-surface border border-surface rounded-lg px-3 py-2 outline-none focus:border-purple-500"
                                             placeholder={t('flowStages.marketingPlanning.email.subjects.placeholder')}
                                         />
-                                        <button onClick={() => removeArrayItem('emailSubjectLines', idx)} className="text-[var(--color-text-muted)] hover:text-rose-500 px-2">
+                                        <button onClick={() => removeArrayItem('emailSubjectLines', idx)} className="text-muted hover:text-rose-500 px-2">
                                             <span className="material-symbols-outlined text-sm">close</span>
                                         </button>
                                     </div>
@@ -251,11 +251,11 @@ export const MarketingPlanningView: React.FC<MarketingPlanningViewProps> = ({ id
                         <div className="space-y-6 animate-fadeIn">
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="col-span-1">
-                                    <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.ads.platform.label')}</label>
+                                    <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.ads.platform.label')}</label>
                                     <select
                                         value={plan.adPlatform}
                                         onChange={(e) => updatePlan({ adPlatform: e.target.value })}
-                                        className="w-full text-sm bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-3 py-2.5 outline-none focus:ring-1 focus:ring-purple-500"
+                                        className="w-full text-sm bg-surface border border-surface rounded-lg px-3 py-2.5 outline-none focus:ring-1 focus:ring-purple-500"
                                     >
                                         {adPlatformOptions.map((option) => (
                                             <option key={option.value} value={option.value}>{option.label}</option>
@@ -263,11 +263,11 @@ export const MarketingPlanningView: React.FC<MarketingPlanningViewProps> = ({ id
                                     </select>
                                 </div>
                                 <div className="col-span-1">
-                                    <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.ads.format.label')}</label>
+                                    <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.ads.format.label')}</label>
                                     <select
                                         value={plan.adCreativeType}
                                         onChange={(e) => updatePlan({ adCreativeType: e.target.value })}
-                                        className="w-full text-sm bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-3 py-2.5 outline-none focus:ring-1 focus:ring-purple-500"
+                                        className="w-full text-sm bg-surface border border-surface rounded-lg px-3 py-2.5 outline-none focus:ring-1 focus:ring-purple-500"
                                     >
                                         {adFormatOptions.map((option) => (
                                             <option key={option.value} value={option.value}>{option.label}</option>
@@ -275,14 +275,14 @@ export const MarketingPlanningView: React.FC<MarketingPlanningViewProps> = ({ id
                                     </select>
                                 </div>
                                 <div className="col-span-1">
-                                    <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.ads.budget.label')}</label>
+                                    <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.ads.budget.label')}</label>
                                     <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]">$</span>
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted">$</span>
                                         <input
                                             type="text"
                                             value={plan.dailyBudget}
                                             onChange={(e) => updatePlan({ dailyBudget: e.target.value })}
-                                            className="w-full text-sm bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg pl-6 pr-3 py-2.5 outline-none focus:ring-1 focus:ring-purple-500"
+                                            className="w-full text-sm bg-surface border border-surface rounded-lg pl-6 pr-3 py-2.5 outline-none focus:ring-1 focus:ring-purple-500"
                                             placeholder={t('flowStages.marketingPlanning.ads.budget.placeholder')}
                                         />
                                     </div>
@@ -291,25 +291,25 @@ export const MarketingPlanningView: React.FC<MarketingPlanningViewProps> = ({ id
 
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{t('flowStages.marketingPlanning.ads.headlines.label')}</label>
+                                    <label className="text-xs font-bold text-muted uppercase tracking-wider">{t('flowStages.marketingPlanning.ads.headlines.label')}</label>
                                     <button onClick={() => addToArray('adHeadlines')} className="text-xs text-purple-600 font-medium hover:text-purple-700">
                                         {t('flowStages.marketingPlanning.ads.headlines.add')}
                                     </button>
                                 </div>
-                                {plan.adHeadlines.length === 0 && <p className="text-xs text-[var(--color-text-muted)] italic">{t('flowStages.marketingPlanning.ads.headlines.empty')}</p>}
+                                {plan.adHeadlines.length === 0 && <p className="text-xs text-muted italic">{t('flowStages.marketingPlanning.ads.headlines.empty')}</p>}
                                 {plan.adHeadlines.map((line, idx) => (
                                     <div key={idx} className="flex gap-2">
-                                        <div className="flex items-center justify-center size-9 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg text-xs font-bold text-[var(--color-text-muted)]">
+                                        <div className="flex items-center justify-center size-9 bg-surface border border-surface rounded-lg text-xs font-bold text-muted">
                                             #{idx + 1}
                                         </div>
                                         <input
                                             type="text"
                                             value={line}
                                             onChange={(e) => updateArrayItem('adHeadlines', idx, e.target.value)}
-                                            className="flex-1 text-sm bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-3 py-2 outline-none focus:border-purple-500"
+                                            className="flex-1 text-sm bg-surface border border-surface rounded-lg px-3 py-2 outline-none focus:border-purple-500"
                                             placeholder={t('flowStages.marketingPlanning.ads.headlines.placeholder')}
                                         />
-                                        <button onClick={() => removeArrayItem('adHeadlines', idx)} className="text-[var(--color-text-muted)] hover:text-rose-500 px-2">
+                                        <button onClick={() => removeArrayItem('adHeadlines', idx)} className="text-muted hover:text-rose-500 px-2">
                                             <span className="material-symbols-outlined text-sm">close</span>
                                         </button>
                                     </div>
@@ -317,11 +317,11 @@ export const MarketingPlanningView: React.FC<MarketingPlanningViewProps> = ({ id
                             </div>
 
                             <div>
-                                <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.ads.audience.label')}</label>
+                                <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.ads.audience.label')}</label>
                                 <textarea
                                     value={plan.audienceCriteria}
                                     onChange={(e) => updatePlan({ audienceCriteria: e.target.value })}
-                                    className="w-full h-24 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-3 py-2.5 focus:ring-1 focus:ring-purple-500 outline-none text-sm resize-none"
+                                    className="w-full h-24 bg-surface border border-surface rounded-lg px-3 py-2.5 focus:ring-1 focus:ring-purple-500 outline-none text-sm resize-none"
                                     placeholder={t('flowStages.marketingPlanning.ads.audience.placeholder')}
                                 />
                             </div>
@@ -329,7 +329,7 @@ export const MarketingPlanningView: React.FC<MarketingPlanningViewProps> = ({ id
                     )}
                 </div>
 
-                <div className="mt-auto pt-6 border-t border-[var(--color-surface-border)] flex justify-end">
+                <div className="mt-auto pt-6 border-t border-surface flex justify-end">
                     <Button
                         className="h-10 text-sm gap-2 bg-purple-600 hover:bg-purple-700 text-white shadow-md rounded-lg"
                         onClick={handleConvertToCampaign}
@@ -365,15 +365,15 @@ export const MarketingPlanningView: React.FC<MarketingPlanningViewProps> = ({ id
             )}
 
             {/* Right: Assets Checklist & Timeline */}
-            <div className="col-span-1 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-[var(--color-surface-border)] shadow-sm p-6 overflow-hidden">
-                <h3 className="font-bold text-[var(--color-text-main)] mb-4">{t('flowStages.marketingPlanning.readiness.title')}</h3>
+            <div className="col-span-1 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-surface shadow-sm p-6 overflow-hidden">
+                <h3 className="font-bold text-main mb-4">{t('flowStages.marketingPlanning.readiness.title')}</h3>
 
                 <div className="space-y-6">
                     <div>
-                        <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.timeline.title')}</label>
+                        <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.timeline.title')}</label>
                         <div className="space-y-3">
                             <div>
-                                <span className="text-[10px] text-[var(--color-text-muted)] uppercase block mb-1">{t('flowStages.marketingPlanning.timeline.start')}</span>
+                                <span className="text-[10px] text-muted uppercase block mb-1">{t('flowStages.marketingPlanning.timeline.start')}</span>
                                 <DatePicker
                                     value={plan.timelineStart}
                                     onChange={(date) => updatePlan({ timelineStart: date })}
@@ -382,7 +382,7 @@ export const MarketingPlanningView: React.FC<MarketingPlanningViewProps> = ({ id
                                 />
                             </div>
                             <div>
-                                <span className="text-[10px] text-[var(--color-text-muted)] uppercase block mb-1">{t('flowStages.marketingPlanning.timeline.end')}</span>
+                                <span className="text-[10px] text-muted uppercase block mb-1">{t('flowStages.marketingPlanning.timeline.end')}</span>
                                 <DatePicker
                                     value={plan.timelineEnd}
                                     onChange={(date) => updatePlan({ timelineEnd: date })}
@@ -394,7 +394,7 @@ export const MarketingPlanningView: React.FC<MarketingPlanningViewProps> = ({ id
                     </div>
 
                     <div>
-                        <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.assets.title')}</label>
+                        <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.assets.title')}</label>
                         <div className="space-y-2">
                             {plan.assetsRequired.map((asset, idx) => (
                                 <div
@@ -402,16 +402,16 @@ export const MarketingPlanningView: React.FC<MarketingPlanningViewProps> = ({ id
                                     onClick={() => toggleAsset(idx)}
                                     className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${asset.done
                                         ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
-                                        : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:border-purple-300'
+                                        : 'bg-surface border-surface hover:border-purple-300'
                                         }`}
                                 >
                                     <div className={`size-5 rounded flex items-center justify-center border ${asset.done
                                         ? 'bg-emerald-500 border-emerald-500 text-white'
-                                        : 'border-[var(--color-text-muted)] bg-white dark:bg-slate-800'
+                                        : 'border-muted bg-white dark:bg-slate-800'
                                         }`}>
                                         {asset.done && <span className="material-symbols-outlined text-[14px]">check</span>}
                                     </div>
-                                    <span className={`text-sm ${asset.done ? 'text-emerald-700 dark:text-emerald-300 line-through opacity-70' : 'text-[var(--color-text-main)]'}`}>
+                                    <span className={`text-sm ${asset.done ? 'text-emerald-700 dark:text-emerald-300 line-through opacity-70' : 'text-main'}`}>
                                         {asset.name}
                                     </span>
                                 </div>

@@ -154,17 +154,17 @@ export const CreateProjectForm = () => {
             />
 
             <div className="flex flex-col gap-2">
-                <nav className="flex text-sm text-[var(--color-text-muted)] font-medium items-center gap-2">
-                    <Link to="/projects" className="hover:text-[var(--color-text-main)] transition-colors">Projects</Link>
+                <nav className="flex text-sm text-muted font-medium items-center gap-2">
+                    <Link to="/projects" className="hover:text-main transition-colors">Projects</Link>
                     <span>/</span>
-                    <Link to="/create" className="hover:text-[var(--color-text-main)] transition-colors">New</Link>
+                    <Link to="/create" className="hover:text-main transition-colors">New</Link>
                 </nav>
                 <div className="flex justify-between items-end">
                     <div>
-                        <h1 className="h2 text-[var(--color-text-main)]">
+                        <h1 className="h2 text-main">
                             {step === 1 ? 'Choose Template' : 'Project Details'}
                         </h1>
-                        <p className="text-[var(--color-text-muted)] text-sm">
+                        <p className="text-muted text-sm">
                             {step === 1
                                 ? 'Start with a pre-configured setup or customize your modules.'
                                 : 'Define your project goals and timeline.'}
@@ -197,15 +197,15 @@ export const CreateProjectForm = () => {
                                 className={`
                                     cursor-pointer p-6 rounded-2xl border-2 transition-all text-center flex flex-col items-center gap-4 group
                                     ${JSON.stringify(modules.sort()) === JSON.stringify(tmpl.modules.sort())
-                                        ? 'border-[var(--color-text-main)] bg-[var(--color-surface-card)] shadow-lg'
-                                        : 'border-[var(--color-surface-border)] bg-[var(--color-surface-card)] hover:border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'}
+                                        ? 'border-[var(--color-text-main)] bg-card shadow-lg'
+                                        : 'border-surface bg-card hover:border-surface hover:bg-surface-hover'}
                                 `}
                             >
                                 <div className={`
                                     size-14 rounded-full flex items-center justify-center transition-colors
                                     ${JSON.stringify(modules.sort()) === JSON.stringify(tmpl.modules.sort())
                                         ? 'bg-[var(--color-text-main)] text-[var(--color-surface-bg)]'
-                                        : 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] group-hover:bg-[var(--color-surface-border)]'}
+                                        : 'bg-surface-hover text-main group-hover:bg-surface-border'}
                                 `}>
                                     <span className="material-symbols-outlined text-[28px]">
                                         {tmpl.id === 'default' ? 'folder_open' : tmpl.id === 'software' ? 'terminal' : 'palette'}
@@ -213,7 +213,7 @@ export const CreateProjectForm = () => {
                                 </div>
                                 <div>
                                     <h4 className="font-bold text-lg">{tmpl.title}</h4>
-                                    <p className="text-sm text-[var(--color-text-muted)]">{tmpl.desc}</p>
+                                    <p className="text-sm text-muted">{tmpl.desc}</p>
                                 </div>
                             </div>
                         ))}
@@ -249,8 +249,8 @@ export const CreateProjectForm = () => {
                                         className={`
                                         cursor-pointer p-3 rounded-lg border transition-all flex items-center gap-3
                                         ${modules.includes(mod.id as any)
-                                                ? 'border-[var(--color-text-main)] bg-[var(--color-surface-hover)]'
-                                                : 'border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'}
+                                                ? 'border-[var(--color-text-main)] bg-surface-hover'
+                                                : 'border-surface hover:bg-surface-hover'}
                                     `}
                                     >
                                         <div className={`
@@ -263,7 +263,7 @@ export const CreateProjectForm = () => {
                                         </div>
                                         <div>
                                             <h4 className="font-bold text-sm">{mod.label}</h4>
-                                            <p className="text-xs text-[var(--color-text-muted)]">{mod.desc}</p>
+                                            <p className="text-xs text-muted">{mod.desc}</p>
                                         </div>
                                     </div>
                                 );
@@ -284,7 +284,7 @@ export const CreateProjectForm = () => {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in">
                     <div className="lg:col-span-2 space-y-6">
                         <Card className="space-y-6">
-                            <h3 className="h4 flex items-center gap-2 border-b border-[var(--color-surface-border)] pb-3">
+                            <h3 className="h4 flex items-center gap-2 border-b border-surface pb-3">
                                 <span className="material-symbols-outlined">feed</span>
                                 Essentials
                             </h3>
@@ -302,7 +302,7 @@ export const CreateProjectForm = () => {
                         </Card>
 
                         <Card className="space-y-6">
-                            <h3 className="h4 flex items-center gap-2 border-b border-[var(--color-surface-border)] pb-3">
+                            <h3 className="h4 flex items-center gap-2 border-b border-surface pb-3">
                                 <span className="material-symbols-outlined">date_range</span>
                                 Planning
                             </h3>
@@ -320,7 +320,7 @@ export const CreateProjectForm = () => {
 
                         {/* Links Section */}
                         <Card className="space-y-4">
-                            <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1 border-b border-[var(--color-surface-border)] pb-3">External Links</h3>
+                            <h3 className="text-xs font-semibold text-muted uppercase tracking-wider ml-1 border-b border-surface pb-3">External Links</h3>
                             <div className="space-y-3">
                                 {links.map((link, idx) => (
                                     <div key={idx} className="flex gap-2">
@@ -360,11 +360,11 @@ export const CreateProjectForm = () => {
 
                     <div className="space-y-6">
                         <Card className="space-y-4">
-                            <h3 className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1 border-b border-[var(--color-surface-border)] pb-3">Assets</h3>
+                            <h3 className="text-xs font-semibold text-muted uppercase tracking-wider ml-1 border-b border-surface pb-3">Assets</h3>
 
                             <div className="space-y-2">
-                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Cover Image</label>
-                                <label className="w-full h-32 rounded-xl border-2 border-dashed border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] flex flex-col items-center justify-center cursor-pointer hover:border-[var(--color-text-main)] transition-colors relative overflow-hidden group">
+                                <label className="text-xs font-semibold text-muted uppercase tracking-wider ml-1">Cover Image</label>
+                                <label className="w-full h-32 rounded-xl border-2 border-dashed border-surface bg-surface-hover flex flex-col items-center justify-center cursor-pointer hover:border-[var(--color-text-main)] transition-colors relative overflow-hidden group">
                                     <input type="file" accept="image/*" onChange={(e) => handleFileSelect(e, 'cover')} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                                     {coverFile ? (
                                         <>
@@ -380,7 +380,7 @@ export const CreateProjectForm = () => {
                                             </div>
                                         </>
                                     ) : (
-                                        <div className="flex flex-col items-center text-[var(--color-text-muted)] group-hover:text-[var(--color-text-main)]">
+                                        <div className="flex flex-col items-center text-muted group-hover:text-main">
                                             <span className="material-symbols-outlined">image</span>
                                             <span className="text-xs font-semibold">Upload Cover</span>
                                         </div>
@@ -389,8 +389,8 @@ export const CreateProjectForm = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Icon</label>
-                                <label className="size-20 rounded-xl border-2 border-dashed border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] flex flex-col items-center justify-center cursor-pointer hover:border-[var(--color-text-main)] transition-colors relative overflow-hidden group">
+                                <label className="text-xs font-semibold text-muted uppercase tracking-wider ml-1">Icon</label>
+                                <label className="size-20 rounded-xl border-2 border-dashed border-surface bg-surface-hover flex flex-col items-center justify-center cursor-pointer hover:border-[var(--color-text-main)] transition-colors relative overflow-hidden group">
                                     <input type="file" accept="image/*" onChange={(e) => handleFileSelect(e, 'icon')} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
                                     {squareIconFile ? (
                                         <>
@@ -406,16 +406,16 @@ export const CreateProjectForm = () => {
                                             </div>
                                         </>
                                     ) : (
-                                        <span className="material-symbols-outlined text-[var(--color-text-muted)] group-hover:text-[var(--color-text-main)]">apps</span>
+                                        <span className="material-symbols-outlined text-muted group-hover:text-main">apps</span>
                                     )}
                                 </label>
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">Gallery</label>
+                                <label className="text-xs font-semibold text-muted uppercase tracking-wider ml-1">Gallery</label>
                                 <div className="grid grid-cols-3 gap-3">
                                     {screenshotFiles.map((file, idx) => (
-                                        <div key={idx} className="relative aspect-video rounded-lg overflow-hidden border border-[var(--color-surface-border)] group">
+                                        <div key={idx} className="relative aspect-video rounded-lg overflow-hidden border border-surface group">
                                             <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover" />
                                             <div className="absolute top-1 right-1">
                                                 <Button size="icon" variant="danger" className="size-6" onClick={() => setScreenshotFiles(prev => prev.filter((_, i) => i !== idx))}>
@@ -424,7 +424,7 @@ export const CreateProjectForm = () => {
                                             </div>
                                         </div>
                                     ))}
-                                    <label className="aspect-video rounded-lg border-2 border-dashed border-[var(--color-surface-border)] bg-[var(--color-surface-hover)] flex flex-col items-center justify-center cursor-pointer hover:border-[var(--color-text-main)] transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]">
+                                    <label className="aspect-video rounded-lg border-2 border-dashed border-surface bg-surface-hover flex flex-col items-center justify-center cursor-pointer hover:border-[var(--color-text-main)] transition-colors text-muted hover:text-main">
                                         <input type="file" accept="image/*" multiple onChange={handleGallerySelect} className="hidden" />
                                         <span className="material-symbols-outlined">add_photo_alternate</span>
                                         <span className="text-xs font-semibold mt-1">Add Images</span>

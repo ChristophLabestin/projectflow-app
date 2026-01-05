@@ -4711,3 +4711,100 @@ export const resetUserOnboarding = async (userId: string, tenantId?: string) => 
         'preferences.onboarding': deleteField()
     });
 };
+
+// =============================================================================
+// ROLES (Permission System)
+// =============================================================================
+
+const ROLES = "roles";
+
+const rolesCollection = (tenantId: string) => collection(db, TENANTS, tenantId, ROLES);
+
+export interface FirestoreRole {
+    id: string;
+    name: string;
+    color?: string;
+    description?: string;
+    position: number;
+    isSystem: boolean;
+    systemKey?: string;
+    permissions: {
+        allow: string[];
+        deny: string[];
+    };
+    createdAt?: any;
+    updatedAt?: any;
+    createdBy?: string;
+}
+
+export const getTenantRoles = async (tenantId?: string): Promise<FirestoreRole[]> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const q = query(rolesCollection(resolvedTenant), orderBy("position", "desc"));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreRole));
+};
+
+export const subscribeTenantRoles = (
+    onUpdate: (roles: FirestoreRole[]) => void,
+    tenantId?: string
+): Unsubscribe => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const q = query(rolesCollection(resolvedTenant), orderBy("position", "desc"));
+
+    return onSnapshot(q, (snapshot) => {
+        const roles = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FirestoreRole));
+        onUpdate(roles);
+    });
+};
+
+export const createTenantRole = async (
+    roleData: Omit<FirestoreRole, "id" | "createdAt" | "updatedAt" | "createdBy">,
+    tenantId?: string
+): Promise<string> => {
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+    const resolvedTenant = resolveTenantId(tenantId);
+
+    const docRef = await addDoc(rolesCollection(resolvedTenant), {
+        ...roleData,
+        createdBy: user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+    });
+
+    return docRef.id;
+};
+
+export const updateTenantRole = async (
+    roleId: string,
+    updates: Partial<Omit<FirestoreRole, "id" | "createdAt" | "createdBy">>,
+    tenantId?: string
+): Promise<void> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const roleRef = doc(rolesCollection(resolvedTenant), roleId);
+    await updateDoc(roleRef, {
+        ...updates,
+        updatedAt: serverTimestamp()
+    });
+};
+
+export const deleteTenantRole = async (roleId: string, tenantId?: string): Promise<void> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const roleRef = doc(rolesCollection(resolvedTenant), roleId);
+    await deleteDoc(roleRef);
+};
+
+export const initializeSystemRoles = async (tenantId?: string): Promise<void> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const existingRoles = await getTenantRoles(resolvedTenant);
+
+    // Only initialize if no roles exist
+    if (existingRoles.length > 0) return;
+
+    const user = auth.currentUser;
+    if (!user) throw new Error("User not authenticated");
+
+    // Create system roles with the SYSTEM_ROLE_DEFAULTS from permissionService
+    // We defer to RoleManagement component for actual defaults to avoid circular imports
+    console.log("System roles should be initialized via RoleManagement component");
+};

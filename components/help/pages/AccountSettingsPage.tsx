@@ -16,30 +16,30 @@ const RoleBadge = ({ label, color }: { label: string; color: string }) => (
 );
 
 const RoleCard = ({ role, description, permissions, color }: { role: string; description: string; permissions: string[]; color: string }) => (
-    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+    <div className="rounded-2xl border border-surface bg-card p-5">
         <div className="flex items-center gap-3 mb-3"><RoleBadge label={role} color={color} /></div>
-        <p className="text-sm text-[var(--color-text-muted)] mb-3">{description}</p>
-        <div className="space-y-1">{permissions.map((p, i) => <div key={i} className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]"><span className="material-symbols-outlined text-[14px] text-emerald-500">check</span>{p}</div>)}</div>
+        <p className="text-sm text-muted mb-3">{description}</p>
+        <div className="space-y-1">{permissions.map((p, i) => <div key={i} className="flex items-center gap-2 text-xs text-muted"><span className="material-symbols-outlined text-[14px] text-emerald-500">check</span>{p}</div>)}</div>
     </div>
 );
 
 const PermissionRow = ({ feature, owner, admin, member, viewer }: { feature: string; owner: boolean; admin: boolean; member: boolean; viewer: boolean }) => (
-    <div className="grid grid-cols-5 gap-2 py-2 border-b border-[var(--color-surface-border)] last:border-0 items-center">
-        <div className="text-sm text-[var(--color-text-main)]">{feature}</div>
+    <div className="grid grid-cols-5 gap-2 py-2 border-b border-surface last:border-0 items-center">
+        <div className="text-sm text-main">{feature}</div>
         {[owner, admin, member, viewer].map((v, i) => <div key={i} className="text-center"><span className={`material-symbols-outlined text-[16px] ${v ? 'text-emerald-500' : 'text-slate-300 dark:text-slate-600'}`}>{v ? 'check_circle' : 'cancel'}</span></div>)}
     </div>
 );
 
 const SettingCard = ({ icon, name, description }: { icon: string; name: string; description: string }) => (
-    <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 flex items-start gap-3">
-        <span className="material-symbols-outlined text-[20px] text-[var(--color-primary)]">{icon}</span>
-        <div><div className="text-sm font-bold text-[var(--color-text-main)]">{name}</div><p className="text-xs text-[var(--color-text-muted)] mt-1">{description}</p></div>
+    <div className="rounded-xl border border-surface bg-card p-4 flex items-start gap-3">
+        <span className="material-symbols-outlined text-[20px] text-primary">{icon}</span>
+        <div><div className="text-sm font-bold text-main">{name}</div><p className="text-xs text-muted mt-1">{description}</p></div>
     </div>
 );
 
 const NotificationRow = ({ type, inApp, email, description }: { type: string; inApp: boolean; email: boolean; description: string }) => (
-    <div className="flex items-center justify-between py-3 border-b border-[var(--color-surface-border)] last:border-0">
-        <div className="flex-1"><div className="text-sm font-medium text-[var(--color-text-main)]">{type}</div><div className="text-xs text-[var(--color-text-muted)]">{description}</div></div>
+    <div className="flex items-center justify-between py-3 border-b border-surface last:border-0">
+        <div className="flex-1"><div className="text-sm font-medium text-main">{type}</div><div className="text-xs text-muted">{description}</div></div>
         <div className="flex items-center gap-4">{inApp && <span className="px-2 py-0.5 rounded-full bg-sky-100 text-[10px] text-sky-700 dark:bg-sky-900/30 dark:text-sky-300">In-App</span>}{email && <span className="px-2 py-0.5 rounded-full bg-purple-100 text-[10px] text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">Email</span>}</div>
     </div>
 );
@@ -52,14 +52,14 @@ const Callout = ({ type, children }: { type: 'tip' | 'warning' | 'info'; childre
 
 export const AccountSettingsPage = (_props: HelpCenterPageProps) => (
     <div className="px-6 py-6 space-y-10">
-        <div className="rounded-[28px] border border-[var(--color-surface-border)] bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] p-6">
-            <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Team and Settings</div>
-            <h2 className="text-3xl font-bold text-[var(--color-text-main)] mt-3">Keep Access and Preferences Aligned</h2>
-            <p className="text-sm text-[var(--color-text-muted)] mt-3 leading-relaxed max-w-2xl">Manage roles, permissions, integrations, and personal preferences to keep your workspace secure and efficient.</p>
+        <div className="rounded-[28px] border border-surface bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] p-6">
+            <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Team and Settings</div>
+            <h2 className="text-3xl font-bold text-main mt-3">Keep Access and Preferences Aligned</h2>
+            <p className="text-sm text-muted mt-3 leading-relaxed max-w-2xl">Manage roles, permissions, integrations, and personal preferences to keep your workspace secure and efficient.</p>
         </div>
 
-        <section data-section-id="team-roles" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
-            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Access</div><h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Team Roles</h3><p className="text-sm text-[var(--color-text-muted)] mt-2">Roles define what members can view and edit.</p></div>
+        <section data-section-id="team-roles" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
+            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Access</div><h3 className="text-xl font-bold text-main mt-2">Team Roles</h3><p className="text-sm text-muted mt-2">Roles define what members can view and edit.</p></div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <RoleCard role="Owner" color="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" description="Full control of workspace." permissions={['Full settings access', 'Manage all members', 'Delete workspace', 'Transfer ownership']} />
                 <RoleCard role="Admin" color="bg-sky-100 text-sky-700 dark:bg-sky-900/30 dark:text-sky-300" description="Settings and member management." permissions={['Edit settings', 'Manage members', 'Create projects', 'View all data']} />
@@ -69,15 +69,15 @@ export const AccountSettingsPage = (_props: HelpCenterPageProps) => (
             <Callout type="tip">If someone needs to review work but not edit it, Viewer is the safest default.</Callout>
         </section>
 
-        <section data-section-id="role-permissions" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
-            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Matrix</div><h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Role Permissions Matrix</h3></div>
-            <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5 overflow-x-auto">
-                <div className="grid grid-cols-5 gap-2 py-2 border-b border-[var(--color-surface-border)] mb-2">
-                    <div className="text-xs font-bold uppercase text-[var(--color-text-muted)]">Feature</div>
-                    <div className="text-xs font-bold uppercase text-[var(--color-text-muted)] text-center">Owner</div>
-                    <div className="text-xs font-bold uppercase text-[var(--color-text-muted)] text-center">Admin</div>
-                    <div className="text-xs font-bold uppercase text-[var(--color-text-muted)] text-center">Member</div>
-                    <div className="text-xs font-bold uppercase text-[var(--color-text-muted)] text-center">Viewer</div>
+        <section data-section-id="role-permissions" className="help-section rounded-3xl border border-surface bg-card p-6 space-y-6">
+            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Matrix</div><h3 className="text-xl font-bold text-main mt-2">Role Permissions Matrix</h3></div>
+            <div className="rounded-2xl border border-surface bg-surface p-5 overflow-x-auto">
+                <div className="grid grid-cols-5 gap-2 py-2 border-b border-surface mb-2">
+                    <div className="text-xs font-bold uppercase text-muted">Feature</div>
+                    <div className="text-xs font-bold uppercase text-muted text-center">Owner</div>
+                    <div className="text-xs font-bold uppercase text-muted text-center">Admin</div>
+                    <div className="text-xs font-bold uppercase text-muted text-center">Member</div>
+                    <div className="text-xs font-bold uppercase text-muted text-center">Viewer</div>
                 </div>
                 <PermissionRow feature="Manage workspace settings" owner={true} admin={true} member={false} viewer={false} />
                 <PermissionRow feature="Manage billing" owner={true} admin={false} member={false} viewer={false} />
@@ -91,8 +91,8 @@ export const AccountSettingsPage = (_props: HelpCenterPageProps) => (
             </div>
         </section>
 
-        <section data-section-id="workspace-settings" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
-            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Workspace</div><h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Workspace Settings</h3></div>
+        <section data-section-id="workspace-settings" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
+            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Workspace</div><h3 className="text-xl font-bold text-main mt-2">Workspace Settings</h3></div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <SettingCard icon="badge" name="Workspace Name" description="Display name and URL slug" />
                 <SettingCard icon="palette" name="Branding" description="Logo, colors, and theme" />
@@ -103,20 +103,20 @@ export const AccountSettingsPage = (_props: HelpCenterPageProps) => (
             </div>
         </section>
 
-        <section data-section-id="groups" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
-            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Organization</div><h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Groups</h3><p className="text-sm text-[var(--color-text-muted)] mt-2">Organize team members for visibility and access control.</p></div>
+        <section data-section-id="groups" className="help-section rounded-3xl border border-surface bg-card p-6 space-y-6">
+            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Organization</div><h3 className="text-xl font-bold text-main mt-2">Groups</h3><p className="text-sm text-muted mt-2">Organize team members for visibility and access control.</p></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-3">Use Cases</div>
-                    <div className="space-y-3 text-sm text-[var(--color-text-muted)]">
-                        <div className="flex items-start gap-2"><span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>Department-based visibility (Marketing, Engineering)</div>
-                        <div className="flex items-start gap-2"><span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>Project-specific access (Client A Team)</div>
-                        <div className="flex items-start gap-2"><span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>Cross-functional teams (Launch Squad)</div>
+                <div className="rounded-2xl border border-surface bg-surface p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-muted mb-3">Use Cases</div>
+                    <div className="space-y-3 text-sm text-muted">
+                        <div className="flex items-start gap-2"><span className="material-symbols-outlined text-[16px] text-primary">check</span>Department-based visibility (Marketing, Engineering)</div>
+                        <div className="flex items-start gap-2"><span className="material-symbols-outlined text-[16px] text-primary">check</span>Project-specific access (Client A Team)</div>
+                        <div className="flex items-start gap-2"><span className="material-symbols-outlined text-[16px] text-primary">check</span>Cross-functional teams (Launch Squad)</div>
                     </div>
                 </div>
-                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-3">How Groups Work</div>
-                    <div className="space-y-3 text-sm text-[var(--color-text-muted)]">
+                <div className="rounded-2xl border border-surface bg-surface p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-muted mb-3">How Groups Work</div>
+                    <div className="space-y-3 text-sm text-muted">
                         <div className="flex items-start gap-2"><span className="material-symbols-outlined text-[16px] text-sky-500">group_add</span>Create groups in Settings → Groups</div>
                         <div className="flex items-start gap-2"><span className="material-symbols-outlined text-[16px] text-sky-500">person_add</span>Add members to groups</div>
                         <div className="flex items-start gap-2"><span className="material-symbols-outlined text-[16px] text-sky-500">visibility</span>Set project visibility to specific groups</div>
@@ -125,8 +125,8 @@ export const AccountSettingsPage = (_props: HelpCenterPageProps) => (
             </div>
         </section>
 
-        <section data-section-id="profile-preferences" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
-            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Personal</div><h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Profile and Preferences</h3></div>
+        <section data-section-id="profile-preferences" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
+            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Personal</div><h3 className="text-xl font-bold text-main mt-2">Profile and Preferences</h3></div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <SettingCard icon="person" name="Display Name" description="How your name appears" />
                 <SettingCard icon="photo_camera" name="Avatar" description="Profile photo" />
@@ -137,9 +137,9 @@ export const AccountSettingsPage = (_props: HelpCenterPageProps) => (
             </div>
         </section>
 
-        <section data-section-id="notifications" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
-            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Signals</div><h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Notifications</h3></div>
-            <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
+        <section data-section-id="notifications" className="help-section rounded-3xl border border-surface bg-card p-6 space-y-6">
+            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Signals</div><h3 className="text-xl font-bold text-main mt-2">Notifications</h3></div>
+            <div className="rounded-2xl border border-surface bg-surface p-5">
                 <NotificationRow type="Mentions" inApp={true} email={true} description="When someone @mentions you" />
                 <NotificationRow type="Assignments" inApp={true} email={true} description="When assigned to a task or issue" />
                 <NotificationRow type="Comments" inApp={true} email={false} description="Replies to your comments" />
@@ -150,17 +150,17 @@ export const AccountSettingsPage = (_props: HelpCenterPageProps) => (
             <Callout type="info">Reduce noise by keeping statuses accurate and consolidating updates into fewer comments.</Callout>
         </section>
 
-        <section data-section-id="integrations" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
-            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Connect</div><h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Integrations</h3></div>
+        <section data-section-id="integrations" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
+            <div><div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Connect</div><h3 className="text-xl font-bold text-main mt-2">Integrations</h3></div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
-                    <div className="flex items-center gap-3 mb-3"><div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center"><span className="material-symbols-outlined text-[20px] text-white">code</span></div><span className="text-sm font-bold text-[var(--color-text-main)]">GitHub</span></div>
-                    <p className="text-sm text-[var(--color-text-muted)] mb-3">Sync repositories, link PRs to tasks, and track development progress.</p>
-                    <div className="text-xs text-[var(--color-text-muted)]"><strong>Setup:</strong> Settings → Integrations → GitHub → Authorize</div>
+                <div className="rounded-2xl border border-surface bg-card p-5">
+                    <div className="flex items-center gap-3 mb-3"><div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center"><span className="material-symbols-outlined text-[20px] text-white">code</span></div><span className="text-sm font-bold text-main">GitHub</span></div>
+                    <p className="text-sm text-muted mb-3">Sync repositories, link PRs to tasks, and track development progress.</p>
+                    <div className="text-xs text-muted"><strong>Setup:</strong> Settings → Integrations → GitHub → Authorize</div>
                 </div>
-                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
-                    <div className="flex items-center gap-3 mb-3"><div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center"><span className="material-symbols-outlined text-[20px] text-white">hub</span></div><span className="text-sm font-bold text-[var(--color-text-main)]">Coming Soon</span></div>
-                    <p className="text-sm text-[var(--color-text-muted)]">More integrations including Slack, Figma, and calendar sync are on the roadmap.</p>
+                <div className="rounded-2xl border border-surface bg-card p-5">
+                    <div className="flex items-center gap-3 mb-3"><div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center"><span className="material-symbols-outlined text-[20px] text-white">hub</span></div><span className="text-sm font-bold text-main">Coming Soon</span></div>
+                    <p className="text-sm text-muted">More integrations including Slack, Figma, and calendar sync are on the roadmap.</p>
                 </div>
             </div>
         </section>

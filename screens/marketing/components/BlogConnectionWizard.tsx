@@ -332,12 +332,12 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
     };
 
     return (
-        <Card className="max-w-4xl mx-auto overflow-hidden flex flex-col min-h-[600px] border-0 shadow-2xl bg-[var(--color-surface-card)]">
+        <Card className="max-w-4xl mx-auto overflow-hidden flex flex-col min-h-[600px] border-0 shadow-2xl bg-card">
             {/* Header */}
-            <div className="bg-[var(--color-surface-bg)] border-b border-[var(--color-surface-border)] p-6">
+            <div className="bg-surface border-b border-surface p-6">
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-xl font-display font-bold flex items-center gap-3">
-                        <span className="flex items-center justify-center w-8 h-8 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)]">
+                        <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary">
                             <span className="material-symbols-outlined text-sm">api</span>
                         </span>
                         API Integration Setup
@@ -353,7 +353,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                         const isActive = s === step;
                         const isPast = (['welcome', 'base_auth', 'resources', 'data_model', 'validation'] as WizardStep[]).indexOf(s) < (['welcome', 'base_auth', 'resources', 'data_model', 'validation'] as WizardStep[]).indexOf(step);
                         return (
-                            <div key={s} className={`h-2 rounded-full transition-all ${isActive ? 'w-12 bg-[var(--color-primary)]' : isPast ? 'w-2 bg-[var(--color-primary)]/50' : 'w-2 bg-[var(--color-surface-border)]'}`} />
+                            <div key={s} className={`h-2 rounded-full transition-all ${isActive ? 'w-12 bg-primary' : isPast ? 'w-2 bg-primary/50' : 'w-2 bg-surface-border'}`} />
                         );
                     })}
                 </div>
@@ -367,7 +367,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                             <span className="material-symbols-outlined text-4xl text-white">hub</span>
                         </div>
                         <h3 className="text-2xl font-bold">Connect Your Content API</h3>
-                        <p className="text-[var(--color-text-muted)] max-w-lg text-lg">
+                        <p className="text-muted max-w-lg text-lg">
                             Configure a generic REST client to manage your blog posts and categories externally.
                         </p>
                     </div>
@@ -388,7 +388,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                         <div className="space-y-2">
                             <label className="block text-sm font-medium">Global Headers (JSON)</label>
                             <textarea
-                                className="w-full h-40 bg-zinc-900 text-zinc-100 font-mono text-xs p-4 rounded-xl border border-[var(--color-surface-border)] focus:ring-2 focus:ring-[var(--color-primary)] outline-none resize-none"
+                                className="w-full h-40 bg-zinc-900 text-zinc-100 font-mono text-xs p-4 rounded-xl border border-surface focus:ring-2 focus:ring-primary outline-none resize-none"
                                 value={headers}
                                 onChange={(e) => setHeaders(e.target.value)}
                                 placeholder={`{\n  "Authorization": "Bearer ...",\n  "Content-Type": "application/json"\n}`}
@@ -403,29 +403,29 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                         <h3 className="text-lg font-bold">Resource Configuration</h3>
 
                         {/* Tabs */}
-                        <div className="flex border-b border-[var(--color-surface-border)]">
+                        <div className="flex border-b border-surface">
                             {DEFAULT_RESOURCES.map(res => (
                                 <button
                                     key={res}
                                     onClick={() => setActiveResourceTab(res)}
                                     className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors ${activeResourceTab === res
-                                        ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                                        : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                                        ? 'border-primary text-primary'
+                                        : 'border-transparent text-muted hover:text-main'}`}
                                 >
                                     {res.charAt(0).toUpperCase() + res.slice(1)}
                                 </button>
                             ))}
                         </div>
 
-                        <div className="flex items-center justify-between p-4 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)]">
+                        <div className="flex items-center justify-between p-4 bg-surface rounded-xl border border-surface">
                             <div className="flex items-center gap-3">
-                                <span className={`material-symbols-outlined ${resourceTestStatus[activeResourceTab] === 'success' ? 'text-green-500' : 'text-[var(--color-text-muted)]'}`}>
+                                <span className={`material-symbols-outlined ${resourceTestStatus[activeResourceTab] === 'success' ? 'text-green-500' : 'text-muted'}`}>
                                     {resourceTestStatus[activeResourceTab] === 'success' ? 'check_circle' :
                                         resourceTestStatus[activeResourceTab] === 'testing' ? 'progress_activity' : 'info'}
                                 </span>
                                 <div>
                                     <div className="text-sm font-medium">Endpoint Verification</div>
-                                    <p className="text-xs text-[var(--color-text-muted)]">Test the list endpoint before proceeding</p>
+                                    <p className="text-xs text-muted">Test the list endpoint before proceeding</p>
                                 </div>
                             </div>
                             <Button
@@ -444,7 +444,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
 
                                 return (
                                     <div key={action} className="grid grid-cols-[100px_1fr_120px] gap-4 items-start">
-                                        <div className="pt-3 text-sm font-medium text-[var(--color-text-muted)] uppercase tracking-wider">
+                                        <div className="pt-3 text-sm font-medium text-muted uppercase tracking-wider">
                                             {action}
                                         </div>
                                         <Input
@@ -453,7 +453,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                                             onChange={(e) => updateEndpoint(activeResourceTab, action as any, 'path', e.target.value)}
                                         />
                                         <select
-                                            className="h-[42px] px-3 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg text-sm focus:border-[var(--color-primary)] outline-none"
+                                            className="h-[42px] px-3 bg-surface border border-surface rounded-lg text-sm focus:border-primary outline-none"
                                             value={endpoint.method}
                                             onChange={(e) => updateEndpoint(activeResourceTab, action as any, 'method', e.target.value)}
                                         >
@@ -468,7 +468,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                             })}
                         </div>
 
-                        <div className="p-4 bg-[var(--color-surface-bg)] rounded-lg text-xs text-[var(--color-text-muted)] mt-4">
+                        <div className="p-4 bg-surface rounded-lg text-xs text-muted mt-4">
                             <p><strong>Tip:</strong> Use <code>:id</code> as a placeholder for resource IDs in Update/Delete/Get paths.</p>
                         </div>
                     </div>
@@ -478,15 +478,15 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                     <div className="space-y-6 animate-fade-up max-w-2xl mx-auto">
                         <div>
                             <h3 className="text-lg font-bold mb-2">Data Model (Optional)</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">
-                                Define your blog post structure. If your API supports multiple languages, include a <code className="bg-[var(--color-surface-hover)] px-1.5 py-0.5 rounded text-xs">language</code> field.
+                            <p className="text-sm text-muted">
+                                Define your blog post structure. If your API supports multiple languages, include a <code className="bg-surface-hover px-1.5 py-0.5 rounded text-xs">language</code> field.
                             </p>
                         </div>
 
                         <div className="space-y-2">
                             <label className="block text-sm font-medium">Post Interface / Schema</label>
                             <textarea
-                                className="w-full h-64 bg-zinc-900 text-zinc-100 font-mono text-xs p-4 rounded-xl border border-[var(--color-surface-border)] focus:ring-2 focus:ring-[var(--color-primary)] outline-none resize-none"
+                                className="w-full h-64 bg-zinc-900 text-zinc-100 font-mono text-xs p-4 rounded-xl border border-surface focus:ring-2 focus:ring-primary outline-none resize-none"
                                 value={dataModel}
                                 onChange={(e) => setDataModel(e.target.value)}
                                 placeholder={`interface BlogPost {
@@ -511,7 +511,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
 }`}
                                 spellCheck={false}
                             />
-                            <p className="text-xs text-[var(--color-text-muted)]">
+                            <p className="text-xs text-muted">
                                 This helps ProjectFlow understand how to map data to your API.
                             </p>
                         </div>
@@ -519,7 +519,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                         {/* Validation Status & Detected Fields */}
                         {dataModel.trim() && (
                             <div className={`p-4 rounded-xl border ${dataModelValidation.isValid
-                                    ? 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)]'
+                                    ? 'bg-surface border-surface'
                                     : 'bg-red-500/5 border-red-500/20'
                                 }`}>
                                 {dataModelValidation.error ? (
@@ -546,7 +546,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                                                         key={field.key}
                                                         className={`px-2 py-1 rounded text-xs font-medium ${isDetected
                                                                 ? 'bg-green-500/10 text-green-600 dark:text-green-400 border border-green-500/20'
-                                                                : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] border border-transparent opacity-50'
+                                                                : 'bg-surface-hover text-muted border border-transparent opacity-50'
                                                             }`}
                                                     >
                                                         {isDetected && <span className="mr-1">✓</span>}
@@ -556,7 +556,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                                                 );
                                             })}
                                         </div>
-                                        <p className="text-xs text-[var(--color-text-muted)]">
+                                        <p className="text-xs text-muted">
                                             Fields marked with * are required for full functionality.
                                         </p>
                                     </div>
@@ -571,7 +571,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                                     </div>
                                     <div>
                                         <div className="font-medium text-green-600 dark:text-green-400">Language Field Detected!</div>
-                                        <div className="text-sm text-[var(--color-text-muted)]">
+                                        <div className="text-sm text-muted">
                                             Multi-language support is available. Select the languages you want to support.
                                         </div>
                                     </div>
@@ -586,8 +586,8 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                                                 type="button"
                                                 onClick={() => toggleLanguage(lang.code)}
                                                 className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all border ${isSelected
-                                                    ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] border-[var(--color-primary)]'
-                                                    : 'bg-[var(--color-surface-card)] text-[var(--color-text-main)] border-[var(--color-surface-border)] hover:border-[var(--color-primary)]'
+                                                    ? 'bg-primary text-on-primary border-primary'
+                                                    : 'bg-card text-main border-surface hover:border-primary'
                                                     }`}
                                             >
                                                 {isSelected && <span className="mr-1">✓</span>}
@@ -598,7 +598,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                                 </div>
 
                                 {supportedLanguages.length > 0 && (
-                                    <p className="text-xs text-[var(--color-text-muted)]">
+                                    <p className="text-xs text-muted">
                                         Selected: {supportedLanguages.join(', ')}
                                     </p>
                                 )}
@@ -606,11 +606,11 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
                         )}
 
                         {!hasLanguageField && dataModel && (
-                            <div className="p-4 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)]">
+                            <div className="p-4 bg-surface rounded-xl border border-surface">
                                 <div className="flex items-start gap-3">
-                                    <span className="material-symbols-outlined text-[var(--color-text-muted)]">info</span>
-                                    <div className="text-sm text-[var(--color-text-muted)]">
-                                        <strong>Tip:</strong> To enable multi-language support, add a <code className="bg-[var(--color-surface-hover)] px-1 rounded">language: string</code> field to your data model.
+                                    <span className="material-symbols-outlined text-muted">info</span>
+                                    <div className="text-sm text-muted">
+                                        <strong>Tip:</strong> To enable multi-language support, add a <code className="bg-surface-hover px-1 rounded">language: string</code> field to your data model.
                                     </div>
                                 </div>
                             </div>
@@ -630,7 +630,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
 
                         {testingConnection && (
                             <div className="text-center">
-                                <span className="material-symbols-outlined animate-spin text-4xl text-[var(--color-primary)] mb-4">progress_activity</span>
+                                <span className="material-symbols-outlined animate-spin text-4xl text-primary mb-4">progress_activity</span>
                                 <p>Testing connection to {baseUrl}...</p>
                             </div>
                         )}
@@ -655,7 +655,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
 
                 {step === 'completion' && (
                     <div className="flex flex-col items-center justify-center h-full animate-fade-up">
-                        <span className="material-symbols-outlined text-5xl text-[var(--color-primary)] mb-4">celebration</span>
+                        <span className="material-symbols-outlined text-5xl text-primary mb-4">celebration</span>
                         <h3 className="text-2xl font-bold mb-6">Setup Complete</h3>
                         <Button variant="primary" onClick={onCancel}>Done</Button>
                     </div>
@@ -664,7 +664,7 @@ export const BlogConnectionWizard: React.FC<BlogConnectionWizardProps> = ({ init
 
             {/* Footer */}
             {step !== 'completion' && (
-                <div className="p-6 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] flex justify-between">
+                <div className="p-6 border-t border-surface bg-surface flex justify-between">
                     {step !== 'welcome' ? (
                         <Button variant="ghost" onClick={handleBack}>Back</Button>
                     ) : <div></div>}

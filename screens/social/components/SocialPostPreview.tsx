@@ -919,7 +919,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
 
                 {/* Text Content */}
                 <div className="px-3 pb-4 text-[15px] leading-relaxed whitespace-pre-wrap">
-                    {caption || <span className="text-[var(--color-text-muted)]">{t('social.preview.facebook.prompt')}</span>}
+                    {caption || <span className="text-muted">{t('social.preview.facebook.prompt')}</span>}
                     {hashtags && <div className="text-[#0866FF] mt-2">{hashtags}</div>}
                 </div>
 
@@ -1000,7 +1000,7 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                             ) : caption}
                         </span>
                     ) : (
-                        <span className="text-[var(--color-text-muted)]">
+                        <span className="text-muted">
                             {t('social.preview.facebook.captionPlaceholder')} <span className="text-gray-500 dark:text-[#B0B3B8] cursor-pointer hover:underline">{t('social.preview.facebook.seeMore')}</span>
                         </span>
                     )}
@@ -1087,23 +1087,23 @@ export const SocialPostPreview: React.FC<SocialPostPreviewProps> = ({
                 <div className="p-3 flex gap-3">
                     <div className="w-9 h-9 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-sm shrink-0">CL</div>
                     <div className="flex-1">
-                        <h3 className="text-[var(--color-text-main)] font-semibold leading-tight line-clamp-2 mb-1">
+                        <h3 className="text-main font-semibold leading-tight line-clamp-2 mb-1">
                             {videoTitle || t('social.preview.youtube.titleFallback')}
                         </h3>
-                        <div className="text-sm text-[var(--color-text-muted)] flex flex-wrap items-center gap-1">
+                        <div className="text-sm text-muted flex flex-wrap items-center gap-1">
                             <span>{mockUser.name}</span>
                             <PlatformIcon name="check_circle" className="text-[12px] text-gray-500" />
                             <span>{t('social.preview.youtube.stats').replace('{views}', '12K').replace('{time}', t('social.preview.youtube.timeAgo'))}</span>
                         </div>
                     </div>
-                    <PlatformIcon name="more_vert" className="text-[var(--color-text-main)]" />
+                    <PlatformIcon name="more_vert" className="text-main" />
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="w-full h-full flex items-center justify-center text-[var(--color-text-muted)] italic">
+        <div className="w-full h-full flex items-center justify-center text-muted italic">
             {t('social.preview.empty')}
         </div>
     );

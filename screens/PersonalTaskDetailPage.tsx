@@ -124,7 +124,7 @@ export const PersonalTaskDetailPage = () => {
     if (loading) {
         return (
             <div className="flex justify-center items-center min-h-[50vh]">
-                <span className="material-symbols-outlined animate-spin text-4xl text-[var(--color-primary)]">progress_activity</span>
+                <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
             </div>
         );
     }
@@ -132,7 +132,7 @@ export const PersonalTaskDetailPage = () => {
     if (!task) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
-                <h3 className="text-xl font-bold text-[var(--color-text-main)]">{t('personalTaskDetail.notFound.title')}</h3>
+                <h3 className="text-xl font-bold text-main">{t('personalTaskDetail.notFound.title')}</h3>
                 <Link to="/personal-tasks" className="btn-secondary">{t('personalTaskDetail.notFound.action')}</Link>
             </div>
         );
@@ -143,10 +143,10 @@ export const PersonalTaskDetailPage = () => {
             {/* Delete Confirmation Modal */}
             {showDeleteConfirm && createPortal(
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-[var(--color-surface-border)]">
+                    <div className="bg-card rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-surface">
                         <div className="space-y-4 text-center">
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('personalTaskDetail.delete.title')}</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">
+                            <h3 className="text-lg font-bold text-main">{t('personalTaskDetail.delete.title')}</h3>
+                            <p className="text-sm text-muted">
                                 {t('personalTaskDetail.delete.message').replace('{title}', task.title)}
                             </p>
                             <div className="grid grid-cols-2 gap-3">
@@ -160,8 +160,8 @@ export const PersonalTaskDetailPage = () => {
             )}
 
             {/* Header Section */}
-            <header className="relative mb-10 overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] border border-[var(--color-surface-border)] shadow-sm">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--color-primary)]/5 blur-3xl rounded-full -mr-20 -mt-20 pointer-events-none" />
+            <header className="relative mb-10 overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] border border-surface shadow-sm">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-3xl rounded-full -mr-20 -mt-20 pointer-events-none" />
 
                 <div className="relative px-6 py-8 md:px-10 md:py-10">
                     <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
@@ -196,17 +196,17 @@ export const PersonalTaskDetailPage = () => {
                                 )}
                             </div>
 
-                            <h1 className="text-3xl md:text-4xl font-black text-[var(--color-text-main)] leading-[1.1] tracking-tight mb-6">
+                            <h1 className="text-3xl md:text-4xl font-black text-main leading-[1.1] tracking-tight mb-6">
                                 {task.title}
                             </h1>
 
                             <div className="flex flex-wrap items-center gap-4 text-sm">
                                 {task.dueDate && (
-                                    <div className="flex items-center gap-2.5 px-4 py-2 bg-[var(--color-surface-hover)] rounded-xl border border-[var(--color-surface-border)]">
-                                            <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">calendar_today</span>
+                                    <div className="flex items-center gap-2.5 px-4 py-2 bg-surface-hover rounded-xl border border-surface">
+                                            <span className="material-symbols-outlined text-[20px] text-muted">calendar_today</span>
                                             <div className="flex flex-col">
-                                            <span className="text-[10px] leading-none uppercase font-bold text-[var(--color-text-subtle)] mb-0.5">{t('personalTaskDetail.labels.dueDate')}</span>
-                                                <span className="text-[var(--color-text-main)] font-semibold whitespace-nowrap">
+                                            <span className="text-[10px] leading-none uppercase font-bold text-subtle mb-0.5">{t('personalTaskDetail.labels.dueDate')}</span>
+                                                <span className="text-main font-semibold whitespace-nowrap">
                                                     {format(new Date(task.dueDate), dateFormat, { locale: dateLocale })}
                                                 </span>
                                             </div>
@@ -217,7 +217,7 @@ export const PersonalTaskDetailPage = () => {
 
                         {/* Action Buttons */}
                         <div className="flex flex-col items-stretch lg:items-end gap-3 lg:mb-1">
-                            <div className="flex items-center gap-2 bg-[var(--color-surface-hover)] p-1 rounded-xl border border-[var(--color-surface-border)] w-full lg:w-fit">
+                            <div className="flex items-center gap-2 bg-surface-hover p-1 rounded-xl border border-surface w-full lg:w-fit">
                                 {/* Move to Project Button */}
                                 <div className="relative">
                                     <Button
@@ -237,13 +237,13 @@ export const PersonalTaskDetailPage = () => {
                                     {showMoveDropdown && (
                                         <>
                                             <div className="fixed inset-0 z-40" onClick={() => setShowMoveDropdown(false)} />
-                                            <div className="absolute right-0 top-full mt-2 z-50 w-64 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-xl overflow-hidden animate-scale-up origin-top-right">
-                                                <div className="px-3 py-2 border-b border-[var(--color-surface-border)] text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
+                                            <div className="absolute right-0 top-full mt-2 z-50 w-64 bg-card border border-surface rounded-xl shadow-xl overflow-hidden animate-scale-up origin-top-right">
+                                                <div className="px-3 py-2 border-b border-surface text-xs font-bold text-muted uppercase tracking-wider">
                                                     {t('personalTaskDetail.actions.selectProject')}
                                                 </div>
                                                 <div className="max-h-60 overflow-y-auto">
                                                     {projects.length === 0 ? (
-                                                        <div className="px-3 py-4 text-sm text-[var(--color-text-muted)] text-center">
+                                                        <div className="px-3 py-4 text-sm text-muted text-center">
                                                             {t('personalTaskDetail.actions.noProjects')}
                                                         </div>
                                                     ) : (
@@ -251,10 +251,10 @@ export const PersonalTaskDetailPage = () => {
                                                             <button
                                                                 key={project.id}
                                                                 onClick={() => handleMoveToProject(project.id)}
-                                                                className="w-full px-3 py-2.5 text-left text-sm hover:bg-[var(--color-surface-hover)] transition-colors flex items-center gap-2"
+                                                                className="w-full px-3 py-2.5 text-left text-sm hover:bg-surface-hover transition-colors flex items-center gap-2"
                                                             >
-                                                                <span className="size-2 rounded-full bg-[var(--color-primary)]" />
-                                                                <span className="truncate text-[var(--color-text-main)]">{project.title}</span>
+                                                                <span className="size-2 rounded-full bg-primary" />
+                                                                <span className="truncate text-main">{project.title}</span>
                                                             </button>
                                                         ))
                                                     )}
@@ -264,7 +264,7 @@ export const PersonalTaskDetailPage = () => {
                                     )}
                                 </div>
 
-                                <div className="w-[1px] h-4 bg-[var(--color-surface-border)]" />
+                                <div className="w-[1px] h-4 bg-surface-border" />
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -294,7 +294,7 @@ export const PersonalTaskDetailPage = () => {
                 <div className="lg:col-span-8 space-y-8">
                     {/* Description */}
                     <div>
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-3 flex items-center gap-2 tracking-wider">
+                        <h3 className="text-xs font-bold text-muted uppercase mb-3 flex items-center gap-2 tracking-wider">
                             <span className="material-symbols-outlined text-[16px]">description</span>
                             {t('personalTaskDetail.sections.description')}
                         </h3>
@@ -304,7 +304,7 @@ export const PersonalTaskDetailPage = () => {
                                     <textarea
                                         value={descValue}
                                         onChange={(e) => setDescValue(e.target.value)}
-                                        className="w-full h-32 p-3 text-sm bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl focus:ring-2 focus:ring-[var(--color-primary)]/20 outline-none resize-none text-[var(--color-text-main)]"
+                                        className="w-full h-32 p-3 text-sm bg-surface border border-surface rounded-xl focus:ring-2 focus:ring-primary/20 outline-none resize-none text-main"
                                         placeholder={t('personalTaskDetail.description.placeholder')}
                                         autoFocus
                                     />
@@ -320,16 +320,16 @@ export const PersonalTaskDetailPage = () => {
                             ) : (
                                 <div
                                     onClick={() => setEditingDescription(true)}
-                                    className="cursor-pointer hover:bg-[var(--color-surface-hover)] -m-2 p-2 rounded-lg transition-colors group"
+                                    className="cursor-pointer hover:bg-surface-hover -m-2 p-2 rounded-lg transition-colors group"
                                 >
                                     {task.description ? (
-                                        <div className="prose prose-sm max-w-none text-[var(--color-text-main)]">
+                                        <div className="prose prose-sm max-w-none text-main">
                                             <p className="whitespace-pre-wrap leading-relaxed">{task.description}</p>
                                         </div>
                                     ) : (
-                                        <p className="text-[var(--color-text-muted)] italic">{t('personalTaskDetail.description.emptyHint')}</p>
+                                        <p className="text-muted italic">{t('personalTaskDetail.description.emptyHint')}</p>
                                     )}
-                                    <span className="material-symbols-outlined text-[14px] text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 absolute top-3 right-3">edit</span>
+                                    <span className="material-symbols-outlined text-[14px] text-muted opacity-0 group-hover:opacity-100 absolute top-3 right-3">edit</span>
                                 </div>
                             )}
                         </div>
@@ -340,7 +340,7 @@ export const PersonalTaskDetailPage = () => {
                 <div className="lg:col-span-4 space-y-6">
                     {/* Status Card */}
                     <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">{t('personalTaskDetail.sections.status')}</h3>
+                        <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3">{t('personalTaskDetail.sections.status')}</h3>
                         <Select
                             value={task.status || 'Open'}
                             onChange={(e) => {
@@ -360,9 +360,9 @@ export const PersonalTaskDetailPage = () => {
 
                     {/* Schedule Card */}
                     <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">{t('personalTaskDetail.sections.schedule')}</h3>
+                        <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3">{t('personalTaskDetail.sections.schedule')}</h3>
                         <div className="flex flex-col gap-1.5">
-                            <label className="text-[11px] font-medium text-[var(--color-text-subtle)] uppercase">{t('personalTaskDetail.labels.dueDate')}</label>
+                            <label className="text-[11px] font-medium text-subtle uppercase">{t('personalTaskDetail.labels.dueDate')}</label>
                             <DatePicker
                                 value={task.dueDate || ''}
                                 onChange={(date) => handleUpdateField('dueDate', date)}
@@ -374,7 +374,7 @@ export const PersonalTaskDetailPage = () => {
 
                     {/* Priority Card */}
                     <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">{t('personalTaskDetail.sections.priority')}</h3>
+                        <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3">{t('personalTaskDetail.sections.priority')}</h3>
                         <div className="flex flex-col gap-1">
                             {(['Low', 'Medium', 'High', 'Urgent'] as const).map(p => (
                                 <button
@@ -383,8 +383,8 @@ export const PersonalTaskDetailPage = () => {
                                     className={`
                                         flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all
                                         ${task.priority === p
-                                            ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] shadow-sm'
-                                            : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'
+                                            ? 'bg-surface-hover text-main shadow-sm'
+                                            : 'text-muted hover:bg-surface-hover'
                                         }
                                     `}
                                 >
@@ -395,7 +395,7 @@ export const PersonalTaskDetailPage = () => {
                                             }`} />
                                         {priorityLabels[p] || p}
                                     </div>
-                                    {task.priority === p && <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>}
+                                    {task.priority === p && <span className="material-symbols-outlined text-[16px] text-primary">check</span>}
                                 </button>
                             ))}
                         </div>
@@ -403,17 +403,17 @@ export const PersonalTaskDetailPage = () => {
 
                     {/* Task Details Card */}
                     <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-4">{t('personalTaskDetail.sections.details')}</h3>
+                        <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-4">{t('personalTaskDetail.sections.details')}</h3>
                         <div className="space-y-4">
                             <div className="flex flex-col gap-1">
-                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">{t('personalTaskDetail.labels.taskId')}</span>
-                                <code className="text-[11px] font-mono text-[var(--color-text-main)] bg-[var(--color-surface-hover)] p-2 rounded-lg border border-[var(--color-surface-border)] break-all truncate">
+                                <span className="text-[10px] font-bold text-subtle uppercase">{t('personalTaskDetail.labels.taskId')}</span>
+                                <code className="text-[11px] font-mono text-main bg-surface-hover p-2 rounded-lg border border-surface break-all truncate">
                                     {task.id}
                                 </code>
                             </div>
 
-                            <div className="pt-3 border-t border-[var(--color-surface-border)] flex items-center justify-between">
-                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">{t('personalTaskDetail.labels.completion')}</span>
+                            <div className="pt-3 border-t border-surface flex items-center justify-between">
+                                <span className="text-[10px] font-bold text-subtle uppercase">{t('personalTaskDetail.labels.completion')}</span>
                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${task.isCompleted ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-blue-500/10 text-blue-500 border-blue-500/20'}`}>
                                     {task.isCompleted ? t('personalTaskDetail.labels.finished') : t('personalTaskDetail.labels.active')}
                                 </span>

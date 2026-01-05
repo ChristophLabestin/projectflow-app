@@ -36,7 +36,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange,
         },
         editorProps: {
             attributes: {
-                class: 'prose prose-sm sm:prose focus:outline-none min-h-[150px] max-w-none text-[var(--color-text-main)] prose-headings:text-[var(--color-text-main)] prose-p:text-[var(--color-text-main)] prose-strong:text-[var(--color-text-main)] prose-ul:text-[var(--color-text-main)] prose-li:text-[var(--color-text-main)] [&_ol]:text-[var(--color-text-main)]',
+                class: 'prose prose-sm sm:prose focus:outline-none min-h-[150px] max-w-none text-main prose-headings:text-main prose-p:text-main prose-strong:text-main prose-ul:text-main prose-li:text-main [&_ol]:text-main',
             },
         },
     });
@@ -53,9 +53,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange,
     }
 
     return (
-        <div className={`border border-[var(--color-surface-border)] rounded-lg overflow-hidden bg-[var(--color-bg-base)] transition-colors focus-within:border-[var(--color-primary)] ${className}`}>
+        <div className={`border border-surface rounded-lg overflow-hidden bg-surface transition-colors focus-within:border-primary ${className}`}>
             {/* Toolbar */}
-            <div className="flex items-center gap-1 p-2 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] overflow-x-auto">
+            <div className="flex items-center gap-1 p-2 border-b border-surface bg-surface overflow-x-auto">
                 <MenuButton
                     onClick={() => editor.chain().focus().toggleBold().run()}
                     isActive={editor.isActive('bold')}
@@ -68,7 +68,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange,
                     icon="format_italic"
                     tooltip="Italic"
                 />
-                <div className="w-px h-4 bg-[var(--color-surface-border)] mx-1" />
+                <div className="w-px h-4 bg-surface-border mx-1" />
                 <MenuButton
                     onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
                     isActive={editor.isActive('heading', { level: 2 })}
@@ -83,7 +83,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({ value, onChange,
                     label="H3"
                     tooltip="Heading 3"
                 />
-                <div className="w-px h-4 bg-[var(--color-surface-border)] mx-1" />
+                <div className="w-px h-4 bg-surface-border mx-1" />
                 <MenuButton
                     onClick={() => editor.chain().focus().toggleBulletList().run()}
                     isActive={editor.isActive('bulletList')}
@@ -119,8 +119,8 @@ const MenuButton: React.FC<MenuButtonProps> = ({ onClick, isActive, icon, label,
         type="button"
         onClick={onClick}
         className={`p-1.5 rounded text-sm font-medium transition-colors flex items-center justify-center min-w-[28px] ${isActive
-            ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)]'
-            : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'
+            ? 'bg-primary text-on-primary'
+            : 'text-muted hover:bg-surface-hover hover:text-main'
             }`}
         title={tooltip}
     >

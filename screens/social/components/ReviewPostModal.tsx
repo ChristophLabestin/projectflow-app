@@ -38,17 +38,17 @@ export const ReviewPostModal: React.FC<ReviewPostModalProps> = ({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-            <div className="w-full max-w-5xl h-[80vh] bg-[var(--color-surface-card)] rounded-2xl shadow-2xl flex overflow-hidden border border-[var(--color-surface-border)]">
+            <div className="w-full max-w-5xl h-[80vh] bg-card rounded-2xl shadow-2xl flex overflow-hidden border border-surface">
 
                 {/* Left: Info */}
-                <div className="w-[40%] border-r border-[var(--color-surface-border)] flex flex-col bg-[var(--color-surface-bg)]">
-                    <div className="p-6 border-b border-[var(--color-surface-border)]">
-                        <h2 className="text-xl font-bold text-[var(--color-text-main)] mb-2">{t('social.reviewPost.title')}</h2>
+                <div className="w-[40%] border-r border-surface flex flex-col bg-surface">
+                    <div className="p-6 border-b border-surface">
+                        <h2 className="text-xl font-bold text-main mb-2">{t('social.reviewPost.title')}</h2>
                         <div className="flex gap-2">
                             <div className="px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
                                 {getSocialPostStatusLabel('In Review', t)}
                             </div>
-                            <div className="px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]">
+                            <div className="px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wider bg-surface-hover text-muted">
                                 {post.platform}
                             </div>
                         </div>
@@ -56,8 +56,8 @@ export const ReviewPostModal: React.FC<ReviewPostModalProps> = ({
 
                     <div className="p-6 flex-1 overflow-y-auto space-y-6">
                         <div>
-                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase block mb-1">{t('social.reviewPost.schedule')}</label>
-                            <p className="text-sm text-[var(--color-text-main)] font-medium">
+                            <label className="text-xs font-semibold text-muted uppercase block mb-1">{t('social.reviewPost.schedule')}</label>
+                            <p className="text-sm text-main font-medium">
                                 {post.scheduledFor
                                     ? format(new Date(post.scheduledFor), 'MMMM d, yyyy @ p', { locale: dateLocale })
                                     : t('social.reviewPost.noDate')
@@ -66,9 +66,9 @@ export const ReviewPostModal: React.FC<ReviewPostModalProps> = ({
                         </div>
 
                         <div>
-                            <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase block mb-1">{t('social.reviewPost.caption')}</label>
-                            <div className="bg-[var(--color-surface-card)] p-3 rounded-lg border border-[var(--color-surface-border)]">
-                                <p className="text-sm text-[var(--color-text-main)] whitespace-pre-wrap">
+                            <label className="text-xs font-semibold text-muted uppercase block mb-1">{t('social.reviewPost.caption')}</label>
+                            <div className="bg-card p-3 rounded-lg border border-surface">
+                                <p className="text-sm text-main whitespace-pre-wrap">
                                     {post.content.caption || t('social.reviewPost.noCaption')}
                                 </p>
                             </div>
@@ -76,7 +76,7 @@ export const ReviewPostModal: React.FC<ReviewPostModalProps> = ({
 
                         {post.content.hashtags && post.content.hashtags.length > 0 && (
                             <div>
-                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase block mb-1">{t('social.reviewPost.hashtags')}</label>
+                                <label className="text-xs font-semibold text-muted uppercase block mb-1">{t('social.reviewPost.hashtags')}</label>
                                 <p className="text-sm text-indigo-500 font-mono">
                                     {post.content.hashtags.map(h => h).join(' ')}
                                 </p>
@@ -97,7 +97,7 @@ export const ReviewPostModal: React.FC<ReviewPostModalProps> = ({
                         )}
                     </div>
 
-                    <div className="p-6 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-card)] flex justify-between items-center gap-4">
+                    <div className="p-6 border-t border-surface bg-card flex justify-between items-center gap-4">
                         {rejectMode ? (
                             <>
                                 <Button variant="ghost" onClick={() => setRejectMode(false)}>{t('social.reviewPost.cancel')}</Button>
@@ -130,7 +130,7 @@ export const ReviewPostModal: React.FC<ReviewPostModalProps> = ({
                 </div>
 
                 {/* Right: Preview */}
-                <div className="w-[60%] bg-[var(--color-bg-base)] relative overflow-hidden">
+                <div className="w-[60%] bg-surface relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none" />
 

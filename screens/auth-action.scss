@@ -1,0 +1,116 @@
+.auth-action {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-surface-bg);
+    padding: 24px;
+}
+
+.auth-action__card {
+    width: 100%;
+    max-width: 520px;
+    position: relative;
+    overflow: hidden;
+}
+
+.auth-action__body {
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    position: relative;
+    z-index: 1;
+}
+
+.auth-action__decor {
+    position: absolute;
+    width: 160px;
+    height: 160px;
+    border-radius: var(--radius-full);
+    filter: blur(40px);
+    opacity: 0.08;
+}
+
+.auth-action__decor--top {
+    top: -80px;
+    right: -80px;
+    background: var(--color-primary);
+}
+
+.auth-action__decor--bottom {
+    bottom: -80px;
+    left: -80px;
+    background: var(--color-primary-light);
+}
+
+.auth-action__status {
+    display: flex;
+    justify-content: center;
+}
+
+.auth-action__status-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-inner);
+    color: var(--color-primary);
+}
+
+.auth-action__status-icon--success {
+    color: var(--color-success);
+}
+
+.auth-action__status-icon--error {
+    color: var(--color-error);
+}
+
+.auth-action__status-icon--loading .material-symbols-outlined {
+    animation: auth-action-spin 0.9s linear infinite;
+}
+
+.auth-action__title {
+    margin: 0;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+.auth-action__message {
+    margin: 0;
+    text-align: center;
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.auth-action__form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-top: 8px;
+}
+
+.auth-action__action {
+    width: 100%;
+}
+
+.auth-action__actions {
+    padding-top: 8px;
+}
+
+.auth-action__footer {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+@keyframes auth-action-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

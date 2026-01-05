@@ -72,7 +72,7 @@ const getModuleIcon = (name: string) => {
     if (name === 'marketing') return { icon: 'ads_click', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-500/10' };
     if (name === 'sprints') return { icon: 'directions_run', color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-500/10' };
     if (name === 'activity') return { icon: 'history', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' };
-    return { icon: 'more_horiz', color: 'text-slate-600 dark:text-slate-400', bg: 'bg-[var(--color-surface-hover)]' };
+    return { icon: 'more_horiz', color: 'text-slate-600 dark:text-slate-400', bg: 'bg-surface-hover' };
 };
 
 import { usePresence, useProjectPresence } from '../hooks/usePresence';
@@ -655,7 +655,7 @@ export const ProjectOverview = () => {
 
     if (loading) return (
         <div className="flex items-center justify-center p-12">
-            <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-3xl">progress_activity</span>
+            <span className="material-symbols-outlined text-subtle animate-spin text-3xl">progress_activity</span>
         </div>
     );
 
@@ -665,8 +665,8 @@ export const ProjectOverview = () => {
                 <div className="size-24 rounded-full bg-rose-100 dark:bg-rose-900/20 flex items-center justify-center mb-6">
                     <span className="material-symbols-outlined text-5xl text-rose-500">lock</span>
                 </div>
-                <h1 className="text-3xl font-bold text-[var(--color-text-main)] mb-2">{t('projectOverview.unauthorized.title')}</h1>
-                <p className="text-[var(--color-text-muted)] max-w-md mb-8">
+                <h1 className="text-3xl font-bold text-main mb-2">{t('projectOverview.unauthorized.title')}</h1>
+                <p className="text-muted max-w-md mb-8">
                     {t('projectOverview.unauthorized.description')}
                 </p>
                 <Link to="/projects">
@@ -770,7 +770,7 @@ export const ProjectOverview = () => {
 
 
                 {/* PROFILE BANNER LAYOUT */}
-                <div data-onboarding-id="project-overview-header" className="flex flex-col w-full bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl shadow-sm relative group/header">
+                <div data-onboarding-id="project-overview-header" className="flex flex-col w-full bg-white dark:bg-card border border-surface rounded-2xl shadow-sm relative group/header">
 
                     {/* 1. Cover Image Banner */}
                     <div
@@ -781,7 +781,7 @@ export const ProjectOverview = () => {
                         }}
                     >
                         {!project.coverImage && (
-                            <div className="absolute inset-0 flex items-center justify-center text-[var(--color-text-muted)] opacity-20">
+                            <div className="absolute inset-0 flex items-center justify-center text-muted opacity-20">
                                 <span className="material-symbols-outlined text-6xl">image</span>
                             </div>
                         )}
@@ -807,8 +807,8 @@ export const ProjectOverview = () => {
                         {/* Overlapping Icon */}
                         <div className="absolute -top-12 left-6 md:-top-16 md:left-8">
                             <div className="relative group/icon">
-                                <div className="size-24 md:size-32 rounded-3xl bg-white dark:bg-[var(--color-surface-card)] p-1.5 shadow-md">
-                                    <div className="w-full h-full rounded-2xl overflow-hidden bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-[var(--color-surface-border)] flex items-center justify-center cursor-pointer" onClick={() => { if (isOwner) { setMediaPickerTarget('icon'); setShowMediaLibrary(true); } }}>
+                                <div className="size-24 md:size-32 rounded-3xl bg-white dark:bg-card p-1.5 shadow-md">
+                                    <div className="w-full h-full rounded-2xl overflow-hidden bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 border border-surface flex items-center justify-center cursor-pointer" onClick={() => { if (isOwner) { setMediaPickerTarget('icon'); setShowMediaLibrary(true); } }}>
                                         {project.squareIcon ? (
                                             <img src={project.squareIcon} alt="" className="w-full h-full object-cover" />
                                         ) : (
@@ -828,18 +828,18 @@ export const ProjectOverview = () => {
                         <div className="md:ml-36 flex-1 min-w-0 pt-2 md:pt-0 space-y-3">
                             <div>
                                 <div className="flex items-center gap-3 mb-1">
-                                    <h1 className="text-2xl md:text-3xl font-bold text-[var(--color-text-main)] truncate">{project.title}</h1>
+                                    <h1 className="text-2xl md:text-3xl font-bold text-main truncate">{project.title}</h1>
                                     <Badge variant={project.status === 'Active' ? 'success' : 'primary'}>
                                         {projectStatusLabels[project.status as keyof typeof projectStatusLabels] || project.status}
                                     </Badge>
                                 </div>
                                 <div className="relative group/desc max-w-2xl">
-                                    <p className="text-[var(--color-text-muted)] line-clamp-2">{project.description || t('projectOverview.header.noDescription')}</p>
+                                    <p className="text-muted line-clamp-2">{project.description || t('projectOverview.header.noDescription')}</p>
 
                                     {/* Hover Expand Box */}
                                     {project.description && (
                                         <div className="absolute -top-[13px] -left-[13px] w-[calc(100%+26px)] z-50 hidden group-hover/desc:block">
-                                            <p className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-lg p-3 shadow-xl text-[var(--color-text-muted)]">
+                                            <p className="bg-white dark:bg-card border border-surface rounded-lg p-3 shadow-xl text-muted">
                                                 {project.description}
                                             </p>
                                         </div>
@@ -851,17 +851,17 @@ export const ProjectOverview = () => {
                         {/* Right: Actions */}
                         <div className="flex flex-col gap-3 shrink-0 self-start md:self-end items-end">
                             {/* View Toggle (Desktop) */}
-                            <div className="hidden md:flex bg-[var(--color-surface-hover)] p-0.5 rounded-lg border border-[var(--color-surface-border)]">
+                            <div className="hidden md:flex bg-surface-hover p-0.5 rounded-lg border border-surface">
                                 <button
                                     onClick={() => setViewMode('overview')}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${viewMode === 'overview' ? 'bg-white dark:bg-slate-700 shadow-sm text-[var(--color-text-main)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${viewMode === 'overview' ? 'bg-white dark:bg-slate-700 shadow-sm text-main' : 'text-muted hover:text-main'}`}
                                 >
                                     <span className="material-symbols-outlined text-[16px]">grid_view</span>
                                     <span>{t('nav.overview')}</span>
                                 </button>
                                 <button
                                     onClick={() => setViewMode('mindmap')}
-                                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${viewMode === 'mindmap' ? 'bg-white dark:bg-slate-700 shadow-sm text-[var(--color-text-main)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                                    className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-1.5 ${viewMode === 'mindmap' ? 'bg-white dark:bg-slate-700 shadow-sm text-main' : 'text-muted hover:text-main'}`}
                                 >
                                     <span className="material-symbols-outlined text-[16px]">hub</span>
                                     <span>{t('nav.mindmap')}</span>
@@ -909,18 +909,18 @@ export const ProjectOverview = () => {
 
 
                     {/* Banner Metrics Footer (Chronicle split up) */}
-                    <div data-onboarding-id="project-overview-metrics" className={`grid grid-cols-2 rounded-b-2xl md:grid-cols-5 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-hover)]/30 divide-x divide-[var(--color-surface-border)]`}>
+                    <div data-onboarding-id="project-overview-metrics" className={`grid grid-cols-2 rounded-b-2xl md:grid-cols-5 border-t border-surface bg-surface-hover/30 divide-x divide-[var(--color-surface-border)]`}>
                         {/* 1. Progress */}
                         <div className="py-3 px-6 flex items-center gap-4">
-                            <span className="material-symbols-outlined text-[var(--color-primary)] text-[20px] shrink-0">speed</span>
+                            <span className="material-symbols-outlined text-primary text-[20px] shrink-0">speed</span>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-1.5">
-                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-tight">{t('projectOverview.metrics.completion')}</span>
-                                    <span className="text-[10px] font-bold text-[var(--color-primary)]">{progress}%</span>
+                                    <span className="text-[10px] font-bold text-muted uppercase tracking-tight">{t('projectOverview.metrics.completion')}</span>
+                                    <span className="text-[10px] font-bold text-primary">{progress}%</span>
                                 </div>
-                                <div className="w-full h-1.5 bg-[var(--color-surface-border)] rounded-full overflow-hidden">
+                                <div className="w-full h-1.5 bg-surface-border rounded-full overflow-hidden">
                                     <div
-                                        className="h-full bg-[var(--color-primary)] rounded-full transition-all duration-1000"
+                                        className="h-full bg-primary rounded-full transition-all duration-1000"
                                         style={{ width: `${progress}%` }}
                                     />
                                 </div>
@@ -933,10 +933,10 @@ export const ProjectOverview = () => {
                             <div className="flex items-center gap-4">
                                 <span className="material-symbols-outlined text-green-500 text-[20px] shrink-0">task_alt</span>
                                 <div className="text-left min-w-0">
-                                    <div className="text-sm font-bold text-[var(--color-text-main)] leading-none mb-1">
+                                    <div className="text-sm font-bold text-main leading-none mb-1">
                                         {completedTasksWithSubtasks} / {totalTasksWithSubtasks}
                                     </div>
-                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-tight truncate block">{t('projectOverview.metrics.tasksDone')}</span>
+                                    <span className="text-[10px] font-bold text-muted uppercase tracking-tight truncate block">{t('projectOverview.metrics.tasksDone')}</span>
                                 </div>
                             </div>
 
@@ -945,15 +945,15 @@ export const ProjectOverview = () => {
                                 <div className="relative opacity-0 translate-y-2 scale-95 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100 transition-all duration-200 ease-out origin-top shadow-2xl rounded-2xl">
 
                                     {/* Container */}
-                                    <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/5">
+                                    <div className="bg-white dark:bg-card border border-surface rounded-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/5">
 
                                         {/* Header */}
-                                        <div className="px-5 py-3 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-hover)]/30 flex items-center justify-between">
+                                        <div className="px-5 py-3 border-b border-surface bg-surface-hover/30 flex items-center justify-between">
                                             <div className="flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">donut_small</span>
-                                                <span className="text-xs font-bold text-[var(--color-text-main)]">{t('projectOverview.metrics.composition')}</span>
+                                                <span className="material-symbols-outlined text-[16px] text-muted">donut_small</span>
+                                                <span className="text-xs font-bold text-main">{t('projectOverview.metrics.composition')}</span>
                                             </div>
-                                            <span className="text-[10px] font-medium text-[var(--color-text-muted)]">
+                                            <span className="text-[10px] font-medium text-muted">
                                                 {t('projectOverview.metrics.totalCompleted')}
                                             </span>
                                         </div>
@@ -963,7 +963,7 @@ export const ProjectOverview = () => {
 
                                             {/* Visual Bar */}
                                             <div className="space-y-2">
-                                                <div className="flex w-full h-3 bg-[var(--color-surface-hover)] rounded-full overflow-hidden ring-1 ring-inset ring-black/5 dark:ring-white/5">
+                                                <div className="flex w-full h-3 bg-surface-hover rounded-full overflow-hidden ring-1 ring-inset ring-black/5 dark:ring-white/5">
                                                     <div
                                                         className="h-full bg-emerald-500 transition-all duration-300 relative group/segment"
                                                         style={{ width: `${taskCompletionShare}%` }}
@@ -977,7 +977,7 @@ export const ProjectOverview = () => {
                                                         {subtaskCompletionShare > 10 && <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-white/90">{subtaskCompletionShare}%</span>}
                                                     </div>
                                                 </div>
-                                                <div className="flex justify-between text-[10px] text-[var(--color-text-muted)] px-0.5">
+                                                <div className="flex justify-between text-[10px] text-muted px-0.5">
                                                     <span>{t('projectOverview.metrics.tasks')}</span>
                                                     <span>{t('projectOverview.metrics.subtasks')}</span>
                                                 </div>
@@ -985,22 +985,22 @@ export const ProjectOverview = () => {
 
                                             {/* Detailed grid */}
                                             <div className="grid grid-cols-2 gap-3">
-                                                <div className="flex flex-col p-3 rounded-xl bg-[var(--color-surface-hover)]/50 border border-[var(--color-surface-border)] transition-colors hover:bg-[var(--color-surface-hover)]">
+                                                <div className="flex flex-col p-3 rounded-xl bg-surface-hover/50 border border-surface transition-colors hover:bg-surface-hover">
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <div className="size-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/20"></div>
-                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('projectOverview.metrics.mainTasks')}</span>
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted">{t('projectOverview.metrics.mainTasks')}</span>
                                                     </div>
-                                                    <div className="text-xl font-bold text-[var(--color-text-main)] mt-1 tabular-nums tracking-tight">
-                                                        {completedTasks} <span className="text-sm font-medium text-[var(--color-text-muted)]">/ {tasks.length}</span>
+                                                    <div className="text-xl font-bold text-main mt-1 tabular-nums tracking-tight">
+                                                        {completedTasks} <span className="text-sm font-medium text-muted">/ {tasks.length}</span>
                                                     </div>
                                                 </div>
-                                                <div className="flex flex-col p-3 rounded-xl bg-[var(--color-surface-hover)]/50 border border-[var(--color-surface-border)] transition-colors hover:bg-[var(--color-surface-hover)]">
+                                                <div className="flex flex-col p-3 rounded-xl bg-surface-hover/50 border border-surface transition-colors hover:bg-surface-hover">
                                                     <div className="flex items-center gap-2 mb-1">
                                                         <div className="size-2 rounded-full bg-sky-500 shadow-sm shadow-sky-500/20"></div>
-                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('projectOverview.metrics.subtasksLabel')}</span>
+                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted">{t('projectOverview.metrics.subtasksLabel')}</span>
                                                     </div>
-                                                    <div className="text-xl font-bold text-[var(--color-text-main)] mt-1 tabular-nums tracking-tight">
-                                                        {subtaskTotals.done} <span className="text-sm font-medium text-[var(--color-text-muted)]">/ {subtaskTotals.total}</span>
+                                                    <div className="text-xl font-bold text-main mt-1 tabular-nums tracking-tight">
+                                                        {subtaskTotals.done} <span className="text-sm font-medium text-muted">/ {subtaskTotals.total}</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1022,7 +1022,7 @@ export const ProjectOverview = () => {
                                     }`}>
                                     {project.priority ? (priorityLabels[project.priority] || project.priority) : t('tasks.priority.medium')}
                                 </div>
-                                <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-tight truncate block">{t('projectOverview.metrics.priority')}</span>
+                                <span className="text-[10px] font-bold text-muted uppercase tracking-tight truncate block">{t('projectOverview.metrics.priority')}</span>
                             </div>
                         </div>
 
@@ -1031,10 +1031,10 @@ export const ProjectOverview = () => {
                         <div className="py-3 px-6 flex items-center gap-4">
                             <span className="material-symbols-outlined text-orange-500 text-[20px] shrink-0">directions_run</span>
                             <div className="text-left min-w-0">
-                                <div className="text-sm font-bold text-[var(--color-text-main)] leading-none mb-1">
+                                <div className="text-sm font-bold text-main leading-none mb-1">
                                     {nextSprint ? nextSprint.name : t('None', 'None')}
                                 </div>
-                                <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-tight truncate block">{t('Next Sprint', 'Next Sprint')}</span>
+                                <span className="text-[10px] font-bold text-muted uppercase tracking-tight truncate block">{t('Next Sprint', 'Next Sprint')}</span>
                             </div>
                         </div>
 
@@ -1042,29 +1042,29 @@ export const ProjectOverview = () => {
                         <div className="py-3 px-6 flex items-center gap-4">
                             <span className="material-symbols-outlined text-indigo-500 text-[20px] shrink-0">event_upcoming</span>
                             <div className="text-left min-w-0">
-                                <div className="text-sm font-bold text-[var(--color-text-main)] leading-none mb-1">
+                                <div className="text-sm font-bold text-main leading-none mb-1">
                                     {upcomingDeadlines[0]
                                         ? format(new Date(upcomingDeadlines[0].dueDate!), dateFormat, { locale: dateLocale })
                                         : t('projectOverview.metrics.none')}
                                 </div>
-                                <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-tight truncate block">{t('projectOverview.metrics.nextDeadline')}</span>
+                                <span className="text-[10px] font-bold text-muted uppercase tracking-tight truncate block">{t('projectOverview.metrics.nextDeadline')}</span>
                             </div>
                         </div>
                     </div>
 
                     {/* Mobile View Toggle */}
                     <div className="md:hidden px-6 pb-6 pt-0">
-                        <div className="flex bg-[var(--color-surface-hover)] p-0.5 rounded-lg border border-[var(--color-surface-border)] w-full">
+                        <div className="flex bg-surface-hover p-0.5 rounded-lg border border-surface w-full">
                             <button
                                 onClick={() => setViewMode('overview')}
-                                className={`flex-1 px-3 py-2 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${viewMode === 'overview' ? 'bg-white dark:bg-slate-700 shadow-sm text-[var(--color-text-main)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                                className={`flex-1 px-3 py-2 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${viewMode === 'overview' ? 'bg-white dark:bg-slate-700 shadow-sm text-main' : 'text-muted hover:text-main'}`}
                             >
                                 <span className="material-symbols-outlined text-[16px]">grid_view</span>
                                 <span>{t('nav.overview')}</span>
                             </button>
                             <button
                                 onClick={() => setViewMode('mindmap')}
-                                className={`flex-1 px-3 py-2 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${viewMode === 'mindmap' ? 'bg-white dark:bg-slate-700 shadow-sm text-[var(--color-text-main)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                                className={`flex-1 px-3 py-2 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${viewMode === 'mindmap' ? 'bg-white dark:bg-slate-700 shadow-sm text-main' : 'text-muted hover:text-main'}`}
                             >
                                 <span className="material-symbols-outlined text-[16px]">hub</span>
                                 <span>{t('nav.mindmap')}</span>
@@ -1088,17 +1088,17 @@ export const ProjectOverview = () => {
                                 {/* Snapshot */}
                                 <section data-onboarding-id="project-overview-snapshot" className="space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <h2 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectOverview.snapshot.title')}</h2>
-                                        <span className="text-xs text-[var(--color-text-muted)] uppercase tracking-[0.2em]">{t('projectOverview.snapshot.subtitle')}</span>
+                                        <h2 className="text-lg font-bold text-main">{t('projectOverview.snapshot.title')}</h2>
+                                        <span className="text-xs text-muted uppercase tracking-[0.2em]">{t('projectOverview.snapshot.subtitle')}</span>
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                         <Card className="h-full min-h-[180px] flex flex-col justify-between">
                                             <div className="flex items-center justify-between">
-                                                <h3 className="text-sm font-bold text-[var(--color-text-main)] flex items-center gap-2">
-                                                    <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)]">query_stats</span>
+                                                <h3 className="text-sm font-bold text-main flex items-center gap-2">
+                                                    <span className="material-symbols-outlined text-[18px] text-subtle">query_stats</span>
                                                     {t('projectOverview.snapshot.health.title')}
                                                 </h3>
-                                                <button onClick={() => setShowHealthModal(true)} className="text-[10px] font-semibold text-[var(--color-primary)] hover:underline">
+                                                <button onClick={() => setShowHealthModal(true)} className="text-[10px] font-semibold text-primary hover:underline">
                                                     {t('projectOverview.snapshot.health.details')}
                                                 </button>
                                             </div>
@@ -1115,17 +1115,17 @@ export const ProjectOverview = () => {
                                                         }`}>
                                                         {healthStatusLabels[health.status] || health.status}
                                                     </div>
-                                                    <div className="text-[10px] text-[var(--color-text-muted)]">{t('projectOverview.snapshot.health.score')}</div>
+                                                    <div className="text-[10px] text-muted">{t('projectOverview.snapshot.health.score')}</div>
                                                 </div>
                                             </div>
                                             <div className="mt-3">
-                                                <p className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('projectOverview.snapshot.health.topRisks')}</p>
+                                                <p className="text-[10px] font-bold uppercase tracking-wider text-muted">{t('projectOverview.snapshot.health.topRisks')}</p>
                                                 {health.factors.filter(f => f.type === 'negative').length > 0 ? (
                                                     <ul className="mt-2 space-y-1">
                                                         {health.factors.filter(f => f.type === 'negative').slice(0, 2).map((factor) => {
                                                             const { label } = getHealthFactorText(factor, t);
                                                             return (
-                                                                <li key={factor.id} className="text-[11px] text-[var(--color-text-main)] flex items-center gap-1.5">
+                                                                <li key={factor.id} className="text-[11px] text-main flex items-center gap-1.5">
                                                                     <span className="text-rose-500 text-[8px]">●</span>
                                                                     <span className="line-clamp-1">{label}</span>
                                                                 </li>
@@ -1143,68 +1143,68 @@ export const ProjectOverview = () => {
 
                                         <Card className="h-full min-h-[180px] flex flex-col">
                                             <div className="flex items-center justify-between">
-                                                <h3 className="text-sm font-bold text-[var(--color-text-main)] flex items-center gap-2">
-                                                    <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)]">inbox</span>
+                                                <h3 className="text-sm font-bold text-main flex items-center gap-2">
+                                                    <span className="material-symbols-outlined text-[18px] text-subtle">inbox</span>
                                                     {t('projectOverview.snapshot.workload.title')}
                                                 </h3>
-                                                <span className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">
+                                                <span className="text-[10px] text-muted uppercase tracking-wider">
                                                     {t('projectOverview.snapshot.workload.open').replace('{count}', String(openTasks))}
                                                 </span>
                                             </div>
                                             <div className="mt-3 space-y-2 flex-1">
-                                                <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--color-surface-hover)]">
-                                                    <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                                                <div className="flex items-center justify-between p-2 rounded-lg bg-surface-hover">
+                                                    <div className="flex items-center gap-2 text-xs text-muted">
                                                         <span className="material-symbols-outlined text-[14px]">list_alt</span>
                                                         {t('projectOverview.snapshot.workload.openTasks')}
                                                     </div>
-                                                    <span className="text-sm font-bold text-[var(--color-text-main)]">{openTasks}</span>
+                                                    <span className="text-sm font-bold text-main">{openTasks}</span>
                                                 </div>
-                                                <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--color-surface-hover)]">
-                                                    <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                                                <div className="flex items-center justify-between p-2 rounded-lg bg-surface-hover">
+                                                    <div className="flex items-center gap-2 text-xs text-muted">
                                                         <span className="material-symbols-outlined text-[14px] text-rose-500">priority_high</span>
                                                         {t('tasks.priority.urgent')}
                                                     </div>
-                                                    <span className="text-sm font-bold text-[var(--color-text-main)]">{urgentCount}</span>
+                                                    <span className="text-sm font-bold text-main">{urgentCount}</span>
                                                 </div>
-                                                <div className="flex items-center justify-between p-2 rounded-lg bg-[var(--color-surface-hover)]">
-                                                    <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
+                                                <div className="flex items-center justify-between p-2 rounded-lg bg-surface-hover">
+                                                    <div className="flex items-center gap-2 text-xs text-muted">
                                                         <span className="material-symbols-outlined text-[14px]">{workloadMetric.icon}</span>
                                                         {workloadMetric.label}
                                                     </div>
-                                                    <span className="text-sm font-bold text-[var(--color-text-main)]">{workloadMetric.value}</span>
+                                                    <span className="text-sm font-bold text-main">{workloadMetric.value}</span>
                                                 </div>
                                             </div>
-                                            <Link to={`/project/${id}/tasks`} className="text-[10px] font-semibold text-[var(--color-primary)] hover:underline mt-3">
+                                            <Link to={`/project/${id}/tasks`} className="text-[10px] font-semibold text-primary hover:underline mt-3">
                                                 {t('projectOverview.snapshot.workload.viewTasks')}
                                             </Link>
                                         </Card>
 
                                         <Card className="h-full min-h-[180px] flex flex-col justify-between">
                                             <div className="flex items-center justify-between">
-                                                <h3 className="text-sm font-bold text-[var(--color-text-main)] flex items-center gap-2">
-                                                    <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)]">insights</span>
+                                                <h3 className="text-sm font-bold text-main flex items-center gap-2">
+                                                    <span className="material-symbols-outlined text-[18px] text-subtle">insights</span>
                                                     {t('projectOverview.snapshot.activity.title')}
                                                 </h3>
-                                                <Link to={`/project/${id}/activity`} className="text-[10px] font-semibold text-[var(--color-primary)] hover:underline">
+                                                <Link to={`/project/${id}/activity`} className="text-[10px] font-semibold text-primary hover:underline">
                                                     {t('projectOverview.snapshot.activity.history')}
                                                 </Link>
                                             </div>
                                             <div className="grid grid-cols-2 gap-4 mt-3">
                                                 <div>
-                                                    <div className="text-xl font-bold text-[var(--color-text-main)]">{activity.length}</div>
-                                                    <div className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{t('projectOverview.snapshot.activity.events')}</div>
+                                                    <div className="text-xl font-bold text-main">{activity.length}</div>
+                                                    <div className="text-[10px] font-bold text-muted uppercase tracking-wider">{t('projectOverview.snapshot.activity.events')}</div>
                                                 </div>
                                                 <div>
                                                     <div className="text-xl font-bold text-indigo-600">{activity.filter(a => a.type === 'comment').length}</div>
-                                                    <div className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{t('projectOverview.snapshot.activity.comments')}</div>
+                                                    <div className="text-[10px] font-bold text-muted uppercase tracking-wider">{t('projectOverview.snapshot.activity.comments')}</div>
                                                 </div>
                                             </div>
-                                            <div className="mt-3 text-[11px] text-[var(--color-text-muted)]">
+                                            <div className="mt-3 text-[11px] text-muted">
                                                 {activity[0]
                                                     ? (
                                                         <>
-                                                            <span className="font-semibold text-[var(--color-text-main)]">{activity[0].user}</span> {activity[0].action}
-                                                            <span className="block text-[10px] text-[var(--color-text-subtle)] mt-1">{timeAgo(activity[0].createdAt)}</span>
+                                                            <span className="font-semibold text-main">{activity[0].user}</span> {activity[0].action}
+                                                            <span className="block text-[10px] text-subtle mt-1">{timeAgo(activity[0].createdAt)}</span>
                                                         </>
                                                     )
                                                     : t('projectOverview.snapshot.activity.empty')}
@@ -1213,27 +1213,27 @@ export const ProjectOverview = () => {
 
                                         <Card className="h-full min-h-[180px] flex flex-col">
                                             <div className="flex items-center justify-between">
-                                                <h3 className="text-sm font-bold text-[var(--color-text-main)] flex items-center gap-2">
-                                                    <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)]">event_upcoming</span>
+                                                <h3 className="text-sm font-bold text-main flex items-center gap-2">
+                                                    <span className="material-symbols-outlined text-[18px] text-subtle">event_upcoming</span>
                                                     {t('projectOverview.snapshot.upcoming.title')}
                                                 </h3>
-                                                <Link to={`/project/${id}/tasks`} className="text-[10px] font-semibold text-[var(--color-primary)] hover:underline">
+                                                <Link to={`/project/${id}/tasks`} className="text-[10px] font-semibold text-primary hover:underline">
                                                     {t('projectOverview.snapshot.upcoming.view')}
                                                 </Link>
                                             </div>
                                             <div className="mt-3 space-y-2 flex-1">
                                                 {upcomingDeadlines.length === 0 ? (
-                                                    <p className="text-sm text-[var(--color-text-muted)]">{t('projectOverview.snapshot.upcoming.empty')}</p>
+                                                    <p className="text-sm text-muted">{t('projectOverview.snapshot.upcoming.empty')}</p>
                                                 ) : (
                                                     upcomingDeadlines.slice(0, 2).map(task => (
-                                                        <div key={task.id} className="flex items-center justify-between gap-3 p-2 rounded-lg border border-[var(--color-surface-border)]">
+                                                        <div key={task.id} className="flex items-center justify-between gap-3 p-2 rounded-lg border border-surface">
                                                             <div className="min-w-0">
-                                                                <p className="text-xs font-semibold text-[var(--color-text-main)] truncate">{task.title}</p>
-                                                                <p className="text-[10px] text-[var(--color-text-muted)]">
+                                                                <p className="text-xs font-semibold text-main truncate">{task.title}</p>
+                                                                <p className="text-[10px] text-muted">
                                                                     {task.priority ? (priorityLabels[task.priority] || task.priority) : t('projectOverview.snapshot.upcoming.priorityNotSet')}
                                                                 </p>
                                                             </div>
-                                                            <span className="text-[10px] font-bold text-[var(--color-text-muted)] shrink-0">
+                                                            <span className="text-[10px] font-bold text-muted shrink-0">
                                                                 {format(new Date(task.dueDate!), dateFormat, { locale: dateLocale })}
                                                             </span>
                                                         </div>
@@ -1241,7 +1241,7 @@ export const ProjectOverview = () => {
                                                 )}
                                             </div>
                                             {upcomingDeadlines.length > 2 && (
-                                                <p className="text-[10px] text-[var(--color-text-muted)] mt-2">
+                                                <p className="text-[10px] text-muted mt-2">
                                                     {t('projectOverview.snapshot.upcoming.moreTasks').replace('{count}', String(upcomingDeadlines.length - 2))}
                                                 </p>
                                             )}
@@ -1252,8 +1252,8 @@ export const ProjectOverview = () => {
                                 {/* Execution */}
                                 <section data-onboarding-id="project-overview-execution" className="space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <h2 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectOverview.execution.title')}</h2>
-                                        <div className="flex items-center gap-3 text-[10px] font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
+                                        <h2 className="text-lg font-bold text-main">{t('projectOverview.execution.title')}</h2>
+                                        <div className="flex items-center gap-3 text-[10px] font-semibold text-muted uppercase tracking-wider">
                                             <span>{t('projectOverview.execution.openTasks').replace('{count}', String(openTasks))}</span>
                                             {showIssueCard && <span>{t('projectOverview.execution.openIssues').replace('{count}', String(openIssues))}</span>}
                                             {showIdeaCard && <span>{t('projectOverview.execution.flows').replace('{count}', String(ideas.length))}</span>}
@@ -1263,16 +1263,16 @@ export const ProjectOverview = () => {
                                         <Card className={`${executionSideCards === 0 ? 'lg:col-span-3' : 'lg:col-span-2'} h-full flex flex-col`}>
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-2">
-                                                    <span className="material-symbols-outlined text-[var(--color-text-subtle)]">checklist</span>
-                                                    <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('nav.tasks')}</h3>
+                                                    <span className="material-symbols-outlined text-subtle">checklist</span>
+                                                    <h3 className="text-lg font-bold text-main">{t('nav.tasks')}</h3>
                                                 </div>
-                                                <Link to={`/project/${id}/tasks`} className="text-xs font-semibold text-[var(--color-primary)] hover:underline">
+                                                <Link to={`/project/${id}/tasks`} className="text-xs font-semibold text-primary hover:underline">
                                                     {t('projectOverview.execution.viewAllTasks')}
                                                 </Link>
                                             </div>
                                             <div className="mt-4 space-y-2 flex-1">
                                                 {recentTasks.length === 0 ? (
-                                                    <div className="flex-1 flex items-center justify-center text-xs text-[var(--color-text-muted)]">
+                                                    <div className="flex-1 flex items-center justify-center text-xs text-muted">
                                                         {t('projectOverview.execution.noActiveTasks')}
                                                     </div>
                                                 ) : (
@@ -1280,7 +1280,7 @@ export const ProjectOverview = () => {
                                                         <div
                                                             key={task.id}
                                                             onClick={() => navigate(`/project/${id}/tasks/${task.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
-                                                            className="group flex items-center gap-3 rounded-lg border border-[var(--color-surface-border)] px-3 py-2.5 hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
+                                                            className="group flex items-center gap-3 rounded-lg border border-surface px-3 py-2.5 hover:bg-surface-hover transition-colors cursor-pointer"
                                                         >
                                                             <button
                                                                 onClick={(e) => handleToggleTask(task.id, task.isCompleted, e)}
@@ -1288,13 +1288,13 @@ export const ProjectOverview = () => {
                                                         size-5 rounded-md border flex items-center justify-center transition-all duration-200 shrink-0
                                                         ${task.isCompleted
                                                                         ? 'bg-green-500 border-green-500 text-white'
-                                                                        : 'border-[var(--color-surface-border)] hover:border-green-500 text-transparent bg-transparent'}
+                                                                        : 'border-surface hover:border-green-500 text-transparent bg-transparent'}
                                                     `}
                                                             >
                                                                 <span className="material-symbols-outlined text-[14px] font-bold">check</span>
                                                             </button>
                                                             <div className="min-w-0 flex-1">
-                                                                <p className={`text-xs font-semibold truncate ${task.isCompleted ? 'line-through text-[var(--color-text-muted)]' : 'text-[var(--color-text-main)]'}`}>
+                                                                <p className={`text-xs font-semibold truncate ${task.isCompleted ? 'line-through text-muted' : 'text-main'}`}>
                                                                     {task.title}
                                                                 </p>
                                                                 <div className="flex items-center gap-2 mt-1">
@@ -1317,7 +1317,7 @@ export const ProjectOverview = () => {
                                                                     )}
                                                                     {/* Subtask Count */}
                                                                     {subtaskStats[task.id]?.total > 0 && (
-                                                                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-slate-100 dark:bg-white/5 text-[var(--color-text-muted)]">
+                                                                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-semibold bg-slate-100 dark:bg-white/5 text-muted">
                                                                             <span className="material-symbols-outlined text-[11px]">checklist</span>
                                                                             {subtaskStats[task.id].done}/{subtaskStats[task.id].total}
                                                                         </div>
@@ -1339,16 +1339,16 @@ export const ProjectOverview = () => {
                                                                             const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
                                                                             return (
                                                                                 <div className="flex items-center gap-1.5">
-                                                                                    <span className="text-[9px] font-semibold text-[var(--color-text-muted)] whitespace-nowrap">
+                                                                                    <span className="text-[9px] font-semibold text-muted whitespace-nowrap">
                                                                                         {format(new Date(task.startDate!), dateFormat, { locale: dateLocale })}
                                                                                     </span>
                                                                                     <div className="w-12 h-1.5 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden relative">
                                                                                         <div
-                                                                                            className={`h-full absolute top-0 left-0 rounded-full transition-all duration-1000 ${isOverdue ? 'bg-rose-500' : 'bg-[var(--color-primary)]'}`}
+                                                                                            className={`h-full absolute top-0 left-0 rounded-full transition-all duration-1000 ${isOverdue ? 'bg-rose-500' : 'bg-primary'}`}
                                                                                             style={{ width: `${pct}%` }}
                                                                                         />
                                                                                     </div>
-                                                                                    <span className={`text-[9px] font-semibold whitespace-nowrap ${isOverdue ? 'text-rose-500' : 'text-[var(--color-text-muted)]'}`}>
+                                                                                    <span className={`text-[9px] font-semibold whitespace-nowrap ${isOverdue ? 'text-rose-500' : 'text-muted'}`}>
                                                                                         {format(dueDate!, dateFormat, { locale: dateLocale })}
                                                                                     </span>
                                                                                 </div>
@@ -1358,7 +1358,7 @@ export const ProjectOverview = () => {
                                                                         // Due date only
                                                                         if (hasDue && dueDate) {
                                                                             return (
-                                                                                <span className={`text-[10px] ${isOverdue ? 'text-rose-500 font-bold' : 'text-[var(--color-text-muted)]'}`}>
+                                                                                <span className={`text-[10px] ${isOverdue ? 'text-rose-500 font-bold' : 'text-muted'}`}>
                                                                                     {format(dueDate, dateFormat, { locale: dateLocale })}
                                                                                 </span>
                                                                             );
@@ -1412,8 +1412,8 @@ export const ProjectOverview = () => {
                                                                 className={`
                                                         size-8 rounded-full flex items-center justify-center transition-all shrink-0
                                                                 ${isPinned(task.id)
-                                                                        ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10'
-                                                                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] opacity-0 group-hover:opacity-100'}
+                                                                        ? 'text-primary bg-primary/10'
+                                                                        : 'text-muted hover:text-main hover:bg-surface-hover opacity-0 group-hover:opacity-100'}
                                                     `}
                                                                 title={isPinned(task.id) ? t('projectOverview.execution.unpinTask') : t('projectOverview.execution.pinTask')}
                                                             >
@@ -1430,11 +1430,11 @@ export const ProjectOverview = () => {
                                                 {showIdeaCard && (
                                                     <Card className={`flex flex-col ${executionSideCards > 1 ? 'lg:h-full' : ''}`}>
                                                         <div className="flex items-center justify-between">
-                                                            <h3 className="text-lg font-bold text-[var(--color-text-main)] flex items-center gap-2">
-                                                                <span className="material-symbols-outlined text-[var(--color-text-subtle)]">lightbulb</span>
+                                                            <h3 className="text-lg font-bold text-main flex items-center gap-2">
+                                                                <span className="material-symbols-outlined text-subtle">lightbulb</span>
                                                                 {t('projectOverview.execution.flowSpotlight')}
                                                             </h3>
-                                                            <Link to={`/project/${id}/flows`} className="text-xs font-semibold text-[var(--color-primary)] hover:underline">
+                                                            <Link to={`/project/${id}/flows`} className="text-xs font-semibold text-primary hover:underline">
                                                                 {t('projectOverview.execution.viewAllFlows')}
                                                             </Link>
                                                         </div>
@@ -1443,7 +1443,7 @@ export const ProjectOverview = () => {
                                                             return (
                                                                 <Link
                                                                     to={`/project/${id}/flows/${topIdea.id}`}
-                                                                    className="group mt-4 flex-1 block rounded-xl border border-[var(--color-surface-border)] p-4 hover:shadow-md hover:border-[var(--color-primary)]/30 transition-all bg-[var(--color-surface-paper)]"
+                                                                    className="group mt-4 flex-1 block rounded-xl border border-surface p-4 hover:shadow-md hover:border-primary/30 transition-all bg-surface-paper"
                                                                 >
                                                                     {/* Type Badge Row */}
                                                                     <div className="flex items-center gap-2 mb-2">
@@ -1457,7 +1457,7 @@ export const ProjectOverview = () => {
                                                                             </span>
                                                                         )}
                                                                         {topIdea.stage && (
-                                                                            <span className="text-[10px] font-medium text-[var(--color-text-muted)] flex items-center gap-1 ml-auto">
+                                                                            <span className="text-[10px] font-medium text-muted flex items-center gap-1 ml-auto">
                                                                                 <span className="material-symbols-outlined text-[12px]">layers</span>
                                                                                 {topIdea.stage}
                                                                             </span>
@@ -1465,19 +1465,19 @@ export const ProjectOverview = () => {
                                                                     </div>
 
                                                                     {/* Title */}
-                                                                    <h4 className="font-semibold text-[var(--color-text-main)] text-sm mb-1.5 line-clamp-2 group-hover:text-[var(--color-primary)] transition-colors">
+                                                                    <h4 className="font-semibold text-main text-sm mb-1.5 line-clamp-2 group-hover:text-primary transition-colors">
                                                                         {topIdea.title}
                                                                     </h4>
 
                                                                     {/* Description */}
                                                                     {topIdea.description && (
-                                                                        <p className="text-xs text-[var(--color-text-muted)] line-clamp-2 mb-3">
+                                                                        <p className="text-xs text-muted line-clamp-2 mb-3">
                                                                             {topIdea.description}
                                                                         </p>
                                                                     )}
 
                                                                     {/* Meta Row */}
-                                                                    <div className="flex items-center gap-4 text-[var(--color-text-subtle)]">
+                                                                    <div className="flex items-center gap-4 text-subtle">
                                                                         <span className="flex items-center gap-1 text-xs">
                                                                             <span className="material-symbols-outlined text-[14px]">thumb_up</span>
                                                                             {topIdea.votes || 0}
@@ -1490,7 +1490,7 @@ export const ProjectOverview = () => {
                                                                 </Link>
                                                             );
                                                         })() : (
-                                                            <div className="mt-4 flex-1 flex items-center justify-center text-sm text-[var(--color-text-muted)]">
+                                                            <div className="mt-4 flex-1 flex items-center justify-center text-sm text-muted">
                                                                 {t('projectOverview.execution.noFlows')}
                                                             </div>
                                                         )}
@@ -1500,27 +1500,27 @@ export const ProjectOverview = () => {
                                                 {showIssueCard && (
                                                     <Card className={`flex flex-col ${executionSideCards > 1 ? 'lg:h-full' : ''}`}>
                                                         <div className="flex items-center justify-between">
-                                                            <h3 className="text-lg font-bold text-[var(--color-text-main)] flex items-center gap-2">
-                                                                <span className="material-symbols-outlined text-[var(--color-text-subtle)]">bug_report</span>
+                                                            <h3 className="text-lg font-bold text-main flex items-center gap-2">
+                                                                <span className="material-symbols-outlined text-subtle">bug_report</span>
                                                                 {t('projectOverview.execution.issueFocus')}
                                                             </h3>
-                                                            <Link to={`/project/${id}/issues`} className="text-xs font-semibold text-[var(--color-primary)] hover:underline">
+                                                            <Link to={`/project/${id}/issues`} className="text-xs font-semibold text-primary hover:underline">
                                                                 {t('projectOverview.execution.viewAllIssues')}
                                                             </Link>
                                                         </div>
 
                                                         <div className="mt-4 space-y-2 flex-1 max-h-[500px] overflow-y-auto -mr-2">
                                                             {recentIssues.length === 0 ? (
-                                                                <div className="text-sm text-[var(--color-text-muted)]">{t('projectOverview.execution.noOpenIssues')}</div>
+                                                                <div className="text-sm text-muted">{t('projectOverview.execution.noOpenIssues')}</div>
                                                             ) : (
                                                                 recentIssues.map(issue => (
                                                                     <div
                                                                         key={issue.id}
                                                                         onClick={() => navigate(`/project/${id}/issues/${issue.id}`)}
-                                                                        className="group flex items-start justify-between gap-3 rounded-lg border border-[var(--color-surface-border)] px-3 py-2.5 hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
+                                                                        className="group flex items-start justify-between gap-3 rounded-lg border border-surface px-3 py-2.5 hover:bg-surface-hover transition-colors cursor-pointer"
                                                                     >
                                                                         <div className="min-w-0 flex-1">
-                                                                            <p className="text-xs font-semibold text-[var(--color-text-main)] truncate">{issue.title}</p>
+                                                                            <p className="text-xs font-semibold text-main truncate">{issue.title}</p>
                                                                             <div className="flex items-center gap-2 mt-1">
                                                                                 <div className={`
                                                                         flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border
@@ -1579,13 +1579,13 @@ export const ProjectOverview = () => {
                                                                                     const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
                                                                                     return (
                                                                                         <div className="flex flex-col gap-1.5 w-28">
-                                                                                            <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-[0.1em] text-[var(--color-text-muted)]">
+                                                                                            <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-[0.1em] text-muted">
                                                                                                 <span>{t('projectOverview.execution.timeline')}</span>
                                                                                                 <span>{Math.round(pct)}%</span>
                                                                                             </div>
                                                                                             <div className="h-1.5 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden relative ring-1 ring-black/[0.02]">
                                                                                                 <div
-                                                                                                    className={`h-full absolute top-0 left-0 rounded-full transition-all duration-1000 ${isOverdue ? 'bg-rose-500' : 'bg-[var(--color-primary)]'}`}
+                                                                                                    className={`h-full absolute top-0 left-0 rounded-full transition-all duration-1000 ${isOverdue ? 'bg-rose-500' : 'bg-primary'}`}
                                                                                                     style={{ width: `${pct}%` }}
                                                                                                 />
                                                                                             </div>
@@ -1602,7 +1602,7 @@ export const ProjectOverview = () => {
                                                                                 // Due date only
                                                                                 if (hasDue && dueDate) {
                                                                                     return (
-                                                                                        <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border ${isOverdue ? 'border-rose-500/30 bg-rose-500/10 text-rose-500' : 'border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] text-[var(--color-text-main)]'}`}>
+                                                                                        <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border ${isOverdue ? 'border-rose-500/30 bg-rose-500/10 text-rose-500' : 'border-surface bg-surface text-main'}`}>
                                                                                             <span className="material-symbols-outlined text-[14px]">event</span>
                                                                                             <div className="flex flex-col">
                                                                                                 <span className="text-[8px] font-black uppercase tracking-[0.15em] opacity-70">
@@ -1634,8 +1634,8 @@ export const ProjectOverview = () => {
                                                                                 className={`
                                                                         size-8 rounded-full flex items-center justify-center transition-colors
                                                                         ${isPinned(issue.id)
-                                                                                        ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10'
-                                                                                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}
+                                                                                        ? 'text-primary bg-primary/10'
+                                                                                        : 'text-muted hover:text-main hover:bg-surface-hover'}
                                                                     `}
                                                                                 title={isPinned(issue.id) ? t('projectOverview.execution.unpinIssue') : t('projectOverview.execution.pinIssue')}
                                                                             >
@@ -1656,12 +1656,12 @@ export const ProjectOverview = () => {
                                     {initiatives.length > 0 && (
                                         <div className="mt-6">
                                             <div className="flex items-center justify-between mb-3">
-                                                <h3 className="text-sm font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                                <h3 className="text-sm font-bold text-main flex items-center gap-2">
                                                     <span className="material-symbols-outlined text-[16px] text-indigo-500">rocket_launch</span>
                                                     {t('projectOverview.initiatives.title')}
-                                                    <span className="text-xs font-medium text-[var(--color-text-muted)]">({initiatives.length})</span>
+                                                    <span className="text-xs font-medium text-muted">({initiatives.length})</span>
                                                 </h3>
-                                                <Link to={`/project/${id}/tasks`} className="text-xs font-semibold text-[var(--color-primary)] hover:underline">
+                                                <Link to={`/project/${id}/tasks`} className="text-xs font-semibold text-primary hover:underline">
                                                     {t('projectOverview.initiatives.viewAll')}
                                                 </Link>
                                             </div>
@@ -1700,7 +1700,7 @@ export const ProjectOverview = () => {
                                                         <div
                                                             key={initiative.id}
                                                             onClick={() => navigate(`/project/${id}/tasks/${initiative.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
-                                                            className={`group relative rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 hover:bg-[var(--color-surface-hover)] transition-all cursor-pointer ${glowClass} ${isBlocked ? 'border-rose-500/40' :
+                                                            className={`group relative rounded-xl border border-surface bg-card p-4 hover:bg-surface-hover transition-all cursor-pointer ${glowClass} ${isBlocked ? 'border-rose-500/40' :
                                                                 isInProgress ? 'border-blue-500/30 hover:border-blue-500/50' :
                                                                     isReview ? 'border-purple-500/30 hover:border-purple-500/50' :
                                                                         'hover:border-indigo-500/30'
@@ -1713,7 +1713,7 @@ export const ProjectOverview = () => {
                                                                 }`} />
 
                                                             <div className="flex items-start justify-between gap-2 mb-2">
-                                                                <h4 className="text-sm font-semibold text-[var(--color-text-main)] line-clamp-2 leading-tight">
+                                                                <h4 className="text-sm font-semibold text-main line-clamp-2 leading-tight">
                                                                     {initiative.title}
                                                                 </h4>
                                                                 <span className="material-symbols-outlined text-[14px] text-indigo-500 shrink-0">rocket_launch</span>
@@ -1721,7 +1721,7 @@ export const ProjectOverview = () => {
 
                                                             {/* Description */}
                                                             {initiative.description && (
-                                                                <p className="text-[11px] text-[var(--color-text-muted)] line-clamp-2 mb-3">
+                                                                <p className="text-[11px] text-muted line-clamp-2 mb-3">
                                                                     {initiative.description}
                                                                 </p>
                                                             )}
@@ -1770,7 +1770,7 @@ export const ProjectOverview = () => {
                                                                         })}
                                                                     </div>
                                                                     {initiative.assignedGroupIds.length > 3 && (
-                                                                        <span className="text-[10px] text-[var(--color-text-muted)]">+{initiative.assignedGroupIds.length - 3}</span>
+                                                                        <span className="text-[10px] text-muted">+{initiative.assignedGroupIds.length - 3}</span>
                                                                     )}
                                                                 </div>
                                                             )}
@@ -1778,14 +1778,14 @@ export const ProjectOverview = () => {
                                                             {/* Subtask progress if available */}
                                                             {subtaskStats[initiative.id]?.total > 0 && (
                                                                 <div className="flex items-center gap-2 mb-2">
-                                                                    <span className="material-symbols-outlined text-[12px] text-[var(--color-text-muted)]">checklist</span>
+                                                                    <span className="material-symbols-outlined text-[12px] text-muted">checklist</span>
                                                                     <div className="flex-1 h-1.5 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
                                                                         <div
                                                                             className="h-full bg-indigo-500 rounded-full transition-all"
                                                                             style={{ width: `${(subtaskStats[initiative.id].done / subtaskStats[initiative.id].total) * 100}%` }}
                                                                         />
                                                                     </div>
-                                                                    <span className="text-[10px] font-semibold text-[var(--color-text-muted)]">
+                                                                    <span className="text-[10px] font-semibold text-muted">
                                                                         {subtaskStats[initiative.id].done}/{subtaskStats[initiative.id].total}
                                                                     </span>
                                                                 </div>
@@ -1793,7 +1793,7 @@ export const ProjectOverview = () => {
 
                                                             {/* Timeline */}
                                                             {hasStart && hasDue && (
-                                                                <div className="flex items-center gap-1.5 text-[9px] text-[var(--color-text-muted)]">
+                                                                <div className="flex items-center gap-1.5 text-[9px] text-muted">
                                                                     <span className="material-symbols-outlined text-[12px]">schedule</span>
                                                                     <span className="font-semibold">{format(new Date(initiative.startDate!), dateFormat, { locale: dateLocale })}</span>
                                                                     <div className="flex-1 h-1 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
@@ -1809,7 +1809,7 @@ export const ProjectOverview = () => {
                                                             )}
                                                             {/* Due Date Only */}
                                                             {!hasStart && hasDue && (
-                                                                <div className={`flex items-center gap-1.5 text-[9px] ${isOverdue ? 'text-rose-500 font-semibold' : 'text-[var(--color-text-muted)]'}`}>
+                                                                <div className={`flex items-center gap-1.5 text-[9px] ${isOverdue ? 'text-rose-500 font-semibold' : 'text-muted'}`}>
                                                                     <span className="material-symbols-outlined text-[12px] fill-current">event</span>
                                                                     {t('projectOverview.initiatives.due')} {format(dueDate!, dateFormat, { locale: dateLocale })}
                                                                 </div>
@@ -1825,39 +1825,39 @@ export const ProjectOverview = () => {
                                 {/* Updates */}
                                 <section className="space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <h2 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectOverview.updates.title')}</h2>
-                                        <span className="text-xs text-[var(--color-text-muted)] uppercase tracking-[0.2em]">{t('projectOverview.updates.subtitle')}</span>
+                                        <h2 className="text-lg font-bold text-main">{t('projectOverview.updates.title')}</h2>
+                                        <span className="text-xs text-muted uppercase tracking-[0.2em]">{t('projectOverview.updates.subtitle')}</span>
                                     </div>
                                     <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
                                         <Card className={`flex flex-col ${showGithubCard ? 'lg:col-span-2' : 'lg:col-span-4'}`}>
                                             <div className="flex items-center justify-between mb-4">
-                                                <h3 className="text-lg font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                                <h3 className="text-lg font-bold text-main flex items-center gap-2">
                                                     <span className="material-symbols-outlined text-slate-500">history</span>
                                                     {t('projectOverview.updates.latestActivity')}
                                                 </h3>
-                                                <Link to={`/project/${id}/activity`} className="text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-primary)]">
+                                                <Link to={`/project/${id}/activity`} className="text-xs font-semibold text-muted hover:text-primary">
                                                     {t('projectOverview.updates.history')}
                                                 </Link>
                                             </div>
 
-                                            <div className="relative pl-0 space-y-5 max-h-[320px] overflow-y-auto pr-2 before:absolute before:inset-y-2 before:left-[15px] before:w-px before:bg-[var(--color-surface-border)]">
+                                            <div className="relative pl-0 space-y-5 max-h-[320px] overflow-y-auto pr-2 before:absolute before:inset-y-2 before:left-[15px] before:w-px before:bg-surface-border">
                                                 {activity.slice(0, 6).map((item) => {
                                                     const { icon, color, bg } = activityIcon(item.type, item.action);
                                                     return (
                                                         <div key={item.id} className="relative flex gap-3 pl-10">
-                                                            <div className={`absolute left-0 top-0 size-8 rounded-full border-2 border-white dark:border-[var(--color-surface-card)] ${bg} z-10 flex items-center justify-center`}>
+                                                            <div className={`absolute left-0 top-0 size-8 rounded-full border-2 border-white dark:border-card ${bg} z-10 flex items-center justify-center`}>
                                                                 <span className={`material-symbols-outlined text-[16px] ${color}`}>{icon}</span>
                                                             </div>
                                                             <div className="space-y-0.5 pt-0.5">
-                                                                <p className="text-xs text-[var(--color-text-main)] leading-snug">
+                                                                <p className="text-xs text-main leading-snug">
                                                                     <span className="font-semibold">{item.user}</span> {item.action}
                                                                 </p>
-                                                                <p className="text-[10px] text-[var(--color-text-muted)]">{timeAgo(item.createdAt)}</p>
+                                                                <p className="text-[10px] text-muted">{timeAgo(item.createdAt)}</p>
                                                             </div>
                                                         </div>
                                                     );
                                                 })}
-                                                {activity.length === 0 && <p className="text-xs text-[var(--color-text-muted)] pl-2">{t('projectOverview.updates.noActivity')}</p>}
+                                                {activity.length === 0 && <p className="text-xs text-muted pl-2">{t('projectOverview.updates.noActivity')}</p>}
                                             </div>
                                         </Card>
 
@@ -1869,8 +1869,8 @@ export const ProjectOverview = () => {
                                                             <span className="material-symbols-outlined text-xl">terminal</span>
                                                         </div>
                                                         <div className="min-w-0">
-                                                            <h3 className="font-bold text-[var(--color-text-main)] truncate">{t('projectOverview.github.title')}</h3>
-                                                            <p className="text-[10px] text-[var(--color-text-muted)] font-medium uppercase tracking-tight line-clamp-1">
+                                                            <h3 className="font-bold text-main truncate">{t('projectOverview.github.title')}</h3>
+                                                            <p className="text-[10px] text-muted font-medium uppercase tracking-tight line-clamp-1">
                                                                 {project.githubRepo || t('projectOverview.github.noRepo')}
                                                             </p>
                                                         </div>
@@ -1880,7 +1880,7 @@ export const ProjectOverview = () => {
                                                             href={`https://github.com/${project.githubRepo}`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="text-xs font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1 shrink-0"
+                                                            className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 shrink-0"
                                                         >
                                                             {t('projectOverview.github.repoLink')} <span className="material-symbols-outlined text-sm">open_in_new</span>
                                                         </a>
@@ -1888,7 +1888,7 @@ export const ProjectOverview = () => {
                                                 </div>
 
                                                 {!project.githubRepo ? (
-                                                    <div className="text-xs text-[var(--color-text-muted)] space-y-3">
+                                                    <div className="text-xs text-muted space-y-3">
                                                         <p>{t('projectOverview.github.noRepoHint')}</p>
                                                         {isOwner && (
                                                             <button
@@ -1896,21 +1896,21 @@ export const ProjectOverview = () => {
                                                                     setEditModalTab('integrations');
                                                                     setShowEditModal(true);
                                                                 }}
-                                                                className="inline-flex items-center gap-1 text-[var(--color-primary)] font-semibold hover:underline"
+                                                                className="inline-flex items-center gap-1 text-primary font-semibold hover:underline"
                                                             >
                                                                 {t('projectOverview.github.openSettings')} <span className="material-symbols-outlined text-sm">settings</span>
                                                             </button>
                                                         )}
                                                     </div>
                                                 ) : commitsLoading ? (
-                                                    <div className="flex items-center gap-2 text-[10px] text-[var(--color-text-muted)]">
-                                                        <span className="material-symbols-outlined animate-spin text-[14px] text-[var(--color-primary)]">progress_activity</span>
+                                                    <div className="flex items-center gap-2 text-[10px] text-muted">
+                                                        <span className="material-symbols-outlined animate-spin text-[14px] text-primary">progress_activity</span>
                                                         {t('projectOverview.github.loading')}
                                                     </div>
                                                 ) : commitsError ? (
                                                     <div className="text-xs text-rose-600 dark:text-rose-400">{commitsError}</div>
                                                 ) : githubCommits.length === 0 ? (
-                                                    <div className="text-xs text-[var(--color-text-muted)]">{t('projectOverview.github.none')}</div>
+                                                    <div className="text-xs text-muted">{t('projectOverview.github.none')}</div>
                                                 ) : (
                                                     <div className="space-y-2 max-h-[320px] overflow-y-auto pr-2">
                                                         {githubCommits.map(commit => (
@@ -1919,7 +1919,7 @@ export const ProjectOverview = () => {
                                                                 href={commit.html_url}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="block p-3 rounded-xl border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] transition-all"
+                                                                className="block p-3 rounded-xl border border-surface hover:bg-surface-hover transition-all"
                                                             >
                                                                 <div className="flex items-start justify-between gap-3">
                                                                     <div className="flex items-start gap-2 min-w-0">
@@ -1927,25 +1927,25 @@ export const ProjectOverview = () => {
                                                                             <img
                                                                                 src={commit.author.avatar_url}
                                                                                 alt={commit.author.login}
-                                                                                className="size-7 rounded-full border border-[var(--color-surface-border)]"
+                                                                                className="size-7 rounded-full border border-surface"
                                                                             />
                                                                         ) : (
-                                                                            <div className="size-7 rounded-full bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] flex items-center justify-center text-[10px] font-bold">
+                                                                            <div className="size-7 rounded-full bg-surface-hover text-muted flex items-center justify-center text-[10px] font-bold">
                                                                                 {(commit.commit.author.name || '?').charAt(0).toUpperCase()}
                                                                             </div>
                                                                         )}
                                                                         <div className="min-w-0">
-                                                                            <p className="text-xs font-semibold text-[var(--color-text-main)] line-clamp-1">
+                                                                            <p className="text-xs font-semibold text-main line-clamp-1">
                                                                                 {commit.commit.message.split(/\r?\n/)[0]}
                                                                             </p>
-                                                                            <div className="flex items-center gap-2 text-[10px] text-[var(--color-text-muted)]">
+                                                                            <div className="flex items-center gap-2 text-[10px] text-muted">
                                                                                 <span>@{commit.author?.login || commit.commit.author.name || t('projectOverview.github.unknownAuthor')}</span>
                                                                                 <span>•</span>
                                                                                 <span>{format(new Date(commit.commit.author.date), dateFormat, { locale: dateLocale })}</span>
                                                                             </div>
                                                                         </div>
                                                                     </div>
-                                                                    <span className="text-[10px] font-mono text-[var(--color-text-subtle)] shrink-0">
+                                                                    <span className="text-[10px] font-mono text-subtle shrink-0">
                                                                         {commit.sha.slice(0, 7)}
                                                                     </span>
                                                                 </div>
@@ -1961,13 +1961,13 @@ export const ProjectOverview = () => {
                                 {/* Resources */}
                                 <section className="space-y-3">
                                     <div className="flex items-center justify-between">
-                                        <h2 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectOverview.resources.title')}</h2>
-                                        <span className="text-xs text-[var(--color-text-muted)] uppercase tracking-[0.2em]">{t('projectOverview.resources.subtitle')}</span>
+                                        <h2 className="text-lg font-bold text-main">{t('projectOverview.resources.title')}</h2>
+                                        <span className="text-xs text-muted uppercase tracking-[0.2em]">{t('projectOverview.resources.subtitle')}</span>
                                     </div>
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                                         <Card className="h-full flex flex-col">
                                             <div className="flex items-center justify-between">
-                                                <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectOverview.resources.quickLinks')}</h3>
+                                                <h3 className="text-lg font-bold text-main">{t('projectOverview.resources.quickLinks')}</h3>
                                                 {isOwner && (
                                                     <Button size="sm" variant="ghost" onClick={() => {
                                                         setEditModalTab('resources');
@@ -1979,21 +1979,21 @@ export const ProjectOverview = () => {
                                             </div>
                                             <div className="mt-4 space-y-2 flex-1">
                                                 {project.links?.slice(0, 4).map((link, i) => (
-                                                    <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors group">
+                                                    <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-hover transition-colors group">
                                                         <div className="size-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
                                                             <span className="material-symbols-outlined text-[18px]">link</span>
                                                         </div>
                                                         <div className="flex-1 min-w-0">
-                                                            <p className="text-sm font-medium text-[var(--color-text-main)] truncate group-hover:text-indigo-600 transition-colors">{link.title}</p>
-                                                            <p className="text-[10px] text-[var(--color-text-muted)] truncate">{link.url.replace(/^https?:\/\//, '')}</p>
+                                                            <p className="text-sm font-medium text-main truncate group-hover:text-indigo-600 transition-colors">{link.title}</p>
+                                                            <p className="text-[10px] text-muted truncate">{link.url.replace(/^https?:\/\//, '')}</p>
                                                         </div>
-                                                        <span className="material-symbols-outlined text-[14px] text-[var(--color-text-subtle)] opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
+                                                        <span className="material-symbols-outlined text-[14px] text-subtle opacity-0 group-hover:opacity-100 transition-opacity">open_in_new</span>
                                                     </a>
                                                 ))}
-                                                {(!project.links || project.links.length === 0) && <p className="text-sm text-[var(--color-text-muted)]">{t('projectOverview.resources.noLinks')}</p>}
+                                                {(!project.links || project.links.length === 0) && <p className="text-sm text-muted">{t('projectOverview.resources.noLinks')}</p>}
                                             </div>
                                             {project.links && project.links.length > 4 && (
-                                                <p className="text-[10px] text-[var(--color-text-muted)] mt-2">
+                                                <p className="text-[10px] text-muted mt-2">
                                                     {t('projectOverview.resources.moreLinks').replace('{count}', String(project.links.length - 4))}
                                                 </p>
                                             )}
@@ -2001,7 +2001,7 @@ export const ProjectOverview = () => {
 
                                         <Card className="h-full flex flex-col">
                                             <div className="flex items-center justify-between">
-                                                <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectOverview.resources.gallery')}</h3>
+                                                <h3 className="text-lg font-bold text-main">{t('projectOverview.resources.gallery')}</h3>
                                                 <Button size="sm" variant="ghost" onClick={() => setShowMediaLibrary(true)}>{t('projectOverview.resources.manage')}</Button>
                                             </div>
 
@@ -2009,14 +2009,14 @@ export const ProjectOverview = () => {
                                                 {galleryAssets.map((asset) => (
                                                     <div
                                                         key={`${asset.url}-${asset.index}`}
-                                                        className="aspect-square rounded-lg overflow-hidden border border-[var(--color-surface-border)] cursor-pointer hover:opacity-80 transition-opacity"
+                                                        className="aspect-square rounded-lg overflow-hidden border border-surface cursor-pointer hover:opacity-80 transition-opacity"
                                                         onClick={() => { setSelectedImageIndex(asset.index); setShowGalleryModal(true); }}
                                                     >
                                                         <img src={asset.url} alt="" className="w-full h-full object-cover" />
                                                     </div>
                                                 ))}
                                                 {projectAssets.length < 3 && (
-                                                    <button onClick={() => setShowMediaLibrary(true)} className="aspect-square rounded-lg border border-dashed border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] transition-colors flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-primary)]">
+                                                    <button onClick={() => setShowMediaLibrary(true)} className="aspect-square rounded-lg border border-dashed border-surface hover:bg-surface-hover transition-colors flex items-center justify-center text-muted hover:text-primary">
                                                         <span className="material-symbols-outlined">add</span>
                                                     </button>
                                                 )}
@@ -2029,16 +2029,16 @@ export const ProjectOverview = () => {
                             <div className="xl:col-span-1 space-y-6">
                                 <Card data-onboarding-id="project-overview-planning" className="flex flex-col">
                                     <div className="flex items-center gap-3">
-                                        <div className="size-9 rounded-full bg-[var(--color-surface-hover)] text-[var(--color-text-subtle)] flex items-center justify-center shrink-0">
+                                        <div className="size-9 rounded-full bg-surface-hover text-subtle flex items-center justify-center shrink-0">
                                             <span className="material-symbols-outlined text-[18px]">schedule</span>
                                         </div>
-                                        <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectOverview.planning.title')}</h3>
+                                        <h3 className="text-lg font-bold text-main">{t('projectOverview.planning.title')}</h3>
                                     </div>
-                                    <div className="mt-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+                                    <div className="mt-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-muted">
                                         <span>{t('projectOverview.planning.subtitle')}</span>
                                         <span className="flex items-center gap-1.5">
-                                            <span className="size-1.5 rounded-full bg-[var(--color-primary)]" />
-                                            <span className="text-[var(--color-text-main)]">{progress}%</span>
+                                            <span className="size-1.5 rounded-full bg-primary" />
+                                            <span className="text-main">{progress}%</span>
                                             {t('projectOverview.planning.complete')}
                                         </span>
                                     </div>
@@ -2046,20 +2046,20 @@ export const ProjectOverview = () => {
                                     <div className="mt-4 space-y-4 flex-1">
                                         <div className="grid grid-cols-2 gap-3">
                                             <div>
-                                                <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">{t('projectOverview.planning.start')}</p>
-                                                <p className="text-sm font-semibold text-[var(--color-text-main)]">
+                                                <p className="text-[10px] font-bold text-muted uppercase">{t('projectOverview.planning.start')}</p>
+                                                <p className="text-sm font-semibold text-main">
                                                     {project.startDate ? format(new Date(project.startDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
                                                 </p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase">{t('projectOverview.planning.due')}</p>
-                                                <p className="text-sm font-semibold text-[var(--color-text-main)]">
+                                                <p className="text-[10px] font-bold text-muted uppercase">{t('projectOverview.planning.due')}</p>
+                                                <p className="text-sm font-semibold text-main">
                                                     {project.dueDate ? format(new Date(project.dueDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
                                                 </p>
                                             </div>
                                         </div>
-                                        <div className="h-2 w-full bg-[var(--color-surface-hover)] rounded-full overflow-hidden">
-                                            <div className="h-full bg-[var(--color-primary)] rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
+                                        <div className="h-2 w-full bg-surface-hover rounded-full overflow-hidden">
+                                            <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${progress}%` }} />
                                         </div>
 
 
@@ -2071,7 +2071,7 @@ export const ProjectOverview = () => {
                                                 setEditModalTab('general');
                                                 setShowEditModal(true);
                                             }}
-                                            className="text-[10px] font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1 mt-4"
+                                            className="text-[10px] font-semibold text-primary hover:underline flex items-center gap-1 mt-4"
                                         >
                                             {t('projectOverview.planning.editDates')} <span className="material-symbols-outlined text-[12px]">settings</span>
                                         </button>
@@ -2080,11 +2080,11 @@ export const ProjectOverview = () => {
 
                                 <Card data-onboarding-id="project-overview-milestones" className="flex flex-col relative overflow-hidden">
                                     <div className="flex items-center justify-between mb-2 z-10 relative">
-                                        <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-[var(--color-text-subtle)]">flag</span>
+                                        <h3 className="font-bold text-main flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-subtle">flag</span>
                                             {t('projectOverview.milestones.title')}
                                         </h3>
-                                        <Link to={`/project/${id}/milestones`} className="size-6 flex items-center justify-center rounded-full hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors">
+                                        <Link to={`/project/${id}/milestones`} className="size-6 flex items-center justify-center rounded-full hover:bg-surface-hover text-muted hover:text-primary transition-colors">
                                             <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                                         </Link>
                                     </div>
@@ -2092,15 +2092,15 @@ export const ProjectOverview = () => {
                                     {/* Progress Header */}
                                     <div className="flex items-center gap-3 mb-6 z-10 relative">
                                         <div className="flex-1">
-                                            <div className="h-1 w-full bg-[var(--color-surface-hover)] rounded-full overflow-hidden">
+                                            <div className="h-1 w-full bg-surface-hover rounded-full overflow-hidden">
                                                 <div
                                                     className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-500"
                                                     style={{ width: `${milestones.length > 0 ? (milestones.filter(m => m.status === 'Achieved').length / milestones.length) * 100 : 0}%` }}
                                                 />
                                             </div>
                                             <div className="flex items-center justify-between mt-1.5">
-                                                <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{t('projectOverview.milestones.progress')}</span>
-                                                <span className="text-[10px] font-bold text-[var(--color-text-main)]">{milestones.filter(m => m.status === 'Achieved').length}/{milestones.length}</span>
+                                                <span className="text-[10px] font-bold text-muted uppercase tracking-wider">{t('projectOverview.milestones.progress')}</span>
+                                                <span className="text-[10px] font-bold text-main">{milestones.filter(m => m.status === 'Achieved').length}/{milestones.length}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -2108,7 +2108,7 @@ export const ProjectOverview = () => {
                                     <div className="space-y-4 flex-1 relative min-h-[160px] z-10">
                                         {/* Vertical Line */}
                                         {pendingMilestones.length > 0 && (
-                                            <div className="absolute left-[11px] top-2 bottom-4 w-0.5 bg-[var(--color-surface-border)]" />
+                                            <div className="absolute left-[11px] top-2 bottom-4 w-0.5 bg-surface-border" />
                                         )}
 
                                         {pendingMilestones.length > 0 ? (
@@ -2124,8 +2124,8 @@ export const ProjectOverview = () => {
                                                             <div className={`
                                                     relative z-10 shrink-0 flex items-center justify-center rounded-full transition-all duration-300
                                                     ${isFirst
-                                                                    ? 'size-6 bg-white dark:bg-[var(--color-surface-card)] border-2 border-indigo-500 shadow-[0_0_0_2px_rgba(99,102,241,0.2)]'
-                                                                    : 'size-2.5 ml-[7px] mt-[5px] bg-[var(--color-surface-border)] border-2 border-white dark:border-[var(--color-surface-card)]'
+                                                                    ? 'size-6 bg-white dark:bg-card border-2 border-indigo-500 shadow-[0_0_0_2px_rgba(99,102,241,0.2)]'
+                                                                    : 'size-2.5 ml-[7px] mt-[5px] bg-surface-border border-2 border-white dark:border-card'
                                                                 }
                                                  `}>
                                                                 {isFirst && <div className="size-1.5 bg-indigo-500 rounded-full animate-pulse" />}
@@ -2134,18 +2134,18 @@ export const ProjectOverview = () => {
                                                             <div className={`flex-1 min-w-0 transition-all ${isFirst ? '' : 'opacity-80 group-hover:opacity-100'}`}>
                                                                 <div className="flex items-start justify-between gap-2">
                                                                     <div className="min-w-0">
-                                                                        <p className={`text-xs font-bold truncate leading-snug ${isFirst ? 'text-[var(--color-text-main)] text-[13px] mb-0.5' : 'text-[var(--color-text-main)]'}`}>
+                                                                        <p className={`text-xs font-bold truncate leading-snug ${isFirst ? 'text-main text-[13px] mb-0.5' : 'text-main'}`}>
                                                                             {milestone.title}
                                                                         </p>
                                                                         <div className="flex items-center gap-2">
                                                                             <p className={`text-[10px] font-medium ${new Date(milestone.dueDate || '') < new Date()
                                                                                 ? 'text-rose-500 font-bold'
-                                                                                : isFirst ? 'text-indigo-600 dark:text-indigo-400' : 'text-[var(--color-text-muted)]'
+                                                                                : isFirst ? 'text-indigo-600 dark:text-indigo-400' : 'text-muted'
                                                                                 }`}>
                                                                                 {milestone.dueDate ? format(new Date(milestone.dueDate), dateFormat, { locale: dateLocale }) : t('projectOverview.milestones.noDate')}
                                                                             </p>
                                                                             {isFirst && (
-                                                                                <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] bg-[var(--color-surface-hover)] px-1.5 py-px rounded">
+                                                                                <span className="text-[9px] font-bold uppercase tracking-wider text-muted bg-surface-hover px-1.5 py-px rounded">
                                                                                     {t('projectOverview.milestones.nextUp')}
                                                                                 </span>
                                                                             )}
@@ -2155,7 +2155,7 @@ export const ProjectOverview = () => {
                                                                     {isFirst && (
                                                                         <button
                                                                             onClick={() => handleToggleMilestone(milestone)}
-                                                                            className="size-7 rounded-lg bg-[var(--color-surface-hover)] hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-[var(--color-text-muted)] hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center justify-center transition-all shrink-0"
+                                                                            className="size-7 rounded-lg bg-surface-hover hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-muted hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center justify-center transition-all shrink-0"
                                                                             title={t('projectOverview.milestones.markAchieved')}
                                                                         >
                                                                             <span className="material-symbols-outlined text-[16px]">check</span>
@@ -2167,8 +2167,8 @@ export const ProjectOverview = () => {
                                                     );
                                                 })
                                         ) : (
-                                            <div className="text-center py-8 text-[var(--color-text-muted)] flex flex-col items-center">
-                                                <div className="size-12 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center mb-3">
+                                            <div className="text-center py-8 text-muted flex flex-col items-center">
+                                                <div className="size-12 rounded-full bg-surface-hover flex items-center justify-center mb-3">
                                                     <span className="material-symbols-outlined text-xl opacity-50">emoji_events</span>
                                                 </div>
                                                 <p className="text-xs font-medium">{t('projectOverview.milestones.allAchieved')}</p>
@@ -2207,10 +2207,10 @@ export const ProjectOverview = () => {
 
                                 <Card className="flex flex-col">
                                     <div className="flex items-center justify-between mb-4">
-                                        <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                        <h3 className="font-bold text-main flex items-center gap-2">
                                             <span className="material-symbols-outlined text-slate-500">group</span>
                                             {t('projectOverview.team.title')}
-                                            <span className="text-xs font-medium text-[var(--color-text-muted)] bg-[var(--color-surface-hover)] px-2 py-0.5 rounded-full">
+                                            <span className="text-xs font-medium text-muted bg-surface-hover px-2 py-0.5 rounded-full">
                                                 {teamMemberProfiles.length}
                                             </span>
                                             {activeProjectUsers.length > 0 && (
@@ -2227,7 +2227,7 @@ export const ProjectOverview = () => {
                                                 setEditModalTab('team');
                                                 setShowEditModal(true);
                                             }}
-                                            className="text-xs font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1"
+                                            className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
                                         >
                                             <span className="material-symbols-outlined text-sm">settings</span>
                                             {t('projectOverview.team.manage')}
@@ -2235,7 +2235,7 @@ export const ProjectOverview = () => {
                                     </div>
 
                                     {teamMemberProfiles.length === 0 ? (
-                                        <div className="py-4 text-center text-[var(--color-text-muted)]">
+                                        <div className="py-4 text-center text-muted">
                                             <span className="material-symbols-outlined text-3xl opacity-30 mb-2 block">person_add</span>
                                             <p className="text-sm">{t('projectOverview.team.empty')}</p>
                                         </div>
@@ -2248,33 +2248,33 @@ export const ProjectOverview = () => {
                                                 const isBusy = presenceData?.isBusy || false;
 
                                                 return (
-                                                    <div key={member.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors group/member">
+                                                    <div key={member.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-hover transition-colors group/member">
                                                         <div className="relative shrink-0">
                                                             {member.photoURL ? (
                                                                 <img
                                                                     src={member.photoURL}
                                                                     alt={member.displayName}
-                                                                    className={`size-10 rounded-full border-2 object-cover shadow-sm transition-all ${isOnline ? 'border-emerald-500' : isIdle ? 'border-amber-400' : isBusy ? 'border-rose-500' : 'border-[var(--color-surface-border)]'
+                                                                    className={`size-10 rounded-full border-2 object-cover shadow-sm transition-all ${isOnline ? 'border-emerald-500' : isIdle ? 'border-amber-400' : isBusy ? 'border-rose-500' : 'border-surface'
                                                                         }`}
                                                                 />
                                                             ) : (
-                                                                <div className={`size-10 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 border-2 flex items-center justify-center text-sm font-bold text-indigo-600 dark:text-indigo-400 shadow-sm transition-all ${isOnline ? 'border-emerald-500' : isIdle ? 'border-amber-400' : isBusy ? 'border-rose-500' : 'border-[var(--color-surface-border)]'
+                                                                <div className={`size-10 rounded-full bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-900/30 dark:to-purple-900/30 border-2 flex items-center justify-center text-sm font-bold text-indigo-600 dark:text-indigo-400 shadow-sm transition-all ${isOnline ? 'border-emerald-500' : isIdle ? 'border-amber-400' : isBusy ? 'border-rose-500' : 'border-surface'
                                                                     }`}>
                                                                     {member.displayName?.charAt(0)?.toUpperCase() || '?'}
                                                                 </div>
                                                             )}
                                                             {isOnline ? (
-                                                                <div className="absolute -bottom-0.5 -right-0.5 size-3.5 bg-emerald-500 rounded-full border-2 border-white dark:border-[var(--color-surface-card)] shadow-sm" title={t('projectOverview.team.status.onlineNow')} />
+                                                                <div className="absolute -bottom-0.5 -right-0.5 size-3.5 bg-emerald-500 rounded-full border-2 border-white dark:border-card shadow-sm" title={t('projectOverview.team.status.onlineNow')} />
                                                             ) : isIdle ? (
-                                                                <div className="absolute -bottom-0.5 -right-0.5 size-3.5 bg-amber-400 rounded-full border-2 border-white dark:border-[var(--color-surface-card)] shadow-sm flex items-center justify-center" title={t('projectOverview.team.status.away')}>
+                                                                <div className="absolute -bottom-0.5 -right-0.5 size-3.5 bg-amber-400 rounded-full border-2 border-white dark:border-card shadow-sm flex items-center justify-center" title={t('projectOverview.team.status.away')}>
                                                                     <span className="material-symbols-outlined text-[6px] text-amber-900">schedule</span>
                                                                 </div>
                                                             ) : isBusy ? (
-                                                                <div className="absolute -bottom-0.5 -right-0.5 size-3.5 bg-rose-500 rounded-full border-2 border-white dark:border-[var(--color-surface-card)] shadow-sm flex items-center justify-center" title={t('projectOverview.team.status.busy')}>
+                                                                <div className="absolute -bottom-0.5 -right-0.5 size-3.5 bg-rose-500 rounded-full border-2 border-white dark:border-card shadow-sm flex items-center justify-center" title={t('projectOverview.team.status.busy')}>
                                                                     <span className="material-symbols-outlined text-[6px] text-white">do_not_disturb_on</span>
                                                                 </div>
                                                             ) : member.id === project?.ownerId ? (
-                                                                <div className="absolute -bottom-0.5 -right-0.5 size-3.5 bg-amber-400 rounded-full border-2 border-white dark:border-[var(--color-surface-card)] flex items-center justify-center">
+                                                                <div className="absolute -bottom-0.5 -right-0.5 size-3.5 bg-amber-400 rounded-full border-2 border-white dark:border-card flex items-center justify-center">
                                                                     <span className="material-symbols-outlined text-[12px] text-amber-900">star</span>
                                                                 </div>
                                                             ) : null}
@@ -2282,11 +2282,11 @@ export const ProjectOverview = () => {
 
                                                         <div className="flex-1 min-w-0">
                                                             <div className="flex items-center gap-2">
-                                                                <span className="font-semibold text-sm text-[var(--color-text-main)] truncate">
+                                                                <span className="font-semibold text-sm text-main truncate">
                                                                     {member.displayName}
                                                                 </span>
                                                                 {member.id === auth.currentUser?.uid && (
-                                                                    <span className="text-[9px] font-bold text-[var(--color-text-muted)] bg-[var(--color-surface-hover)] px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                                                    <span className="text-[9px] font-bold text-muted bg-surface-hover px-1.5 py-0.5 rounded uppercase tracking-wider">
                                                                         {t('projectOverview.team.you')}
                                                                     </span>
                                                                 )}
@@ -2296,7 +2296,7 @@ export const ProjectOverview = () => {
                                                                     ? 'text-amber-600 dark:text-amber-400'
                                                                     : member.role === 'Editor'
                                                                         ? 'text-indigo-600 dark:text-indigo-400'
-                                                                        : 'text-[var(--color-text-muted)]'
+                                                                        : 'text-muted'
                                                                     }`}>
                                                                     {roleLabels[member.role as keyof typeof roleLabels] || member.role}
                                                                 </span>
@@ -2317,7 +2317,7 @@ export const ProjectOverview = () => {
                                     {can('canInvite') && (
                                         <button
                                             onClick={handleInvite}
-                                            className="w-full mt-4 py-2.5 rounded-xl border border-dashed border-[var(--color-surface-border)] flex items-center justify-center gap-2 text-sm font-semibold text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-all"
+                                            className="w-full mt-4 py-2.5 rounded-xl border border-dashed border-surface flex items-center justify-center gap-2 text-sm font-semibold text-muted hover:bg-surface-hover hover:text-primary hover:border-primary transition-all"
                                         >
                                             <span className="material-symbols-outlined text-[18px]">person_add</span>
                                             {t('projectOverview.team.invite')}
@@ -2327,8 +2327,8 @@ export const ProjectOverview = () => {
 
                                 {isOwner && (
                                     <Card className="space-y-4">
-                                        <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
-                                            <span className="material-symbols-outlined text-[var(--color-text-subtle)]">tune</span>
+                                        <h3 className="font-bold text-main flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-subtle">tune</span>
                                             {t('projectOverview.controls.title')}
                                         </h3>
                                         <div className="grid grid-cols-1 gap-3">
@@ -2375,7 +2375,7 @@ export const ProjectOverview = () => {
 
                                             <div className="grid grid-cols-2 gap-2">
                                                 <div className="space-y-1.5">
-                                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">{t('projectOverview.planning.start')}</label>
+                                                    <label className="text-xs font-semibold text-muted uppercase tracking-wider ml-1">{t('projectOverview.planning.start')}</label>
                                                     <DatePicker
                                                         value={project.startDate}
                                                         onChange={(date) => handleUpdateField('startDate', date)}
@@ -2384,7 +2384,7 @@ export const ProjectOverview = () => {
                                                     />
                                                 </div>
                                                 <div className="space-y-1.5">
-                                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">{t('projectOverview.planning.due')}</label>
+                                                    <label className="text-xs font-semibold text-muted uppercase tracking-wider ml-1">{t('projectOverview.planning.due')}</label>
                                                     <DatePicker
                                                         value={project.dueDate}
                                                         onChange={(date) => handleUpdateField('dueDate', date)}
@@ -2435,7 +2435,7 @@ export const ProjectOverview = () => {
                                 <button
                                     key={idx}
                                     onClick={() => setSelectedImageIndex(idx)}
-                                    className={`shrink-0 w-20 h-14 rounded-lg overflow-hidden border-2 transition-all ${selectedImageIndex === idx ? 'border-[var(--color-primary)] opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                                    className={`shrink-0 w-20 h-14 rounded-lg overflow-hidden border-2 transition-all ${selectedImageIndex === idx ? 'border-primary opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
                                 >
                                     <img src={shot} alt="" className="w-full h-full object-cover" />
                                 </button>
@@ -2499,7 +2499,7 @@ export const ProjectOverview = () => {
                         </>
                     }
                 >
-                    <p className="text-sm text-[var(--color-text-muted)]">
+                    <p className="text-sm text-muted">
                         {t('projectOverview.delete.description').replace('{project}', project.title)}
                     </p>
                 </Modal>

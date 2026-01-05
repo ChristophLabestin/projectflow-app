@@ -212,7 +212,7 @@ export const ProjectIssueDetail = () => {
         return (
             <div className="flex justify-center items-center min-h-[50vh]">
                 <div className="flex flex-col items-center gap-3">
-                    <span className="material-symbols-outlined animate-spin text-4xl text-[var(--color-primary)]">progress_activity</span>
+                    <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
                 </div>
             </div>
         );
@@ -221,7 +221,7 @@ export const ProjectIssueDetail = () => {
     if (!issue) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
-                <h3 className="text-xl font-bold text-[var(--color-text-main)]">Issue not found</h3>
+                <h3 className="text-xl font-bold text-main">Issue not found</h3>
                 <Link to={`/project/${id}/issues`} className="btn-secondary">Return to Issues</Link>
             </div>
         );
@@ -240,10 +240,10 @@ export const ProjectIssueDetail = () => {
 
             {showDeleteConfirm && createPortal(
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-[var(--color-surface-border)]">
+                    <div className="bg-card rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-surface">
                         <div className="space-y-4 text-center">
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">Delete Issue?</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">
+                            <h3 className="text-lg font-bold text-main">Delete Issue?</h3>
+                            <p className="text-sm text-muted">
                                 Are you sure you want to delete <strong>"{issue.title}"</strong>? This action cannot be undone.
                             </p>
                             <div className="grid grid-cols-2 gap-3">
@@ -258,15 +258,15 @@ export const ProjectIssueDetail = () => {
 
             {showConvertModal && createPortal(
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl max-w-md w-full p-6 border border-[var(--color-surface-border)]">
+                    <div className="bg-card rounded-2xl shadow-2xl max-w-md w-full p-6 border border-surface">
                         <div className="space-y-4">
-                            <h3 className="text-xl font-bold text-[var(--color-text-main)]">Convert to Task</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">
+                            <h3 className="text-xl font-bold text-main">Convert to Task</h3>
+                            <p className="text-sm text-muted">
                                 This will create a new task with the same title and description, and mark this issue as <strong>Closed</strong>.
                             </p>
-                            <div className="bg-[var(--color-surface-hover)] p-4 rounded-xl text-sm border border-[var(--color-surface-border)]">
-                                <p className="font-bold text-[var(--color-text-main)]">{issue.title}</p>
-                                <p className="text-xs text-[var(--color-text-muted)] mt-1.5 flex items-center gap-2">
+                            <div className="bg-surface-hover p-4 rounded-xl text-sm border border-surface">
+                                <p className="font-bold text-main">{issue.title}</p>
+                                <p className="text-xs text-muted mt-1.5 flex items-center gap-2">
                                     <span className="material-symbols-outlined text-[14px]">group</span>
                                     {issue.assigneeIds && issue.assigneeIds.length > 0
                                         ? `${issue.assigneeIds.length} Assignees`
@@ -284,7 +284,7 @@ export const ProjectIssueDetail = () => {
             )}
 
             {/* Header / Hero Section */}
-            <header className="relative mb-10 overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] border border-[var(--color-surface-border)] shadow-sm">
+            <header className="relative mb-10 overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] border border-surface shadow-sm">
                 {/* Decorative background element */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-3xl rounded-full -mr-20 -mt-20 pointer-events-none" />
 
@@ -294,10 +294,10 @@ export const ProjectIssueDetail = () => {
                             <div className="flex items-center gap-3 mb-4 flex-wrap">
                                 {/* Project Context */}
                                 {project && (
-                                    <Link to={`/project/${project.id}`} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] rounded-full transition-all group">
-                                        <div className="size-2 rounded-full bg-[var(--color-primary)]" />
-                                        <span className="text-xs font-bold text-[var(--color-text-subtle)] group-hover:text-[var(--color-primary)] uppercase tracking-wide">{project.title}</span>
-                                        <span className="material-symbols-outlined text-[14px] text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]">arrow_forward</span>
+                                    <Link to={`/project/${project.id}`} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-hover border border-surface rounded-full transition-all group">
+                                        <div className="size-2 rounded-full bg-primary" />
+                                        <span className="text-xs font-bold text-subtle group-hover:text-primary uppercase tracking-wide">{project.title}</span>
+                                        <span className="material-symbols-outlined text-[14px] text-muted group-hover:text-primary">arrow_forward</span>
                                     </Link>
                                 )}
                                 <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border ${issue.status === 'Resolved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
@@ -314,23 +314,23 @@ export const ProjectIssueDetail = () => {
                                 <PriorityBadge priority={issue.priority} />
                             </div>
 
-                            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-[var(--color-text-main)] leading-[1.1] tracking-tight mb-8">
+                            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-main leading-[1.1] tracking-tight mb-8">
                                 {issue.title}
                             </h1>
 
                             <div className="flex flex-wrap items-center gap-6 text-sm">
-                                <div className="flex items-center gap-2.5 px-4 py-2 bg-[var(--color-surface-hover)] rounded-xl border border-[var(--color-surface-border)]">
-                                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">calendar_today</span>
+                                <div className="flex items-center gap-2.5 px-4 py-2 bg-surface-hover rounded-xl border border-surface">
+                                    <span className="material-symbols-outlined text-[20px] text-muted">calendar_today</span>
                                     <div className="flex flex-col">
-                                        <span className="text-[10px] leading-none uppercase font-bold text-[var(--color-text-subtle)] mb-0.5">Reported</span>
-                                        <span className="text-[var(--color-text-main)] font-semibold whitespace-nowrap">
+                                        <span className="text-[10px] leading-none uppercase font-bold text-subtle mb-0.5">Reported</span>
+                                        <span className="text-main font-semibold whitespace-nowrap">
                                             {issue.createdAt ? format(new Date(toMillis(issue.createdAt)), dateFormat, { locale: dateLocale }) : '-'}
                                         </span>
                                     </div>
                                 </div>
 
                                 <div className="hidden md:flex items-center gap-3 ml-2">
-                                    <div className="h-8 w-[1px] bg-[var(--color-surface-border)]" />
+                                    <div className="h-8 w-[1px] bg-surface-border" />
                                     <div className="flex -space-x-2">
                                         {(issue.assigneeIds || (issue.assigneeId ? [issue.assigneeId] : [])).filter(id => id).map((uid, i) => {
                                             const user = allUsers.find(u => (u as any).id === uid || u.uid === uid);
@@ -339,13 +339,13 @@ export const ProjectIssueDetail = () => {
                                                     key={uid + i}
                                                     src={user?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'}
                                                     alt=""
-                                                    className="size-8 rounded-full border-2 border-[var(--color-surface-card)] shadow-sm"
+                                                    className="size-8 rounded-full border-2 border-card shadow-sm"
                                                     title={user?.displayName || 'Assignee'}
                                                 />
                                             );
                                         })}
                                         {((!issue.assigneeIds || issue.assigneeIds.length === 0) && !issue.assigneeId) && (
-                                            <div className="size-8 rounded-full border-2 border-dashed border-[var(--color-surface-border)] flex items-center justify-center text-[var(--color-text-subtle)]">
+                                            <div className="size-8 rounded-full border-2 border-dashed border-surface flex items-center justify-center text-subtle">
                                                 <span className="material-symbols-outlined text-[16px]">person</span>
                                             </div>
                                         )}
@@ -355,7 +355,7 @@ export const ProjectIssueDetail = () => {
                         </div>
 
                         <div className="flex flex-col items-stretch lg:items-end gap-3 lg:mb-1">
-                            <div className="flex items-center gap-2 bg-[var(--color-surface-hover)] p-1 rounded-xl border border-[var(--color-surface-border)] w-full lg:w-fit">
+                            <div className="flex items-center gap-2 bg-surface-hover p-1 rounded-xl border border-surface w-full lg:w-fit">
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -372,22 +372,22 @@ export const ProjectIssueDetail = () => {
                                             });
                                         }
                                     }}
-                                    className={`flex-1 lg:flex-none ${isPinned(issue.id) ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10' : 'hover:bg-[var(--color-surface-card)]'}`}
+                                    className={`flex-1 lg:flex-none ${isPinned(issue.id) ? 'text-primary bg-primary/10' : 'hover:bg-card'}`}
                                     icon={<span className="material-symbols-outlined text-[20px]">push_pin</span>}
                                 >
                                     {isPinned(issue.id) ? 'Pinned' : 'Pin'}
                                 </Button>
-                                <div className="w-[1px] h-4 bg-[var(--color-surface-border)]" />
+                                <div className="w-[1px] h-4 bg-surface-border" />
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => setIsEditModalOpen(true)}
-                                    className="flex-1 lg:flex-none hover:bg-[var(--color-surface-card)]"
+                                    className="flex-1 lg:flex-none hover:bg-card"
                                     icon={<span className="material-symbols-outlined text-[20px]">edit</span>}
                                 >
                                     Edit
                                 </Button>
-                                <div className="w-[1px] h-4 bg-[var(--color-surface-border)]" />
+                                <div className="w-[1px] h-4 bg-surface-border" />
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -417,24 +417,24 @@ export const ProjectIssueDetail = () => {
                 <div className="lg:col-span-8 space-y-8">
                     {/* Description */}
                     <div className="p-0">
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-3 flex items-center gap-2 tracking-wider">
+                        <h3 className="text-xs font-bold text-muted uppercase mb-3 flex items-center gap-2 tracking-wider">
                             <span className="material-symbols-outlined text-[16px]">description</span>
                             Description
                         </h3>
                         <div className="app-card p-6 min-h-[120px]">
                             {issue.description ? (
-                                <div className="prose prose-sm max-w-none text-[var(--color-text-main)]">
+                                <div className="prose prose-sm max-w-none text-main">
                                     <p className="whitespace-pre-wrap leading-relaxed">{issue.description}</p>
                                 </div>
                             ) : (
-                                <p className="text-[var(--color-text-muted)] italic">No description provided.</p>
+                                <p className="text-muted italic">No description provided.</p>
                             )}
                         </div>
                     </div>
 
                     {/* Comments */}
                     <div>
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-3 flex items-center gap-2 tracking-wider">
+                        <h3 className="text-xs font-bold text-muted uppercase mb-3 flex items-center gap-2 tracking-wider">
                             <span className="material-symbols-outlined text-[16px]">chat</span>
                             Discussion ({commentCount})
                         </h3>
@@ -457,47 +457,47 @@ export const ProjectIssueDetail = () => {
                     {/* GitHub Integration Card */}
                     {issue.githubIssueNumber && (
                         <div className="app-card overflow-hidden">
-                            <div className="p-4 flex items-center justify-between border-b border-[var(--color-surface-border)]">
+                            <div className="p-4 flex items-center justify-between border-b border-surface">
                                 <div className="flex items-center gap-2">
                                     <span className="material-symbols-outlined text-[20px] text-indigo-500">terminal</span>
-                                    <h3 className="text-sm font-bold text-[var(--color-text-main)] tracking-wide uppercase">GitHub Reference</h3>
+                                    <h3 className="text-sm font-bold text-main tracking-wide uppercase">GitHub Reference</h3>
                                 </div>
                                 <Badge variant="success" className="bg-emerald-500/20 text-emerald-400 border-none text-[10px]">SYNCED</Badge>
                             </div>
                             <div className="p-5 space-y-6">
                                 <div>
-                                    <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Linked Issue</p>
+                                    <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-2">Linked Issue</p>
                                     <a
                                         href={issue.githubIssueUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex items-center justify-between p-3 rounded-xl bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] hover:border-[var(--color-primary)] transition-all group"
+                                        className="flex items-center justify-between p-3 rounded-xl bg-surface-hover border border-surface hover:border-primary transition-all group"
                                     >
                                         <div className="flex items-center gap-3">
-                                            <div className="size-8 bg-white dark:bg-zinc-800 rounded-lg flex items-center justify-center border border-[var(--color-surface-border)]">
+                                            <div className="size-8 bg-white dark:bg-zinc-800 rounded-lg flex items-center justify-center border border-surface">
                                                 <span className="material-symbols-outlined text-[18px]">open_in_new</span>
                                             </div>
                                             <div>
-                                                <p className="text-sm font-bold text-[var(--color-text-main)]">Issue #{issue.githubIssueNumber}</p>
-                                                <p className="text-[10px] text-[var(--color-text-muted)]">View on GitHub</p>
+                                                <p className="text-sm font-bold text-main">Issue #{issue.githubIssueNumber}</p>
+                                                <p className="text-[10px] text-muted">View on GitHub</p>
                                             </div>
                                         </div>
-                                        <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)] group-hover:text-[var(--color-primary)] transition-colors">chevron_right</span>
+                                        <span className="material-symbols-outlined text-[18px] text-subtle group-hover:text-primary transition-colors">chevron_right</span>
                                     </a>
                                 </div>
 
                                 <div>
                                     <div className="flex items-center justify-between mb-3">
-                                        <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Related Commits</p>
-                                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]">
+                                        <p className="text-[10px] font-bold text-muted uppercase tracking-wider">Related Commits</p>
+                                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-surface-hover text-muted">
                                             {relatedCommits.length} Found
                                         </span>
                                     </div>
 
                                     {loadingCommits ? (
                                         <div className="flex items-center gap-2 py-2">
-                                            <span className="material-symbols-outlined animate-spin text-[16px] text-[var(--color-primary)]">progress_activity</span>
-                                            <span className="text-[11px] text-[var(--color-text-muted)]">Searching repository...</span>
+                                            <span className="material-symbols-outlined animate-spin text-[16px] text-primary">progress_activity</span>
+                                            <span className="text-[11px] text-muted">Searching repository...</span>
                                         </div>
                                     ) : relatedCommits.length > 0 ? (
                                         <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1 custom-scrollbar">
@@ -507,29 +507,29 @@ export const ProjectIssueDetail = () => {
                                                     href={commit.html_url}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="block p-2.5 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-paper)] hover:bg-[var(--color-surface-hover)] transition-all group"
+                                                    className="block p-2.5 rounded-lg border border-surface bg-surface-paper hover:bg-surface-hover transition-all group"
                                                 >
-                                                    <p className="text-[11px] font-medium text-[var(--color-text-main)] line-clamp-1 group-hover:text-[var(--color-primary)]">
+                                                    <p className="text-[11px] font-medium text-main line-clamp-1 group-hover:text-primary">
                                                         {commit.commit.message}
                                                     </p>
                                                     <div className="flex items-center justify-between mt-1.5">
                                                         <div className="flex items-center gap-1.5">
                                                             {commit.author?.avatar_url && (
-                                                                <img src={commit.author.avatar_url} className="size-4 rounded-full border border-[var(--color-surface-border)]" alt="" />
+                                                                <img src={commit.author.avatar_url} className="size-4 rounded-full border border-surface" alt="" />
                                                             )}
-                                                            <span className="text-[9px] text-[var(--color-text-muted)]">@{commit.author?.login || 'unknown'}</span>
+                                                            <span className="text-[9px] text-muted">@{commit.author?.login || 'unknown'}</span>
                                                         </div>
                                                         <div className="flex flex-col items-end">
-                                                            <span className="text-[9px] font-mono text-[var(--color-text-subtle)]">{commit.sha.slice(0, 7)}</span>
-                                                            <span className="text-[8px] text-[var(--color-text-subtle)]">{timeAgo(commit.commit.author.date)}</span>
+                                                            <span className="text-[9px] font-mono text-subtle">{commit.sha.slice(0, 7)}</span>
+                                                            <span className="text-[8px] text-subtle">{timeAgo(commit.commit.author.date)}</span>
                                                         </div>
                                                     </div>
                                                 </a>
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="py-4 text-center bg-[var(--color-surface-hover)]/50 rounded-xl border border-dashed border-[var(--color-surface-border)]">
-                                            <p className="text-[10px] text-[var(--color-text-muted)]">No commits found referencing this issue.</p>
+                                        <div className="py-4 text-center bg-surface-hover/50 rounded-xl border border-dashed border-surface">
+                                            <p className="text-[10px] text-muted">No commits found referencing this issue.</p>
                                         </div>
                                     )}
                                 </div>
@@ -539,7 +539,7 @@ export const ProjectIssueDetail = () => {
 
                     {/* Status Card */}
                     <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">Status</h3>
+                        <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3">Status</h3>
                         <div className="relative">
                             <Select
                                 value={issue.status}
@@ -556,7 +556,7 @@ export const ProjectIssueDetail = () => {
 
                     {/* Assignees Card */}
                     <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">Assignees</h3>
+                        <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3">Assignees</h3>
                         <MultiAssigneeSelector
                             projectId={id!}
                             assigneeIds={issue.assigneeIds || (issue.assigneeId ? [issue.assigneeId] : [])}
@@ -566,7 +566,7 @@ export const ProjectIssueDetail = () => {
 
                     {/* Priority Card */}
                     <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">Priority</h3>
+                        <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3">Priority</h3>
                         <div className="flex flex-col gap-1">
                             {(['Low', 'Medium', 'High', 'Urgent'] as const).map(p => (
                                 <button
@@ -575,8 +575,8 @@ export const ProjectIssueDetail = () => {
                                     className={`
                                         flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all
                                         ${issue.priority === p
-                                            ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] shadow-sm'
-                                            : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'
+                                            ? 'bg-surface-hover text-main shadow-sm'
+                                            : 'text-muted hover:bg-surface-hover'
                                         }
                                     `}
                                 >
@@ -584,7 +584,7 @@ export const ProjectIssueDetail = () => {
                                         <PriorityIcon priority={p} />
                                         {p}
                                     </div>
-                                    {issue.priority === p && <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>}
+                                    {issue.priority === p && <span className="material-symbols-outlined text-[16px] text-primary">check</span>}
                                 </button>
                             ))}
                         </div>
@@ -592,19 +592,19 @@ export const ProjectIssueDetail = () => {
 
                     {/* Meta Card */}
                     <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-4">Issue Details</h3>
+                        <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-4">Issue Details</h3>
                         <div className="space-y-4">
                             <div className="flex flex-col gap-1">
-                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">Issue ID</span>
+                                <span className="text-[10px] font-bold text-subtle uppercase">Issue ID</span>
                                 <div className="group relative">
-                                    <code className="block w-full text-[11px] font-mono text-[var(--color-text-main)] bg-[var(--color-surface-hover)] p-2 rounded-lg border border-[var(--color-surface-border)] break-all truncate hover:whitespace-normal transition-all cursor-pointer" title="Click to copy ID" onClick={() => {
+                                    <code className="block w-full text-[11px] font-mono text-main bg-surface-hover p-2 rounded-lg border border-surface break-all truncate hover:whitespace-normal transition-all cursor-pointer" title="Click to copy ID" onClick={() => {
                                         navigator.clipboard.writeText(issue.id);
                                         setCopiedId(true);
                                         setTimeout(() => setCopiedId(false), 2000);
                                     }}>
                                         {issue.id}
                                     </code>
-                                    <span className={`absolute right-2 top-2 transition-all material-symbols-outlined text-[14px] ${copiedId ? 'text-emerald-500 scale-110' : 'opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)]'} pointer-events-none`}>
+                                    <span className={`absolute right-2 top-2 transition-all material-symbols-outlined text-[14px] ${copiedId ? 'text-emerald-500 scale-110' : 'opacity-0 group-hover:opacity-100 text-muted'} pointer-events-none`}>
                                         {copiedId ? 'check_circle' : 'content_copy'}
                                     </span>
                                     {copiedId && (
@@ -617,31 +617,31 @@ export const ProjectIssueDetail = () => {
 
                             <div className="grid grid-cols-1 gap-4">
                                 <div className="flex flex-col gap-1">
-                                    <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">Reported</span>
-                                    <span className="text-xs font-semibold text-[var(--color-text-main)] flex items-center gap-1.5">
-                                        <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">history</span>
+                                    <span className="text-[10px] font-bold text-subtle uppercase">Reported</span>
+                                    <span className="text-xs font-semibold text-main flex items-center gap-1.5">
+                                        <span className="material-symbols-outlined text-[16px] text-muted">history</span>
                                         {issue.createdAt ? format(new Date(toMillis(issue.createdAt)), dateFormat, { locale: dateLocale }) : '-'}
                                     </span>
                                 </div>
 
                                 {issue.ownerId && (
                                     <div className="flex flex-col gap-1">
-                                        <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">Reporter</span>
+                                        <span className="text-[10px] font-bold text-subtle uppercase">Reporter</span>
                                         <div className="flex items-center gap-2">
                                             <img
                                                 src={allUsers.find(u => (u as any).id === issue.ownerId || u.uid === issue.ownerId)?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'}
-                                                className="size-5 rounded-full border border-[var(--color-surface-border)]"
+                                                className="size-5 rounded-full border border-surface"
                                                 alt=""
                                             />
-                                            <span className="text-xs font-semibold text-[var(--color-text-main)]">
+                                            <span className="text-xs font-semibold text-main">
                                                 {allUsers.find(u => (u as any).id === issue.ownerId || u.uid === issue.ownerId)?.displayName || 'Unknown User'}
                                             </span>
                                         </div>
                                     </div>
                                 )}
 
-                                <div className="pt-3 border-t border-[var(--color-surface-border)] flex items-center justify-between">
-                                    <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">Status</span>
+                                <div className="pt-3 border-t border-surface flex items-center justify-between">
+                                    <span className="text-[10px] font-bold text-subtle uppercase">Status</span>
                                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${issue.status === 'Resolved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
                                         issue.status === 'Open' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
                                             'bg-slate-500/10 text-slate-500 border-slate-500/20'
@@ -651,9 +651,9 @@ export const ProjectIssueDetail = () => {
                                 </div>
 
                                 {issue.linkedTaskId && (
-                                    <div className="pt-3 border-t border-[var(--color-surface-border)]">
-                                        <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase block mb-1">Related Task</span>
-                                        <Link to={`/project/${id}/tasks/${issue.linkedTaskId}`} className="text-xs font-bold text-[var(--color-primary)] hover:underline flex items-center gap-1.5">
+                                    <div className="pt-3 border-t border-surface">
+                                        <span className="text-[10px] font-bold text-subtle uppercase block mb-1">Related Task</span>
+                                        <Link to={`/project/${id}/tasks/${issue.linkedTaskId}`} className="text-xs font-bold text-primary hover:underline flex items-center gap-1.5">
                                             <span className="material-symbols-outlined text-[16px]">task_alt</span>
                                             View Task
                                         </Link>
@@ -661,12 +661,12 @@ export const ProjectIssueDetail = () => {
                                 )}
 
                                 {(issue.status === 'Resolved' || issue.status === 'Closed') && (issue.completedBy || issue.completedAt) && (
-                                    <div className="pt-3 border-t border-[var(--color-surface-border)] flex flex-col gap-1">
-                                        <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">Completed</span>
+                                    <div className="pt-3 border-t border-surface flex flex-col gap-1">
+                                        <span className="text-[10px] font-bold text-subtle uppercase">Completed</span>
                                         <div className="flex flex-col gap-1">
                                             {issue.completedAt && (
-                                                <span className="text-xs font-semibold text-[var(--color-text-main)] flex items-center gap-1.5">
-                                                    <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">event_available</span>
+                                                <span className="text-xs font-semibold text-main flex items-center gap-1.5">
+                                                    <span className="material-symbols-outlined text-[16px] text-muted">event_available</span>
                                                     {format(new Date(toMillis(issue.completedAt)), dateFormat, { locale: dateLocale })}
                                                 </span>
                                             )}
@@ -674,10 +674,10 @@ export const ProjectIssueDetail = () => {
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <img
                                                         src={allUsers.find(u => (u as any).id === issue.completedBy || u.uid === issue.completedBy)?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'}
-                                                        className="size-5 rounded-full border border-[var(--color-surface-border)]"
+                                                        className="size-5 rounded-full border border-surface"
                                                         alt=""
                                                     />
-                                                    <span className="text-xs font-semibold text-[var(--color-text-main)]">
+                                                    <span className="text-xs font-semibold text-main">
                                                         by {allUsers.find(u => (u as any).id === issue.completedBy || u.uid === issue.completedBy)?.displayName || 'Unknown User'}
                                                     </span>
                                                 </div>

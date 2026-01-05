@@ -164,17 +164,17 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, placeho
                 transformOrigin: popoverPosition.transformOrigin,
                 zIndex: 9999,
             }}
-            className="p-4 bg-[var(--color-surface-card)] rounded-xl shadow-2xl border border-[var(--color-surface-border)] min-w-[280px] animate-scale-up"
+            className="p-4 bg-card rounded-xl shadow-2xl border border-surface min-w-[280px] animate-scale-up"
         >
             {/* Header */}
             <div className="flex items-center justify-between mb-4">
-                <button onClick={handlePrevMonth} className="p-1 hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors text-[var(--color-text-main)]">
+                <button onClick={handlePrevMonth} className="p-1 hover:bg-surface-hover rounded-lg transition-colors text-main">
                     <span className="material-symbols-outlined text-[20px]">chevron_left</span>
                 </button>
-                <span className="font-bold text-sm text-[var(--color-text-main)]">
+                <span className="font-bold text-sm text-main">
                     {format(currentMonth, 'MMMM yyyy', { locale: dateLocale })}
                 </span>
-                <button onClick={handleNextMonth} className="p-1 hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors text-[var(--color-text-main)]">
+                <button onClick={handleNextMonth} className="p-1 hover:bg-surface-hover rounded-lg transition-colors text-main">
                     <span className="material-symbols-outlined text-[20px]">chevron_right</span>
                 </button>
             </div>
@@ -185,7 +185,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, placeho
                     start: startOfWeek(new Date(), { weekStartsOn: 1 }),
                     end: endOfWeek(new Date(), { weekStartsOn: 1 })
                 }).map(day => (
-                    <div key={day.toString()} className="text-center text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
+                    <div key={day.toString()} className="text-center text-xs font-bold text-muted uppercase tracking-wider">
                         {format(day, 'EEEEEE', { locale: dateLocale })}
                     </div>
                 ))}
@@ -204,14 +204,14 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, placeho
                             onClick={() => handleDateClick(day)}
                             className={`
                                 h-8 w-8 rounded-lg flex items-center justify-center text-sm transition-all relative
-                                ${!isCurrentMonth ? 'text-[var(--color-text-subtle)] opacity-40' : 'text-[var(--color-text-main)]'}
-                                ${isSelected ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] shadow-md font-medium' : 'hover:bg-[var(--color-surface-hover)]'}
-                                ${isTodayDate && !isSelected ? 'text-[var(--color-primary)] font-bold' : ''}
+                                ${!isCurrentMonth ? 'text-subtle opacity-40' : 'text-main'}
+                                ${isSelected ? 'bg-primary text-on-primary shadow-md font-medium' : 'hover:bg-surface-hover'}
+                                ${isTodayDate && !isSelected ? 'text-primary font-bold' : ''}
                             `}
                         >
                             {format(day, 'd')}
                             {isTodayDate && !isSelected && (
-                                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[var(--color-primary)]" />
+                                <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-primary" />
                             )}
                         </button>
                     );
@@ -219,10 +219,10 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, placeho
             </div>
 
             {/* Quick Select Today */}
-            <div className="mt-3 pt-3 border-t border-[var(--color-surface-border)] flex justify-center">
+            <div className="mt-3 pt-3 border-t border-surface flex justify-center">
                 <button
                     onClick={() => handleDateClick(new Date())}
-                    className="text-xs font-bold text-[var(--color-primary)] hover:underline"
+                    className="text-xs font-bold text-primary hover:underline"
                 >
                     Today
                 </button>
@@ -233,31 +233,31 @@ export const DatePicker: React.FC<DatePickerProps> = ({ value, onChange, placeho
     return (
         <div className={`relative ${className}`} ref={containerRef}>
             {label && (
-                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-2 block">{label}</label>
+                <label className="text-xs font-semibold text-muted uppercase mb-2 block">{label}</label>
             )}
             {/* Input Trigger */}
             <div
                 onClick={() => !disabled && setIsOpen(!isOpen)}
                 className={`
                     w-full px-3 py-2.5 rounded-xl flex items-center justify-between transition-all text-sm
-                    bg-[var(--color-surface-bg)] text-[var(--color-text-main)]
+                    bg-surface text-main
                     focus:outline-none focus:ring-0 focus:ring-offset-0
-                    ${className.includes('border-0') ? 'border-0' : 'border border-[var(--color-surface-border)]'}
+                    ${className.includes('border-0') ? 'border-0' : 'border border-surface'}
                     ${disabled ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}
                 `}
             >
                 <div className="flex items-center gap-2 overflow-hidden">
-                    <span className="material-symbols-outlined text-[20px] leading-none text-[var(--color-text-subtle)] flex-shrink-0">calendar_today</span>
+                    <span className="material-symbols-outlined text-[20px] leading-none text-subtle flex-shrink-0">calendar_today</span>
                     {value && isValid(parseISO(value)) ? (
                         <span className="truncate">{format(parseISO(value), dateFormat, { locale: dateLocale })}</span>
                     ) : (
-                        <span className="text-[var(--color-text-subtle)] truncate">{placeholder}</span>
+                        <span className="text-subtle truncate">{placeholder}</span>
                     )}
                 </div>
                 {value && !disabled && (
                     <div
                         onClick={clearDate}
-                        className="hover:bg-[var(--color-surface-hover)] p-0.5 rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors flex-shrink-0 ml-1"
+                        className="hover:bg-surface-hover p-0.5 rounded-full text-muted hover:text-main transition-colors flex-shrink-0 ml-1"
                     >
                         <span className="material-symbols-outlined text-[16px] block">close</span>
                     </div>

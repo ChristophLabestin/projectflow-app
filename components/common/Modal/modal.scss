@@ -1,0 +1,118 @@
+@use '../../../styles/tokens';
+
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1000;
+
+    // Background & Blur
+    background-color: rgba(0, 0, 0, 0.4); // Darkened
+    backdrop-filter: blur(4px); // Blurs content behind
+
+    // Flex centering
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+
+    // Animation states
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity var(--transition-normal), visibility var(--transition-normal);
+
+    &--open {
+        opacity: 1;
+        visibility: visible;
+    }
+}
+
+.modal {
+    background-color: var(--color-surface-card);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-soft); // Deep soft shadow for elevation
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+
+    // Animation states
+    transform: scale(0.95) translateY(10px);
+    opacity: 0;
+    transition: transform var(--transition-normal) cubic-bezier(0.16, 1, 0.3, 1),
+        opacity var(--transition-normal);
+
+    &--open {
+        transform: scale(1) translateY(0);
+        opacity: 1;
+    }
+
+    // --- Sizes ---
+    &--sm {
+        max-width: 400px;
+    }
+
+    &--md {
+        max-width: 560px;
+    }
+
+    &--lg {
+        max-width: 800px;
+    }
+
+    &--xl {
+        max-width: 1024px;
+    }
+
+    &--full {
+        max-width: 95vw;
+        height: 90vh;
+    }
+
+    // --- Content Areas ---
+    &__header {
+        padding: 20px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-shrink: 0; // Prevent shrinking if content scrolls
+    }
+
+    &__title {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: var(--color-text-main);
+    }
+
+    &__close-btn {
+        margin-left: auto;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        border-radius: var(--radius-full);
+        font-size: 1.25rem;
+        line-height: 1;
+    }
+
+    &__content {
+        padding: 0 24px 24px;
+        overflow-y: auto;
+        flex: 1;
+        color: var(--color-text-main);
+    }
+
+    &__footer {
+        padding: 16px 24px;
+        background-color: transparent; // No border or bg divider
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 12px;
+        flex-shrink: 0;
+    }
+}

@@ -62,21 +62,21 @@ const PipelineStage = ({
     isActive?: boolean;
 }) => (
     <div className={`flex-1 rounded-2xl border p-4 transition-all ${isActive
-        ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/10'
-        : 'border-[var(--color-surface-border)] bg-[var(--color-surface-card)]'
+        ? 'border-primary bg-primary/10'
+        : 'border-surface bg-card'
         }`}>
         <div className="flex items-center gap-3 mb-2">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${isActive
-                ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)]'
-                : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'
+                ? 'bg-primary text-on-primary'
+                : 'bg-surface-hover text-muted'
                 }`}>
                 {stage}
             </div>
-            <span className={`text-sm font-bold ${isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}>
+            <span className={`text-sm font-bold ${isActive ? 'text-primary' : 'text-main'}`}>
                 {title}
             </span>
         </div>
-        <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">{description}</p>
+        <p className="text-xs text-muted leading-relaxed">{description}</p>
     </div>
 );
 
@@ -93,20 +93,20 @@ const FlowTypeCard = ({
     stages: string[];
     color: string;
 }) => (
-    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5 space-y-4">
+    <div className="rounded-2xl border border-surface bg-card p-5 space-y-4">
         <div className="flex items-center gap-3">
             <div className={`w-12 h-12 rounded-xl ${color} flex items-center justify-center`}>
                 <span className="material-symbols-outlined text-[24px] text-white">{icon}</span>
             </div>
             <div>
-                <div className="text-base font-bold text-[var(--color-text-main)]">{type}</div>
-                <div className="text-xs text-[var(--color-text-muted)]">{stages.length} stages</div>
+                <div className="text-base font-bold text-main">{type}</div>
+                <div className="text-xs text-muted">{stages.length} stages</div>
             </div>
         </div>
-        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">{description}</p>
+        <p className="text-sm text-muted leading-relaxed">{description}</p>
         <div className="flex flex-wrap gap-2">
             {stages.map((s, i) => (
-                <span key={i} className="px-2 py-1 rounded-lg bg-[var(--color-surface-hover)] text-[10px] font-medium text-[var(--color-text-muted)]">
+                <span key={i} className="px-2 py-1 rounded-lg bg-surface-hover text-[10px] font-medium text-muted">
                     {i + 1}. {s}
                 </span>
             ))}
@@ -125,16 +125,16 @@ const AIToolCard = ({
     description: string;
     outputs: string[];
 }) => (
-    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5 space-y-3">
+    <div className="rounded-2xl border border-surface bg-card p-5 space-y-3">
         <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
                 <span className="material-symbols-outlined text-[20px] text-white">{icon}</span>
             </div>
-            <span className="text-sm font-bold text-[var(--color-text-main)]">{name}</span>
+            <span className="text-sm font-bold text-main">{name}</span>
         </div>
-        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">{description}</p>
+        <p className="text-sm text-muted leading-relaxed">{description}</p>
         <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-2">Outputs</div>
+            <div className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">Outputs</div>
             <div className="flex flex-wrap gap-2">
                 {outputs.map((o, i) => (
                     <span key={i} className="px-2 py-1 rounded-lg bg-purple-100 text-[10px] font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-300">
@@ -157,17 +157,17 @@ const FieldRow = ({
     required?: boolean;
     description: string;
 }) => (
-    <div className="flex items-start gap-4 py-3 border-b border-[var(--color-surface-border)] last:border-0">
+    <div className="flex items-start gap-4 py-3 border-b border-surface last:border-0">
         <div className="flex-shrink-0 w-[120px]">
-            <span className="text-sm font-semibold text-[var(--color-text-main)]">{field}</span>
+            <span className="text-sm font-semibold text-main">{field}</span>
             {required && <span className="ml-1 text-rose-500 text-xs">*</span>}
         </div>
         <div className="flex-shrink-0 w-[80px]">
-            <span className="px-2 py-0.5 rounded-full bg-[var(--color-surface-hover)] text-[10px] font-medium text-[var(--color-text-muted)]">
+            <span className="px-2 py-0.5 rounded-full bg-surface-hover text-[10px] font-medium text-muted">
                 {type}
             </span>
         </div>
-        <div className="flex-1 text-sm text-[var(--color-text-muted)]">{description}</div>
+        <div className="flex-1 text-sm text-muted">{description}</div>
     </div>
 );
 
@@ -182,15 +182,15 @@ const ConversionPath = ({
     description: string;
     icon: string;
 }) => (
-    <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4 flex items-start gap-3">
-        <span className="material-symbols-outlined text-[18px] text-[var(--color-primary)]">{icon}</span>
+    <div className="rounded-xl border border-surface bg-card p-4 flex items-start gap-3">
+        <span className="material-symbols-outlined text-[18px] text-primary">{icon}</span>
         <div className="flex-1">
-            <div className="flex items-center gap-2 text-sm font-semibold text-[var(--color-text-main)]">
+            <div className="flex items-center gap-2 text-sm font-semibold text-main">
                 <span>{from}</span>
-                <span className="material-symbols-outlined text-[14px] text-[var(--color-text-subtle)]">arrow_forward</span>
+                <span className="material-symbols-outlined text-[14px] text-subtle">arrow_forward</span>
                 <span>{to}</span>
             </div>
-            <p className="text-xs text-[var(--color-text-muted)] mt-1">{description}</p>
+            <p className="text-xs text-muted mt-1">{description}</p>
         </div>
     </div>
 );
@@ -220,14 +220,14 @@ export const FlowsPage = (_props: HelpCenterPageProps) => {
     return (
         <div className="px-6 py-6 space-y-10">
             {/* Hero with Pipeline Preview */}
-            <div className="rounded-[28px] border border-[var(--color-surface-border)] bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] p-6">
-                <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">
+            <div className="rounded-[28px] border border-surface bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] p-6">
+                <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">
                     Flows and CORA Studio
                 </div>
-                <h2 className="text-3xl font-bold text-[var(--color-text-main)] mt-3">
+                <h2 className="text-3xl font-bold text-main mt-3">
                     Shape Strategy Before Execution
                 </h2>
-                <p className="text-sm text-[var(--color-text-muted)] mt-3 leading-relaxed max-w-2xl">
+                <p className="text-sm text-muted mt-3 leading-relaxed max-w-2xl">
                     Flows capture intent, research, and decisions so execution teams can move fast. They progress through
                     stages, get enhanced by CORA, and convert into actionable work.
                 </p>
@@ -235,26 +235,26 @@ export const FlowsPage = (_props: HelpCenterPageProps) => {
                 {/* Pipeline Preview */}
                 <div className="mt-6 flex items-center gap-3 overflow-x-auto pb-2">
                     <PipelineStage stage={1} title="Concept" description="Initial flow capture" />
-                    <span className="material-symbols-outlined text-[var(--color-text-subtle)]">chevron_right</span>
+                    <span className="material-symbols-outlined text-subtle">chevron_right</span>
                     <PipelineStage stage={2} title="Strategy" description="Define approach" isActive />
-                    <span className="material-symbols-outlined text-[var(--color-text-subtle)]">chevron_right</span>
+                    <span className="material-symbols-outlined text-subtle">chevron_right</span>
                     <PipelineStage stage={3} title="Planning" description="Detail the plan" />
-                    <span className="material-symbols-outlined text-[var(--color-text-subtle)]">chevron_right</span>
+                    <span className="material-symbols-outlined text-subtle">chevron_right</span>
                     <PipelineStage stage={4} title="Review" description="Get approval" />
                 </div>
             </div>
 
             {/* SECTION: Flow Types */}
-            <section data-section-id="flow-types" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+            <section data-section-id="flow-types" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Categories</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Flow Types</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Categories</div>
+                        <h3 className="text-xl font-bold text-main mt-2">Flow Types</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             Different flow types for different kinds of strategic work. Each type has tailored stages and CORA tools.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">category</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">category</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -290,68 +290,68 @@ export const FlowsPage = (_props: HelpCenterPageProps) => {
             </section>
 
             {/* SECTION: Stage Pipeline */}
-            <section data-section-id="stage-pipeline" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
+            <section data-section-id="stage-pipeline" className="help-section rounded-3xl border border-surface bg-card p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Lifecycle</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Stage Pipeline</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Lifecycle</div>
+                        <h3 className="text-xl font-bold text-main mt-2">Stage Pipeline</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             Flows progress through stages, each with specific purpose and outputs. Understanding the pipeline helps you create better strategy.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">timeline</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">timeline</span>
                 </div>
 
                 {/* Stage Details */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
+                    <div className="rounded-2xl border border-surface bg-surface p-5">
                         <div className="flex items-center gap-3 mb-3">
                             <div className="w-8 h-8 rounded-full bg-slate-400 flex items-center justify-center text-white text-sm font-bold">1</div>
-                            <span className="text-sm font-bold text-[var(--color-text-main)]">Concept / Discovery</span>
+                            <span className="text-sm font-bold text-main">Concept / Discovery</span>
                         </div>
-                        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed mb-3">
+                        <p className="text-sm text-muted leading-relaxed mb-3">
                             Capture the initial flow concept, problem statement, and opportunity. Document early assumptions and constraints.
                         </p>
-                        <div className="text-xs text-[var(--color-text-subtle)]">
+                        <div className="text-xs text-subtle">
                             <strong>Key outputs:</strong> Problem statement, target audience, success criteria
                         </div>
                     </div>
 
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
+                    <div className="rounded-2xl border border-surface bg-surface p-5">
                         <div className="flex items-center gap-3 mb-3">
                             <div className="w-8 h-8 rounded-full bg-sky-500 flex items-center justify-center text-white text-sm font-bold">2</div>
-                            <span className="text-sm font-bold text-[var(--color-text-main)]">Strategy</span>
+                            <span className="text-sm font-bold text-main">Strategy</span>
                         </div>
-                        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed mb-3">
+                        <p className="text-sm text-muted leading-relaxed mb-3">
                             Define the approach, positioning, and key decisions. Use CORA analysis to validate assumptions.
                         </p>
-                        <div className="text-xs text-[var(--color-text-subtle)]">
+                        <div className="text-xs text-subtle">
                             <strong>Key outputs:</strong> Strategic direction, positioning, channel strategy
                         </div>
                     </div>
 
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
+                    <div className="rounded-2xl border border-surface bg-surface p-5">
                         <div className="flex items-center gap-3 mb-3">
                             <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-white text-sm font-bold">3</div>
-                            <span className="text-sm font-bold text-[var(--color-text-main)]">Planning</span>
+                            <span className="text-sm font-bold text-main">Planning</span>
                         </div>
-                        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed mb-3">
+                        <p className="text-sm text-muted leading-relaxed mb-3">
                             Detail the execution path, timelines, resources, and KPIs. Break strategy into actionable phases.
                         </p>
-                        <div className="text-xs text-[var(--color-text-subtle)]">
+                        <div className="text-xs text-subtle">
                             <strong>Key outputs:</strong> Timeline, phases, KPIs, resource requirements
                         </div>
                     </div>
 
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
+                    <div className="rounded-2xl border border-surface bg-surface p-5">
                         <div className="flex items-center gap-3 mb-3">
                             <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white text-sm font-bold">4</div>
-                            <span className="text-sm font-bold text-[var(--color-text-main)]">Review / Approval</span>
+                            <span className="text-sm font-bold text-main">Review / Approval</span>
                         </div>
-                        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed mb-3">
+                        <p className="text-sm text-muted leading-relaxed mb-3">
                             Submit for stakeholder review. Get approval to proceed or iterate based on feedback.
                         </p>
-                        <div className="text-xs text-[var(--color-text-subtle)]">
+                        <div className="text-xs text-subtle">
                             <strong>Key outputs:</strong> Approval decision, feedback notes, conversion trigger
                         </div>
                     </div>
@@ -359,16 +359,16 @@ export const FlowsPage = (_props: HelpCenterPageProps) => {
             </section>
 
             {/* SECTION: CORA Studio Tools */}
-            <section data-section-id="ai-studio-tools" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+            <section data-section-id="ai-studio-tools" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Powered by CORA</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">CORA Studio Tools</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Powered by CORA</div>
+                        <h3 className="text-xl font-bold text-main mt-2">CORA Studio Tools</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             CORA Studio provides analysis, generation, and validation tools within each flow stage. Use them to accelerate thinking and surface blind spots.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">auto_awesome</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">auto_awesome</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -416,20 +416,20 @@ export const FlowsPage = (_props: HelpCenterPageProps) => {
             </section>
 
             {/* SECTION: Flow Fields Reference */}
-            <section data-section-id="flow-fields" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
+            <section data-section-id="flow-fields" className="help-section rounded-3xl border border-surface bg-card p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Reference</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Flow Fields Reference</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Reference</div>
+                        <h3 className="text-xl font-bold text-main mt-2">Flow Fields Reference</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             Complete documentation of every field available when creating or editing a flow.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">list_alt</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">list_alt</span>
                 </div>
 
-                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-5">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                <div className="rounded-2xl border border-surface bg-surface p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-muted mb-4">
                         Core Fields
                     </div>
                     <div className="space-y-0">
@@ -447,16 +447,16 @@ export const FlowsPage = (_props: HelpCenterPageProps) => {
             </section>
 
             {/* SECTION: Approval Workflow */}
-            <section data-section-id="approval-workflow" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+            <section data-section-id="approval-workflow" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Decisions</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Approval Workflow</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Decisions</div>
+                        <h3 className="text-xl font-bold text-main mt-2">Approval Workflow</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             The review stage is a decision gate. Understand the approval options and what each triggers.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">fact_check</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">fact_check</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -502,16 +502,16 @@ export const FlowsPage = (_props: HelpCenterPageProps) => {
             </section>
 
             {/* SECTION: Conversion Options */}
-            <section data-section-id="conversion-options" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
+            <section data-section-id="conversion-options" className="help-section rounded-3xl border border-surface bg-card p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Execution</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Conversion to Execution</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Execution</div>
+                        <h3 className="text-xl font-bold text-main mt-2">Conversion to Execution</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             Once approved, flows can convert into executable items while maintaining traceability to their strategic origin.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">swap_horiz</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">swap_horiz</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

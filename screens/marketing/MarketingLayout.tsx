@@ -13,16 +13,16 @@ const MarketingLayout = () => {
     ];
 
     return (
-        <div className="flex flex-col h-full bg-[var(--color-bg-base)]">
+        <div className="flex flex-col h-full bg-surface">
             {/* Minimal Topbar Navigation - Matching App Header */}
-            <div className="px-4 h-12 border-b border-[var(--color-surface-border)] shrink-0 bg-[var(--color-surface-card)] sticky top-0 z-20 flex items-center gap-4">
+            <div className="px-4 h-12 border-b border-surface shrink-0 bg-card sticky top-0 z-20 flex items-center gap-4">
 
                 {/* Title (Text Only) */}
-                <h1 className="text-sm font-bold text-[var(--color-text-main)] shrink-0">
+                <h1 className="text-sm font-bold text-main shrink-0">
                     Online Marketing
                 </h1>
 
-                <div className="h-4 w-px bg-[var(--color-surface-border)] shrink-0" />
+                <div className="h-4 w-px bg-surface-border shrink-0" />
 
                 {/* Navigation Tabs */}
                 <nav className="flex items-center gap-1 overflow-x-auto no-scrollbar h-full">
@@ -34,8 +34,8 @@ const MarketingLayout = () => {
                             className={({ isActive }) => `
                                 relative h-8 px-3 rounded-md flex items-center gap-1.5 text-xs font-medium transition-all whitespace-nowrap
                                 ${isActive
-                                    ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] shadow-sm'
-                                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'
+                                    ? 'bg-surface-hover text-main shadow-sm'
+                                    : 'text-muted hover:text-main hover:bg-surface-hover'
                                 }
                             `}
                         >

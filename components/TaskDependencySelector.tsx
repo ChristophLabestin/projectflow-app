@@ -95,14 +95,14 @@ export const TaskDependencySelector: React.FC<TaskDependencySelectorProps> = ({
                 <Button
                     type="button"
                     variant="ghost"
-                    className="w-full justify-start text-[var(--color-text-muted)] border border-[var(--color-surface-border)] hover:border-[var(--color-primary)] bg-[var(--color-surface-input)] hover:bg-[var(--color-surface-hover)] p-0 h-auto"
+                    className="w-full justify-start text-muted border border-surface hover:border-primary bg-surface-input hover:bg-surface-hover p-0 h-auto"
                     onClick={() => setIsOpen(!isOpen)}
                 >
                     <div className="flex items-center gap-2 w-full px-3 py-2.5">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]">add_link</span>
+                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted">add_link</span>
                         <input
                             type="text"
-                            className="bg-transparent border-none outline-none text-sm w-full pl-7 placeholder:text-[var(--color-text-muted)]"
+                            className="bg-transparent border-none outline-none text-sm w-full pl-7 placeholder:text-muted"
                             placeholder="Add dependency..."
                             value={search}
                             onChange={(e) => {
@@ -111,16 +111,16 @@ export const TaskDependencySelector: React.FC<TaskDependencySelectorProps> = ({
                             }}
                             onFocus={() => setIsOpen(true)}
                         />
-                        <span className="material-symbols-outlined text-[var(--color-text-muted)] text-sm">expand_more</span>
+                        <span className="material-symbols-outlined text-muted text-sm">expand_more</span>
                     </div>
                 </Button>
 
                 {isOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-xl z-50 animate-in fade-in slide-in-from-top-2">
+                    <div className="absolute top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-card border border-surface rounded-xl shadow-xl z-50 animate-in fade-in slide-in-from-top-2">
                         {loading && tasks.length === 0 ? (
-                            <div className="p-4 text-center text-sm text-[var(--color-text-muted)]">Loading tasks...</div>
+                            <div className="p-4 text-center text-sm text-muted">Loading tasks...</div>
                         ) : filteredTasks.length === 0 ? (
-                            <div className="p-4 text-center text-sm text-[var(--color-text-muted)]">
+                            <div className="p-4 text-center text-sm text-muted">
                                 {search ? 'No matching tasks found' : 'No other tasks available'}
                             </div>
                         ) : (
@@ -134,13 +134,13 @@ export const TaskDependencySelector: React.FC<TaskDependencySelectorProps> = ({
                                             setIsOpen(false);
                                             setSearch('');
                                         }}
-                                        className="w-full text-left px-3 py-2 rounded-lg hover:bg-[var(--color-surface-hover)] flex items-center gap-2 group transition-colors"
+                                        className="w-full text-left px-3 py-2 rounded-lg hover:bg-surface-hover flex items-center gap-2 group transition-colors"
                                     >
                                         <div className={`
                                             size-2 rounded-full 
                                             ${task.isCompleted ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}
                                         `} />
-                                        <span className="text-sm font-medium text-[var(--color-text-main)] truncate">{task.title}</span>
+                                        <span className="text-sm font-medium text-main truncate">{task.title}</span>
                                         {task.priority === 'Urgent' && (
                                             <span className="ml-auto text-[10px] font-bold text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded">URGENT</span>
                                         )}

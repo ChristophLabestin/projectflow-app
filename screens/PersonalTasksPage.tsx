@@ -144,7 +144,7 @@ export const PersonalTasksPage = () => {
     if (loading) {
         return (
             <div className="flex items-center justify-center p-12">
-                <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-3xl">
+                <span className="material-symbols-outlined text-subtle animate-spin text-3xl">
                     rotate_right
                 </span>
             </div>
@@ -155,8 +155,8 @@ export const PersonalTasksPage = () => {
         <div className="flex flex-col gap-8 fade-in max-w-3xl mx-auto pb-12">
             {/* Header */}
             <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-bold text-[var(--color-text-main)]">{t('personalTasks.header.title')}</h1>
-                <p className="text-[var(--color-text-muted)]">
+                <h1 className="text-3xl font-bold text-main">{t('personalTasks.header.title')}</h1>
+                <p className="text-muted">
                     {t('personalTasks.header.subtitle')}
                 </p>
             </div>
@@ -164,21 +164,21 @@ export const PersonalTasksPage = () => {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-4">
                 <Card padding="md" className="flex flex-col items-center border-l-4 border-l-indigo-500">
-                    <span className="text-2xl font-bold text-[var(--color-text-main)]">{stats.total}</span>
-                    <span className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide">{t('personalTasks.stats.total')}</span>
+                    <span className="text-2xl font-bold text-main">{stats.total}</span>
+                    <span className="text-xs font-medium text-muted uppercase tracking-wide">{t('personalTasks.stats.total')}</span>
                 </Card>
                 <Card padding="md" className="flex flex-col items-center border-l-4 border-l-amber-500">
-                    <span className="text-2xl font-bold text-[var(--color-text-main)]">{stats.open}</span>
-                    <span className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide">{t('personalTasks.stats.open')}</span>
+                    <span className="text-2xl font-bold text-main">{stats.open}</span>
+                    <span className="text-xs font-medium text-muted uppercase tracking-wide">{t('personalTasks.stats.open')}</span>
                 </Card>
                 <Card padding="md" className="flex flex-col items-center border-l-4 border-l-emerald-500">
-                    <span className="text-2xl font-bold text-[var(--color-text-main)]">{stats.completed}</span>
-                    <span className="text-xs font-medium text-[var(--color-text-muted)] uppercase tracking-wide">{t('personalTasks.stats.done')}</span>
+                    <span className="text-2xl font-bold text-main">{stats.completed}</span>
+                    <span className="text-xs font-medium text-muted uppercase tracking-wide">{t('personalTasks.stats.done')}</span>
                 </Card>
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex bg-[var(--color-surface-hover)] p-1 rounded-xl">
+            <div className="flex bg-surface-hover p-1 rounded-xl">
                 {(['open', 'completed', 'all'] as const).map(status => (
                     <button
                         key={status}
@@ -186,8 +186,8 @@ export const PersonalTasksPage = () => {
                         className={`
                             flex-1 px-6 py-2 rounded-lg text-sm font-semibold capitalize transition-all
                             ${statusFilter === status
-                                ? 'bg-[var(--color-surface-paper)] text-[var(--color-text-main)] shadow-sm'
-                                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}
+                                ? 'bg-surface-paper text-main shadow-sm'
+                                : 'text-muted hover:text-main'}
                         `}
                     >
                         {t(`personalTasks.filters.${status}`)}
@@ -203,7 +203,7 @@ export const PersonalTasksPage = () => {
                         value={newTaskTitle}
                         onChange={(e) => setNewTaskTitle(e.target.value)}
                         placeholder={t('personalTasks.form.placeholder')}
-                        className="w-full bg-[var(--color-surface-paper)] border border-[var(--color-surface-border)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 rounded-xl px-4 py-3 text-sm text-[var(--color-text-main)] placeholder:text-[var(--color-text-muted)] transition-all"
+                        className="w-full bg-surface-paper border border-surface focus:border-primary focus:ring-2 focus:ring-primary/20 rounded-xl px-4 py-3 text-sm text-main placeholder:text-muted transition-all"
                     />
                 </div>
                 <Button
@@ -222,15 +222,15 @@ export const PersonalTasksPage = () => {
             <div className="flex flex-col gap-3">
                 {filteredTasks.length === 0 ? (
                     <div className="py-16 text-center flex flex-col items-center justify-center">
-                        <div className="bg-[var(--color-surface-hover)] p-6 rounded-full mb-4">
-                            <span className="material-symbols-outlined text-4xl text-[var(--color-text-subtle)]">
+                        <div className="bg-surface-hover p-6 rounded-full mb-4">
+                            <span className="material-symbols-outlined text-4xl text-subtle">
                                 {statusFilter === 'completed' ? 'task_alt' : 'check_circle'}
                             </span>
                         </div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mb-2">
+                        <h3 className="text-xl font-bold text-main mb-2">
                             {statusFilter === 'completed' ? t('personalTasks.empty.completed.title') : t('personalTasks.empty.open.title')}
                         </h3>
-                        <p className="text-[var(--color-text-muted)] max-w-sm">
+                        <p className="text-muted max-w-sm">
                             {statusFilter === 'completed'
                                 ? t('personalTasks.empty.completed.description')
                                 : t('personalTasks.empty.open.description')}
@@ -241,7 +241,7 @@ export const PersonalTasksPage = () => {
                         <div
                             key={task.id}
                             onClick={() => navigate(`/personal-tasks/${task.id}`)}
-                            className="group bg-[var(--color-surface-paper)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] rounded-xl p-4 flex items-center gap-4 transition-all shadow-sm hover:shadow-md relative cursor-pointer"
+                            className="group bg-surface-paper hover:bg-surface-hover border border-surface rounded-xl p-4 flex items-center gap-4 transition-all shadow-sm hover:shadow-md relative cursor-pointer"
                         >
                             {/* Checkbox */}
                             <button
@@ -258,16 +258,16 @@ export const PersonalTasksPage = () => {
 
                             {/* Task Content */}
                             <div className="flex-1 min-w-0">
-                                <h3 className={`text-base font-semibold leading-snug transition-all ${task.isCompleted ? 'text-[var(--color-text-muted)] line-through decoration-2' : 'text-[var(--color-text-main)]'}`}>
+                                <h3 className={`text-base font-semibold leading-snug transition-all ${task.isCompleted ? 'text-muted line-through decoration-2' : 'text-main'}`}>
                                     {task.title}
                                 </h3>
                                 {task.description && (
-                                    <p className="text-sm text-[var(--color-text-muted)] mt-1 line-clamp-1">
+                                    <p className="text-sm text-muted mt-1 line-clamp-1">
                                         {task.description}
                                     </p>
                                 )}
                                 {task.dueDate && (
-                                    <div className="flex items-center gap-1 mt-2 text-xs text-[var(--color-text-muted)]">
+                                    <div className="flex items-center gap-1 mt-2 text-xs text-muted">
                                         <span className="material-symbols-outlined text-[14px]">event</span>
                                         {format(new Date(task.dueDate), dateFormat, { locale: dateLocale })}
                                     </div>
@@ -281,7 +281,7 @@ export const PersonalTasksPage = () => {
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setShowMoveDropdown(showMoveDropdown === task.id ? null : task.id); }}
                                         disabled={movingTaskId === task.id}
-                                        className="p-2 rounded-lg hover:bg-indigo-500/10 text-[var(--color-text-muted)] hover:text-indigo-500 transition-all"
+                                        className="p-2 rounded-lg hover:bg-indigo-500/10 text-muted hover:text-indigo-500 transition-all"
                                         title={t('personalTasks.move.title')}
                                     >
                                         {movingTaskId === task.id ? (
@@ -295,13 +295,13 @@ export const PersonalTasksPage = () => {
                                     {showMoveDropdown === task.id && (
                                         <>
                                             <div className="fixed inset-0 z-10" onClick={() => setShowMoveDropdown(null)} />
-                                            <div className="absolute right-0 top-full mt-1 z-20 w-56 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-xl overflow-hidden animate-scale-up origin-top-right">
-                                                <div className="px-3 py-2 border-b border-[var(--color-surface-border)] text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
+                                            <div className="absolute right-0 top-full mt-1 z-20 w-56 bg-card border border-surface rounded-xl shadow-xl overflow-hidden animate-scale-up origin-top-right">
+                                                <div className="px-3 py-2 border-b border-surface text-xs font-bold text-muted uppercase tracking-wider">
                                                     {t('personalTasks.move.dropdown.title')}
                                                 </div>
                                                 <div className="max-h-48 overflow-y-auto">
                                                     {projects.length === 0 ? (
-                                                        <div className="px-3 py-4 text-sm text-[var(--color-text-muted)] text-center">
+                                                        <div className="px-3 py-4 text-sm text-muted text-center">
                                                             {t('personalTasks.move.dropdown.empty')}
                                                         </div>
                                                     ) : (
@@ -309,10 +309,10 @@ export const PersonalTasksPage = () => {
                                                             <button
                                                                 key={project.id}
                                                                 onClick={() => handleMoveToProject(task.id, project.id)}
-                                                                className="w-full px-3 py-2.5 text-left text-sm hover:bg-[var(--color-surface-hover)] transition-colors flex items-center gap-2"
+                                                                className="w-full px-3 py-2.5 text-left text-sm hover:bg-surface-hover transition-colors flex items-center gap-2"
                                                             >
-                                                                <span className="size-2 rounded-full bg-[var(--color-primary)]" />
-                                                                <span className="truncate text-[var(--color-text-main)]">{project.title}</span>
+                                                                <span className="size-2 rounded-full bg-primary" />
+                                                                <span className="truncate text-main">{project.title}</span>
                                                             </button>
                                                         ))
                                                     )}
@@ -325,7 +325,7 @@ export const PersonalTasksPage = () => {
                                 {/* Delete Button */}
                                 <button
                                     onClick={(e) => handleDelete(e, task.id)}
-                                    className="p-2 rounded-lg hover:bg-red-500/10 text-[var(--color-text-muted)] hover:text-red-500 transition-all"
+                                    className="p-2 rounded-lg hover:bg-red-500/10 text-muted hover:text-red-500 transition-all"
                                     title={t('personalTasks.actions.delete')}
                                 >
                                     <span className="material-symbols-outlined text-[18px]">delete</span>

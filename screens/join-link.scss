@@ -1,0 +1,33 @@
+@use '../styles/tokens';
+
+.join-link {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--color-surface-bg);
+}
+
+.join-link__card {
+    width: 100%;
+    max-width: 520px;
+}
+
+.join-link__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 8px;
+}
+
+.join-link__button {
+    width: 100%;
+    justify-content: center;
+}
+
+@media (min-width: 640px) {
+    .join-link__actions {
+        flex-direction: row;
+    }
+}

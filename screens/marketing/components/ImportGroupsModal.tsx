@@ -115,10 +115,10 @@ export const ImportGroupsModal: React.FC<ImportGroupsModalProps> = ({ isOpen, on
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl w-full max-w-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
+            <div className="bg-card border border-surface rounded-xl w-full max-w-2xl shadow-2xl p-6 max-h-[90vh] overflow-y-auto">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="h4">Import Groups</h2>
-                    <button onClick={onClose} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]">
+                    <button onClick={onClose} className="text-muted hover:text-main">
                         <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
@@ -126,16 +126,16 @@ export const ImportGroupsModal: React.FC<ImportGroupsModalProps> = ({ isOpen, on
                 {/* Step 1: Upload */}
                 {step === 'upload' && (
                     <div className="space-y-4">
-                        <p className="text-[var(--color-text-muted)]">
+                        <p className="text-muted">
                             Upload a CSV file with your groups. The file should have columns for name, and optionally description and color.
                         </p>
                         <div
-                            className="border-2 border-dashed border-[var(--color-surface-border)] rounded-xl p-8 text-center cursor-pointer hover:border-[var(--color-primary)] transition-colors"
+                            className="border-2 border-dashed border-surface rounded-xl p-8 text-center cursor-pointer hover:border-primary transition-colors"
                             onClick={() => fileInputRef.current?.click()}
                         >
-                            <span className="material-symbols-outlined text-4xl text-[var(--color-text-muted)] mb-2">upload_file</span>
+                            <span className="material-symbols-outlined text-4xl text-muted mb-2">upload_file</span>
                             <p className="font-medium">Click to upload CSV</p>
-                            <p className="text-sm text-[var(--color-text-muted)]">or drag and drop</p>
+                            <p className="text-sm text-muted">or drag and drop</p>
                         </div>
                         <input
                             ref={fileInputRef}
@@ -150,16 +150,16 @@ export const ImportGroupsModal: React.FC<ImportGroupsModalProps> = ({ isOpen, on
                 {/* Step 2: Mapping */}
                 {step === 'mapping' && (
                     <div className="space-y-4">
-                        <p className="text-[var(--color-text-muted)]">
+                        <p className="text-muted">
                             Map your CSV columns to group fields. Found {data.length} rows.
                         </p>
                         <div className="space-y-3">
                             {headers.map(header => (
                                 <div key={header} className="flex items-center gap-4">
                                     <span className="w-1/3 text-sm font-medium truncate">{header}</span>
-                                    <span className="material-symbols-outlined text-[var(--color-text-muted)]">arrow_forward</span>
+                                    <span className="material-symbols-outlined text-muted">arrow_forward</span>
                                     <select
-                                        className="flex-1 px-3 py-2 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg focus:outline-none focus:border-[var(--color-primary)] text-sm"
+                                        className="flex-1 px-3 py-2 bg-surface border border-surface rounded-lg focus:outline-none focus:border-primary text-sm"
                                         value={mapping[header] || ''}
                                         onChange={(e) => handleMappingChange(header, e.target.value)}
                                     >
@@ -178,7 +178,7 @@ export const ImportGroupsModal: React.FC<ImportGroupsModalProps> = ({ isOpen, on
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className="bg-[var(--color-surface-bg)]">
+                                        <tr className="bg-surface">
                                             {Object.values(mapping).map((field, i) => (
                                                 <th key={i} className="px-3 py-2 text-left">{field}</th>
                                             ))}
@@ -186,7 +186,7 @@ export const ImportGroupsModal: React.FC<ImportGroupsModalProps> = ({ isOpen, on
                                     </thead>
                                     <tbody>
                                         {data.slice(0, 3).map((row, i) => (
-                                            <tr key={i} className="border-t border-[var(--color-surface-border)]">
+                                            <tr key={i} className="border-t border-surface">
                                                 {Object.entries(mapping).map(([header, _], j) => (
                                                     <td key={j} className="px-3 py-2">{row[header]}</td>
                                                 ))}

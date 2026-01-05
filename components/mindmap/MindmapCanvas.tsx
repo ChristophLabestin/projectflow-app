@@ -217,7 +217,7 @@ export function MindmapCanvas() {
     return (
         <div
             ref={containerRef}
-            className={`w-full h-full overflow-hidden touch-none bg-[var(--color-surface-bg)] ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+            className={`w-full h-full overflow-hidden touch-none bg-surface ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
             onPointerDown={handleCanvasPointerDown}
             onPointerMove={handleCanvasPointerMove}
             onPointerUp={handleCanvasPointerUp}
@@ -234,7 +234,7 @@ export function MindmapCanvas() {
                 {/* Grid Background */}
                 {state.isGridVisible && (
                     <svg
-                        className="absolute inset-0 pointer-events-none text-[var(--color-text-subtle)]"
+                        className="absolute inset-0 pointer-events-none text-subtle"
                         width={CANVAS_SIZE}
                         height={CANVAS_SIZE}
                     >

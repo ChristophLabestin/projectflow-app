@@ -92,8 +92,8 @@ export const UserProfileDropdown: React.FC = () => {
                     relative size-10 rounded-full transition-all duration-200
                     ring-2 ring-offset-2 ring-offset-[var(--color-surface-card)]
                     ${isOpen
-                        ? 'ring-[var(--color-primary)] scale-105'
-                        : 'ring-transparent hover:ring-[var(--color-surface-border)]'
+                        ? 'ring-primary scale-105'
+                        : 'ring-transparent hover:ring-surface'
                     }
                 `}
             >
@@ -110,7 +110,7 @@ export const UserProfileDropdown: React.FC = () => {
                 )}
 
                 {/* Online indicator */}
-                <span className={`absolute bottom-0 right-0 size-3 rounded-full border-2 border-[var(--color-surface-card)] ${currentStatus.color}`} />
+                <span className={`absolute bottom-0 right-0 size-3 rounded-full border-2 border-card ${currentStatus.color}`} />
             </button>
 
             {/* Dropdown Menu */}
@@ -118,34 +118,34 @@ export const UserProfileDropdown: React.FC = () => {
                 <div
                     className="
                         absolute top-full right-0 mt-2 w-72
-                        bg-[var(--color-surface-card)] 
-                        border border-[var(--color-surface-border)]
+                        bg-card 
+                        border border-surface
                         rounded-2xl shadow-2xl
                         animate-scale-up origin-top-right
                         z-50
                     "
                 >
                     {/* User Info Header */}
-                    <div className="p-4 rounded-t-2xl bg-gradient-to-br from-[var(--color-surface-hover)] to-transparent border-b border-[var(--color-surface-border)]">
+                    <div className="p-4 rounded-t-2xl bg-gradient-to-br from-[var(--color-surface-hover)] to-transparent border-b border-surface">
                         <div className="flex items-center gap-3">
                             {user?.photoURL ? (
                                 <img
                                     src={user.photoURL}
                                     alt={user.displayName || t('user.profileAlt')}
-                                    className="size-12 rounded-full object-cover ring-2 ring-[var(--color-surface-border)]"
+                                    className="size-12 rounded-full object-cover ring-2 ring-surface"
                                 />
                             ) : (
-                                <div className="size-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg ring-2 ring-[var(--color-surface-border)]">
+                                <div className="size-12 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg ring-2 ring-surface">
                                     {user?.displayName?.charAt(0)?.toUpperCase() || t('user.fallbackInitial')}
                                 </div>
                             )}
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-bold text-[var(--color-text-main)] truncate">
+                                <p className="text-sm font-bold text-main truncate">
                                     {user?.displayName || t('user.fallbackName')}
                                 </p>
                                 <div className="flex items-center gap-1.5 mt-0.5">
                                     <span className={`size-1.5 rounded-full ${currentStatus.color}`} />
-                                    <p className="text-[11px] font-medium text-[var(--color-text-muted)] truncate">
+                                    <p className="text-[11px] font-medium text-muted truncate">
                                         {currentStatus.label}
                                     </p>
                                 </div>
@@ -160,18 +160,18 @@ export const UserProfileDropdown: React.FC = () => {
                                     w-full flex items-center justify-between px-3 py-2 rounded-xl border
                                     transition-all duration-200 group
                                     ${isStatusSelectorOpen
-                                        ? 'bg-[var(--color-surface-hover)] border-[var(--color-primary)]/50 ring-4 ring-[var(--color-primary)]/5'
-                                        : 'bg-white/5 border-[var(--color-surface-border)] hover:border-[var(--color-primary)]/30'
+                                        ? 'bg-surface-hover border-primary/50 ring-4 ring-primary/5'
+                                        : 'bg-white/5 border-surface hover:border-primary/30'
                                     }
                                 `}
                             >
                                 <div className="flex items-center gap-2.5">
                                     <div className={`size-2 rounded-full ${currentStatus.color} shadow-sm`} />
-                                    <span className="text-[12px] font-bold text-[var(--color-text-main)]">
+                                    <span className="text-[12px] font-bold text-main">
                                         {currentStatus.label}
                                     </span>
                                 </div>
-                                <span className={`material-symbols-outlined text-[18px] text-[var(--color-text-muted)] transition-transform duration-200 ${isStatusSelectorOpen ? 'rotate-180' : ''}`}>
+                                <span className={`material-symbols-outlined text-[18px] text-muted transition-transform duration-200 ${isStatusSelectorOpen ? 'rotate-180' : ''}`}>
                                     expand_more
                                 </span>
                             </button>
@@ -180,8 +180,8 @@ export const UserProfileDropdown: React.FC = () => {
                                 <div
                                     className="
                                         absolute top-full left-0 right-0 mt-1.5 p-1
-                                        bg-[var(--color-surface-card)] 
-                                        border border-[var(--color-surface-border)]
+                                        bg-card 
+                                        border border-surface
                                         rounded-xl shadow-xl
                                         z-[60] animate-scale-up origin-top
                                     "
@@ -196,8 +196,8 @@ export const UserProfileDropdown: React.FC = () => {
                                                 className={`
                                                     w-full flex items-center gap-2.5 p-2 rounded-lg transition-all
                                                     ${isSelected
-                                                        ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
-                                                        : 'hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                                                        ? 'bg-primary/10 text-primary'
+                                                        : 'hover:bg-surface-hover text-muted hover:text-main'
                                                     }
                                                 `}
                                             >
@@ -219,9 +219,9 @@ export const UserProfileDropdown: React.FC = () => {
                         <Link
                             to="/profile"
                             onClick={closeAndNavigate}
-                            className="flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)] transition-colors"
+                            className="flex items-center gap-3 px-4 py-2.5 hover:bg-surface-hover text-main transition-colors"
                         >
-                            <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">person</span>
+                            <span className="material-symbols-outlined text-[20px] text-muted">person</span>
                             <span className="text-sm font-medium">{t('user.viewProfile')}</span>
                         </Link>
                         <button
@@ -229,31 +229,31 @@ export const UserProfileDropdown: React.FC = () => {
                                 closeAndNavigate();
                                 setShowSettingsModal(true);
                             }}
-                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)] transition-colors text-left"
+                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-hover text-main transition-colors text-left"
                         >
-                            <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">settings</span>
+                            <span className="material-symbols-outlined text-[20px] text-muted">settings</span>
                             <span className="text-sm font-medium">{t('user.settings')}</span>
                         </button>
                         <Link
                             to="/media"
                             onClick={closeAndNavigate}
-                            className="flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)] transition-colors"
+                            className="flex items-center gap-3 px-4 py-2.5 hover:bg-surface-hover text-main transition-colors"
                         >
-                            <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">perm_media</span>
+                            <span className="material-symbols-outlined text-[20px] text-muted">perm_media</span>
                             <span className="text-sm font-medium">{t('user.mediaLibrary')}</span>
                         </Link>
                         <Link
                             to="/personal-tasks"
                             onClick={closeAndNavigate}
-                            className="flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)] transition-colors"
+                            className="flex items-center gap-3 px-4 py-2.5 hover:bg-surface-hover text-main transition-colors"
                         >
-                            <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">task_alt</span>
+                            <span className="material-symbols-outlined text-[20px] text-muted">task_alt</span>
                             <span className="text-sm font-medium">{t('user.personalTasks')}</span>
                         </Link>
                     </div>
 
                     {/* Logout Section */}
-                    <div className="border-t border-[var(--color-surface-border)] py-2 rounded-b-2xl">
+                    <div className="border-t border-surface py-2 rounded-b-2xl">
                         <button
                             onClick={handleSignOut}
                             className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-rose-50 dark:hover:bg-rose-900/10 text-rose-600 dark:text-rose-400 transition-colors text-left"

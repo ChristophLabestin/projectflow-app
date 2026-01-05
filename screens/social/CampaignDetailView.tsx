@@ -512,14 +512,14 @@ export const CampaignDetailView = () => {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
-                <span className="material-symbols-outlined animate-spin text-3xl text-[var(--color-primary)]">progress_activity</span>
+                <span className="material-symbols-outlined animate-spin text-3xl text-primary">progress_activity</span>
             </div>
         );
     }
 
     if (!campaign) {
         return (
-            <div className="flex flex-col items-center justify-center h-64 text-[var(--color-text-muted)]">
+            <div className="flex flex-col items-center justify-center h-64 text-muted">
                 <span className="material-symbols-outlined text-4xl mb-2">campaign</span>
                 <p>{t('social.campaignDetail.notFound')}</p>
                 <Button variant="ghost" className="mt-4" onClick={() => navigate('../campaigns')}>{t('social.campaignDetail.backToCampaigns')}</Button>
@@ -530,14 +530,14 @@ export const CampaignDetailView = () => {
     const brandColor = campaign.color || '#E1306C';
 
     return (
-        <div className="h-full flex flex-col relative overflow-hidden bg-[var(--color-bg-base)]">
+        <div className="h-full flex flex-col relative overflow-hidden bg-surface">
 
             {/* Scrollable Container - Disable main scroll for board to allow generic column scroll, or focus mode */}
             <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
 
                 {/* Concept Review Mode */}
                 {campaign.status === 'Concept' ? (
-                    <div className="flex-1 overflow-auto bg-[var(--color-surface-bg)]">
+                    <div className="flex-1 overflow-auto bg-surface">
                         {conceptIdea ? (
                             <SocialCampaignReviewView
                                 idea={conceptIdea}
@@ -631,7 +631,7 @@ export const CampaignDetailView = () => {
                             />
                         ) : (
                             <div className="flex items-center justify-center h-full">
-                                <span className="material-symbols-outlined animate-spin text-3xl text-[var(--color-primary)]">progress_activity</span>
+                                <span className="material-symbols-outlined animate-spin text-3xl text-primary">progress_activity</span>
                             </div>
                         )}
                     </div>
@@ -667,8 +667,8 @@ export const CampaignDetailView = () => {
                                             key={tab.id}
                                             onClick={() => setActiveTab(tab.id as any)}
                                             className={`group relative pb-3 flex items-center gap-2 transition-colors ${activeTab === tab.id
-                                                ? 'text-[var(--color-text-main)]'
-                                                : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                                                ? 'text-main'
+                                                : 'text-muted hover:text-main'
                                                 }`}
                                         >
                                             <span
@@ -704,8 +704,8 @@ export const CampaignDetailView = () => {
                                 <button
                                     onClick={() => setIsFocusMode(!isFocusMode)}
                                     className={`flex items-center gap-1.5 text-xs font-semibold transition-all px-3 py-1.5 rounded-lg ${isFocusMode
-                                        ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)]'
-                                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'
+                                        ? 'bg-surface-hover text-main'
+                                        : 'text-muted hover:text-main hover:bg-surface-hover'
                                         }`}
                                 >
                                     <span className="material-symbols-outlined text-[16px]">
@@ -714,7 +714,7 @@ export const CampaignDetailView = () => {
                                     {isFocusMode ? t('social.campaignDetail.focus.expand') : t('social.campaignDetail.focus.focus')}
                                 </button>
                             </div>
-                            <div className="h-px bg-[var(--color-surface-border)] -mx-8" style={{ marginTop: '-1px' }} />
+                            <div className="h-px bg-surface-border -mx-8" style={{ marginTop: '-1px' }} />
                         </div>
 
                         {/* Scrollable Container - Internal scroll only */}
@@ -775,22 +775,22 @@ export const CampaignDetailView = () => {
             >
                 <div className="space-y-6">
                     <div>
-                        <label className="block text-sm font-bold text-[var(--color-text-main)] mb-2">{t('social.campaignDetail.config.focusLabel')}</label>
+                        <label className="block text-sm font-bold text-main mb-2">{t('social.campaignDetail.config.focusLabel')}</label>
                         <input
                             type="text"
-                            className="w-full bg-[var(--color-bg-base)] border border-[var(--color-surface-border)] rounded-lg px-4 py-2 text-sm text-[var(--color-text-main)] placeholder-[var(--color-text-muted)] focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+                            className="w-full bg-surface border border-surface rounded-lg px-4 py-2 text-sm text-main placeholder-[var(--color-text-muted)] focus:outline-none focus:border-primary transition-colors"
                             placeholder={t('social.campaignDetail.config.focusPlaceholder')}
                             value={configFocus}
                             onChange={(e) => setConfigFocus(e.target.value)}
                         />
-                        <p className="text-xs text-[var(--color-text-muted)] mt-1">{t('social.campaignDetail.config.focusHint')}</p>
+                        <p className="text-xs text-muted mt-1">{t('social.campaignDetail.config.focusHint')}</p>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-bold text-[var(--color-text-main)] mb-2">{t('social.campaignDetail.config.platformsLabel')}</label>
+                        <label className="block text-sm font-bold text-main mb-2">{t('social.campaignDetail.config.platformsLabel')}</label>
                         <div className="grid grid-cols-2 gap-3">
                             {['Instagram', 'Facebook', 'LinkedIn', 'TikTok', 'X', 'YouTube'].map(platform => (
-                                <label key={platform} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${configPlatforms.includes(platform) ? 'bg-[var(--color-surface-hover)] border-[var(--color-primary)]' : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)]'}`}>
+                                <label key={platform} className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${configPlatforms.includes(platform) ? 'bg-surface-hover border-primary' : 'bg-surface border-surface'}`}>
                                     <input
                                         type="checkbox"
                                         className="hidden"
@@ -803,14 +803,14 @@ export const CampaignDetailView = () => {
                                             }
                                         }}
                                     />
-                                    <span className="material-symbols-outlined text-[var(--color-text-muted)] text-[18px]">{configPlatforms.includes(platform) ? 'check_circle' : 'circle'}</span>
-                                    <span className={`text-sm font-medium ${configPlatforms.includes(platform) ? 'text-[var(--color-text-main)]' : 'text-[var(--color-text-muted)]'}`}>{platform}</span>
+                                    <span className="material-symbols-outlined text-muted text-[18px]">{configPlatforms.includes(platform) ? 'check_circle' : 'circle'}</span>
+                                    <span className={`text-sm font-medium ${configPlatforms.includes(platform) ? 'text-main' : 'text-muted'}`}>{platform}</span>
                                 </label>
                             ))}
                         </div>
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-4 border-t border-[var(--color-surface-border)]">
+                    <div className="flex justify-end gap-3 pt-4 border-t border-surface">
                         <Button variant="ghost" onClick={() => setShowConfigModal(false)}>{t('social.campaignDetail.config.cancel')}</Button>
                         <Button
                             variant="primary"
@@ -832,31 +832,31 @@ export const CampaignDetailView = () => {
                 size="4xl"
             >
                 <div className="space-y-6">
-                    <p className="text-sm text-[var(--color-text-muted)]">
+                    <p className="text-sm text-muted">
                         {t('social.campaignDetail.plan.description')}
                     </p>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto custom-scrollbar p-1">
                         {generatedPlan.map((draft, i) => (
-                            <div key={i} className="bg-[var(--color-surface-bg)] rounded-xl p-4 border border-[var(--color-surface-border)]">
+                            <div key={i} className="bg-surface rounded-xl p-4 border border-surface">
                                 <div className="flex items-center justify-between mb-3">
-                                    <span className="text-[10px] font-bold uppercase tracking-wider bg-[var(--color-surface-hover)] px-2 py-1 rounded">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider bg-surface-hover px-2 py-1 rounded">
                                         {t('social.campaignDetail.plan.day').replace('{day}', String(draft.scheduledDayOffset + 1))}
                                     </span>
                                     <div className="flex gap-1">
                                         {(draft.platforms || [draft.platform]).map(p => (
-                                            <span key={p} className="text-xs font-bold text-[var(--color-text-muted)]">{p}</span>
+                                            <span key={p} className="text-xs font-bold text-muted">{p}</span>
                                         ))}
                                     </div>
-                                    <span className="text-xs font-bold text-[var(--color-text-muted)]">
+                                    <span className="text-xs font-bold text-muted">
                                         • {['Text', 'Post', 'Image', 'Video', 'Carousel', 'Story', 'Reel', 'Short'].includes(draft.type)
                                             ? getSocialPostFormatLabel(draft.type as SocialPostFormat, t)
                                             : draft.type}
                                     </span>
                                 </div>
-                                <p className="text-sm text-[var(--color-text-main)] mb-3 line-clamp-4">{draft.content}</p>
-                                <div className="text-xs text-[var(--color-text-muted)] bg-[var(--color-surface-card)] p-2 rounded mb-2">
-                                    <strong className="text-[var(--color-text-main)]">{t('social.campaignDetail.plan.visualLabel')}</strong> {draft.imagePrompt || t('social.campaignDetail.plan.visualFallback')}
+                                <p className="text-sm text-main mb-3 line-clamp-4">{draft.content}</p>
+                                <div className="text-xs text-muted bg-card p-2 rounded mb-2">
+                                    <strong className="text-main">{t('social.campaignDetail.plan.visualLabel')}</strong> {draft.imagePrompt || t('social.campaignDetail.plan.visualFallback')}
                                 </div>
                                 <div className="flex flex-wrap gap-1">
                                     {draft.hashtags.map(tag => (
@@ -867,7 +867,7 @@ export const CampaignDetailView = () => {
                         ))}
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-4 border-t border-[var(--color-surface-border)]">
+                    <div className="flex justify-end gap-3 pt-4 border-t border-surface">
                         <Button variant="ghost" onClick={() => setShowPlanModal(false)}>{t('social.campaignDetail.plan.discard')}</Button>
                         <Button variant="primary" onClick={handleSavePlan} icon={<span className="material-symbols-outlined">save</span>}>
                             {t('social.campaignDetail.plan.save')}

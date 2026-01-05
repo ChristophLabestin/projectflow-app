@@ -1,0 +1,396 @@
+@use '../../styles/tokens';
+
+// Shared utilities for dashboard cards
+.dashboard-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.dashboard-card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+    margin: 0;
+}
+
+.dashboard-card-subtitle {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    margin-top: 0.25rem;
+}
+
+// Scheduled Tasks Card
+.scheduled-card {
+    &__list {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        margin: 0 -0.5rem;
+    }
+
+    &__item {
+        display: block;
+        padding: 0.75rem 1rem;
+        border-radius: 0.5rem;
+        transition: background-color 0.2s;
+
+        &:hover {
+            background-color: var(--color-surface-hover);
+        }
+
+        &-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        &-main {
+            flex: 1;
+            min-width: 0;
+            padding-right: 0.75rem;
+        }
+
+        &-title-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        &-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--color-text-main);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        &-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.125rem;
+        }
+
+        &-tag {
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+
+            &--urgent {
+                color: var(--color-error);
+            }
+
+            &--high {
+                color: var(--color-warning);
+            }
+
+            &--medium {
+                color: var(--color-info);
+            }
+
+            &--low {
+                color: var(--color-text-muted);
+            }
+        }
+
+        &-date {
+            font-size: 0.625rem;
+            color: var(--color-text-muted);
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        &-arrow {
+            opacity: 0;
+            transition: all 0.2s;
+            transform: translateX(-0.5rem);
+            color: var(--color-text-subtle);
+        }
+
+        &:hover &-arrow {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    &__empty {
+        padding: 1rem;
+        text-align: center;
+        font-size: 0.875rem;
+        color: var(--color-text-muted);
+    }
+}
+
+// Milestone Card
+.milestone-card {
+    border-left: 4px solid var(--color-success);
+
+    &__stats-row {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    &__stat {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
+
+        &-value {
+            font-size: 1.125rem;
+            font-weight: 700;
+            color: var(--color-text-main);
+        }
+
+        &-label {
+            font-size: 0.625rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--color-text-muted);
+        }
+    }
+
+    &__divider {
+        width: 1px;
+        height: 1rem;
+        background-color: var(--color-surface-border);
+    }
+
+    &__latest {
+        display: block;
+        padding: 0.75rem;
+        border-radius: 0.75rem;
+        background-color: var(--color-surface-hover);
+        border: 1px solid var(--color-surface-border);
+        transition: box-shadow 0.2s;
+
+        &:hover {
+            box-shadow: var(--shadow-sm);
+        }
+
+        &-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.25rem;
+        }
+
+        &-tag {
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: var(--color-success);
+        }
+
+        &-title {
+            font-size: 0.875rem;
+            font-weight: 700;
+            color: var(--color-text-main);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        &-project {
+            font-size: 0.625rem;
+            color: var(--color-text-muted);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+    }
+
+    &__none {
+        padding: 0.75rem;
+        border-radius: 0.75rem;
+        background-color: var(--color-surface-bg);
+        border: 1px solid var(--color-surface-border);
+        text-align: center;
+
+        &-text {
+            font-size: 0.875rem;
+            color: var(--color-text-muted);
+        }
+
+        &-subtext {
+            font-size: 0.75rem;
+            color: var(--color-text-subtle);
+            margin-top: 0.125rem;
+        }
+    }
+}
+
+// Health Card
+.health-card {
+    background-color: var(--color-surface-card);
+    border: 1px solid var(--color-surface-border);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow 0.2s;
+
+    &:hover {
+        box-shadow: var(--shadow-md);
+    }
+
+    &__header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+
+    &__title-group {
+        display: flex;
+        flex-direction: column;
+    }
+
+    &__title {
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: var(--color-text-subtle);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    &__subtitle {
+        font-size: 0.75rem;
+        color: var(--color-text-muted);
+        margin-top: 0.25rem;
+    }
+
+    &__badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 999px;
+        font-size: 0.625rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border: 1px solid currentColor;
+
+        &--critical {
+            color: var(--color-error);
+            background: rgba(var(--color-error-rgb), 0.1);
+        }
+
+        &--warning {
+            color: var(--color-warning);
+            background: rgba(var(--color-warning-rgb), 0.1);
+        }
+
+        &--healthy {
+            color: var(--color-success);
+            background: rgba(var(--color-success-rgb), 0.1);
+        }
+
+        &--normal {
+            color: var(--color-info);
+            background: rgba(var(--color-info-rgb), 0.1);
+        }
+
+        &--excellent {
+            color: var(--color-success-dark);
+            background: rgba(var(--color-success-rgb), 0.2);
+        }
+
+        &--stalemate {
+            color: var(--color-text-muted);
+            background: var(--color-surface-hover);
+        }
+    }
+
+    &__content {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    &__gauge {
+        position: relative;
+        width: 6rem;
+        height: 6rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        svg {
+            width: 100%;
+            height: 100%;
+            transform: rotate(-90deg);
+        }
+
+        circle {
+            transition: all 1s ease-out;
+        }
+
+        &-value {
+            position: absolute;
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: var(--color-text-main);
+        }
+    }
+
+    &__stats {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    &__stat-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.75rem;
+
+        &-label {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            color: var(--color-text-muted);
+            font-weight: 700;
+        }
+
+        &-dot {
+            width: 0.5rem;
+            height: 0.5rem;
+            border-radius: 50%;
+
+            &--critical {
+                background-color: var(--color-error);
+            }
+
+            &--warning {
+                background-color: var(--color-warning);
+            }
+
+            &--healthy {
+                background-color: var(--color-success);
+            }
+        }
+
+        &-val {
+            font-weight: 900;
+            color: var(--color-text-main);
+        }
+    }
+
+    &__trend {
+        border-top: 1px solid var(--color-surface-border);
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        display: flex;
+        align-items: center;
+        gap: 0.25rem;
+        font-size: 0.625rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--color-text-subtle);
+    }
+}

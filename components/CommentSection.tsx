@@ -285,14 +285,14 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
         }
     };
 
-    if (loading) return <div className="text-xs text-[var(--color-text-subtle)]">Loading comments...</div>;
+    if (loading) return <div className="text-xs text-subtle">Loading comments...</div>;
 
     return (
-        <div className="flex flex-col h-full bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)] overflow-hidden">
+        <div className="flex flex-col h-full bg-surface rounded-xl border border-surface overflow-hidden">
             {!hideHeader && (
-                <div className="p-3 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-card)]">
+                <div className="p-3 border-b border-surface bg-card">
                     <h3 className="text-sm font-semibold flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">chat</span>
+                        <span className="material-symbols-outlined text-[16px] text-muted">chat</span>
                         Comments ({comments.length})
                     </h3>
                 </div>
@@ -300,14 +300,14 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4 max-h-[400px]">
                 {comments.length === 0 ? (
-                    <div className="text-center py-8 text-[var(--color-text-subtle)] text-sm">
+                    <div className="text-center py-8 text-subtle text-sm">
                         No comments yet. Be the first to start the discussion!
                     </div>
                 ) : (
                     comments.map((comment) => (
                         <div key={comment.id} className="flex items-start gap-3 group">
                             <div
-                                className="size-8 rounded-full bg-cover bg-center border border-[var(--color-surface-border)] shrink-0"
+                                className="size-8 rounded-full bg-cover bg-center border border-surface shrink-0"
                                 style={{
                                     backgroundImage: comment.userPhotoURL
                                         ? `url("${comment.userPhotoURL}")`
@@ -323,22 +323,22 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                    <span className="text-xs font-bold text-[var(--color-text-main)] truncate">
+                                    <span className="text-xs font-bold text-main truncate">
                                         {comment.userDisplayName}
                                     </span>
-                                    <span className="text-[10px] text-[var(--color-text-subtle)]">
+                                    <span className="text-[10px] text-subtle">
                                         {timeAgo(comment.createdAt)}
                                     </span>
                                     {(isProjectOwner || user?.uid === comment.userId) && (
                                         <button
                                             onClick={() => handleDelete(comment.id)}
-                                            className="ml-auto opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-rose-500 transition-opacity"
+                                            className="ml-auto opacity-0 group-hover:opacity-100 text-muted hover:text-rose-500 transition-opacity"
                                         >
                                             <span className="material-symbols-outlined text-[14px]">delete</span>
                                         </button>
                                     )}
                                 </div>
-                                <div className="text-sm text-[var(--color-text-main)] whitespace-pre-wrap rounded-lg bg-[var(--color-surface-hover)] p-2.5">
+                                <div className="text-sm text-main whitespace-pre-wrap rounded-lg bg-surface-hover p-2.5">
                                     {(() => {
                                         // Match against known target names
                                         const sortedTargets = [...mentionTargets].sort((a, b) => b.name.length - a.name.length);
@@ -362,16 +362,16 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                 <div ref={scrollRef} />
             </div>
 
-            <div className="p-3 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-card)] relative">
+            <div className="p-3 border-t border-surface bg-card relative">
                 {/* Mention Popover */}
                 {mentionMenuOpen && filteredTargets.length > 0 && (
-                    <div className="absolute bottom-full left-3 mb-2 w-64 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100 max-h-48 overflow-y-auto">
+                    <div className="absolute bottom-full left-3 mb-2 w-64 bg-card border border-surface rounded-xl shadow-xl overflow-hidden z-50 animate-in fade-in zoom-in-95 duration-100 max-h-48 overflow-y-auto">
                         <div className="p-1">
                             {filteredTargets.map((target, idx) => (
                                 <button
                                     key={target.id}
                                     onClick={() => insertMention(target)}
-                                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors text-left ${idx === mentionIndex ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'hover:bg-[var(--color-surface-hover)] text-[var(--color-text-main)]'}`}
+                                    className={`w-full flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-colors text-left ${idx === mentionIndex ? 'bg-primary/10 text-primary' : 'hover:bg-surface-hover text-main'}`}
                                 >
                                     {target.type === 'user' ? (
                                         <div className="size-5 rounded-full bg-gray-200 overflow-hidden shrink-0">
@@ -383,7 +383,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                                         </div>
                                     )}
                                     <span className="truncate flex-1 font-medium">{target.name}</span>
-                                    {target.type === 'group' && <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider">Group</span>}
+                                    {target.type === 'group' && <span className="text-[9px] text-muted uppercase tracking-wider">Group</span>}
                                 </button>
                             ))}
                         </div>
@@ -406,8 +406,8 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                         className={`
                             p-2 rounded-lg flex items-center justify-center transition-colors
                             ${newComment.trim()
-                                ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:opacity-90'
-                                : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] cursor-not-allowed'}
+                                ? 'bg-primary text-on-primary hover:opacity-90'
+                                : 'bg-surface-hover text-muted cursor-not-allowed'}
                         `}
                     >
                         <span className="material-symbols-outlined text-[20px]">send</span>
@@ -417,10 +417,10 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
             {
                 commentToDelete && createPortal(
                     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                        <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-[var(--color-surface-border)] animate-in fade-in zoom-in-95 duration-200">
+                        <div className="bg-card rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-surface animate-in fade-in zoom-in-95 duration-200">
                             <div className="space-y-4 text-center">
-                                <h3 className="text-lg font-bold text-[var(--color-text-main)]">Delete Comment?</h3>
-                                <p className="text-sm text-[var(--color-text-muted)]">
+                                <h3 className="text-lg font-bold text-main">Delete Comment?</h3>
+                                <p className="text-sm text-muted">
                                     This action cannot be undone.
                                 </p>
                                 <div className="grid grid-cols-2 gap-3">

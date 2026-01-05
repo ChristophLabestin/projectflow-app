@@ -13,10 +13,10 @@ export const DonutChart: React.FC<DonutChartProps> = ({ data, size = 160, thickn
 
     if (total === 0) {
         return (
-            <div className="flex flex-col items-center justify-center p-4 text-[var(--color-text-muted)] text-sm">
+            <div className="flex flex-col items-center justify-center p-4 text-muted text-sm">
                 <div
                     style={{ width: size, height: size }}
-                    className="rounded-full border-4 border-[var(--color-surface-border)] flex items-center justify-center mb-2"
+                    className="rounded-full border-4 border-surface flex items-center justify-center mb-2"
                 >
                     No Data
                 </div>
@@ -75,8 +75,8 @@ export const DonutChart: React.FC<DonutChartProps> = ({ data, size = 160, thickn
                     })}
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                    <span className="text-2xl font-bold text-[var(--color-text-main)]">{total}</span>
-                    <span className="text-xs text-[var(--color-text-muted)] uppercase tracking-wide">Posts</span>
+                    <span className="text-2xl font-bold text-main">{total}</span>
+                    <span className="text-xs text-muted uppercase tracking-wide">Posts</span>
                 </div>
             </div>
 
@@ -84,8 +84,8 @@ export const DonutChart: React.FC<DonutChartProps> = ({ data, size = 160, thickn
                 {data.map((item, index) => (
                     <div key={index} className="flex items-center gap-2 text-sm">
                         <span className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                        <span className="font-medium text-[var(--color-text-main)]">{item.label}</span>
-                        <span className="text-[var(--color-text-muted)]">({Math.round((item.value / total) * 100)}%)</span>
+                        <span className="font-medium text-main">{item.label}</span>
+                        <span className="text-muted">({Math.round((item.value / total) * 100)}%)</span>
                     </div>
                 ))}
             </div>

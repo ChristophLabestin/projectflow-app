@@ -436,7 +436,7 @@ export const ProjectTaskDetail = () => {
         return (
             <div className="flex justify-center items-center min-h-[50vh]">
                 <div className="flex flex-col items-center gap-3">
-                    <span className="material-symbols-outlined animate-spin text-4xl text-[var(--color-primary)]">progress_activity</span>
+                    <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
                 </div>
             </div>
         );
@@ -445,7 +445,7 @@ export const ProjectTaskDetail = () => {
     if (!task) {
         return (
             <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
-                <h3 className="text-xl font-bold text-[var(--color-text-main)]">{t('taskDetail.notFound.title')}</h3>
+                <h3 className="text-xl font-bold text-main">{t('taskDetail.notFound.title')}</h3>
                 <Link to={`/project/${id}/tasks`} className="btn-secondary">{t('taskDetail.notFound.action')}</Link>
             </div>
         );
@@ -492,10 +492,10 @@ export const ProjectTaskDetail = () => {
 
             {showDeleteConfirm && createPortal(
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-[var(--color-surface-border)]">
+                    <div className="bg-card rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-surface">
                         <div className="space-y-4 text-center">
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('taskDetail.confirm.delete.title')}</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">
+                            <h3 className="text-lg font-bold text-main">{t('taskDetail.confirm.delete.title')}</h3>
+                            <p className="text-sm text-muted">
                                 {t('taskDetail.confirm.delete.message').replace('{title}', task.title)}
                             </p>
                             <div className="grid grid-cols-2 gap-3">
@@ -510,10 +510,10 @@ export const ProjectTaskDetail = () => {
 
             {subTaskToDelete && createPortal(
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-[var(--color-surface-border)] animate-in fade-in zoom-in-95 duration-200">
+                    <div className="bg-card rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-surface animate-in fade-in zoom-in-95 duration-200">
                         <div className="space-y-4 text-center">
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('taskDetail.confirm.deleteSubtask.title')}</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">
+                            <h3 className="text-lg font-bold text-main">{t('taskDetail.confirm.deleteSubtask.title')}</h3>
+                            <p className="text-sm text-muted">
                                 {t('taskDetail.confirm.deleteSubtask.message')}
                             </p>
                             <div className="grid grid-cols-2 gap-3">
@@ -527,9 +527,9 @@ export const ProjectTaskDetail = () => {
             )}
 
             {/* Header / Hero Section */}
-            <header className="relative mb-10 overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] border border-[var(--color-surface-border)] shadow-sm">
+            <header className="relative mb-10 overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] border border-surface shadow-sm">
                 {/* Decorative background element */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--color-primary)]/5 blur-3xl rounded-full -mr-20 -mt-20 pointer-events-none" />
+                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-3xl rounded-full -mr-20 -mt-20 pointer-events-none" />
 
                 <div className="relative px-6 py-8 md:px-10 md:py-10">
 
@@ -539,10 +539,10 @@ export const ProjectTaskDetail = () => {
                             <div className="flex items-center gap-3 mb-4 flex-wrap">
                                 {/* Project Context */}
                                 {project && (
-                                    <Link to={`/project/${project.id}`} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] rounded-full transition-all group">
-                                        <div className="size-2 rounded-full bg-[var(--color-primary)]" />
-                                        <span className="text-xs font-bold text-[var(--color-text-subtle)] group-hover:text-[var(--color-primary)] uppercase tracking-wide">{project.title}</span>
-                                        <span className="material-symbols-outlined text-[14px] text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]">arrow_forward</span>
+                                    <Link to={`/project/${project.id}`} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-hover border border-surface rounded-full transition-all group">
+                                        <div className="size-2 rounded-full bg-primary" />
+                                        <span className="text-xs font-bold text-subtle group-hover:text-primary uppercase tracking-wide">{project.title}</span>
+                                        <span className="material-symbols-outlined text-[14px] text-muted group-hover:text-primary">arrow_forward</span>
                                     </Link>
                                 )}
                                 <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-[0.15em] uppercase border transition-all duration-300 ${task.status === 'Done' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' :
@@ -575,20 +575,20 @@ export const ProjectTaskDetail = () => {
                                 )}
                             </div>
 
-                            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-[var(--color-text-main)] leading-[1.1] tracking-tight mb-8">
+                            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-main leading-[1.1] tracking-tight mb-8">
                                 {task.title}
                             </h1>
 
 
 
                             <div className="flex flex-wrap items-center gap-6 text-sm">
-                                <div className="flex items-center gap-2.5 px-4 py-2 bg-[var(--color-surface-hover)] rounded-xl border border-[var(--color-surface-border)]">
-                                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">calendar_today</span>
+                                <div className="flex items-center gap-2.5 px-4 py-2 bg-surface-hover rounded-xl border border-surface">
+                                    <span className="material-symbols-outlined text-[20px] text-muted">calendar_today</span>
                                     <div className="flex flex-col">
-                                        <span className="text-[10px] leading-none uppercase font-bold text-[var(--color-text-subtle)] mb-0.5">
+                                        <span className="text-[10px] leading-none uppercase font-bold text-subtle mb-0.5">
                                             {task.startDate && task.dueDate ? t('taskDetail.timeline.label') : t('taskDetail.timeline.dueDate')}
                                         </span>
-                                        <span className="text-[var(--color-text-main)] font-semibold whitespace-nowrap">
+                                        <span className="text-main font-semibold whitespace-nowrap">
                                             {task.startDate ? (
                                                 <>
                                                     {format(new Date(task.startDate), dateFormat, { locale: dateLocale })}
@@ -603,27 +603,27 @@ export const ProjectTaskDetail = () => {
                                 </div>
 
                                 {totalCount > 0 && (
-                                    <div className="flex items-center gap-2.5 px-4 py-2 bg-[var(--color-surface-hover)] rounded-xl border border-[var(--color-surface-border)]">
+                                    <div className="flex items-center gap-2.5 px-4 py-2 bg-surface-hover rounded-xl border border-surface">
                                         <div className="relative size-6 flex items-center justify-center">
                                             <svg className="size-full -rotate-90">
                                                 <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-[var(--color-surface-border)]" />
-                                                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray={2 * Math.PI * 10} strokeDashoffset={2 * Math.PI * 10 * (1 - progressPct / 100)} strokeLinecap="round" className="text-[var(--color-primary)] transition-all duration-700 ease-out" />
+                                                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray={2 * Math.PI * 10} strokeDashoffset={2 * Math.PI * 10 * (1 - progressPct / 100)} strokeLinecap="round" className="text-primary transition-all duration-700 ease-out" />
                                             </svg>
-                                            <span className="absolute text-[8px] font-bold text-[var(--color-text-main)]">{Math.round(progressPct)}%</span>
+                                            <span className="absolute text-[8px] font-bold text-main">{Math.round(progressPct)}%</span>
                                         </div>
                                         <div className="flex flex-col">
-                                            <span className="text-[10px] leading-none uppercase font-bold text-[var(--color-text-subtle)] mb-0.5">{t('taskDetail.subtasks.label')}</span>
-                                            <span className="text-[var(--color-text-main)] font-semibold">{doneCount}/{totalCount}</span>
+                                            <span className="text-[10px] leading-none uppercase font-bold text-subtle mb-0.5">{t('taskDetail.subtasks.label')}</span>
+                                            <span className="text-main font-semibold">{doneCount}/{totalCount}</span>
                                         </div>
                                     </div>
                                 )}
 
                                 {task.scheduledDate && (
-                                    <div className="flex items-center gap-2.5 px-4 py-2 bg-[var(--color-surface-hover)] rounded-xl border border-[var(--color-surface-border)]">
-                                        <span className="material-symbols-outlined text-[20px] text-[var(--color-text-muted)]">event_available</span>
+                                    <div className="flex items-center gap-2.5 px-4 py-2 bg-surface-hover rounded-xl border border-surface">
+                                        <span className="material-symbols-outlined text-[20px] text-muted">event_available</span>
                                         <div className="flex flex-col">
-                                            <span className="text-[10px] leading-none uppercase font-bold text-[var(--color-text-subtle)] mb-0.5">{t('taskDetail.timeline.smartScheduled')}</span>
-                                            <span className="text-[var(--color-text-main)] font-semibold">
+                                            <span className="text-[10px] leading-none uppercase font-bold text-subtle mb-0.5">{t('taskDetail.timeline.smartScheduled')}</span>
+                                            <span className="text-main font-semibold">
                                                 {format(new Date(task.scheduledDate), dateFormat, { locale: dateLocale })}
                                             </span>
                                         </div>
@@ -631,7 +631,7 @@ export const ProjectTaskDetail = () => {
                                 )}
 
                                 <div className="hidden md:flex items-center gap-3 ml-2">
-                                    <div className="h-8 w-[1px] bg-[var(--color-surface-border)]" />
+                                    <div className="h-8 w-[1px] bg-surface-border" />
                                     <div className="flex -space-x-2">
                                         {(task.assigneeIds || [task.assigneeId]).filter(id => id).map((uid, i) => {
                                             const user = allUsers.find(u => (u as any).id === uid || u.uid === uid);
@@ -640,13 +640,13 @@ export const ProjectTaskDetail = () => {
                                                     key={uid + i}
                                                     src={user?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'}
                                                     alt=""
-                                                    className="size-8 rounded-full border-2 border-[var(--color-surface-card)] shadow-sm"
+                                                    className="size-8 rounded-full border-2 border-card shadow-sm"
                                                     title={user?.displayName || t('taskDetail.assignees.fallback')}
                                                 />
                                             );
                                         })}
                                         {(!task.assigneeIds && !task.assigneeId) && (
-                                            <div className="size-8 rounded-full border-2 border-dashed border-[var(--color-surface-border)] flex items-center justify-center text-[var(--color-text-subtle)]">
+                                            <div className="size-8 rounded-full border-2 border-dashed border-surface flex items-center justify-center text-subtle">
                                                 <span className="material-symbols-outlined text-[16px]">person</span>
                                             </div>
                                         )}
@@ -666,7 +666,7 @@ export const ProjectTaskDetail = () => {
                                 {task.isCompleted ? t('taskDetail.actions.completed') : t('taskDetail.actions.markDone')}
                             </Button>
 
-                            <div className="flex items-center gap-2 bg-[var(--color-surface-hover)] p-1 rounded-xl border border-[var(--color-surface-border)] w-full lg:w-fit">
+                            <div className="flex items-center gap-2 bg-surface-hover p-1 rounded-xl border border-surface w-full lg:w-fit">
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -701,22 +701,22 @@ export const ProjectTaskDetail = () => {
                                     className={`flex-1 lg:flex-none transition-all ${focusItemId === task.id
                                         ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 shadow-sm border border-amber-500/20'
                                         : isPinned(task.id)
-                                            ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 shadow-sm'
-                                            : 'hover:bg-[var(--color-surface-card)] text-[var(--color-text-muted)]'
+                                            ? 'text-primary bg-primary/10 hover:bg-primary/20 shadow-sm'
+                                            : 'hover:bg-card text-muted'
                                         }`}
                                     icon={<span className={`material-symbols-outlined text-[20px] ${focusItemId === task.id ? 'fill-current' : ''}`}>
                                         {focusItemId === task.id ? 'push_pin' : 'push_pin'}
                                     </span>}
                                 />
-                                <div className="w-[1px] h-4 bg-[var(--color-surface-border)]" />
+                                <div className="w-[1px] h-4 bg-surface-border" />
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => setIsEditModalOpen(true)}
-                                    className="flex-1 lg:flex-none hover:bg-[var(--color-surface-card)]"
+                                    className="flex-1 lg:flex-none hover:bg-card"
                                     icon={<span className="material-symbols-outlined text-[20px]">edit</span>}
                                 />
-                                <div className="w-[1px] h-4 bg-[var(--color-surface-border)]" />
+                                <div className="w-[1px] h-4 bg-surface-border" />
                                 <Button
                                     variant="ghost"
                                     size="sm"
@@ -725,12 +725,12 @@ export const ProjectTaskDetail = () => {
                                 >
                                     <span className="material-symbols-outlined text-[20px]">delete</span>
                                 </Button>
-                                <div className="w-[1px] h-4 bg-[var(--color-surface-border)]" />
+                                <div className="w-[1px] h-4 bg-surface-border" />
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => setShowTaskModal(true)}
-                                    className="flex-1 lg:flex-none hover:bg-[var(--color-surface-card)]"
+                                    className="flex-1 lg:flex-none hover:bg-card"
                                     icon={<span className="material-symbols-outlined text-[20px]">add</span>}
                                 >
                                     {t('taskDetail.actions.newTask')}
@@ -742,11 +742,11 @@ export const ProjectTaskDetail = () => {
                     {/* Timeline Bar (Visual) */}
                     {task.startDate && task.dueDate && (
                         <div className="mt-8 relative pt-4">
-                            <div className="flex justify-between text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mb-2">
+                            <div className="flex justify-between text-[10px] font-bold text-subtle uppercase tracking-wider mb-2">
                                 <span>{format(new Date(task.startDate), dateFormat, { locale: dateLocale })}</span>
                                 <span>{format(new Date(task.dueDate), dateFormat, { locale: dateLocale })}</span>
                             </div>
-                            <div className="h-2 bg-[var(--color-surface-border)] rounded-full overflow-hidden relative">
+                            <div className="h-2 bg-surface-border rounded-full overflow-hidden relative">
                                 {/* Visual calculation for progress based on today vs start/end */}
                                 {(() => {
                                     const start = new Date(task.startDate).getTime();
@@ -757,7 +757,7 @@ export const ProjectTaskDetail = () => {
                                     const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
                                     return (
                                         <div
-                                            className={`h-full absolute top-0 left-0 rounded-full ${idea ? 'bg-indigo-500' : 'bg-[var(--color-primary)]'}`}
+                                            className={`h-full absolute top-0 left-0 rounded-full ${idea ? 'bg-indigo-500' : 'bg-primary'}`}
                                             style={{ width: `${pct}%` }}
                                         />
                                     );
@@ -780,8 +780,8 @@ export const ProjectTaskDetail = () => {
                         {/* Priority Card - Compact with Custom Dropdown */}
                         <div className="app-card p-4 h-full flex flex-col">
                             <div className="flex items-center gap-2 mb-3">
-                                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]">flag</span>
-                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">{t('taskDetail.priority.label')}</span>
+                                <span className="material-symbols-outlined text-[18px] text-muted">flag</span>
+                                <span className="text-[10px] font-bold text-subtle uppercase tracking-wider">{t('taskDetail.priority.label')}</span>
                             </div>
                             <div className="flex-1 flex items-center">
                                 <div ref={priorityMenuRef} className="relative w-full">
@@ -809,7 +809,7 @@ export const ProjectTaskDetail = () => {
                                     </button>
 
                                     {priorityMenuOpen && (
-                                        <div className="absolute left-0 top-full mt-2 w-full rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] shadow-lg p-2 space-y-1 z-20">
+                                        <div className="absolute left-0 top-full mt-2 w-full rounded-2xl border border-surface bg-card shadow-lg p-2 space-y-1 z-20">
                                             {(['Low', 'Medium', 'High', 'Urgent'] as const).map((p) => {
                                                 const activeStyles: Record<string, string> = {
                                                     'Low': 'bg-slate-500/10 text-slate-500 border-slate-500/20 shadow-sm',
@@ -827,15 +827,15 @@ export const ProjectTaskDetail = () => {
                                                             setPriorityMenuOpen(false);
                                                             handleUpdateField('priority', p);
                                                         }}
-                                                        className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wide transition-all ${isSelected ? 'ring-1 ring-[var(--color-primary)]/30' : 'hover:brightness-110 border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'
-                                                            } ${isSelected ? activeStyles[p] : 'text-[var(--color-text-muted)]'}`}
+                                                        className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wide transition-all ${isSelected ? 'ring-1 ring-primary/30' : 'hover:brightness-110 border-surface hover:bg-surface-hover'
+                                                            } ${isSelected ? activeStyles[p] : 'text-muted'}`}
                                                     >
                                                         <span className="flex items-center gap-2">
                                                             <PriorityIcon priority={p} />
                                                             {priorityLabels[p]}
                                                         </span>
                                                         {isSelected && (
-                                                            <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>
+                                                            <span className="material-symbols-outlined text-[16px] text-primary">check</span>
                                                         )}
                                                     </button>
                                                 );
@@ -849,8 +849,8 @@ export const ProjectTaskDetail = () => {
                         {/* Status Card */}
                         <div className="app-card p-4 h-full flex flex-col">
                             <div className="flex items-center gap-2 mb-3">
-                                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]">timelapse</span>
-                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">{t('taskDetail.status.label')}</span>
+                                <span className="material-symbols-outlined text-[18px] text-muted">timelapse</span>
+                                <span className="text-[10px] font-bold text-subtle uppercase tracking-wider">{t('taskDetail.status.label')}</span>
                             </div>
                             <div className="flex-1 flex items-center">
                                 <div ref={statusMenuRef} className="relative w-full">
@@ -870,7 +870,7 @@ export const ProjectTaskDetail = () => {
                                         </span>
                                     </button>
                                     {statusMenuOpen && (
-                                        <div className="absolute left-0 top-full mt-2 w-full rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] shadow-lg p-2 space-y-1 z-20">
+                                        <div className="absolute left-0 top-full mt-2 w-full rounded-2xl border border-surface bg-card shadow-lg p-2 space-y-1 z-20">
                                             {TASK_STATUS_OPTIONS.map((status) => (
                                                 <button
                                                     key={status}
@@ -882,7 +882,7 @@ export const ProjectTaskDetail = () => {
                                                         updateTaskFields(task.id, { status: status as any, isCompleted: isDone }, id);
                                                     }}
                                                     className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wide transition-all ${status === currentStatus
-                                                        ? 'ring-1 ring-[var(--color-primary)]/30'
+                                                        ? 'ring-1 ring-primary/30'
                                                         : 'hover:brightness-110'
                                                         } ${getTaskStatusStyle(status)}`}
                                                 >
@@ -893,7 +893,7 @@ export const ProjectTaskDetail = () => {
                                                         {statusLabels[status as keyof typeof statusLabels] || status}
                                                     </span>
                                                     {status === currentStatus && (
-                                                        <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>
+                                                        <span className="material-symbols-outlined text-[16px] text-primary">check</span>
                                                     )}
                                                 </button>
                                             ))}
@@ -906,8 +906,8 @@ export const ProjectTaskDetail = () => {
                         {/* Effort Card (New) */}
                         <div className="app-card p-4 h-full flex flex-col">
                             <div className="flex items-center gap-2 mb-3">
-                                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]">fitness_center</span>
-                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">{t('taskDetail.effort.label')}</span>
+                                <span className="material-symbols-outlined text-[18px] text-muted">fitness_center</span>
+                                <span className="text-[10px] font-bold text-subtle uppercase tracking-wider">{t('taskDetail.effort.label')}</span>
                             </div>
                             <div className="flex-1 flex items-center">
                                 <div ref={effortMenuRef} className="relative w-full">
@@ -917,7 +917,7 @@ export const ProjectTaskDetail = () => {
                                         className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl border transition-all hover:brightness-110 ${(() => {
                                             const e = task.effort || 'None';
                                             const activeStyles: Record<string, string> = {
-                                                'None': 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]',
+                                                'None': 'border-surface text-muted hover:bg-surface-hover',
                                                 'Low': 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-sm',
                                                 'Medium': 'bg-blue-500/10 text-blue-500 border-blue-500/20 shadow-sm',
                                                 'High': 'bg-violet-500/10 text-violet-500 border-violet-500/20 shadow-sm'
@@ -932,7 +932,7 @@ export const ProjectTaskDetail = () => {
                                                     {effortLabels[task.effort as keyof typeof effortLabels] || task.effort}
                                                 </>
                                             ) : (
-                                                <span className="text-[var(--color-text-muted)] italic text-[11px]">{t('taskDetail.effort.placeholder')}</span>
+                                                <span className="text-muted italic text-[11px]">{t('taskDetail.effort.placeholder')}</span>
                                             )}
                                         </span>
                                         <span className={`material-symbols-outlined text-[18px] text-current opacity-70 transition-transform ${effortMenuOpen ? 'rotate-180' : ''}`}>
@@ -941,7 +941,7 @@ export const ProjectTaskDetail = () => {
                                     </button>
 
                                     {effortMenuOpen && (
-                                        <div className="absolute left-0 top-full mt-2 w-full rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] shadow-lg p-2 space-y-1 z-20">
+                                        <div className="absolute left-0 top-full mt-2 w-full rounded-2xl border border-surface bg-card shadow-lg p-2 space-y-1 z-20">
                                             {(['Low', 'Medium', 'High'] as const).map((e) => {
                                                 const activeStyles: Record<string, string> = {
                                                     'Low': 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-sm',
@@ -958,15 +958,15 @@ export const ProjectTaskDetail = () => {
                                                             setEffortMenuOpen(false);
                                                             handleUpdateField('effort', e);
                                                         }}
-                                                        className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wide transition-all ${isSelected ? 'ring-1 ring-[var(--color-primary)]/30' : 'hover:brightness-110 border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'
-                                                            } ${isSelected ? activeStyles[e] : 'text-[var(--color-text-muted)]'}`}
+                                                        className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wide transition-all ${isSelected ? 'ring-1 ring-primary/30' : 'hover:brightness-110 border-surface hover:bg-surface-hover'
+                                                            } ${isSelected ? activeStyles[e] : 'text-muted'}`}
                                                     >
                                                         <span className="flex items-center gap-2">
                                                             <EffortIcon effort={e} />
                                                             {effortLabels[e]}
                                                         </span>
                                                         {isSelected && (
-                                                            <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>
+                                                            <span className="material-symbols-outlined text-[16px] text-primary">check</span>
                                                         )}
                                                     </button>
                                                 );
@@ -980,8 +980,8 @@ export const ProjectTaskDetail = () => {
                         {/* Assignees Card */}
                         <div className="app-card p-4 h-full flex flex-col">
                             <div className="flex items-center gap-2 mb-3">
-                                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]">group</span>
-                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">{t('taskDetail.assignees.label')}</span>
+                                <span className="material-symbols-outlined text-[18px] text-muted">group</span>
+                                <span className="text-[10px] font-bold text-subtle uppercase tracking-wider">{t('taskDetail.assignees.label')}</span>
                             </div>
                             <div className="flex-1 flex items-center justify-start">
                                 <MultiAssigneeSelector
@@ -997,17 +997,17 @@ export const ProjectTaskDetail = () => {
 
                     {/* Description */}
                     <div className="p-0">
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-3 flex items-center gap-2 tracking-wider">
+                        <h3 className="text-xs font-bold text-muted uppercase mb-3 flex items-center gap-2 tracking-wider">
                             <span className="material-symbols-outlined text-[16px]">description</span>
                             {t('taskDetail.description.label')}
                         </h3>
                         <div className="app-card p-6 min-h-[120px]">
                             {task.description ? (
-                                <div className="prose prose-sm max-w-none text-[var(--color-text-main)]">
+                                <div className="prose prose-sm max-w-none text-main">
                                     <p className="whitespace-pre-wrap leading-relaxed">{task.description}</p>
                                 </div>
                             ) : (
-                                <p className="text-[var(--color-text-muted)] italic">{t('taskDetail.description.empty')}</p>
+                                <p className="text-muted italic">{t('taskDetail.description.empty')}</p>
                             )}
                         </div>
 
@@ -1018,12 +1018,12 @@ export const ProjectTaskDetail = () => {
                     <div>
                         <div className="flex items-center justify-between mb-3">
                             <div className="flex items-center gap-2">
-                                <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase flex items-center gap-2 tracking-wider">
+                                <h3 className="text-xs font-bold text-muted uppercase flex items-center gap-2 tracking-wider">
                                     <span className="material-symbols-outlined text-[16px]">checklist</span>
                                     {t('taskDetail.subtasks.label')}
                                 </h3>
                                 {totalCount > 0 && (
-                                    <span className="bg-[var(--color-surface-hover)] text-[var(--color-text-main)] text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                                    <span className="bg-surface-hover text-main text-[10px] font-bold px-1.5 py-0.5 rounded-full">
                                         {totalCount}
                                     </span>
                                 )}
@@ -1031,13 +1031,13 @@ export const ProjectTaskDetail = () => {
 
                             {totalCount > 0 && (
                                 <div className="flex items-center gap-2">
-                                    <div className="w-24 h-1.5 bg-[var(--color-surface-hover)] rounded-full overflow-hidden">
+                                    <div className="w-24 h-1.5 bg-surface-hover rounded-full overflow-hidden">
                                         <div
-                                            className="h-full bg-[var(--color-primary)] transition-all duration-500 rounded-full"
+                                            className="h-full bg-primary transition-all duration-500 rounded-full"
                                             style={{ width: `${progressPct}%` }}
                                         />
                                     </div>
-                                    <span className="text-xs font-medium text-[var(--color-text-muted)]">{Math.round(progressPct)}%</span>
+                                    <span className="text-xs font-medium text-muted">{Math.round(progressPct)}%</span>
                                 </div>
                             )}
                         </div>
@@ -1046,17 +1046,17 @@ export const ProjectTaskDetail = () => {
 
                             <div className="divide-y divide-[var(--color-surface-border)]">
                                 {subTasks.map(sub => (
-                                    <div key={sub.id} className="group flex items-center gap-3 p-3 hover:bg-[var(--color-surface-hover)] transition-colors">
+                                    <div key={sub.id} className="group flex items-center gap-3 p-3 hover:bg-surface-hover transition-colors">
                                         <button
                                             onClick={() => handleToggleSubTask(sub.id, sub.isCompleted)}
                                             className={`size-5 rounded border flex items-center justify-center transition-all ${sub.isCompleted
-                                                ? 'bg-[var(--color-primary)] border-[var(--color-primary)] text-[var(--color-primary-text)]'
-                                                : 'border-[var(--color-text-muted)] text-transparent hover:border-[var(--color-primary)]'
+                                                ? 'bg-primary border-primary text-on-primary'
+                                                : 'border-muted text-transparent hover:border-primary'
                                                 }`}
                                         >
                                             <span className="material-symbols-outlined text-[14px] font-bold">check</span>
                                         </button>
-                                        <span className={`flex-1 text-sm ${sub.isCompleted ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)]'}`}>
+                                        <span className={`flex-1 text-sm ${sub.isCompleted ? 'text-muted line-through' : 'text-main'}`}>
                                             {sub.title}
                                         </span>
 
@@ -1069,7 +1069,7 @@ export const ProjectTaskDetail = () => {
                                                 }}
                                                 className={`
                                                     size-7 rounded-full border border-dashed flex items-center justify-center transition-all bg-cover bg-center
-                                                    ${sub.assigneeId ? 'border-transparent' : 'border-[var(--color-surface-border)] text-[var(--color-text-subtle)] hover:border-[var(--color-primary)] hover:text-[var(--color-primary)]'}
+                                                    ${sub.assigneeId ? 'border-transparent' : 'border-surface text-subtle hover:border-primary hover:text-primary'}
                                                 `}
                                                 style={{
                                                     backgroundImage: sub.assigneeId ? `url(${allUsers.find(u => (u as any).id === sub.assigneeId)?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'})` : 'none'
@@ -1082,9 +1082,9 @@ export const ProjectTaskDetail = () => {
                                             {activeSubAssignMenu === sub.id && (
                                                 <>
                                                     <div className="fixed inset-0 z-40" onClick={() => setActiveSubAssignMenu(null)}></div>
-                                                    <div className="absolute right-0 top-full mt-1 w-48 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                                        <div className="p-2 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]">
-                                                            <p className="px-2 text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">{t('taskDetail.subtasks.assignTitle')}</p>
+                                                    <div className="absolute right-0 top-full mt-1 w-48 bg-card border border-surface rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                                                        <div className="p-2 border-b border-surface bg-surface">
+                                                            <p className="px-2 text-[10px] font-bold text-subtle uppercase tracking-wider">{t('taskDetail.subtasks.assignTitle')}</p>
                                                         </div>
                                                         <div className="max-h-60 overflow-y-auto p-1">
                                                             <button
@@ -1102,7 +1102,7 @@ export const ProjectTaskDetail = () => {
                                                                         onClick={() => handleUpdateSubTaskAssignee(sub.id, uid)}
                                                                         className={`
                                                                             w-full flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg transition-colors
-                                                                            ${sub.assigneeId === uid ? 'bg-[var(--color-primary-fade)] text-[var(--color-primary)]' : 'text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}
+                                                                            ${sub.assigneeId === uid ? 'bg-[var(--color-primary-fade)] text-primary' : 'text-main hover:bg-surface-hover'}
                                                                         `}
                                                                     >
                                                                         <img src={user?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'} alt="" className="size-5 rounded-full" />
@@ -1112,7 +1112,7 @@ export const ProjectTaskDetail = () => {
                                                                 );
                                                             })}
                                                             {taskAssignees.length === 0 && (
-                                                                <p className="p-3 text-[10px] text-[var(--color-text-muted)] italic text-center">{t('taskDetail.subtasks.noneAssigned')}</p>
+                                                                <p className="p-3 text-[10px] text-muted italic text-center">{t('taskDetail.subtasks.noneAssigned')}</p>
                                                             )}
                                                         </div>
                                                     </div>
@@ -1122,7 +1122,7 @@ export const ProjectTaskDetail = () => {
 
                                         <button
                                             onClick={() => handleDeleteSubTask(sub.id)}
-                                            className="opacity-0 group-hover:opacity-100 p-1.5 text-[var(--color-text-subtle)] hover:text-rose-500 rounded-lg transition-all"
+                                            className="opacity-0 group-hover:opacity-100 p-1.5 text-subtle hover:text-rose-500 rounded-lg transition-all"
                                             title={t('taskDetail.subtasks.delete')}
                                         >
                                             <span className="material-symbols-outlined text-[16px]">close</span>
@@ -1131,7 +1131,7 @@ export const ProjectTaskDetail = () => {
                                 ))}
                             </div>
 
-                            <div className="p-3 bg-[var(--color-surface-bg)] border-t border-[var(--color-surface-border)]">
+                            <div className="p-3 bg-surface border-t border-surface">
                                 <form onSubmit={handleAddSubTask} className="flex gap-2">
                                     <div className="relative flex-1">
                                         <Input
@@ -1167,7 +1167,7 @@ export const ProjectTaskDetail = () => {
 
                     {/* Comments */}
                     <div>
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-3 flex items-center gap-2 tracking-wider">
+                        <h3 className="text-xs font-bold text-muted uppercase mb-3 flex items-center gap-2 tracking-wider">
                             <span className="material-symbols-outlined text-[16px]">chat</span>
                             {t('taskDetail.comments.title').replace('{count}', String(commentCount))}
                         </h3>
@@ -1193,26 +1193,26 @@ export const ProjectTaskDetail = () => {
                         {/* Timeline Card */}
                         <div className="app-card p-4">
                             <div className="flex items-center gap-2 mb-4">
-                                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]">event_note</span>
-                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">{t('taskDetail.timeline.label')}</span>
+                                <span className="material-symbols-outlined text-[18px] text-muted">event_note</span>
+                                <span className="text-[10px] font-bold text-subtle uppercase tracking-wider">{t('taskDetail.timeline.label')}</span>
                             </div>
                             <div className="space-y-4 px-1">
                                 <div>
-                                    <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider block mb-1">{t('taskDetail.timeline.startDate')}</span>
+                                    <span className="text-[10px] font-bold text-subtle uppercase tracking-wider block mb-1">{t('taskDetail.timeline.startDate')}</span>
                                     <DatePicker
                                         value={task.startDate || ''}
                                         onChange={(date) => handleUpdateField('startDate', date)}
                                         placeholder={t('taskDetail.timeline.startPlaceholder')}
-                                        className="w-full text-sm border-none p-0 h-auto bg-transparent focus:ring-0 text-[var(--color-text-main)] font-semibold"
+                                        className="w-full text-sm border-none p-0 h-auto bg-transparent focus:ring-0 text-main font-semibold"
                                     />
                                 </div>
                                 <div>
-                                    <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider block mb-1">{t('taskDetail.timeline.dueDate')}</span>
+                                    <span className="text-[10px] font-bold text-subtle uppercase tracking-wider block mb-1">{t('taskDetail.timeline.dueDate')}</span>
                                     <DatePicker
                                         value={task.dueDate || ''}
                                         onChange={(date) => handleUpdateField('dueDate', date)}
                                         placeholder={t('taskDetail.timeline.duePlaceholder')}
-                                        className="w-full text-sm border-none p-0 h-auto bg-transparent focus:ring-0 text-[var(--color-text-main)] font-semibold"
+                                        className="w-full text-sm border-none p-0 h-auto bg-transparent focus:ring-0 text-main font-semibold"
                                     />
                                 </div>
                             </div>
@@ -1230,8 +1230,8 @@ export const ProjectTaskDetail = () => {
                         {/* Labels Card */}
                         <div className="app-card p-4">
                             <div className="flex items-center justify-between mb-3">
-                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">{t('taskDetail.labels.title')}</span>
-                                <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]">sell</span>
+                                <span className="text-[10px] font-bold text-subtle uppercase tracking-wider">{t('taskDetail.labels.title')}</span>
+                                <span className="material-symbols-outlined text-[18px] text-muted">sell</span>
                             </div>
 
                             <div className="flex flex-wrap gap-2 mb-3">
@@ -1240,7 +1240,7 @@ export const ProjectTaskDetail = () => {
                                     const filteredCats = taskCats.filter(Boolean);
 
                                     if (filteredCats.length === 0) {
-                                        return <span className="text-xs text-[var(--color-text-muted)] italic px-1">{t('taskDetail.labels.empty')}</span>;
+                                        return <span className="text-xs text-muted italic px-1">{t('taskDetail.labels.empty')}</span>;
                                     }
 
                                     return filteredCats.map(catName => {
@@ -1274,16 +1274,16 @@ export const ProjectTaskDetail = () => {
                             </div>
 
                             <div className="relative group/label">
-                                <button className="w-full py-2 px-3 rounded-xl bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] text-[10px] font-bold text-[var(--color-text-main)] uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[var(--color-surface-card)] transition-all">
+                                <button className="w-full py-2 px-3 rounded-xl bg-surface-hover border border-surface text-[10px] font-bold text-main uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-card transition-all">
                                     <span className="material-symbols-outlined text-[16px]">add</span>
                                     {t('taskDetail.labels.add')}
                                 </button>
 
-                                <div className="absolute right-0 bottom-full mb-2 w-48 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl shadow-2xl py-2 opacity-0 invisible group-hover/label:opacity-100 group-hover/label:visible transition-all z-20">
-                                    <div className="px-3 py-1 mb-1 border-b border-[var(--color-surface-border)]">
+                                <div className="absolute right-0 bottom-full mb-2 w-48 bg-card border border-surface rounded-2xl shadow-2xl py-2 opacity-0 invisible group-hover/label:opacity-100 group-hover/label:visible transition-all z-20">
+                                    <div className="px-3 py-1 mb-1 border-b border-surface">
                                         <button
                                             onClick={() => setShowLabelsModal(true)}
-                                            className="w-full flex items-center gap-2 px-2 py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter text-[var(--color-accent)] hover:bg-[var(--color-accent)]/10 transition-colors"
+                                            className="w-full flex items-center gap-2 px-2 py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter text-primary hover:bg-[var(--color-accent)]/10 transition-colors"
                                         >
                                             <span className="material-symbols-outlined text-sm">settings</span>
                                             {t('taskDetail.labels.manage')}
@@ -1302,16 +1302,16 @@ export const ProjectTaskDetail = () => {
                                                         const next = isSelected ? current.filter(c => c !== cat.name) : [...current, cat.name];
                                                         handleUpdateField('category', next.length > 0 ? next : null);
                                                     }}
-                                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-[var(--color-surface-hover)] text-xs font-semibold text-[var(--color-text-main)] transition-colors text-left"
+                                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-surface-hover text-xs font-semibold text-main transition-colors text-left"
                                                 >
                                                     <div className="size-2 rounded-full" style={{ backgroundColor: cat.color || '#64748b' }} />
                                                     <span className="flex-1">{cat.name}</span>
-                                                    {isSelected && <span className="material-symbols-outlined text-sm text-[var(--color-accent)]">check</span>}
+                                                    {isSelected && <span className="material-symbols-outlined text-sm text-primary">check</span>}
                                                 </button>
                                             );
                                         })}
                                         {allCategories.length === 0 && (
-                                            <div className="px-3 py-4 text-[10px] text-[var(--color-text-muted)] italic text-center">
+                                            <div className="px-3 py-4 text-[10px] text-muted italic text-center">
                                                 {t('taskDetail.labels.noneDefined')}
                                             </div>
                                         )}
@@ -1350,14 +1350,14 @@ export const ProjectTaskDetail = () => {
 
                     {/* Consolidated Details Card */}
                     <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-4">{t('taskDetail.details.title')}</h3>
+                        <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-4">{t('taskDetail.details.title')}</h3>
                         <div className="space-y-5">
                             {/* Task ID */}
                             <div className="flex items-center justify-between group">
-                                <span className="text-[11px] font-bold text-[var(--color-text-subtle)] uppercase">{t('taskDetail.details.id')}</span>
+                                <span className="text-[11px] font-bold text-subtle uppercase">{t('taskDetail.details.id')}</span>
                                 <div className="relative">
                                     <button
-                                        className="text-[11px] font-mono text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] px-2 py-1 rounded transition-colors flex items-center gap-1.5"
+                                        className="text-[11px] font-mono text-subtle hover:text-main hover:bg-surface-hover px-2 py-1 rounded transition-colors flex items-center gap-1.5"
                                         onClick={() => {
                                             navigator.clipboard.writeText(task.id);
                                             setCopiedId(true);
@@ -1373,8 +1373,8 @@ export const ProjectTaskDetail = () => {
                             </div>
 
                             {/* Linked Milestone Card */}
-                            <div className="pt-3 border-t border-[var(--color-surface-border)]">
-                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase block mb-2">{t('taskDetail.details.milestone')}</span>
+                            <div className="pt-3 border-t border-surface">
+                                <span className="text-[10px] font-bold text-subtle uppercase block mb-2">{t('taskDetail.details.milestone')}</span>
 
                                 {linkedMilestone ? (
                                     <div className="group relative">
@@ -1403,7 +1403,7 @@ export const ProjectTaskDetail = () => {
                                     <div className="relative">
                                         <button
                                             onClick={() => setActiveMilestoneMenu(!activeMilestoneMenu)}
-                                            className="w-full flex items-center justify-center gap-2 p-2 border border-dashed border-[var(--color-surface-border)] rounded-lg text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] transition-all text-xs font-medium"
+                                            className="w-full flex items-center justify-center gap-2 p-2 border border-dashed border-surface rounded-lg text-muted hover:text-primary hover:border-primary hover:bg-surface-hover transition-all text-xs font-medium"
                                         >
                                             <span className="material-symbols-outlined text-[16px]">add_link</span>
                                             {t('taskDetail.details.milestone.link')}
@@ -1412,19 +1412,19 @@ export const ProjectTaskDetail = () => {
                                         {activeMilestoneMenu && (
                                             <>
                                                 <div className="fixed inset-0 z-40" onClick={() => setActiveMilestoneMenu(false)} />
-                                                <div className="absolute top-full left-0 right-0 mt-1 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-xl z-50 p-1 max-h-48 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-1 duration-200">
+                                                <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-surface rounded-xl shadow-xl z-50 p-1 max-h-48 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-1 duration-200">
                                                     {milestones.filter(m => m.status === 'Pending').length === 0 ? (
-                                                        <div className="p-3 text-center text-[10px] text-[var(--color-text-muted)] italic">{t('taskDetail.details.milestone.nonePending')}</div>
+                                                        <div className="p-3 text-center text-[10px] text-muted italic">{t('taskDetail.details.milestone.nonePending')}</div>
                                                     ) : (
                                                         milestones.filter(m => m.status === 'Pending').map(m => (
                                                             <button
                                                                 key={m.id}
                                                                 onClick={() => handleLinkMilestone(m.id)}
-                                                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors text-left"
+                                                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-main hover:bg-surface-hover rounded-lg transition-colors text-left"
                                                             >
-                                                                <span className="material-symbols-outlined text-[14px] text-[var(--color-text-subtle)]">flag</span>
+                                                                <span className="material-symbols-outlined text-[14px] text-subtle">flag</span>
                                                                 <span className="truncate flex-1">{m.title}</span>
-                                                                {m.dueDate && <span className="text-[10px] text-[var(--color-text-muted)]">{format(new Date(m.dueDate), 'MMM d', { locale: dateLocale })}</span>}
+                                                                {m.dueDate && <span className="text-[10px] text-muted">{format(new Date(m.dueDate), 'MMM d', { locale: dateLocale })}</span>}
                                                             </button>
                                                         ))
                                                     )}
@@ -1437,8 +1437,8 @@ export const ProjectTaskDetail = () => {
 
                             {/* Strategic Origin Link */}
                             {task.convertedIdeaId && (
-                                <div className="pt-3 border-t border-[var(--color-surface-border)]">
-                                    <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase block mb-2">{t('taskDetail.details.origin')}</span>
+                                <div className="pt-3 border-t border-surface">
+                                    <span className="text-[10px] font-bold text-subtle uppercase block mb-2">{t('taskDetail.details.origin')}</span>
                                     <Link
                                         to={`/project/${id}/flows/${task.convertedIdeaId}`}
                                         className="flex items-center gap-2 p-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 group hover:border-indigo-200 dark:hover:border-indigo-500/40 transition-all"
@@ -1457,8 +1457,8 @@ export const ProjectTaskDetail = () => {
 
                             {/* Related Issue Link */}
                             {task.linkedIssueId && (
-                                <div className="pt-3 border-t border-[var(--color-surface-border)]">
-                                    <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase block mb-2">{t('taskDetail.details.reference')}</span>
+                                <div className="pt-3 border-t border-surface">
+                                    <span className="text-[10px] font-bold text-subtle uppercase block mb-2">{t('taskDetail.details.reference')}</span>
                                     <Link
                                         to={`/project/${id}/issues/${task.linkedIssueId}`}
                                         className="flex items-center gap-2 p-2 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 group hover:border-rose-200 dark:hover:border-rose-500/40 transition-all"
@@ -1476,15 +1476,15 @@ export const ProjectTaskDetail = () => {
                             )}
 
                             {/* Timestamps */}
-                            <div className="pt-3 border-t border-[var(--color-surface-border)] space-y-3">
+                            <div className="pt-3 border-t border-surface space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">{t('taskDetail.details.created')}</span>
+                                    <span className="text-[10px] font-bold text-subtle uppercase">{t('taskDetail.details.created')}</span>
                                     <div className="text-right">
-                                        <span className="block text-xs font-medium text-[var(--color-text-main)]">
+                                        <span className="block text-xs font-medium text-main">
                                             {task.createdAt ? format(new Date(toMillis(task.createdAt)), dateFormat, { locale: dateLocale }) : '-'}
                                         </span>
                                         {task.createdBy && (
-                                            <span className="text-[10px] text-[var(--color-text-muted)] flex items-center justify-end gap-1">
+                                            <span className="text-[10px] text-muted flex items-center justify-end gap-1">
                                                 {t('taskDetail.details.by').replace('{name}', allUsers.find(u => (u as any).id === task.createdBy)?.displayName?.split(' ')[0] || t('taskDetail.details.unknownUser'))}
                                             </span>
                                         )}
@@ -1493,13 +1493,13 @@ export const ProjectTaskDetail = () => {
 
                                 {task.isCompleted && (
                                     <div className="flex items-center justify-between">
-                                        <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase">{t('taskDetail.details.completed')}</span>
+                                        <span className="text-[10px] font-bold text-subtle uppercase">{t('taskDetail.details.completed')}</span>
                                         <div className="text-right">
-                                            <span className="block text-xs font-medium text-[var(--color-text-main)]">
+                                            <span className="block text-xs font-medium text-main">
                                                 {task.completedAt ? format(new Date(toMillis(task.completedAt)), dateFormat, { locale: dateLocale }) : t('taskDetail.details.justNow')}
                                             </span>
                                             {task.completedBy && (
-                                                <span className="text-[10px] text-[var(--color-text-muted)] flex items-center justify-end gap-1">
+                                                <span className="text-[10px] text-muted flex items-center justify-end gap-1">
                                                     {t('taskDetail.details.by').replace('{name}', allUsers.find(u => (u as any).id === task.completedBy)?.displayName?.split(' ')[0] || t('taskDetail.details.unknownUser'))}
                                                 </span>
                                             )}
@@ -1512,14 +1512,14 @@ export const ProjectTaskDetail = () => {
 
                     {/* Activity Feed (Moved to Sidebar) */}
                     {activities.length > 0 && (
-                        <div className="pt-4 border-t border-[var(--color-surface-border)]">
-                            <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-4 flex items-center gap-2 tracking-wider">
+                        <div className="pt-4 border-t border-surface">
+                            <h3 className="text-xs font-bold text-muted uppercase mb-4 flex items-center gap-2 tracking-wider">
                                 <span className="material-symbols-outlined text-[16px]">history</span>
                                 {t('taskDetail.activity.title')}
                             </h3>
                             <div className="relative pl-4 space-y-6 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                                 {/* Vertical line */}
-                                <div className="absolute left-[31px] top-2 bottom-2 w-[2px] bg-[var(--color-surface-border)]" />
+                                <div className="absolute left-[31px] top-2 bottom-2 w-[2px] bg-surface-border" />
 
                                 {displayedActivities.slice(0, 4).map((item) => {
 
@@ -1535,14 +1535,14 @@ export const ProjectTaskDetail = () => {
                                             </div>
                                             <div className="flex-1 min-w-0 py-1">
                                                 <div className="flex items-center gap-2 mb-0.5">
-                                                    <span className="text-sm font-medium text-[var(--color-text-main)] truncate">
+                                                    <span className="text-sm font-medium text-main truncate">
                                                         {item.user}
                                                     </span>
-                                                    <span className="text-xs text-[var(--color-text-subtle)]">
+                                                    <span className="text-xs text-subtle">
                                                         {timeAgo(item.createdAt)}
                                                     </span>
                                                 </div>
-                                                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+                                                <p className="text-sm text-muted leading-relaxed">
                                                     {item.action}
                                                 </p>
                                             </div>
@@ -1593,7 +1593,7 @@ const EffortIcon = ({ effort }: { effort: string }) => {
         'Medium': 'text-blue-500',
         'Low': 'text-emerald-500',
     };
-    return <span className={`material-symbols-outlined text-[18px] ${colors[effort] || 'text-[var(--color-text-muted)]'}`}>{icons[effort] || 'circle'}</span>;
+    return <span className={`material-symbols-outlined text-[18px] ${colors[effort] || 'text-muted'}`}>{icons[effort] || 'circle'}</span>;
 }
 
 const PriorityBadge = ({ priority }: { priority: string }) => {

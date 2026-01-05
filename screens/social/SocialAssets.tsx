@@ -74,7 +74,7 @@ export const SocialAssets = () => {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="h2 mb-2">{t('social.assets.title')}</h1>
-                    <p className="text-[var(--color-text-muted)]">{t('social.assets.subtitle')}</p>
+                    <p className="text-muted">{t('social.assets.subtitle')}</p>
                 </div>
 
                 {/* Hidden File Input */}
@@ -98,16 +98,16 @@ export const SocialAssets = () => {
 
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
                 {assets.length === 0 && (
-                    <div className="col-span-full p-10 text-center text-[var(--color-text-muted)] bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl">
+                    <div className="col-span-full p-10 text-center text-muted bg-card border border-surface rounded-xl">
                         {t('social.assets.empty')}
                     </div>
                 )}
                 {assets.map(asset => (
-                    <div key={asset.id} className="group relative aspect-square bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden border border-[var(--color-surface-border)]">
+                    <div key={asset.id} className="group relative aspect-square bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden border border-surface">
                         {asset.type === 'image' ? (
                             <img src={asset.url} alt={asset.filename} className="w-full h-full object-cover" />
                         ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[var(--color-text-muted)]">
+                            <div className="w-full h-full flex items-center justify-center text-muted">
                                 <span className="material-symbols-outlined text-4xl">movie</span>
                             </div>
                         )}

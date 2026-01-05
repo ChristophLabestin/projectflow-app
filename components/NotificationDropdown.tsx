@@ -179,8 +179,8 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                 className={`
                     size-9 rounded-xl flex items-center justify-center transition-all duration-300 relative
                     ${isOpen
-                        ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] shadow-lg scale-95'
-                        : 'hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}
+                        ? 'bg-primary text-on-primary shadow-lg scale-95'
+                        : 'hover:bg-surface-hover text-muted hover:text-main'}
                 `}
             >
                 <span className={`material-symbols-outlined text-[20px] transition-transform duration-300 ${isOpen ? 'rotate-12' : ''}`}>
@@ -198,20 +198,20 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                 <div className={`absolute ${position === 'sidebar'
                     ? 'left-full bottom-0 ml-3'
                     : 'right-0 mt-2'
-                    } w-[340px] bg-[var(--color-surface-card)] rounded-2xl shadow-2xl overflow-hidden z-50 animate-fade-in`}
+                    } w-[340px] bg-card rounded-2xl shadow-2xl overflow-hidden z-50 animate-fade-in`}
                 >
                     {/* Header - Gradient Design */}
-                    <div className="relative px-5 py-4 bg-gradient-to-r from-[var(--color-surface-card)] to-[var(--color-surface-bg)] border-b border-[var(--color-surface-border)]">
+                    <div className="relative px-5 py-4 bg-gradient-to-r from-[var(--color-surface-card)] to-[var(--color-surface-bg)] border-b border-surface">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="size-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
                                     <span className="material-symbols-outlined text-white text-[22px]">notifications</span>
                                 </div>
                                 <div>
-                                    <h3 className="text-[15px] font-bold text-[var(--color-text-main)]">
+                                    <h3 className="text-[15px] font-bold text-main">
                                         {t('notifications.title')}
                                     </h3>
-                                    <p className="text-[11px] text-[var(--color-text-muted)]">
+                                    <p className="text-[11px] text-muted">
                                         {unreadCount > 0
                                             ? t('notifications.subtitle.unread').replace('{count}', String(unreadCount))
                                             : t('notifications.subtitle.allCaughtUp')}
@@ -234,17 +234,17 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                         {loading ? (
                             <div className="flex flex-col items-center justify-center py-12 gap-3">
                                 <div className="size-10 rounded-full border-2 border-indigo-500/30 border-t-indigo-500 animate-spin"></div>
-                                <p className="text-xs text-[var(--color-text-muted)]">{t('notifications.loading')}</p>
+                                <p className="text-xs text-muted">{t('notifications.loading')}</p>
                             </div>
                         ) : notifications.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
                                 <div className="size-20 rounded-2xl bg-gradient-to-br from-[var(--color-surface-hover)] to-[var(--color-surface-bg)] flex items-center justify-center mb-4">
-                                    <span className="material-symbols-outlined text-[40px] text-[var(--color-text-subtle)]">
+                                    <span className="material-symbols-outlined text-[40px] text-subtle">
                                         inbox
                                     </span>
                                 </div>
-                                <h4 className="text-sm font-bold text-[var(--color-text-main)] mb-1">{t('notifications.empty.title')}</h4>
-                                <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
+                                <h4 className="text-sm font-bold text-main mb-1">{t('notifications.empty.title')}</h4>
+                                <p className="text-xs text-muted leading-relaxed">
                                     {t('notifications.empty.description')}
                                 </p>
                             </div>
@@ -261,7 +261,7 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                                             group relative mx-2 mb-1 px-3 py-3 rounded-xl cursor-pointer transition-all duration-200
                                             ${!notification.read
                                                 ? 'bg-gradient-to-r from-indigo-50/80 to-transparent dark:from-indigo-900/20 dark:to-transparent'
-                                                : 'hover:bg-[var(--color-surface-hover)]'}
+                                                : 'hover:bg-surface-hover'}
                                         `}
                                         style={{ animationDelay: `${index * 30}ms` }}
                                     >
@@ -276,7 +276,7 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                                                 flex-shrink-0 size-9 rounded-xl flex items-center justify-center transition-all duration-200
                                                 ${!notification.read
                                                     ? `bg-gradient-to-br ${getNotificationColor(notification.type)} text-white shadow-md`
-                                                    : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] group-hover:bg-[var(--color-surface-border)]'}
+                                                    : 'bg-surface-hover text-muted group-hover:bg-surface-border'}
                                             `}>
                                                 <span className="material-symbols-outlined text-[18px]">
                                                     {getNotificationIcon(notification.type)}
@@ -287,16 +287,16 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-start justify-between gap-2">
                                                     <p className={`text-[13px] leading-snug ${!notification.read
-                                                        ? 'font-semibold text-[var(--color-text-main)]'
-                                                        : 'text-[var(--color-text-main)]'
+                                                        ? 'font-semibold text-main'
+                                                        : 'text-main'
                                                         }`}>
                                                         {notification.title}
                                                     </p>
-                                                    <span className="text-[10px] text-[var(--color-text-subtle)] shrink-0 mt-0.5">
+                                                    <span className="text-[10px] text-subtle shrink-0 mt-0.5">
                                                         {formatTime(notification.createdAt)}
                                                     </span>
                                                 </div>
-                                                <p className="text-[12px] text-[var(--color-text-muted)] mt-0.5 line-clamp-2 leading-relaxed">
+                                                <p className="text-[12px] text-muted mt-0.5 line-clamp-2 leading-relaxed">
                                                     {notification.message}
                                                 </p>
 
@@ -312,7 +312,7 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
                                                         </button>
                                                         <button
                                                             onClick={(e) => handleJoinResponse(e, notification, false)}
-                                                            className="flex-1 flex items-center justify-center gap-1.5 h-8 bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] text-xs font-bold rounded-lg hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20 dark:hover:text-rose-400 transition-all duration-200"
+                                                            className="flex-1 flex items-center justify-center gap-1.5 h-8 bg-surface-hover text-muted text-xs font-bold rounded-lg hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20 dark:hover:text-rose-400 transition-all duration-200"
                                                         >
                                                             <span className="material-symbols-outlined text-[14px]">close</span>
                                                             {t('notifications.actions.decline')}
@@ -329,13 +329,13 @@ export const NotificationDropdown = ({ position = 'topbar' }: NotificationDropdo
 
                     {/* Footer */}
                     {notifications.length > 0 && (
-                        <div className="px-4 py-3 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]/50">
+                        <div className="px-4 py-3 border-t border-surface bg-surface/50">
                             <button
                                 onClick={() => {
                                     setIsOpen(false);
                                     navigate('/notifications');
                                 }}
-                                className="w-full flex items-center justify-center gap-2 text-xs font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors py-1.5 rounded-lg hover:bg-[var(--color-surface-hover)]"
+                                className="w-full flex items-center justify-center gap-2 text-xs font-bold text-muted hover:text-main transition-colors py-1.5 rounded-lg hover:bg-surface-hover"
                             >
                                 {t('notifications.actions.viewAll')}
                                 <span className="material-symbols-outlined text-[14px]">arrow_forward</span>

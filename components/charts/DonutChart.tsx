@@ -16,8 +16,8 @@ export const DonutChart = ({ data, size = 160, thickness = 20, showEmptyLabel = 
     if (total === 0) {
         return (
             <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
-                <div className="w-full h-full rounded-full border-[10px] border-[var(--color-surface-border)] opacity-30"></div>
-                {showEmptyLabel && <span className="absolute text-xs text-[var(--color-text-muted)]">No data</span>}
+                <div className="w-full h-full rounded-full border-[10px] border-surface opacity-30"></div>
+                {showEmptyLabel && <span className="absolute text-xs text-muted">No data</span>}
             </div>
         );
     }

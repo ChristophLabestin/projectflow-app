@@ -29,7 +29,7 @@ const SettingsInput = ({ label, value, onChange, placeholder = '', type = 'text'
             <div className="flex justify-between items-center px-1">
                 <div className="flex items-center gap-1.5">
                     {icon && <span className="material-symbols-outlined text-[12px] opacity-40">{icon}</span>}
-                    <label htmlFor={inputId} className="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-widest group-focus-within/input:text-[var(--color-primary)] transition-colors">
+                    <label htmlFor={inputId} className="text-[9px] font-black text-muted uppercase tracking-widest group-focus-within/input:text-primary transition-colors">
                         {label}
                     </label>
                 </div>
@@ -37,20 +37,20 @@ const SettingsInput = ({ label, value, onChange, placeholder = '', type = 'text'
                     <button
                         type="button"
                         onClick={() => setPickerOpen(true)}
-                        className="text-[8px] font-black text-[var(--color-primary)] opacity-0 group-hover/input:opacity-100 focus:opacity-100 transition-opacity uppercase tracking-widest px-1.5 py-0.5 rounded hover:bg-[var(--color-primary)]/10"
+                        className="text-[8px] font-black text-primary opacity-0 group-hover/input:opacity-100 focus:opacity-100 transition-opacity uppercase tracking-widest px-1.5 py-0.5 rounded hover:bg-primary/10"
                     >
                         {'{ }'}
                     </button>
                 )}
             </div>
-            <div className="relative flex items-center bg-[var(--color-surface-sunken)] rounded border border-[var(--color-surface-border)] group-hover/input:border-[var(--color-primary)]/30 focus-within:ring-2 focus-within:ring-[var(--color-primary)]/10 focus-within:border-[var(--color-primary)]/50 transition-all shadow-sm">
+            <div className="relative flex items-center bg-surface-sunken rounded border border-surface group-hover/input:border-primary/30 focus-within:ring-2 focus-within:ring-primary/10 focus-within:border-primary/50 transition-all shadow-sm">
                 <input
                     id={inputId}
                     type={type}
                     value={value ?? ''}
                     onChange={e => onChange(e.target.value)}
                     placeholder={placeholder}
-                    className="w-full px-2 py-1.5 text-[10px] font-mono bg-transparent border-none outline-none appearance-none text-[var(--color-text-main)] placeholder:opacity-30"
+                    className="w-full px-2 py-1.5 text-[10px] font-mono bg-transparent border-none outline-none appearance-none text-main placeholder:opacity-30"
                 />
             </div>
             {pickerOpen && variables && (
@@ -87,24 +87,24 @@ export const PropertiesPanel = ({ block, parentType, columnCount, onChange, onSa
     };
 
     return (
-        <div className="flex flex-col h-full bg-[var(--color-surface-paper)] font-sans border-l border-[var(--color-surface-border)] shadow-2xl w-[320px]">
+        <div className="flex flex-col h-full bg-surface-paper font-sans border-l border-surface shadow-2xl w-[320px]">
 
             {/* Header / Dynamic Identity */}
-            <header className="shrink-0 sticky top-0 z-20 px-4 py-5 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-paper)]/80 backdrop-blur-md">
+            <header className="shrink-0 sticky top-0 z-20 px-4 py-5 border-b border-surface bg-surface-paper/80 backdrop-blur-md">
                 <div className="flex items-center gap-3.5">
                     <div className="relative shrink-0">
-                        <div className="size-10 rounded-xl bg-[var(--color-surface-sunken)] border border-[var(--color-surface-border)] flex items-center justify-center shadow-inner group-hover:shadow-[0_0_15px_rgba(var(--color-primary-rgb),0.3)] transition-all overflow-hidden">
-                            <span className="material-symbols-outlined text-[var(--color-primary)] text-xl animate-in fade-in zoom-in duration-300">{typeIcons[block.type] || 'widgets'}</span>
+                        <div className="size-10 rounded-xl bg-surface-sunken border border-surface flex items-center justify-center shadow-inner group-hover:shadow-[0_0_15px_rgba(var(--color-primary-rgb),0.3)] transition-all overflow-hidden">
+                            <span className="material-symbols-outlined text-primary text-xl animate-in fade-in zoom-in duration-300">{typeIcons[block.type] || 'widgets'}</span>
                         </div>
-                        <div className="absolute -bottom-1 -right-1 size-4 rounded-full bg-[var(--color-primary)] text-[var(--color-primary-text)] flex items-center justify-center border-2 border-[var(--color-surface-paper)] shadow-sm">
+                        <div className="absolute -bottom-1 -right-1 size-4 rounded-full bg-primary text-on-primary flex items-center justify-center border-2 border-[var(--color-surface-paper)] shadow-sm">
                             <span className="material-symbols-outlined text-[10px] font-black">bolt</span>
                         </div>
                     </div>
                     <div className="min-w-0">
-                        <h2 className="text-[12px] font-black text-[var(--color-text-main)] uppercase tracking-[0.1em] truncate drop-shadow-sm">{block.name || block.type}</h2>
+                        <h2 className="text-[12px] font-black text-main uppercase tracking-[0.1em] truncate drop-shadow-sm">{block.name || block.type}</h2>
                         <div className="flex items-center gap-2 mt-1">
-                            <span className="px-1.5 py-0.5 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] text-[8px] font-black uppercase tracking-widest">{block.type}</span>
-                            <span className="text-[8px] text-[var(--color-text-muted)] font-bold uppercase tracking-widest">Modified recently</span>
+                            <span className="px-1.5 py-0.5 rounded-full bg-primary/10 text-primary text-[8px] font-black uppercase tracking-widest">{block.type}</span>
+                            <span className="text-[8px] text-muted font-bold uppercase tracking-widest">Modified recently</span>
                         </div>
                     </div>
                 </div>
@@ -132,7 +132,7 @@ export const PropertiesPanel = ({ block, parentType, columnCount, onChange, onSa
                                     value={block.content.text || ''}
                                     onChange={(e) => updateContent('text', e.target.value)}
                                     placeholder="Enter your text here..."
-                                    className="w-full min-h-[100px] px-3 py-2 text-sm rounded-lg bg-[var(--color-surface-sunken)] border border-[var(--color-surface-border)] focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary)]/20 outline-none resize-y transition-all"
+                                    className="w-full min-h-[100px] px-3 py-2 text-sm rounded-lg bg-surface-sunken border border-surface focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none resize-y transition-all"
                                 />
                                 <div className="flex gap-2">
                                     <SegmentedControl
@@ -146,33 +146,33 @@ export const PropertiesPanel = ({ block, parentType, columnCount, onChange, onSa
                                         ]}
                                     />
                                     <div className="flex flex-col gap-1.5 w-full">
-                                        <div className="text-[11px] text-[var(--color-text-muted)] font-medium">Style</div>
+                                        <div className="text-[11px] text-muted font-medium">Style</div>
                                         <div className="flex gap-1">
                                             <button
                                                 onClick={() => updateStyle('fontWeight', block.styles.fontWeight === 'bold' ? 'normal' : 'bold')}
                                                 title="Bold"
-                                                className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${block.styles.fontWeight === 'bold' ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-primary)]/30'}`}
+                                                className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${block.styles.fontWeight === 'bold' ? 'bg-primary/10 border-primary text-primary' : 'border-surface text-muted hover:border-primary/30'}`}
                                             >
                                                 <span className="material-symbols-outlined text-[16px]">format_bold</span>
                                             </button>
                                             <button
                                                 onClick={() => updateStyle('fontStyle', block.styles.fontStyle === 'italic' ? 'normal' : 'italic')}
                                                 title="Italic"
-                                                className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${block.styles.fontStyle === 'italic' ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-primary)]/30'}`}
+                                                className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${block.styles.fontStyle === 'italic' ? 'bg-primary/10 border-primary text-primary' : 'border-surface text-muted hover:border-primary/30'}`}
                                             >
                                                 <span className="material-symbols-outlined text-[16px]">format_italic</span>
                                             </button>
                                             <button
                                                 onClick={() => updateStyle('textDecoration', block.styles.textDecoration === 'underline' ? 'none' : 'underline')}
                                                 title="Underline"
-                                                className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${block.styles.textDecoration === 'underline' ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-primary)]/30'}`}
+                                                className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${block.styles.textDecoration === 'underline' ? 'bg-primary/10 border-primary text-primary' : 'border-surface text-muted hover:border-primary/30'}`}
                                             >
                                                 <span className="material-symbols-outlined text-[16px]">format_underlined</span>
                                             </button>
                                             <button
                                                 onClick={() => updateStyle('textTransform', block.styles.textTransform === 'uppercase' ? 'none' : 'uppercase')}
                                                 title="Uppercase"
-                                                className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${block.styles.textTransform === 'uppercase' ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-primary)]/30'}`}
+                                                className={`flex-1 flex items-center justify-center py-1.5 rounded border text-[10px] font-black transition-all ${block.styles.textTransform === 'uppercase' ? 'bg-primary/10 border-primary text-primary' : 'border-surface text-muted hover:border-primary/30'}`}
                                             >
                                                 <span className="material-symbols-outlined text-[16px]">abc</span>
                                             </button>
@@ -187,7 +187,7 @@ export const PropertiesPanel = ({ block, parentType, columnCount, onChange, onSa
                     {block.type === 'richtext' && (
                         <SettingsGroup title="Content" defaultOpen={true}>
                             <div className="space-y-3">
-                                <div className="p-3 bg-[var(--color-surface-sunken)] rounded-lg border border-[var(--color-surface-border)]">
+                                <div className="p-3 bg-surface-sunken rounded-lg border border-surface">
                                     <div
                                         className="prose prose-sm max-w-none text-sm line-clamp-3 opacity-70"
                                         dangerouslySetInnerHTML={{ __html: block.content.text || '<p>No content yet...</p>' }}
@@ -195,7 +195,7 @@ export const PropertiesPanel = ({ block, parentType, columnCount, onChange, onSa
                                 </div>
                                 <button
                                     onClick={() => setIsRichTextModalOpen(true)}
-                                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-[var(--color-primary)] text-[var(--color-primary-text)] font-bold text-sm rounded-lg hover:opacity-90 transition-all shadow-sm"
+                                    className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-primary text-on-primary font-bold text-sm rounded-lg hover:opacity-90 transition-all shadow-sm"
                                 >
                                     <span className="material-symbols-outlined text-lg">edit_note</span>
                                     Open Rich Text Editor
@@ -239,8 +239,8 @@ export const PropertiesPanel = ({ block, parentType, columnCount, onChange, onSa
                         <SettingsGroup title="Image Asset" defaultOpen={true}>
                             <div className="space-y-4">
                                 {block.content.src ? (
-                                    <div className="p-1 bg-[var(--color-surface-sunken)] rounded-lg border border-[var(--color-surface-border)]">
-                                        <div className="relative group rounded border border-[var(--color-surface-border)] bg-black/5 overflow-hidden">
+                                    <div className="p-1 bg-surface-sunken rounded-lg border border-surface">
+                                        <div className="relative group rounded border border-surface bg-black/5 overflow-hidden">
                                             <img src={block.content.src} alt={block.content.alt || 'Preview'} className="w-full h-32 object-contain" />
                                             <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-2 backdrop-blur-[2px]">
                                                 <button onClick={() => setIsImageEditorOpen(true)} className="size-8 bg-white text-black rounded-full hover:scale-110 transition-transform flex items-center justify-center shadow-lg"><span className="material-symbols-outlined text-sm">edit</span></button>
@@ -250,9 +250,9 @@ export const PropertiesPanel = ({ block, parentType, columnCount, onChange, onSa
                                         </div>
                                     </div>
                                 ) : (
-                                    <button onClick={() => setIsMediaLibraryOpen(true)} className="w-full py-6 border-2 border-dashed border-[var(--color-surface-border)] rounded-lg hover:border-[var(--color-primary)]/50 hover:bg-[var(--color-primary)]/5 transition-all flex flex-col items-center justify-center gap-1.5 group">
-                                        <span className="material-symbols-outlined text-2xl text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)] transition-colors">add_photo_alternate</span>
-                                        <span className="text-[9px] text-[var(--color-text-muted)] font-bold uppercase tracking-widest">Open Assets</span>
+                                    <button onClick={() => setIsMediaLibraryOpen(true)} className="w-full py-6 border-2 border-dashed border-surface rounded-lg hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-1.5 group">
+                                        <span className="material-symbols-outlined text-2xl text-muted group-hover:text-primary transition-colors">add_photo_alternate</span>
+                                        <span className="text-[9px] text-muted font-bold uppercase tracking-widest">Open Assets</span>
                                     </button>
                                 )}
                                 <SettingsInput label="Source" icon="image" value={block.content.src} onChange={(v: string) => updateContent('src', v)} placeholder="https://..." variables={variables} />
@@ -293,17 +293,17 @@ export const PropertiesPanel = ({ block, parentType, columnCount, onChange, onSa
                         <SettingsGroup title="Social Networks" defaultOpen={true}>
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between px-1">
-                                    <label className="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-widest">Networks</label>
-                                    <button onClick={() => updateContent('socialLinks', [...(block.content.socialLinks || []), { platform: 'twitter', url: '' }])} className="text-[9px] font-black text-[var(--color-primary)] hover:underline uppercase tracking-widest">+ Add</button>
+                                    <label className="text-[9px] font-black text-muted uppercase tracking-widest">Networks</label>
+                                    <button onClick={() => updateContent('socialLinks', [...(block.content.socialLinks || []), { platform: 'twitter', url: '' }])} className="text-[9px] font-black text-primary hover:underline uppercase tracking-widest">+ Add</button>
                                 </div>
                                 <div className="space-y-2">
                                     {(block.content.socialLinks || []).map((link: any, idx: number) => (
-                                        <div key={idx} className="flex gap-1.5 items-center px-2 py-1.5 bg-[var(--color-surface-sunken)] rounded border border-[var(--color-surface-border)] group">
+                                        <div key={idx} className="flex gap-1.5 items-center px-2 py-1.5 bg-surface-sunken rounded border border-surface group">
                                             <select value={link.platform} onChange={e => { const n = [...(block.content.socialLinks || [])]; n[idx] = { ...n[idx], platform: e.target.value }; updateContent('socialLinks', n); }} className="w-12 text-[10px] font-bold bg-transparent outline-none appearance-none cursor-pointer uppercase">
                                                 <option value="twitter">X</option><option value="facebook">FB</option><option value="linkedin">IN</option><option value="instagram">IG</option>
                                             </select>
                                             <input value={link.url} onChange={e => { const n = [...(block.content.socialLinks || [])]; n[idx] = { ...n[idx], url: e.target.value }; updateContent('socialLinks', n); }} className="flex-1 text-[10px] bg-transparent outline-none truncate" placeholder="Profile URL" />
-                                            <button onClick={() => updateContent('socialLinks', (block.content.socialLinks || []).filter((_: any, i: number) => i !== idx))} className="size-5 flex items-center justify-center text-[var(--color-text-muted)] hover:text-red-500"><span className="material-symbols-outlined text-sm">close</span></button>
+                                            <button onClick={() => updateContent('socialLinks', (block.content.socialLinks || []).filter((_: any, i: number) => i !== idx))} className="size-5 flex items-center justify-center text-muted hover:text-red-500"><span className="material-symbols-outlined text-sm">close</span></button>
                                         </div>
                                     ))}
                                 </div>
@@ -316,17 +316,17 @@ export const PropertiesPanel = ({ block, parentType, columnCount, onChange, onSa
                         <SettingsGroup title="Navigation Menu" defaultOpen={true}>
                             <div className="space-y-4">
                                 <div className="flex items-center justify-between px-1">
-                                    <label className="text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-widest">Navigation</label>
-                                    <button onClick={() => updateContent('menuLinks', [...(block.content.menuLinks || []), { label: 'Item', url: '#' }])} className="text-[9px] font-black text-[var(--color-primary)] hover:underline uppercase tracking-widest">+ Add</button>
+                                    <label className="text-[9px] font-black text-muted uppercase tracking-widest">Navigation</label>
+                                    <button onClick={() => updateContent('menuLinks', [...(block.content.menuLinks || []), { label: 'Item', url: '#' }])} className="text-[9px] font-black text-primary hover:underline uppercase tracking-widest">+ Add</button>
                                 </div>
                                 <div className="space-y-2">
                                     {(block.content.menuLinks || []).map((link: any, idx: number) => (
-                                        <div key={idx} className="space-y-1 p-2 bg-[var(--color-surface-sunken)] rounded border border-[var(--color-surface-border)]">
+                                        <div key={idx} className="space-y-1 p-2 bg-surface-sunken rounded border border-surface">
                                             <div className="flex items-center justify-between gap-2">
                                                 <input value={link.label} onChange={e => { const n = [...(block.content.menuLinks || [])]; n[idx] = { ...n[idx], label: e.target.value }; updateContent('menuLinks', n); }} className="flex-1 font-bold text-[10px] bg-transparent outline-none uppercase" placeholder="LABEL" />
-                                                <button onClick={() => updateContent('menuLinks', (block.content.menuLinks || []).filter((_: any, i: number) => i !== idx))} className="size-4 flex items-center justify-center text-[var(--color-text-muted)] hover:text-red-500"><span className="material-symbols-outlined text-[14px]">delete</span></button>
+                                                <button onClick={() => updateContent('menuLinks', (block.content.menuLinks || []).filter((_: any, i: number) => i !== idx))} className="size-4 flex items-center justify-center text-muted hover:text-red-500"><span className="material-symbols-outlined text-[14px]">delete</span></button>
                                             </div>
-                                            <input value={link.url} onChange={e => { const n = [...(block.content.menuLinks || [])]; n[idx] = { ...n[idx], url: e.target.value }; updateContent('menuLinks', n); }} className="w-full text-[9px] text-[var(--color-text-muted)] bg-transparent outline-none" placeholder="Target URL" />
+                                            <input value={link.url} onChange={e => { const n = [...(block.content.menuLinks || [])]; n[idx] = { ...n[idx], url: e.target.value }; updateContent('menuLinks', n); }} className="w-full text-[9px] text-muted bg-transparent outline-none" placeholder="Target URL" />
                                         </div>
                                     ))}
                                 </div>
@@ -351,8 +351,8 @@ export const PropertiesPanel = ({ block, parentType, columnCount, onChange, onSa
                     {block.type === 'quote' && (
                         <SettingsGroup title="Quote Content" defaultOpen={true}>
                             <div className="space-y-2">
-                                <label className="px-1 text-[9px] font-black text-[var(--color-text-muted)] uppercase tracking-widest">Quote Text</label>
-                                <textarea className="w-full px-3 py-2 rounded bg-[var(--color-surface-sunken)] border border-[var(--color-surface-border)] text-[11px] resize-none focus:outline-none focus:border-[var(--color-primary)]/50 transition-all font-medium leading-relaxed" rows={4} placeholder="Enter your quote..." value={block.content.text || ''} onChange={e => updateContent('text', e.target.value)} />
+                                <label className="px-1 text-[9px] font-black text-muted uppercase tracking-widest">Quote Text</label>
+                                <textarea className="w-full px-3 py-2 rounded bg-surface-sunken border border-surface text-[11px] resize-none focus:outline-none focus:border-primary/50 transition-all font-medium leading-relaxed" rows={4} placeholder="Enter your quote..." value={block.content.text || ''} onChange={e => updateContent('text', e.target.value)} />
                             </div>
                         </SettingsGroup>
                     )}
@@ -373,7 +373,7 @@ export const PropertiesPanel = ({ block, parentType, columnCount, onChange, onSa
                             <ScrubbableInput label="Space" icon="height" value={block.styles.height ?? 40} onChange={(v) => updateStyle('height', v)} min={0} max={400} />
                         </SettingsGroup>
                     )}
-                    <div className="h-px bg-[var(--color-surface-border)] my-4" />
+                    <div className="h-px bg-surface-border my-4" />
                     {/* Define Visibility Map */}
                     {(() => {
                         const visibility: Record<string, string[]> = {
@@ -417,7 +417,7 @@ export const PropertiesPanel = ({ block, parentType, columnCount, onChange, onSa
                                     <SettingsGroup title="Size" defaultOpen={true}>
                                         <SizeControl styles={block.styles} onChange={updateStyle} />
                                         {parentType === 'columns' && (
-                                            <div className="mt-4 pt-4 border-t border-[var(--color-surface-border)]">
+                                            <div className="mt-4 pt-4 border-t border-surface">
                                                 <ScrubbableInput
                                                     label="Grid Span"
                                                     icon="grid_view"
@@ -427,7 +427,7 @@ export const PropertiesPanel = ({ block, parentType, columnCount, onChange, onSa
                                                     max={12}
                                                     unit="col"
                                                 />
-                                                <p className="mt-1.5 px-1 text-[8px] text-[var(--color-text-muted)] font-medium leading-tight italic">
+                                                <p className="mt-1.5 px-1 text-[8px] text-muted font-medium leading-tight italic">
                                                     Occupies {block.styles.gridSpan ?? (columnCount ? Math.floor(12 / columnCount) : 1)}/12 of the row width.
                                                     {columnCount && ` (Default is ${Math.floor(12 / columnCount)})`}
                                                 </p>
@@ -467,18 +467,18 @@ export const PropertiesPanel = ({ block, parentType, columnCount, onChange, onSa
             </main>
 
             {/* Footer */}
-            <footer className="shrink-0 p-4 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-sunken)]/50">
+            <footer className="shrink-0 p-4 border-t border-surface bg-surface-sunken/50">
                 {!isSaving ? (
-                    <button onClick={() => setIsSaving(true)} className="w-full flex items-center justify-center gap-2 py-2 rounded border border-[var(--color-primary)]/30 text-[var(--color-primary)] text-[10px] font-black uppercase tracking-widest hover:bg-[var(--color-primary)] hover:text-[var(--color-primary-text)] transition-all shadow-sm">
+                    <button onClick={() => setIsSaving(true)} className="w-full flex items-center justify-center gap-2 py-2 rounded border border-primary/30 text-primary text-[10px] font-black uppercase tracking-widest hover:bg-primary hover:text-on-primary transition-all shadow-sm">
                         <span className="material-symbols-outlined text-[16px]">bookmark</span>
                         Save Component
                     </button>
                 ) : (
                     <div className="space-y-2 animate-in slide-in-from-bottom-2 duration-300">
-                        <input autoFocus value={compName} onChange={e => setCompName(e.target.value)} placeholder="Unique Name..." className="w-full px-3 py-1.5 text-[10px] font-bold rounded bg-white dark:bg-zinc-800 border border-[var(--color-surface-border)] outline-none focus:border-[var(--color-primary)] uppercase" />
+                        <input autoFocus value={compName} onChange={e => setCompName(e.target.value)} placeholder="Unique Name..." className="w-full px-3 py-1.5 text-[10px] font-bold rounded bg-white dark:bg-zinc-800 border border-surface outline-none focus:border-primary uppercase" />
                         <div className="flex gap-2">
-                            <button onClick={() => setIsSaving(false)} className="flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest text-[var(--color-text-muted)] hover:bg-black/5 dark:hover:bg-white/5 rounded transition">Cancel</button>
-                            <button onClick={() => { if (compName) { onSaveAsComponent(compName); setIsSaving(false); setCompName(''); } }} disabled={!compName} className="flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded shadow-lg shadow-[var(--color-primary)]/20 disabled:opacity-30">Confirm</button>
+                            <button onClick={() => setIsSaving(false)} className="flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest text-muted hover:bg-black/5 dark:hover:bg-white/5 rounded transition">Cancel</button>
+                            <button onClick={() => { if (compName) { onSaveAsComponent(compName); setIsSaving(false); setCompName(''); } }} disabled={!compName} className="flex-1 py-1.5 text-[9px] font-black uppercase tracking-widest bg-primary text-on-primary rounded shadow-lg shadow-[var(--color-primary)]/20 disabled:opacity-30">Confirm</button>
                         </div>
                     </div>
                 )}

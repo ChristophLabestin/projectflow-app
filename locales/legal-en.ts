@@ -5,6 +5,7 @@ export const en = {
         back: "Back to Home",
         titles: { impressum: "Impressum (Legal Notice)", privacy: "Privacy Policy", terms: "Terms of Service / SaaS Agreement for ProjectFlow", appPrivacy: "App Privacy Policy" },
         nav: { impressum: "Impressum", privacy: "Privacy Policy", terms: "Terms of Service", appPrivacy: "App Privacy" },
+        errors: { termsMissing: "Error loading terms. Translation might be missing." },
         impressum: {
             intro: "Information according to § 5 DDG",
             providerTitle: "Provider",
@@ -1045,6 +1046,7 @@ export const en = {
             ]
         },
         appPrivacy: {
+            lastUpdatedLabel: "Last updated:",
             intro: {
                 title: "1. Introduction",
                 text: "Welcome to the privacy policy for ProjectFlow (the “Service”). This policy explains how we collect, use, disclose, and protect your personal data when you use our Service. We are committed to complying with the EU General Data Protection Regulation (GDPR, known as DSGVO in Germany) and other applicable privacy laws. Please read this policy carefully to understand our practices regarding your information."

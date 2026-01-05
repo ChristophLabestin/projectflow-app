@@ -405,13 +405,13 @@ export const BlogEditor = () => {
 
     return (
         <>
-            <div className={`flex flex-col gap-4 bg-[var(--color-surface-bg)] dark:bg-black transition-all duration-300 ${isFullscreen ? 'fixed inset-0 z-[99999] p-6' : 'h-[calc(100vh-140px)]'}`}>
+            <div className={`flex flex-col gap-4 bg-surface dark:bg-black transition-all duration-300 ${isFullscreen ? 'fixed inset-0 z-[99999] p-6' : 'h-[calc(100vh-140px)]'}`}>
 
                 {/* Top Bar Actions */}
                 <div className="flex items-center justify-between shrink-0">
                     <button
                         onClick={() => navigate(`/project/${projectId}/marketing/blog`)}
-                        className="flex items-center gap-2 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
+                        className="flex items-center gap-2 text-muted hover:text-main transition-colors"
                     >
                         <ArrowLeft size={18} />
                         <span>Back to Blogs</span>
@@ -420,7 +420,7 @@ export const BlogEditor = () => {
                     <div className="flex items-center gap-3">
                         <button
                             onClick={() => setIsFullscreen(!isFullscreen)}
-                            className={`p-2 rounded-lg text-sm font-medium transition-colors ${isFullscreen ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)]' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'}`}
+                            className={`p-2 rounded-lg text-sm font-medium transition-colors ${isFullscreen ? 'bg-surface-hover text-main' : 'text-muted hover:bg-surface-hover'}`}
                             title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
                         >
                             <span className="material-symbols-outlined text-[20px]">
@@ -429,7 +429,7 @@ export const BlogEditor = () => {
                         </button>
 
 
-                        <div className="w-px h-6 bg-[var(--color-surface-border)] mx-1" />
+                        <div className="w-px h-6 bg-surface-border mx-1" />
 
                         <button
                             onClick={() => setIsAIModalOpen(true)}
@@ -441,7 +441,7 @@ export const BlogEditor = () => {
 
                         <button
                             onClick={() => setIsTemplateModalOpen(true)}
-                            className="px-4 py-2 rounded-lg text-sm font-medium text-[var(--color-primary)] bg-[var(--color-primary)]/10 hover:bg-[var(--color-primary)]/20 transition-colors flex items-center gap-2"
+                            className="px-4 py-2 rounded-lg text-sm font-medium text-primary bg-primary/10 hover:bg-primary/20 transition-colors flex items-center gap-2"
                             title="Manage Templates"
                         >
                             <Layout size={16} />
@@ -455,7 +455,7 @@ export const BlogEditor = () => {
                             <div className="relative">
                                 <button
                                     onClick={() => setShowLanguageMenu(!showLanguageMenu)}
-                                    className="px-3 py-2 rounded-lg text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-colors flex items-center gap-2 border border-[var(--color-surface-border)]"
+                                    className="px-3 py-2 rounded-lg text-sm font-medium text-muted hover:bg-surface-hover transition-colors flex items-center gap-2 border border-surface"
                                     title="Select Language"
                                 >
                                     <Globe size={16} />
@@ -469,8 +469,8 @@ export const BlogEditor = () => {
                                             className="fixed inset-0 z-40"
                                             onClick={() => setShowLanguageMenu(false)}
                                         />
-                                        <div className="absolute right-0 top-full mt-1 z-50 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-lg py-1 min-w-[180px]">
-                                            <div className="px-3 py-2 text-xs text-[var(--color-text-muted)] uppercase tracking-wider border-b border-[var(--color-surface-border)]">
+                                        <div className="absolute right-0 top-full mt-1 z-50 bg-card border border-surface rounded-xl shadow-lg py-1 min-w-[180px]">
+                                            <div className="px-3 py-2 text-xs text-muted uppercase tracking-wider border-b border-surface">
                                                 Post Language
                                             </div>
                                             {supportedLanguages.map(lang => {
@@ -496,7 +496,7 @@ export const BlogEditor = () => {
                                                                 navigate(`/project/${projectId}/marketing/blog/${linkedSlug}`);
                                                             }
                                                         }}
-                                                        className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-[var(--color-surface-hover)] ${isCurrent ? 'text-[var(--color-primary)] font-medium' : 'text-[var(--color-text-main)]'
+                                                        className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-surface-hover ${isCurrent ? 'text-primary font-medium' : 'text-main'
                                                             }`}
                                                     >
                                                         {isCurrent && (
@@ -509,8 +509,8 @@ export const BlogEditor = () => {
 
                                             {blogId && (
                                                 <>
-                                                    <div className="border-t border-[var(--color-surface-border)] my-1" />
-                                                    <div className="px-3 py-2 text-xs text-[var(--color-text-muted)]">
+                                                    <div className="border-t border-surface my-1" />
+                                                    <div className="px-3 py-2 text-xs text-muted">
                                                         Create a translation in another language:
                                                     </div>
                                                     {supportedLanguages
@@ -561,7 +561,7 @@ export const BlogEditor = () => {
                                                                         }
                                                                     });
                                                                 }}
-                                                                className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-[var(--color-surface-hover)] text-[var(--color-primary)]"
+                                                                className="w-full px-3 py-2 text-left text-sm flex items-center gap-2 hover:bg-surface-hover text-primary"
                                                             >
                                                                 <span className="material-symbols-outlined text-[16px]">translate</span>
                                                                 Create {lang.toUpperCase()} Translation
@@ -574,10 +574,10 @@ export const BlogEditor = () => {
                                 )}
                             </div>
                         )}
-                        <div className="w-px h-6 bg-[var(--color-surface-border)] mx-1" />
+                        <div className="w-px h-6 bg-surface-border mx-1" />
 
                         {/* Autosave Status */}
-                        <div className="text-xs text-[var(--color-text-muted)] opacity-70">
+                        <div className="text-xs text-muted opacity-70">
                             {isAutosaving ? 'Autosaving...' : lastSavedTime ? `Saved ${lastSavedTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : ''}
                         </div>
 
@@ -585,7 +585,7 @@ export const BlogEditor = () => {
                             <button
                                 onClick={() => handleSave('draft', true)}
                                 disabled={isPublishing}
-                                className="px-4 py-2 rounded-lg text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-50 flex items-center gap-2"
+                                className="px-4 py-2 rounded-lg text-sm font-medium text-muted hover:bg-surface-hover transition-colors disabled:opacity-50 flex items-center gap-2"
                                 title="Save as a new post (copy)"
                             >
                                 <span className="material-symbols-outlined text-[18px]">content_copy</span>
@@ -596,7 +596,7 @@ export const BlogEditor = () => {
                         <button
                             onClick={() => handleSave('draft')}
                             disabled={isPublishing}
-                            className="px-4 py-2 rounded-lg text-sm font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] transition-colors disabled:opacity-50"
+                            className="px-4 py-2 rounded-lg text-sm font-medium text-muted hover:bg-surface-hover transition-colors disabled:opacity-50"
                         >
                             {isPublishing && status === 'draft' ? 'Saving...' : 'Save as Draft'}
                         </button>
@@ -630,20 +630,20 @@ export const BlogEditor = () => {
                 <div className="flex-1 min-h-0 flex gap-6">
 
                     {/* LEFT: Editor Side */}
-                    <div className={`flex-1 flex flex-col bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl overflow-hidden shadow-sm relative ${isFullscreen ? 'w-1/2' : 'w-1/2'}`}>
+                    <div className={`flex-1 flex flex-col bg-card border border-surface rounded-xl overflow-hidden shadow-sm relative ${isFullscreen ? 'w-1/2' : 'w-1/2'}`}>
                         {/* Meta Data Inputs */}
-                        <div className="border-b border-[var(--color-surface-border)] bg-white/50 dark:bg-black/20">
+                        <div className="border-b border-surface bg-white/50 dark:bg-black/20">
                             <div className="p-6 pb-4 flex items-center justify-between gap-4">
                                 <input
                                     type="text"
                                     placeholder="Post Title"
                                     value={title}
                                     onChange={(e) => setTitle(e.target.value)}
-                                    className="flex-1 text-3xl font-bold bg-transparent border-none outline-none placeholder:text-[var(--color-text-muted)]/50 text-[var(--color-text-main)]"
+                                    className="flex-1 text-3xl font-bold bg-transparent border-none outline-none placeholder:text-muted/50 text-main"
                                 />
                                 <button
                                     onClick={() => setIsSettingsCollapsed(!isSettingsCollapsed)}
-                                    className="p-2 rounded-lg hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] transition-colors flex items-center justify-center"
+                                    className="p-2 rounded-lg hover:bg-surface-hover text-muted transition-colors flex items-center justify-center"
                                     title={isSettingsCollapsed ? 'Expand Settings' : 'Collapse Settings'}
                                 >
                                     <span className="material-symbols-outlined">
@@ -668,14 +668,14 @@ export const BlogEditor = () => {
                                         placeholder="Enter a short excerpt (optional)..."
                                         value={excerpt}
                                         onChange={(e) => setExcerpt(e.target.value)}
-                                        className="w-full text-sm bg-transparent border-none outline-none placeholder:text-[var(--color-text-muted)]/50 text-[var(--color-text-muted)] resize-none h-[40px] focus:h-[80px] transition-all"
+                                        className="w-full text-sm bg-transparent border-none outline-none placeholder:text-muted/50 text-muted resize-none h-[40px] focus:h-[80px] transition-all"
                                     />
 
                                     {/* Cover Image Selection */}
                                     <div className="flex items-center gap-3">
                                         <button
                                             onClick={() => handleOpenMediaPicker('cover')}
-                                            className="flex items-center gap-2 text-sm text-[var(--color-primary)] font-medium hover:underline"
+                                            className="flex items-center gap-2 text-sm text-primary font-medium hover:underline"
                                         >
                                             <span className="material-symbols-outlined text-[18px]">add_photo_alternate</span>
                                             {coverImage ? 'Change Cover Image' : 'Add Cover Image'}
@@ -693,11 +693,11 @@ export const BlogEditor = () => {
                                     {/* Category & Tags Row */}
                                     <div className="grid grid-cols-2 gap-6">
                                         <div>
-                                            <label className="block text-sm font-medium mb-1.5 text-[var(--color-text-muted)]">Category</label>
+                                            <label className="block text-sm font-medium mb-1.5 text-muted">Category</label>
                                             <div className="flex gap-2">
                                                 <div className="relative flex-1">
                                                     <select
-                                                        className="w-full appearance-none bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[var(--color-primary)] transition-colors"
+                                                        className="w-full appearance-none bg-surface border border-surface rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary transition-colors"
                                                         value={selectedCategory?.id || ''}
                                                         onChange={(e) => {
                                                             const cat = categories.find(c => c.id === e.target.value);
@@ -709,7 +709,7 @@ export const BlogEditor = () => {
                                                             <option key={cat.id} value={cat.id}>{cat.name}</option>
                                                         ))}
                                                     </select>
-                                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[var(--color-text-muted)]">
+                                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-muted">
                                                         <span className="material-symbols-outlined text-sm">expand_more</span>
                                                     </div>
                                                 </div>
@@ -724,12 +724,12 @@ export const BlogEditor = () => {
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="block text-sm font-medium mb-1.5 text-[var(--color-text-muted)]">Tags</label>
+                                            <label className="block text-sm font-medium mb-1.5 text-muted">Tags</label>
                                             <div className="space-y-2">
                                                 {tags.length > 0 && (
                                                     <div className="flex flex-wrap gap-2">
                                                         {tags.map((tag, i) => (
-                                                            <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[var(--color-surface-hover)] text-xs font-medium">
+                                                            <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-hover text-xs font-medium">
                                                                 {tag}
                                                                 <button
                                                                     onClick={() => setTags(tags.filter((_, idx) => idx !== i))}
@@ -754,7 +754,7 @@ export const BlogEditor = () => {
                                                             }
                                                         }
                                                     }}
-                                                    className="w-full text-sm bg-black/5 dark:bg-white/5 border-none rounded-lg px-3 py-2.5 outline-none placeholder:text-[var(--color-text-muted)] text-[var(--color-text-main)]"
+                                                    className="w-full text-sm bg-black/5 dark:bg-white/5 border-none rounded-lg px-3 py-2.5 outline-none placeholder:text-muted text-main"
                                                 />
                                             </div>
                                         </div>
@@ -764,7 +764,7 @@ export const BlogEditor = () => {
                         </div>
 
                         {/* Advanced Editor */}
-                        <div className="flex-1 overflow-y-auto bg-[var(--color-surface-card)]">
+                        <div className="flex-1 overflow-y-auto bg-card">
                             <AdvancedEditor
                                 editorRef={editorRef}
                                 initialContent={content}
@@ -776,7 +776,7 @@ export const BlogEditor = () => {
 
 
                     {/* RIGHT: Preview Side */}
-                    <div className="flex-1 flex flex-col bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl overflow-hidden shadow-sm relative w-1/2">
+                    <div className="flex-1 flex flex-col bg-card border border-surface rounded-xl overflow-hidden shadow-sm relative w-1/2">
                         <div className="absolute top-4 right-4 z-10 px-3 py-1 rounded-full bg-black/5 text-xs font-semibold uppercase tracking-wider text-black/50 pointer-events-none dark:bg-white/10 dark:text-white/50">
                             Live Preview
                         </div>

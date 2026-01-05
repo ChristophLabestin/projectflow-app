@@ -85,16 +85,16 @@ export const MoonshotPrototypeView: React.FC<MoonshotPrototypeViewProps> = ({ id
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
             {/* Left Column: Prototype Specs */}
-            <div className="col-span-1 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-[var(--color-surface-border)] shadow-sm p-6 relative">
+            <div className="col-span-1 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-surface shadow-sm p-6 relative">
                 <div className="mb-4">
-                    <h2 className="text-xl font-extrabold text-[var(--color-text-main)] tracking-tight">{t('flowStages.moonshotPrototype.title')}</h2>
-                    <p className="text-xs text-[var(--color-text-muted)] mt-1">{t('flowStages.moonshotPrototype.subtitle')}</p>
+                    <h2 className="text-xl font-extrabold text-main tracking-tight">{t('flowStages.moonshotPrototype.title')}</h2>
+                    <p className="text-xs text-muted mt-1">{t('flowStages.moonshotPrototype.subtitle')}</p>
                 </div>
 
-                <div className="flex-1 flex flex-col bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)] overflow-hidden focus-within:ring-1 focus-within:ring-fuchsia-500 transition-all">
-                    <div className="bg-[var(--color-surface-paper)] px-4 py-2 border-b border-[var(--color-surface-border)] flex items-center justify-between">
-                        <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase">{t('flowStages.moonshotPrototype.specs.label')}</span>
-                        <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">terminal</span>
+                <div className="flex-1 flex flex-col bg-surface rounded-xl border border-surface overflow-hidden focus-within:ring-1 focus-within:ring-fuchsia-500 transition-all">
+                    <div className="bg-surface-paper px-4 py-2 border-b border-surface flex items-center justify-between">
+                        <span className="text-xs font-bold text-muted uppercase">{t('flowStages.moonshotPrototype.specs.label')}</span>
+                        <span className="material-symbols-outlined text-[16px] text-muted">terminal</span>
                     </div>
                     <textarea
                         value={data.specs}
@@ -104,7 +104,7 @@ export const MoonshotPrototypeView: React.FC<MoonshotPrototypeViewProps> = ({ id
                     />
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-[var(--color-surface-border)]">
+                <div className="mt-4 pt-4 border-t border-surface">
                     <Button
                         className="w-full h-12 text-base justify-between group bg-[var(--color-text-main)] text-[var(--color-surface-bg)] hover:bg-[var(--color-text-main)]/90 shadow-lg hover:shadow-xl transition-all rounded-xl"
                         onClick={() => onUpdate({ stage: 'Greenlight' })}
@@ -118,11 +118,11 @@ export const MoonshotPrototypeView: React.FC<MoonshotPrototypeViewProps> = ({ id
             </div>
 
             {/* Middle & Right Column: Lab Journal */}
-            <div className="col-span-1 lg:col-span-2 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-[var(--color-surface-border)] shadow-sm p-6 overflow-hidden">
+            <div className="col-span-1 lg:col-span-2 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-surface shadow-sm p-6 overflow-hidden">
                 <div className="mb-4 flex items-center justify-between">
                     <div>
-                        <h3 className="font-bold text-[var(--color-text-main)]">{t('flowStages.moonshotPrototype.journal.title')}</h3>
-                        <p className="text-xs text-[var(--color-text-muted)]">{t('flowStages.moonshotPrototype.journal.subtitle')}</p>
+                        <h3 className="font-bold text-main">{t('flowStages.moonshotPrototype.journal.title')}</h3>
+                        <p className="text-xs text-muted">{t('flowStages.moonshotPrototype.journal.subtitle')}</p>
                     </div>
                     <Button size="sm" onClick={addExperiment} className="bg-fuchsia-600 hover:bg-fuchsia-700 text-white border-none gap-2">
                         <span className="material-symbols-outlined text-[18px]">science</span>
@@ -132,13 +132,13 @@ export const MoonshotPrototypeView: React.FC<MoonshotPrototypeViewProps> = ({ id
 
                 <div className="flex-1 overflow-y-auto space-y-3 p-1">
                     {data.experiments.length === 0 ? (
-                        <div className="text-center py-12 border-2 border-dashed border-[var(--color-surface-border)] rounded-xl text-[var(--color-text-muted)]">
+                        <div className="text-center py-12 border-2 border-dashed border-surface rounded-xl text-muted">
                             <span className="material-symbols-outlined text-4xl mb-2 opacity-50">biotech</span>
                             <p className="text-sm">{t('flowStages.moonshotPrototype.journal.empty')}</p>
                         </div>
                     ) : (
                         data.experiments.map((exp, index) => (
-                            <div key={exp.id} className="p-4 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)] hover:border-fuchsia-300 dark:hover:border-fuchsia-700 transition-all">
+                            <div key={exp.id} className="p-4 bg-surface rounded-xl border border-surface hover:border-fuchsia-300 dark:hover:border-fuchsia-700 transition-all">
                                 <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-3">
                                     <div className="flex-1">
                                         <input
@@ -146,7 +146,7 @@ export const MoonshotPrototypeView: React.FC<MoonshotPrototypeViewProps> = ({ id
                                             value={exp.title}
                                             onChange={(e) => updateExperiment(index, { title: e.target.value })}
                                             placeholder={t('flowStages.moonshotPrototype.journal.titlePlaceholder')}
-                                            className="font-bold text-sm bg-transparent border-none p-0 focus:ring-0 text-[var(--color-text-main)] w-full placeholder-[var(--color-text-subtle)]"
+                                            className="font-bold text-sm bg-transparent border-none p-0 focus:ring-0 text-main w-full placeholder-[var(--color-text-subtle)]"
                                         />
                                     </div>
                                     <div className="flex items-center gap-2">
@@ -161,7 +161,7 @@ export const MoonshotPrototypeView: React.FC<MoonshotPrototypeViewProps> = ({ id
                                         </select>
                                         <button
                                             onClick={() => removeExperiment(index)}
-                                            className="size-7 flex items-center justify-center rounded-lg hover:bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] transition-colors"
+                                            className="size-7 flex items-center justify-center rounded-lg hover:bg-surface-hover text-muted transition-colors"
                                         >
                                             <span className="material-symbols-outlined text-[16px]">delete</span>
                                         </button>
@@ -172,7 +172,7 @@ export const MoonshotPrototypeView: React.FC<MoonshotPrototypeViewProps> = ({ id
                                     onChange={(e) => updateExperiment(index, { notes: e.target.value })}
                                     placeholder={t('flowStages.moonshotPrototype.journal.notesPlaceholder')}
                                     rows={2}
-                                    className="w-full text-sm bg-transparent border-none p-0 focus:ring-0 text-[var(--color-text-muted)] resize-none"
+                                    className="w-full text-sm bg-transparent border-none p-0 focus:ring-0 text-muted resize-none"
                                 />
                             </div>
                         ))

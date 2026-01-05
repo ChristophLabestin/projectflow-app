@@ -89,14 +89,14 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
 
             {/* Campaign Progress */}
             {campaign.startDate && campaign.endDate && (
-                <div className="bg-[var(--color-surface-card)] rounded-2xl p-6 border border-[var(--color-surface-border)]">
+                <div className="bg-card rounded-2xl p-6 border border-surface">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-sm font-bold text-[var(--color-text-main)] uppercase tracking-wider flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-main uppercase tracking-wider flex items-center gap-2">
                             <span className="material-symbols-outlined text-[18px]" style={{ color: brandColor }}>timeline</span>
                             {t('social.campaignDashboard.progress.title')}
                         </h3>
                         {daysRemaining !== null && (
-                            <span className="text-xs font-bold text-[var(--color-text-muted)]">
+                            <span className="text-xs font-bold text-muted">
                                 {daysRemaining === 0
                                     ? t('social.campaignDashboard.progress.endsToday')
                                     : t('social.campaignDashboard.progress.daysRemaining').replace('{count}', String(daysRemaining))}
@@ -104,11 +104,11 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
                         )}
                     </div>
                     <div className="space-y-2">
-                        <div className="flex justify-between text-xs text-[var(--color-text-muted)]">
+                        <div className="flex justify-between text-xs text-muted">
                             <span>{format(new Date(campaign.startDate), dateFormat, { locale: dateLocale })}</span>
                             <span>{format(new Date(campaign.endDate), dateFormat, { locale: dateLocale })}</span>
                         </div>
-                        <div className="h-3 bg-[var(--color-surface-bg)] rounded-full overflow-hidden">
+                        <div className="h-3 bg-surface rounded-full overflow-hidden">
                             <div
                                 className="h-full rounded-full transition-all duration-500"
                                 style={{ width: `${progressPercent}%`, backgroundColor: brandColor }}
@@ -124,8 +124,8 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
             {/* Two Column Layout */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Post Status Distribution */}
-                <div className="bg-[var(--color-surface-card)] rounded-2xl p-6 border border-[var(--color-surface-border)]">
-                    <h3 className="text-sm font-bold text-[var(--color-text-main)] uppercase tracking-wider flex items-center gap-2 mb-6">
+                <div className="bg-card rounded-2xl p-6 border border-surface">
+                    <h3 className="text-sm font-bold text-main uppercase tracking-wider flex items-center gap-2 mb-6">
                         <span className="material-symbols-outlined text-[18px]" style={{ color: brandColor }}>bar_chart</span>
                         {t('social.campaignDashboard.statusDistribution.title')}
                     </h3>
@@ -134,10 +134,10 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
                             {statusData.map(status => (
                                 <div key={status.label} className="space-y-1">
                                     <div className="flex justify-between text-sm">
-                                        <span className="font-medium text-[var(--color-text-main)]">{status.label}</span>
+                                        <span className="font-medium text-main">{status.label}</span>
                                         <span className="font-bold" style={{ color: status.color }}>{status.count}</span>
                                     </div>
-                                    <div className="h-2 bg-[var(--color-surface-bg)] rounded-full overflow-hidden">
+                                    <div className="h-2 bg-surface rounded-full overflow-hidden">
                                         <div
                                             className="h-full rounded-full transition-all duration-500"
                                             style={{
@@ -150,34 +150,34 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-8 text-[var(--color-text-muted)] text-sm">
+                        <div className="text-center py-8 text-muted text-sm">
                             {t('social.campaignDashboard.statusDistribution.empty')}
                         </div>
                     )}
                 </div>
 
                 {/* Platform Breakdown */}
-                <div className="bg-[var(--color-surface-card)] rounded-2xl p-6 border border-[var(--color-surface-border)]">
-                    <h3 className="text-sm font-bold text-[var(--color-text-main)] uppercase tracking-wider flex items-center gap-2 mb-6">
+                <div className="bg-card rounded-2xl p-6 border border-surface">
+                    <h3 className="text-sm font-bold text-main uppercase tracking-wider flex items-center gap-2 mb-6">
                         <span className="material-symbols-outlined text-[18px]" style={{ color: brandColor }}>devices</span>
                         {t('social.campaignDashboard.platformBreakdown.title')}
                     </h3>
                     {platformData.length > 0 ? (
                         <div className="space-y-3">
                             {platformData.map(([platform, count]) => (
-                                <div key={platform} className="flex items-center justify-between p-3 bg-[var(--color-surface-bg)] rounded-xl">
+                                <div key={platform} className="flex items-center justify-between p-3 bg-surface rounded-xl">
                                     <div className="flex items-center gap-3">
                                         <PlatformIcon platform={platform as SocialPlatform} />
-                                        <span className="font-medium text-sm text-[var(--color-text-main)]">{platform}</span>
+                                        <span className="font-medium text-sm text-main">{platform}</span>
                                     </div>
-                                    <span className="text-sm font-bold px-2 py-0.5 rounded-lg bg-[var(--color-surface-hover)]" style={{ color: brandColor }}>
+                                    <span className="text-sm font-bold px-2 py-0.5 rounded-lg bg-surface-hover" style={{ color: brandColor }}>
                                         {t('social.campaignDashboard.platformBreakdown.count').replace('{count}', String(count)).replace('{label}', count === 1 ? t('social.campaignDashboard.platformBreakdown.post') : t('social.campaignDashboard.platformBreakdown.posts'))}
                                     </span>
                                 </div>
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-8 text-[var(--color-text-muted)] text-sm">
+                        <div className="text-center py-8 text-muted text-sm">
                             {t('social.campaignDashboard.platformBreakdown.empty')}
                         </div>
                     )}
@@ -185,33 +185,33 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
             </div>
 
             {/* Quick Campaign Info */}
-            <div className="bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] rounded-2xl p-6 border border-[var(--color-surface-border)]">
-                <h3 className="text-sm font-bold text-[var(--color-text-main)] uppercase tracking-wider flex items-center gap-2 mb-4">
+            <div className="bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] rounded-2xl p-6 border border-surface">
+                <h3 className="text-sm font-bold text-main uppercase tracking-wider flex items-center gap-2 mb-4">
                     <span className="material-symbols-outlined text-[18px]" style={{ color: brandColor }}>info</span>
                     {t('social.campaignDashboard.overview.title')}
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
-                        <div className="text-[var(--color-text-muted)] text-xs uppercase mb-1">{t('social.campaignDashboard.overview.status')}</div>
-                        <div className="font-bold text-[var(--color-text-main)]">{getSocialCampaignStatusLabel(campaign.status, t)}</div>
+                        <div className="text-muted text-xs uppercase mb-1">{t('social.campaignDashboard.overview.status')}</div>
+                        <div className="font-bold text-main">{getSocialCampaignStatusLabel(campaign.status, t)}</div>
                     </div>
                     <div>
-                        <div className="text-[var(--color-text-muted)] text-xs uppercase mb-1">{t('social.campaignDashboard.overview.platforms')}</div>
-                        <div className="font-bold text-[var(--color-text-main)]">
+                        <div className="text-muted text-xs uppercase mb-1">{t('social.campaignDashboard.overview.platforms')}</div>
+                        <div className="font-bold text-main">
                             {t('social.campaignDashboard.overview.platformCount')
                                 .replace('{count}', String(campaign.platforms?.length || 0))}
                         </div>
                     </div>
                     <div>
-                        <div className="text-[var(--color-text-muted)] text-xs uppercase mb-1">{t('social.campaignDashboard.overview.phases')}</div>
-                        <div className="font-bold text-[var(--color-text-main)]">
+                        <div className="text-muted text-xs uppercase mb-1">{t('social.campaignDashboard.overview.phases')}</div>
+                        <div className="font-bold text-main">
                             {t('social.campaignDashboard.overview.phaseCount')
                                 .replace('{count}', String(campaign.phases?.length || 0))}
                         </div>
                     </div>
                     <div>
-                        <div className="text-[var(--color-text-muted)] text-xs uppercase mb-1">{t('social.campaignDashboard.overview.kpis')}</div>
-                        <div className="font-bold text-[var(--color-text-main)]">
+                        <div className="text-muted text-xs uppercase mb-1">{t('social.campaignDashboard.overview.kpis')}</div>
+                        <div className="font-bold text-main">
                             {t('social.campaignDashboard.overview.kpiCount')
                                 .replace('{count}', String(campaign.kpis?.length || 0))}
                         </div>
@@ -224,12 +224,12 @@ export const CampaignDashboardView: React.FC<CampaignDashboardViewProps> = ({ ca
 
 // Helper Components
 const StatCard = ({ icon, label, value, color }: { icon: string; label: string; value: number; color: string }) => (
-    <div className="bg-[var(--color-surface-card)] rounded-2xl p-5 border border-[var(--color-surface-border)] flex flex-col">
+    <div className="bg-card rounded-2xl p-5 border border-surface flex flex-col">
         <div className="flex items-center gap-2 mb-3">
             <span className="material-symbols-outlined text-[20px]" style={{ color }}>{icon}</span>
-            <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{label}</span>
+            <span className="text-xs font-bold text-muted uppercase tracking-wider">{label}</span>
         </div>
-        <div className="text-3xl font-black text-[var(--color-text-main)]">{value}</div>
+        <div className="text-3xl font-black text-main">{value}</div>
     </div>
 );
 

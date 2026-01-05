@@ -166,14 +166,14 @@ export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: Milest
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-up ring-1 ring-white/10">
-                <div className="px-6 py-4 border-b border-[var(--color-surface-border)] flex items-center justify-between bg-[var(--color-surface-hover)]/30">
-                    <h2 className="text-lg font-bold text-[var(--color-text-main)]">
+            <div className="bg-card rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-up ring-1 ring-white/10">
+                <div className="px-6 py-4 border-b border-surface flex items-center justify-between bg-surface-hover/30">
+                    <h2 className="text-lg font-bold text-main">
                         {milestone ? 'Edit Milestone' : 'New Milestone'}
                     </h2>
                     <button
                         onClick={onClose}
-                        className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
+                        className="text-muted hover:text-main transition-colors"
                     >
                         <span className="material-symbols-outlined">close</span>
                     </button>
@@ -181,51 +181,51 @@ export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: Milest
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                     <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-subtle)] mb-1">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-subtle mb-1">
                             Title
                         </label>
                         <input
                             type="text"
                             value={title}
                             onChange={(e) => setTitle(e.target.value)}
-                            className="w-full px-3 py-2 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg text-[var(--color-text-main)] focus:ring-2 focus:ring-[var(--color-primary)] outline-none transition-all"
+                            className="w-full px-3 py-2 bg-surface border border-surface rounded-lg text-main focus:ring-2 focus:ring-primary outline-none transition-all"
                             placeholder="e.g. MVP Release"
                             required
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-subtle)] mb-1">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-subtle mb-1">
                             Description
                         </label>
                         <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            className="w-full px-3 py-2 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg text-[var(--color-text-main)] focus:ring-2 focus:ring-[var(--color-primary)] outline-none transition-all resize-none h-24"
+                            className="w-full px-3 py-2 bg-surface border border-surface rounded-lg text-main focus:ring-2 focus:ring-primary outline-none transition-all resize-none h-24"
                             placeholder="Optional description..."
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-subtle)] mb-1">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-subtle mb-1">
                             Due Date
                         </label>
                         <input
                             type="date"
                             value={dueDate}
                             onChange={(e) => setDueDate(e.target.value)}
-                            className="w-full px-3 py-2 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg text-[var(--color-text-main)] focus:ring-2 focus:ring-[var(--color-primary)] outline-none transition-all"
+                            className="w-full px-3 py-2 bg-surface border border-surface rounded-lg text-main focus:ring-2 focus:ring-primary outline-none transition-all"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-subtle)] mb-1">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-subtle mb-1">
                             Link Initiative
                         </label>
                         <select
                             value={linkedInitiativeId}
                             onChange={(e) => setLinkedInitiativeId(e.target.value)}
-                            className="w-full px-3 py-2 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg text-[var(--color-text-main)] focus:ring-2 focus:ring-[var(--color-primary)] outline-none transition-all"
+                            className="w-full px-3 py-2 bg-surface border border-surface rounded-lg text-main focus:ring-2 focus:ring-primary outline-none transition-all"
                         >
                             <option value="">No Initiative Linked</option>
                             {availableInitiatives.map(idea => (
@@ -235,13 +235,13 @@ export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: Milest
                     </div>
 
                     <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-subtle)] mb-1">
+                        <label className="block text-xs font-bold uppercase tracking-wider text-subtle mb-1">
                             Link Tasks (Updates Due Date)
                         </label>
-                        <div className="max-h-32 overflow-y-auto border border-[var(--color-surface-border)] rounded-lg bg-[var(--color-surface-bg)] p-2 space-y-1">
-                            {availableTasks.length === 0 && <p className="text-xs text-[var(--color-text-muted)]">No tasks found.</p>}
+                        <div className="max-h-32 overflow-y-auto border border-surface rounded-lg bg-surface p-2 space-y-1">
+                            {availableTasks.length === 0 && <p className="text-xs text-muted">No tasks found.</p>}
                             {availableTasks.map(task => (
-                                <label key={task.id} className="flex items-center gap-2 p-1 hover:bg-[var(--color-surface-hover)] rounded cursor-pointer">
+                                <label key={task.id} className="flex items-center gap-2 p-1 hover:bg-surface-hover rounded cursor-pointer">
                                     <input
                                         type="checkbox"
                                         checked={linkedTaskIds.includes(task.id)}
@@ -249,9 +249,9 @@ export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: Milest
                                             if (e.target.checked) setLinkedTaskIds([...linkedTaskIds, task.id]);
                                             else setLinkedTaskIds(linkedTaskIds.filter(id => id !== task.id));
                                         }}
-                                        className="rounded border-[var(--color-surface-border)] bg-transparent text-[var(--color-primary)]"
+                                        className="rounded border-surface bg-transparent text-primary"
                                     />
-                                    <span className="text-sm truncate text-[var(--color-text-main)]">{task.title}</span>
+                                    <span className="text-sm truncate text-main">{task.title}</span>
                                 </label>
                             ))}
                         </div>
@@ -259,18 +259,18 @@ export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: Milest
 
                     {milestone && (
                         <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-subtle)] mb-1">
+                            <label className="block text-xs font-bold uppercase tracking-wider text-subtle mb-1">
                                 Status
                             </label>
-                            <div className="flex bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg p-1">
+                            <div className="flex bg-surface border border-surface rounded-lg p-1">
                                 {(['Pending', 'Achieved', 'Missed'] as const).map((s) => (
                                     <button
                                         key={s}
                                         type="button"
                                         onClick={() => setStatus(s)}
                                         className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${status === s
-                                            ? 'bg-[var(--color-surface-card)] text-[var(--color-text-main)] shadow-sm'
-                                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                                            ? 'bg-card text-main shadow-sm'
+                                            : 'text-muted hover:text-main'
                                             }`}
                                     >
                                         {s}
@@ -284,14 +284,14 @@ export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: Milest
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 text-sm font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
+                            className="px-4 py-2 text-sm font-medium text-muted hover:text-main transition-colors"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={loading}
-                            className="px-4 py-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded-lg text-sm font-bold shadow-md hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
+                            className="px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-bold shadow-md hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
                         >
                             {loading && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
                             {milestone ? 'Update' : 'Create'}

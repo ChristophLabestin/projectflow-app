@@ -150,29 +150,29 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
             <div className="flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-6">
                     <div>
-                        <h2 className="text-xl font-bold text-[var(--color-text-main)] flex items-center gap-3">
+                        <h2 className="text-xl font-bold text-main flex items-center gap-3">
                             {t('flowStages.productLaunch.title')}
                             {totalChecks > 0 && (
-                                <span className={`text-xs px-2 py-0.5 rounded-full font-bold border ${progress === 100 ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-[var(--color-surface-hover)] border-[var(--color-surface-border)] text-[var(--color-text-muted)]'}`}>
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-bold border ${progress === 100 ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-surface-hover border-surface text-muted'}`}>
                                     {t('flowStages.productLaunch.progressReady').replace('{progress}', `${progress}`)}
                                 </span>
                             )}
                         </h2>
-                        <p className="text-sm text-[var(--color-text-muted)]">{t('flowStages.productLaunch.subtitle')}</p>
+                        <p className="text-sm text-muted">{t('flowStages.productLaunch.subtitle')}</p>
                     </div>
 
                     {/* View Switcher */}
-                    <div className="flex items-center p-1.5 bg-[var(--color-surface-paper)] rounded-xl border border-[var(--color-surface-border)] shadow-sm">
+                    <div className="flex items-center p-1.5 bg-surface-paper rounded-xl border border-surface shadow-sm">
                         <button
                             onClick={() => setViewMode('execution')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'execution' ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'execution' ? 'bg-[var(--color-surface-active)] text-primary shadow-sm' : 'text-muted hover:text-main'}`}
                         >
                             <span className="material-symbols-outlined text-[18px]">checklist_rtl</span>
                             {t('flowStages.productLaunch.views.execution')}
                         </button>
                         <button
                             onClick={() => setViewMode('analysis')}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'analysis' ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${viewMode === 'analysis' ? 'bg-[var(--color-surface-active)] text-primary shadow-sm' : 'text-muted hover:text-main'}`}
                         >
                             <span className="material-symbols-outlined text-[18px]">analytics</span>
                             {t('flowStages.productLaunch.views.analysis')}
@@ -199,18 +199,18 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
 
                     {/* Left Panel: Checklist (5 cols) */}
                     <div className="lg:col-span-5 flex flex-col gap-4">
-                        <div className="bg-[var(--color-surface-paper)] rounded-2xl border border-[var(--color-surface-border)] shadow-sm flex flex-col overflow-hidden h-full">
+                        <div className="bg-surface-paper rounded-2xl border border-surface shadow-sm flex flex-col overflow-hidden h-full">
                             <div className="p-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                                <div className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                <div className="font-bold text-main flex items-center gap-2">
                                     <span className="material-symbols-outlined text-[20px] text-emerald-500">checklist</span>
                                     {t('flowStages.productLaunch.checklist.title')}
                                 </div>
-                                <button onClick={addChecklistCategory} className="text-xs text-[var(--color-primary)] hover:underline">{t('flowStages.productLaunch.checklist.addCategory')}</button>
+                                <button onClick={addChecklistCategory} className="text-xs text-primary hover:underline">{t('flowStages.productLaunch.checklist.addCategory')}</button>
                             </div>
 
                             <div className="p-4 flex-1 overflow-y-auto space-y-4">
                                 {launchData.checklist.length === 0 && (
-                                    <div className="text-center py-8 text-[var(--color-text-muted)] text-sm">
+                                    <div className="text-center py-8 text-muted text-sm">
                                         {t('flowStages.productLaunch.checklist.empty')}
                                     </div>
                                 )}
@@ -219,9 +219,9 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                                     const catDone = cat.items.filter(i => i.done).length;
 
                                     return (
-                                        <div key={cat.id} className="border border-[var(--color-surface-border)] rounded-xl overflow-hidden bg-[var(--color-surface-bg)] shadow-sm group/cat transition-all">
+                                        <div key={cat.id} className="border border-surface rounded-xl overflow-hidden bg-surface shadow-sm group/cat transition-all">
                                             <div
-                                                className="bg-white dark:bg-slate-900/40 p-3 border-b border-[var(--color-surface-border)] flex flex-col gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                                                className="bg-white dark:bg-slate-900/40 p-3 border-b border-surface flex flex-col gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                                                 onClick={(e) => {
                                                     if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'BUTTON') return;
                                                     updateChecklistCategory(cat.id, { isCollapsed: !cat.isCollapsed });
@@ -232,16 +232,16 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                                                             <input
                                                                 value={cat.category}
                                                                 onChange={(e) => updateChecklistCategory(cat.id, { category: e.target.value })}
-                                                                className="font-bold bg-transparent border-none p-0 focus:ring-0 text-[var(--color-text-main)] text-sm w-full"
+                                                                className="font-bold bg-transparent border-none p-0 focus:ring-0 text-main text-sm w-full"
                                                                 placeholder={t('flowStages.productLaunch.checklist.categoryPlaceholder')}
                                                             />
                                                         </div>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums">{catDone}/{catTotal}</span>
-                                                        <button onClick={() => removeChecklistCategory(cat.id)} className="text-[var(--color-text-muted)] hover:text-rose-500 opacity-0 group-hover/cat:opacity-100 transition-opacity">
+                                                        <span className="text-xs font-medium text-muted tabular-nums">{catDone}/{catTotal}</span>
+                                                        <button onClick={() => removeChecklistCategory(cat.id)} className="text-muted hover:text-rose-500 opacity-0 group-hover/cat:opacity-100 transition-opacity">
                                                             <span className="material-symbols-outlined text-[16px]">delete</span>
                                                         </button>
-                                                        <span className={`material-symbols-outlined text-[20px] text-[var(--color-text-muted)] transition-transform duration-300 ${cat.isCollapsed ? '-rotate-90' : ''}`}>expand_more</span>
+                                                        <span className={`material-symbols-outlined text-[20px] text-muted transition-transform duration-300 ${cat.isCollapsed ? '-rotate-90' : ''}`}>expand_more</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -249,27 +249,27 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                                             <div className={`transition-all duration-300 overflow-hidden ${cat.isCollapsed ? 'max-h-0' : 'max-h-[500px]'}`}>
                                                 <div className="p-2 space-y-1">
                                                     {cat.items.map(item => (
-                                                        <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-[var(--color-surface-paper)] group/item transition-colors">
+                                                        <div key={item.id} className="flex items-center gap-2 p-1.5 rounded hover:bg-surface-paper group/item transition-colors">
                                                             <input
                                                                 type="checkbox"
                                                                 checked={item.done}
                                                                 onChange={() => updateChecklistItem(cat.id, item.id, { done: !item.done })}
-                                                                className="rounded border-[var(--color-surface-border)] text-emerald-500 focus:ring-emerald-500/20"
+                                                                className="rounded border-surface text-emerald-500 focus:ring-emerald-500/20"
                                                             />
                                                             <input
                                                                 value={item.title}
                                                                 onChange={(e) => updateChecklistItem(cat.id, item.id, { title: e.target.value })}
-                                                                className={`flex-1 bg-transparent border-none p-0 text-sm focus:ring-0 ${item.done ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)]'}`}
+                                                                className={`flex-1 bg-transparent border-none p-0 text-sm focus:ring-0 ${item.done ? 'text-muted line-through' : 'text-main'}`}
                                                                 placeholder={t('flowStages.productLaunch.checklist.itemPlaceholder')}
                                                             />
-                                                            <button onClick={() => removeChecklistItem(cat.id, item.id)} className="text-[var(--color-text-muted)] hover:text-rose-500 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                                                            <button onClick={() => removeChecklistItem(cat.id, item.id)} className="text-muted hover:text-rose-500 opacity-0 group-hover/item:opacity-100 transition-opacity">
                                                                 <span className="material-symbols-outlined text-[14px]">close</span>
                                                             </button>
                                                         </div>
                                                     ))}
                                                     <button
                                                         onClick={() => addChecklistItem(cat.id)}
-                                                        className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-primary)] flex items-center gap-1 pl-2 pt-1 transition-colors w-full text-left"
+                                                        className="text-xs text-muted hover:text-primary flex items-center gap-1 pl-2 pt-1 transition-colors w-full text-left"
                                                     >
                                                         <span className="material-symbols-outlined text-[14px]">add</span> {t('flowStages.productLaunch.checklist.addItem')}
                                                     </button>
@@ -286,8 +286,8 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                     <div className="lg:col-span-7 flex flex-col gap-6">
 
                         {/* Announcement Copy */}
-                        <div className="bg-[var(--color-surface-paper)] rounded-2xl border border-[var(--color-surface-border)] shadow-sm flex flex-col">
-                            <div className="p-4 border-b border-[var(--color-surface-border)] flex items-center gap-2 font-bold text-[var(--color-text-main)]">
+                        <div className="bg-surface-paper rounded-2xl border border-surface shadow-sm flex flex-col">
+                            <div className="p-4 border-b border-surface flex items-center gap-2 font-bold text-main">
                                 <span className="material-symbols-outlined text-[20px] text-pink-500">campaign</span>
                                 {t('flowStages.productLaunch.announcement.title')}
                             </div>
@@ -295,20 +295,20 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                                 <textarea
                                     value={launchData.announcement}
                                     onChange={(e) => updateLaunchData({ announcement: e.target.value })}
-                                    className="w-full h-32 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl p-3 text-sm text-[var(--color-text-main)] focus:ring-2 focus:ring-[var(--color-primary)] resize-none"
+                                    className="w-full h-32 bg-surface border border-surface rounded-xl p-3 text-sm text-main focus:ring-2 focus:ring-primary resize-none"
                                     placeholder={t('flowStages.productLaunch.announcement.placeholder')}
                                 />
                             </div>
                         </div>
 
                         {/* Channels */}
-                        <div className="bg-[var(--color-surface-paper)] rounded-2xl border border-[var(--color-surface-border)] shadow-sm flex flex-col flex-1">
-                            <div className="p-4 border-b border-[var(--color-surface-border)] flex justify-between items-center">
-                                <div className="flex items-center gap-2 font-bold text-[var(--color-text-main)]">
+                        <div className="bg-surface-paper rounded-2xl border border-surface shadow-sm flex flex-col flex-1">
+                            <div className="p-4 border-b border-surface flex justify-between items-center">
+                                <div className="flex items-center gap-2 font-bold text-main">
                                     <span className="material-symbols-outlined text-[20px] text-cyan-500">hub</span>
                                     {t('flowStages.productLaunch.channels.title')}
                                 </div>
-                                <button onClick={addChannel} className="text-xs text-[var(--color-primary)] hover:underline">{t('flowStages.productLaunch.channels.addChannel')}</button>
+                                <button onClick={addChannel} className="text-xs text-primary hover:underline">{t('flowStages.productLaunch.channels.addChannel')}</button>
                             </div>
                             <div className="p-4">
                                 <div className="flex flex-wrap gap-2">
@@ -317,12 +317,12 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                                             <input
                                                 value={channel}
                                                 onChange={(e) => updateChannel(i, e.target.value)}
-                                                className="bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-full pl-3 pr-8 py-1.5 text-sm font-medium text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] min-w-[100px] max-w-[160px] focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent"
+                                                className="bg-surface border border-surface rounded-full pl-3 pr-8 py-1.5 text-sm font-medium text-main placeholder-[var(--color-text-subtle)] min-w-[100px] max-w-[160px] focus:ring-2 focus:ring-primary focus:border-transparent"
                                                 placeholder={t('flowStages.productLaunch.channels.placeholder')}
                                             />
                                             <button
                                                 onClick={() => removeChannel(i)}
-                                                className="absolute right-2 text-[var(--color-text-muted)] hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                className="absolute right-2 text-muted hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-opacity"
                                             >
                                                 <span className="material-symbols-outlined text-[14px]">close</span>
                                             </button>
@@ -330,7 +330,7 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                                     ))}
                                     <button
                                         onClick={addChannel}
-                                        className="bg-transparent border border-dashed border-[var(--color-text-muted)] rounded-full px-4 py-1.5 text-sm text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-colors"
+                                        className="bg-transparent border border-dashed border-muted rounded-full px-4 py-1.5 text-sm text-muted hover:text-primary hover:border-primary transition-colors"
                                     >
                                         {t('flowStages.productLaunch.channels.add')}
                                     </button>
@@ -350,7 +350,7 @@ export const ProductLaunchView: React.FC<ProductLaunchViewProps> = ({ idea, onUp
                     </div>
                 </div>
             ) : (
-                <div className="flex-1 overflow-y-auto bg-[var(--color-surface-paper)] rounded-2xl border border-[var(--color-surface-border)] shadow-sm">
+                <div className="flex-1 overflow-y-auto bg-surface-paper rounded-2xl border border-surface shadow-sm">
                     <AnalysisDashboard
                         analysis={idea.riskWinAnalysis}
                         loading={analyzing}

@@ -155,8 +155,8 @@ export const Notifications = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-[var(--color-text)]">{t('notifications.title')}</h1>
-                    <p className="text-[var(--color-text-muted)]">
+                    <h1 className="text-2xl font-bold text-main">{t('notifications.title')}</h1>
+                    <p className="text-muted">
                         {t('notifications.page.subtitle')}
                     </p>
                 </div>
@@ -187,10 +187,10 @@ export const Notifications = () => {
             {/* Clear All Confirmation Modal */}
             {showClearConfirm && createPortal(
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-[var(--color-surface-border)]">
+                    <div className="bg-card rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-surface">
                         <div className="space-y-4 text-center">
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('notifications.clearConfirm.title')}</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">
+                            <h3 className="text-lg font-bold text-main">{t('notifications.clearConfirm.title')}</h3>
+                            <p className="text-sm text-muted">
                                 {t('notifications.clearConfirm.message')}
                             </p>
                             <div className="grid grid-cols-2 gap-3">
@@ -214,20 +214,20 @@ export const Notifications = () => {
             )}
 
             {/* Notifications List */}
-            <div className="bg-[var(--color-surface-card)] rounded-xl border border-[var(--color-surface-border)] shadow-sm overflow-hidden">
+            <div className="bg-card rounded-xl border border-surface shadow-sm overflow-hidden">
                 {loading ? (
                     <div className="flex items-center justify-center py-12">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-primary)]"></div>
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                     </div>
                 ) : notifications.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 text-center">
-                        <div className="w-16 h-16 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center mb-4">
-                            <span className="material-symbols-outlined text-3xl text-[var(--color-text-muted)]">
+                        <div className="w-16 h-16 rounded-full bg-surface-hover flex items-center justify-center mb-4">
+                            <span className="material-symbols-outlined text-3xl text-muted">
                                 notifications_off
                             </span>
                         </div>
-                        <h3 className="text-lg font-medium text-[var(--color-text)]">{t('notifications.empty.title')}</h3>
-                        <p className="text-[var(--color-text-muted)] mt-1">
+                        <h3 className="text-lg font-medium text-main">{t('notifications.empty.title')}</h3>
+                        <p className="text-muted mt-1">
                             {t('notifications.empty.description')}
                         </p>
                     </div>
@@ -240,14 +240,14 @@ export const Notifications = () => {
                                 tabIndex={0}
                                 onClick={() => handleNotificationClick(notification)}
                                 onMouseEnter={() => !notification.read && markNotificationAsRead(notification.id, notification.tenantId)}
-                                className={`w-full text-left px-6 py-4 hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer group ${!notification.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''
+                                className={`w-full text-left px-6 py-4 hover:bg-surface-hover transition-colors cursor-pointer group ${!notification.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''
                                     }`}
                             >
                                 <div className="flex items-start gap-4">
                                     {/* Icon */}
                                     <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 ${!notification.read
                                         ? 'bg-blue-500 text-white shadow-md shadow-blue-500/20'
-                                        : 'bg-[var(--color-surface-bg)] text-[var(--color-text-muted)] border border-[var(--color-surface-border)]'
+                                        : 'bg-surface text-muted border border-surface'
                                         }`}>
                                         <span className="material-symbols-outlined text-[20px]">
                                             {getNotificationIcon(notification.type)}
@@ -258,16 +258,16 @@ export const Notifications = () => {
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-start justify-between gap-4">
                                             <p className={`text-base ${!notification.read
-                                                ? 'font-semibold text-[var(--color-text)]'
-                                                : 'text-[var(--color-text)]'
+                                                ? 'font-semibold text-main'
+                                                : 'text-main'
                                                 }`}>
                                                 {notification.title}
                                             </p>
-                                            <span className="text-xs text-[var(--color-text-muted)] whitespace-nowrap">
+                                            <span className="text-xs text-muted whitespace-nowrap">
                                                 {formatTime(notification.createdAt)}
                                             </span>
                                         </div>
-                                        <p className="text-sm text-[var(--color-text-muted)] mt-1">
+                                        <p className="text-sm text-muted mt-1">
                                             {notification.message}
                                         </p>
 
@@ -301,7 +301,7 @@ export const Notifications = () => {
                                         )}
                                         <button
                                             onClick={(e) => handleDelete(e, notification.id, notification.tenantId)}
-                                            className="p-1.5 rounded-full text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                                            className="p-1.5 rounded-full text-muted hover:bg-surface-hover hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
                                             title={t('notifications.actions.delete')}
                                         >
                                             <span className="material-symbols-outlined text-[20px]">close</span>

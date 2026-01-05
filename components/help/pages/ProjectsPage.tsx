@@ -97,17 +97,17 @@ const FieldRow = ({
     required?: boolean;
     description: string;
 }) => (
-    <div className="flex items-start gap-4 py-3 border-b border-[var(--color-surface-border)] last:border-0">
+    <div className="flex items-start gap-4 py-3 border-b border-surface last:border-0">
         <div className="flex-shrink-0 w-[140px]">
-            <span className="text-sm font-semibold text-[var(--color-text-main)]">{field}</span>
+            <span className="text-sm font-semibold text-main">{field}</span>
             {required && <span className="ml-1 text-rose-500 text-xs">*</span>}
         </div>
         <div className="flex-shrink-0 w-[80px]">
-            <span className="px-2 py-0.5 rounded-full bg-[var(--color-surface-hover)] text-[10px] font-medium text-[var(--color-text-muted)]">
+            <span className="px-2 py-0.5 rounded-full bg-surface-hover text-[10px] font-medium text-muted">
                 {type}
             </span>
         </div>
-        <div className="flex-1 text-sm text-[var(--color-text-muted)]">{description}</div>
+        <div className="flex-1 text-sm text-muted">{description}</div>
     </div>
 );
 
@@ -120,12 +120,12 @@ const StatusBadge = ({
     color: string;
     description: string;
 }) => (
-    <div className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-4">
+    <div className="rounded-xl border border-surface bg-card p-4">
         <div className="flex items-center gap-2">
             <span className={`w-3 h-3 rounded-full ${color}`} />
-            <span className="text-sm font-bold text-[var(--color-text-main)]">{status}</span>
+            <span className="text-sm font-bold text-main">{status}</span>
         </div>
-        <p className="text-sm text-[var(--color-text-muted)] mt-2 leading-relaxed">{description}</p>
+        <p className="text-sm text-muted mt-2 leading-relaxed">{description}</p>
     </div>
 );
 
@@ -140,15 +140,15 @@ const HealthGauge = ({
     label: string;
     triggers: string[];
 }) => (
-    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+    <div className="rounded-2xl border border-surface bg-card p-5">
         <div className="flex items-center justify-between mb-4">
-            <span className="text-sm font-bold text-[var(--color-text-main)]">{label}</span>
+            <span className="text-sm font-bold text-main">{label}</span>
             <span className={`px-2 py-1 rounded-full text-xs font-bold ${color}`}>{level}%</span>
         </div>
-        <div className="w-full h-2 rounded-full bg-[var(--color-surface-hover)] overflow-hidden">
+        <div className="w-full h-2 rounded-full bg-surface-hover overflow-hidden">
             <div className={`h-full rounded-full ${color.replace('text-', 'bg-').replace('bg-', 'bg-')}`} style={{ width: `${level}%` }} />
         </div>
-        <div className="mt-4 text-xs text-[var(--color-text-muted)]">
+        <div className="mt-4 text-xs text-muted">
             <div className="font-semibold mb-2">Triggered by:</div>
             <ul className="space-y-1">
                 {triggers.map((t, i) => (
@@ -173,19 +173,19 @@ const ModuleCard = ({
     description: string;
     features: string[];
 }) => (
-    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5 space-y-3">
+    <div className="rounded-2xl border border-surface bg-card p-5 space-y-3">
         <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[var(--color-primary)]/10 flex items-center justify-center">
-                <span className="material-symbols-outlined text-[20px] text-[var(--color-primary)]">{icon}</span>
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                <span className="material-symbols-outlined text-[20px] text-primary">{icon}</span>
             </div>
             <div>
-                <div className="text-sm font-bold text-[var(--color-text-main)]">{name}</div>
+                <div className="text-sm font-bold text-main">{name}</div>
             </div>
         </div>
-        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">{description}</p>
+        <p className="text-sm text-muted leading-relaxed">{description}</p>
         <div className="flex flex-wrap gap-2">
             {features.map((f, i) => (
-                <span key={i} className="px-2 py-1 rounded-lg bg-[var(--color-surface-hover)] text-[10px] font-medium text-[var(--color-text-muted)]">
+                <span key={i} className="px-2 py-1 rounded-lg bg-surface-hover text-[10px] font-medium text-muted">
                     {f}
                 </span>
             ))}
@@ -219,16 +219,16 @@ const OverviewCard = ({
     title: string;
     items: { label: string; description: string }[];
 }) => (
-    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+    <div className="rounded-2xl border border-surface bg-card p-5">
         <div className="flex items-center gap-2 mb-4">
-            <span className="material-symbols-outlined text-[18px] text-[var(--color-primary)]">{icon}</span>
-            <span className="text-sm font-bold text-[var(--color-text-main)]">{title}</span>
+            <span className="material-symbols-outlined text-[18px] text-primary">{icon}</span>
+            <span className="text-sm font-bold text-main">{title}</span>
         </div>
         <div className="space-y-3">
             {items.map((item, i) => (
                 <div key={i}>
-                    <div className="text-xs font-semibold text-[var(--color-text-main)]">{item.label}</div>
-                    <div className="text-xs text-[var(--color-text-muted)] mt-1">{item.description}</div>
+                    <div className="text-xs font-semibold text-main">{item.label}</div>
+                    <div className="text-xs text-muted mt-1">{item.description}</div>
                 </div>
             ))}
         </div>
@@ -243,14 +243,14 @@ export const ProjectsPage = (_props: HelpCenterPageProps) => {
     return (
         <div className="px-6 py-6 space-y-10">
             {/* Hero Section */}
-            <div className="rounded-[28px] border border-[var(--color-surface-border)] bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] p-6">
-                <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">
+            <div className="rounded-[28px] border border-surface bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] p-6">
+                <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">
                     Projects
                 </div>
-                <h2 className="text-3xl font-bold text-[var(--color-text-main)] mt-3">
+                <h2 className="text-3xl font-bold text-main mt-3">
                     The Center of Execution
                 </h2>
-                <p className="text-sm text-[var(--color-text-muted)] mt-3 leading-relaxed max-w-2xl">
+                <p className="text-sm text-muted mt-3 leading-relaxed max-w-2xl">
                     Projects are focused initiatives with their own modules, timelines, teams, and health signals.
                     This guide covers every field, setting, and feature available to help you organize and track delivery.
                 </p>
@@ -265,21 +265,21 @@ export const ProjectsPage = (_props: HelpCenterPageProps) => {
             </div>
 
             {/* SECTION: Project Fields Reference */}
-            <section data-section-id="project-fields" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+            <section data-section-id="project-fields" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Reference</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Project Fields Reference</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Reference</div>
+                        <h3 className="text-xl font-bold text-main mt-2">Project Fields Reference</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             Complete documentation of every field available when creating or editing a project.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">list_alt</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">list_alt</span>
                 </div>
 
                 {/* Core Fields Table */}
-                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                <div className="rounded-2xl border border-surface bg-card p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-muted mb-4">
                         Core Fields
                     </div>
                     <div className="space-y-0">
@@ -295,8 +295,8 @@ export const ProjectsPage = (_props: HelpCenterPageProps) => {
                 </div>
 
                 {/* Settings Fields Table */}
-                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                <div className="rounded-2xl border border-surface bg-card p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-muted mb-4">
                         Settings & Configuration
                     </div>
                     <div className="space-y-0">
@@ -311,21 +311,21 @@ export const ProjectsPage = (_props: HelpCenterPageProps) => {
             </section>
 
             {/* SECTION: Status and Priority */}
-            <section data-section-id="status-priority" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
+            <section data-section-id="status-priority" className="help-section rounded-3xl border border-surface bg-card p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Signals</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Status and Priority</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Signals</div>
+                        <h3 className="text-xl font-bold text-main mt-2">Status and Priority</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             Status tells you where a project is in its lifecycle. Priority tells you how important it is relative to other work.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">tune</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">tune</span>
                 </div>
 
                 {/* Status Options */}
                 <div>
-                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">Project Statuses</div>
+                    <div className="text-xs font-bold uppercase tracking-wider text-muted mb-4">Project Statuses</div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <StatusBadge
                             status="Planning"
@@ -357,7 +357,7 @@ export const ProjectsPage = (_props: HelpCenterPageProps) => {
 
                 {/* Priority Options */}
                 <div>
-                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">Priority Levels</div>
+                    <div className="text-xs font-bold uppercase tracking-wider text-muted mb-4">Priority Levels</div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                         <StatusBadge status="None" color="bg-slate-300" description="No priority set. Default for new projects." />
                         <StatusBadge status="Low" color="bg-slate-400" description="Can be deferred. Complete when resources allow." />
@@ -373,30 +373,30 @@ export const ProjectsPage = (_props: HelpCenterPageProps) => {
             </section>
 
             {/* SECTION: Health and Signals */}
-            <section data-section-id="health-signals" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+            <section data-section-id="health-signals" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Analytics</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Health and Signals</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Analytics</div>
+                        <h3 className="text-xl font-bold text-main mt-2">Health and Signals</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             Project health is a composite score calculated from multiple factors. Understanding these signals helps you identify risks early.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">health_and_safety</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">health_and_safety</span>
                 </div>
 
                 {/* Health Score Formula */}
-                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                <div className="rounded-2xl border border-surface bg-card p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-muted mb-4">
                         Health Score Formula
                     </div>
                     <div className="flex flex-wrap items-center gap-3 text-sm">
                         <span className="px-3 py-1.5 rounded-lg bg-sky-100 text-sky-700 font-medium dark:bg-sky-900/30 dark:text-sky-300">Task Progress (25%)</span>
-                        <span className="text-[var(--color-text-subtle)]">+</span>
+                        <span className="text-subtle">+</span>
                         <span className="px-3 py-1.5 rounded-lg bg-rose-100 text-rose-700 font-medium dark:bg-rose-900/30 dark:text-rose-300">Issue Count (25%)</span>
-                        <span className="text-[var(--color-text-subtle)]">+</span>
+                        <span className="text-subtle">+</span>
                         <span className="px-3 py-1.5 rounded-lg bg-emerald-100 text-emerald-700 font-medium dark:bg-emerald-900/30 dark:text-emerald-300">Milestone Health (25%)</span>
-                        <span className="text-[var(--color-text-subtle)]">+</span>
+                        <span className="text-subtle">+</span>
                         <span className="px-3 py-1.5 rounded-lg bg-amber-100 text-amber-700 font-medium dark:bg-amber-900/30 dark:text-amber-300">Activity Recency (25%)</span>
                     </div>
                 </div>
@@ -444,16 +444,16 @@ export const ProjectsPage = (_props: HelpCenterPageProps) => {
             </section>
 
             {/* SECTION: Modules Catalog */}
-            <section data-section-id="modules-catalog" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
+            <section data-section-id="modules-catalog" className="help-section rounded-3xl border border-surface bg-card p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Structure</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Modules Catalog</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Structure</div>
+                        <h3 className="text-xl font-bold text-main mt-2">Modules Catalog</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             Modules are the feature areas within a project. Enable only what you need to keep navigation focused.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">category</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">category</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -509,52 +509,52 @@ export const ProjectsPage = (_props: HelpCenterPageProps) => {
             </section>
 
             {/* SECTION: Visibility and Access */}
-            <section data-section-id="visibility-access" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+            <section data-section-id="visibility-access" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Security</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Visibility and Access</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Security</div>
+                        <h3 className="text-xl font-bold text-main mt-2">Visibility and Access</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             Control who can see and interact with your project through visibility settings and team roles.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">visibility</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">visibility</span>
                 </div>
 
                 {/* Visibility Levels */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+                    <div className="rounded-2xl border border-surface bg-card p-5">
                         <div className="flex items-center gap-2 mb-3">
-                            <span className="material-symbols-outlined text-[18px] text-[var(--color-primary)]">public</span>
-                            <span className="text-sm font-bold text-[var(--color-text-main)]">Workspace</span>
+                            <span className="material-symbols-outlined text-[18px] text-primary">public</span>
+                            <span className="text-sm font-bold text-main">Workspace</span>
                         </div>
-                        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+                        <p className="text-sm text-muted leading-relaxed">
                             Visible to everyone in the workspace. Best for company-wide initiatives or public projects.
                         </p>
                     </div>
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+                    <div className="rounded-2xl border border-surface bg-card p-5">
                         <div className="flex items-center gap-2 mb-3">
                             <span className="material-symbols-outlined text-[18px] text-amber-500">groups</span>
-                            <span className="text-sm font-bold text-[var(--color-text-main)]">Specific Groups</span>
+                            <span className="text-sm font-bold text-main">Specific Groups</span>
                         </div>
-                        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+                        <p className="text-sm text-muted leading-relaxed">
                             Visible only to selected groups. Use for department-specific or cross-functional projects.
                         </p>
                     </div>
-                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
+                    <div className="rounded-2xl border border-surface bg-card p-5">
                         <div className="flex items-center gap-2 mb-3">
                             <span className="material-symbols-outlined text-[18px] text-rose-500">lock</span>
-                            <span className="text-sm font-bold text-[var(--color-text-main)]">Team Only</span>
+                            <span className="text-sm font-bold text-main">Team Only</span>
                         </div>
-                        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+                        <p className="text-sm text-muted leading-relaxed">
                             Visible only to assigned team members. Best for sensitive or confidential projects.
                         </p>
                     </div>
                 </div>
 
                 {/* Team Roles */}
-                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                <div className="rounded-2xl border border-surface bg-card p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-muted mb-4">
                         Project Team Roles
                     </div>
                     <div className="space-y-0">
@@ -567,16 +567,16 @@ export const ProjectsPage = (_props: HelpCenterPageProps) => {
             </section>
 
             {/* SECTION: Project Overview Page */}
-            <section data-section-id="project-overview" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-6 space-y-6">
+            <section data-section-id="project-overview" className="help-section rounded-3xl border border-surface bg-card p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Dashboard</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Project Overview Page</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Dashboard</div>
+                        <h3 className="text-xl font-bold text-main mt-2">Project Overview Page</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             The overview is your command center. It brings health, workload, activity, and deadlines into one view.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">dashboard</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">dashboard</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -638,45 +638,45 @@ export const ProjectsPage = (_props: HelpCenterPageProps) => {
             </section>
 
             {/* SECTION: Activity and History */}
-            <section data-section-id="activity-tracking" className="help-section rounded-3xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-6 space-y-6">
+            <section data-section-id="activity-tracking" className="help-section rounded-3xl border border-surface bg-surface p-6 space-y-6">
                 <div className="flex items-start justify-between">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-[var(--color-text-muted)]">Audit</div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)] mt-2">Activity and History</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-2 max-w-xl leading-relaxed">
+                        <div className="text-[10px] font-bold uppercase tracking-[0.28em] text-muted">Audit</div>
+                        <h3 className="text-xl font-bold text-main mt-2">Activity and History</h3>
+                        <p className="text-sm text-muted mt-2 max-w-xl leading-relaxed">
                             Every change is logged so you can understand what happened and when.
                         </p>
                     </div>
-                    <span className="material-symbols-outlined text-[20px] text-[var(--color-text-subtle)]">history</span>
+                    <span className="material-symbols-outlined text-[20px] text-subtle">history</span>
                 </div>
 
                 {/* Activity Types */}
-                <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-5">
-                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">
+                <div className="rounded-2xl border border-surface bg-card p-5">
+                    <div className="text-xs font-bold uppercase tracking-wider text-muted mb-4">
                         Tracked Activities
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
-                        <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
-                            <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">add_circle</span>
+                        <div className="flex items-center gap-2 text-muted">
+                            <span className="material-symbols-outlined text-[16px] text-primary">add_circle</span>
                             Items created
                         </div>
-                        <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
+                        <div className="flex items-center gap-2 text-muted">
                             <span className="material-symbols-outlined text-[16px] text-sky-500">edit</span>
                             Fields updated
                         </div>
-                        <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
+                        <div className="flex items-center gap-2 text-muted">
                             <span className="material-symbols-outlined text-[16px] text-emerald-500">check_circle</span>
                             Status changes
                         </div>
-                        <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
+                        <div className="flex items-center gap-2 text-muted">
                             <span className="material-symbols-outlined text-[16px] text-amber-500">comment</span>
                             Comments added
                         </div>
-                        <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
+                        <div className="flex items-center gap-2 text-muted">
                             <span className="material-symbols-outlined text-[16px] text-purple-500">person_add</span>
                             Assignments changed
                         </div>
-                        <div className="flex items-center gap-2 text-[var(--color-text-muted)]">
+                        <div className="flex items-center gap-2 text-muted">
                             <span className="material-symbols-outlined text-[16px] text-rose-500">delete</span>
                             Items archived/deleted
                         </div>

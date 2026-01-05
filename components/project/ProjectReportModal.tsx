@@ -64,7 +64,7 @@ export const ProjectReportModal: React.FC<ProjectReportModalProps> = ({
             // H1 with emoji support
             if (trimmedLine.startsWith('# ')) {
                 elements.push(
-                    <h1 key={index} className="text-xl font-bold mt-6 mb-3 text-[var(--color-text-main)] flex items-center gap-2">
+                    <h1 key={index} className="text-xl font-bold mt-6 mb-3 text-main flex items-center gap-2">
                         {parseInline(trimmedLine.replace('# ', ''))}
                     </h1>
                 );
@@ -75,7 +75,7 @@ export const ProjectReportModal: React.FC<ProjectReportModalProps> = ({
             if (trimmedLine.startsWith('## ') || /^[📊🚨📅🏗🐛💡✅⚠️🔥]/.test(trimmedLine)) {
                 const content = trimmedLine.startsWith('## ') ? trimmedLine.replace('## ', '') : trimmedLine;
                 elements.push(
-                    <h2 key={index} className="text-lg font-bold mt-5 mb-2 text-[var(--color-text-main)] border-b border-[var(--color-surface-border)] pb-2">
+                    <h2 key={index} className="text-lg font-bold mt-5 mb-2 text-main border-b border-surface pb-2">
                         {parseInline(content)}
                     </h2>
                 );
@@ -85,7 +85,7 @@ export const ProjectReportModal: React.FC<ProjectReportModalProps> = ({
             // H3
             if (trimmedLine.startsWith('### ')) {
                 elements.push(
-                    <h3 key={index} className="text-base font-semibold mt-4 mb-2 text-[var(--color-text-main)]">
+                    <h3 key={index} className="text-base font-semibold mt-4 mb-2 text-main">
                         {parseInline(trimmedLine.replace('### ', ''))}
                     </h3>
                 );
@@ -96,8 +96,8 @@ export const ProjectReportModal: React.FC<ProjectReportModalProps> = ({
             if (/^\d+\.\s/.test(trimmedLine)) {
                 elements.push(
                     <div key={index} className="flex gap-2 ml-2 mb-2">
-                        <span className="text-[var(--color-primary)] font-bold shrink-0">{trimmedLine.match(/^\d+/)?.[0]}.</span>
-                        <p className="text-[var(--color-text-main)] leading-relaxed">{parseInline(trimmedLine.replace(/^\d+\.\s/, ''))}</p>
+                        <span className="text-primary font-bold shrink-0">{trimmedLine.match(/^\d+/)?.[0]}.</span>
+                        <p className="text-main leading-relaxed">{parseInline(trimmedLine.replace(/^\d+\.\s/, ''))}</p>
                     </div>
                 );
                 return;
@@ -107,8 +107,8 @@ export const ProjectReportModal: React.FC<ProjectReportModalProps> = ({
             if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ')) {
                 elements.push(
                     <div key={index} className="flex gap-2 ml-2 mb-1.5 items-baseline">
-                        <span className="text-[var(--color-primary)]">•</span>
-                        <p className="text-[var(--color-text-main)] leading-relaxed flex-1">{parseInline(trimmedLine.replace(/^[-*]\s/, ''))}</p>
+                        <span className="text-primary">•</span>
+                        <p className="text-main leading-relaxed flex-1">{parseInline(trimmedLine.replace(/^[-*]\s/, ''))}</p>
                     </div>
                 );
                 return;
@@ -116,7 +116,7 @@ export const ProjectReportModal: React.FC<ProjectReportModalProps> = ({
 
             // Regular paragraph
             elements.push(
-                <p key={index} className="mb-2 text-[var(--color-text-main)] leading-relaxed">
+                <p key={index} className="mb-2 text-main leading-relaxed">
                     {parseInline(trimmedLine)}
                 </p>
             );
@@ -131,13 +131,13 @@ export const ProjectReportModal: React.FC<ProjectReportModalProps> = ({
                 <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
                     {isLoading ? (
                         <div className="flex flex-col items-center justify-center h-full space-y-4">
-                            <div className="size-12 rounded-full border-4 border-[var(--color-primary)]/30 border-t-[var(--color-primary)] animate-spin" />
-                            <p className="text-[var(--color-text-muted)] animate-pulse">{t('projectOverview.aiReport.loadingTitle')}</p>
+                            <div className="size-12 rounded-full border-4 border-primary/30 border-t-[var(--color-primary)] animate-spin" />
+                            <p className="text-muted animate-pulse">{t('projectOverview.aiReport.loadingTitle')}</p>
                         </div>
                     ) : report ? (
                         <div className="prose dark:prose-invert max-w-none">
                             {lastUpdated && (
-                                <p className="text-xs text-[var(--color-text-muted)] mb-6 italic">
+                                <p className="text-xs text-muted mb-6 italic">
                                     {t('projectOverview.aiReport.generatedOn').replace('{date}', lastUpdated.toLocaleString())}
                                 </p>
                             )}
@@ -145,11 +145,11 @@ export const ProjectReportModal: React.FC<ProjectReportModalProps> = ({
                         </div>
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full text-center max-w-md mx-auto">
-                            <div className="size-16 bg-[var(--color-primary)]/10 rounded-full flex items-center justify-center mb-4">
-                                <span className="material-symbols-outlined text-3xl text-[var(--color-primary)]">auto_awesome</span>
+                            <div className="size-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
+                                <span className="material-symbols-outlined text-3xl text-primary">auto_awesome</span>
                             </div>
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-2">{t('projectOverview.aiReport.emptyState.title')}</h3>
-                            <p className="text-[var(--color-text-muted)] mb-6">
+                            <h3 className="text-lg font-bold text-main mb-2">{t('projectOverview.aiReport.emptyState.title')}</h3>
+                            <p className="text-muted mb-6">
                                 {t('projectOverview.aiReport.emptyState.description')}
                             </p>
                             <Button onClick={onGenerate} icon={<span className="material-symbols-outlined">bolt</span>}>
@@ -159,7 +159,7 @@ export const ProjectReportModal: React.FC<ProjectReportModalProps> = ({
                     )}
                 </div>
 
-                <div className="p-4 border-t border-[var(--color-surface-border)] flex justify-between bg-[var(--color-surface-paper)]">
+                <div className="p-4 border-t border-surface flex justify-between bg-surface-paper">
                     <Button variant="ghost" onClick={onClose}>{t('projectOverview.aiReport.actions.close')}</Button>
                     {!isLoading && report && (
                         <div className="flex gap-3">

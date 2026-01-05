@@ -1,0 +1,65 @@
+@use '../styles/tokens';
+
+.invite-landing {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--color-surface-bg);
+}
+
+.invite-landing__card {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 32px;
+}
+
+.invite-landing__badge {
+    align-self: flex-start;
+}
+
+.invite-landing__title {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+.invite-landing__description {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+    line-height: 1.5;
+}
+
+.invite-landing__status {
+    margin: 0;
+    padding: 10px 12px;
+    border-radius: var(--radius-md);
+    background: var(--color-surface-hover);
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.invite-landing__status--success {
+    color: var(--color-success);
+}
+
+.invite-landing__status--error {
+    color: var(--color-error);
+}
+
+.invite-landing__action {
+    width: 100%;
+}
+
+.invite-landing__hint {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}

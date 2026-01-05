@@ -7,6 +7,7 @@ import { UIProvider } from './context/UIContext';
 import { HelpCenterProvider } from './context/HelpCenterContext';
 import { PinnedTasksProvider } from './context/PinnedTasksContext';
 import { PinnedProjectProvider } from './context/PinnedProjectContext';
+import './styles/index.scss';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

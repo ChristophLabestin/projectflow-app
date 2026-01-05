@@ -366,8 +366,8 @@ export const CreateCampaignPage = () => {
 
 
     return (
-        <div className="flex items-center justify-center p-6 min-h-full w-full bg-[var(--color-bg-base)]">
-            <div className={`w-full ${editMode === 'simple' ? 'max-w-4xl' : 'max-w-6xl'} bg-[var(--color-surface-card)] rounded-3xl shadow-xl border border-[var(--color-surface-border)] overflow-hidden flex flex-col md:flex-row animate-fade-in relative transition-all duration-300`}>
+        <div className="flex items-center justify-center p-6 min-h-full w-full bg-surface">
+            <div className={`w-full ${editMode === 'simple' ? 'max-w-4xl' : 'max-w-6xl'} bg-card rounded-3xl shadow-xl border border-surface overflow-hidden flex flex-col md:flex-row animate-fade-in relative transition-all duration-300`}>
 
                 {/* Close Button */}
                 <button
@@ -378,31 +378,31 @@ export const CreateCampaignPage = () => {
                 </button>
 
                 {/* Left Panel: Form */}
-                <div className="flex-1 flex flex-col border-r border-[var(--color-surface-border)]">
-                    <header className="px-8 py-6 border-b border-[var(--color-surface-border)] flex items-center justify-between">
+                <div className="flex-1 flex flex-col border-r border-surface">
+                    <header className="px-8 py-6 border-b border-surface flex items-center justify-between">
                         <div>
                             <div className="flex items-center gap-3 mb-1">
                                 <span className="p-2 bg-orange-100 text-orange-600 rounded-lg material-symbols-outlined">campaign</span>
-                                <h1 className="text-xl font-bold text-[var(--color-text-main)]">
+                                <h1 className="text-xl font-bold text-main">
                                     {campaignId ? t('social.campaignForm.title.edit') : t('social.campaignForm.title.create')}
                                 </h1>
                             </div>
-                            <p className="text-sm text-[var(--color-text-subtle)] ml-12">
+                            <p className="text-sm text-subtle ml-12">
                                 {editMode === 'simple' ? t('social.campaignForm.subtitle.simple') : t('social.campaignForm.subtitle.advanced')}
                             </p>
                         </div>
 
                         {/* Mode Toggle */}
-                        <div className="flex bg-[var(--color-surface-bg)] rounded-lg p-1 border border-[var(--color-surface-border)]">
+                        <div className="flex bg-surface rounded-lg p-1 border border-surface">
                             <button
                                 onClick={() => setEditMode('simple')}
-                                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${editMode === 'simple' ? 'bg-[var(--color-surface-card)] text-[var(--color-text-main)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${editMode === 'simple' ? 'bg-card text-main shadow-sm' : 'text-muted hover:text-main'}`}
                             >
                                 {t('social.campaignForm.mode.simple')}
                             </button>
                             <button
                                 onClick={() => setEditMode('advanced')}
-                                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${editMode === 'advanced' ? 'bg-[var(--color-surface-card)] text-[var(--color-text-main)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${editMode === 'advanced' ? 'bg-card text-main shadow-sm' : 'text-muted hover:text-main'}`}
                             >
                                 {t('social.campaignForm.mode.advanced')}
                             </button>
@@ -413,7 +413,7 @@ export const CreateCampaignPage = () => {
 
                         {/* --- SIMPLE MODE FIELDS (Always Visible) --- */}
                         <div className="space-y-4">
-                            <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider flex items-center gap-2">
+                            <h3 className="text-sm font-bold text-muted uppercase tracking-wider flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[16px]">info</span>
                                 {t('social.campaignForm.section.general')}
                             </h3>
@@ -440,7 +440,7 @@ export const CreateCampaignPage = () => {
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-2 block">{t('social.campaignForm.fields.status')}</label>
+                                    <label className="text-xs font-semibold text-muted uppercase mb-2 block">{t('social.campaignForm.fields.status')}</label>
                                     <Select value={status} onChange={e => setStatus(e.target.value as any)}>
                                         <option value="Backlog">{t('social.campaign.status.backlog')}</option>
                                         <option value="Planning">{t('social.campaign.status.planning')}</option>
@@ -450,7 +450,7 @@ export const CreateCampaignPage = () => {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase block">{t('social.campaignForm.fields.themeColor')}</label>
+                                    <label className="text-xs font-semibold text-muted uppercase block">{t('social.campaignForm.fields.themeColor')}</label>
                                     <div className="flex gap-2">
                                         {['#E1306C', '#1877F2', '#0A66C2', '#000000', '#FF0000', '#7C3AED'].map(c => (
                                             <button
@@ -474,7 +474,7 @@ export const CreateCampaignPage = () => {
                                         disabled={isEndDateDerived}
                                     />
                                     {isEndDateDerived && (
-                                        <p className="text-[10px] text-[var(--color-text-muted)] flex items-center gap-1">
+                                        <p className="text-[10px] text-muted flex items-center gap-1">
                                             <span className="material-symbols-outlined text-[12px]">info</span>
                                             {t('social.campaignForm.fields.endDateDerived')
                                                 .replace('{count}', String(phases.length))}
@@ -492,7 +492,7 @@ export const CreateCampaignPage = () => {
 
                             {/* Platforms - Basic */}
                             <div>
-                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-2 block">{t('social.campaignForm.fields.platforms')}</label>
+                                <label className="text-xs font-semibold text-muted uppercase mb-2 block">{t('social.campaignForm.fields.platforms')}</label>
                                 <div className="flex flex-wrap gap-2">
                                     {ALL_PLATFORMS.map(p => (
                                         <button
@@ -500,7 +500,7 @@ export const CreateCampaignPage = () => {
                                             onClick={() => togglePlatform(p)}
                                             className={`px-3 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1.5 ${platforms.includes(p)
                                                 ? 'bg-rose-50 border-rose-200 text-rose-700 dark:bg-rose-900/20 dark:border-rose-800 dark:text-rose-300 shadow-sm'
-                                                : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'
+                                                : 'bg-surface border-surface text-muted hover:bg-surface-hover'
                                                 }`}
                                         >
                                             {platforms.includes(p) && <span className="material-symbols-outlined text-[14px]">check</span>}
@@ -512,7 +512,7 @@ export const CreateCampaignPage = () => {
 
                             <div>
                                 <div className="flex items-center justify-between mb-1">
-                                    <label className="text-sm font-bold text-[var(--color-text-main)]">{t('social.campaignForm.fields.description')}</label>
+                                    <label className="text-sm font-bold text-main">{t('social.campaignForm.fields.description')}</label>
                                     <button
                                         onClick={handleGenerateDescription}
                                         disabled={generatingDescription || !name}
@@ -533,10 +533,10 @@ export const CreateCampaignPage = () => {
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-2 block">{t('social.campaignForm.fields.tags')}</label>
+                                <label className="text-xs font-semibold text-muted uppercase mb-2 block">{t('social.campaignForm.fields.tags')}</label>
                                 <div className="flex flex-wrap gap-2 mb-2">
                                     {tags.map(tag => (
-                                        <span key={tag} className="px-2 py-1 bg-[var(--color-surface-hover)] rounded-md text-xs font-medium flex items-center gap-1 group">
+                                        <span key={tag} className="px-2 py-1 bg-surface-hover rounded-md text-xs font-medium flex items-center gap-1 group">
                                             #{tag}
                                             <button onClick={() => removeTag(tag)} className="hover:text-red-500"><span className="material-symbols-outlined text-[14px]">close</span></button>
                                         </span>
@@ -557,8 +557,8 @@ export const CreateCampaignPage = () => {
                         {editMode === 'advanced' && (
                             <>
                                 {/* Core Strategy */}
-                                <div className="space-y-4 pt-4 border-t border-[var(--color-surface-border)] animate-fade-in">
-                                    <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider flex items-center gap-2">
+                                <div className="space-y-4 pt-4 border-t border-surface animate-fade-in">
+                                    <h3 className="text-sm font-bold text-muted uppercase tracking-wider flex items-center gap-2">
                                         <span className="material-symbols-outlined text-[16px]">lightbulb</span>
                                         {t('social.campaignForm.section.strategy')}
                                     </h3>
@@ -579,8 +579,8 @@ export const CreateCampaignPage = () => {
                                 </div>
 
                                 {/* Visuals & Mood */}
-                                <div className="space-y-4 pt-4 border-t border-[var(--color-surface-border)] animate-fade-in">
-                                    <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider flex items-center gap-2">
+                                <div className="space-y-4 pt-4 border-t border-surface animate-fade-in">
+                                    <h3 className="text-sm font-bold text-muted uppercase tracking-wider flex items-center gap-2">
                                         <span className="material-symbols-outlined text-[16px]">palette</span>
                                         {t('social.campaignForm.section.visuals')}
                                     </h3>
@@ -610,8 +610,8 @@ export const CreateCampaignPage = () => {
                                 </div>
 
                                 {/* Audience - Advanced */}
-                                <div className="space-y-4 pt-4 border-t border-[var(--color-surface-border)] animate-fade-in">
-                                    <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider flex items-center gap-2">
+                                <div className="space-y-4 pt-4 border-t border-surface animate-fade-in">
+                                    <h3 className="text-sm font-bold text-muted uppercase tracking-wider flex items-center gap-2">
                                         <span className="material-symbols-outlined text-[16px]">group</span>
                                         {t('social.campaignForm.section.audience')}
                                     </h3>
@@ -623,10 +623,10 @@ export const CreateCampaignPage = () => {
                                         rows={2}
                                     />
                                     <div>
-                                        <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase mb-2 block">{t('social.campaignForm.fields.audienceSegments')}</label>
+                                        <label className="text-xs font-semibold text-muted uppercase mb-2 block">{t('social.campaignForm.fields.audienceSegments')}</label>
                                         <div className="flex flex-wrap gap-2 mb-2">
                                             {audienceSegments.map(seg => (
-                                                <span key={seg} className="px-2 py-1 bg-[var(--color-surface-hover)] rounded-md text-xs font-medium flex items-center gap-1 group">
+                                                <span key={seg} className="px-2 py-1 bg-surface-hover rounded-md text-xs font-medium flex items-center gap-1 group">
                                                     {seg}
                                                     <button onClick={() => removeSegment(seg)} className="hover:text-red-500"><span className="material-symbols-outlined text-[14px]">close</span></button>
                                                 </span>
@@ -644,35 +644,35 @@ export const CreateCampaignPage = () => {
                                 </div>
 
                                 {/* Phases & KPI & Analysis */}
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-[var(--color-surface-border)] animate-fade-in">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-surface animate-fade-in">
                                     {/* Phases */}
                                     <div className="space-y-2">
-                                        <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider flex items-center gap-2 mb-2">
+                                        <h3 className="text-sm font-bold text-muted uppercase tracking-wider flex items-center gap-2 mb-2">
                                             <span className="material-symbols-outlined text-[16px]">timeline</span>
                                             {t('social.campaignForm.section.phases')}
                                         </h3>
                                         {phases.map((phase, idx) => (
-                                            <div key={idx} className="bg-[var(--color-surface-bg)] rounded-xl p-3 border border-[var(--color-surface-border)] space-y-2">
+                                            <div key={idx} className="bg-surface rounded-xl p-3 border border-surface space-y-2">
                                                 <div className="flex gap-2">
                                                     <input
-                                                        className="flex-1 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded px-2 py-1 text-sm font-bold"
+                                                        className="flex-1 bg-card border border-surface rounded px-2 py-1 text-sm font-bold"
                                                         placeholder={t('social.campaignForm.placeholders.phaseName')}
                                                         value={phase.name}
                                                         onChange={e => updatePhase(idx, 'name', e.target.value)}
                                                     />
-                                                    <button onClick={() => removePhase(idx)} className="text-[var(--color-text-muted)] hover:text-red-500">
+                                                    <button onClick={() => removePhase(idx)} className="text-muted hover:text-red-500">
                                                         <span className="material-symbols-outlined text-[16px]">delete</span>
                                                     </button>
                                                 </div>
                                                 <div className="flex gap-2">
                                                     <input
-                                                        className="w-20 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded px-2 py-1 text-xs"
+                                                        className="w-20 bg-card border border-surface rounded px-2 py-1 text-xs"
                                                         type="number"
                                                         value={phase.durationValue}
                                                         onChange={e => updatePhase(idx, 'durationValue', parseInt(e.target.value) || 1)}
                                                     />
                                                     <select
-                                                        className="w-24 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded px-2 py-1 text-xs"
+                                                        className="w-24 bg-card border border-surface rounded px-2 py-1 text-xs"
                                                         value={phase.durationUnit}
                                                         onChange={e => updatePhase(idx, 'durationUnit', e.target.value)}
                                                     >
@@ -681,7 +681,7 @@ export const CreateCampaignPage = () => {
                                                     </select>
                                                 </div>
                                                 <input
-                                                    className="w-full bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded px-2 py-1 text-xs"
+                                                    className="w-full bg-card border border-surface rounded px-2 py-1 text-xs"
                                                     placeholder={t('social.campaignForm.placeholders.phaseFocus')}
                                                     value={phase.focus}
                                                     onChange={e => updatePhase(idx, 'focus', e.target.value)}
@@ -693,25 +693,25 @@ export const CreateCampaignPage = () => {
 
                                     {/* KPIs */}
                                     <div className="space-y-2">
-                                        <h3 className="text-sm font-bold text-[var(--color-text-muted)] uppercase tracking-wider flex items-center gap-2 mb-2">
+                                        <h3 className="text-sm font-bold text-muted uppercase tracking-wider flex items-center gap-2 mb-2">
                                             <span className="material-symbols-outlined text-[16px]">flag</span>
                                             {t('social.campaignForm.section.kpis')}
                                         </h3>
                                         {kpis.map((kpi, idx) => (
                                             <div key={idx} className="flex gap-2">
                                                 <input
-                                                    className="flex-1 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded px-3 py-2 text-sm"
+                                                    className="flex-1 bg-surface border border-surface rounded px-3 py-2 text-sm"
                                                     placeholder={t('social.campaignForm.placeholders.kpiMetric')}
                                                     value={kpi.metric}
                                                     onChange={e => updateKPI(idx, 'metric', e.target.value)}
                                                 />
                                                 <input
-                                                    className="w-24 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded px-3 py-2 text-sm"
+                                                    className="w-24 bg-surface border border-surface rounded px-3 py-2 text-sm"
                                                     placeholder={t('social.campaignForm.placeholders.kpiTarget')}
                                                     value={kpi.target}
                                                     onChange={e => updateKPI(idx, 'target', e.target.value)}
                                                 />
-                                                <button onClick={() => removeKPI(idx)} className="text-[var(--color-text-muted)] hover:text-red-500 px-1">
+                                                <button onClick={() => removeKPI(idx)} className="text-muted hover:text-red-500 px-1">
                                                     <span className="material-symbols-outlined text-[16px]">delete</span>
                                                 </button>
                                             </div>
@@ -725,7 +725,7 @@ export const CreateCampaignPage = () => {
                     </div>
 
 
-                    <footer className="px-8 py-5 border-t border-[var(--color-surface-border)] flex gap-3 justify-end bg-[var(--color-surface-card)]">
+                    <footer className="px-8 py-5 border-t border-surface flex gap-3 justify-end bg-card">
                         <Button variant="ghost" onClick={() => navigate(-1)}>{t('social.campaignForm.actions.cancel')}</Button>
                         <Button variant="primary" onClick={handleSubmit} isLoading={loading} disabled={!name}>
                             {campaignId ? t('social.campaignForm.actions.save') : t('social.campaignForm.actions.create')}
@@ -735,13 +735,13 @@ export const CreateCampaignPage = () => {
 
 
                 {/* Right Panel: Preview / Summary */}
-                <div className="w-80 min-w-[320px] bg-[var(--color-surface-bg)] hidden lg:flex flex-col p-6 border-l border-[var(--color-surface-border)] relative overflow-hidden">
+                <div className="w-80 min-w-[320px] bg-surface hidden lg:flex flex-col p-6 border-l border-surface relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
                     <div className="absolute bottom-0 left-0 w-64 h-64 bg-orange-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none" />
 
-                    <h2 className="text-sm font-bold text-[var(--color-text-muted)] uppercase mb-6 relative z-10">{t('social.campaignForm.preview.title')}</h2>
+                    <h2 className="text-sm font-bold text-muted uppercase mb-6 relative z-10">{t('social.campaignForm.preview.title')}</h2>
 
-                    <div className="relative z-10 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl p-6 shadow-lg">
+                    <div className="relative z-10 bg-card border border-surface rounded-xl p-6 shadow-lg">
                         <div className="flex justify-between items-start mb-4">
                             <span className={`px-2 py-1 rounded-md text-xs font-bold uppercase tracking-wider ${status === 'Active' ? 'bg-green-100 text-green-700' :
                                 status === 'Planning' ? 'bg-blue-100 text-blue-700' :
@@ -753,16 +753,16 @@ export const CreateCampaignPage = () => {
                             </span>
                         </div>
 
-                        <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-2 line-clamp-2">
+                        <h3 className="text-lg font-bold text-main mb-2 line-clamp-2">
                             {name || t('social.campaignForm.preview.nameFallback')}
                         </h3>
 
-                        <p className="text-sm text-[var(--color-text-muted)] line-clamp-3 mb-6 min-h-[40px]">
+                        <p className="text-sm text-muted line-clamp-3 mb-6 min-h-[40px]">
                             {bigIdea || description || t('social.campaignForm.preview.descriptionFallback')}
                         </p>
 
                         <div className="space-y-3">
-                            <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)]">
+                            <div className="flex items-center gap-2 text-sm text-muted">
                                 <span className="material-symbols-outlined text-[16px]">calendar_today</span>
                                 <span>
                                     {startDate ? format(new Date(startDate), dateFormat, { locale: dateLocale }) : t('social.campaignForm.preview.startDateFallback')} - {endDate ? format(new Date(endDate), dateFormat, { locale: dateLocale }) : t('social.campaignForm.preview.endDateFallback')}
@@ -771,16 +771,16 @@ export const CreateCampaignPage = () => {
 
                             <div className="flex flex-wrap gap-1">
                                 {platforms.length > 0 ? platforms.map(p => (
-                                    <span key={p} className="px-1.5 py-0.5 bg-[var(--color-surface-hover)] rounded text-[10px] font-medium text-[var(--color-text-muted)]">
+                                    <span key={p} className="px-1.5 py-0.5 bg-surface-hover rounded text-[10px] font-medium text-muted">
                                         {p}
                                     </span>
-                                )) : <span className="text-[10px] text-[var(--color-text-muted)] italic">{t('social.campaignForm.preview.noPlatforms')}</span>}
+                                )) : <span className="text-[10px] text-muted italic">{t('social.campaignForm.preview.noPlatforms')}</span>}
                             </div>
                         </div>
                     </div>
                     <div className="mt-8 relative z-10">
-                        <h4 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-2">{t('social.campaignForm.preview.tipsTitle')}</h4>
-                        <ul className="text-xs text-[var(--color-text-subtle)] space-y-2 list-disc pl-4">
+                        <h4 className="text-xs font-bold text-muted uppercase mb-2">{t('social.campaignForm.preview.tipsTitle')}</h4>
+                        <ul className="text-xs text-subtle space-y-2 list-disc pl-4">
                             <li><strong>{t('social.campaignForm.preview.tipCore.label')}</strong> {t('social.campaignForm.preview.tipCore.text')}</li>
                             <li><strong>{t('social.campaignForm.preview.tipHook.label')}</strong> {t('social.campaignForm.preview.tipHook.text')}</li>
                             <li><strong>{t('social.campaignForm.preview.tipVisuals.label')}</strong> {t('social.campaignForm.preview.tipVisuals.text')}</li>

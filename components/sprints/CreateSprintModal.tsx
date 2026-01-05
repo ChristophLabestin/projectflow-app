@@ -115,13 +115,13 @@ export const CreateSprintModal: React.FC<CreateSprintModalProps> = ({ isOpen, on
                     rows={3}
                 />
 
-                <div className="flex items-center gap-3 p-4 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]">
+                <div className="flex items-center gap-3 p-4 rounded-xl border border-surface bg-surface">
                     <button
                         type="button"
                         onClick={() => setAutoStart(!autoStart)}
                         className={`
-                            relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:ring-offset-2
-                            ${autoStart ? 'bg-[var(--color-primary)]' : 'bg-slate-200 dark:bg-slate-700'}
+                            relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
+                            ${autoStart ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}
                         `}
                         role="switch"
                         aria-checked={autoStart}
@@ -134,8 +134,8 @@ export const CreateSprintModal: React.FC<CreateSprintModalProps> = ({ isOpen, on
                         />
                     </button>
                     <div>
-                        <div className="text-sm font-medium text-[var(--color-text-main)]">Auto-start on Start Date</div>
-                        <div className="text-xs text-[var(--color-text-muted)]">Automatically change status to Active when the start date arrives</div>
+                        <div className="text-sm font-medium text-main">Auto-start on Start Date</div>
+                        <div className="text-xs text-muted">Automatically change status to Active when the start date arrives</div>
                     </div>
                 </div>
             </div>

@@ -1,108 +1,38 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
-
-:root {
-  /* --- Palette: Core Colors (Monochrome) --- */
-  --color-primary: #171717;
-  /* Neutral-900 */
-  --color-primary-dark: #000000;
-  --color-primary-light: #404040;
-  --color-primary-fade: #f5f5f5;
-  /* Neutral-100 */
-
-  --color-surface-bg: #fafafa;
-  /* Neutral-50 */
-  --color-surface-card: #ffffff;
-  --color-surface-hover: #f5f5f5;
-  --color-surface-border: #e5e7eb;
-
-  --color-text-main: #171717;
-  --color-text-muted: #737373;
-  /* Neutral-500 */
-  --color-text-subtle: #a3a3a3;
-  /* Neutral-400 */
-  --color-text-ondark: #ffffff;
-
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-error: #ef4444;
-
-  /* --- Spacing & Radius --- */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-  --radius-full: 999px;
-
-  /* --- Shadows --- */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
-  --shadow-soft: 0 20px 40px rgba(0, 0, 0, 0.04);
-
-  /* --- Transitions --- */
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
-
-  /* --- Layout Metrics --- */
-  --app-sidebar-width: 0px;
-  --help-center-width-collapsed: calc((100vw - var(--app-sidebar-width)) * 0.75);
-  --help-center-width-expanded: calc(100vw - var(--app-sidebar-width));
-}
-
-@media (min-width: 768px) {
-  :root {
-    --app-sidebar-width: 280px;
-  }
-}
-
-/* Dark Mode Support */
-/* Dark Mode Support */
-html.dark {
-  --color-primary: #e5e5e5;
-  --color-primary-text: #171717;
-  --color-primary-dark: #d4d4d4;
-  --color-primary-light: #a3a3a3;
-  --color-primary-fade: #262626;
-
-  --color-surface-bg: #0b0d11;
-  --color-surface-card: #151920;
-  --color-surface-hover: #1e242e;
-  --color-surface-border: #2e3440;
-
-  --color-text-main: #e5e7eb;
-  --color-text-muted: #9ca3af;
-  --color-text-subtle: #6b7280;
-
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-}
-
-:root {
-  --color-surface-paper: var(--color-surface-card);
-  --color-primary-text: #ffffff;
-}
-
-
-
-
+@use './tokens';
+@use './utilities';
 
 * {
   box-sizing: border-box;
 }
 
+html,
+body {
+  height: 100%;
+}
+
 body {
   margin: 0;
-  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   background-color: var(--color-surface-bg);
   color: var(--color-text-main);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
 }
 
 #root {
   height: 100vh;
   display: flex;
   flex-direction: column;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  user-select: none;
+}
+
+.material-symbols-outlined.fill {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
 /* Dotted Background Pattern for Page Content */
@@ -194,8 +124,6 @@ button:focus,
 button:focus-visible {
   outline: none !important;
   box-shadow: none !important;
-  --tw-ring-offset-shadow: none !important;
-  --tw-ring-shadow: none !important;
 }
 
 /* --- Layout Utilities --- */
@@ -383,7 +311,7 @@ button:focus-visible {
   margin-bottom: 24px;
 }
 
-/* --- Component Utilities (Mimicking Tailwind slightly for convenience) --- */
+/* --- Component Utilities --- */
 .bg-white {
   background-color: var(--color-surface-card);
 }
@@ -429,34 +357,24 @@ button:focus-visible {
 }
 
 /* --- Switch Component --- */
-/* --- Switch Component --- */
 .switch-track {
   width: 48px;
-  /* w-12 */
   height: 24px;
-  /* h-6 */
   border-radius: 9999px;
-  /* rounded-full */
   padding: 2px;
-  /* Reduced padding to accommodate flex centering/border */
   cursor: pointer;
   transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
   background-color: #e4e4e7;
-  /* zinc-200 */
   border: 1px solid transparent;
   display: flex;
-  /* Flexbox for perfect centering */
   align-items: center;
 }
 
 html.dark .switch-track {
   background-color: #3f3f46;
-  /* zinc-700 */
   border-color: #52525b;
-  /* zinc-600 */
 }
 
-/* Ensure active state wins over dark mode selector by increasing specificity */
 .switch-track.active,
 html.dark .switch-track.active {
   background-color: var(--color-success);
@@ -465,21 +383,16 @@ html.dark .switch-track.active {
 
 .switch-handle {
   width: 16px;
-  /* size-4 */
   height: 16px;
   background-color: white;
   border-radius: 9999px;
   transition: transform 0.15s ease-in-out;
-  /* Box shadow for depth */
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
 }
 
 .switch-track.active .switch-handle {
   transform: translateX(26px);
 }
-
-/* translate-x-6 */
-
 
 /* --- Scrollbar --- */
 ::-webkit-scrollbar {
@@ -501,7 +414,6 @@ html.dark .switch-track.active {
 }
 
 /* --- Legacy / Global Overrides during migration --- */
-/* Keeps existing app-card working but updated */
 .app-card {
   background: var(--color-surface-card);
   border: 1px solid var(--color-surface-border);
@@ -509,7 +421,6 @@ html.dark .switch-track.active {
   box-shadow: var(--shadow-md);
 }
 
-/* Animate */
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out forwards;
 }
@@ -526,7 +437,6 @@ html.dark .switch-track.active {
   }
 }
 
-/* --- Performance & Animation Utilities --- */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -551,7 +461,6 @@ html.dark .help-highlight {
 }
 
 @keyframes gradient-xy {
-
   0%,
   100% {
     background-position: 0% 50%;
@@ -567,7 +476,6 @@ html.dark .help-highlight {
   animation: gradient-xy 15s ease infinite;
 }
 
-/* Inline edit border animation - scales from center */
 @keyframes border-in {
   from {
     border-bottom-color: transparent;
@@ -580,6 +488,60 @@ html.dark .help-highlight {
 
 .animate-border-in {
   animation: border-in 0.2s ease-out forwards;
+}
+
+/* --- Legacy Utilities preserved during migration --- */
+.app-panel {
+  background: var(--color-surface-card);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+}
+
+.app-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  background: var(--color-surface-hover);
+}
+
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-primary);
+  color: var(--color-primary-text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-hover);
+  box-shadow: var(--shadow-md);
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.3s ease-out forwards;
 }
 
 /* --- Tiptap / Prose Styles --- */
@@ -627,7 +589,6 @@ html.dark .help-highlight {
 }
 
 /* --- Project Card Overhaul (Phase 2) Utilities --- */
-
 .glass-card {
   background: rgba(255, 255, 255, 0.7);
   backdrop-filter: blur(12px) saturate(180%);
@@ -640,7 +601,6 @@ html.dark .glass-card {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-/* Strong Glass Effect */
 .glass-strong {
   background: rgba(255, 255, 255, 0.65);
   backdrop-filter: blur(24px) saturate(180%);
@@ -661,7 +621,6 @@ html.dark .glass-strong {
   transform: rotateX(2deg);
 }
 
-/* Floating Health Ring */
 @keyframes pulse-ring {
   0% {
     transform: scale(0.95);
@@ -698,7 +657,6 @@ html.dark .glass-strong {
   animation: pulse-ring 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Sweep Effect */
 .sweep-effect::after {
   content: "";
   position: absolute;
@@ -706,10 +664,12 @@ html.dark .glass-strong {
   left: -100%;
   width: 50%;
   height: 200%;
-  background: linear-gradient(to right,
-      rgba(255, 255, 255, 0) 0%,
-      rgba(255, 255, 255, 0.2) 50%,
-      rgba(255, 255, 255, 0) 100%);
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
   transform: rotate(30deg);
   transition: all 0.6s ease;
   pointer-events: none;
@@ -719,7 +679,6 @@ html.dark .glass-strong {
   left: 150%;
 }
 
-/* Segmented Progress */
 .segmented-progress {
   display: flex;
   gap: 2px;
@@ -754,7 +713,6 @@ html.dark .glass-strong {
   box-shadow: 0 0 8px rgba(244, 63, 94, 0.5);
 }
 
-/* Background Pattern for Blog Preview */
 .bg-dots {
   background-image: radial-gradient(#e5e7eb 1px, transparent 1px);
   background-size: 24px 24px;

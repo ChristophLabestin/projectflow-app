@@ -60,14 +60,14 @@ export const EditIssueModal: React.FC<EditIssueModalProps> = ({ issue, isOpen, o
     return createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
             <div
-                className="w-full max-w-2xl bg-[var(--color-surface-card)] rounded-xl shadow-2xl animate-scale-up border border-[var(--color-surface-border)] flex flex-col max-h-[90vh] overflow-y-auto"
+                className="w-full max-w-2xl bg-card rounded-xl shadow-2xl animate-scale-up border border-surface flex flex-col max-h-[90vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="p-4 border-b border-[var(--color-surface-border)] flex justify-between items-center">
+                <div className="p-4 border-b border-surface flex justify-between items-center">
                     <div>
-                        <h3 className="text-xl font-bold text-[var(--color-text-main)]">Edit Issue</h3>
-                        <p className="text-sm text-[var(--color-text-muted)] mt-1">Update issue details. Changes will sync to GitHub if linked.</p>
+                        <h3 className="text-xl font-bold text-main">Edit Issue</h3>
+                        <p className="text-sm text-muted mt-1">Update issue details. Changes will sync to GitHub if linked.</p>
                     </div>
                     <Button variant="ghost" onClick={onClose} size="sm">Close</Button>
                 </div>
@@ -84,7 +84,7 @@ export const EditIssueModal: React.FC<EditIssueModalProps> = ({ issue, isOpen, o
                         />
 
                         <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] ml-1">Description</label>
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted ml-1">Description</label>
                             <Textarea
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
@@ -95,7 +95,7 @@ export const EditIssueModal: React.FC<EditIssueModalProps> = ({ issue, isOpen, o
                         </div>
 
                         <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] ml-1">Assignees</label>
+                            <label className="text-xs font-bold uppercase tracking-wider text-muted ml-1">Assignees</label>
                             <MultiAssigneeSelector
                                 projectId={issue.projectId}
                                 assigneeIds={assigneeIds}
@@ -108,27 +108,27 @@ export const EditIssueModal: React.FC<EditIssueModalProps> = ({ issue, isOpen, o
                         {/* Dates */}
                         <div className="grid grid-cols-2 gap-4">
                             <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] ml-1">Start Date</label>
+                                <label className="text-xs font-bold uppercase tracking-wider text-muted ml-1">Start Date</label>
                                 <input
                                     type="date"
                                     value={startDate}
                                     onChange={(e) => setStartDate(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] text-sm text-[var(--color-text-main)] outline-none focus:border-[var(--color-accent)] transition-colors"
+                                    className="w-full px-3 py-2 rounded-xl bg-surface border border-surface text-sm text-main outline-none focus:border-[var(--color-accent)] transition-colors"
                                 />
                             </div>
                             <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] ml-1">Due Date</label>
+                                <label className="text-xs font-bold uppercase tracking-wider text-muted ml-1">Due Date</label>
                                 <input
                                     type="date"
                                     value={dueDate}
                                     onChange={(e) => setDueDate(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] text-sm text-[var(--color-text-main)] outline-none focus:border-[var(--color-accent)] transition-colors"
+                                    className="w-full px-3 py-2 rounded-xl bg-surface border border-surface text-sm text-main outline-none focus:border-[var(--color-accent)] transition-colors"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex justify-end gap-2 mt-8 pt-4 border-t border-[var(--color-surface-border)]">
+                    <div className="flex justify-end gap-2 mt-8 pt-4 border-t border-surface">
                         <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>Cancel</Button>
                         <Button type="submit" isLoading={loading} disabled={!title.trim()}>Save Changes</Button>
                     </div>

@@ -55,7 +55,7 @@ export const PasskeySetupModal: React.FC<PasskeySetupModalProps> = ({ isOpen, on
                     <span className="material-symbols-outlined text-indigo-600 dark:text-indigo-400 text-3xl">fingerprint</span>
                 </div>
 
-                <p className="text-[var(--color-text-muted)] mb-6">
+                <p className="text-muted mb-6">
                     {t('passkey.setup.description')}
                 </p>
 
@@ -83,7 +83,7 @@ export const PasskeySetupModal: React.FC<PasskeySetupModalProps> = ({ isOpen, on
                     <Button
                         variant="ghost"
                         onClick={handleDoLater}
-                        className="w-full text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] justify-center"
+                        className="w-full text-muted hover:text-main justify-center"
                         disabled={loading}
                     >
                         {t('passkey.setup.action.later')}

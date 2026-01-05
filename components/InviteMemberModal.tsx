@@ -170,11 +170,11 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
         >
             <div className="flex flex-col h-[500px]">
                 {/* Tabs */}
-                <div className="flex border-b border-[var(--color-surface-border)] mb-4 shrink-0">
+                <div className="flex border-b border-surface mb-4 shrink-0">
                     <button
                         className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'link'
-                            ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                            : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                            ? 'border-primary text-primary'
+                            : 'border-transparent text-muted hover:text-main'
                             }`}
                         onClick={() => { setActiveTab('link'); setError(null); setSuccessMessage(null); }}
                     >
@@ -182,8 +182,8 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                     </button>
                     <button
                         className={`flex-1 pb-3 text-sm font-bold border-b-2 transition-colors ${activeTab === 'email'
-                            ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                            : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                            ? 'border-primary text-primary'
+                            : 'border-transparent text-muted hover:text-main'
                             }`}
                         onClick={() => { setActiveTab('email'); setError(null); setSuccessMessage(null); }}
                     >
@@ -195,7 +195,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                     <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-6 min-h-0 overflow-hidden">
                         {/* Left Column: Role Selection */}
                         <div className="flex flex-col min-h-0">
-                            <label className="block text-sm font-bold text-[var(--color-text-main)] mb-3 shrink-0">
+                            <label className="block text-sm font-bold text-main mb-3 shrink-0">
                                 Role
                             </label>
                             <div className="space-y-2 overflow-y-auto pr-2 pb-2">
@@ -206,8 +206,8 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                                             <label
                                                 key={role}
                                                 className={`flex flex-col p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedRole === role
-                                                    ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                                                    : 'border-[var(--color-surface-border)] hover:border-[var(--color-primary)]/50 hover:bg-[var(--color-surface-hover)]'
+                                                    ? 'border-primary bg-primary/5'
+                                                    : 'border-surface hover:border-primary/50 hover:bg-surface-hover'
                                                     }`}
                                             >
                                                 <div className="flex items-center gap-3">
@@ -217,13 +217,13 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                                                         value={role}
                                                         checked={selectedRole === role}
                                                         onChange={() => setSelectedRole(role)}
-                                                        className="size-4 text-[var(--color-primary)] border-[var(--color-surface-border)] focus:ring-[var(--color-primary)]"
+                                                        className="size-4 text-primary border-surface focus:ring-primary"
                                                     />
-                                                    <span className="font-bold text-[var(--color-text-main)]">
+                                                    <span className="font-bold text-main">
                                                         {roleInfo.title}
                                                     </span>
                                                 </div>
-                                                <p className="text-xs text-[var(--color-text-muted)] mt-1 ml-7">
+                                                <p className="text-xs text-muted mt-1 ml-7">
                                                     {roleInfo.description}
                                                 </p>
                                             </label>
@@ -236,8 +236,8 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                                             <label
                                                 key={role}
                                                 className={`flex flex-col p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedRole === role
-                                                    ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                                                    : 'border-[var(--color-surface-border)] hover:border-[var(--color-primary)]/50 hover:bg-[var(--color-surface-hover)]'
+                                                    ? 'border-primary bg-primary/5'
+                                                    : 'border-surface hover:border-primary/50 hover:bg-surface-hover'
                                                     }`}
                                             >
                                                 <div className="flex items-center gap-3">
@@ -247,10 +247,10 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                                                         value={role}
                                                         checked={selectedRole === role}
                                                         onChange={() => setSelectedRole(role)}
-                                                        className="size-4 text-[var(--color-primary)] border-[var(--color-surface-border)] focus:ring-[var(--color-primary)]"
+                                                        className="size-4 text-primary border-surface focus:ring-primary"
                                                     />
                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-[var(--color-text-main)]">
+                                                        <span className="font-bold text-main">
                                                             {roleInfo.title}
                                                         </span>
                                                         {role === 'Owner' && (
@@ -260,7 +260,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                                                         )}
                                                     </div>
                                                 </div>
-                                                <p className="text-xs text-[var(--color-text-muted)] mt-1 ml-7">
+                                                <p className="text-xs text-muted mt-1 ml-7">
                                                     {roleInfo.description}
                                                 </p>
                                             </label>
@@ -273,13 +273,13 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                         {/* Right Column: Details & Settings */}
                         <div className="flex flex-col gap-6 overflow-y-auto pr-2 pb-2">
                             {/* Role Capabilities */}
-                            <div className="p-4 bg-[var(--color-surface-hover)] rounded-xl border border-[var(--color-surface-border)]">
-                                <h4 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">
+                            <div className="p-4 bg-surface-hover rounded-xl border border-surface">
+                                <h4 className="text-xs font-bold text-muted uppercase tracking-wider mb-3">
                                     Permissions
                                 </h4>
                                 <ul className="space-y-2">
                                     {(isWorkspace ? WORKSPACE_ROLE_DESCRIPTIONS[selectedRole as WorkspaceRole] : PROJECT_ROLE_DESCRIPTIONS[selectedRole as ProjectRole])?.capabilities.map((cap, i) => (
-                                        <li key={i} className="flex items-start gap-2 text-sm text-[var(--color-text-subtle)]">
+                                        <li key={i} className="flex items-start gap-2 text-sm text-subtle">
                                             <span className="material-symbols-outlined text-[16px] text-emerald-600 dark:text-emerald-400 mt-0.5">
                                                 check_circle
                                             </span>
@@ -292,14 +292,14 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                             {/* Link Settings or Email Input */}
                             {activeTab === 'link' ? (
                                 <div className="space-y-4">
-                                    <h4 className="text-sm font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                                    <h4 className="text-sm font-bold text-main flex items-center gap-2">
                                         <span className="material-symbols-outlined text-[18px]">settings</span>
                                         Link Settings
                                     </h4>
 
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
-                                            <label className="block text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
+                                            <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">
                                                 Max Uses
                                             </label>
                                             <Input
@@ -309,11 +309,11 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                                                 value={maxUses}
                                                 onChange={(e) => setMaxUses(e.target.value)}
                                             />
-                                            <p className="text-[10px] text-[var(--color-text-subtle)] mt-1">Empty = Unlimited</p>
+                                            <p className="text-[10px] text-subtle mt-1">Empty = Unlimited</p>
                                         </div>
 
                                         <div>
-                                            <label className="block text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
+                                            <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">
                                                 Expires In
                                             </label>
                                             <Select value={expiresIn} onChange={(e) => setExpiresIn(e.target.value)}>
@@ -330,7 +330,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                                 </div>
                             ) : (
                                 <div>
-                                    <label className="block text-sm font-bold text-[var(--color-text-main)] mb-2">
+                                    <label className="block text-sm font-bold text-main mb-2">
                                         Email Address
                                     </label>
                                     <Input
@@ -340,7 +340,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                                         onChange={(e) => setEmail(e.target.value)}
                                         autoFocus
                                     />
-                                    <p className="text-xs text-[var(--color-text-subtle)] mt-2">
+                                    <p className="text-xs text-subtle mt-2">
                                         An invitation email will be sent to this address with a unique link.
                                     </p>
                                 </div>
@@ -384,11 +384,11 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
+                                    <label className="block text-xs font-semibold text-muted uppercase tracking-wider mb-2">
                                         Invite Link
                                     </label>
                                     <div className="flex gap-2">
-                                        <div className="flex-1 px-4 py-3 bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] rounded-lg font-mono text-sm text-[var(--color-text-main)] truncate">
+                                        <div className="flex-1 px-4 py-3 bg-surface-hover border border-surface rounded-lg font-mono text-sm text-main truncate">
                                             {generatedLink}
                                         </div>
                                         <Button
@@ -418,17 +418,17 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                         )}
 
                         {!successMessage && (
-                            <div className="grid grid-cols-3 gap-3 p-4 bg-[var(--color-surface-hover)] rounded-lg border border-[var(--color-surface-border)]">
+                            <div className="grid grid-cols-3 gap-3 p-4 bg-surface-hover rounded-lg border border-surface">
                                 <div>
-                                    <p className="text-xs text-[var(--color-text-muted)] mb-1">Role</p>
+                                    <p className="text-xs text-muted mb-1">Role</p>
                                     <p className="font-semibold text-sm">{selectedRole}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-[var(--color-text-muted)] mb-1">Max Uses</p>
+                                    <p className="text-xs text-muted mb-1">Max Uses</p>
                                     <p className="font-semibold text-sm">{maxUses || 'Unlimited'}</p>
                                 </div>
                                 <div>
-                                    <p className="text-xs text-[var(--color-text-muted)] mb-1">Expires In</p>
+                                    <p className="text-xs text-muted mb-1">Expires In</p>
                                     <p className="font-semibold text-sm">{expiresIn}h</p>
                                 </div>
                             </div>

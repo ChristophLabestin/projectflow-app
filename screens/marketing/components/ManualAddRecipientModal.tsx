@@ -75,10 +75,10 @@ export const ManualAddRecipientModal: React.FC<ManualAddRecipientModalProps> = (
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl w-full max-w-md shadow-2xl p-6">
+            <div className="bg-card border border-surface rounded-xl w-full max-w-md shadow-2xl p-6">
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="h4">Add Recipient</h2>
-                    <button onClick={onClose} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]">
+                    <button onClick={onClose} className="text-muted hover:text-main">
                         <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
@@ -110,7 +110,7 @@ export const ManualAddRecipientModal: React.FC<ManualAddRecipientModalProps> = (
                     <div>
                         <label className="block text-sm font-medium mb-1">Gender</label>
                         <select
-                            className="w-full px-3 py-2 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg focus:outline-none focus:border-[var(--color-primary)] text-sm"
+                            className="w-full px-3 py-2 bg-surface border border-surface rounded-lg focus:outline-none focus:border-primary text-sm"
                             value={gender}
                             onChange={e => setGender(e.target.value as any)}
                         >
@@ -135,8 +135,8 @@ export const ManualAddRecipientModal: React.FC<ManualAddRecipientModalProps> = (
                                             type="button"
                                             onClick={() => toggleGroup(group.id)}
                                             className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm cursor-pointer transition-all border ${isSelected
-                                                ? 'bg-[var(--color-primary)] text-black border-[var(--color-primary)]'
-                                                : 'bg-[var(--color-surface-card)] text-[var(--color-text-main)] border-[var(--color-surface-border)] hover:border-[var(--color-primary)]'
+                                                ? 'bg-primary text-black border-primary'
+                                                : 'bg-card text-main border-surface hover:border-primary'
                                                 }`}
                                         >
                                             {isSelected && (

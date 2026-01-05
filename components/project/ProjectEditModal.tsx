@@ -317,9 +317,9 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                         {/* Visibility Settings - Only for Owners/Internal Members */}
                         {
                             canChangeVisibility && workspaceGroups.length > 0 && (
-                                <div className="pt-6 mt-6 border-t border-[var(--color-surface-border)]">
-                                    <label className="text-base font-semibold text-[var(--color-text-main)] mb-3 block flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-[var(--color-text-subtle)]">visibility</span>
+                                <div className="pt-6 mt-6 border-t border-surface">
+                                    <label className="text-base font-semibold text-main mb-3 block flex items-center gap-2">
+                                        <span className="material-symbols-outlined text-subtle">visibility</span>
                                         {t('projectSettings.visibility.title')}
                                     </label>
 
@@ -330,12 +330,12 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                             onClick={() => { setVisibilityGroupIds([]); setIsPrivate(false); }}
                                             className={`relative p-4 rounded-xl border text-left transition-all flex items-start gap-4 group ${!isPrivate && visibilityGroupIds.length === 0
                                                 ? 'bg-emerald-50/50 dark:bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500'
-                                                : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:border-[var(--color-text-subtle)] hover:bg-[var(--color-surface-hover)]'
+                                                : 'bg-surface border-surface hover:border-[var(--color-text-subtle)] hover:bg-surface-hover'
                                                 }`}
                                         >
                                             <div className={`mt-0.5 p-2 rounded-lg shrink-0 ${!isPrivate && visibilityGroupIds.length === 0
                                                 ? 'bg-emerald-100/50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-                                                : 'bg-[var(--color-surface-hover)] text-[var(--color-text-subtle)] group-hover:text-[var(--color-text-main)]'
+                                                : 'bg-surface-hover text-subtle group-hover:text-main'
                                                 }`}>
                                                 <span className="material-symbols-outlined text-xl">public</span>
                                             </div>
@@ -343,7 +343,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                 <div className="flex items-center justify-between mb-1">
                                                     <span className={`font-semibold ${!isPrivate && visibilityGroupIds.length === 0
                                                         ? 'text-emerald-900 dark:text-emerald-100'
-                                                        : 'text-[var(--color-text-main)]'
+                                                        : 'text-main'
                                                         }`}>{t('projectSettings.visibility.everyone')}</span>
                                                     {(!isPrivate && visibilityGroupIds.length === 0) && (
                                                         <span className="material-symbols-outlined text-emerald-600 text-[20px]">check_circle</span>
@@ -351,7 +351,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                 </div>
                                                 <p className={`text-sm ${!isPrivate && visibilityGroupIds.length === 0
                                                     ? 'text-emerald-700/80 dark:text-emerald-300/80'
-                                                    : 'text-[var(--color-text-muted)]'
+                                                    : 'text-muted'
                                                     }`}>{t('projectSettings.visibility.everyoneDescription')}</p>
                                             </div>
                                         </button>
@@ -366,29 +366,29 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                 }
                                             }}
                                             className={`relative p-4 rounded-xl border text-left transition-all flex items-start gap-4 group ${!isPrivate && visibilityGroupIds.length > 0
-                                                ? 'bg-[var(--color-primary)]/5 border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]'
-                                                : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:border-[var(--color-text-subtle)] hover:bg-[var(--color-surface-hover)]'
+                                                ? 'bg-primary/5 border-primary ring-1 ring-primary'
+                                                : 'bg-surface border-surface hover:border-[var(--color-text-subtle)] hover:bg-surface-hover'
                                                 }`}
                                         >
                                             <div className={`mt-0.5 p-2 rounded-lg shrink-0 ${!isPrivate && visibilityGroupIds.length > 0
-                                                ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
-                                                : 'bg-[var(--color-surface-hover)] text-[var(--color-text-subtle)] group-hover:text-[var(--color-text-main)]'
+                                                ? 'bg-primary/10 text-primary'
+                                                : 'bg-surface-hover text-subtle group-hover:text-main'
                                                 }`}>
                                                 <span className="material-symbols-outlined text-xl">lock_person</span>
                                             </div>
                                             <div className="flex-1">
                                                 <div className="flex items-center justify-between mb-1">
                                                     <span className={`font-semibold ${!isPrivate && visibilityGroupIds.length > 0
-                                                        ? 'text-[var(--color-primary)]'
-                                                        : 'text-[var(--color-text-main)]'
+                                                        ? 'text-primary'
+                                                        : 'text-main'
                                                         }`}>{t('projectSettings.visibility.specificGroup')}</span>
                                                     {(!isPrivate && visibilityGroupIds.length > 0) && (
-                                                        <span className="material-symbols-outlined text-[var(--color-primary)] text-[20px]">check_circle</span>
+                                                        <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
                                                     )}
                                                 </div>
                                                 <p className={`text-sm ${!isPrivate && visibilityGroupIds.length > 0
-                                                    ? 'text-[var(--color-primary)]/80'
-                                                    : 'text-[var(--color-text-muted)]'
+                                                    ? 'text-primary/80'
+                                                    : 'text-muted'
                                                     }`}>{t('projectSettings.visibility.specificGroupDescription')}</p>
                                             </div>
                                         </button>
@@ -399,12 +399,12 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                             onClick={() => { setIsPrivate(true); setVisibilityGroupIds([]); }}
                                             className={`relative p-4 rounded-xl border text-left transition-all flex items-start gap-4 group ${isPrivate
                                                 ? 'bg-rose-50/50 dark:bg-rose-500/10 border-rose-500 ring-1 ring-rose-500'
-                                                : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:border-[var(--color-text-subtle)] hover:bg-[var(--color-surface-hover)]'
+                                                : 'bg-surface border-surface hover:border-[var(--color-text-subtle)] hover:bg-surface-hover'
                                                 }`}
                                         >
                                             <div className={`mt-0.5 p-2 rounded-lg shrink-0 ${isPrivate
                                                 ? 'bg-rose-100/50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400'
-                                                : 'bg-[var(--color-surface-hover)] text-[var(--color-text-subtle)] group-hover:text-[var(--color-text-main)]'
+                                                : 'bg-surface-hover text-subtle group-hover:text-main'
                                                 }`}>
                                                 <span className="material-symbols-outlined text-xl">lock</span>
                                             </div>
@@ -412,7 +412,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                 <div className="flex items-center justify-between mb-1">
                                                     <span className={`font-semibold ${isPrivate
                                                         ? 'text-rose-900 dark:text-rose-100'
-                                                        : 'text-[var(--color-text-main)]'
+                                                        : 'text-main'
                                                         }`}>{t('projectSettings.visibility.private')}</span>
                                                     {isPrivate && (
                                                         <span className="material-symbols-outlined text-rose-600 text-[20px]">check_circle</span>
@@ -420,7 +420,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                 </div>
                                                 <p className={`text-sm ${isPrivate
                                                     ? 'text-rose-700/80 dark:text-rose-300/80'
-                                                    : 'text-[var(--color-text-muted)]'
+                                                    : 'text-muted'
                                                     }`}>{t('projectSettings.visibility.privateDescription')}</p>
                                             </div>
                                         </button>
@@ -428,8 +428,8 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
 
                                     {!isPrivate && visibilityGroupIds.length > 0 && (
                                         <div className="ml-14 animate-fade-in space-y-3">
-                                            <label className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider flex items-center gap-2">
-                                                <span className="w-4 h-px bg-[var(--color-surface-border)]"></span>
+                                            <label className="text-xs font-bold text-muted uppercase tracking-wider flex items-center gap-2">
+                                                <span className="w-4 h-px bg-surface-border"></span>
                                                 {t('projectSettings.visibility.allowedGroups')}
                                             </label>
                                             <div className="grid grid-cols-2 gap-2">
@@ -447,8 +447,8 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                                 }
                                                             }}
                                                             className={`p-2.5 rounded-lg flex items-center gap-3 border transition-all text-left ${isSelected
-                                                                ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] text-[var(--color-text-main)]'
-                                                                : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:border-[var(--color-text-subtle)]'
+                                                                ? 'bg-primary/10 border-primary text-main'
+                                                                : 'bg-surface border-surface text-muted hover:border-[var(--color-text-subtle)]'
                                                                 }`}
                                                         >
                                                             <div
@@ -459,7 +459,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                                 <span className="text-sm font-medium truncate block">{group.name}</span>
                                                             </div>
                                                             {isSelected && (
-                                                                <span className="material-symbols-outlined text-[18px] text-[var(--color-primary)] shrink-0">check</span>
+                                                                <span className="material-symbols-outlined text-[18px] text-primary shrink-0">check</span>
                                                             )}
                                                         </button>
                                                     );
@@ -485,9 +485,9 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             {/* Cover Image */}
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-[var(--color-text-main)]">{t('projectSettings.appearance.coverLabel')}</label>
+                                <label className="text-sm font-medium text-main">{t('projectSettings.appearance.coverLabel')}</label>
                                 <div
-                                    className="group relative aspect-video rounded-xl border border-dashed border-[var(--color-surface-border)] hover:border-[var(--color-primary)] bg-[var(--color-surface-hover)]/30 overflow-hidden cursor-pointer transition-all"
+                                    className="group relative aspect-video rounded-xl border border-dashed border-surface hover:border-primary bg-surface-hover/30 overflow-hidden cursor-pointer transition-all"
                                     onClick={() => { setMediaTarget('cover'); setShowMediaLibrary(true); }}
                                 >
                                     {coverImage ? (
@@ -504,7 +504,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                             </button>
                                         </>
                                     ) : (
-                                        <div className="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)]">
+                                        <div className="flex flex-col items-center justify-center h-full text-muted">
                                             <span className="material-symbols-outlined text-3xl mb-2">image</span>
                                             <span className="text-sm">{t('projectSettings.appearance.coverUpload')}</span>
                                         </div>
@@ -514,9 +514,9 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
 
                             {/* Icon */}
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-[var(--color-text-main)]">{t('projectSettings.appearance.iconLabel')}</label>
+                                <label className="text-sm font-medium text-main">{t('projectSettings.appearance.iconLabel')}</label>
                                 <div
-                                    className="group relative w-32 h-32 rounded-2xl border border-dashed border-[var(--color-surface-border)] hover:border-[var(--color-primary)] bg-[var(--color-surface-hover)]/30 overflow-hidden cursor-pointer transition-all"
+                                    className="group relative w-32 h-32 rounded-2xl border border-dashed border-surface hover:border-primary bg-surface-hover/30 overflow-hidden cursor-pointer transition-all"
                                     onClick={() => { setMediaTarget('icon'); setShowMediaLibrary(true); }}
                                 >
                                     {squareIcon ? (
@@ -533,7 +533,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                             </button>
                                         </>
                                     ) : (
-                                        <div className="flex flex-col items-center justify-center h-full text-[var(--color-text-muted)]">
+                                        <div className="flex flex-col items-center justify-center h-full text-muted">
                                             <span className="material-symbols-outlined text-2xl mb-1">apps</span>
                                             <span className="text-xs">{t('projectSettings.appearance.iconUpload')}</span>
                                         </div>
@@ -546,7 +546,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             case 'modules':
                 return (
                     <div className="space-y-4 animate-in fade-in duration-300">
-                        <p className="text-sm text-[var(--color-text-muted)]">{t('projectSettings.modules.description')}</p>
+                        <p className="text-sm text-muted">{t('projectSettings.modules.description')}</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             {['tasks', 'sprints', 'issues', 'ideas', 'milestones', 'groups', 'activity', 'social', 'marketing', 'accounting'].map((mod) => {
                                 // Restricted Check
@@ -563,8 +563,8 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                         className={`
                                         flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all
                                         ${modules.includes(mod as any)
-                                                ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 dark:bg-[var(--color-primary)]/10'
-                                                : 'border-[var(--color-surface-border)] hover:border-[var(--color-surface-border-hover)] hover:bg-[var(--color-surface-hover)]'
+                                                ? 'border-primary bg-primary/5 dark:bg-primary/10'
+                                                : 'border-surface hover:border-[var(--color-surface-border-hover)] hover:bg-surface-hover'
                                             }
                                     `}
                                         onClick={() => {
@@ -577,7 +577,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                     >
                                         <div className={`
                                         size-10 rounded-lg flex items-center justify-center transition-colors
-                                        ${modules.includes(mod as any) ? 'bg-black text-white dark:bg-white dark:text-black' : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'}
+                                        ${modules.includes(mod as any) ? 'bg-black text-white dark:bg-white dark:text-black' : 'bg-surface-hover text-muted'}
                                     `}>
                                             <span className="material-symbols-outlined">
                                                 {mod === 'tasks' ? 'check_circle' :
@@ -592,7 +592,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                             </span>
                                         </div>
                                         <div className="flex-1">
-                                            <p className="font-semibold text-sm text-[var(--color-text-main)]">{moduleLabels[mod] || mod}</p>
+                                            <p className="font-semibold text-sm text-main">{moduleLabels[mod] || mod}</p>
                                         </div>
                                         <Checkbox
                                             checked={modules.includes(mod as any)}
@@ -659,7 +659,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
 
                 return (
                     <div className="space-y-4 animate-in fade-in duration-300">
-                        <p className="text-sm text-[var(--color-text-muted)]">
+                        <p className="text-sm text-muted">
                             {t('projectSettings.navigation.description')}
                             <span className="font-medium"> {t('projectSettings.navigation.note')}</span>
                         </p>
@@ -679,22 +679,22 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                         className={`
                                             flex items-center gap-3 p-3 rounded-xl border transition-all cursor-grab active:cursor-grabbing
                                             ${draggedItem === item.id
-                                                ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5 scale-[1.02] shadow-lg'
+                                                ? 'border-primary bg-primary/5 scale-[1.02] shadow-lg'
                                                 : isHidden
-                                                    ? 'border-[var(--color-surface-border)] bg-[var(--color-surface-hover)]/30 opacity-50'
-                                                    : 'border-[var(--color-surface-border)] hover:border-[var(--color-primary)]/50 bg-white dark:bg-[var(--color-surface-card)]'
+                                                    ? 'border-surface bg-surface-hover/30 opacity-50'
+                                                    : 'border-surface hover:border-primary/50 bg-white dark:bg-card'
                                             }
                                         `}
                                     >
                                         {/* Drag Handle */}
-                                        <span className="material-symbols-outlined text-[var(--color-text-muted)] text-lg">drag_indicator</span>
+                                        <span className="material-symbols-outlined text-muted text-lg">drag_indicator</span>
 
                                         {/* Icon */}
                                         <div className={`
                                             size-9 rounded-lg flex items-center justify-center transition-colors
                                             ${isHidden
-                                                ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'
-                                                : 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                                                ? 'bg-surface-hover text-muted'
+                                                : 'bg-primary/10 text-primary'
                                             }
                                         `}>
                                             <span className="material-symbols-outlined text-lg">{item.icon}</span>
@@ -702,7 +702,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
 
                                         {/* Label */}
                                         <div className="flex-1">
-                                            <p className={`font-semibold text-sm ${isHidden ? 'text-[var(--color-text-muted)]' : 'text-[var(--color-text-main)]'}`}>
+                                            <p className={`font-semibold text-sm ${isHidden ? 'text-muted' : 'text-main'}`}>
                                                 {item.label}
                                             </p>
                                         </div>
@@ -714,7 +714,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                 className={`
                                                     size-8 rounded-lg flex items-center justify-center transition-all
                                                     ${isHidden
-                                                        ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:bg-rose-100 hover:text-rose-600'
+                                                        ? 'bg-surface-hover text-muted hover:bg-rose-100 hover:text-rose-600'
                                                         : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 hover:bg-emerald-100'
                                                     }
                                                 `}
@@ -725,7 +725,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                 </span>
                                             </button>
                                         ) : (
-                                            <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wide px-2 py-1 rounded bg-[var(--color-surface-hover)]">
+                                            <span className="text-[10px] font-bold text-muted uppercase tracking-wide px-2 py-1 rounded bg-surface-hover">
                                                 {t('projectSettings.navigation.alwaysVisible')}
                                             </span>
                                         )}
@@ -735,7 +735,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                         </div>
 
                         {availableNavItems.length === 0 && (
-                            <div className="text-center py-8 text-[var(--color-text-muted)]">
+                            <div className="text-center py-8 text-muted">
                                 <span className="material-symbols-outlined text-4xl opacity-30 mb-2 block">extension_off</span>
                                 <p className="text-sm">{t('projectSettings.navigation.empty')}</p>
                             </div>
@@ -745,14 +745,14 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             case 'integrations':
                 return (
                     <div className="space-y-6 animate-in fade-in duration-300">
-                        <div className="border border-[var(--color-surface-border)] rounded-xl p-4 bg-[var(--color-surface-paper)]/50">
+                        <div className="border border-surface rounded-xl p-4 bg-surface-paper/50">
                             <div className="flex items-center gap-3 mb-4">
                                 <div className="size-10 bg-black rounded-full flex items-center justify-center text-white">
                                     <span className="material-symbols-outlined">terminal</span>
                                 </div>
                                 <div className="flex-1">
-                                    <h3 className="font-bold text-[var(--color-text-main)]">{t('projectSettings.integrations.github.title')}</h3>
-                                    <p className="text-xs text-[var(--color-text-muted)]">{t('projectSettings.integrations.github.subtitle')}</p>
+                                    <h3 className="font-bold text-main">{t('projectSettings.integrations.github.title')}</h3>
+                                    <p className="text-xs text-muted">{t('projectSettings.integrations.github.subtitle')}</p>
                                 </div>
                                 <Badge variant={githubRepo ? 'success' : 'secondary'}>{githubRepo ? t('projectSettings.integrations.github.connected') : t('projectSettings.integrations.github.notLinked')}</Badge>
                             </div>
@@ -761,7 +761,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                 <button
                                     onClick={handleConnectGithub}
                                     disabled={connectingGithub}
-                                    className="w-full p-3 rounded-lg bg-black/[0.05] dark:bg-white/[0.05] hover:bg-black/[0.1] dark:hover:bg-white/[0.1] transition-colors flex items-center justify-center gap-2 text-sm font-medium text-[var(--color-text-main)]"
+                                    className="w-full p-3 rounded-lg bg-black/[0.05] dark:bg-white/[0.05] hover:bg-black/[0.1] dark:hover:bg-white/[0.1] transition-colors flex items-center justify-center gap-2 text-sm font-medium text-main"
                                 >
                                     {connectingGithub ? (
                                         <><span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span> {t('projectSettings.integrations.github.connecting')}</>
@@ -772,12 +772,12 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                             ) : (
                                 <div className="space-y-4">
                                     <div className="space-y-1">
-                                        <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">{t('projectSettings.integrations.github.repositoryLabel')}</label>
+                                        <label className="text-xs font-semibold text-muted uppercase tracking-wider">{t('projectSettings.integrations.github.repositoryLabel')}</label>
                                         <select
                                             value={githubRepo}
                                             onChange={(e) => setGithubRepo(e.target.value)}
                                             disabled={loadingGithub}
-                                            className="w-full h-10 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-3 text-sm text-[var(--color-text-main)] outline-none focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)]"
+                                            className="w-full h-10 bg-surface border border-surface rounded-lg px-3 text-sm text-main outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
                                         >
                                             <option value="">{loadingGithub ? t('projectSettings.integrations.github.loadingRepos') : t('projectSettings.integrations.github.selectRepo')}</option>
                                             {githubRepos.map(repo => (
@@ -793,7 +793,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                             onChange={(e) => setGithubIssueSync(e.target.checked)}
                                             disabled={!githubRepo}
                                         />
-                                        <label htmlFor="gh-sync" className={`text-sm ${!githubRepo ? 'opacity-50' : ''} text-[var(--color-text-main)]`}>
+                                        <label htmlFor="gh-sync" className={`text-sm ${!githubRepo ? 'opacity-50' : ''} text-main`}>
                                             {t('projectSettings.integrations.github.issueSync')}
                                         </label>
                                     </div>
@@ -808,7 +808,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                         {/* Overview Links */}
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                                <label className="text-sm font-semibold text-[var(--color-text-main)]">{t('projectSettings.resources.overviewTitle')}</label>
+                                <label className="text-sm font-semibold text-main">{t('projectSettings.resources.overviewTitle')}</label>
                                 <Button size="sm" variant="ghost" onClick={() => setLinks([...links, { title: '', url: '' }])}>{t('projectSettings.resources.addLink')}</Button>
                             </div>
                             <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
@@ -834,21 +834,21 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                 }}
                                             />
                                         </div>
-                                        <button onClick={() => setLinks(links.filter((_, i) => i !== idx))} className="mt-2 text-[var(--color-text-subtle)] hover:text-red-500">
+                                        <button onClick={() => setLinks(links.filter((_, i) => i !== idx))} className="mt-2 text-subtle hover:text-red-500">
                                             <span className="material-symbols-outlined">delete</span>
                                         </button>
                                     </div>
                                 ))}
-                                {links.length === 0 && <p className="text-sm text-[var(--color-text-muted)] italic">{t('projectSettings.resources.noLinks')}</p>}
+                                {links.length === 0 && <p className="text-sm text-muted italic">{t('projectSettings.resources.noLinks')}</p>}
                             </div>
                         </div>
 
-                        <div className="h-px bg-[var(--color-surface-border)]" />
+                        <div className="h-px bg-surface-border" />
 
                         {/* Sidebar Resources */}
                         <div className="space-y-3">
                             <div className="flex items-center justify-between">
-                                <label className="text-sm font-semibold text-[var(--color-text-main)]">{t('projectSettings.resources.sidebarTitle')}</label>
+                                <label className="text-sm font-semibold text-main">{t('projectSettings.resources.sidebarTitle')}</label>
                                 <Button size="sm" variant="ghost" onClick={() => setExternalResources([...externalResources, { title: '', url: '', icon: 'link' }])}>{t('projectSettings.resources.addShortcut')}</Button>
                             </div>
                             <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
@@ -874,12 +874,12 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                 }}
                                             />
                                         </div>
-                                        <button onClick={() => setExternalResources(externalResources.filter((_, i) => i !== idx))} className="mt-2 text-[var(--color-text-subtle)] hover:text-red-500">
+                                        <button onClick={() => setExternalResources(externalResources.filter((_, i) => i !== idx))} className="mt-2 text-subtle hover:text-red-500">
                                             <span className="material-symbols-outlined">delete</span>
                                         </button>
                                     </div>
                                 ))}
-                                {externalResources.length === 0 && <p className="text-sm text-[var(--color-text-muted)] italic">{t('projectSettings.resources.noShortcuts')}</p>}
+                                {externalResources.length === 0 && <p className="text-sm text-muted italic">{t('projectSettings.resources.noShortcuts')}</p>}
                             </div>
                         </div>
                     </div>
@@ -892,7 +892,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             <Modal isOpen={isOpen} onClose={onClose} title={t('projectSettings.title')} size="xl">
                 <div className="flex h-[600px] -m-6">
                     {/* Sidebar */}
-                    <div className="w-64 shrink-0 bg-[var(--color-surface-hover)]/30 border-r border-[var(--color-surface-border)] p-4 flex flex-col gap-1">
+                    <div className="w-64 shrink-0 bg-surface-hover/30 border-r border-surface p-4 flex flex-col gap-1">
                         {tabs.map(tab => (
                             <button
                                 key={tab.id}
@@ -900,8 +900,8 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                 className={`
                                     flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
                                     ${activeTab === tab.id
-                                        ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
-                                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'}
+                                        ? 'bg-primary/10 text-primary'
+                                        : 'text-muted hover:bg-surface-hover hover:text-main'}
                                 `}
                             >
                                 <span className={`material-symbols-outlined text-[20px] ${activeTab === tab.id ? 'fill' : ''}`}>{tab.icon}</span>
@@ -917,7 +917,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                         </div>
 
                         {/* Footer */}
-                        <div className="shrink-0 p-4 border-t border-[var(--color-surface-border)] flex items-center justify-end gap-3 bg-[var(--color-surface-paper)]">
+                        <div className="shrink-0 p-4 border-t border-surface flex items-center justify-end gap-3 bg-surface-paper">
                             <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
                             <Button variant="primary" onClick={handleSave} isLoading={isSaving}>{t('common.saveChanges')}</Button>
                         </div>

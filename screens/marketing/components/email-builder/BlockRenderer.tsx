@@ -198,9 +198,9 @@ export const BlockRenderer = ({ block, variables, preview = false }: { block: Em
 
                             {content.src ? (
                                 <>
-                                    <div className="absolute inset-0 bg-[var(--color-primary)]/5 flex flex-col items-center justify-center">
-                                        <span className="material-symbols-outlined text-4xl mb-2 text-[var(--color-primary)] opacity-50">data_object</span>
-                                        <span className="font-mono text-sm font-bold text-[var(--color-primary)] bg-white/50 px-2 py-1 rounded border border-[var(--color-primary)]/20">
+                                    <div className="absolute inset-0 bg-primary/5 flex flex-col items-center justify-center">
+                                        <span className="material-symbols-outlined text-4xl mb-2 text-primary opacity-50">data_object</span>
+                                        <span className="font-mono text-sm font-bold text-primary bg-white/50 px-2 py-1 rounded border border-primary/20">
                                             {content.src}
                                         </span>
                                     </div>

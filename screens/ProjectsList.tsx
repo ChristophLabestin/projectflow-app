@@ -55,20 +55,20 @@ const MemberAvatars: React.FC<{ projectId: string }> = ({ projectId }) => {
             {members.slice(0, 3).map((member, i) => (
                 <div
                     key={member.uid || i}
-                    className="size-7 rounded-full border-2 border-[var(--color-surface-paper)] overflow-hidden bg-[var(--color-surface-hover)] shadow-sm"
+                    className="size-7 rounded-full border-2 border-[var(--color-surface-paper)] overflow-hidden bg-surface-hover shadow-sm"
                     title={member.displayName || t('projectsList.member')}
                 >
                     {member.photoURL ? (
                         <img src={member.photoURL} alt="" className="w-full h-full object-cover" />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-[var(--color-text-muted)]">
+                        <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-muted">
                             {(member.displayName || '?').charAt(0).toUpperCase()}
                         </div>
                     )}
                 </div>
             ))}
             {members.length > 3 && (
-                <div className="size-7 rounded-full border-2 border-[var(--color-surface-paper)] bg-[var(--color-surface-hover)] flex items-center justify-center text-[10px] font-bold text-[var(--color-text-muted)] shadow-sm">
+                <div className="size-7 rounded-full border-2 border-[var(--color-surface-paper)] bg-surface-hover flex items-center justify-center text-[10px] font-bold text-muted shadow-sm">
                     +{members.length - 3}
                 </div>
             )}
@@ -181,13 +181,13 @@ const ProjectCard: React.FC<{
                                 </span>
                             )}
                             <div className="flex items-center justify-between gap-4">
-                                <h3 className="text-2xl font-black text-[var(--color-text-main)] transition-all duration-500 group-hover:translate-x-1 group-hover:text-[var(--color-primary)] tracking-tight leading-none truncate">
+                                <h3 className="text-2xl font-black text-main transition-all duration-500 group-hover:translate-x-1 group-hover:text-primary tracking-tight leading-none truncate">
                                     {project.title}
                                 </h3>
                                 <HealthIndicator health={health} size="sm" showLabel={false} />
                             </div>
                         </div>
-                        <p className="text-sm text-[var(--color-text-muted)] line-clamp-2 leading-relaxed font-medium min-h-[3rem]">
+                        <p className="text-sm text-muted line-clamp-2 leading-relaxed font-medium min-h-[3rem]">
                             {project.description || t('projectsList.card.defaultDescription')}
                         </p>
                     </div>
@@ -196,13 +196,13 @@ const ProjectCard: React.FC<{
                     <div className="mt-6 space-y-3">
                         <div className="flex items-center justify-between">
                             <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-[var(--color-text-subtle)] uppercase tracking-widest">{t('projectsList.metrics.efficiency')}</span>
+                                <span className="text-[10px] font-black text-subtle uppercase tracking-widest">{t('projectsList.metrics.efficiency')}</span>
                                 <span className={`text-sm font-black ${iconColorClass}`}>{progress}%</span>
                             </div>
                             {project.dueDate && (
                                 <div className="flex flex-col items-end">
-                                    <span className="text-[10px] font-black text-[var(--color-text-subtle)] uppercase tracking-widest text-right">{t('projectsList.metrics.deadline')}</span>
-                                    <span className="text-xs font-bold text-[var(--color-text-main)] bg-white/50 dark:bg-black/20 px-2 py-0.5 rounded-md border border-white/10">{format(new Date(project.dueDate), dateFormat, { locale: dateLocale })}</span>
+                                    <span className="text-[10px] font-black text-subtle uppercase tracking-widest text-right">{t('projectsList.metrics.deadline')}</span>
+                                    <span className="text-xs font-bold text-main bg-white/50 dark:bg-black/20 px-2 py-0.5 rounded-md border border-white/10">{format(new Date(project.dueDate), dateFormat, { locale: dateLocale })}</span>
                                 </div>
                             )}
                         </div>
@@ -315,7 +315,7 @@ const ProjectSpotlight: React.FC<{ project: Project; health: ProjectHealth; spot
             className={`w-full relative z-10 rounded-3xl ${theme.shadow} group cursor-pointer transition-all duration-500 hover:scale-[1.01]`}
             onClick={() => navigate(`/project/${project.id}`)}
         >
-            <div className={`w-full relative rounded-3xl overflow-hidden border ${theme.border} transform-gpu [backface-visibility:hidden] [mask-image:linear-gradient(white,white)] isolate bg-white dark:bg-[var(--color-surface-card)]`}>
+            <div className={`w-full relative rounded-3xl overflow-hidden border ${theme.border} transform-gpu [backface-visibility:hidden] [mask-image:linear-gradient(white,white)] isolate bg-white dark:bg-card`}>
                 {/* Background */}
                 <div className="absolute inset-0 z-0">
                     {project.coverImage ? (
@@ -355,7 +355,7 @@ const ProjectSpotlight: React.FC<{ project: Project; health: ProjectHealth; spot
 
                         <div className="flex items-center gap-4 mb-2">
                             <div>
-                                <div className="text-[10px] font-black uppercase tracking-widest text-[var(--color-primary)]">{t('projectsList.spotlight.reasonLabel')}</div>
+                                <div className="text-[10px] font-black uppercase tracking-widest text-primary">{t('projectsList.spotlight.reasonLabel')}</div>
                                 <div className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">
                                     {spotlightReason || primaryFactorDescription || t('projectsList.spotlight.defaultReason')}
                                 </div>
@@ -749,7 +749,7 @@ export const ProjectsList = () => {
 
     if (loading) return (
         <div className="flex items-center justify-center p-12" >
-            <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-3xl">rotate_right</span>
+            <span className="material-symbols-outlined text-subtle animate-spin text-3xl">rotate_right</span>
         </div >
     );
 
@@ -760,15 +760,15 @@ export const ProjectsList = () => {
                 <div data-onboarding-id="projects-list-header" className="flex flex-col md:flex-row justify-between gap-8 mb-6 mt-0">
                     {/* Left Side: Title */}
                     <div className="flex flex-col justify-end">
-                        <div className="flex items-center gap-2 text-[var(--color-primary)] font-bold uppercase tracking-wider text-xs mb-2">
+                        <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-wider text-xs mb-2">
                             <span className="material-symbols-outlined text-sm">domain</span>
                             {t('nav.workspace')}
                         </div>
                         {/* Typography matched to Dashboard */}
-                        <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-[var(--color-text-main)] tracking-tight mb-2">
+                        <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-main tracking-tight mb-2">
                             {t('nav.projects')}
                         </h1>
-                        <p className="text-[var(--color-text-muted)] font-medium max-w-xl">
+                        <p className="text-muted font-medium max-w-xl">
                             {t('projectsList.header.subtitle')}
                         </p>
                     </div>
@@ -776,31 +776,31 @@ export const ProjectsList = () => {
                     {/* Right Side: Stats Only */}
                     <div className="flex flex-row items-end gap-4">
                         {/* Stats Boxes - Matched to Dashboard.tsx kpi style */}
-                        <div className="flex-1 min-w-[100px] p-4 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-sm hover:shadow-md transition-shadow">
-                            <div className="text-3xl font-black text-[var(--color-text-main)]">{filterCounts.active}</div>
-                            <div className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mt-1 flex items-center gap-1">
+                        <div className="flex-1 min-w-[100px] p-4 rounded-2xl bg-card border border-surface shadow-sm hover:shadow-md transition-shadow">
+                            <div className="text-3xl font-black text-main">{filterCounts.active}</div>
+                            <div className="text-[10px] font-bold text-subtle uppercase tracking-wider mt-1 flex items-center gap-1">
                                 <span className="size-1.5 rounded-full bg-emerald-500" />
                                 {t('dashboard.projectStatus.active')}
                             </div>
                         </div>
 
-                        <div className="flex-1 min-w-[100px] p-4 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-sm hover:shadow-md transition-shadow">
-                            <div className="text-3xl font-black text-[var(--color-text-main)]">{filterCounts.planning}</div>
-                            <div className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mt-1 flex items-center gap-1">
+                        <div className="flex-1 min-w-[100px] p-4 rounded-2xl bg-card border border-surface shadow-sm hover:shadow-md transition-shadow">
+                            <div className="text-3xl font-black text-main">{filterCounts.planning}</div>
+                            <div className="text-[10px] font-bold text-subtle uppercase tracking-wider mt-1 flex items-center gap-1">
                                 <span className="size-1.5 rounded-full bg-amber-500" />
                                 {t('dashboard.projectStatus.planning')}
                             </div>
                         </div>
 
                         {workspaceHealth && (
-                            <div className="flex-1 min-w-max p-4 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex-1 min-w-max p-4 rounded-2xl bg-card border border-surface shadow-sm hover:shadow-md transition-shadow">
                                 <div className={`text-3xl font-black ${workspaceHealth.status === 'critical' ? 'text-rose-500' :
                                     workspaceHealth.status === 'warning' ? 'text-amber-500' :
                                         workspaceHealth.status === 'excellent' ? 'text-emerald-500' :
                                             workspaceHealth.status === 'healthy' ? 'text-emerald-600' :
                                                 'text-indigo-500'
                                     }`}>{workspaceHealth.score}</div>
-                                <div className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mt-1 flex items-center gap-1 whitespace-nowrap">
+                                <div className="text-[10px] font-bold text-subtle uppercase tracking-wider mt-1 flex items-center gap-1 whitespace-nowrap">
                                     <span className={`size-1.5 rounded-full ${workspaceHealth.status === 'critical' ? 'bg-rose-500' :
                                         workspaceHealth.status === 'warning' ? 'bg-amber-500' :
                                             workspaceHealth.status === 'excellent' ? 'bg-emerald-500' :
@@ -825,13 +825,13 @@ export const ProjectsList = () => {
                     <div className={`border rounded-xl px-3 pb-3 relative z-0 overflow-hidden backdrop-blur-sm group -mt-4 pt-3 ${spotlightHealth.status === 'critical' ? 'bg-gradient-to-r from-rose-500/10 to-red-500/5 border-rose-200 dark:border-rose-500/20' :
                         spotlightHealth.status === 'warning' ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/5 border-amber-200 dark:border-amber-500/20' :
                             spotlightHealth.status === 'excellent' || spotlightHealth.status === 'healthy' ? 'bg-gradient-to-r from-emerald-500/10 to-green-500/5 border-emerald-200 dark:border-emerald-500/20' :
-                                'bg-gradient-to-r from-indigo-500/5 to-purple-500/5 border-[var(--color-surface-border)]'
+                                'bg-gradient-to-r from-indigo-500/5 to-purple-500/5 border-surface'
                         }`}>
                         <div className="flex items-center gap-3">
                             <div className={`size-8 rounded-lg shadow-sm flex items-center justify-center flex-shrink-0 ${spotlightHealth.status === 'critical' ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-500' :
                                 spotlightHealth.status === 'warning' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-500' :
                                     spotlightHealth.status === 'excellent' || spotlightHealth.status === 'healthy' ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-500' :
-                                        'bg-[var(--color-surface-card)] text-indigo-500'
+                                        'bg-card text-indigo-500'
                                 }`}>
                                 <span className="material-symbols-outlined text-lg">
                                     {spotlightHealth.status === 'critical' ? 'priority_high' : spotlightHealth.status === 'warning' ? 'schedule' : spotlightHealth.status === 'excellent' || spotlightHealth.status === 'healthy' ? 'check_circle' : 'auto_awesome'}
@@ -839,11 +839,11 @@ export const ProjectsList = () => {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider flex items-center gap-1">
+                                    <span className="text-[10px] font-bold text-subtle uppercase tracking-wider flex items-center gap-1">
                                         <span className="material-symbols-outlined text-xs">smart_toy</span>
                                         {t('projectsList.suggestion.label')}
                                     </span>
-                                    <span className="text-sm text-[var(--color-text-main)] font-medium">
+                                    <span className="text-sm text-main font-medium">
                                         {spotlightHealth.status === 'critical'
                                             ? <><span className="text-rose-600 dark:text-rose-400">⚠️</span> {t('projectsList.suggestion.critical').replace('{title}', featuredProject.title)}</>
                                             : spotlightHealth.status === 'warning'
@@ -871,7 +871,7 @@ export const ProjectsList = () => {
                                                 );
                                             })}
                                             {spotlightHealth.factors.length > 4 && (
-                                                <span className="text-[10px] text-[var(--color-text-subtle)]">
+                                                <span className="text-[10px] text-subtle">
                                                     {t('projectsList.suggestion.more').replace('{count}', String(spotlightHealth.factors.length - 4))}
                                                 </span>
                                             )}
@@ -879,7 +879,7 @@ export const ProjectsList = () => {
                                     )}
                                 </div>
                             </div>
-                            <button onClick={() => setShowSuggestion(false)} className="text-[var(--color-text-subtle)] hover:text-[var(--color-text-main)] transition-colors p-1 -m-1 flex-shrink-0">
+                            <button onClick={() => setShowSuggestion(false)} className="text-subtle hover:text-main transition-colors p-1 -m-1 flex-shrink-0">
                                 <span className="material-symbols-outlined text-lg">close</span>
                             </button>
                         </div>
@@ -888,7 +888,7 @@ export const ProjectsList = () => {
 
                 <div className="flex flex-col gap-8">
                     {/* My Projects Toolbar */}
-                    <div data-onboarding-id="projects-list-toolbar" className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-2 border-b border-[var(--color-surface-border)]/50">
+                    <div data-onboarding-id="projects-list-toolbar" className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-2 border-b border-surface/50">
                         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
                             {(['all', 'active', 'planning', 'completed'] as const).map((f) => (
                                 <button
@@ -898,11 +898,11 @@ export const ProjectsList = () => {
                                     px-6 py-2.5 rounded-xl text-sm font-bold transition-all capitalize whitespace-nowrap flex items-center gap-2
                                     ${filter === f
                                             ? 'bg-[var(--color-text-main)] text-[var(--color-surface-paper)] shadow-md'
-                                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}
+                                            : 'text-muted hover:text-main hover:bg-surface-hover'}
                                 `}
                                 >
                                     {filterLabels[f]}
-                                    <span className={`text-[10px] py-0.5 px-2 rounded-full font-bold ${filter === f ? 'bg-white/20' : 'bg-[var(--color-surface-border)]'}`}>
+                                    <span className={`text-[10px] py-0.5 px-2 rounded-full font-bold ${filter === f ? 'bg-white/20' : 'bg-surface-border'}`}>
                                         {f === 'planning' ? filterCounts.planning : (filterCounts as any)[f]}
                                     </span>
                                 </button>
@@ -946,10 +946,10 @@ export const ProjectsList = () => {
                     {/* My Projects Grid */}
                     <div data-onboarding-id="projects-list-grid">
                         {filteredMyProjects.length === 0 ? (
-                            <div className="text-center py-20 border-2 border-dashed border-[var(--color-surface-border)] rounded-xl">
-                                <span className="material-symbols-outlined text-4xl text-[var(--color-text-subtle)] mb-4">folder_off</span>
-                                <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectsList.empty.title')}</h3>
-                                <p className="text-[var(--color-text-muted)] mb-4">{t('projectsList.empty.description')}</p>
+                            <div className="text-center py-20 border-2 border-dashed border-surface rounded-xl">
+                                <span className="material-symbols-outlined text-4xl text-subtle mb-4">folder_off</span>
+                                <h3 className="text-lg font-bold text-main">{t('projectsList.empty.title')}</h3>
+                                <p className="text-muted mb-4">{t('projectsList.empty.description')}</p>
                                 {can('canCreateProjects') && (
                                     <Link to="/create">
                                         <Button variant="secondary">{t('projectsList.actions.createProject')}</Button>
@@ -975,16 +975,16 @@ export const ProjectsList = () => {
                 {
                     otherProjects.length > 0 && (
                         <div data-onboarding-id="projects-list-other" className="pt-10 space-y-6">
-                            <div className="flex items-center justify-between border-b border-[var(--color-surface-border)] pb-4">
+                            <div className="flex items-center justify-between border-b border-surface pb-4">
                                 <div>
-                                    <h2 className="text-2xl font-bold text-[var(--color-text-main)]">{t('projectsList.other.title')}</h2>
-                                    <p className="text-sm text-[var(--color-text-muted)]">{t('projectsList.other.subtitle')}</p>
+                                    <h2 className="text-2xl font-bold text-main">{t('projectsList.other.title')}</h2>
+                                    <p className="text-sm text-muted">{t('projectsList.other.subtitle')}</p>
                                 </div>
                             </div>
 
-                            <div className="bg-[var(--color-surface-card)] rounded-xl border border-[var(--color-surface-border)] overflow-hidden">
+                            <div className="bg-card rounded-xl border border-surface overflow-hidden">
                                 <table className="w-full text-left">
-                                    <thead className="bg-[var(--color-surface-hover)] text-xs text-[var(--color-text-subtle)] uppercase tracking-wider font-semibold border-b border-[var(--color-surface-border)]">
+                                    <thead className="bg-surface-hover text-xs text-subtle uppercase tracking-wider font-semibold border-b border-surface">
                                         <tr>
                                             <th className="px-6 py-4">{t('projectsList.other.table.project')}</th>
                                             <th className="px-6 py-4">{t('projectsList.other.table.status')}</th>
@@ -995,7 +995,7 @@ export const ProjectsList = () => {
                                     </thead>
                                     <tbody className="divide-y divide-[var(--color-surface-border)]">
                                         {otherProjects.map(project => (
-                                            <tr key={project.id} className="hover:bg-[var(--color-surface-hover)] transition-colors group">
+                                            <tr key={project.id} className="hover:bg-surface-hover transition-colors group">
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
                                                         <div className="size-10 rounded-lg flex items-center justify-center bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
@@ -1006,8 +1006,8 @@ export const ProjectsList = () => {
                                                             )}
                                                         </div>
                                                         <div>
-                                                            <div className="font-bold text-[var(--color-text-main)]">{project.title}</div>
-                                                            <div className="text-xs text-[var(--color-text-muted)] line-clamp-1 max-w-xs">{project.description}</div>
+                                                            <div className="font-bold text-main">{project.title}</div>
+                                                            <div className="text-xs text-muted line-clamp-1 max-w-xs">{project.description}</div>
                                                         </div>
                                                     </div>
                                                 </td>
@@ -1019,7 +1019,7 @@ export const ProjectsList = () => {
                                                 <td className="px-6 py-4">
                                                     <MemberAvatars projectId={project.id} />
                                                 </td>
-                                                <td className="px-6 py-4 text-sm text-[var(--color-text-muted)]">
+                                                <td className="px-6 py-4 text-sm text-muted">
                                                     {format(new Date(toMillis(project.createdAt)), dateFormat, { locale: dateLocale })}
                                                 </td>
                                                 <td className="px-6 py-4 text-right">

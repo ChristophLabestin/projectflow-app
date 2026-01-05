@@ -59,18 +59,18 @@ export const SocialPostArchive = () => {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                     <div className="flex items-center gap-2 mb-1">
-                        <Link to={`/project/${projectId}/social/posts`} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors">
+                        <Link to={`/project/${projectId}/social/posts`} className="text-muted hover:text-main transition-colors">
                             <span className="material-symbols-outlined">arrow_back</span>
                         </Link>
                         <h1 className="h2">{t('social.archive.title')}</h1>
                     </div>
-                    <p className="text-[var(--color-text-muted)] ml-8">{t('social.archive.subtitle')}</p>
+                    <p className="text-muted ml-8">{t('social.archive.subtitle')}</p>
                 </div>
             </div>
 
             {posts.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-20 bg-[var(--color-surface-card)] rounded-3xl border border-[var(--color-surface-border)] border-dashed">
-                    <p className="text-[var(--color-text-muted)]">{t('social.postList.empty')}</p>
+                <div className="flex flex-col items-center justify-center py-20 bg-card rounded-3xl border border-surface border-dashed">
+                    <p className="text-muted">{t('social.postList.empty')}</p>
                 </div>
             ) : (
                 <>
@@ -82,11 +82,11 @@ export const SocialPostArchive = () => {
                             return (
                                 <div
                                     key={post.id}
-                                    className="group relative bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl overflow-hidden cursor-pointer hover:border-[var(--color-primary-light)] hover:shadow-lg transition-all flex flex-col"
+                                    className="group relative bg-card border border-surface rounded-2xl overflow-hidden cursor-pointer hover:border-[var(--color-primary-light)] hover:shadow-lg transition-all flex flex-col"
                                     onClick={() => navigate(`/project/${projectId}/social/edit/${post.id}`)}
                                 >
                                     {/* Media */}
-                                    <div className="aspect-square w-full bg-[var(--color-surface-hover)] relative overflow-hidden flex items-center justify-center">
+                                    <div className="aspect-square w-full bg-surface-hover relative overflow-hidden flex items-center justify-center">
                                         {mainAsset ? (
                                             mainAsset.type === 'video' ? (
                                                 <video src={mainAsset.url} className="w-full h-full object-cover" muted />
@@ -94,7 +94,7 @@ export const SocialPostArchive = () => {
                                                 <img src={mainAsset.url} className="w-full h-full object-cover" loading="lazy" />
                                             )
                                         ) : (
-                                            <span className="material-symbols-outlined text-4xl text-[var(--color-text-subtle)]">
+                                            <span className="material-symbols-outlined text-4xl text-subtle">
                                                 {post.format === 'Text' ? 'article' : 'image'}
                                             </span>
                                         )}
@@ -115,20 +115,20 @@ export const SocialPostArchive = () => {
                                                     post.status === 'Scheduled' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
                                                         post.status === 'In Review' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
                                                             post.status === 'Failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                                                                'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'
+                                                                'bg-surface-hover text-muted'
                                                 }`}>
                                                 {getSocialPostStatusLabel(post.status, t)}
                                             </span>
                                             {post.scheduledFor && (
-                                                <span className="text-[10px] font-medium text-[var(--color-text-muted)] flex items-center gap-1">
+                                                <span className="text-[10px] font-medium text-muted flex items-center gap-1">
                                                     <span className="material-symbols-outlined text-[12px]">calendar_month</span>
                                                     {format(new Date(post.scheduledFor), 'MMM d')}
                                                 </span>
                                             )}
                                         </div>
 
-                                        <p className="text-sm text-[var(--color-text-main)] line-clamp-2 font-medium mb-3">
-                                            {post.content.caption || <span className="italic text-[var(--color-text-muted)] opacity-50">{t('social.postList.noCaption')}</span>}
+                                        <p className="text-sm text-main line-clamp-2 font-medium mb-3">
+                                            {post.content.caption || <span className="italic text-muted opacity-50">{t('social.postList.noCaption')}</span>}
                                         </p>
                                     </div>
 
@@ -139,7 +139,7 @@ export const SocialPostArchive = () => {
                                                 e.stopPropagation();
                                                 setPreviewPost(post);
                                             }}
-                                            className="p-1.5 bg-white/90 dark:bg-black/80 backdrop-blur-sm border border-transparent hover:border-[var(--color-surface-border)] rounded-lg shadow-sm text-[var(--color-text-main)] hover:text-[var(--color-primary)] transition-all"
+                                            className="p-1.5 bg-white/90 dark:bg-black/80 backdrop-blur-sm border border-transparent hover:border-surface rounded-lg shadow-sm text-main hover:text-primary transition-all"
                                             title={t('social.approvals.reviewBtn')}
                                         >
                                             <span className="material-symbols-outlined text-[18px]">visibility</span>
@@ -163,19 +163,19 @@ export const SocialPostArchive = () => {
                             <button
                                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                 disabled={currentPage === 1}
-                                className="p-2 rounded-lg border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="p-2 rounded-lg border border-surface hover:bg-surface-hover disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <span className="material-symbols-outlined">chevron_left</span>
                             </button>
 
-                            <span className="text-sm font-medium text-[var(--color-text-muted)]">
+                            <span className="text-sm font-medium text-muted">
                                 {currentPage} / {totalPages}
                             </span>
 
                             <button
                                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                                 disabled={currentPage === totalPages}
-                                className="p-2 rounded-lg border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="p-2 rounded-lg border border-surface hover:bg-surface-hover disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 <span className="material-symbols-outlined">chevron_right</span>
                             </button>

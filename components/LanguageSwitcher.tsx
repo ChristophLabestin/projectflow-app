@@ -37,10 +37,10 @@ export const LanguageSwitcher = () => {
                 type="button"
                 onClick={() => setIsOpen((prev) => !prev)}
                 className={`
-                    flex items-center gap-1.5 h-8 px-2.5 rounded-lg border text-[var(--color-text-muted)]
+                    flex items-center gap-1.5 h-8 px-2.5 rounded-lg border text-muted
                     ${isOpen
-                        ? 'bg-[var(--color-surface-hover)] border-[var(--color-surface-border)] text-[var(--color-text-main)]'
-                        : 'border-transparent hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'
+                        ? 'bg-surface-hover border-surface text-main'
+                        : 'border-transparent hover:bg-surface-hover hover:text-main'
                     }
                 `}
                 title={t('language.switch')}
@@ -57,8 +57,8 @@ export const LanguageSwitcher = () => {
                 <div
                     className="
                         absolute top-full right-0 mt-2 w-40 p-1
-                        bg-[var(--color-surface-card)]
-                        border border-[var(--color-surface-border)]
+                        bg-card
+                        border border-surface
                         rounded-xl shadow-xl
                         z-50 animate-scale-up origin-top-right
                     "
@@ -74,8 +74,8 @@ export const LanguageSwitcher = () => {
                             className={`
                                 w-full flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm font-semibold
                                 ${option.value === language
-                                    ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
-                                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'
+                                    ? 'bg-primary/10 text-primary'
+                                    : 'text-muted hover:text-main hover:bg-surface-hover'
                                 }
                             `}
                         >

@@ -106,21 +106,21 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
             />
 
             {/* Left Panel: Content (Swappable) */}
-            <div className="flex-1 min-h-0 bg-[var(--color-surface-paper)] rounded-2xl border border-[var(--color-surface-border)] shadow-sm flex flex-col overflow-hidden">
-                <div className="p-4 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] flex justify-between items-center">
+            <div className="flex-1 min-h-0 bg-surface-paper rounded-2xl border border-surface shadow-sm flex flex-col overflow-hidden">
+                <div className="p-4 border-b border-surface bg-surface flex justify-between items-center">
 
                     {/* View Switcher */}
-                    <div className="flex items-center p-1 bg-[var(--color-surface-paper)] rounded-lg border border-[var(--color-surface-border)]">
+                    <div className="flex items-center p-1 bg-surface-paper rounded-lg border border-surface">
                         <button
                             onClick={() => setViewMode('analysis')}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === 'analysis' ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === 'analysis' ? 'bg-[var(--color-surface-active)] text-primary shadow-sm' : 'text-muted hover:text-main'}`}
                         >
                             <span className="material-symbols-outlined text-[18px]">analytics</span>
                             {t('flowStages.approval.views.analysis')}
                         </button>
                         <button
                             onClick={() => setViewMode('brief')}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === 'brief' ? 'bg-[var(--color-surface-active)] text-[var(--color-primary)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${viewMode === 'brief' ? 'bg-[var(--color-surface-active)] text-primary shadow-sm' : 'text-muted hover:text-main'}`}
                         >
                             <span className="material-symbols-outlined text-[18px]">description</span>
                             {t('flowStages.approval.views.brief')}
@@ -130,7 +130,7 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                     <StatusBadge />
                 </div>
 
-                <div className="flex-1 overflow-y-auto custom-scrollbar bg-[var(--color-surface-paper)]">
+                <div className="flex-1 overflow-y-auto custom-scrollbar bg-surface-paper">
                     {viewMode === 'analysis' && (
                         <AnalysisDashboard
                             analysis={idea.riskWinAnalysis}
@@ -161,18 +161,18 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
             <div className="lg:w-96 shrink-0 flex flex-col gap-6 overflow-y-auto custom-scrollbar">
 
                 {/* 1. Meta Summary */}
-                <div className="bg-[var(--color-surface-paper)] p-5 rounded-2xl border border-[var(--color-surface-border)] shadow-sm space-y-4">
-                    <h3 className="text-sm font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">{t('flowStages.approval.summary.title')}</h3>
+                <div className="bg-surface-paper p-5 rounded-2xl border border-surface shadow-sm space-y-4">
+                    <h3 className="text-sm font-bold text-subtle uppercase tracking-wider">{t('flowStages.approval.summary.title')}</h3>
 
                     <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-[var(--color-surface-bg)] p-3 rounded-xl border border-[var(--color-surface-border)]">
-                            <span className="text-[10px] uppercase text-[var(--color-text-muted)] font-bold block mb-1">{t('flowStages.approval.summary.impact')}</span>
+                        <div className="bg-surface p-3 rounded-xl border border-surface">
+                            <span className="text-[10px] uppercase text-muted font-bold block mb-1">{t('flowStages.approval.summary.impact')}</span>
                             <span className={`font-bold ${idea.impact === 'High' ? 'text-green-600' : idea.impact === 'Low' ? 'text-slate-500' : 'text-blue-600'}`}>
                                 {idea.impact ? t(`flowStages.approval.level.${idea.impact.toLowerCase()}`) : t('flowStages.approval.na')}
                             </span>
                         </div>
-                        <div className="bg-[var(--color-surface-bg)] p-3 rounded-xl border border-[var(--color-surface-border)]">
-                            <span className="text-[10px] uppercase text-[var(--color-text-muted)] font-bold block mb-1">{t('flowStages.approval.summary.effort')}</span>
+                        <div className="bg-surface p-3 rounded-xl border border-surface">
+                            <span className="text-[10px] uppercase text-muted font-bold block mb-1">{t('flowStages.approval.summary.effort')}</span>
                             <span className={`font-bold ${idea.effort === 'High' ? 'text-rose-600' : idea.effort === 'Low' ? 'text-green-600' : 'text-amber-600'}`}>
                                 {idea.effort ? t(`flowStages.approval.level.${idea.effort.toLowerCase()}`) : t('flowStages.approval.na')}
                             </span>
@@ -180,19 +180,19 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                     </div>
 
                     {(idea.analysis?.strengths?.length || 0) > 0 && (
-                        <div className="bg-[var(--color-surface-bg)] p-3 rounded-xl border border-[var(--color-surface-border)]">
-                            <span className="text-[10px] uppercase text-[var(--color-text-muted)] font-bold block mb-2">{t('flowStages.approval.summary.keyStrength')}</span>
+                        <div className="bg-surface p-3 rounded-xl border border-surface">
+                            <span className="text-[10px] uppercase text-muted font-bold block mb-2">{t('flowStages.approval.summary.keyStrength')}</span>
                             <div className="flex items-start gap-2">
                                 <span className="material-symbols-outlined text-emerald-500 text-sm mt-0.5">check_circle</span>
-                                <span className="text-xs text-[var(--color-text-main)] italic">"{idea.analysis!.strengths[0]}"</span>
+                                <span className="text-xs text-main italic">"{idea.analysis!.strengths[0]}"</span>
                             </div>
                         </div>
                     )}
                 </div>
 
                 {/* 2. Checklist & Actions */}
-                <div className="bg-[var(--color-surface-paper)] p-5 rounded-2xl border border-[var(--color-surface-border)] shadow-sm flex-1 flex flex-col">
-                    <h3 className="text-sm font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mb-4">{t('flowStages.approval.decision.title')}</h3>
+                <div className="bg-surface-paper p-5 rounded-2xl border border-surface shadow-sm flex-1 flex flex-col">
+                    <h3 className="text-sm font-bold text-subtle uppercase tracking-wider mb-4">{t('flowStages.approval.decision.title')}</h3>
 
                     {!isApproved && (
                         <div className="space-y-3 mb-6">
@@ -202,7 +202,7 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                     group flex items-start gap-4 p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer select-none
                                     ${checklist.conceptClear
                                         ? 'bg-emerald-50/80 dark:bg-emerald-500/10 border-emerald-500/30 dark:border-emerald-400/30 shadow-[0_4px_12px_-4px_rgba(16,185,129,0.15)]'
-                                        : 'bg-[var(--color-surface-bg)] border-transparent hover:border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'
+                                        : 'bg-surface border-transparent hover:border-surface hover:bg-surface-hover'
                                     }
                                 `}
                             >
@@ -210,16 +210,16 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                     mt-0.5 flex shrink-0 items-center justify-center size-5 rounded-full border-[1.5px] transition-all duration-200
                                     ${checklist.conceptClear
                                         ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm scale-110'
-                                        : 'border-[var(--color-text-muted)] bg-transparent group-hover:border-emerald-400'
+                                        : 'border-muted bg-transparent group-hover:border-emerald-400'
                                     }
                                 `}>
                                     {checklist.conceptClear && <span className="material-symbols-outlined text-[14px] font-bold leading-none">check</span>}
                                 </div>
                                 <div className="flex-1">
-                                    <span className={`block text-sm font-bold mb-0.5 transition-colors ${checklist.conceptClear ? 'text-emerald-950 dark:text-emerald-100' : 'text-[var(--color-text-main)]'}`}>
+                                    <span className={`block text-sm font-bold mb-0.5 transition-colors ${checklist.conceptClear ? 'text-emerald-950 dark:text-emerald-100' : 'text-main'}`}>
                                         {t('flowStages.approval.checklist.concept.title')}
                                     </span>
-                                    <span className={`block text-xs transition-colors ${checklist.conceptClear ? 'text-emerald-700 dark:text-emerald-300' : 'text-[var(--color-text-muted)]'}`}>
+                                    <span className={`block text-xs transition-colors ${checklist.conceptClear ? 'text-emerald-700 dark:text-emerald-300' : 'text-muted'}`}>
                                         {t('flowStages.approval.checklist.concept.subtitle')}
                                     </span>
                                 </div>
@@ -231,7 +231,7 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                     group flex items-start gap-4 p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer select-none
                                     ${checklist.feasibilityChecked
                                         ? 'bg-emerald-50/80 dark:bg-emerald-500/10 border-emerald-500/30 dark:border-emerald-400/30 shadow-[0_4px_12px_-4px_rgba(16,185,129,0.15)]'
-                                        : 'bg-[var(--color-surface-bg)] border-transparent hover:border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'
+                                        : 'bg-surface border-transparent hover:border-surface hover:bg-surface-hover'
                                     }
                                 `}
                             >
@@ -239,16 +239,16 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                     mt-0.5 flex shrink-0 items-center justify-center size-5 rounded-full border-[1.5px] transition-all duration-200
                                     ${checklist.feasibilityChecked
                                         ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm scale-110'
-                                        : 'border-[var(--color-text-muted)] bg-transparent group-hover:border-emerald-400'
+                                        : 'border-muted bg-transparent group-hover:border-emerald-400'
                                     }
                                 `}>
                                     {checklist.feasibilityChecked && <span className="material-symbols-outlined text-[14px] font-bold leading-none">check</span>}
                                 </div>
                                 <div className="flex-1">
-                                    <span className={`block text-sm font-bold mb-0.5 transition-colors ${checklist.feasibilityChecked ? 'text-emerald-950 dark:text-emerald-100' : 'text-[var(--color-text-main)]'}`}>
+                                    <span className={`block text-sm font-bold mb-0.5 transition-colors ${checklist.feasibilityChecked ? 'text-emerald-950 dark:text-emerald-100' : 'text-main'}`}>
                                         {t('flowStages.approval.checklist.risks.title')}
                                     </span>
-                                    <span className={`block text-xs transition-colors ${checklist.feasibilityChecked ? 'text-emerald-700 dark:text-emerald-300' : 'text-[var(--color-text-muted)]'}`}>
+                                    <span className={`block text-xs transition-colors ${checklist.feasibilityChecked ? 'text-emerald-700 dark:text-emerald-300' : 'text-muted'}`}>
                                         {t('flowStages.approval.checklist.risks.subtitle')}
                                     </span>
                                 </div>
@@ -260,7 +260,7 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                     group flex items-start gap-4 p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer select-none
                                     ${checklist.resourcesAvailable
                                         ? 'bg-emerald-50/80 dark:bg-emerald-500/10 border-emerald-500/30 dark:border-emerald-400/30 shadow-[0_4px_12px_-4px_rgba(16,185,129,0.15)]'
-                                        : 'bg-[var(--color-surface-bg)] border-transparent hover:border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'
+                                        : 'bg-surface border-transparent hover:border-surface hover:bg-surface-hover'
                                     }
                                 `}
                             >
@@ -268,16 +268,16 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                     mt-0.5 flex shrink-0 items-center justify-center size-5 rounded-full border-[1.5px] transition-all duration-200
                                     ${checklist.resourcesAvailable
                                         ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm scale-110'
-                                        : 'border-[var(--color-text-muted)] bg-transparent group-hover:border-emerald-400'
+                                        : 'border-muted bg-transparent group-hover:border-emerald-400'
                                     }
                                 `}>
                                     {checklist.resourcesAvailable && <span className="material-symbols-outlined text-[14px] font-bold leading-none">check</span>}
                                 </div>
                                 <div className="flex-1">
-                                    <span className={`block text-sm font-bold mb-0.5 transition-colors ${checklist.resourcesAvailable ? 'text-emerald-950 dark:text-emerald-100' : 'text-[var(--color-text-main)]'}`}>
+                                    <span className={`block text-sm font-bold mb-0.5 transition-colors ${checklist.resourcesAvailable ? 'text-emerald-950 dark:text-emerald-100' : 'text-main'}`}>
                                         {t('flowStages.approval.checklist.resources.title')}
                                     </span>
-                                    <span className={`block text-xs transition-colors ${checklist.resourcesAvailable ? 'text-emerald-700 dark:text-emerald-300' : 'text-[var(--color-text-muted)]'}`}>
+                                    <span className={`block text-xs transition-colors ${checklist.resourcesAvailable ? 'text-emerald-700 dark:text-emerald-300' : 'text-muted'}`}>
                                         {t('flowStages.approval.checklist.resources.subtitle')}
                                     </span>
                                 </div>
@@ -290,7 +290,7 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                     group flex items-start gap-4 p-4 rounded-xl border-2 transition-all duration-200 cursor-pointer select-none
                                     ${checklist.timelineEstimated
                                         ? 'bg-emerald-50/80 dark:bg-emerald-500/10 border-emerald-500/30 dark:border-emerald-400/30 shadow-[0_4px_12px_-4px_rgba(16,185,129,0.15)]'
-                                        : 'bg-[var(--color-surface-bg)] border-transparent hover:border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'
+                                        : 'bg-surface border-transparent hover:border-surface hover:bg-surface-hover'
                                     }
                                 `}
                             >
@@ -298,16 +298,16 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                     mt-0.5 flex shrink-0 items-center justify-center size-5 rounded-full border-[1.5px] transition-all duration-200
                                     ${checklist.timelineEstimated
                                         ? 'bg-emerald-500 border-emerald-500 text-white shadow-sm scale-110'
-                                        : 'border-[var(--color-text-muted)] bg-transparent group-hover:border-emerald-400'
+                                        : 'border-muted bg-transparent group-hover:border-emerald-400'
                                     }
                                 `}>
                                     {checklist.timelineEstimated && <span className="material-symbols-outlined text-[14px] font-bold leading-none">check</span>}
                                 </div>
                                 <div className="flex-1">
-                                    <span className={`block text-sm font-bold mb-0.5 transition-colors ${checklist.timelineEstimated ? 'text-emerald-950 dark:text-emerald-100' : 'text-[var(--color-text-main)]'}`}>
+                                    <span className={`block text-sm font-bold mb-0.5 transition-colors ${checklist.timelineEstimated ? 'text-emerald-950 dark:text-emerald-100' : 'text-main'}`}>
                                         {t('flowStages.approval.checklist.timeline.title')}
                                     </span>
-                                    <span className={`block text-xs transition-colors ${checklist.timelineEstimated ? 'text-emerald-700 dark:text-emerald-300' : 'text-[var(--color-text-muted)]'}`}>
+                                    <span className={`block text-xs transition-colors ${checklist.timelineEstimated ? 'text-emerald-700 dark:text-emerald-300' : 'text-muted'}`}>
                                         {t('flowStages.approval.checklist.timeline.subtitle')}
                                     </span>
                                 </div>
@@ -331,7 +331,7 @@ export const ApprovalView: React.FC<ApprovalViewProps> = ({ idea, onUpdate, onCo
                                 <Button
                                     size="lg"
                                     variant="secondary"
-                                    className="w-full h-12 text-base border-none hover:bg-[var(--color-surface-hover)]"
+                                    className="w-full h-12 text-base border-none hover:bg-surface-hover"
                                     onClick={() => navigate(`/project/${idea.projectId}/flows`)}
                                 >
                                     {t('flowStages.approval.actions.decideLater')}

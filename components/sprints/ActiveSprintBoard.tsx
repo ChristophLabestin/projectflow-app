@@ -40,12 +40,12 @@ export const ActiveSprintBoard: React.FC<ActiveSprintBoardProps> = ({
                         <span className="px-2.5 py-1 rounded-full bg-indigo-500 text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20">
                             Active Sprint
                         </span>
-                        <h2 className="text-2xl font-black text-[var(--color-text-main)] uppercase tracking-tight">{sprint.name}</h2>
+                        <h2 className="text-2xl font-black text-main uppercase tracking-tight">{sprint.name}</h2>
                     </div>
                     {sprint.goal && (
-                        <p className="text-[var(--color-text-muted)] font-medium">Goal: <span className="text-[var(--color-text-main)]">{sprint.goal}</span></p>
+                        <p className="text-muted font-medium">Goal: <span className="text-main">{sprint.goal}</span></p>
                     )}
-                    <div className="flex items-center gap-4 mt-3 text-xs font-bold uppercase tracking-widest text-[var(--color-text-subtle)]">
+                    <div className="flex items-center gap-4 mt-3 text-xs font-bold uppercase tracking-widest text-subtle">
                         <span className="flex items-center gap-1.5">
                             <span className="material-symbols-outlined text-[16px]">calendar_today</span>
                             {format(new Date(sprint.startDate), dateFormat)} - {format(new Date(sprint.endDate), dateFormat)}

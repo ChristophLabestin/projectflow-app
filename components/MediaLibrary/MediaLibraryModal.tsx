@@ -523,30 +523,30 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                 if (e.target === e.currentTarget) onClose();
             }}
         >
-            <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl w-[1200px] max-w-[95vw] h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="bg-card rounded-2xl shadow-2xl w-[1200px] max-w-[95vw] h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                 {/* Header */}
-                <div className="flex items-center justify-between p-5 border-b border-[var(--color-surface-border)]">
+                <div className="flex items-center justify-between p-5 border-b border-surface">
                     <div className="flex items-center gap-3">
                         <div className="size-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
                             <span className="material-symbols-outlined text-white">perm_media</span>
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-[var(--color-text-main)]">Media Library</h2>
-                            <p className="text-xs text-[var(--color-text-muted)]">
+                            <h2 className="text-lg font-bold text-main">Media Library</h2>
+                            <p className="text-xs text-muted">
                                 {collectionType === 'user' ? 'Select or upload personal images' : 'Select or upload images for your project'}
                             </p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="size-10 rounded-xl hover:bg-[var(--color-surface-hover)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
+                        className="size-10 rounded-xl hover:bg-surface-hover flex items-center justify-center text-muted hover:text-main transition-colors"
                     >
                         <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
 
                 {/* Tabs */}
-                <div className="flex border-b border-[var(--color-surface-border)] px-5">
+                <div className="flex border-b border-surface px-5">
                     {[
                         { id: 'gallery', label: collectionType === 'user' ? 'Personal Images' : 'Project Images', icon: 'photo_library' },
                         { id: 'upload', label: 'Upload', icon: 'cloud_upload' },
@@ -557,8 +557,8 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as TabType)}
                             className={`flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition-all ${activeTab === tab.id
-                                ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                                : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                                ? 'border-primary text-primary'
+                                : 'border-transparent text-muted hover:text-main'
                                 }`}
                         >
                             <span className={`material-symbols-outlined text-[18px] ${tab.color || ''}`}>{tab.icon}</span>
@@ -573,9 +573,9 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                     {isUploading && (
                         <div className="absolute inset-0 z-50 bg-white/60 dark:bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center animate-fade-in">
                             <div className="size-16 rounded-2xl bg-white dark:bg-zinc-800 shadow-xl flex items-center justify-center mb-4">
-                                <span className="material-symbols-outlined text-4xl text-[var(--color-primary)] animate-spin">progress_activity</span>
+                                <span className="material-symbols-outlined text-4xl text-primary animate-spin">progress_activity</span>
                             </div>
-                            <p className="text-sm font-bold text-[var(--color-text-main)]">Uploading your files...</p>
+                            <p className="text-sm font-bold text-main">Uploading your files...</p>
                         </div>
                     )}
 
@@ -587,24 +587,24 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                 onDragLeave={handleDragLeave}
                                 onDrop={handleDrop}
                                 className={`h-full border-2 border-dashed rounded-2xl flex flex-col items-center justify-center transition-all ${isDragging
-                                    ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                                    : 'border-zinc-300 dark:border-zinc-700 hover:border-[var(--color-primary)]/50'
+                                    ? 'border-primary bg-primary/5'
+                                    : 'border-zinc-300 dark:border-zinc-700 hover:border-primary/50'
                                     }`}
                             >
                                 {isUploading ? (
                                     <div className="flex flex-col items-center gap-4">
-                                        <span className="material-symbols-outlined text-5xl text-[var(--color-primary)] animate-spin">progress_activity</span>
-                                        <p className="text-sm text-[var(--color-text-muted)]">Uploading...</p>
+                                        <span className="material-symbols-outlined text-5xl text-primary animate-spin">progress_activity</span>
+                                        <p className="text-sm text-muted">Uploading...</p>
                                     </div>
                                 ) : (
                                     <>
                                         <div className="size-20 rounded-2xl bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/30 flex items-center justify-center mb-4">
                                             <span className="material-symbols-outlined text-4xl text-violet-600 dark:text-violet-400">cloud_upload</span>
                                         </div>
-                                        <h3 className="text-lg font-semibold text-[var(--color-text-main)] mb-1">
+                                        <h3 className="text-lg font-semibold text-main mb-1">
                                             Drop files here to upload
                                         </h3>
-                                        <p className="text-sm text-[var(--color-text-muted)] mb-6">
+                                        <p className="text-sm text-muted mb-6">
                                             or click to browse your computer
                                         </p>
                                         <label className="cursor-pointer">
@@ -615,7 +615,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                                 onChange={handleFileInputChange}
                                                 className="hidden"
                                             />
-                                            <span className="px-6 py-3 bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded-xl font-medium hover:brightness-110 transition-all inline-flex items-center gap-2">
+                                            <span className="px-6 py-3 bg-primary text-on-primary rounded-xl font-medium hover:brightness-110 transition-all inline-flex items-center gap-2">
                                                 <span className="material-symbols-outlined text-[18px]">folder_open</span>
                                                 Browse Files
                                             </span>
@@ -634,19 +634,19 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                         <div className="h-full p-6 overflow-y-auto">
                             {isLoading ? (
                                 <div className="h-full flex flex-col items-center justify-center text-center">
-                                    <span className="material-symbols-outlined text-4xl text-[var(--color-primary)] animate-spin">progress_activity</span>
-                                    <p className="text-sm text-[var(--color-text-muted)] mt-2">Loading library...</p>
+                                    <span className="material-symbols-outlined text-4xl text-primary animate-spin">progress_activity</span>
+                                    <p className="text-sm text-muted mt-2">Loading library...</p>
                                 </div>
                             ) : allAssets.length === 0 ? (
                                 <div className="h-full flex flex-col items-center justify-center text-center">
                                     <div className="size-20 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
                                         <span className="material-symbols-outlined text-4xl text-zinc-400">photo_library</span>
                                     </div>
-                                    <h3 className="text-lg font-semibold text-[var(--color-text-main)] mb-1">No images yet</h3>
-                                    <p className="text-sm text-[var(--color-text-muted)] mb-4">Upload images to see them here</p>
+                                    <h3 className="text-lg font-semibold text-main mb-1">No images yet</h3>
+                                    <p className="text-sm text-muted mb-4">Upload images to see them here</p>
                                     <button
                                         onClick={() => setActiveTab('upload')}
-                                        className="px-4 py-2 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 rounded-lg transition-colors"
+                                        className="px-4 py-2 text-sm font-medium text-primary hover:bg-primary/5 rounded-lg transition-colors"
                                     >
                                         Upload Images
                                     </button>
@@ -656,7 +656,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                     {allAssets.map(asset => (
                                         <div
                                             key={asset.id}
-                                            className="group relative aspect-video rounded-xl overflow-hidden border-2 border-transparent hover:border-[var(--color-primary)] transition-all bg-zinc-100 dark:bg-zinc-800"
+                                            className="group relative aspect-video rounded-xl overflow-hidden border-2 border-transparent hover:border-primary transition-all bg-zinc-100 dark:bg-zinc-800"
                                         >
                                             {asset.type === 'video' ? (
                                                 <video
@@ -697,7 +697,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                                         navigator.clipboard.writeText(asset.url);
                                                         showSuccess("Link copied to clipboard");
                                                     }}
-                                                    className="size-8 rounded-lg bg-white shadow-lg text-zinc-600 hover:text-[var(--color-primary)] flex items-center justify-center transition-colors"
+                                                    className="size-8 rounded-lg bg-white shadow-lg text-zinc-600 hover:text-primary flex items-center justify-center transition-colors"
                                                     title="Copy Link"
                                                 >
                                                     <span className="material-symbols-outlined text-[18px]">link</span>
@@ -707,7 +707,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                                         e.stopPropagation();
                                                         downloadFile(asset.url, asset.name);
                                                     }}
-                                                    className="size-8 rounded-lg bg-white shadow-lg text-zinc-600 hover:text-[var(--color-primary)] flex items-center justify-center transition-colors"
+                                                    className="size-8 rounded-lg bg-white shadow-lg text-zinc-600 hover:text-primary flex items-center justify-center transition-colors"
                                                     title="Download"
                                                 >
                                                     <span className="material-symbols-outlined text-[18px]">download</span>
@@ -717,7 +717,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                                         e.stopPropagation();
                                                         setEditingImage(asset);
                                                     }}
-                                                    className="size-8 rounded-lg bg-white shadow-lg text-zinc-600 hover:text-[var(--color-primary)] flex items-center justify-center transition-colors"
+                                                    className="size-8 rounded-lg bg-white shadow-lg text-zinc-600 hover:text-primary flex items-center justify-center transition-colors"
                                                     title="Edit Image"
                                                 >
                                                     <span className="material-symbols-outlined text-[18px]">edit</span>
@@ -747,15 +747,15 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                     {activeTab === 'ai' && (
                         <div className="h-full flex overflow-hidden">
                             {/* LEFT SIDEBAR - CONTROLS */}
-                            <div className="w-[380px] border-r border-[var(--color-surface-border)] bg-zinc-50 dark:bg-black/20 flex flex-col p-6 overflow-y-auto shrink-0">
+                            <div className="w-[380px] border-r border-surface bg-zinc-50 dark:bg-black/20 flex flex-col p-6 overflow-y-auto shrink-0">
                                 {/* Header */}
                                 <div className="flex items-center gap-3 mb-6">
                                     <div className="size-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/20 shrink-0">
                                         <span className="material-symbols-outlined text-white text-xl">auto_awesome</span>
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-[var(--color-text-main)] leading-tight">Nano Banana</h3>
-                                        <p className="text-xs text-[var(--color-text-muted)]">Design Studio</p>
+                                        <h3 className="font-bold text-main leading-tight">Nano Banana</h3>
+                                        <p className="text-xs text-muted">Design Studio</p>
                                     </div>
                                 </div>
 
@@ -764,8 +764,8 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                     <button
                                         onClick={() => { setAiMode('generate'); setReferenceImage(null); setAiView('input'); }}
                                         className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-2 ${aiMode === 'generate'
-                                            ? 'bg-white dark:bg-zinc-700 text-[var(--color-text-main)] shadow-sm'
-                                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                                            ? 'bg-white dark:bg-zinc-700 text-main shadow-sm'
+                                            : 'text-muted hover:text-main'
                                             }`}
                                     >
                                         <span className="material-symbols-outlined text-[16px]">add_photo_alternate</span>
@@ -774,8 +774,8 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                     <button
                                         onClick={() => { setAiMode('rework'); setAiView('input'); }}
                                         className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-2 ${aiMode === 'rework'
-                                            ? 'bg-white dark:bg-zinc-700 text-[var(--color-text-main)] shadow-sm'
-                                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                                            ? 'bg-white dark:bg-zinc-700 text-main shadow-sm'
+                                            : 'text-muted hover:text-main'
                                             }`}
                                     >
                                         <span className="material-symbols-outlined text-[16px]">auto_fix_high</span>
@@ -788,7 +788,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                     <div className="space-y-2 mb-6 animate-in fade-in slide-in-from-top-2">
                                         <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Source Image</label>
                                         {referenceImage ? (
-                                            <div className="relative group rounded-xl overflow-hidden border border-[var(--color-surface-border)] bg-white dark:bg-zinc-800">
+                                            <div className="relative group rounded-xl overflow-hidden border border-surface bg-white dark:bg-zinc-800">
                                                 <div className="aspect-video w-full bg-zinc-100 dark:bg-zinc-700">
                                                     <img src={referenceImage.thumbnailUrl || referenceImage.url} className="w-full h-full object-cover" />
                                                 </div>
@@ -820,7 +820,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                         value={aiPrompt}
                                         onChange={e => setAiPrompt(e.target.value)}
                                         placeholder={aiMode === 'rework' ? "Describe how to transform the image..." : "Describe the image you want to see..."}
-                                        className="w-full h-32 p-3 rounded-xl bg-white dark:bg-zinc-800 border border-[var(--color-surface-border)] focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none text-sm resize-none transition-all placeholder:text-zinc-400"
+                                        className="w-full h-32 p-3 rounded-xl bg-white dark:bg-zinc-800 border border-surface focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none text-sm resize-none transition-all placeholder:text-zinc-400"
                                     />
                                 </div>
 
@@ -834,7 +834,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                                 onClick={() => setSelectedStyle(style)}
                                                 className={`px-3 py-2 rounded-lg text-xs font-medium border text-center transition-all truncate ${selectedStyle === style
                                                     ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/50'
-                                                    : 'bg-white dark:bg-zinc-800 border-[var(--color-surface-border)] text-[var(--color-text-muted)] hover:bg-zinc-50 dark:hover:bg-zinc-700'
+                                                    : 'bg-white dark:bg-zinc-800 border-surface text-muted hover:bg-zinc-50 dark:hover:bg-zinc-700'
                                                     }`}
                                             >
                                                 {style}
@@ -846,9 +846,9 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                 {/* Generate Button */}
                                 <div className="mt-auto space-y-3">
                                     {aiUsage && (
-                                        <div className="flex items-center justify-between text-xs text-[var(--color-text-muted)] px-1">
+                                        <div className="flex items-center justify-between text-xs text-muted px-1">
                                             <span>Monthly Quota</span>
-                                            <span className="font-medium text-[var(--color-text-main)]">{Math.max(0, (aiUsage.imageLimit || 50) - (aiUsage.imagesUsed || 0))} remaining</span>
+                                            <span className="font-medium text-main">{Math.max(0, (aiUsage.imageLimit || 50) - (aiUsage.imagesUsed || 0))} remaining</span>
                                         </div>
                                     )}
                                     <button
@@ -881,8 +881,8 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                                 <span className="material-symbols-outlined text-4xl text-amber-500 animate-pulse">auto_awesome</span>
                                             </div>
                                         </div>
-                                        <h3 className="text-xl font-bold text-[var(--color-text-main)] animate-pulse">Creating your masterpiece...</h3>
-                                        <p className="text-sm text-[var(--color-text-muted)] mt-2">This usually takes about 10-15 seconds</p>
+                                        <h3 className="text-xl font-bold text-main animate-pulse">Creating your masterpiece...</h3>
+                                        <p className="text-sm text-muted mt-2">This usually takes about 10-15 seconds</p>
                                     </div>
                                 )}
 
@@ -892,8 +892,8 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                         <div className="size-24 rounded-3xl bg-amber-50 dark:bg-amber-900/10 flex items-center justify-center mb-6 shadow-sm rotate-3">
                                             <span className="material-symbols-outlined text-6xl text-amber-500/80">auto_awesome</span>
                                         </div>
-                                        <h2 className="text-2xl font-bold text-[var(--color-text-main)] mb-3">Ready to Create</h2>
-                                        <p className="text-[var(--color-text-muted)] max-w-sm leading-relaxed">
+                                        <h2 className="text-2xl font-bold text-main mb-3">Ready to Create</h2>
+                                        <p className="text-muted max-w-sm leading-relaxed">
                                             {aiMode === 'generate'
                                                 ? 'Describe your vision in the prompt box to generate high-quality unique assets.'
                                                 : 'Select an image and describe how you want to transform it.'}
@@ -903,10 +903,10 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
                                 {/* Picking Reference State */}
                                 {aiView === 'picking_reference' && (
-                                    <div className="absolute inset-0 z-20 bg-[var(--color-surface-card)] flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
-                                        <div className="p-4 border-b border-[var(--color-surface-border)] flex items-center justify-between bg-white dark:bg-zinc-900/50">
-                                            <h3 className="font-bold text-[var(--color-text-main)]">Select Reference Image</h3>
-                                            <button onClick={() => setAiView('input')} className="text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] px-3 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+                                    <div className="absolute inset-0 z-20 bg-card flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
+                                        <div className="p-4 border-b border-surface flex items-center justify-between bg-white dark:bg-zinc-900/50">
+                                            <h3 className="font-bold text-main">Select Reference Image</h3>
+                                            <button onClick={() => setAiView('input')} className="text-xs font-medium text-muted hover:text-main px-3 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                                                 Cancel
                                             </button>
                                         </div>
@@ -923,7 +923,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                                     </div>
                                                 ))}
                                                 {allAssets.filter(a => a.type === 'image').length === 0 && (
-                                                    <div className="col-span-4 text-center py-12 text-[var(--color-text-muted)]">
+                                                    <div className="col-span-4 text-center py-12 text-muted">
                                                         No images found. Switch to the Gallery tab to upload some.
                                                     </div>
                                                 )}
@@ -935,14 +935,14 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                 {/* Results State */}
                                 {aiView === 'results' && (
                                     <div className="h-full flex flex-col">
-                                        <div className="p-4 border-b border-[var(--color-surface-border)] flex items-center justify-between bg-white/50 dark:bg-black/20 backdrop-blur-sm z-10">
+                                        <div className="p-4 border-b border-surface flex items-center justify-between bg-white/50 dark:bg-black/20 backdrop-blur-sm z-10">
                                             <div className="flex items-center gap-2">
                                                 <span className="material-symbols-outlined text-amber-500">check_circle</span>
-                                                <span className="font-bold text-[var(--color-text-main)]">Generation Complete</span>
+                                                <span className="font-bold text-main">Generation Complete</span>
                                             </div>
                                             <button
                                                 onClick={() => setAiView('input')}
-                                                className="px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors flex items-center gap-1"
+                                                className="px-3 py-1.5 text-xs font-medium text-muted hover:text-main hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors flex items-center gap-1"
                                             >
                                                 Back to Edit
                                             </button>
@@ -993,7 +993,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
                                         placeholder="Search high-resolution photos from Unsplash..."
-                                        className="w-full pl-10 pr-4 py-3 bg-zinc-100 dark:bg-zinc-800 border-none rounded-xl focus:ring-2 focus:ring-[var(--color-primary)] outline-none transition-all placeholder:text-zinc-500"
+                                        className="w-full pl-10 pr-4 py-3 bg-zinc-100 dark:bg-zinc-800 border-none rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all placeholder:text-zinc-500"
                                     />
                                 </div>
                                 <Button
@@ -1014,19 +1014,19 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                             <div className="flex-1 overflow-y-auto min-h-0">
                                 {isStockLoading ? (
                                     <div className="h-full flex flex-col items-center justify-center">
-                                        <span className="material-symbols-outlined text-4xl text-[var(--color-primary)] animate-spin">progress_activity</span>
-                                        <p className="text-sm text-[var(--color-text-muted)] mt-2">Connecting to Unsplash...</p>
+                                        <span className="material-symbols-outlined text-4xl text-primary animate-spin">progress_activity</span>
+                                        <p className="text-sm text-muted mt-2">Connecting to Unsplash...</p>
                                     </div>
                                 ) : stockError ? (
                                     <div className="h-full flex flex-col items-center justify-center text-center p-8">
                                         <div className="size-16 rounded-2xl bg-red-50 dark:bg-red-900/10 flex items-center justify-center mb-4">
                                             <span className="material-symbols-outlined text-3xl text-red-500">error</span>
                                         </div>
-                                        <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-1">Could not load images</h3>
-                                        <p className="text-sm text-[var(--color-text-muted)] max-w-md">{stockError}</p>
+                                        <h3 className="text-lg font-bold text-main mb-1">Could not load images</h3>
+                                        <p className="text-sm text-muted max-w-md">{stockError}</p>
                                         <button
                                             onClick={() => loadStockImages(searchQuery)}
-                                            className="mt-4 px-4 py-2 text-sm font-medium text-[var(--color-primary)] hover:bg-[var(--color-primary)]/5 rounded-lg transition-colors"
+                                            className="mt-4 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/5 rounded-lg transition-colors"
                                         >
                                             Try Again
                                         </button>
@@ -1034,12 +1034,12 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                 ) : stockImages.length === 0 ? (
                                     <div className="h-full flex flex-col items-center justify-center text-center">
                                         <span className="material-symbols-outlined text-4xl text-zinc-300 mb-2">image_search</span>
-                                        <p className="text-[var(--color-text-muted)]">No images found for "{searchQuery}"</p>
+                                        <p className="text-muted">No images found for "{searchQuery}"</p>
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-4 gap-4 pb-4">
                                         {stockImages.map(image => (
-                                            <div key={image.id} className="group relative aspect-video rounded-xl overflow-hidden bg-zinc-200 dark:bg-zinc-800 shadow-sm border border-transparent hover:border-[var(--color-primary)] transition-all">
+                                            <div key={image.id} className="group relative aspect-video rounded-xl overflow-hidden bg-zinc-200 dark:bg-zinc-800 shadow-sm border border-transparent hover:border-primary transition-all">
                                                 <img
                                                     src={image.urls.small}
                                                     alt={image.alt_description || "Stock Image"}
@@ -1071,7 +1071,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                 {/* Unsplash Attribution */}
                                 {!stockError && !isStockLoading && stockImages.length > 0 && (
                                     <div className="py-4 text-center">
-                                        <a href="https://unsplash.com/?utm_source=projectflow&utm_medium=referral" target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors">
+                                        <a href="https://unsplash.com/?utm_source=projectflow&utm_medium=referral" target="_blank" rel="noopener noreferrer" className="text-xs text-muted hover:text-main transition-colors">
                                             Photos provided by Unsplash
                                         </a>
                                     </div>

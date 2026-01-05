@@ -1,0 +1,70 @@
+.error-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background: var(--color-surface-bg);
+    color: var(--color-text-main);
+    text-align: center;
+}
+
+.error-page__card {
+    width: 100%;
+    max-width: 520px;
+    background: var(--color-surface-card);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.error-page__icon {
+    width: 80px;
+    height: 80px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary-fade);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-error);
+}
+
+.error-page__status {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin: 0;
+}
+
+.error-page__message {
+    font-size: 1rem;
+    color: var(--color-text-muted);
+    margin: 0;
+}
+
+.error-page__actions {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.error-page__button {
+    width: 100%;
+    justify-content: center;
+}
+
+.error-page__note {
+    font-size: 0.75rem;
+    color: var(--color-text-subtle);
+    margin: 0;
+}
+
+@media (min-width: 640px) {
+    .error-page__actions {
+        flex-direction: row;
+    }
+}

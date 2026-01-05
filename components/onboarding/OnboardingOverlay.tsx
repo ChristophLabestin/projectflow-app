@@ -178,35 +178,35 @@ export const OnboardingOverlay = ({
             />
             <div
                 ref={tooltipRef}
-                className="absolute w-[320px] max-w-[90vw] rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] shadow-2xl p-4 space-y-3 pointer-events-auto"
+                className="absolute w-[320px] max-w-[90vw] rounded-2xl border border-surface bg-card shadow-2xl p-4 space-y-3 pointer-events-auto"
                 style={tooltipStyle}
             >
                 <div className="flex items-start justify-between gap-3">
                     <div>
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted">
                             {stepCounter}
                         </div>
-                        <h4 className="text-base font-bold text-[var(--color-text-main)] mt-1">
+                        <h4 className="text-base font-bold text-main mt-1">
                             {activeStep.title}
                         </h4>
                     </div>
                     <button
                         type="button"
                         onClick={onSkip}
-                        className="p-1 rounded-full text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)] transition-colors"
+                        className="p-1 rounded-full text-muted hover:bg-surface-hover hover:text-main transition-colors"
                         aria-label={t('onboarding.skip')}
                     >
                         <span className="material-symbols-outlined text-[18px]">close</span>
                     </button>
                 </div>
-                <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+                <p className="text-sm text-muted leading-relaxed">
                     {activeStep.description}
                 </p>
-                <div className="pt-3 border-t border-[var(--color-surface-border)] flex items-center justify-between">
+                <div className="pt-3 border-t border-surface flex items-center justify-between">
                     <button
                         type="button"
                         onClick={onSkip}
-                        className="text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
+                        className="text-xs font-semibold text-muted hover:text-main transition-colors"
                     >
                         {t('onboarding.skip')}
                     </button>

@@ -300,8 +300,8 @@ export const SocialCampaignReviewPage = () => {
         { label: t('social.review.stats.audiences'), value: audienceSegments.length, icon: 'groups' },
     ];
 
-    if (loading) return <div className="h-full flex items-center justify-center text-[var(--color-text-muted)]">{t('social.review.loading')}</div>;
-    if (!idea) return <div className="p-10 text-center text-[var(--color-text-muted)]">{t('social.review.notFound')}</div>;
+    if (loading) return <div className="h-full flex items-center justify-center text-muted">{t('social.review.loading')}</div>;
+    if (!idea) return <div className="p-10 text-center text-muted">{t('social.review.notFound')}</div>;
 
     return (
         <div className="min-h-full w-full pb-24">
@@ -310,7 +310,7 @@ export const SocialCampaignReviewPage = () => {
                     <button
                         type="button"
                         onClick={() => navigate(`/project/${projectId}/social`)}
-                        className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
+                        className="inline-flex items-center gap-2 text-xs font-semibold text-muted hover:text-main transition-colors"
                     >
                         <span className="material-symbols-outlined text-[18px]">arrow_back</span>
                         {t('social.review.backToSocial')}
@@ -328,17 +328,17 @@ export const SocialCampaignReviewPage = () => {
                     <aside className="space-y-4">
                         <Card className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.summary.campaign')}</div>
+                                <div className="text-xs font-bold uppercase tracking-wider text-muted">{t('social.review.summary.campaign')}</div>
                                 <Badge variant={statusVariant}>{statusLabel}</Badge>
                             </div>
                             <div className="space-y-2">
-                                <h1 className="text-xl md:text-2xl font-bold text-[var(--color-text-main)]">{idea.title}</h1>
-                                <div className="text-xs text-[var(--color-text-muted)] font-medium">{t('social.review.summary.id').replace('{id}', idea.id.slice(0, 6))}</div>
+                                <h1 className="text-xl md:text-2xl font-bold text-main">{idea.title}</h1>
+                                <div className="text-xs text-muted font-medium">{t('social.review.summary.id').replace('{id}', idea.id.slice(0, 6))}</div>
                             </div>
                             {linkedCampaign && (
-                                <div className="flex items-center gap-2 text-xs text-[var(--color-text-muted)] border-t border-[var(--color-surface-border)] pt-3">
+                                <div className="flex items-center gap-2 text-xs text-muted border-t border-surface pt-3">
                                     <span className="material-symbols-outlined text-[16px]">campaign</span>
-                                    <span className="font-medium text-[var(--color-text-main)] truncate">{linkedCampaign.name}</span>
+                                    <span className="font-medium text-main truncate">{linkedCampaign.name}</span>
                                 </div>
                             )}
                         </Card>
@@ -346,8 +346,8 @@ export const SocialCampaignReviewPage = () => {
                         <Card className="space-y-4">
                             <div className="flex items-start justify-between gap-3">
                                 <div>
-                                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.performance.title')}</div>
-                                    <p className="text-xs text-[var(--color-text-muted)]">{t('social.review.performance.subtitle')}</p>
+                                    <div className="text-xs font-bold uppercase tracking-wider text-muted">{t('social.review.performance.title')}</div>
+                                    <p className="text-xs text-muted">{t('social.review.performance.subtitle')}</p>
                                 </div>
                                 <Button
                                     variant="secondary"
@@ -365,7 +365,7 @@ export const SocialCampaignReviewPage = () => {
                                     <svg className="size-full -rotate-90" viewBox="0 0 100 100">
                                         <circle className="text-[var(--color-surface-border)] stroke-current" strokeWidth="10" cx="50" cy="50" r="40" fill="transparent" />
                                         <circle
-                                            className="text-[var(--color-success)] stroke-current transition-all duration-700"
+                                            className="text-success stroke-current transition-all duration-700"
                                             strokeWidth="10"
                                             strokeLinecap="round"
                                             cx="50"
@@ -377,31 +377,31 @@ export const SocialCampaignReviewPage = () => {
                                         />
                                     </svg>
                                     <div className="absolute inset-0 flex flex-col items-center justify-center">
-                                        <span className="text-sm font-bold text-[var(--color-text-main)]">{score}%</span>
+                                        <span className="text-sm font-bold text-main">{score}%</span>
                                     </div>
                                 </div>
                                 <div>
-                                    <div className="text-sm font-semibold text-[var(--color-text-main)]">{t('social.review.performance.successLabel')}</div>
-                                    <p className="text-xs text-[var(--color-text-muted)]">{t('social.review.performance.successHint')}</p>
+                                    <div className="text-sm font-semibold text-main">{t('social.review.performance.successLabel')}</div>
+                                    <p className="text-xs text-muted">{t('social.review.performance.successHint')}</p>
                                 </div>
                             </div>
 
                             <div className="space-y-3">
                                 <div className="space-y-1">
-                                    <div className="flex justify-between text-xs text-[var(--color-text-muted)]">
+                                    <div className="flex justify-between text-xs text-muted">
                                         <span>{t('social.review.performance.marketFit')}</span>
-                                        <span className="font-semibold text-[var(--color-text-main)]">{marketFit}%</span>
+                                        <span className="font-semibold text-main">{marketFit}%</span>
                                     </div>
-                                    <div className="w-full h-2 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
-                                        <div className="h-full bg-[var(--color-primary)]" style={{ width: `${marketFit}%` }} />
+                                    <div className="w-full h-2 rounded-full bg-surface-border overflow-hidden">
+                                        <div className="h-full bg-primary" style={{ width: `${marketFit}%` }} />
                                     </div>
                                 </div>
                                 <div className="space-y-1">
-                                    <div className="flex justify-between text-xs text-[var(--color-text-muted)]">
+                                    <div className="flex justify-between text-xs text-muted">
                                         <span>{t('social.review.performance.feasibility')}</span>
-                                        <span className="font-semibold text-[var(--color-text-main)]">{feasibility}%</span>
+                                        <span className="font-semibold text-main">{feasibility}%</span>
                                     </div>
-                                    <div className="w-full h-2 rounded-full bg-[var(--color-surface-border)] overflow-hidden">
+                                    <div className="w-full h-2 rounded-full bg-surface-border overflow-hidden">
                                         <div className="h-full bg-[var(--color-primary-light)]" style={{ width: `${feasibility}%` }} />
                                     </div>
                                 </div>
@@ -409,18 +409,18 @@ export const SocialCampaignReviewPage = () => {
                         </Card>
 
                         <Card className="space-y-3">
-                            <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.quickStats')}</div>
+                            <div className="text-xs font-bold uppercase tracking-wider text-muted">{t('social.review.quickStats')}</div>
                             <div className="grid grid-cols-2 gap-3">
                                 {summaryStats.map((stat) => (
                                     <div
                                         key={stat.label}
-                                        className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-3"
+                                        className="rounded-xl border border-surface bg-surface p-3"
                                     >
-                                        <div className="flex items-center justify-between text-[var(--color-text-muted)]">
+                                        <div className="flex items-center justify-between text-muted">
                                             <span className="material-symbols-outlined text-[16px]">{stat.icon}</span>
                                             <span className="text-[10px] font-bold uppercase tracking-wider">{stat.label}</span>
                                         </div>
-                                        <div className="mt-2 text-lg font-bold text-[var(--color-text-main)]">{stat.value}</div>
+                                        <div className="mt-2 text-lg font-bold text-main">{stat.value}</div>
                                     </div>
                                 ))}
                             </div>
@@ -429,43 +429,43 @@ export const SocialCampaignReviewPage = () => {
 
                     <div className="space-y-6">
                         <Card className="space-y-6">
-                            <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.strategyIntent')}</div>
+                            <div className="text-xs font-bold uppercase tracking-wider text-muted">{t('social.review.strategyIntent')}</div>
                             <div className="space-y-2">
-                                <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.coreFlow')}</div>
-                                <h2 className="text-2xl md:text-3xl font-bold text-[var(--color-text-main)]">
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-muted">{t('social.review.coreFlow')}</div>
+                                <h2 className="text-2xl md:text-3xl font-bold text-main">
                                     "{concept.bigIdea || idea.description || t('social.review.coreFlowFallback')}"
                                 </h2>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-[var(--color-surface-border)]">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-surface">
                                 <div>
-                                    <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-2">{t('social.review.hookLabel')}</div>
-                                    <p className="text-sm font-medium italic text-[var(--color-text-main)] leading-relaxed">
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">{t('social.review.hookLabel')}</div>
+                                    <p className="text-sm font-medium italic text-main leading-relaxed">
                                         "{concept.hook || t('social.review.hookFallback')}"
                                     </p>
                                 </div>
                                 <div className="space-y-3">
                                     <div>
-                                        <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-2">{t('social.review.visualDirection')}</div>
-                                        <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+                                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted mb-2">{t('social.review.visualDirection')}</div>
+                                        <p className="text-sm text-muted leading-relaxed">
                                             {concept.visualDirection || t('social.review.visualDirectionFallback')}
                                         </p>
                                     </div>
                                     <div className="flex flex-wrap gap-2">
                                         {concept.mood && (
-                                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] text-[var(--color-text-muted)]">
+                                            <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-surface-hover border border-surface text-muted">
                                                 {concept.mood}
                                             </span>
                                         )}
                                         {themes.map((t: string) => (
                                             <span
                                                 key={t}
-                                                className="px-2.5 py-1 rounded-full text-[10px] font-semibold text-[var(--color-text-muted)] border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]"
+                                                className="px-2.5 py-1 rounded-full text-[10px] font-semibold text-muted border border-surface bg-surface"
                                             >
                                                 #{t}
                                             </span>
                                         ))}
                                         {!concept.mood && themes.length === 0 && (
-                                            <span className="text-xs text-[var(--color-text-muted)]">{t('social.review.noThemes')}</span>
+                                            <span className="text-xs text-muted">{t('social.review.noThemes')}</span>
                                         )}
                                     </div>
                                 </div>
@@ -473,23 +473,23 @@ export const SocialCampaignReviewPage = () => {
                         </Card>
 
                         <Card className="space-y-4">
-                            <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.executionChannels')}</div>
+                            <div className="text-xs font-bold uppercase tracking-wider text-muted">{t('social.review.executionChannels')}</div>
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                                 <div className="lg:col-span-1 space-y-3">
-                                    <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.audienceSegments')}</div>
+                                    <div className="text-[10px] font-bold uppercase tracking-wider text-muted">{t('social.review.audienceSegments')}</div>
                                     <div className="space-y-2">
                                         {audienceSegments.length ? (
                                             audienceSegments.map((seg: string, i: number) => (
                                                 <div
                                                     key={i}
-                                                    className="flex items-center gap-2 text-sm font-medium text-[var(--color-text-main)] bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-3 py-2"
+                                                    className="flex items-center gap-2 text-sm font-medium text-main bg-surface border border-surface rounded-lg px-3 py-2"
                                                 >
-                                                    <span className="size-1.5 rounded-full bg-[var(--color-primary)]" />
+                                                    <span className="size-1.5 rounded-full bg-primary" />
                                                     {seg}
                                                 </div>
                                             ))
                                         ) : (
-                                            <div className="text-xs text-[var(--color-text-muted)] bg-[var(--color-surface-bg)] border border-dashed border-[var(--color-surface-border)] rounded-lg p-3">
+                                            <div className="text-xs text-muted bg-surface border border-dashed border-surface rounded-lg p-3">
                                                 {t('social.review.noAudienceSegments')}
                                             </div>
                                         )}
@@ -517,28 +517,28 @@ export const SocialCampaignReviewPage = () => {
                                             return (
                                                 <div
                                                     key={platformId}
-                                                    className="group bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl p-5 shadow-sm hover:shadow-md transition-all"
+                                                    className="group bg-card border border-surface rounded-2xl p-5 shadow-sm hover:shadow-md transition-all"
                                                 >
                                                     <div className="flex items-center gap-3">
-                                                        <div className="size-11 rounded-2xl bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] flex items-center justify-center">
+                                                        <div className="size-11 rounded-2xl bg-surface border border-surface flex items-center justify-center">
                                                             <div className="size-6">
                                                                 <PlatformIcon platform={platformId} />
                                                             </div>
                                                         </div>
                                                         <div className="min-w-0">
-                                                            <div className="text-base font-bold text-[var(--color-text-main)] leading-tight">{platformId}</div>
-                                                            <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.executionChannel')}</div>
+                                                            <div className="text-base font-bold text-main leading-tight">{platformId}</div>
+                                                            <div className="text-[10px] uppercase tracking-wider text-muted">{t('social.review.executionChannel')}</div>
                                                         </div>
                                                     </div>
 
                                                     <div className="mt-4 space-y-1">
-                                                        <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">{roleTitle}</div>
-                                                        <p className="text-xs text-[var(--color-text-muted)] leading-relaxed line-clamp-3">
+                                                        <div className="text-[10px] uppercase tracking-wider text-muted">{roleTitle}</div>
+                                                        <p className="text-xs text-muted leading-relaxed line-clamp-3">
                                                             {roleBody || t('social.review.roleFallback')}
                                                         </p>
                                                     </div>
 
-                                                    <div className="mt-4 pt-3 border-t border-[var(--color-surface-border)] grid grid-cols-2 gap-3 text-xs text-[var(--color-text-muted)]">
+                                                    <div className="mt-4 pt-3 border-t border-surface grid grid-cols-2 gap-3 text-xs text-muted">
                                                         <div className="space-y-1">
                                                             <div className="text-[10px] uppercase tracking-wider">{t('social.review.frequencyLabel')}</div>
                                                             {!isString && Array.isArray(p.phaseFrequencies) && p.phaseFrequencies.length > 0 ? (
@@ -548,8 +548,8 @@ export const SocialCampaignReviewPage = () => {
                                                                             || t('social.review.phaseFallback').replace('{index}', String(i + 1));
                                                                         return (
                                                                             <div key={i} className="flex justify-between items-center text-[10px] gap-2">
-                                                                                <span className="text-[var(--color-text-muted)] truncate max-w-[80px]" title={phaseName}>{phaseName}</span>
-                                                                                <span className="font-semibold text-[var(--color-text-main)]">
+                                                                                <span className="text-muted truncate max-w-[80px]" title={phaseName}>{phaseName}</span>
+                                                                                <span className="font-semibold text-main">
                                                                                     {pf.frequencyValue}/{pf.frequencyUnit?.replace('Posts/', '') || t('social.review.frequencyWeek')}
                                                                                 </span>
                                                                             </div>
@@ -557,19 +557,19 @@ export const SocialCampaignReviewPage = () => {
                                                                     })}
                                                                 </div>
                                                             ) : (
-                                                                <div className="text-sm font-semibold text-[var(--color-text-main)]">{frequencyLabel}</div>
+                                                                <div className="text-sm font-semibold text-main">{frequencyLabel}</div>
                                                             )}
                                                         </div>
                                                         <div className="space-y-1 text-right">
                                                             <div className="text-[10px] uppercase tracking-wider">{t('social.review.formatLabel')}</div>
-                                                            <div className="text-sm font-semibold text-[var(--color-text-main)]">{formatLabel}</div>
+                                                            <div className="text-sm font-semibold text-main">{formatLabel}</div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             );
                                         })
                                     ) : (
-                                        <div className="sm:col-span-2 text-xs text-[var(--color-text-muted)] bg-[var(--color-surface-bg)] border border-dashed border-[var(--color-surface-border)] rounded-lg p-4">
+                                        <div className="sm:col-span-2 text-xs text-muted bg-surface border border-dashed border-surface rounded-lg p-4">
                                             {t('social.review.noPlatforms')}
                                         </div>
                                     )}
@@ -578,11 +578,11 @@ export const SocialCampaignReviewPage = () => {
                         </Card>
 
                         <Card className="space-y-4">
-                            <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.actionPlan')}</div>
+                            <div className="text-xs font-bold uppercase tracking-wider text-muted">{t('social.review.actionPlan')}</div>
                             {phases.length ? (
                                 <div className="relative">
                                     {phases.length > 1 && (
-                                        <div className="absolute left-[28px] top-6 bottom-6 w-px bg-[var(--color-surface-border)] z-0" />
+                                        <div className="absolute left-[28px] top-6 bottom-6 w-px bg-surface-border z-0" />
                                     )}
                                     <div className="space-y-5">
                                         {phases.map((phase: any, i: number) => {
@@ -601,19 +601,19 @@ export const SocialCampaignReviewPage = () => {
                                                             {i + 1}
                                                         </div>
                                                     </div>
-                                                    <div className="rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-4">
+                                                    <div className="rounded-2xl border border-surface bg-surface p-4">
                                                         <div className="flex flex-wrap items-start justify-between gap-2">
                                                             <div>
-                                                                <div className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)]">
+                                                                <div className="text-[10px] uppercase tracking-wider text-muted">
                                                                     {t('social.review.phaseLabel').replace('{index}', String(i + 1))}
                                                                 </div>
-                                                                <h4 className="text-base font-bold text-[var(--color-text-main)]">{phaseTitle}</h4>
+                                                                <h4 className="text-base font-bold text-main">{phaseTitle}</h4>
                                                             </div>
-                                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] ${style.text}`}>
+                                                            <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider border border-surface bg-card ${style.text}`}>
                                                                 {phaseDuration}
                                                             </span>
                                                         </div>
-                                                        <p className="mt-2 text-sm text-[var(--color-text-muted)] leading-relaxed">
+                                                        <p className="mt-2 text-sm text-muted leading-relaxed">
                                                             {phase.focus || t('social.review.focusFallback')}
                                                         </p>
                                                     </div>
@@ -623,7 +623,7 @@ export const SocialCampaignReviewPage = () => {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="text-sm text-[var(--color-text-muted)] bg-[var(--color-surface-bg)] border border-dashed border-[var(--color-surface-border)] rounded-lg p-4 text-center">
+                                <div className="text-sm text-muted bg-surface border border-dashed border-surface rounded-lg p-4 text-center">
                                     {t('social.review.noPhases')}
                                 </div>
                             )}
@@ -632,8 +632,8 @@ export const SocialCampaignReviewPage = () => {
                         <Card className="space-y-4">
                             <div className="space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.contentTimeline')}</div>
-                                    <span className="text-xs text-[var(--color-text-muted)]">
+                                    <div className="text-xs font-bold uppercase tracking-wider text-muted">{t('social.review.contentTimeline')}</div>
+                                    <span className="text-xs text-muted">
                                         {t('social.review.postsCount').replace('{count}', String(planningPosts.length))}
                                     </span>
                                 </div>
@@ -644,16 +644,16 @@ export const SocialCampaignReviewPage = () => {
                                             type="button"
                                             onClick={() => setWeekOffset((prev) => Math.max(0, prev - 1))}
                                             disabled={weekOffset === 0}
-                                            className="size-8 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] disabled:opacity-40"
+                                            className="size-8 rounded-lg border border-surface bg-surface text-muted hover:text-main hover:bg-surface-hover disabled:opacity-40"
                                         >
                                             <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                                         </button>
-                                        <div className="text-xs font-semibold text-[var(--color-text-muted)]">
+                                        <div className="text-xs font-semibold text-muted">
                                             {t('social.review.weekLabel')
                                                 .replace('{week}', String(weekOffset + 1))
                                                 .replace('{total}', String(totalWeeks))}
                                             {weekData.postsThisWeek > 0 && (
-                                                <span className="ml-2 text-[10px] uppercase tracking-wider text-[var(--color-text-subtle)]">
+                                                <span className="ml-2 text-[10px] uppercase tracking-wider text-subtle">
                                                     {t('social.review.postsCount').replace('{count}', String(weekData.postsThisWeek))}
                                                 </span>
                                             )}
@@ -662,7 +662,7 @@ export const SocialCampaignReviewPage = () => {
                                             type="button"
                                             onClick={() => setWeekOffset((prev) => Math.min(totalWeeks - 1, prev + 1))}
                                             disabled={weekOffset >= totalWeeks - 1}
-                                            className="size-8 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)] disabled:opacity-40"
+                                            className="size-8 rounded-lg border border-surface bg-surface text-muted hover:text-main hover:bg-surface-hover disabled:opacity-40"
                                         >
                                             <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                                         </button>
@@ -679,13 +679,13 @@ export const SocialCampaignReviewPage = () => {
                                                         type="button"
                                                         onClick={() => setWeekOffset(i)}
                                                         className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all whitespace-nowrap ${isActive
-                                                            ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] border-[var(--color-surface-border)] shadow-sm'
-                                                            : 'bg-[var(--color-surface-bg)] text-[var(--color-text-muted)] border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'
+                                                            ? 'bg-surface-hover text-main border-surface shadow-sm'
+                                                            : 'bg-surface text-muted border-surface hover:bg-surface-hover'
                                                             }`}
                                                     >
                                                         {t('social.review.weekShort').replace('{week}', String(i + 1))}
                                                         {count > 0 && (
-                                                            <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[9px] ${isActive ? 'bg-[var(--color-text-main)] text-[var(--color-text-ondark)]' : 'bg-[var(--color-surface-border)] text-[var(--color-text-muted)]'}`}>
+                                                            <span className={`ml-2 px-1.5 py-0.5 rounded-full text-[9px] ${isActive ? 'bg-[var(--color-text-main)] text-[var(--color-text-ondark)]' : 'bg-surface-border text-muted'}`}>
                                                                 {count}
                                                             </span>
                                                         )}
@@ -702,14 +702,14 @@ export const SocialCampaignReviewPage = () => {
                                     {weekData.days.map((day) => (
                                         <div
                                             key={day.dayOffset}
-                                            className={`flex flex-col rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] overflow-visible ${day.isInCampaign ? '' : 'opacity-60'}`}
+                                            className={`flex flex-col rounded-2xl border border-surface bg-card overflow-visible ${day.isInCampaign ? '' : 'opacity-60'}`}
                                         >
-                                            <div className="p-3 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]">
+                                            <div className="p-3 border-b border-surface bg-surface">
                                                 <div className="flex items-center justify-between mb-1">
-                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.dayLabel')}</span>
+                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-muted">{t('social.review.dayLabel')}</span>
                                                     {day.phase && <span className={`size-2 rounded-full ${day.phase.color.dot}`} />}
                                                 </div>
-                                                <div className="text-lg font-bold text-[var(--color-text-main)]">
+                                                <div className="text-lg font-bold text-main">
                                                     {day.isInCampaign ? day.dayNum : '—'}
                                                 </div>
                                             </div>
@@ -726,42 +726,42 @@ export const SocialCampaignReviewPage = () => {
                                                         return (
                                                             <div
                                                                 key={post.id}
-                                                                className="relative group rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-2 transition-shadow hover:shadow-md"
+                                                                className="relative group rounded-xl border border-surface bg-surface p-2 transition-shadow hover:shadow-md"
                                                             >
                                                                 <div className="flex items-center justify-between gap-2">
                                                                     <div className="flex -space-x-1">
                                                                         {postPlatforms.slice(0, 2).map((p: string) => (
                                                                             <div
                                                                                 key={p}
-                                                                                className="size-4 rounded-md overflow-hidden ring-1 ring-[var(--color-surface-border)] bg-[var(--color-surface-card)]"
+                                                                                className="size-4 rounded-md overflow-hidden ring-1 ring-surface bg-card"
                                                                             >
                                                                                 <PlatformIcon platform={p} />
                                                                             </div>
                                                                         ))}
                                                                         {!postPlatforms.length && (
-                                                                            <div className="size-4 rounded-md border border-dashed border-[var(--color-surface-border)] bg-[var(--color-surface-card)]" />
+                                                                            <div className="size-4 rounded-md border border-dashed border-surface bg-card" />
                                                                         )}
                                                                     </div>
                                                                     <span className={`px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider border ${typeStyle}`}>
                                                                         {getSocialPostFormatLabel(contentType as any, t)}
                                                                     </span>
                                                                 </div>
-                                                                <p className="mt-1 text-[10px] text-[var(--color-text-muted)] leading-relaxed line-clamp-2">
+                                                                <p className="mt-1 text-[10px] text-muted leading-relaxed line-clamp-2">
                                                                     {hookText}
                                                                 </p>
-                                                                    <div className="absolute left-1/2 top-full mt-2 w-56 -translate-x-1/2 translate-y-1 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 shadow-lg opacity-0 pointer-events-none transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 z-20">
-                                                                    <div className="flex items-center justify-between text-[9px] uppercase tracking-wider text-[var(--color-text-muted)]">
+                                                                    <div className="absolute left-1/2 top-full mt-2 w-56 -translate-x-1/2 translate-y-1 rounded-xl border border-surface bg-card p-3 shadow-lg opacity-0 pointer-events-none transition-all duration-200 group-hover:opacity-100 group-hover:translate-y-0 z-20">
+                                                                    <div className="flex items-center justify-between text-[9px] uppercase tracking-wider text-muted">
                                                                         <span>{t('social.review.preview')}</span>
                                                                         {post.status && <span>{getSocialPostStatusLabel(post.status, t)}</span>}
                                                                     </div>
-                                                                    <div className="mt-2 text-xs font-semibold text-[var(--color-text-main)]">
+                                                                    <div className="mt-2 text-xs font-semibold text-main">
                                                                         {getSocialPostFormatLabel(contentType as any, t)}
                                                                     </div>
-                                                                    <div className="mt-1 text-xs text-[var(--color-text-muted)] leading-relaxed line-clamp-4">
+                                                                    <div className="mt-1 text-xs text-muted leading-relaxed line-clamp-4">
                                                                         {hookText}
                                                                     </div>
                                                                     {post.visualDirection && (
-                                                                        <div className="mt-2 text-[10px] text-[var(--color-text-subtle)] line-clamp-3">
+                                                                        <div className="mt-2 text-[10px] text-subtle line-clamp-3">
                                                                             {post.visualDirection}
                                                                         </div>
                                                                     )}
@@ -770,7 +770,7 @@ export const SocialCampaignReviewPage = () => {
                                                         );
                                                     })
                                                 ) : (
-                                                    <div className="text-[10px] text-[var(--color-text-subtle)] text-center py-6">
+                                                    <div className="text-[10px] text-subtle text-center py-6">
                                                         {day.isInCampaign ? t('social.review.noPosts') : t('social.review.outsideRange')}
                                                     </div>
                                                 )}
@@ -779,27 +779,27 @@ export const SocialCampaignReviewPage = () => {
                                     ))}
                                 </div>
                             ) : (
-                                <div className="text-sm text-[var(--color-text-muted)] bg-[var(--color-surface-bg)] border border-dashed border-[var(--color-surface-border)] rounded-lg p-4 text-center">
+                                <div className="text-sm text-muted bg-surface border border-dashed border-surface rounded-lg p-4 text-center">
                                     {t('social.review.noPlannedPosts')}
                                 </div>
                             )}
                         </Card>
 
                         <Card className="space-y-4">
-                            <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('social.review.riskMitigation')}</div>
+                            <div className="text-xs font-bold uppercase tracking-wider text-muted">{t('social.review.riskMitigation')}</div>
                             {idea.riskWinAnalysis ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {idea.riskWinAnalysis.risks.slice(0, 4).map((risk: any, i) => (
-                                        <div key={i} className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] p-4">
+                                        <div key={i} className="rounded-xl border border-surface bg-surface p-4">
                                             <div className="flex items-start gap-3 mb-3">
-                                                <span className="material-symbols-outlined text-[var(--color-warning)] text-lg">warning</span>
-                                                <div className="text-sm font-semibold text-[var(--color-text-main)] leading-tight">
+                                                <span className="material-symbols-outlined text-warning text-lg">warning</span>
+                                                <div className="text-sm font-semibold text-main leading-tight">
                                                     {typeof risk === 'string' ? risk : risk.title}
                                                 </div>
                                             </div>
-                                            <div className="rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3">
-                                                <p className="text-xs text-[var(--color-text-muted)] leading-relaxed">
-                                                    <span className="font-bold text-[var(--color-success)] uppercase text-[10px] mr-2">{t('social.review.mitigationLabel')}</span>
+                                            <div className="rounded-lg border border-surface bg-card p-3">
+                                                <p className="text-xs text-muted leading-relaxed">
+                                                    <span className="font-bold text-success uppercase text-[10px] mr-2">{t('social.review.mitigationLabel')}</span>
                                                     {risk.mitigation || t('social.review.noMitigation')}
                                                 </p>
                                             </div>
@@ -807,14 +807,14 @@ export const SocialCampaignReviewPage = () => {
                                     ))}
                                 </div>
                             ) : (
-                                <div className="text-sm text-[var(--color-text-muted)] bg-[var(--color-surface-bg)] border border-dashed border-[var(--color-surface-border)] rounded-lg p-4 text-center">
+                                <div className="text-sm text-muted bg-surface border border-dashed border-surface rounded-lg p-4 text-center">
                                     {t('social.review.noRisks')}
                                 </div>
                             )}
                         </Card>
 
                         <Card className="space-y-4">
-                            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
+                            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted">
                                 <span className="material-symbols-outlined text-[16px]">monitoring</span>
                                 {t('social.review.successMetrics')}
                             </div>
@@ -826,20 +826,20 @@ export const SocialCampaignReviewPage = () => {
                                         return (
                                             <div
                                                 key={`${metric}-${index}`}
-                                                className="flex items-center justify-between gap-3 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] px-3 py-2 text-sm"
+                                                className="flex items-center justify-between gap-3 rounded-lg border border-surface bg-surface px-3 py-2 text-sm"
                                             >
-                                                <span className="font-medium text-[var(--color-text-main)]">{metric}</span>
+                                                <span className="font-medium text-main">{metric}</span>
                                                 {target ? (
-                                                    <span className="text-xs font-semibold text-[var(--color-text-muted)]">{target}</span>
+                                                    <span className="text-xs font-semibold text-muted">{target}</span>
                                                 ) : (
-                                                    <span className="text-xs text-[var(--color-text-subtle)]">{t('social.review.targetTbd')}</span>
+                                                    <span className="text-xs text-subtle">{t('social.review.targetTbd')}</span>
                                                 )}
                                             </div>
                                         );
                                     })}
                                 </div>
                             ) : (
-                                <div className="text-xs text-[var(--color-text-muted)] bg-[var(--color-surface-bg)] border border-dashed border-[var(--color-surface-border)] rounded-lg p-3">
+                                <div className="text-xs text-muted bg-surface border border-dashed border-surface rounded-lg p-3">
                                     {t('social.review.noKpis')}
                                 </div>
                             )}
@@ -850,16 +850,16 @@ export const SocialCampaignReviewPage = () => {
 
             {viewMode === 'reviewer-pending' && (
                 <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50">
-                    <div className="flex items-center gap-2 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-lg rounded-full p-2 pl-4">
-                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] hidden sm:block">
+                    <div className="flex items-center gap-2 bg-card border border-surface shadow-lg rounded-full p-2 pl-4">
+                        <span className="text-xs font-bold uppercase tracking-wider text-muted hidden sm:block">
                             {t('social.review.actions.label')}
                         </span>
-                        <div className="h-4 w-px bg-[var(--color-surface-border)] hidden sm:block" />
+                        <div className="h-4 w-px bg-surface-border hidden sm:block" />
 
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="rounded-full text-[var(--color-error)] hover:text-[var(--color-error)] hover:bg-red-50"
+                            className="rounded-full text-error hover:text-error hover:bg-red-50"
                             onClick={() => {
                                 setRejectType('permanent');
                                 setShowRejectModal(true);
@@ -870,7 +870,7 @@ export const SocialCampaignReviewPage = () => {
                         <Button
                             variant="ghost"
                             size="sm"
-                            className="rounded-full text-[var(--color-warning)] hover:text-[var(--color-warning)] hover:bg-amber-50"
+                            className="rounded-full text-warning hover:text-warning hover:bg-amber-50"
                             onClick={() => {
                                 setRejectType('changes');
                                 setShowRejectModal(true);
@@ -898,8 +898,8 @@ export const SocialCampaignReviewPage = () => {
                 size="md"
             >
                 <div className="space-y-6">
-                    <div className="bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] p-4 rounded-lg">
-                        <p className="text-sm text-[var(--color-text-muted)]">
+                    <div className="bg-surface border border-surface p-4 rounded-lg">
+                        <p className="text-sm text-muted">
                             {rejectType === 'changes'
                                 ? t('social.review.rejectModal.requestDescription')
                                 : t('social.review.rejectModal.rejectDescription')}

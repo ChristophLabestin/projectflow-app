@@ -168,17 +168,17 @@ export const ImportRecipientsModal: React.FC<ImportRecipientsModalProps> = ({ is
 
     return (
         <div className="fixed inset-0 z-[50] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-            <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl max-w-2xl w-full border border-[var(--color-surface-border)] flex flex-col max-h-[90vh]">
-                <div className="flex justify-between items-center p-6 border-b border-[var(--color-surface-border)]">
+            <div className="bg-card rounded-2xl shadow-2xl max-w-2xl w-full border border-surface flex flex-col max-h-[90vh]">
+                <div className="flex justify-between items-center p-6 border-b border-surface">
                     <h2 className="text-xl font-bold">Import Recipients</h2>
-                    <button onClick={onClose} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]">
+                    <button onClick={onClose} className="text-muted hover:text-main">
                         <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
 
                 <div className="p-6 overflow-y-auto flex-1">
                     {step === 1 && (
-                        <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-[var(--color-surface-border)] rounded-xl bg-[var(--color-surface-bg)] hover:bg-[var(--color-surface-hover)] transition-colors cursor-pointer"
+                        <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed border-surface rounded-xl bg-surface hover:bg-surface-hover transition-colors cursor-pointer"
                             onClick={() => fileInputRef.current?.click()}>
                             <input
                                 type="file"
@@ -187,17 +187,17 @@ export const ImportRecipientsModal: React.FC<ImportRecipientsModalProps> = ({ is
                                 ref={fileInputRef}
                                 onChange={handleFileChange}
                             />
-                            <span className="material-symbols-outlined text-4xl text-[var(--color-text-muted)] mb-2">upload_file</span>
+                            <span className="material-symbols-outlined text-4xl text-muted mb-2">upload_file</span>
                             <p className="font-medium">Click to upload CSV</p>
-                            <p className="text-sm text-[var(--color-text-muted)]">Supported format: .csv</p>
+                            <p className="text-sm text-muted">Supported format: .csv</p>
                         </div>
                     )}
 
                     {step === 2 && (
                         <div className="space-y-4">
-                            <p className="text-sm text-[var(--color-text-muted)]">Map columns from your CSV to ProjectFlow fields.</p>
+                            <p className="text-sm text-muted">Map columns from your CSV to ProjectFlow fields.</p>
 
-                            <div className="grid grid-cols-12 gap-4 font-bold text-xs uppercase tracking-wider text-[var(--color-text-muted)] border-b border-[var(--color-surface-border)] pb-2">
+                            <div className="grid grid-cols-12 gap-4 font-bold text-xs uppercase tracking-wider text-muted border-b border-surface pb-2">
                                 <div className="col-span-4">CSV Header</div>
                                 <div className="col-span-4">Preview (Row 1)</div>
                                 <div className="col-span-4">Map To Field</div>
@@ -207,10 +207,10 @@ export const ImportRecipientsModal: React.FC<ImportRecipientsModalProps> = ({ is
                                 {csvHeaders.map(header => (
                                     <div key={header} className="grid grid-cols-12 gap-4 items-center text-sm">
                                         <div className="col-span-4 font-medium truncate" title={header}>{header}</div>
-                                        <div className="col-span-4 text-[var(--color-text-muted)] truncate" title={csvData[0]?.[header]}>{csvData[0]?.[header] || '-'}</div>
+                                        <div className="col-span-4 text-muted truncate" title={csvData[0]?.[header]}>{csvData[0]?.[header] || '-'}</div>
                                         <div className="col-span-4">
                                             <select
-                                                className="w-full bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded px-2 py-1.5 focus:border-[var(--color-primary)] outline-none"
+                                                className="w-full bg-surface border border-surface rounded px-2 py-1.5 focus:border-primary outline-none"
                                                 value={columnMapping[header] || ''}
                                                 onChange={(e) => handleMappingChange(header, e.target.value)}
                                             >
@@ -236,7 +236,7 @@ export const ImportRecipientsModal: React.FC<ImportRecipientsModalProps> = ({ is
                     )}
                 </div>
 
-                <div className="p-6 border-t border-[var(--color-surface-border)] flex justify-end gap-3 bg-[var(--color-surface-bg)] rounded-b-2xl">
+                <div className="p-6 border-t border-surface flex justify-end gap-3 bg-surface rounded-b-2xl">
                     <Button variant="ghost" onClick={onClose}>Cancel</Button>
                     {step === 2 && (
                         <Button variant="primary" onClick={handleImport} isLoading={isImporting}>

@@ -125,8 +125,8 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
             {/* Header Area */}
             <div className="flex items-center justify-between shrink-0">
                 <div>
-                    <h2 className="text-xl font-bold text-[var(--color-text-main)]">{t('flowStages.productDefinition.title')}</h2>
-                    <p className="text-sm text-[var(--color-text-muted)]">{t('flowStages.productDefinition.subtitle')}</p>
+                    <h2 className="text-xl font-bold text-main">{t('flowStages.productDefinition.title')}</h2>
+                    <p className="text-sm text-muted">{t('flowStages.productDefinition.subtitle')}</p>
                 </div>
                 <Button
                     variant="primary"
@@ -146,13 +146,13 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                 <div className="lg:col-span-4 flex flex-col gap-4">
 
                     {/* In Scope */}
-                    <div className="bg-[var(--color-surface-paper)] p-5 rounded-2xl border border-[var(--color-surface-border)] shadow-sm flex flex-col gap-3">
-                        <div className="flex items-center justify-between text-[var(--color-text-main)] font-bold border-b border-[var(--color-surface-border)] pb-3">
+                    <div className="bg-surface-paper p-5 rounded-2xl border border-surface shadow-sm flex flex-col gap-3">
+                        <div className="flex items-center justify-between text-main font-bold border-b border-surface pb-3">
                             <div className="flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[20px] text-emerald-500">check_circle</span>
                                 {t('flowStages.productDefinition.scope.in')}
                             </div>
-                            <button onClick={() => addListItem('scope')} className="text-xs text-[var(--color-primary)] hover:underline">{t('flowStages.productDefinition.actions.add')}</button>
+                            <button onClick={() => addListItem('scope')} className="text-xs text-primary hover:underline">{t('flowStages.productDefinition.actions.add')}</button>
                         </div>
                         <div className="space-y-2">
                             {scopeList.map((item: string, i: number) => (
@@ -161,26 +161,26 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                                     <input
                                         value={item}
                                         onChange={(e) => updateListItem('scope', i, e.target.value)}
-                                        className="flex-1 bg-transparent border-none p-0 text-sm text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] focus:ring-0"
+                                        className="flex-1 bg-transparent border-none p-0 text-sm text-main placeholder-[var(--color-text-subtle)] focus:ring-0"
                                         placeholder={t('flowStages.productDefinition.scope.inPlaceholder')}
                                     />
-                                    <button onClick={() => removeListItem('scope', i)} className="opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-rose-500">
+                                    <button onClick={() => removeListItem('scope', i)} className="opacity-0 group-hover:opacity-100 text-muted hover:text-rose-500">
                                         <span className="material-symbols-outlined text-[14px]">close</span>
                                     </button>
                                 </div>
                             ))}
-                            {scopeList.length === 0 && <span className="text-xs text-[var(--color-text-muted)] italic">{t('flowStages.productDefinition.scope.empty')}</span>}
+                            {scopeList.length === 0 && <span className="text-xs text-muted italic">{t('flowStages.productDefinition.scope.empty')}</span>}
                         </div>
                     </div>
 
                     {/* Out of Scope */}
-                    <div className="bg-[var(--color-surface-paper)] p-5 rounded-2xl border border-[var(--color-surface-border)] shadow-sm flex flex-col gap-3">
-                        <div className="flex items-center justify-between text-[var(--color-text-main)] font-bold border-b border-[var(--color-surface-border)] pb-3">
+                    <div className="bg-surface-paper p-5 rounded-2xl border border-surface shadow-sm flex flex-col gap-3">
+                        <div className="flex items-center justify-between text-main font-bold border-b border-surface pb-3">
                             <div className="flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[20px] text-rose-500">cancel</span>
                                 {t('flowStages.productDefinition.scope.out')}
                             </div>
-                            <button onClick={() => addListItem('outOfScope')} className="text-xs text-[var(--color-primary)] hover:underline">{t('flowStages.productDefinition.actions.add')}</button>
+                            <button onClick={() => addListItem('outOfScope')} className="text-xs text-primary hover:underline">{t('flowStages.productDefinition.actions.add')}</button>
                         </div>
                         <div className="space-y-2">
                             {outOfScopeList.map((item: string, i: number) => (
@@ -189,26 +189,26 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                                     <input
                                         value={item}
                                         onChange={(e) => updateListItem('outOfScope', i, e.target.value)}
-                                        className="flex-1 bg-transparent border-none p-0 text-sm text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] focus:ring-0"
+                                        className="flex-1 bg-transparent border-none p-0 text-sm text-main placeholder-[var(--color-text-subtle)] focus:ring-0"
                                         placeholder={t('flowStages.productDefinition.scope.outPlaceholder')}
                                     />
-                                    <button onClick={() => removeListItem('outOfScope', i)} className="opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-rose-500">
+                                    <button onClick={() => removeListItem('outOfScope', i)} className="opacity-0 group-hover:opacity-100 text-muted hover:text-rose-500">
                                         <span className="material-symbols-outlined text-[14px]">close</span>
                                     </button>
                                 </div>
                             ))}
-                            {outOfScopeList.length === 0 && <span className="text-xs text-[var(--color-text-muted)] italic">{t('flowStages.productDefinition.scope.empty')}</span>}
+                            {outOfScopeList.length === 0 && <span className="text-xs text-muted italic">{t('flowStages.productDefinition.scope.empty')}</span>}
                         </div>
                     </div>
 
                     {/* Success Criteria */}
-                    <div className="bg-[var(--color-surface-paper)] p-5 rounded-2xl border border-[var(--color-surface-border)] shadow-sm flex flex-col gap-3 flex-1">
-                        <div className="flex items-center justify-between text-[var(--color-text-main)] font-bold border-b border-[var(--color-surface-border)] pb-3">
+                    <div className="bg-surface-paper p-5 rounded-2xl border border-surface shadow-sm flex flex-col gap-3 flex-1">
+                        <div className="flex items-center justify-between text-main font-bold border-b border-surface pb-3">
                             <div className="flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[20px] text-amber-500">ads_click</span>
                                 {t('flowStages.productDefinition.success.title')}
                             </div>
-                            <button onClick={() => addListItem('successCriteria')} className="text-xs text-[var(--color-primary)] hover:underline">{t('flowStages.productDefinition.actions.add')}</button>
+                            <button onClick={() => addListItem('successCriteria')} className="text-xs text-primary hover:underline">{t('flowStages.productDefinition.actions.add')}</button>
                         </div>
                         <div className="space-y-2">
                             {successList.map((item: string, i: number) => (
@@ -217,16 +217,16 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                                     <textarea
                                         value={item}
                                         onChange={(e) => updateListItem('successCriteria', i, e.target.value)}
-                                        className="flex-1 bg-transparent border-none p-0 text-sm text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] focus:ring-0 resize-none"
+                                        className="flex-1 bg-transparent border-none p-0 text-sm text-main placeholder-[var(--color-text-subtle)] focus:ring-0 resize-none"
                                         placeholder={t('flowStages.productDefinition.success.placeholder')}
                                         rows={2}
                                     />
-                                    <button onClick={() => removeListItem('successCriteria', i)} className="opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-rose-500">
+                                    <button onClick={() => removeListItem('successCriteria', i)} className="opacity-0 group-hover:opacity-100 text-muted hover:text-rose-500">
                                         <span className="material-symbols-outlined text-[14px]">close</span>
                                     </button>
                                 </div>
                             ))}
-                            {successList.length === 0 && <span className="text-xs text-[var(--color-text-muted)] italic">{t('flowStages.productDefinition.success.empty')}</span>}
+                            {successList.length === 0 && <span className="text-xs text-muted italic">{t('flowStages.productDefinition.success.empty')}</span>}
                         </div>
                     </div>
 
@@ -249,7 +249,7 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                 <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
 
                     {/* Must Have */}
-                    <div className="bg-[var(--color-surface-paper)] rounded-2xl border border-[var(--color-surface-border)] shadow-sm flex flex-col overflow-hidden">
+                    <div className="bg-surface-paper rounded-2xl border border-surface shadow-sm flex flex-col overflow-hidden">
                         <div className="p-4 bg-rose-50 dark:bg-rose-900/10 border-b border-rose-100 dark:border-rose-900/20 flex justify-between items-center">
                             <div className="font-bold text-rose-700 dark:text-rose-400 flex items-center gap-2">
                                 <span className="material-symbols-outlined">priority_high</span>
@@ -265,7 +265,7 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                     </div>
 
                     {/* Should Have */}
-                    <div className="bg-[var(--color-surface-paper)] rounded-2xl border border-[var(--color-surface-border)] shadow-sm flex flex-col overflow-hidden">
+                    <div className="bg-surface-paper rounded-2xl border border-surface shadow-sm flex flex-col overflow-hidden">
                         <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border-b border-amber-100 dark:border-amber-900/20 flex justify-between items-center">
                             <div className="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-2">
                                 <span className="material-symbols-outlined">star</span>
@@ -281,7 +281,7 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                     </div>
 
                     {/* Could Have */}
-                    <div className="bg-[var(--color-surface-paper)] rounded-2xl border border-[var(--color-surface-border)] shadow-sm flex flex-col overflow-hidden">
+                    <div className="bg-surface-paper rounded-2xl border border-surface shadow-sm flex flex-col overflow-hidden">
                         <div className="p-4 bg-sky-50 dark:bg-sky-900/10 border-b border-sky-100 dark:border-sky-900/20 flex justify-between items-center">
                             <div className="font-bold text-sky-700 dark:text-sky-400 flex items-center gap-2">
                                 <span className="material-symbols-outlined">add_circle</span>
@@ -297,7 +297,7 @@ export const ProductDefinitionView: React.FC<ProductDefinitionViewProps> = ({ id
                     </div>
 
                     {/* Won't Have */}
-                    <div className="bg-[var(--color-surface-paper)] rounded-2xl border border-[var(--color-surface-border)] shadow-sm flex flex-col overflow-hidden">
+                    <div className="bg-surface-paper rounded-2xl border border-surface shadow-sm flex flex-col overflow-hidden">
                         <div className="p-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
                             <div className="font-bold text-slate-600 dark:text-slate-400 flex items-center gap-2">
                                 <span className="material-symbols-outlined">do_not_disturb_on</span>
@@ -323,22 +323,22 @@ const RequirementCard = ({ req, updateRequirement, removeRequirement }: { req: R
     const { t } = useLanguage();
 
     return (
-        <div className="p-3 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] hover:shadow-sm transition-all group">
+        <div className="p-3 rounded-xl border border-surface bg-surface hover:shadow-sm transition-all group">
             <div className="flex items-start justify-between gap-2 mb-2">
                 <input
                     value={req.title}
                     onChange={(e) => updateRequirement(req.id, { title: e.target.value })}
-                    className="font-semibold text-sm bg-transparent border-none p-0 focus:ring-0 text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] flex-1 min-w-0"
+                    className="font-semibold text-sm bg-transparent border-none p-0 focus:ring-0 text-main placeholder-[var(--color-text-subtle)] flex-1 min-w-0"
                     placeholder={t('flowStages.productDefinition.requirements.titlePlaceholder')}
                 />
-                <button onClick={() => removeRequirement(req.id)} className="opacity-0 group-hover:opacity-100 text-[var(--color-text-muted)] hover:text-rose-500">
+                <button onClick={() => removeRequirement(req.id)} className="opacity-0 group-hover:opacity-100 text-muted hover:text-rose-500">
                     <span className="material-symbols-outlined text-[16px]">close</span>
                 </button>
             </div>
             <textarea
                 value={req.description}
                 onChange={(e) => updateRequirement(req.id, { description: e.target.value })}
-                className="w-full bg-transparent border-none p-0 text-xs text-[var(--color-text-muted)] placeholder-[var(--color-text-subtle)] focus:ring-0 resize-none"
+                className="w-full bg-transparent border-none p-0 text-xs text-muted placeholder-[var(--color-text-subtle)] focus:ring-0 resize-none"
                 placeholder={t('flowStages.productDefinition.requirements.detailsPlaceholder')}
                 rows={2}
             />

@@ -79,7 +79,7 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
                 )}
             </div>
             <div className="mt-4 flex items-center gap-4">
-                <span className="text-sm text-[var(--color-text-muted)]">Zoom</span>
+                <span className="text-sm text-muted">Zoom</span>
                 <input
                     type="range"
                     value={zoom}
@@ -88,7 +88,7 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
                     step={0.1}
                     aria-labelledby="Zoom"
                     onChange={(e) => setZoom(Number(e.target.value))}
-                    className="w-full h-1 bg-[var(--color-surface-border)] rounded-lg appearance-none cursor-pointer accent-[var(--color-primary)]"
+                    className="w-full h-1 bg-surface-border rounded-lg appearance-none cursor-pointer accent-[var(--color-primary)]"
                 />
             </div>
         </Modal>

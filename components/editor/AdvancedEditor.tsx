@@ -361,7 +361,7 @@ export const AdvancedEditor: React.FC<AdvancedEditorProps> = ({
         },
         editorProps: {
             attributes: {
-                class: `prose prose-sm sm:prose lg:prose-lg xl:prose-xl focus:outline-none min-h-[500px] p-4 max-w-none text-[var(--color-text-main)] dark:prose-invert prose-headings:text-[var(--color-text-main)] prose-p:text-[var(--color-text-main)] prose-strong:text-[var(--color-text-main)] prose-ul:text-[var(--color-text-main)] prose-li:text-[var(--color-text-main)] [&_ol]:text-[var(--color-text-main)] ${className}`,
+                class: `prose prose-sm sm:prose lg:prose-lg xl:prose-xl focus:outline-none min-h-[500px] p-4 max-w-none text-main dark:prose-invert prose-headings:text-main prose-p:text-main prose-strong:text-main prose-ul:text-main prose-li:text-main [&_ol]:text-main ${className}`,
             },
         },
     });
@@ -408,7 +408,7 @@ export const AdvancedEditor: React.FC<AdvancedEditorProps> = ({
                     e.stopPropagation();
                     setIsDrawerOpen(true);
                 }}
-                className="absolute bottom-4 right-4 z-[999] p-3 rounded-full bg-[var(--color-primary)] text-[var(--color-primary-text)] shadow-lg hover:bg-[var(--color-primary-hover)] transition-transform hover:scale-105 flex items-center justify-center"
+                className="absolute bottom-4 right-4 z-[999] p-3 rounded-full bg-primary text-on-primary shadow-lg hover:bg-[var(--color-primary-hover)] transition-transform hover:scale-105 flex items-center justify-center"
                 title="Open Commands"
             >
                 <Menu size={24} />

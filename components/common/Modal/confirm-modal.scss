@@ -1,0 +1,16 @@
+@use '../../../styles/tokens';
+
+.confirm-modal {
+    &__message {
+        font-size: 1rem;
+        color: var(--color-text-muted);
+        margin-bottom: 24px;
+        line-height: 1.5;
+    }
+
+    &__actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+}

@@ -2,12 +2,17 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { joinWorkspaceViaLink } from '../services/dataService';
 import { auth } from '../services/firebase';
+import { useLanguage } from '../context/LanguageContext';
+import { Button } from '../components/common/Button/Button';
+import { StatusCard } from '../components/common/StatusCard/StatusCard';
+import './join-link.scss';
 
 export const JoinWorkspaceViaLink = () => {
     const { inviteLinkId } = useParams<{ inviteLinkId: string }>();
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
     const hasJoined = useRef(false);
+    const { t } = useLanguage();
 
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
     const [error, setError] = useState<string>('');
@@ -26,7 +31,7 @@ export const JoinWorkspaceViaLink = () => {
             hasJoined.current = true;
 
             if (!inviteLinkId) {
-                setError('Invalid invite link');
+                setError(t('joinWorkspaceLink.error.invalidLink'));
                 setStatus('error');
                 return;
             }
@@ -34,7 +39,7 @@ export const JoinWorkspaceViaLink = () => {
             const tenantIdParam = searchParams.get('tenantId');
 
             if (!tenantIdParam) {
-                setError('Invalid invite link - missing parameters');
+                setError(t('joinWorkspaceLink.error.missingParams'));
                 setStatus('error');
                 return;
             }
@@ -54,82 +59,65 @@ export const JoinWorkspaceViaLink = () => {
                 // joinTenant handles upsert so usually it doesn't fail if already in. 
                 // However, validateInviteLink might fail if maxUses check races.
                 // Assuming idempotency for now.
-                setError(err.message || 'Failed to join workspace');
+                setError(err.message || t('joinWorkspaceLink.error.joinFailed'));
                 setStatus('error');
             }
         };
 
         handleJoin();
-    }, [inviteLinkId, searchParams, navigate]);
+    }, [inviteLinkId, searchParams, navigate, t]);
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[var(--color-surface-bg)] p-4">
-            <div className="max-w-md w-full">
-                {status === 'loading' && (
-                    <div className="bg-[var(--color-surface-paper)] rounded-2xl shadow-xl p-8 text-center">
-                        <div className="size-16 mx-auto mb-4 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                            <span className="material-symbols-outlined text-3xl text-blue-600 dark:text-blue-400 animate-spin">
-                                progress_activity
-                            </span>
-                        </div>
-                        <h2 className="text-2xl font-bold text-[var(--color-text-main)] mb-2">
-                            Joining Workspace...
-                        </h2>
-                        <p className="text-[var(--color-text-muted)]">
-                            Please wait while we add you to the workspace.
-                        </p>
-                    </div>
-                )}
+        <div className="join-link">
+            {status === 'loading' && (
+                <StatusCard
+                    className="join-link__card"
+                    tone="info"
+                    icon={<span className="material-symbols-outlined status-card__spin">progress_activity</span>}
+                    title={t('joinWorkspaceLink.loading.title')}
+                    message={t('joinWorkspaceLink.loading.message')}
+                />
+            )}
 
-                {status === 'success' && (
-                    <div className="bg-[var(--color-surface-paper)] rounded-2xl shadow-xl p-8 text-center">
-                        <div className="size-16 mx-auto mb-4 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                            <span className="material-symbols-outlined text-3xl text-emerald-600 dark:text-emerald-400">
-                                check_circle
-                            </span>
-                        </div>
-                        <h2 className="text-2xl font-bold text-[var(--color-text-main)] mb-2">
-                            Successfully Joined!
-                        </h2>
-                        <p className="text-[var(--color-text-muted)] mb-4">
-                            You've been added to the workspace. Redirecting...
-                        </p>
-                        <div className="h-1 bg-[var(--color-surface-hover)] rounded-full overflow-hidden">
-                            <div className="h-full bg-emerald-500 animate-pulse" style={{ width: '100%' }} />
-                        </div>
+            {status === 'success' && (
+                <StatusCard
+                    className="join-link__card"
+                    tone="success"
+                    icon={<span className="material-symbols-outlined">check_circle</span>}
+                    title={t('joinWorkspaceLink.success.title')}
+                    message={t('joinWorkspaceLink.success.message')}
+                >
+                    <div className="status-card__progress">
+                        <div className="status-card__progress-bar" />
                     </div>
-                )}
+                </StatusCard>
+            )}
 
-                {status === 'error' && (
-                    <div className="bg-[var(--color-surface-paper)] rounded-2xl shadow-xl p-8 text-center">
-                        <div className="size-16 mx-auto mb-4 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
-                            <span className="material-symbols-outlined text-3xl text-rose-600 dark:text-rose-400">
-                                error
-                            </span>
-                        </div>
-                        <h2 className="text-2xl font-bold text-[var(--color-text-main)] mb-2">
-                            Unable to Join
-                        </h2>
-                        <p className="text-[var(--color-text-muted)] mb-6">
-                            {error}
-                        </p>
-                        <div className="flex gap-3 justify-center">
-                            <button
-                                onClick={() => navigate('/')}
-                                className="px-6 py-2 rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-text)] font-semibold hover:opacity-90 transition-opacity"
-                            >
-                                Go to Dashboard
-                            </button>
-                            <button
-                                onClick={() => window.location.reload()}
-                                className="px-6 py-2 rounded-lg border border-[var(--color-surface-border)] text-[var(--color-text-main)] font-semibold hover:bg-[var(--color-surface-hover)] transition-colors"
-                            >
-                                Try Again
-                            </button>
-                        </div>
+            {status === 'error' && (
+                <StatusCard
+                    className="join-link__card"
+                    tone="error"
+                    icon={<span className="material-symbols-outlined">error</span>}
+                    title={t('joinWorkspaceLink.error.title')}
+                    message={error}
+                >
+                    <div className="join-link__actions">
+                        <Button
+                            onClick={() => navigate('/')}
+                            className="join-link__button"
+                        >
+                            {t('joinWorkspaceLink.actions.dashboard')}
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            onClick={() => window.location.reload()}
+                            className="join-link__button"
+                        >
+                            {t('joinWorkspaceLink.actions.retry')}
+                        </Button>
                     </div>
-                )}
-            </div>
+                </StatusCard>
+            )}
         </div>
     );
 };

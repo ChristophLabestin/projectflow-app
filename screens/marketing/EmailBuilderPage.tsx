@@ -247,9 +247,9 @@ export const EmailBuilderPage = () => {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-full gap-3 text-[var(--color-text-muted)] bg-zinc-50 dark:bg-zinc-950">
+            <div className="flex items-center justify-center h-full gap-3 text-muted bg-zinc-50 dark:bg-zinc-950">
                 <div className="flex flex-col items-center gap-4">
-                    <span className="material-symbols-outlined animate-spin text-[32px] text-[var(--color-primary)]">sync</span>
+                    <span className="material-symbols-outlined animate-spin text-[32px] text-primary">sync</span>
                     <div className="text-center">
                         <span className="text-sm font-bold uppercase tracking-widest block">Restoring Workspace</span>
                         <span className="text-[10px] opacity-50 uppercase tracking-tighter">Connecting to Cloud Storage...</span>

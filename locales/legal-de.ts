@@ -6,6 +6,7 @@ export const de: Translations = {
         back: "Zurück zum Start",
         titles: { impressum: "Impressum", privacy: "Datenschutzerklärung", terms: "Nutzungsbedingungen / SaaS-Vertrag für ProjectFlow", appPrivacy: "App Datenschutzerklärung" },
         nav: { impressum: "Impressum", privacy: "Datenschutzerklärung", terms: "AGB", appPrivacy: "App Datenschutz" },
+        errors: { termsMissing: "Fehler beim Laden der Nutzungsbedingungen. Uebersetzung fehlt moeglicherweise." },
         impressum: {
             intro: "Angaben gemäß § 5 DDG",
             providerTitle: "Anbieter",
@@ -1046,6 +1047,7 @@ export const de: Translations = {
             ]
         },
         appPrivacy: {
+            lastUpdatedLabel: "Zuletzt aktualisiert:",
             intro: {
                 title: "1. Einleitung",
                 text: "Willkommen zur Datenschutzerklärung für ProjectFlow (der „Dienst“). Diese Richtlinie erklärt, wie wir Ihre personenbezogenen Daten erfassen, verwenden, offenlegen und schützen, wenn Sie unseren Dienst nutzen. Wir verpflichten uns zur Einhaltung der EU-Datenschutz-Grundverordnung (DSGVO) und anderer geltender Datenschutzgesetze. Bitte lesen Sie diese Richtlinie sorgfältig durch, um unseren Umgang mit Ihren Informationen zu verstehen."

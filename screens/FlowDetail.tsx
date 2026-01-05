@@ -480,7 +480,7 @@ export const FlowDetail = () => {
 
     if (loading) return (
         <div className="flex items-center justify-center h-screen">
-            <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-4xl">progress_activity</span>
+            <span className="material-symbols-outlined text-subtle animate-spin text-4xl">progress_activity</span>
         </div>
     );
 
@@ -501,24 +501,24 @@ export const FlowDetail = () => {
     }
 
     return (
-        <div className="flex flex-col h-full bg-[var(--color-surface-bg)]">
+        <div className="flex flex-col h-full bg-surface">
             {/* Unified Toolbar: Back, Title, Nav, Actions */}
-            <div className="flex items-center justify-between border-b border-[var(--color-surface-border)] px-4 h-14 shrink-0 bg-[var(--color-surface-paper)] z-10 gap-4">
+            <div className="flex items-center justify-between border-b border-surface px-4 h-14 shrink-0 bg-surface-paper z-10 gap-4">
 
                 {/* Left: Back & Title & Tabs */}
                 <div className="flex items-center h-full gap-4 overflow-x-auto no-scrollbar">
-                    <button onClick={handleBack} className="size-8 rounded-lg hover:bg-[var(--color-surface-hover)] flex items-center justify-center text-[var(--color-text-muted)] transition-colors shrink-0">
+                    <button onClick={handleBack} className="size-8 rounded-lg hover:bg-surface-hover flex items-center justify-center text-muted transition-colors shrink-0">
                         <span className="material-symbols-outlined text-[20px]">arrow_back</span>
                     </button>
 
-                    <div className="h-6 w-px bg-[var(--color-surface-border)] shrink-0" />
+                    <div className="h-6 w-px bg-surface-border shrink-0" />
 
                     <div className="flex items-center gap-2 max-w-[200px] shrink-0">
-                        <h1 className="text-sm font-bold text-[var(--color-text-main)] truncate" title={idea.title}>{idea.title}</h1>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] font-medium shrink-0">{flowTypeLabels[idea.type] || idea.type}</span>
+                        <h1 className="text-sm font-bold text-main truncate" title={idea.title}>{idea.title}</h1>
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-surface-hover text-muted font-medium shrink-0">{flowTypeLabels[idea.type] || idea.type}</span>
                     </div>
 
-                    <div className="h-6 w-px bg-[var(--color-surface-border)] shrink-0" />
+                    <div className="h-6 w-px bg-surface-border shrink-0" />
 
                     <div className="flex items-center h-full gap-1">
                         {pipelineStages.map((step) => (
@@ -526,8 +526,8 @@ export const FlowDetail = () => {
                                 key={step.id}
                                 onClick={() => setActiveTab(step.id)}
                                 className={`relative h-8 px-3 rounded-md flex items-center gap-2 text-xs font-bold transition-all whitespace-nowrap ${activeTab === step.id
-                                    ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/10'
-                                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:text-[var(--color-text-muted)]/10'
+                                    ? 'text-primary bg-primary/10'
+                                    : 'text-muted hover:text-main hover:text-muted/10'
                                     }`}
                             >
                                 <span className={`material-symbols-outlined text-[16px] ${activeTab === step.id ? 'filled' : ''}`}>{step.icon}</span>
@@ -542,12 +542,12 @@ export const FlowDetail = () => {
                 {/* Right: Actions */}
                 <div className="flex items-center gap-3 shrink-0">
 
-                    <div className="h-6 w-px bg-[var(--color-surface-border)]" />
+                    <div className="h-6 w-px bg-surface-border" />
 
                     <Select
                         value={idea.stage || pipelineStages[0].id}
                         onChange={(e) => handleUpdate({ stage: e.target.value as any })}
-                        className="w-28 h-8 text-xs bg-transparent hover:bg-[var(--color-surface-hover)] border-none font-semibold focus:ring-0 cursor-pointer text-right"
+                        className="w-28 h-8 text-xs bg-transparent hover:bg-surface-hover border-none font-semibold focus:ring-0 cursor-pointer text-right"
                     >
                         {pipelineStages.map(stage => (
                             <option key={stage.id} value={stage.id}>
@@ -562,7 +562,7 @@ export const FlowDetail = () => {
 
                     <div className="flex items-center gap-2 px-3">
                         {saveStatus === 'saving' && (
-                            <span className="text-[10px] text-[var(--color-text-muted)] animate-pulse flex items-center gap-1">
+                            <span className="text-[10px] text-muted animate-pulse flex items-center gap-1">
                                 <span className="material-symbols-outlined text-[12px] animate-spin">sync</span>
                                 {t('flows.save.saving')}
                             </span>
@@ -584,7 +584,7 @@ export const FlowDetail = () => {
             </div>
 
             {/* Content Area */}
-            <div className={`flex-1 overflow-auto bg-[var(--color-surface-bg)] ${(idea.type === 'Social' && idea.socialType === 'campaign') || idea.type === 'PaidAds' ||
+            <div className={`flex-1 overflow-auto bg-surface ${(idea.type === 'Social' && idea.socialType === 'campaign') || idea.type === 'PaidAds' ||
                 ((activeTab === 'Strategy' || activeTab === 'Brainstorm' || activeTab === 'CreativeLab' || activeTab === 'Studio' || activeTab === 'Distribution') && idea.type === 'Social')
                 ? 'p-0' : 'p-6'
                 }`}>

@@ -6,8 +6,8 @@ export const CreateProjectSelect = () => {
     return (
         <div className="max-w-4xl mx-auto flex flex-col gap-8 pb-10 p-8 animate-fade-up">
             <div className="text-center space-y-2">
-                <h1 className="h2 text-[var(--color-text-main)]">Start a New Project</h1>
-                <p className="text-[var(--color-text-muted)]">Choose how you want to begin your new initiative.</p>
+                <h1 className="h2 text-main">Start a New Project</h1>
+                <p className="text-muted">Choose how you want to begin your new initiative.</p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -17,8 +17,8 @@ export const CreateProjectSelect = () => {
                             <span className="material-symbols-outlined text-3xl">edit_document</span>
                         </div>
                         <div>
-                            <h3 className="h3 mb-2 text-[var(--color-text-main)]">From Scratch</h3>
-                            <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+                            <h3 className="h3 mb-2 text-main">From Scratch</h3>
+                            <p className="text-sm text-muted leading-relaxed">
                                 Define your project goals, timeline, and details manually. Best for specific, well-defined projects.
                             </p>
                         </div>
@@ -31,8 +31,8 @@ export const CreateProjectSelect = () => {
                             <span className="material-symbols-outlined text-3xl">lightbulb</span>
                         </div>
                         <div>
-                            <h3 className="h3 mb-2 text-[var(--color-text-main)]">CORA Brainstorm</h3>
-                            <p className="text-sm text-[var(--color-text-muted)] leading-relaxed">
+                            <h3 className="h3 mb-2 text-main">CORA Brainstorm</h3>
+                            <p className="text-sm text-muted leading-relaxed">
                                 Not sure where to start? Let CORA help you structure your project idea and suggest tasks.
                             </p>
                         </div>
@@ -41,7 +41,7 @@ export const CreateProjectSelect = () => {
             </div>
 
             <div className="text-center">
-                <Link to="/projects" className="text-sm font-bold text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]">Cancel</Link>
+                <Link to="/projects" className="text-sm font-bold text-muted hover:text-main">Cancel</Link>
             </div>
         </div>
     );

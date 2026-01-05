@@ -99,7 +99,7 @@ export const RecipientList = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="h3 mb-1">Recipients</h2>
-                    <p className="text-[var(--color-text-muted)]">Manage your audience, import contacts, and organize into groups.</p>
+                    <p className="text-muted">Manage your audience, import contacts, and organize into groups.</p>
                 </div>
                 <div className="flex gap-3 flex-wrap">
                     <Button variant="secondary" onClick={() => setGroupModalOpen(true)}>
@@ -122,13 +122,13 @@ export const RecipientList = () => {
             </div>
 
             {/* Toolbar */}
-            <div className="flex items-center gap-4 bg-[var(--color-surface-card)] p-3 rounded-xl border border-[var(--color-surface-border)]">
+            <div className="flex items-center gap-4 bg-card p-3 rounded-xl border border-surface">
                 <div className="relative flex-1 max-w-md">
-                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]">search</span>
+                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted">search</span>
                     <input
                         type="text"
                         placeholder="Search by email or name..."
-                        className="w-full pl-10 pr-4 py-2 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg focus:outline-none focus:border-[var(--color-primary)] text-sm"
+                        className="w-full pl-10 pr-4 py-2 bg-surface border border-surface rounded-lg focus:outline-none focus:border-primary text-sm"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -137,7 +137,7 @@ export const RecipientList = () => {
                 {/* Group Filter */}
                 {groups.length > 0 && (
                     <select
-                        className="px-3 py-2 bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg focus:outline-none focus:border-[var(--color-primary)] text-sm"
+                        className="px-3 py-2 bg-surface border border-surface rounded-lg focus:outline-none focus:border-primary text-sm"
                         value={selectedGroupFilter}
                         onChange={(e) => setSelectedGroupFilter(e.target.value)}
                     >
@@ -149,15 +149,15 @@ export const RecipientList = () => {
                     </select>
                 )}
 
-                <div className="text-sm text-[var(--color-text-muted)]">
+                <div className="text-sm text-muted">
                     {filteredRecipients.length} recipients
                 </div>
             </div>
 
             {/* Table */}
-            <div className="flex-1 overflow-auto bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl relative">
+            <div className="flex-1 overflow-auto bg-card border border-surface rounded-xl relative">
                 <table className="w-full text-sm text-left">
-                    <thead className="bg-[var(--color-surface-bg)] text-[var(--color-text-muted)] border-b border-[var(--color-surface-border)] sticky top-0 z-10">
+                    <thead className="bg-surface text-muted border-b border-surface sticky top-0 z-10">
                         <tr>
                             <th className="px-4 py-3 font-medium">Email</th>
                             <th className="px-4 py-3 font-medium">Name</th>
@@ -174,8 +174,8 @@ export const RecipientList = () => {
                         {filteredRecipients.map(recipient => {
                             const recipientGroups = getGroupNames(recipient.groupIds);
                             return (
-                                <tr key={recipient.id} className="hover:bg-[var(--color-surface-hover)] transition-colors group">
-                                    <td className="px-4 py-3 font-medium text-[var(--color-text-main)]">
+                                <tr key={recipient.id} className="hover:bg-surface-hover transition-colors group">
+                                    <td className="px-4 py-3 font-medium text-main">
                                         {recipient.email}
                                     </td>
                                     <td className="px-4 py-3">
@@ -194,10 +194,10 @@ export const RecipientList = () => {
                                                     </span>
                                                 ))
                                             ) : (
-                                                <span className="text-[var(--color-text-muted)]">-</span>
+                                                <span className="text-muted">-</span>
                                             )}
                                             {recipientGroups.length > 2 && (
-                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]">
+                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-surface-hover text-muted">
                                                     +{recipientGroups.length - 2}
                                                 </span>
                                             )}
@@ -212,25 +212,25 @@ export const RecipientList = () => {
                                         </span>
                                     </td>
                                     {customColumns.map(col => (
-                                        <td key={col.id} className="px-4 py-3 text-[var(--color-text-muted)]">
+                                        <td key={col.id} className="px-4 py-3 text-muted">
                                             {recipient.customFields?.[col.key]?.toString() || '-'}
                                         </td>
                                     ))}
-                                    <td className="px-4 py-3 text-[var(--color-text-muted)]">
+                                    <td className="px-4 py-3 text-muted">
                                         {recipient.source}
                                     </td>
                                     <td className="px-4 py-3 text-right">
                                         <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
                                                 onClick={() => setEditingRecipient(recipient)}
-                                                className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] rounded transition-colors"
+                                                className="p-1.5 text-muted hover:text-primary hover:bg-surface-hover rounded transition-colors"
                                                 title="Edit"
                                             >
                                                 <span className="material-symbols-outlined text-[20px]">edit</span>
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(recipient.id)}
-                                                className="p-1.5 text-[var(--color-text-muted)] hover:text-red-500 hover:bg-[var(--color-surface-hover)] rounded transition-colors"
+                                                className="p-1.5 text-muted hover:text-red-500 hover:bg-surface-hover rounded transition-colors"
                                                 title="Delete"
                                             >
                                                 <span className="material-symbols-outlined text-[20px]">delete</span>
@@ -242,7 +242,7 @@ export const RecipientList = () => {
                         })}
                         {filteredRecipients.length === 0 && (
                             <tr>
-                                <td colSpan={7 + customColumns.length} className="px-4 py-8 text-center text-[var(--color-text-muted)]">
+                                <td colSpan={7 + customColumns.length} className="px-4 py-8 text-center text-muted">
                                     No recipients found.
                                 </td>
                             </tr>

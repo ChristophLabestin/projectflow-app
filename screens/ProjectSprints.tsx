@@ -213,8 +213,8 @@ export const ProjectSprints: React.FC = () => {
         // If it fails, I'll need to fix imports.
         // For now, simple div to avoid breakage if import fails.
         // I will replace this with valid import in real file.
-        <div className="p-3 bg-[var(--color-surface-card)] rounded-xl border border-[var(--color-surface-border)] shadow-sm">
-            <p className="text-sm font-medium text-[var(--color-text-main)]">{task.title}</p>
+        <div className="p-3 bg-card rounded-xl border border-surface shadow-sm">
+            <p className="text-sm font-medium text-main">{task.title}</p>
             <div className="flex items-center gap-2 mt-2">
                 <span className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded ${task.priority === 'Urgent' ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-500'}`}>
                     {task.priority || 'Medium'}
@@ -242,12 +242,12 @@ export const ProjectSprints: React.FC = () => {
         <div className="h-full flex flex-col gap-6 animate-in fade-in duration-500">
             {/* Header / Toggle */}
             <div className="flex items-center justify-between">
-                <div className="flex bg-[var(--color-surface-hover)] p-1 rounded-xl">
+                <div className="flex bg-surface-hover p-1 rounded-xl">
                     <button
                         onClick={() => setView('board')}
                         className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${view === 'board'
-                            ? 'bg-[var(--color-surface-card)] text-[var(--color-text-main)] shadow-sm'
-                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                            ? 'bg-card text-main shadow-sm'
+                            : 'text-muted hover:text-main'
                             }`}
                     >
                         Active Board
@@ -255,8 +255,8 @@ export const ProjectSprints: React.FC = () => {
                     <button
                         onClick={() => setView('backlog')}
                         className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${view === 'backlog'
-                            ? 'bg-[var(--color-surface-card)] text-[var(--color-text-main)] shadow-sm'
-                            : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                            ? 'bg-card text-main shadow-sm'
+                            : 'text-muted hover:text-main'
                             }`}
                     >
                         Backlog & Planning
@@ -289,12 +289,12 @@ export const ProjectSprints: React.FC = () => {
                         />
                     ) : (
                         <div className="flex flex-col gap-8">
-                            <div className="h-[400px] flex flex-col items-center justify-center text-center p-12 rounded-[32px] border-2 border-dashed border-[var(--color-surface-border)]">
+                            <div className="h-[400px] flex flex-col items-center justify-center text-center p-12 rounded-[32px] border-2 border-dashed border-surface">
                                 <div className="size-16 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-500 mb-4">
                                     <span className="material-symbols-outlined text-3xl">directions_run</span>
                                 </div>
-                                <h2 className="text-xl font-bold text-[var(--color-text-main)] mb-2">No Active Sprint</h2>
-                                <p className="text-[var(--color-text-muted)] max-w-md mb-6">
+                                <h2 className="text-xl font-bold text-main mb-2">No Active Sprint</h2>
+                                <p className="text-muted max-w-md mb-6">
                                     There is no sprint currently in progress. Go to the Backlog to plan and start a new sprint.
                                 </p>
                                 <Button variant="primary" onClick={() => setView('backlog')}>

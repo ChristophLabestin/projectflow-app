@@ -112,11 +112,11 @@ export const GroupManagementPanel: React.FC<GroupManagementPanelProps> = ({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl w-full max-w-lg shadow-2xl max-h-[80vh] flex flex-col">
+            <div className="bg-card border border-surface rounded-xl w-full max-w-lg shadow-2xl max-h-[80vh] flex flex-col">
                 {/* Header */}
-                <div className="flex justify-between items-center p-6 border-b border-[var(--color-surface-border)]">
+                <div className="flex justify-between items-center p-6 border-b border-surface">
                     <h2 className="h4">Manage Groups</h2>
-                    <button onClick={onClose} className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]">
+                    <button onClick={onClose} className="text-muted hover:text-main">
                         <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
@@ -124,7 +124,7 @@ export const GroupManagementPanel: React.FC<GroupManagementPanelProps> = ({
                 {/* Content */}
                 <div className="flex-1 overflow-y-auto p-6 space-y-4">
                     {/* Create New Group */}
-                    <div className="p-4 bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)]">
+                    <div className="p-4 bg-surface rounded-xl border border-surface">
                         <h3 className="font-medium mb-3">Create New Group</h3>
                         <div className="space-y-3">
                             <Input
@@ -145,7 +145,7 @@ export const GroupManagementPanel: React.FC<GroupManagementPanelProps> = ({
                                             key={color}
                                             type="button"
                                             onClick={() => setNewGroupColor(color)}
-                                            className={`w-6 h-6 rounded-full transition-transform ${newGroupColor === color ? 'ring-2 ring-offset-2 ring-[var(--color-primary)] scale-110' : ''
+                                            className={`w-6 h-6 rounded-full transition-transform ${newGroupColor === color ? 'ring-2 ring-offset-2 ring-primary scale-110' : ''
                                                 }`}
                                             style={{ backgroundColor: color }}
                                         />
@@ -169,7 +169,7 @@ export const GroupManagementPanel: React.FC<GroupManagementPanelProps> = ({
                         </div>
 
                         {groups.length === 0 ? (
-                            <p className="text-center text-[var(--color-text-muted)] py-8">
+                            <p className="text-center text-muted py-8">
                                 No groups yet. Create one above or import from CSV.
                             </p>
                         ) : (
@@ -177,7 +177,7 @@ export const GroupManagementPanel: React.FC<GroupManagementPanelProps> = ({
                                 {groups.map(group => (
                                     <div
                                         key={group.id}
-                                        className="p-3 bg-[var(--color-surface-bg)] rounded-lg border border-[var(--color-surface-border)] group"
+                                        className="p-3 bg-surface rounded-lg border border-surface group"
                                     >
                                         {editingId === group.id ? (
                                             // Edit Mode
@@ -198,7 +198,7 @@ export const GroupManagementPanel: React.FC<GroupManagementPanelProps> = ({
                                                             key={color}
                                                             type="button"
                                                             onClick={() => setEditColor(color)}
-                                                            className={`w-5 h-5 rounded-full ${editColor === color ? 'ring-2 ring-offset-1 ring-[var(--color-primary)]' : ''
+                                                            className={`w-5 h-5 rounded-full ${editColor === color ? 'ring-2 ring-offset-1 ring-primary' : ''
                                                                 }`}
                                                             style={{ backgroundColor: color }}
                                                         />
@@ -220,20 +220,20 @@ export const GroupManagementPanel: React.FC<GroupManagementPanelProps> = ({
                                                     <div>
                                                         <p className="font-medium text-sm">{group.name}</p>
                                                         {group.description && (
-                                                            <p className="text-xs text-[var(--color-text-muted)]">{group.description}</p>
+                                                            <p className="text-xs text-muted">{group.description}</p>
                                                         )}
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <button
                                                         onClick={() => startEditing(group)}
-                                                        className="p-1 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
+                                                        className="p-1 text-muted hover:text-main transition-colors"
                                                     >
                                                         <span className="material-symbols-outlined text-[18px]">edit</span>
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(group)}
-                                                        className="p-1 text-[var(--color-text-muted)] hover:text-red-500 transition-colors"
+                                                        className="p-1 text-muted hover:text-red-500 transition-colors"
                                                     >
                                                         <span className="material-symbols-outlined text-[18px]">delete</span>
                                                     </button>

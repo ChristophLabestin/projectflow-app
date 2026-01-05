@@ -62,11 +62,11 @@ export const CampaignList = () => {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="h2 mb-1">{t('social.campaignList.title')}</h1>
-                    <p className="text-[var(--color-text-muted)]">{t('social.campaignList.subtitle')}</p>
+                    <p className="text-muted">{t('social.campaignList.subtitle')}</p>
                 </div>
                 <button
                     onClick={handleCreate}
-                    className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] font-bold rounded-lg hover:opacity-90 transition-opacity"
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-on-primary font-bold rounded-lg hover:opacity-90 transition-opacity"
                 >
                     <span className="material-symbols-outlined">add</span>
                     <span>{t('social.campaignList.newCampaign')}</span>
@@ -77,7 +77,7 @@ export const CampaignList = () => {
                 {campaigns.map(c => (
                     <div
                         key={c.id}
-                        className="group bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl p-5 hover:shadow-md transition-all cursor-pointer"
+                        className="group bg-card border border-surface rounded-xl p-5 hover:shadow-md transition-all cursor-pointer"
                         onClick={() => navigate(`${c.id}`)}
                     >
                         <div className="flex justify-between items-start mb-3">
@@ -91,7 +91,7 @@ export const CampaignList = () => {
                             </span>
                             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button
-                                    className="text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] p-1 rounded-full"
+                                    className="text-muted hover:bg-surface-hover p-1 rounded-full"
                                     onClick={(e) => handleEdit(e, c)}
                                     title={t('social.campaignList.editTitle')}
                                 >
@@ -99,7 +99,7 @@ export const CampaignList = () => {
                                 </button>
                                 {(c.status === 'Planning' || c.status === 'Backlog') && (
                                     <button
-                                        className="text-[var(--color-text-muted)] hover:bg-red-50 hover:text-red-500 p-1 rounded-full"
+                                        className="text-muted hover:bg-red-50 hover:text-red-500 p-1 rounded-full"
                                         onClick={(e) => handleDelete(e, c)}
                                         title={t('social.campaignList.deleteTitle')}
                                     >
@@ -109,18 +109,18 @@ export const CampaignList = () => {
                             </div>
                         </div>
                         <h3 className="h4 mb-1">{c.name}</h3>
-                        <div className="flex items-center gap-2 text-sm text-[var(--color-text-muted)] mb-4">
+                        <div className="flex items-center gap-2 text-sm text-muted mb-4">
                             <span className="material-symbols-outlined text-base">calendar_today</span>
                             <span>{c.startDate ? format(new Date(c.startDate), dateFormat, { locale: dateLocale }) : t('social.campaignList.tbd')}</span>
                         </div>
-                        <div className="pt-4 border-t border-[var(--color-surface-border)] text-sm text-[var(--color-text-muted)]">
+                        <div className="pt-4 border-t border-surface text-sm text-muted">
                             {c.toneOfVoice || t('social.campaignList.noTone')}
                         </div>
                     </div>
                 ))}
 
                 {campaigns.length === 0 && (
-                    <div className="col-span-full py-12 text-center text-[var(--color-text-muted)] bg-[var(--color-surface-bg)] rounded-xl border border-dashed border-[var(--color-surface-border)]">
+                    <div className="col-span-full py-12 text-center text-muted bg-surface rounded-xl border border-dashed border-surface">
                         <p>{t('social.campaignList.empty')}</p>
                     </div>
                 )}

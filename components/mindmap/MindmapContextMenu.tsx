@@ -32,20 +32,20 @@ const MenuItem = memo(function MenuItem({ icon, label, onClick, disabled, danger
             className={`
                 w-full flex items-center gap-3 px-3 py-2.5 text-sm transition-colors rounded-lg mx-1
                 ${disabled
-                    ? 'opacity-40 cursor-not-allowed text-[var(--color-text-muted)]'
+                    ? 'opacity-40 cursor-not-allowed text-muted'
                     : danger
                         ? 'text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20'
-                        : 'text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'
+                        : 'text-main hover:bg-surface-hover'
                 }
             `}
             style={{ width: 'calc(100% - 8px)' }}
         >
-            <span className={`material-symbols-outlined text-[18px] ${danger ? '' : 'text-[var(--color-text-muted)]'}`}>
+            <span className={`material-symbols-outlined text-[18px] ${danger ? '' : 'text-muted'}`}>
                 {icon}
             </span>
             <span className="flex-1 text-left">{label}</span>
             {shortcut && (
-                <span className="text-xs text-[var(--color-text-subtle)] font-mono bg-[var(--color-surface-hover)] px-1.5 py-0.5 rounded">
+                <span className="text-xs text-subtle font-mono bg-surface-hover px-1.5 py-0.5 rounded">
                     {shortcut}
                 </span>
             )}
@@ -58,7 +58,7 @@ const MenuItem = memo(function MenuItem({ icon, label, onClick, disabled, danger
 // ============================================================================
 
 const MenuDivider = () => (
-    <div className="h-px bg-[var(--color-surface-border)] my-1.5 mx-3" />
+    <div className="h-px bg-surface-border my-1.5 mx-3" />
 );
 
 // ============================================================================
@@ -166,17 +166,17 @@ export const MindmapContextMenu = memo(function MindmapContextMenu({
     return (
         <div
             ref={menuRef}
-            className="fixed z-50 min-w-[200px] py-2 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-xl animate-in fade-in zoom-in-95 duration-150"
+            className="fixed z-50 min-w-[200px] py-2 rounded-2xl bg-card border border-surface shadow-xl animate-in fade-in zoom-in-95 duration-150"
             style={{ left: adjustedX, top: adjustedY }}
         >
             {targetNode ? (
                 <>
                     {/* Node Header */}
                     <div className="px-4 py-2 mb-1">
-                        <div className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">
+                        <div className="text-xs font-semibold text-muted uppercase tracking-wider">
                             {targetNode.type}
                         </div>
-                        <div className="text-sm font-medium text-[var(--color-text-main)] truncate max-w-[180px]">
+                        <div className="text-sm font-medium text-main truncate max-w-[180px]">
                             {targetNode.label}
                         </div>
                     </div>
@@ -210,7 +210,7 @@ export const MindmapContextMenu = memo(function MindmapContextMenu({
                         </>
                     )}
 
-                    <div className="px-4 py-2 text-xs text-[var(--color-text-muted)]">
+                    <div className="px-4 py-2 text-xs text-muted">
                         Right-click a node for more options
                     </div>
                 </>

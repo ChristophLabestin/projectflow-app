@@ -397,7 +397,7 @@ export const ProjectFlows = () => {
 
     if (loading) return (
         <div className="flex items-center justify-center p-12">
-            <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-3xl">rotate_right</span>
+            <span className="material-symbols-outlined text-subtle animate-spin text-3xl">rotate_right</span>
         </div>
     );
 
@@ -405,21 +405,21 @@ export const ProjectFlows = () => {
         <>
             <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden fade-in px-6 pt-4 pb-0 gap-6">
                 {/* Header - Reworked for Pipeline Variants */}
-                <div className="flex flex-col gap-6 shrink-0 border-b border-[var(--color-surface-border)] pb-0">
+                <div className="flex flex-col gap-6 shrink-0 border-b border-surface pb-0">
                     <div data-onboarding-id="project-flows-header" className="flex items-center justify-between gap-4">
                         <div className="flex flex-col gap-1">
-                            <h1 className="text-2xl font-bold text-[var(--color-text-main)]">{t('flows.page.title')}</h1>
-                            <p className="text-sm text-[var(--color-text-muted)]">{t('flows.page.subtitle')}</p>
+                            <h1 className="text-2xl font-bold text-main">{t('flows.page.title')}</h1>
+                            <p className="text-sm text-muted">{t('flows.page.subtitle')}</p>
                         </div>
 
                         <div className="flex items-center gap-3">
                             {/* View Mode */}
-                            <div className="flex items-center rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-paper)] overflow-hidden p-0.5">
+                            <div className="flex items-center rounded-lg border border-surface bg-surface-paper overflow-hidden p-0.5">
                                 <button
                                     onClick={() => setViewMode('board')}
                                     className={`p-2 rounded-md transition-all flex items-center justify-center ${viewMode === 'board'
-                                        ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] shadow-sm'
-                                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}`}
+                                        ? 'bg-primary/10 text-primary shadow-sm'
+                                        : 'text-muted hover:text-main hover:bg-surface-hover'}`}
                                     title={t('flows.view.board')}
                                 >
                                     <span className="material-symbols-outlined text-[20px]">view_kanban</span>
@@ -427,15 +427,15 @@ export const ProjectFlows = () => {
                                 <button
                                     onClick={() => setViewMode('list')}
                                     className={`p-2 rounded-md transition-all flex items-center justify-center ${viewMode === 'list'
-                                        ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)] shadow-sm'
-                                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}`}
+                                        ? 'bg-primary/10 text-primary shadow-sm'
+                                        : 'text-muted hover:text-main hover:bg-surface-hover'}`}
                                     title={t('flows.view.list')}
                                 >
                                     <span className="material-symbols-outlined text-[20px]">view_list</span>
                                 </button>
                             </div>
 
-                            <div className="h-8 w-px bg-[var(--color-surface-border)]" />
+                            <div className="h-8 w-px bg-surface-border" />
 
                             <Button
                                 variant="secondary"
@@ -464,8 +464,8 @@ export const ProjectFlows = () => {
                             className={`
                             px-4 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap flex items-center gap-2
                             ${activePipeline === 'Overview'
-                                    ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                                    : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:border-[var(--color-surface-border-hover)]'
+                                    ? 'border-primary text-primary'
+                                    : 'border-transparent text-muted hover:text-main hover:border-[var(--color-surface-border-hover)]'
                                 }
                         `}
                         >
@@ -479,8 +479,8 @@ export const ProjectFlows = () => {
                                 className={`
                                 px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap
                                 ${activePipeline === type
-                                        ? 'border-[var(--color-primary)] text-[var(--color-text-main)]'
-                                        : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] hover:border-[var(--color-surface-border-hover)]'
+                                        ? 'border-primary text-main'
+                                        : 'border-transparent text-muted hover:text-main hover:border-[var(--color-surface-border-hover)]'
                                     }
                             `}
                             >
@@ -504,13 +504,13 @@ export const ProjectFlows = () => {
 
                     <div data-onboarding-id="project-flows-board" className="flex-1 flex flex-col min-h-0">
                         {filteredIdeas.length === 0 && !loading && !generating ? (
-                            <div className="flex-1 flex items-center justify-center border-2 border-dashed border-[var(--color-surface-border)] rounded-2xl bg-[var(--color-surface-bg)]/50 m-1">
+                            <div className="flex-1 flex items-center justify-center border-2 border-dashed border-surface rounded-2xl bg-surface/50 m-1">
                                 <div className="text-center py-16 max-w-md">
                                     <div className="size-20 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 flex items-center justify-center mx-auto mb-6">
                                         <span className="material-symbols-outlined text-[40px] text-indigo-500">lightbulb</span>
                                     </div>
-                                    <h3 className="text-xl font-bold text-[var(--color-text-main)] mb-2">{t('flows.empty.title')}</h3>
-                                    <p className="text-[var(--color-text-muted)] mb-6">
+                                    <h3 className="text-xl font-bold text-main mb-2">{t('flows.empty.title')}</h3>
+                                    <p className="text-muted mb-6">
                                         {t('flows.empty.description').replace('{pipeline}', pipelineTypeLabels[activePipeline] || activePipeline)}
                                     </p>
                                     <div className="flex items-center justify-center gap-3">
@@ -542,7 +542,7 @@ export const ProjectFlows = () => {
                                         return (
                                             <div
                                                 key={idea.id}
-                                                className="group bg-[var(--color-surface-paper)] border border-[var(--color-surface-border)] rounded-xl p-4 flex items-center gap-4 hover:shadow-md hover:border-[var(--color-surface-border)] cursor-pointer transition-all"
+                                                className="group bg-surface-paper border border-surface rounded-xl p-4 flex items-center gap-4 hover:shadow-md hover:border-surface cursor-pointer transition-all"
                                                 onClick={() => navigate(`/project/${id}/flows/${idea.id}`)}
                                             >
                                                 {/* Stage Icon */}
@@ -563,17 +563,17 @@ export const ProjectFlows = () => {
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <h4 className="font-semibold text-[var(--color-text-main)] truncate group-hover:text-[var(--color-primary)] transition-colors">
+                                                    <h4 className="font-semibold text-main truncate group-hover:text-primary transition-colors">
                                                         {idea.title}
                                                     </h4>
                                                     {idea.description && (
-                                                        <p className="text-sm text-[var(--color-text-muted)] truncate mt-0.5">{idea.description}</p>
+                                                        <p className="text-sm text-muted truncate mt-0.5">{idea.description}</p>
                                                     )}
                                                 </div>
 
                                                 {/* Meta */}
                                                 <div className="flex items-center gap-4 shrink-0">
-                                                    <div className="flex items-center gap-3 text-[var(--color-text-subtle)]">
+                                                    <div className="flex items-center gap-3 text-subtle">
                                                         <span className="flex items-center gap-1 text-xs">
                                                             <span className="material-symbols-outlined text-[14px]">thumb_up</span>
                                                             {idea.votes || 0}
@@ -588,7 +588,7 @@ export const ProjectFlows = () => {
                                                     </Badge>
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleDelete(idea.id); }}
-                                                        className="p-2 text-[var(--color-text-muted)] hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        className="p-2 text-muted hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"
                                                     >
                                                         <span className="material-symbols-outlined text-[20px]">delete</span>
                                                     </button>

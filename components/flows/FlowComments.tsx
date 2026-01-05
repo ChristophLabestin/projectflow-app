@@ -60,46 +60,46 @@ export const FlowComments: React.FC<FlowCommentsProps> = ({ projectId, flowId, c
     };
 
     return (
-        <div className={compact ? "" : "mt-8 pt-8 border-t border-[var(--color-surface-border)]"}>
+        <div className={compact ? "" : "mt-8 pt-8 border-t border-surface"}>
             {!compact && (
-                <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-4 flex items-center gap-2">
+                <h3 className="text-lg font-bold text-main mb-4 flex items-center gap-2">
                     <span className="material-symbols-outlined">chat</span>
                     Discussion
-                    <span className="text-sm font-normal text-[var(--color-text-muted)] ml-2">({comments.length})</span>
+                    <span className="text-sm font-normal text-muted ml-2">({comments.length})</span>
                 </h3>
             )}
 
             {/* Comment List */}
             <div className="space-y-4 mb-6">
                 {loading ? (
-                    <div className="text-center py-4 text-[var(--color-text-muted)]">Loading comments...</div>
+                    <div className="text-center py-4 text-muted">Loading comments...</div>
                 ) : comments.length === 0 ? (
-                    <div className="text-center py-8 bg-[var(--color-surface-paper)] rounded-xl border border-[var(--color-surface-border)] border-dashed">
-                        <p className="text-[var(--color-text-muted)] text-sm">No comments yet. Start the discussion!</p>
+                    <div className="text-center py-8 bg-surface-paper rounded-xl border border-surface border-dashed">
+                        <p className="text-muted text-sm">No comments yet. Start the discussion!</p>
                     </div>
                 ) : (
                     comments.map(comment => (
                         <div key={comment.id} className="flex gap-3 group">
-                            <div className="shrink-0 w-8 h-8 rounded-full bg-[var(--color-surface-hover)] overflow-hidden">
+                            <div className="shrink-0 w-8 h-8 rounded-full bg-surface-hover overflow-hidden">
                                 {comment.userPhotoURL ? (
                                     <img src={comment.userPhotoURL} alt={comment.userDisplayName} className="w-full h-full object-cover" />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-xs font-bold text-[var(--color-text-muted)]">
+                                    <div className="w-full h-full flex items-center justify-center text-xs font-bold text-muted">
                                         {comment.userDisplayName[0]}
                                     </div>
                                 )}
                             </div>
                             <div className="flex-1">
-                                <div className="bg-[var(--color-surface-paper)] rounded-xl p-3 border border-[var(--color-surface-border)]">
+                                <div className="bg-surface-paper rounded-xl p-3 border border-surface">
                                     <div className="flex items-center justify-between mb-1">
-                                        <span className="text-xs font-bold text-[var(--color-text-main)]">
+                                        <span className="text-xs font-bold text-main">
                                             {comment.userDisplayName}
                                         </span>
-                                        <span className="text-[10px] text-[var(--color-text-muted)]">
+                                        <span className="text-[10px] text-muted">
                                             {formatDate(comment.createdAt)}
                                         </span>
                                     </div>
-                                    <p className="text-sm text-[var(--color-text-main)] whitespace-pre-wrap leading-relaxed">
+                                    <p className="text-sm text-main whitespace-pre-wrap leading-relaxed">
                                         {comment.content}
                                     </p>
                                 </div>
@@ -111,7 +111,7 @@ export const FlowComments: React.FC<FlowCommentsProps> = ({ projectId, flowId, c
 
             {/* Comment Input */}
             <div className="flex gap-3">
-                <div className="shrink-0 w-8 h-8 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center text-[var(--color-primary)] font-bold text-xs">
+                <div className="shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
                     {auth.currentUser?.displayName?.[0] || 'U'}
                 </div>
                 <form onSubmit={handleSubmit} className="flex-1">
@@ -120,7 +120,7 @@ export const FlowComments: React.FC<FlowCommentsProps> = ({ projectId, flowId, c
                             value={newComment}
                             onChange={(e) => setNewComment(e.target.value)}
                             placeholder="Add a comment..."
-                            className="w-full bg-[var(--color-surface-paper)] border border-[var(--color-surface-border)] rounded-xl p-3 text-sm min-h-[80px] focus:ring-2 focus:ring-[var(--color-primary)]/20 focus:border-[var(--color-primary)] transition-all resize-none"
+                            className="w-full bg-surface-paper border border-surface rounded-xl p-3 text-sm min-h-[80px] focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
                             onKeyDown={(e) => {
                                 if (e.key === 'Enter' && !e.shiftKey) {
                                     e.preventDefault();
@@ -129,7 +129,7 @@ export const FlowComments: React.FC<FlowCommentsProps> = ({ projectId, flowId, c
                             }}
                         />
                         <div className="absolute bottom-2 right-2 flex items-center gap-2">
-                            <span className="text-[10px] text-[var(--color-text-muted)] hidden sm:inline">Press Enter to send</span>
+                            <span className="text-[10px] text-muted hidden sm:inline">Press Enter to send</span>
                             <Button
                                 type="submit"
                                 size="sm"

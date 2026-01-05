@@ -141,10 +141,10 @@ export const EmailMarketingList = () => {
 
             {templateToDelete && createPortal(
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="bg-[var(--color-surface-card)] rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-[var(--color-surface-border)] animate-in fade-in zoom-in-95 duration-200">
+                    <div className="bg-card rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-surface animate-in fade-in zoom-in-95 duration-200">
                         <div className="space-y-4 text-center">
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">Delete Template?</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">
+                            <h3 className="text-lg font-bold text-main">Delete Template?</h3>
+                            <p className="text-sm text-muted">
                                 Are you sure you want to delete <strong>"{templateToDelete.name || 'Unnamed Template'}"</strong>?
                             </p>
                             <div className="grid grid-cols-2 gap-3">
@@ -160,19 +160,19 @@ export const EmailMarketingList = () => {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="h3 mb-1">Email Marketing</h2>
-                    <p className="text-[var(--color-text-muted)]">Manage newsletters, automated campaigns, and design templates.</p>
+                    <p className="text-muted">Manage newsletters, automated campaigns, and design templates.</p>
                 </div>
                 <div className="flex gap-3">
                     <Link to="create">
                         <button
-                            className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary)] text-[var(--color-primary-text)] font-bold rounded-lg hover:opacity-90 transition-opacity"
+                            className="flex items-center gap-2 px-4 py-2 bg-primary text-on-primary font-bold rounded-lg hover:opacity-90 transition-opacity"
                         >
                             <span className="material-symbols-outlined">add</span>
                             Create Campaign
                         </button>
                     </Link>
                     <Link to="builder">
-                        <button className="flex items-center gap-2 px-4 py-2 bg-[var(--color-surface-paper)] border border-[var(--color-surface-border)] text-[var(--color-text-main)] font-bold rounded-lg hover:bg-[var(--color-surface-hover)] transition-colors">
+                        <button className="flex items-center gap-2 px-4 py-2 bg-surface-paper border border-surface text-main font-bold rounded-lg hover:bg-surface-hover transition-colors">
                             <span className="material-symbols-outlined">design_services</span>
                             New Template
                         </button>
@@ -181,13 +181,13 @@ export const EmailMarketingList = () => {
             </div>
 
             {/* Tabs & View Toggle */}
-            <div className="flex flex-col sm:flex-row justify-between items-end sm:items-center border-b border-[var(--color-surface-border)] gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-end sm:items-center border-b border-surface gap-4">
                 <div className="flex">
                     <button
                         onClick={() => setActiveTab('campaigns')}
                         className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'campaigns'
-                            ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                            : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                            ? 'border-primary text-primary'
+                            : 'border-transparent text-muted hover:text-main'
                             }`}
                     >
                         Campaigns
@@ -195,8 +195,8 @@ export const EmailMarketingList = () => {
                     <button
                         onClick={() => setActiveTab('templates')}
                         className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === 'templates'
-                            ? 'border-[var(--color-primary)] text-[var(--color-primary)]'
-                            : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                            ? 'border-primary text-primary'
+                            : 'border-transparent text-muted hover:text-main'
                             }`}
                     >
                         Templates
@@ -210,7 +210,7 @@ export const EmailMarketingList = () => {
                             <select
                                 value={filterStatus}
                                 onChange={(e) => setFilterStatus(e.target.value as any)}
-                                className="bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-2 py-1.5 focus:border-[var(--color-primary)] focus:outline-none"
+                                className="bg-surface border border-surface rounded-lg px-2 py-1.5 focus:border-primary focus:outline-none"
                             >
                                 <option value="all">All Status</option>
                                 <option value="published">Published</option>
@@ -220,7 +220,7 @@ export const EmailMarketingList = () => {
                             <select
                                 value={filterUsage}
                                 onChange={(e) => setFilterUsage(e.target.value as any)}
-                                className="bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-2 py-1.5 focus:border-[var(--color-primary)] focus:outline-none"
+                                className="bg-surface border border-surface rounded-lg px-2 py-1.5 focus:border-primary focus:outline-none"
                             >
                                 <option value="all">All Usage</option>
                                 <option value="used">Used</option>
@@ -230,7 +230,7 @@ export const EmailMarketingList = () => {
                             <select
                                 value={sortBy}
                                 onChange={(e) => setSortBy(e.target.value as any)}
-                                className="bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-2 py-1.5 focus:border-[var(--color-primary)] focus:outline-none"
+                                className="bg-surface border border-surface rounded-lg px-2 py-1.5 focus:border-primary focus:outline-none"
                             >
                                 <option value="updatedAt">Last Updated</option>
                                 <option value="name">Name</option>
@@ -238,7 +238,7 @@ export const EmailMarketingList = () => {
 
                             <button
                                 onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
-                                className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] rounded hover:bg-[var(--color-surface-hover)]"
+                                className="p-1.5 text-muted hover:text-main rounded hover:bg-surface-hover"
                                 title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
                             >
                                 <span className="material-symbols-outlined text-[20px]">
@@ -247,14 +247,14 @@ export const EmailMarketingList = () => {
                             </button>
                         </div>
 
-                        <div className="h-6 w-px bg-[var(--color-surface-border)] mx-1 hidden sm:block"></div>
+                        <div className="h-6 w-px bg-surface-border mx-1 hidden sm:block"></div>
 
-                        <div className="flex items-center gap-1 bg-[var(--color-surface-hover)] p-1 rounded-lg">
+                        <div className="flex items-center gap-1 bg-surface-hover p-1 rounded-lg">
                             <button
                                 onClick={() => setViewMode('grid')}
                                 className={`p-1.5 rounded-md transition-all ${viewMode === 'grid'
-                                    ? 'bg-[var(--color-surface-card)] text-[var(--color-primary)] shadow-sm'
-                                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                                    ? 'bg-card text-primary shadow-sm'
+                                    : 'text-muted hover:text-main'}`}
                                 title="Grid View"
                             >
                                 <span className="material-symbols-outlined text-[20px]">grid_view</span>
@@ -262,8 +262,8 @@ export const EmailMarketingList = () => {
                             <button
                                 onClick={() => setViewMode('list')}
                                 className={`p-1.5 rounded-md transition-all ${viewMode === 'list'
-                                    ? 'bg-[var(--color-surface-card)] text-[var(--color-primary)] shadow-sm'
-                                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                                    ? 'bg-card text-primary shadow-sm'
+                                    : 'text-muted hover:text-main'}`}
                                 title="List View"
                             >
                                 <span className="material-symbols-outlined text-[20px]">view_list</span>
@@ -281,11 +281,11 @@ export const EmailMarketingList = () => {
                         <>
                             <h3 className="h4 sr-only">Campaigns</h3>
                             {campaigns.map(campaign => (
-                                <div key={campaign.id} className="bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl p-5 hover:border-[var(--color-primary)] transition-colors group">
+                                <div key={campaign.id} className="bg-card border border-surface rounded-xl p-5 hover:border-primary transition-colors group">
                                     <div className="flex justify-between items-start mb-3">
                                         <div>
                                             <div className="flex items-center gap-2 mb-1">
-                                                <h4 className="font-bold text-lg group-hover:text-[var(--color-primary)] transition-colors">{campaign.name}</h4>
+                                                <h4 className="font-bold text-lg group-hover:text-primary transition-colors">{campaign.name}</h4>
                                                 <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${campaign.status === 'Sent' ? 'bg-green-100 text-green-700' :
                                                     campaign.status === 'Draft' ? 'bg-gray-100 text-gray-700' : 'bg-blue-100 text-blue-700'
                                                     }`}>
@@ -302,27 +302,27 @@ export const EmailMarketingList = () => {
                                                     </Link>
                                                 )}
                                             </div>
-                                            <p className="text-sm text-[var(--color-text-muted)]">{campaign.subject}</p>
+                                            <p className="text-sm text-muted">{campaign.subject}</p>
                                         </div>
-                                        <div className="text-right text-xs text-[var(--color-text-muted)]">
+                                        <div className="text-right text-xs text-muted">
                                             {campaign.sentAt && format(new Date(campaign.sentAt), dateFormat, { locale: dateLocale })}
                                         </div>
                                     </div>
 
                                     {campaign.status === 'Sent' && (
-                                        <div className="grid grid-cols-3 gap-4 pt-4 border-t border-[var(--color-surface-border)] mt-4">
+                                        <div className="grid grid-cols-3 gap-4 pt-4 border-t border-surface mt-4">
                                             <div>
-                                                <p className="text-[10px] text-[var(--color-text-muted)] uppercase">Sent</p>
+                                                <p className="text-[10px] text-muted uppercase">Sent</p>
                                                 <p className="font-semibold">{campaign.stats.sent.toLocaleString()}</p>
                                             </div>
                                             <div>
-                                                <p className="text-[10px] text-[var(--color-text-muted)] uppercase">Open Rate</p>
+                                                <p className="text-[10px] text-muted uppercase">Open Rate</p>
                                                 <p className="font-semibold flex items-center gap-1">
                                                     {((campaign.stats.opened / campaign.stats.sent) * 100).toFixed(1)}%
                                                 </p>
                                             </div>
                                             <div>
-                                                <p className="text-[10px] text-[var(--color-text-muted)] uppercase">Click Rate</p>
+                                                <p className="text-[10px] text-muted uppercase">Click Rate</p>
                                                 <p className="font-semibold">
                                                     {((campaign.stats.clicked / campaign.stats.sent) * 100).toFixed(1)}%
                                                 </p>
@@ -333,7 +333,7 @@ export const EmailMarketingList = () => {
                             ))}
 
                             {campaigns.length === 0 && (
-                                <div className="p-8 text-center bg-[var(--color-surface-bg)] rounded-xl border border-dashed border-[var(--color-surface-border)] text-[var(--color-text-muted)]">
+                                <div className="p-8 text-center bg-surface rounded-xl border border-dashed border-surface text-muted">
                                     No email campaigns found.
                                 </div>
                             )}
@@ -345,7 +345,7 @@ export const EmailMarketingList = () => {
                             {viewMode === 'grid' ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {processedTemplates.map(template => (
-                                        <div key={template.id} className="bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl p-4 hover:border-[var(--color-primary)] transition-colors group flex flex-col justify-between h-full relative">
+                                        <div key={template.id} className="bg-card border border-surface rounded-xl p-4 hover:border-primary transition-colors group flex flex-col justify-between h-full relative">
                                             <div className="mb-4">
                                                 <div className="flex justify-between items-start mb-2">
                                                     <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${template.status === 'published' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
@@ -359,21 +359,21 @@ export const EmailMarketingList = () => {
                                                             e.stopPropagation();
                                                             setTemplateToDelete(template);
                                                         }}
-                                                        className="text-[var(--color-text-muted)] hover:text-red-500 w-8 h-8 flex items-center justify-center rounded-full hover:bg-[var(--color-surface-hover)] transition-colors opacity-0 group-hover:opacity-100"
+                                                        className="text-muted hover:text-red-500 w-8 h-8 flex items-center justify-center rounded-full hover:bg-surface-hover transition-colors opacity-0 group-hover:opacity-100"
                                                         title="Delete Template"
                                                     >
                                                         <span className="material-symbols-outlined text-[20px]">delete</span>
                                                     </button>
                                                 </div>
                                                 <h4 className="font-bold text-lg mb-1">{template.name || 'Unnamed Template'}</h4>
-                                                <p className="text-xs text-[var(--color-text-muted)]">
+                                                <p className="text-xs text-muted">
                                                     Last updated: {template.updatedAt?.seconds ? format(new Date(template.updatedAt.seconds * 1000), dateFormat, { locale: dateLocale }) : 'Unknown'}
                                                 </p>
                                             </div>
 
                                             <div className="flex gap-2 mt-auto">
                                                 <Link to={`builder?templateId=${template.id}`} className="flex-1">
-                                                    <button className="w-full py-2 bg-[var(--color-surface-hover)] text-[var(--color-text-main)] font-semibold rounded hover:bg-[var(--color-surface-border)] transition-colors text-sm">
+                                                    <button className="w-full py-2 bg-surface-hover text-main font-semibold rounded hover:bg-surface-border transition-colors text-sm">
                                                         Edit
                                                     </button>
                                                 </Link>
@@ -382,9 +382,9 @@ export const EmailMarketingList = () => {
                                     ))}
                                 </div>
                             ) : (
-                                <div className="bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl overflow-hidden">
+                                <div className="bg-card border border-surface rounded-xl overflow-hidden">
                                     <table className="w-full text-sm text-left">
-                                        <thead className="bg-[var(--color-surface-bg)] text-[var(--color-text-muted)] border-b border-[var(--color-surface-border)]">
+                                        <thead className="bg-surface text-muted border-b border-surface">
                                             <tr>
                                                 <th className="px-4 py-3 font-medium">Template</th>
                                                 <th className="px-4 py-3 font-medium">Status</th>
@@ -397,12 +397,12 @@ export const EmailMarketingList = () => {
                                             {processedTemplates.map(template => {
                                                 const stats = getTemplateStats(template.id);
                                                 return (
-                                                    <tr key={template.id} className="hover:bg-[var(--color-surface-hover)] transition-colors group">
-                                                        <td className="px-4 py-3 font-medium text-[var(--color-text-main)]">
+                                                    <tr key={template.id} className="hover:bg-surface-hover transition-colors group">
+                                                        <td className="px-4 py-3 font-medium text-main">
                                                             <div className="flex flex-col">
                                                                 <span className="text-base">{template.name || 'Unnamed Template'}</span>
                                                                 {stats.lastCampaign && (
-                                                                    <span className="text-[10px] text-[var(--color-text-muted)]">
+                                                                    <span className="text-[10px] text-muted">
                                                                         Last used in: {stats.lastCampaign.name}
                                                                     </span>
                                                                 )}
@@ -414,23 +414,23 @@ export const EmailMarketingList = () => {
                                                                 {template.status}
                                                             </span>
                                                         </td>
-                                                        <td className="px-4 py-3 text-[var(--color-text-muted)]">
+                                                        <td className="px-4 py-3 text-muted">
                                                             {stats.usageCount > 0 ? (
                                                                 <span className="flex items-center gap-1">
                                                                     <span className="material-symbols-outlined text-[16px]">campaign</span>
                                                                     {stats.usageCount} campaigns
                                                                 </span>
                                                             ) : (
-                                                                <span className="text-[var(--color-text-subtle)] italic">Unused</span>
+                                                                <span className="text-subtle italic">Unused</span>
                                                             )}
                                                         </td>
-                                                        <td className="px-4 py-3 text-[var(--color-text-muted)]">
+                                                        <td className="px-4 py-3 text-muted">
                                                             {template.updatedAt?.seconds ? format(new Date(template.updatedAt.seconds * 1000), dateFormat, { locale: dateLocale }) : '-'}
                                                         </td>
                                                         <td className="px-4 py-3 text-right">
                                                             <div className="flex items-center justify-end gap-2">
                                                                 <Link to={`builder?templateId=${template.id}`}>
-                                                                    <button className="p-1.5 text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-surface-hover)] rounded transition-colors" title="Edit">
+                                                                    <button className="p-1.5 text-muted hover:text-primary hover:bg-surface-hover rounded transition-colors" title="Edit">
                                                                         <span className="material-symbols-outlined text-[20px]">edit</span>
                                                                     </button>
                                                                 </Link>
@@ -440,7 +440,7 @@ export const EmailMarketingList = () => {
                                                                         e.stopPropagation();
                                                                         setTemplateToDelete(template);
                                                                     }}
-                                                                    className="p-1.5 text-[var(--color-text-muted)] hover:text-red-500 hover:bg-[var(--color-surface-hover)] rounded transition-colors"
+                                                                    className="p-1.5 text-muted hover:text-red-500 hover:bg-surface-hover rounded transition-colors"
                                                                     title="Delete"
                                                                 >
                                                                     <span className="material-symbols-outlined text-[20px]">delete</span>
@@ -456,7 +456,7 @@ export const EmailMarketingList = () => {
                             )}
 
                             {templates.length === 0 && (
-                                <div className="p-8 text-center bg-[var(--color-surface-bg)] rounded-xl border border-dashed border-[var(--color-surface-border)] text-[var(--color-text-muted)]">
+                                <div className="p-8 text-center bg-surface rounded-xl border border-dashed border-surface text-muted">
                                     No templates found. Create one to get started!
                                 </div>
                             )}
@@ -466,36 +466,36 @@ export const EmailMarketingList = () => {
 
                 {/* Sidebar Stats & Audiences */}
                 <div className="space-y-6">
-                    <div className="bg-[var(--color-surface-card)] p-5 rounded-xl border border-[var(--color-surface-border)]">
+                    <div className="bg-card p-5 rounded-xl border border-surface">
                         <h3 className="h5 mb-4">Performance</h3>
                         <div className="space-y-4">
                             <div>
-                                <p className="text-xs text-[var(--color-text-muted)] uppercase font-bold tracking-wider">Total Emails Sent</p>
+                                <p className="text-xs text-muted uppercase font-bold tracking-wider">Total Emails Sent</p>
                                 <p className="text-2xl font-bold">{totalSent.toLocaleString()}</p>
                             </div>
                             <div>
-                                <p className="text-xs text-[var(--color-text-muted)] uppercase font-bold tracking-wider">Avg. Open Rate</p>
+                                <p className="text-xs text-muted uppercase font-bold tracking-wider">Avg. Open Rate</p>
                                 <p className="text-2xl font-bold text-blue-500">{avgOpenRate.toFixed(1)}%</p>
                             </div>
                         </div>
                     </div>
 
-                    <div className="bg-[var(--color-surface-card)] p-5 rounded-xl border border-[var(--color-surface-border)]">
+                    <div className="bg-card p-5 rounded-xl border border-surface">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="h5">Audiences</h3>
-                            <button className="text-[var(--color-primary)] text-sm font-bold hover:underline">Manage</button>
+                            <button className="text-primary text-sm font-bold hover:underline">Manage</button>
                         </div>
                         <ul className="space-y-3">
                             {audiences.map(audience => (
                                 <li key={audience.id} className="flex justify-between items-center text-sm">
                                     <span className="font-medium">{audience.name}</span>
-                                    <span className="bg-[var(--color-surface-hover)] px-2 py-1 rounded-full text-xs text-[var(--color-text-muted)]">
+                                    <span className="bg-surface-hover px-2 py-1 rounded-full text-xs text-muted">
                                         {audience.count.toLocaleString()}
                                     </span>
                                 </li>
                             ))}
                             {audiences.length === 0 && (
-                                <li className="text-[var(--color-text-muted)] text-sm italic">No audiences defined.</li>
+                                <li className="text-muted text-sm italic">No audiences defined.</li>
                             )}
                         </ul>
                     </div>

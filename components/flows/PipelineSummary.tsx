@@ -28,8 +28,8 @@ export const PipelineSummary: React.FC<PipelineSummaryProps> = ({ stats, stageCo
                     <div
                         key={config.id}
                         className={`
-                            relative overflow-hidden rounded-xl border border-[var(--color-surface-border)]
-                            bg-[var(--color-surface-paper)] hover:border-[var(--color-surface-border-hover)]
+                            relative overflow-hidden rounded-xl border border-surface
+                            bg-surface-paper hover:border-[var(--color-surface-border-hover)]
                             transition-all duration-200 group
                         `}
                     >
@@ -37,10 +37,10 @@ export const PipelineSummary: React.FC<PipelineSummaryProps> = ({ stats, stageCo
 
                         <div className="p-3 pl-4 flex items-center justify-between">
                             <div>
-                                <span className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider block mb-0.5">
+                                <span className="text-[10px] font-bold text-subtle uppercase tracking-wider block mb-0.5">
                                     {config.title}
                                 </span>
-                                <span className="text-2xl font-bold text-[var(--color-text-main)]">
+                                <span className="text-2xl font-bold text-main">
                                     {count}
                                 </span>
                             </div>

@@ -80,11 +80,11 @@ export const Profile = () => {
     };
 
     return (
-        <div className="min-h-screen bg-[var(--color-surface-bg)] text-[var(--color-text-main)] pb-20 fade-in">
+        <div className="min-h-screen bg-surface text-main pb-20 fade-in">
             <div className="max-w-[1600px] mx-auto px-6 pt-8">
 
                 {/* 1. HERO BANNER */}
-                <div className="relative h-64 md:h-80 w-full rounded-3xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-[var(--color-surface-border)] shadow-sm group">
+                <div className="relative h-64 md:h-80 w-full rounded-3xl overflow-hidden bg-zinc-100 dark:bg-zinc-800 border border-surface shadow-sm group">
                     {coverURL ? (
                         <img src={coverURL} alt={t('profile.cover.alt')} className="w-full h-full object-cover" />
                     ) : (
@@ -134,10 +134,10 @@ export const Profile = () => {
                                     {displayName || t('profile.fallback.anonymous')}
                                     <span className="material-symbols-outlined text-2xl text-blue-500" title={t('profile.badges.verified')}>verified</span>
                                 </h1>
-                                <p className="text-xl font-medium text-[var(--color-text-muted)] flex items-center justify-center md:justify-start gap-2">
+                                <p className="text-xl font-medium text-muted flex items-center justify-center md:justify-start gap-2">
                                     {title || t('profile.fallback.title')}
                                     <span className="w-1.5 h-1.5 rounded-full bg-[var(--color-text-subtle)]" />
-                                    <span className="text-base text-[var(--color-text-subtle)]">{address || t('profile.fallback.location')}</span>
+                                    <span className="text-base text-subtle">{address || t('profile.fallback.location')}</span>
                                 </p>
                             </div>
 
@@ -145,10 +145,10 @@ export const Profile = () => {
                                 <Button className="px-8 py-4 rounded-2xl font-bold hover:opacity-90 shadow-lg shadow-black/5 dark:shadow-white/5">
                                     {t('profile.actions.follow')}
                                 </Button>
-                                <Button variant="secondary" className="px-8 py-4 rounded-2xl font-bold border-[var(--color-surface-border)] bg-white dark:bg-black hover:bg-[var(--color-surface-hover)]">
+                                <Button variant="secondary" className="px-8 py-4 rounded-2xl font-bold border-surface bg-white dark:bg-black hover:bg-surface-hover">
                                     {t('profile.actions.message')}
                                 </Button>
-                                <button className="p-4 rounded-2xl border border-[var(--color-surface-border)] bg-white dark:bg-black hover:bg-[var(--color-surface-hover)] transition-colors">
+                                <button className="p-4 rounded-2xl border border-surface bg-white dark:bg-black hover:bg-surface-hover transition-colors">
                                     <span className="material-symbols-outlined" aria-label={t('profile.actions.more')}>more_horiz</span>
                                 </button>
                             </div>
@@ -163,7 +163,7 @@ export const Profile = () => {
 
                         {/* Left Sidebar Navigation */}
                         <aside className="w-full lg:w-64 shrink-0 space-y-2 sticky top-24">
-                            <div className="pb-4 mb-4 border-b border-[var(--color-surface-border)] lg:hidden">
+                            <div className="pb-4 mb-4 border-b border-surface lg:hidden">
                                 {/* Mobile Nav Header if needed, or just rely on the vertical list collapsing */}
                             </div>
 
@@ -171,25 +171,25 @@ export const Profile = () => {
                                 <button
                                     onClick={() => setActiveTab('overview')}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === 'overview'
-                                        ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] shadow-sm ring-1 ring-black/5 dark:ring-white/10'
-                                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'
+                                        ? 'bg-surface-hover text-main shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                                        : 'text-muted hover:bg-surface-hover hover:text-main'
                                         }`}
                                 >
-                                    <span className={`material-symbols-outlined text-[20px] ${activeTab === 'overview' ? 'text-[var(--color-primary)]' : ''}`}>dashboard</span>
+                                    <span className={`material-symbols-outlined text-[20px] ${activeTab === 'overview' ? 'text-primary' : ''}`}>dashboard</span>
                                     {t('profile.tabs.overview')}
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('projects')}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === 'projects'
-                                        ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] shadow-sm ring-1 ring-black/5 dark:ring-white/10'
-                                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'
+                                        ? 'bg-surface-hover text-main shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                                        : 'text-muted hover:bg-surface-hover hover:text-main'
                                         }`}
                                 >
                                     <div className="relative">
-                                        <span className={`material-symbols-outlined text-[20px] ${activeTab === 'projects' ? 'text-[var(--color-primary)]' : ''}`}>folder_open</span>
+                                        <span className={`material-symbols-outlined text-[20px] ${activeTab === 'projects' ? 'text-primary' : ''}`}>folder_open</span>
                                         {projects.length > 0 && <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
-                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--color-primary)] opacity-75"></span>
-                                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--color-primary)]"></span>
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                                            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
                                         </span>}
                                     </div>
                                     {t('profile.tabs.projects')}
@@ -197,39 +197,39 @@ export const Profile = () => {
                                 <button
                                     onClick={() => setActiveTab('activity')}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === 'activity'
-                                        ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] shadow-sm ring-1 ring-black/5 dark:ring-white/10'
-                                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'
+                                        ? 'bg-surface-hover text-main shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                                        : 'text-muted hover:bg-surface-hover hover:text-main'
                                         }`}
                                 >
-                                    <span className={`material-symbols-outlined text-[20px] ${activeTab === 'activity' ? 'text-[var(--color-primary)]' : ''}`}>history</span>
+                                    <span className={`material-symbols-outlined text-[20px] ${activeTab === 'activity' ? 'text-primary' : ''}`}>history</span>
                                     {t('profile.tabs.activity')}
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('about')}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 ${activeTab === 'about'
-                                        ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] shadow-sm ring-1 ring-black/5 dark:ring-white/10'
-                                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'
+                                        ? 'bg-surface-hover text-main shadow-sm ring-1 ring-black/5 dark:ring-white/10'
+                                        : 'text-muted hover:bg-surface-hover hover:text-main'
                                         }`}
                                 >
-                                    <span className={`material-symbols-outlined text-[20px] ${activeTab === 'about' ? 'text-[var(--color-primary)]' : ''}`}>person</span>
+                                    <span className={`material-symbols-outlined text-[20px] ${activeTab === 'about' ? 'text-primary' : ''}`}>person</span>
                                     {t('profile.tabs.about')}
                                 </button>
                             </nav>
 
                             {/* Quick Stats in Sidebar */}
-                            <div className="pt-6 mt-6 border-t border-[var(--color-surface-border)] px-4">
-                                <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-4">{t('profile.quickStats.title')}</h3>
+                            <div className="pt-6 mt-6 border-t border-surface px-4">
+                                <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-4">{t('profile.quickStats.title')}</h3>
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm text-[var(--color-text-subtle)]">{t('profile.quickStats.projects')}</span>
+                                        <span className="text-sm text-subtle">{t('profile.quickStats.projects')}</span>
                                         <span className="text-sm font-bold font-mono">{statsData.projects}</span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm text-[var(--color-text-subtle)]">{t('profile.quickStats.karma')}</span>
-                                        <span className="text-sm font-bold font-mono text-[var(--color-primary)]">940</span>
+                                        <span className="text-sm text-subtle">{t('profile.quickStats.karma')}</span>
+                                        <span className="text-sm font-bold font-mono text-primary">940</span>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <span className="text-sm text-[var(--color-text-subtle)]">{t('profile.quickStats.joined')}</span>
+                                        <span className="text-sm text-subtle">{t('profile.quickStats.joined')}</span>
                                         <span className="text-sm font-bold font-mono">{t('profile.quickStats.joinedValue')}</span>
                                     </div>
                                 </div>
@@ -242,20 +242,20 @@ export const Profile = () => {
                                 <div className="space-y-6 animate-fade-in">
                                     {/* Stats Grid */}
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-[var(--color-surface-border)] shadow-sm">
-                                            <div className="text-[var(--color-text-muted)] text-xs font-semibold uppercase tracking-wider mb-1">{t('profile.stats.projects')}</div>
+                                        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-surface shadow-sm">
+                                            <div className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">{t('profile.stats.projects')}</div>
                                             <div className="text-2xl font-display font-bold">{statsData.projects}</div>
                                         </div>
-                                        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-[var(--color-surface-border)] shadow-sm">
-                                            <div className="text-[var(--color-text-muted)] text-xs font-semibold uppercase tracking-wider mb-1">{t('profile.stats.tasksDone')}</div>
+                                        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-surface shadow-sm">
+                                            <div className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">{t('profile.stats.tasksDone')}</div>
                                             <div className="text-2xl font-display font-bold">142</div>
                                         </div>
-                                        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-[var(--color-surface-border)] shadow-sm">
-                                            <div className="text-[var(--color-text-muted)] text-xs font-semibold uppercase tracking-wider mb-1">{t('profile.stats.teams')}</div>
+                                        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-surface shadow-sm">
+                                            <div className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">{t('profile.stats.teams')}</div>
                                             <div className="text-2xl font-display font-bold">{statsData.teams}</div>
                                         </div>
-                                        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-[var(--color-surface-border)] shadow-sm">
-                                            <div className="text-[var(--color-text-muted)] text-xs font-semibold uppercase tracking-wider mb-1">{t('profile.stats.focus')}</div>
+                                        <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-surface shadow-sm">
+                                            <div className="text-muted text-xs font-semibold uppercase tracking-wider mb-1">{t('profile.stats.focus')}</div>
                                             <div className="text-2xl font-display font-bold text-emerald-500">89%</div>
                                         </div>
                                     </div>
@@ -267,22 +267,22 @@ export const Profile = () => {
                                                 activities.slice(0, 5).map((activity) => (
                                                     <div key={activity.id} className="flex gap-4 group">
                                                         <div className="flex flex-col items-center">
-                                                            <div className="w-2 h-2 rounded-full bg-[var(--color-primary)] ring-4 ring-[var(--color-surface-hover)] group-hover:ring-[var(--color-primary)]/20 transition-all"></div>
-                                                            <div className="w-px h-full bg-[var(--color-surface-border)] my-2 group-last:hidden"></div>
+                                                            <div className="w-2 h-2 rounded-full bg-primary ring-4 ring-[var(--color-surface-hover)] group-hover:ring-primary/20 transition-all"></div>
+                                                            <div className="w-px h-full bg-surface-border my-2 group-last:hidden"></div>
                                                         </div>
                                                         <div className="pb-4">
-                                                            <p className="text-sm text-[var(--color-text-main)]">
+                                                            <p className="text-sm text-main">
                                                                 <span className="font-semibold">{activity.action}</span>
-                                                                <span className="text-[var(--color-text-muted)]"> {activity.target}</span>
+                                                                <span className="text-muted"> {activity.target}</span>
                                                             </p>
-                                                            <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                                                            <p className="text-xs text-muted mt-1">
                                                                 {activity.createdAt ? format(new Date(activity.createdAt.seconds * 1000), dateFormat, { locale: dateLocale }) : t('profile.activity.justNow')}
                                                             </p>
                                                         </div>
                                                     </div>
                                                 ))
                                             ) : (
-                                                <div className="text-center py-8 text-[var(--color-text-muted)]">
+                                                <div className="text-center py-8 text-muted">
                                                     {t('profile.activity.empty')}
                                                 </div>
                                             )}
@@ -299,7 +299,7 @@ export const Profile = () => {
                                     </div>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                         {projects.length > 0 ? projects.map(project => (
-                                            <div key={project.id} className="group bg-white dark:bg-black rounded-3xl border border-[var(--color-surface-border)] overflow-hidden shadow-sm hover:translate-y-[-4px] transition-all duration-300 cursor-pointer">
+                                            <div key={project.id} className="group bg-white dark:bg-black rounded-3xl border border-surface overflow-hidden shadow-sm hover:translate-y-[-4px] transition-all duration-300 cursor-pointer">
                                                 {/* Cover */}
                                                 <div className="h-40 bg-zinc-100 dark:bg-zinc-800 relative">
                                                     {project.coverImage ? (
@@ -321,12 +321,12 @@ export const Profile = () => {
 
                                                 {/* Content */}
                                                 <div className="p-6">
-                                                    <h3 className="font-bold text-lg mb-1 truncate group-hover:text-[var(--color-primary)] transition-colors">{project.title}</h3>
-                                                    <p className="text-sm text-[var(--color-text-muted)] line-clamp-2 mb-4 h-10 leading-relaxed">
+                                                    <h3 className="font-bold text-lg mb-1 truncate group-hover:text-primary transition-colors">{project.title}</h3>
+                                                    <p className="text-sm text-muted line-clamp-2 mb-4 h-10 leading-relaxed">
                                                         {project.description || t('profile.projects.emptyDescription')}
                                                     </p>
 
-                                                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-[var(--color-surface-border)]">
+                                                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-surface">
                                                         <div className="flex -space-x-2">
                                                             {project.members?.slice(0, 3).map((m, i) => (
                                                                 <div key={i} className="size-8 rounded-full border-2 border-white dark:border-black bg-zinc-200 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold overflow-hidden" title={m.role}>
@@ -334,21 +334,21 @@ export const Profile = () => {
                                                                 </div>
                                                             ))}
                                                             {(project.members?.length || 0) > 3 && (
-                                                                <div className="size-8 rounded-full border-2 border-white dark:border-black bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-[10px] font-bold text-[var(--color-text-subtle)]">
+                                                                <div className="size-8 rounded-full border-2 border-white dark:border-black bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-[10px] font-bold text-subtle">
                                                                     +{(project.members?.length || 0) - 3}
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <span className="text-xs font-bold text-[var(--color-text-subtle)] uppercase tracking-wider flex items-center gap-1">
+                                                        <span className="text-xs font-bold text-subtle uppercase tracking-wider flex items-center gap-1">
                                                             {project.ownerId === user?.uid ? t('roles.owner') : t('roles.member')}
                                                         </span>
                                                     </div>
                                                 </div>
                                             </div>
                                         )) : (
-                                            <div className="col-span-full py-20 text-center bg-zinc-50 dark:bg-zinc-900/30 rounded-3xl border border-dashed border-[var(--color-surface-border)]">
+                                            <div className="col-span-full py-20 text-center bg-zinc-50 dark:bg-zinc-900/30 rounded-3xl border border-dashed border-surface">
                                                 <span className="material-symbols-outlined text-5xl text-zinc-300 mb-4">folder_off</span>
-                                                <p className="text-[var(--color-text-muted)] font-medium">{t('profile.projects.empty')}</p>
+                                                <p className="text-muted font-medium">{t('profile.projects.empty')}</p>
                                             </div>
                                         )}
                                     </div>
@@ -360,8 +360,8 @@ export const Profile = () => {
                                     <h2 className="text-xl font-bold font-display mb-6">{t('profile.sections.activity')}</h2>
                                     <Card className="p-0 overflow-hidden divide-y divide-[var(--color-surface-border)]">
                                         {activities.map((activity) => (
-                                            <div key={activity.id} className="p-4 hover:bg-[var(--color-surface-hover)] transition-colors flex gap-4">
-                                                <div className="size-10 rounded-full bg-[var(--color-surface-highlight)] flex items-center justify-center shrink-0 text-[var(--color-primary)]">
+                                            <div key={activity.id} className="p-4 hover:bg-surface-hover transition-colors flex gap-4">
+                                                <div className="size-10 rounded-full bg-[var(--color-surface-highlight)] flex items-center justify-center shrink-0 text-primary">
                                                     <span className="material-symbols-outlined text-[20px]">
                                                         {activity.type === 'comment' ? 'chat_bubble' :
                                                             activity.type === 'task' ? 'check_circle' :
@@ -370,18 +370,18 @@ export const Profile = () => {
                                                     </span>
                                                 </div>
                                                 <div>
-                                                    <div className="text-sm font-medium text-[var(--color-text-main)]">
-                                                        {activity.user} <span className="font-normal text-[var(--color-text-muted)]">{activity.action}</span>
+                                                    <div className="text-sm font-medium text-main">
+                                                        {activity.user} <span className="font-normal text-muted">{activity.action}</span>
                                                     </div>
-                                                    <div className="text-sm text-[var(--color-text-main)] mb-1">{activity.target}</div>
-                                                    <div className="text-xs text-[var(--color-text-muted)]">
+                                                    <div className="text-sm text-main mb-1">{activity.target}</div>
+                                                    <div className="text-xs text-muted">
                                                         {activity.createdAt ? format(new Date(activity.createdAt.seconds * 1000), 'PP p', { locale: dateLocale }) : ''}
                                                     </div>
                                                 </div>
                                             </div>
                                         ))}
                                         {activities.length === 0 && (
-                                            <div className="p-8 text-center text-[var(--color-text-muted)]">{t('profile.activity.detailsEmpty')}</div>
+                                            <div className="p-8 text-center text-muted">{t('profile.activity.detailsEmpty')}</div>
                                         )}
                                     </Card>
                                 </div>
@@ -391,15 +391,15 @@ export const Profile = () => {
                                 <div className="animate-fade-in space-y-6">
                                     <h2 className="text-xl font-bold font-display">{t('profile.sections.about')}</h2>
                                     <Card className="p-6">
-                                        <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">{t('profile.about.bio')}</h3>
-                                        <p className="text-[var(--color-text-main)] leading-relaxed">{bio || t('profile.about.bioEmpty')}</p>
+                                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted mb-4">{t('profile.about.bio')}</h3>
+                                        <p className="text-main leading-relaxed">{bio || t('profile.about.bioEmpty')}</p>
                                     </Card>
 
                                     <Card className="p-6">
-                                        <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">{t('profile.about.skills')}</h3>
+                                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted mb-4">{t('profile.about.skills')}</h3>
                                         <div className="flex flex-wrap gap-2">
                                             {(skills || 'React, TypeScript, Firebase, Tailwind CSS, UI/UX Design').split(',').map((skill, i) => (
-                                                <span key={i} className="px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-sm font-medium border border-[var(--color-surface-border)]">
+                                                <span key={i} className="px-3 py-1.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-sm font-medium border border-surface">
                                                     {skill.trim()}
                                                 </span>
                                             ))}
@@ -407,14 +407,14 @@ export const Profile = () => {
                                     </Card>
 
                                     <Card className="p-6">
-                                        <h3 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-4">{t('profile.about.contact')}</h3>
+                                        <h3 className="text-sm font-bold uppercase tracking-wider text-muted mb-4">{t('profile.about.contact')}</h3>
                                         <div className="space-y-3">
                                             <div className="flex items-center gap-3 text-sm">
-                                                <span className="material-symbols-outlined text-[var(--color-text-muted)]">mail</span>
+                                                <span className="material-symbols-outlined text-muted">mail</span>
                                                 <span>{user?.email}</span>
                                             </div>
                                             <div className="flex items-center gap-3 text-sm">
-                                                <span className="material-symbols-outlined text-[var(--color-text-muted)]">location_on</span>
+                                                <span className="material-symbols-outlined text-muted">location_on</span>
                                                 <span>{address || t('profile.about.remote')}</span>
                                             </div>
                                         </div>

@@ -294,10 +294,10 @@ const App = () => {
 
     if (loading) {
         return (
-            <div className="h-screen w-full flex items-center justify-center bg-[var(--color-surface-bg)]">
+            <div className="h-screen w-full flex items-center justify-center bg-surface">
                 <div className="flex flex-col items-center gap-4">
-                    <span className="material-symbols-outlined text-4xl animate-spin text-[var(--color-primary)]">progress_activity</span>
-                    <span className="text-sm font-semibold text-[var(--color-text-muted)]">{t('app.loading.connecting')}</span>
+                    <span className="material-symbols-outlined text-4xl animate-spin text-primary">progress_activity</span>
+                    <span className="text-sm font-semibold text-muted">{t('app.loading.connecting')}</span>
                 </div>
             </div>
         );
@@ -305,11 +305,11 @@ const App = () => {
 
     if (error) {
         return (
-            <div className="h-screen w-full flex flex-col items-center justify-center gap-4 p-4 bg-[var(--color-surface-bg)]">
+            <div className="h-screen w-full flex flex-col items-center justify-center gap-4 p-4 bg-surface">
                 <div className="p-6 text-center space-y-3 bg-white rounded-2xl shadow-xl border border-red-100 max-w-md">
                     <span className="material-symbols-outlined text-4xl text-rose-500">error</span>
                     <p className="text-rose-600 font-bold text-center">{error}</p>
-                    <p className="text-[var(--color-text-muted)] text-sm text-center">{t('app.error.checkConsole')}</p>
+                    <p className="text-muted text-sm text-center">{t('app.error.checkConsole')}</p>
                 </div>
             </div>
         );

@@ -90,13 +90,13 @@ export const SprintDetailsModal: React.FC<SprintDetailsModalProps> = ({
             className="!p-0"
             noPadding={true}
         >
-            <div className="flex flex-col h-full bg-[var(--color-surface-bg)] text-[var(--color-text-main)]">
+            <div className="flex flex-col h-full bg-surface text-main">
                 {/* Hero Header */}
-                <div className="relative overflow-hidden bg-[var(--color-surface-card)] border-b border-[var(--color-surface-border)] p-8">
+                <div className="relative overflow-hidden bg-card border-b border-surface p-8">
                     <div className="absolute top-6 right-6 z-20">
                         <button
                             onClick={onClose}
-                            className="flex items-center justify-center p-2 rounded-full text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)] transition-colors"
+                            className="flex items-center justify-center p-2 rounded-full text-muted hover:bg-surface-hover hover:text-main transition-colors"
                         >
                             <span className="material-symbols-outlined text-[24px]">close</span>
                         </button>
@@ -115,9 +115,9 @@ export const SprintDetailsModal: React.FC<SprintDetailsModalProps> = ({
                             )}
                         </div>
 
-                        <h2 className="text-3xl font-black tracking-tight text-[var(--color-text-main)]">{sprint.name}</h2>
+                        <h2 className="text-3xl font-black tracking-tight text-main">{sprint.name}</h2>
 
-                        <div className="flex items-center gap-6 text-sm font-medium text-[var(--color-text-muted)]">
+                        <div className="flex items-center gap-6 text-sm font-medium text-muted">
                             <span className="flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[18px]">calendar_today</span>
                                 {format(new Date(sprint.startDate), dateFormat)} - {format(new Date(sprint.endDate), dateFormat)}
@@ -135,16 +135,16 @@ export const SprintDetailsModal: React.FC<SprintDetailsModalProps> = ({
                 </div>
 
                 {/* Tabs */}
-                <div className="flex items-center gap-6 px-8 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]">
+                <div className="flex items-center gap-6 px-8 border-b border-surface bg-surface">
                     <button
                         onClick={() => setActiveTab('overview')}
-                        className={`py-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'overview' ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                        className={`py-4 text-sm font-bold border-b-2 transition-colors ${activeTab === 'overview' ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-main'}`}
                     >
                         Overview
                     </button>
                     <button
                         onClick={() => setActiveTab('team')}
-                        className={`py-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'team' ? 'border-[var(--color-primary)] text-[var(--color-primary)]' : 'border-transparent text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                        className={`py-4 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeTab === 'team' ? 'border-primary text-primary' : 'border-transparent text-muted hover:text-main'}`}
                     >
                         Team
                         {(pendingMembers.length > 0 && isCreator) && (
@@ -158,20 +158,20 @@ export const SprintDetailsModal: React.FC<SprintDetailsModalProps> = ({
                     {activeTab === 'overview' && (
                         <div className="space-y-8">
                             {/* Progress Section */}
-                            <div className="bg-[var(--color-surface-card)] rounded-2xl p-6 border border-[var(--color-surface-border)] shadow-sm">
+                            <div className="bg-card rounded-2xl p-6 border border-surface shadow-sm">
                                 <div className="flex justify-between items-end mb-3">
                                     <div>
-                                        <h3 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1">Sprint Progress</h3>
+                                        <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-1">Sprint Progress</h3>
                                         <div className="flex items-baseline gap-2">
-                                            <span className="text-3xl font-black text-[var(--color-text-main)]">{stats.progress}%</span>
-                                            <span className="text-sm font-medium text-[var(--color-text-muted)]">completed</span>
+                                            <span className="text-3xl font-black text-main">{stats.progress}%</span>
+                                            <span className="text-sm font-medium text-muted">completed</span>
                                         </div>
                                     </div>
                                     <div className="text-right">
-                                        <div className="text-sm font-bold text-[var(--color-text-main)]">{stats.completed} <span className="text-[var(--color-text-muted)]">/ {stats.total} Tasks</span></div>
+                                        <div className="text-sm font-bold text-main">{stats.completed} <span className="text-muted">/ {stats.total} Tasks</span></div>
                                     </div>
                                 </div>
-                                <div className="h-3 w-full bg-[var(--color-surface-hover)] rounded-full overflow-hidden p-0.5">
+                                <div className="h-3 w-full bg-surface-hover rounded-full overflow-hidden p-0.5">
                                     <div
                                         className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-700 ease-out shadow-sm"
                                         style={{ width: `${stats.progress}%` }}
@@ -181,28 +181,28 @@ export const SprintDetailsModal: React.FC<SprintDetailsModalProps> = ({
 
                             {/* Stats Grid */}
                             <div className="grid grid-cols-2 gap-4">
-                                <div className="p-5 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]">
-                                    <div className="flex items-center gap-2 mb-2 text-[var(--color-text-muted)]">
+                                <div className="p-5 rounded-2xl border border-surface bg-card">
+                                    <div className="flex items-center gap-2 mb-2 text-muted">
                                         <span className="material-symbols-outlined">timer</span>
                                         <span className="text-xs font-bold uppercase tracking-wider">Timeline</span>
                                     </div>
                                     {sprint.status === 'Active' ? (
-                                        <div className={`text-lg font-bold ${isOverdue ? 'text-rose-500' : 'text-[var(--color-text-main)]'}`}>
+                                        <div className={`text-lg font-bold ${isOverdue ? 'text-rose-500' : 'text-main'}`}>
                                             {isOverdue ? `${Math.abs(daysLeft)} days overdue` : `${daysLeft} days remaining`}
                                         </div>
                                     ) : (
-                                        <div className="text-lg font-bold text-[var(--color-text-muted)]">
+                                        <div className="text-lg font-bold text-muted">
                                             {sprint.status === 'Completed' ? 'Sprint Ended' : `Starts in ${daysUntilStart} days`}
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="p-5 rounded-2xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]">
-                                    <div className="flex items-center gap-2 mb-2 text-[var(--color-text-muted)]">
+                                <div className="p-5 rounded-2xl border border-surface bg-card">
+                                    <div className="flex items-center gap-2 mb-2 text-muted">
                                         <span className="material-symbols-outlined">flag</span>
                                         <span className="text-xs font-bold uppercase tracking-wider">Goal</span>
                                     </div>
-                                    <div className="text-sm font-medium text-[var(--color-text-main)] line-clamp-2">
+                                    <div className="text-sm font-medium text-main line-clamp-2">
                                         {sprint.goal || "No specific goal defined."}
                                     </div>
                                 </div>
@@ -214,7 +214,7 @@ export const SprintDetailsModal: React.FC<SprintDetailsModalProps> = ({
                         <div className="space-y-8">
                             {/* Actions Header */}
                             <div className="flex items-center justify-between">
-                                <h3 className="text-lg font-bold text-[var(--color-text-main)]">Sprint Team</h3>
+                                <h3 className="text-lg font-bold text-main">Sprint Team</h3>
                                 <div className="flex gap-2">
                                     {!isMember && !hasPendingRequest && onJoinRequest && (
                                         <Button variant="primary" onClick={onJoinRequest}>Join Sprint</Button>
@@ -229,9 +229,9 @@ export const SprintDetailsModal: React.FC<SprintDetailsModalProps> = ({
                                                 Add Member
                                             </Button>
                                             {isAddMemberOpen && (
-                                                <div className="absolute top-full right-0 mt-2 w-64 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-xl z-50 p-2">
+                                                <div className="absolute top-full right-0 mt-2 w-64 bg-card border border-surface rounded-xl shadow-xl z-50 p-2">
                                                     {availableMembers.length === 0 ? (
-                                                        <p className="text-xs text-[var(--color-text-muted)] p-2">No available members.</p>
+                                                        <p className="text-xs text-muted p-2">No available members.</p>
                                                     ) : (
                                                         availableMembers.map(member => (
                                                             <button
@@ -240,7 +240,7 @@ export const SprintDetailsModal: React.FC<SprintDetailsModalProps> = ({
                                                                     onAddMember(member.uid);
                                                                     setIsAddMemberOpen(false);
                                                                 }}
-                                                                className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-[var(--color-surface-hover)] text-left"
+                                                                className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-surface-hover text-left"
                                                             >
                                                                 {member.photoURL ? (
                                                                     <img src={member.photoURL} alt={member.displayName} className="w-6 h-6 rounded-full" />
@@ -249,7 +249,7 @@ export const SprintDetailsModal: React.FC<SprintDetailsModalProps> = ({
                                                                         {member.displayName.charAt(0)}
                                                                     </div>
                                                                 )}
-                                                                <span className="text-sm font-medium text-[var(--color-text-main)] truncate">{member.displayName}</span>
+                                                                <span className="text-sm font-medium text-main truncate">{member.displayName}</span>
                                                             </button>
                                                         ))
                                                     )}
@@ -263,7 +263,7 @@ export const SprintDetailsModal: React.FC<SprintDetailsModalProps> = ({
                             {/* Pending Requests */}
                             {isCreator && pendingMembers.length > 0 && (
                                 <div className="space-y-3">
-                                    <h4 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Pending Requests</h4>
+                                    <h4 className="text-xs font-bold text-muted uppercase tracking-wider">Pending Requests</h4>
                                     <div className="space-y-2">
                                         {pendingMembers.map(member => (
                                             <div key={member.uid} className="flex items-center justify-between p-3 rounded-xl bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20">
@@ -276,8 +276,8 @@ export const SprintDetailsModal: React.FC<SprintDetailsModalProps> = ({
                                                         </div>
                                                     )}
                                                     <div>
-                                                        <p className="text-sm font-bold text-[var(--color-text-main)]">{member.displayName}</p>
-                                                        <p className="text-xs text-[var(--color-text-muted)]">{member.email}</p>
+                                                        <p className="text-sm font-bold text-main">{member.displayName}</p>
+                                                        <p className="text-xs text-muted">{member.email}</p>
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2">
@@ -296,15 +296,15 @@ export const SprintDetailsModal: React.FC<SprintDetailsModalProps> = ({
 
                             {/* Active Members */}
                             <div className="space-y-3">
-                                <h4 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">Active Members ({activeMembers.length})</h4>
+                                <h4 className="text-xs font-bold text-muted uppercase tracking-wider">Active Members ({activeMembers.length})</h4>
                                 {activeMembers.length === 0 ? (
-                                    <div className="text-center py-8 text-[var(--color-text-muted)] italic">
+                                    <div className="text-center py-8 text-muted italic">
                                         No members assigned to this sprint.
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         {activeMembers.map(member => (
-                                            <div key={member.uid} className="flex items-center justify-between p-3 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)]">
+                                            <div key={member.uid} className="flex items-center justify-between p-3 rounded-xl border border-surface bg-card">
                                                 <div className="flex items-center gap-3">
                                                     {member.photoURL ? (
                                                         <img src={member.photoURL} alt={member.displayName} className="w-8 h-8 rounded-full" />
@@ -315,16 +315,16 @@ export const SprintDetailsModal: React.FC<SprintDetailsModalProps> = ({
                                                     )}
                                                     <div>
                                                         <div className="flex items-center gap-2">
-                                                            <p className="text-sm font-bold text-[var(--color-text-main)]">{member.displayName}</p>
+                                                            <p className="text-sm font-bold text-main">{member.displayName}</p>
                                                             {sprint.createdBy === member.uid && (
                                                                 <span className="text-[10px] font-bold bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300 px-1.5 py-0.5 rounded">Owner</span>
                                                             )}
                                                         </div>
-                                                        <p className="text-xs text-[var(--color-text-muted)]">{member.email}</p>
+                                                        <p className="text-xs text-muted">{member.email}</p>
                                                     </div>
                                                 </div>
                                                 {isCreator && member.uid !== sprint.createdBy && onRemoveMember && (
-                                                    <button onClick={() => onRemoveMember(member.uid)} className="text-[var(--color-text-muted)] hover:text-rose-500 transition-colors p-1">
+                                                    <button onClick={() => onRemoveMember(member.uid)} className="text-muted hover:text-rose-500 transition-colors p-1">
                                                         <span className="material-symbols-outlined text-lg">remove_circle_outline</span>
                                                     </button>
                                                 )}
@@ -338,7 +338,7 @@ export const SprintDetailsModal: React.FC<SprintDetailsModalProps> = ({
                 </div>
 
                 {/* Footer Actions */}
-                <div className="p-6 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-card)] flex items-center justify-between mt-auto">
+                <div className="p-6 border-t border-surface bg-card flex items-center justify-between mt-auto">
                     <Button
                         variant="ghost"
                         className="text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"

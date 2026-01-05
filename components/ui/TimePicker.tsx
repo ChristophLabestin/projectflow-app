@@ -117,14 +117,14 @@ export const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, placeho
                 transformOrigin: popoverPosition.transformOrigin,
                 zIndex: 9999,
             }}
-            className="p-2 bg-[var(--color-surface-card)] rounded-xl shadow-2xl border border-[var(--color-surface-border)] w-[200px] animate-scale-up"
+            className="p-2 bg-card rounded-xl shadow-2xl border border-surface w-[200px] animate-scale-up"
         >
             <div className="max-h-[300px] overflow-y-auto custom-scrollbar p-1">
                 <div className="mb-2 px-1">
-                    <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase mb-1 block">Custom</label>
+                    <label className="text-[10px] font-bold text-muted uppercase mb-1 block">Custom</label>
                     <input
                         type="time"
-                        className="w-full bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-[var(--color-primary)] outline-none transition-all text-[var(--color-text-main)]"
+                        className="w-full bg-surface border border-surface rounded-lg px-2 py-1.5 text-sm focus:ring-2 focus:ring-primary outline-none transition-all text-main"
                         value={value || ''}
                         onChange={(e) => {
                             onChange(e.target.value);
@@ -137,7 +137,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, placeho
                         onClick={(e) => e.stopPropagation()}
                     />
                 </div>
-                <div className="h-px bg-[var(--color-surface-border)] my-1 mx-1" />
+                <div className="h-px bg-surface-border my-1 mx-1" />
                 <div className="grid grid-cols-1 gap-1">
                     {times.map((t) => {
                         const isSelected = value === t;
@@ -153,8 +153,8 @@ export const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, placeho
                                 className={`
                                     w-full px-3 py-2 text-sm rounded-lg text-left transition-all
                                     ${isSelected
-                                        ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] font-bold'
-                                        : 'text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'
+                                        ? 'bg-primary text-on-primary font-bold'
+                                        : 'text-main hover:bg-surface-hover'
                                     }
                                 `}
                             >
@@ -170,7 +170,7 @@ export const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, placeho
     return (
         <div className={`relative flex flex-col gap-1.5 ${className}`} ref={containerRef}>
             {label && (
-                <label className="text-sm font-medium text-[var(--color-text-muted)]">
+                <label className="text-sm font-medium text-muted">
                     {label}
                 </label>
             )}
@@ -178,20 +178,20 @@ export const TimePicker: React.FC<TimePickerProps> = ({ value, onChange, placeho
                 onClick={() => setIsOpen(!isOpen)}
                 className={`
                     w-full px-3 py-2.5 rounded-xl flex items-center justify-between cursor-pointer transition-all text-sm
-                    bg-[var(--color-surface-bg)] text-[var(--color-text-main)]
-                    border border-[var(--color-surface-border)]
+                    bg-surface text-main
+                    border border-surface
                 `}
             >
                 <div className="flex items-center gap-2 overflow-hidden">
-                    <span className="material-symbols-outlined text-[20px] leading-none text-[var(--color-text-subtle)] flex-shrink-0">schedule</span>
-                    <span className={!value ? 'text-[var(--color-text-subtle)] truncate' : 'truncate'}>
+                    <span className="material-symbols-outlined text-[20px] leading-none text-subtle flex-shrink-0">schedule</span>
+                    <span className={!value ? 'text-subtle truncate' : 'truncate'}>
                         {value || placeholder}
                     </span>
                 </div>
                 {value && (
                     <div
                         onClick={(e) => { e.stopPropagation(); onChange(''); setIsOpen(false); }}
-                        className="hover:bg-[var(--color-surface-hover)] p-0.5 rounded-full text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors flex-shrink-0 ml-1"
+                        className="hover:bg-surface-hover p-0.5 rounded-full text-muted hover:text-main transition-colors flex-shrink-0 ml-1"
                     >
                         <span className="material-symbols-outlined text-[16px] block">close</span>
                     </div>

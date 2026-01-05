@@ -176,15 +176,15 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
             {/* Header Area */}
             <div className="flex items-center justify-between shrink-0">
                 <div>
-                    <h2 className="text-xl font-bold text-[var(--color-text-main)] flex items-center gap-3">
+                    <h2 className="text-xl font-bold text-main flex items-center gap-3">
                         {t('flowStages.productDevelopment.title')}
                         {totalTasks > 0 && (
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-bold border ${progress === 100 ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-[var(--color-surface-hover)] border-[var(--color-surface-border)] text-[var(--color-text-muted)]'}`}>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-bold border ${progress === 100 ? 'bg-emerald-500 text-white border-emerald-500' : 'bg-surface-hover border-surface text-muted'}`}>
                                 {t('flowStages.productDevelopment.velocity').replace('{value}', String(progress))}
                             </span>
                         )}
                     </h2>
-                    <p className="text-sm text-[var(--color-text-muted)]">{t('flowStages.productDevelopment.subtitle')}</p>
+                    <p className="text-sm text-muted">{t('flowStages.productDevelopment.subtitle')}</p>
                 </div>
                 <Button
                     variant="primary"
@@ -202,18 +202,18 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
 
                 {/* Left Panel: Tech Stack (4 cols) */}
                 <div className="lg:col-span-4 flex flex-col gap-4">
-                    <div className="bg-[var(--color-surface-paper)] rounded-2xl border border-[var(--color-surface-border)] shadow-sm flex flex-col overflow-hidden h-full">
+                    <div className="bg-surface-paper rounded-2xl border border-surface shadow-sm flex flex-col overflow-hidden h-full">
                         <div className="p-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
-                            <div className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                            <div className="font-bold text-main flex items-center gap-2">
                                 <span className="material-symbols-outlined text-[20px] text-sky-500">dns</span>
                                 {t('flowStages.productDevelopment.stack.title')}
                             </div>
-                            <button onClick={addStackCategory} className="text-xs text-[var(--color-primary)] hover:underline">{t('flowStages.productDevelopment.stack.addCategory')}</button>
+                            <button onClick={addStackCategory} className="text-xs text-primary hover:underline">{t('flowStages.productDevelopment.stack.addCategory')}</button>
                         </div>
 
                         <div className="p-4 flex-1 overflow-y-auto space-y-6">
                             {devData.techStack.length === 0 && (
-                                <div className="text-center py-8 text-[var(--color-text-muted)] text-sm">
+                                <div className="text-center py-8 text-muted text-sm">
                                     {t('flowStages.productDevelopment.stack.empty')}
                                 </div>
                             )}
@@ -223,25 +223,25 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                                         <input
                                             value={stack.category}
                                             onChange={(e) => updateStackCategory(stack.id, { category: e.target.value })}
-                                            className="font-bold text-sm bg-transparent border-none p-0 focus:ring-0 text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)]"
+                                            className="font-bold text-sm bg-transparent border-none p-0 focus:ring-0 text-main placeholder-[var(--color-text-subtle)]"
                                             placeholder={t('flowStages.productDevelopment.stack.categoryPlaceholder')}
                                         />
-                                        <button onClick={() => removeStackCategory(stack.id)} className="text-[var(--color-text-muted)] hover:text-rose-500 opacity-0 group-hover/cat:opacity-100 transition-opacity">
+                                        <button onClick={() => removeStackCategory(stack.id)} className="text-muted hover:text-rose-500 opacity-0 group-hover/cat:opacity-100 transition-opacity">
                                             <span className="material-symbols-outlined text-[14px]">delete</span>
                                         </button>
                                     </div>
-                                    <div className="flex flex-wrap gap-2 pl-2 border-l-2 border-[var(--color-surface-border)] ml-1 min-h-[30px]">
+                                    <div className="flex flex-wrap gap-2 pl-2 border-l-2 border-surface ml-1 min-h-[30px]">
                                         {stack.items.map((item, j) => (
                                             <div key={j} className="group/item relative flex items-center">
                                                 <input
                                                     value={item}
                                                     onChange={(e) => updateStackItem(stack.id, j, e.target.value)}
-                                                    className="bg-[var(--color-surface-hover)] rounded-md pl-2 pr-6 py-1 text-xs font-medium text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] min-w-[60px] max-w-[120px] focus:ring-1 ring-[var(--color-primary)] border-none"
+                                                    className="bg-surface-hover rounded-md pl-2 pr-6 py-1 text-xs font-medium text-main placeholder-[var(--color-text-subtle)] min-w-[60px] max-w-[120px] focus:ring-1 ring-primary border-none"
                                                     placeholder={t('flowStages.productDevelopment.stack.itemPlaceholder')}
                                                 />
                                                 <button
                                                     onClick={() => removeStackItem(stack.id, j)}
-                                                    className="absolute right-1 text-[var(--color-text-muted)] hover:text-rose-500 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                                                    className="absolute right-1 text-muted hover:text-rose-500 opacity-0 group-hover/item:opacity-100 transition-opacity"
                                                 >
                                                     <span className="material-symbols-outlined text-[12px]">close</span>
                                                 </button>
@@ -249,7 +249,7 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                                         ))}
                                         <button
                                             onClick={() => addItemToStack(stack.id)}
-                                            className="bg-transparent border border-dashed border-[var(--color-text-muted)] rounded-md px-2 py-1 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-colors"
+                                            className="bg-transparent border border-dashed border-muted rounded-md px-2 py-1 text-xs text-muted hover:text-primary hover:border-primary transition-colors"
                                         >
                                             {t('flowStages.productDevelopment.actions.add')}
                                         </button>
@@ -261,20 +261,20 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                 </div>
 
                 {/* Right Panel: Implementation Roadmap (8 cols) */}
-                <div className="lg:col-span-8 flex flex-col h-full bg-[var(--color-surface-paper)] rounded-2xl border border-[var(--color-surface-border)] shadow-sm overflow-hidden">
+                <div className="lg:col-span-8 flex flex-col h-full bg-surface-paper rounded-2xl border border-surface shadow-sm overflow-hidden">
                     <div className="p-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center shrink-0">
-                        <div className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
+                        <div className="font-bold text-main flex items-center gap-2">
                             <span className="material-symbols-outlined text-[20px] text-indigo-500">calendar_view_week</span>
                             {t('flowStages.productDevelopment.roadmap.title')}
                         </div>
-                        <Button onClick={addPhase} size="sm" className="rounded-lg text-xs hover:bg-[var(--color-primary)]/90 shadow-sm gap-1">
+                        <Button onClick={addPhase} size="sm" className="rounded-lg text-xs hover:bg-primary/90 shadow-sm gap-1">
                             <span className="material-symbols-outlined text-[14px]">add</span> {t('flowStages.productDevelopment.roadmap.addPhase')}
                         </Button>
                     </div>
 
                     <div className="p-4 flex-1 overflow-y-auto space-y-4">
                         {devData.phases.length === 0 && (
-                            <div className="text-center py-12 text-[var(--color-text-muted)]">
+                            <div className="text-center py-12 text-muted">
                                 <span className="material-symbols-outlined text-[40px] opacity-20 mb-2">splitscreen</span>
                                 <p className="text-sm">{t('flowStages.productDevelopment.roadmap.empty')}</p>
                             </div>
@@ -285,10 +285,10 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                             const pProgress = pTotal > 0 ? (pDone / pTotal) * 100 : 0;
 
                             return (
-                                <div key={phase.id} className="border border-[var(--color-surface-border)] rounded-xl overflow-hidden bg-[var(--color-surface-bg)] shadow-sm group/phase transition-all">
+                                <div key={phase.id} className="border border-surface rounded-xl overflow-hidden bg-surface shadow-sm group/phase transition-all">
                                     {/* Phase Header */}
                                     <div
-                                        className="bg-white dark:bg-slate-900/40 p-3 border-b border-[var(--color-surface-border)] flex flex-col gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
+                                        className="bg-white dark:bg-slate-900/40 p-3 border-b border-surface flex flex-col gap-2 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors"
                                         onClick={(e) => {
                                             if ((e.target as HTMLElement).tagName === 'INPUT' || (e.target as HTMLElement).tagName === 'BUTTON') return;
                                             updatePhase(phase.id, { isCollapsed: !phase.isCollapsed });
@@ -298,29 +298,29 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                                             <div className="flex items-center gap-3 flex-1">
                                                 <div className={`flex items-center justify-center size-6 rounded-full text-xs font-bold transition-colors ${pProgress === 100
                                                         ? 'bg-emerald-500 text-white'
-                                                        : 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                                                        : 'bg-primary/10 text-primary'
                                                     }`}>
                                                     {pProgress === 100 ? <span className="material-symbols-outlined text-[14px]">check</span> : i + 1}
                                                 </div>
                                                 <input
                                                     value={phase.name}
                                                     onChange={(e) => updatePhase(phase.id, { name: e.target.value })}
-                                                    className="font-bold bg-transparent border-none p-0 focus:ring-0 text-[var(--color-text-main)] placeholder-[var(--color-text-subtle)] w-full max-w-xs"
+                                                    className="font-bold bg-transparent border-none p-0 focus:ring-0 text-main placeholder-[var(--color-text-subtle)] w-full max-w-xs"
                                                     placeholder={t('flowStages.productDevelopment.roadmap.phasePlaceholder')}
                                                 />
-                                                <span className="text-xs text-[var(--color-text-muted)] bg-[var(--color-surface-hover)] px-2 py-0.5 rounded">
+                                                <span className="text-xs text-muted bg-surface-hover px-2 py-0.5 rounded">
                                                     {phase.weeks}
                                                 </span>
                                             </div>
                                             <div className="flex items-center gap-2">
-                                                <span className="text-xs font-medium text-[var(--color-text-muted)] tabular-nums">{pDone}/{pTotal}</span>
-                                                <span className={`material-symbols-outlined text-[20px] text-[var(--color-text-muted)] transition-transform duration-300 ${phase.isCollapsed ? '-rotate-90' : ''}`}>expand_more</span>
+                                                <span className="text-xs font-medium text-muted tabular-nums">{pDone}/{pTotal}</span>
+                                                <span className={`material-symbols-outlined text-[20px] text-muted transition-transform duration-300 ${phase.isCollapsed ? '-rotate-90' : ''}`}>expand_more</span>
                                             </div>
                                         </div>
                                         {/* Progress Bar */}
-                                        <div className="h-1 w-full bg-[var(--color-surface-border)] rounded-full overflow-hidden">
+                                        <div className="h-1 w-full bg-surface-border rounded-full overflow-hidden">
                                             <div
-                                                className={`h-full transition-all duration-500 ${pProgress === 100 ? 'bg-emerald-500' : 'bg-[var(--color-primary)]'}`}
+                                                className={`h-full transition-all duration-500 ${pProgress === 100 ? 'bg-emerald-500' : 'bg-primary'}`}
                                                 style={{ width: `${pProgress}%` }}
                                             />
                                         </div>
@@ -330,12 +330,12 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                                     <div className={`transition-all duration-300 overflow-hidden ${phase.isCollapsed ? 'max-h-0' : 'max-h-[500px]'}`}>
                                         <div className="p-3 space-y-1">
                                             {phase.tasks.map(task => (
-                                                <div key={task.id} className="flex items-center gap-3 p-2 rounded hover:bg-[var(--color-surface-paper)] group/task transition-colors">
+                                                <div key={task.id} className="flex items-center gap-3 p-2 rounded hover:bg-surface-paper group/task transition-colors">
                                                     <div
                                                         onClick={() => updateTask(phase.id, task.id, { done: !task.done })}
                                                         className={`size-4 rounded border cursor-pointer flex items-center justify-center transition-all ${task.done
                                                             ? 'bg-emerald-500 border-emerald-500 text-white'
-                                                            : 'border-[var(--color-text-muted)] hover:border-[var(--color-primary)]'
+                                                            : 'border-muted hover:border-primary'
                                                             }`}
                                                     >
                                                         {task.done && <span className="material-symbols-outlined text-[12px]">check</span>}
@@ -343,10 +343,10 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                                                     <input
                                                         value={task.title}
                                                         onChange={(e) => updateTask(phase.id, task.id, { title: e.target.value })}
-                                                        className={`flex-1 bg-transparent border-none p-0 text-sm focus:ring-0 ${task.done ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)]'}`}
+                                                        className={`flex-1 bg-transparent border-none p-0 text-sm focus:ring-0 ${task.done ? 'text-muted line-through' : 'text-main'}`}
                                                         placeholder={t('flowStages.productDevelopment.roadmap.taskPlaceholder')}
                                                     />
-                                                    <button onClick={() => removeTask(phase.id, task.id)} className="text-[var(--color-text-muted)] hover:text-rose-500 opacity-0 group-hover/task:opacity-100 transition-opacity">
+                                                    <button onClick={() => removeTask(phase.id, task.id)} className="text-muted hover:text-rose-500 opacity-0 group-hover/task:opacity-100 transition-opacity">
                                                         <span className="material-symbols-outlined text-[14px]">close</span>
                                                     </button>
                                                 </div>
@@ -354,7 +354,7 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                                             <div className="flex justify-start pt-2">
                                                 <button
                                                     onClick={() => addTaskToPhase(phase.id)}
-                                                    className="text-xs text-[var(--color-text-muted)] hover:text-[var(--color-primary)] flex items-center gap-1 pl-2 transition-colors"
+                                                    className="text-xs text-muted hover:text-primary flex items-center gap-1 pl-2 transition-colors"
                                                 >
                                                     <span className="material-symbols-outlined text-[14px]">add</span> {t('flowStages.productDevelopment.roadmap.addTask')}
                                                 </button>
@@ -371,7 +371,7 @@ export const ProductDevelopmentView: React.FC<ProductDevelopmentViewProps> = ({ 
                     </div>
 
                     {/* Advance Action */}
-                    <div className="p-4 border-t border-[var(--color-surface-border)] shrink-0">
+                    <div className="p-4 border-t border-surface shrink-0">
                         <Button
                             className="w-full h-12 text-base justify-between group hover:opacity-90 shadow-lg hover:shadow-xl transition-all rounded-xl border-none"
                             onClick={() => onUpdate({ stage: 'Concept' })}

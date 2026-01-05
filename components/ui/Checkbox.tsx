@@ -16,12 +16,12 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
                         size-5
                         rounded-md
                         border-2
-                        border-[var(--color-surface-border)]
-                        bg-[var(--color-surface-bg)]
-                        checked:bg-[var(--color-primary)]
-                        checked:border-[var(--color-primary)]
+                        border-surface
+                        bg-surface
+                        checked:bg-primary
+                        checked:border-primary
                         focus:ring-2
-                        focus:ring-[var(--color-primary)]
+                        focus:ring-primary
                         focus:ring-offset-2
                         dark:focus:ring-offset-zinc-900
                         cursor-pointer
@@ -45,7 +45,7 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
                     {...props}
                 />
                 {label && (
-                    <label className="text-sm text-[var(--color-text-main)] select-none">
+                    <label className="text-sm text-main select-none">
                         {label}
                     </label>
                 )}

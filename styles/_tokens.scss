@@ -1,0 +1,127 @@
+:root {
+  /* Core palette (monochrome) */
+  --color-primary: #171717;
+  --color-primary-dark: #000000;
+  --color-primary-light: #404040;
+  --color-primary-fade: #f5f5f5;
+  --color-absolute-black: #000000;
+  --color-absolute-white: #ffffff;
+
+  /* Surfaces */
+  --color-surface-bg: #fafafa;
+  --color-surface-card: #ffffff;
+  --color-surface-hover: #f5f5f5;
+  --color-surface-border: #e5e7eb;
+  --color-surface-border-hover: #d1d5db;
+  --color-surface-paper: var(--color-surface-card);
+
+  /* Text */
+  --color-text-main: #171717;
+  --color-text-muted: #737373;
+  --color-text-subtle: #a3a3a3;
+  --color-text-ondark: #ffffff;
+
+  /* Legacy aliases */
+  --color-text: var(--color-text-main);
+  --color-text-secondary: var(--color-text-muted);
+  --color-text-paragraph: var(--color-text-muted);
+  --color-background: var(--color-surface-bg);
+  --color-bg-base: var(--color-surface-bg);
+  --color-border: var(--color-surface-border);
+  --color-surface-active: var(--color-surface-hover);
+  --color-surface-bg-offset: var(--color-surface-hover);
+  --color-surface-highlight: var(--color-surface-hover);
+  --color-surface-input: var(--color-surface-bg);
+  --color-surface-order: var(--color-surface-border);
+  --color-surface-pressed: var(--color-surface-hover);
+  --color-surface-sunken: var(--color-surface-bg);
+  --color-accent: var(--color-primary);
+  --color-primary-active: var(--color-primary-dark);
+  --color-primary-rgb: 23, 23, 23;
+
+  /* Primary text on primary surfaces */
+  --color-primary-text: #ffffff;
+  --color-primary-hover: var(--color-primary-dark);
+
+  /* Status */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+
+  /* Pre-beta blue palette */
+  --color-blue-100: #dbeafe;
+  --color-blue-500: #3b82f6;
+  --color-blue-600: #2563eb;
+  --color-blue-900: #1e3a8a;
+
+  /* Radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+  --radius-3xl: 40px;
+  --radius-full: 999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.04);
+  --shadow-soft: 0 20px 40px rgba(0, 0, 0, 0.04);
+  --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Layout */
+  --app-sidebar-width: 0px;
+  --help-center-width-collapsed: calc((100vw - var(--app-sidebar-width)) * 0.75);
+  --help-center-width-expanded: calc(100vw - var(--app-sidebar-width));
+}
+
+@media (min-width: 768px) {
+  :root {
+    --app-sidebar-width: 280px;
+  }
+}
+
+html.dark {
+  --color-primary: #e5e5e5;
+  --color-primary-dark: #d4d4d4;
+  --color-primary-light: #a3a3a3;
+  --color-primary-fade: #262626;
+
+  --color-surface-bg: #0b0d11;
+  --color-surface-card: #151920;
+  --color-surface-hover: #1e242e;
+  --color-surface-border: #2e3440;
+  --color-surface-border-hover: #3c4453;
+
+  --color-text-main: #e5e7eb;
+  --color-text-muted: #9ca3af;
+  --color-text-subtle: #6b7280;
+
+  --color-primary-text: #171717;
+  --color-primary-hover: var(--color-primary-dark);
+
+  --color-text: var(--color-text-main);
+  --color-text-secondary: var(--color-text-muted);
+  --color-text-paragraph: var(--color-text-muted);
+  --color-background: var(--color-surface-bg);
+  --color-bg-base: var(--color-surface-bg);
+  --color-border: var(--color-surface-border);
+  --color-surface-active: var(--color-surface-hover);
+  --color-surface-bg-offset: var(--color-surface-hover);
+  --color-surface-highlight: var(--color-surface-hover);
+  --color-surface-input: var(--color-surface-bg);
+  --color-surface-order: var(--color-surface-border);
+  --color-surface-pressed: var(--color-surface-hover);
+  --color-surface-sunken: var(--color-surface-bg);
+  --color-accent: var(--color-primary);
+  --color-primary-active: var(--color-primary-dark);
+  --color-primary-rgb: 229, 229, 229;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+}

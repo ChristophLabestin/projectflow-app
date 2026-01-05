@@ -1,0 +1,90 @@
+@use '../../../styles/tokens';
+
+.status-card {
+    padding: 32px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+
+    &__icon {
+        width: 64px;
+        height: 64px;
+        border-radius: var(--radius-full);
+        background: var(--color-surface-hover);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-primary);
+    }
+
+    &__content {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    &__title {
+        margin: 0;
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--color-text-main);
+    }
+
+    &__message {
+        margin: 0;
+        color: var(--color-text-muted);
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+
+    &__extra {
+        width: 100%;
+    }
+
+    &--success &__icon {
+        color: var(--color-success);
+    }
+
+    &--error &__icon {
+        color: var(--color-error);
+    }
+}
+
+.status-card__progress {
+    height: 4px;
+    background: var(--color-surface-hover);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+}
+
+.status-card__progress-bar {
+    height: 100%;
+    background: var(--color-success);
+    animation: status-progress 1.2s ease-in-out infinite;
+}
+
+.status-card__spin {
+    animation: status-spin 0.9s linear infinite;
+}
+
+@keyframes status-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes status-progress {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    50% {
+        transform: translateX(0);
+    }
+
+    100% {
+        transform: translateX(100%);
+    }
+}

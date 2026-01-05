@@ -1,0 +1,56 @@
+@use '../../../styles/tokens';
+
+.card {
+    background-color: var(--color-surface-card);
+    border: none;
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md); // Increased shadow for depth since border is gone
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+
+    &__header {
+        padding: 24px 24px 12px;
+        // border-bottom removed to unify card
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            margin: 0;
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--color-text-main);
+        }
+    }
+
+    &__body {
+        padding: 12px 24px;
+        flex: 1;
+        color: var(--color-text-main);
+
+        // If body is the first/last element, increase padding to match unified spacing
+        &:first-child {
+            padding-top: 24px;
+        }
+
+        &:last-child {
+            padding-bottom: 24px;
+        }
+    }
+
+    &__footer {
+        padding: 12px 24px 24px;
+        background-color: transparent; // Unify background
+        // border-top removed
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 12px;
+    }
+}

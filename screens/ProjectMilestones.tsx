@@ -167,7 +167,7 @@ export const ProjectMilestones = () => {
     if (loading) {
         return (
             <div className="flex justify-center py-20">
-                <span className="material-symbols-outlined animate-spin text-4xl text-[var(--color-primary)]">progress_activity</span>
+                <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
             </div>
         );
     }
@@ -184,10 +184,10 @@ export const ProjectMilestones = () => {
                             Roadmap
                         </span>
                     </div>
-                    <h1 className="text-3xl md:text-4xl font-display font-bold text-[var(--color-text-main)] mb-2">
+                    <h1 className="text-3xl md:text-4xl font-display font-bold text-main mb-2">
                         Project Milestones
                     </h1>
-                    <p className="text-[var(--color-text-muted)] max-w-xl">
+                    <p className="text-muted max-w-xl">
                         Track your journey from start to finish. Visualize key achievements and upcoming deadlines in a unified timeline.
                     </p>
                 </div>
@@ -195,10 +195,10 @@ export const ProjectMilestones = () => {
                 <div className="flex items-center gap-4">
                     {/* Mini Stat Card */}
                     <div className="hidden md:flex flex-col items-end mr-4">
-                        <div className="text-2xl font-bold text-[var(--color-text-main)]">
-                            {stats.achieved} <span className="text-[var(--color-text-subtle)] text-lg">/ {stats.total}</span>
+                        <div className="text-2xl font-bold text-main">
+                            {stats.achieved} <span className="text-subtle text-lg">/ {stats.total}</span>
                         </div>
-                        <div className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
+                        <div className="text-xs font-bold text-muted uppercase tracking-wider">
                             Milestones Achieved
                         </div>
                     </div>
@@ -216,7 +216,7 @@ export const ProjectMilestones = () => {
 
             {/* Progress Bar (Visual Header) */}
             <Card padding="none" className="overflow-hidden relative h-2">
-                <div className="absolute inset-0 bg-[var(--color-surface-hover)] w-full h-full" />
+                <div className="absolute inset-0 bg-surface-hover w-full h-full" />
                 <div
                     className="absolute inset-y-0 left-0 bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-1000 ease-out"
                     style={{ width: `${stats.progress}%` }}
@@ -226,17 +226,17 @@ export const ProjectMilestones = () => {
             {/* Timeline View */}
             <div className="relative pl-4 md:pl-0 mt-4">
                 {/* Vertical Line */}
-                <div className="absolute left-[27px] md:left-1/2 top-4 bottom-10 w-0.5 bg-[var(--color-surface-border)] -translate-x-1/2 hidden md:block" />
-                <div className="absolute left-[27px] top-4 bottom-10 w-0.5 bg-[var(--color-surface-border)] -translate-x-1/2 md:hidden" />
+                <div className="absolute left-[27px] md:left-1/2 top-4 bottom-10 w-0.5 bg-surface-border -translate-x-1/2 hidden md:block" />
+                <div className="absolute left-[27px] top-4 bottom-10 w-0.5 bg-surface-border -translate-x-1/2 md:hidden" />
 
                 <div className="space-y-12">
                     {sortedMilestones.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 text-center">
-                            <div className="size-20 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center mb-4">
-                                <span className="material-symbols-outlined text-4xl text-[var(--color-text-muted)] opacity-50">map</span>
+                            <div className="size-20 rounded-full bg-surface-hover flex items-center justify-center mb-4">
+                                <span className="material-symbols-outlined text-4xl text-muted opacity-50">map</span>
                             </div>
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">No milestones yet</h3>
-                            <p className="text-[var(--color-text-muted)] max-w-xs mx-auto mb-6">
+                            <h3 className="text-lg font-bold text-main">No milestones yet</h3>
+                            <p className="text-muted max-w-xs mx-auto mb-6">
                                 Start planning your project journey by adding your first milestone.
                             </p>
                             <Button
@@ -326,8 +326,8 @@ export const ProjectMilestones = () => {
                                         ${isAchieved
                                             ? 'bg-emerald-500 border-emerald-100 dark:border-emerald-900 text-white scale-90'
                                             : isNextUp
-                                                ? 'bg-white dark:bg-[var(--color-surface-card)] border-indigo-500 text-indigo-500 scale-110 shadow-indigo-500/30'
-                                                : 'bg-white dark:bg-[var(--color-surface-card)] border-[var(--color-surface-border)] text-[var(--color-text-subtle)]'
+                                                ? 'bg-white dark:bg-card border-indigo-500 text-indigo-500 scale-110 shadow-indigo-500/30'
+                                                : 'bg-white dark:bg-card border-surface text-subtle'
                                         }
                                     `}>
                                         <span className="material-symbols-outlined text-[14px] font-bold">
@@ -350,7 +350,7 @@ export const ProjectMilestones = () => {
                                                         ? 'border-orange-500 shadow-lg shadow-orange-500/20 ring-1 ring-orange-500'
                                                         : isNextUp
                                                             ? 'ring-2 ring-indigo-500/20 border-indigo-500/50 shadow-md'
-                                                            : 'border-[var(--color-surface-border)]'
+                                                            : 'border-surface'
                                                 }
                                             `}
                                             onClick={() => {
@@ -372,7 +372,7 @@ export const ProjectMilestones = () => {
                                                                     ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
                                                                     : calculatedRisk === 'Medium'
                                                                         ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400'
-                                                                        : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)]'
+                                                                        : 'bg-surface-hover text-muted'
                                                         }
                                                     `}>
                                                         {milestone.dueDate ? (
@@ -404,12 +404,12 @@ export const ProjectMilestones = () => {
                                                             )}
                                                         </div>
 
-                                                        <h3 className={`text-lg font-bold mb-1 ${isAchieved ? 'text-[var(--color-text-muted)] decoration-slice' : 'text-[var(--color-text-main)]'}`}>
+                                                        <h3 className={`text-lg font-bold mb-1 ${isAchieved ? 'text-muted decoration-slice' : 'text-main'}`}>
                                                             {milestone.title}
                                                         </h3>
 
                                                         {milestone.description && (
-                                                            <p className="text-sm text-[var(--color-text-muted)] line-clamp-2 leading-relaxed">
+                                                            <p className="text-sm text-muted line-clamp-2 leading-relaxed">
                                                                 {milestone.description}
                                                             </p>
                                                         )}
@@ -427,7 +427,7 @@ export const ProjectMilestones = () => {
 
                                                             {milestone.linkedTaskIds && milestone.linkedTaskIds.length > 0 && (
                                                                 <div className="flex flex-col gap-1">
-                                                                    <span className="flex items-center gap-1 text-[11px] font-medium text-[var(--color-text-subtle)] bg-[var(--color-surface-bg)] px-2 py-0.5 rounded-full border border-[var(--color-surface-border)] w-fit">
+                                                                    <span className="flex items-center gap-1 text-[11px] font-medium text-subtle bg-surface px-2 py-0.5 rounded-full border border-surface w-fit">
                                                                         <span className="material-symbols-outlined text-[14px]">task</span>
                                                                         {milestone.linkedTaskIds.length} Tasks
                                                                     </span>
@@ -466,12 +466,12 @@ export const ProjectMilestones = () => {
                                                     return (
                                                         <div className="mt-4 mb-1">
                                                             <div className="flex items-center justify-between mb-1.5">
-                                                                <span className="text-[10px] uppercase font-bold text-[var(--color-text-subtle)] tracking-wider">Progress</span>
+                                                                <span className="text-[10px] uppercase font-bold text-subtle tracking-wider">Progress</span>
                                                                 <span className={`text-xs font-bold ${isDone ? 'text-emerald-500' : 'text-indigo-500'}`}>
                                                                     {finalPct}%
                                                                 </span>
                                                             </div>
-                                                            <div className="h-2 bg-[var(--color-surface-hover)] rounded-full overflow-hidden">
+                                                            <div className="h-2 bg-surface-hover rounded-full overflow-hidden">
                                                                 <div
                                                                     className={`h-full rounded-full transition-all duration-1000 ease-out ${isDone ? 'bg-emerald-500' : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`}
                                                                     style={{ width: `${finalPct}%` }}
@@ -500,7 +500,7 @@ export const ProjectMilestones = () => {
                                                             e.stopPropagation();
                                                             handleEdit(milestone);
                                                         }}
-                                                        className="p-1.5 text-[var(--color-text-muted)] hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                                                        className="p-1.5 text-muted hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
                                                         title="Edit"
                                                     >
                                                         <span className="material-symbols-outlined text-[18px]">edit</span>
@@ -510,7 +510,7 @@ export const ProjectMilestones = () => {
                                                             e.stopPropagation();
                                                             handleDelete(milestone);
                                                         }}
-                                                        className="p-1.5 text-[var(--color-text-muted)] hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors"
+                                                        className="p-1.5 text-muted hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors"
                                                         title="Delete"
                                                     >
                                                         <span className="material-symbols-outlined text-[18px]">delete</span>

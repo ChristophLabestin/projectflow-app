@@ -54,7 +54,7 @@ const NavItem = ({
 
     if (disabled) {
         return (
-            <div className="flex items-center gap-3.5 px-3 py-2 text-[var(--color-text-muted)] opacity-30 cursor-not-allowed">
+            <div className="flex items-center gap-3.5 px-3 py-2 text-muted opacity-30 cursor-not-allowed">
                 <span className="material-symbols-outlined text-[20px]">{icon}</span>
                 <span className="text-[14px]/none font-medium text-inherit">{label}</span>
             </div>
@@ -68,17 +68,17 @@ const NavItem = ({
             className={`
                 group relative flex items-center gap-3.5 px-3.5 py-2 rounded-xl transition-all duration-300
                 ${isActive
-                    ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] font-bold shadow-sm'
-                    : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]/40 hover:text-[var(--color-text-main)]'}
+                    ? 'bg-surface-hover text-main font-bold shadow-sm'
+                    : 'text-muted hover:bg-surface-hover/40 hover:text-main'}
             `}
         >
             {/* Elegant Active Indicator */}
             {isActive && (
-                <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] bg-[var(--color-primary)] rounded-r-full shadow-[0_0_12px_rgba(var(--color-primary-rgb),0.6)]" />
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-[3px] bg-primary rounded-r-full shadow-[0_0_12px_rgba(var(--color-primary-rgb),0.6)]" />
             )}
 
             <span
-                className={`material-symbols-outlined text-[20px] transition-all duration-300 ${isActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)] group-hover:text-[var(--color-text-main)] overflow-hidden'}`}
+                className={`material-symbols-outlined text-[20px] transition-all duration-300 ${isActive ? 'text-primary' : 'text-muted group-hover:text-main overflow-hidden'}`}
             >
                 {icon}
             </span>
@@ -88,8 +88,8 @@ const NavItem = ({
                 <div className={`
                     flex items-center justify-center min-w-[20px] h-5 rounded-full px-1 transition-all duration-300
                     ${isActive
-                        ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] scale-100 shadow-lg shadow-[var(--color-primary)]/20'
-                        : 'bg-[var(--color-surface-border)] text-[var(--color-text-muted)]'}
+                        ? 'bg-primary text-on-primary scale-100 shadow-lg shadow-[var(--color-primary)]/20'
+                        : 'bg-surface-border text-muted'}
                 `}>
                     <span className={`text-[10px] font-black leading-none ${isActive ? 'scale-90' : ''}`}>{badge}</span>
                 </div>
@@ -141,7 +141,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
     return (
         <aside
             className={`
-                flex flex-col bg-[var(--color-surface-card)] border-r border-[var(--color-surface-border)]
+                flex flex-col bg-card border-r border-surface
                 ${isDrawer ? 'w-full h-full' : 'hidden md:flex w-[280px]'}
                 transition-all duration-300 relative z-20
             `}
@@ -159,7 +159,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                     {isDrawer && (
                         <button
                             onClick={onClose}
-                            className="size-8 rounded-full hover:bg-[var(--color-surface-hover)] flex items-center justify-center text-[var(--color-text-muted)] shrink-0"
+                            className="size-8 rounded-full hover:bg-surface-hover flex items-center justify-center text-muted shrink-0"
                         >
                             <span className="material-symbols-outlined">close</span>
                         </button>
@@ -172,7 +172,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                     onClick={isDrawer ? onClose : undefined}
                     className="
                         group relative w-full flex items-center justify-center gap-3 px-4 py-2.5 
-                        bg-[var(--color-primary)] text-[var(--color-primary-text)] font-bold text-[13px]
+                        bg-primary text-on-primary font-bold text-[13px]
                         rounded-xl shadow-xl shadow-[var(--color-primary)]/15
                         hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 overflow-hidden
                     "
@@ -189,7 +189,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                 {/* Scope: Global Workspace */}
                 <div>
                     <div className="flex items-center gap-3 px-1 mb-3">
-                        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-[var(--color-text-muted)] opacity-50">
+                        <span className="text-[11px] font-black uppercase tracking-[0.3em] text-muted opacity-50">
                             {t('nav.workspace')}
                         </span>
                         <div className="flex-1 h-px bg-gradient-to-r from-[var(--color-surface-border)]/50 to-transparent" />
@@ -209,7 +209,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                 {isProjectActive && workspace && workspace.isLoaded && (
                     <div className="animate-fade-in-down">
                         <div className="flex items-center gap-3 px-1 mb-3">
-                            <span className="text-[11px] font-black uppercase tracking-[0.3em] text-[var(--color-text-muted)] opacity-50">
+                            <span className="text-[11px] font-black uppercase tracking-[0.3em] text-muted opacity-50">
                                 {t('nav.projectContext')}
                             </span>
                             <div className="flex-1 h-px bg-gradient-to-r from-[var(--color-surface-border)]/50 to-transparent" />
@@ -278,7 +278,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                             {workspace.externalResources && workspace.externalResources.length > 0 && (
                                 <div className="mt-5 space-y-1">
                                     <div className="flex items-center gap-3 px-1 mb-3">
-                                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--color-text-muted)] opacity-50">
+                                        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted opacity-50">
                                             {t('sidebar.resources')}
                                         </span>
                                         <div className="flex-1 h-px bg-gradient-to-r from-[var(--color-surface-border)]/50 to-transparent" />
@@ -290,10 +290,10 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
                                                 href={res.url}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="group relative flex items-center gap-3.5 px-3.5 py-2 rounded-xl transition-all duration-300 text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]/40 hover:text-[var(--color-text-main)]"
+                                                className="group relative flex items-center gap-3.5 px-3.5 py-2 rounded-xl transition-all duration-300 text-muted hover:bg-surface-hover/40 hover:text-main"
                                                 onClick={isDrawer ? onClose : undefined}
                                             >
-                                                <span className="material-symbols-outlined text-[20px] transition-all duration-300 text-[var(--color-text-muted)] group-hover:text-[var(--color-text-main)] group-hover:translate-y-[-1px]">
+                                                <span className="material-symbols-outlined text-[20px] transition-all duration-300 text-muted group-hover:text-main group-hover:translate-y-[-1px]">
                                                     {res.icon || 'link'}
                                                 </span>
                                                 <span className="text-[14px]/none flex-1 truncate tracking-tight font-medium group-hover:translate-x-0.5 transition-transform duration-300">
@@ -312,7 +312,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
             </nav>
 
             {/* 3. Footer */}
-            <div className="p-4 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-card)] space-y-4">
+            <div className="p-4 border-t border-surface bg-card space-y-4">
 
 
                 {/* Theme Toggle + Notification Bell Row */}
@@ -336,10 +336,10 @@ const ThemeToggle = () => {
     const { theme, setTheme } = useTheme();
     const { t } = useLanguage();
     return (
-        <div className="inline-flex bg-[var(--color-surface-hover)] p-0.5 rounded-full border border-[var(--color-surface-border)]">
+        <div className="inline-flex bg-surface-hover p-0.5 rounded-full border border-surface">
             <button
                 onClick={() => setTheme('light')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all ${theme === 'light' ? 'bg-white text-yellow-600 shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all ${theme === 'light' ? 'bg-white text-yellow-600 shadow-sm' : 'text-muted hover:text-main'
                     }`}
             >
                 <span className="material-symbols-outlined text-[14px]">light_mode</span>
@@ -347,7 +347,7 @@ const ThemeToggle = () => {
             </button>
             <button
                 onClick={() => setTheme('dark')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all ${theme === 'dark' ? 'bg-slate-700 text-indigo-200 shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold transition-all ${theme === 'dark' ? 'bg-slate-700 text-indigo-200 shadow-sm' : 'text-muted hover:text-main'
                     }`}
             >
                 <span className="material-symbols-outlined text-[14px]">dark_mode</span>

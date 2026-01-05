@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { applyActionCode, verifyPasswordResetCode, confirmPasswordReset, checkActionCode } from 'firebase/auth';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
+import { applyActionCode, confirmPasswordReset, checkActionCode } from 'firebase/auth';
 import { auth } from '../services/firebase';
-import { Card } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
+import { Card, CardBody } from '../components/common/Card/Card';
+import { Button } from '../components/common/Button/Button';
+import { TextInput } from '../components/common/Input/TextInput';
 import { useToast } from '../context/UIContext';
 import { useLanguage } from '../context/LanguageContext';
+import './auth-action.scss';
 
 type Status = 'loading' | 'success' | 'error' | 'reset-password';
 
@@ -20,7 +21,7 @@ export const AuthAction = () => {
     const oobCode = searchParams.get('oobCode');
 
     const [status, setStatus] = useState<Status>('loading');
-    const [message, setMessage] = useState('Processing your request...');
+    const [message, setMessage] = useState(() => t('authAction.message.processing'));
 
     useEffect(() => {
         console.log('AuthAction Component Mounted', { mode, oobCode, pathname: window.location.pathname });
@@ -32,7 +33,7 @@ export const AuthAction = () => {
     useEffect(() => {
         if (!mode || !oobCode) {
             setStatus('error');
-            setMessage('The action link is invalid or has expired.');
+            setMessage(t('authAction.message.invalidLink'));
             return;
         }
 
@@ -66,59 +67,71 @@ export const AuthAction = () => {
                         console.log('Applying verifyEmail...');
                         await applyActionCode(auth, oobCode!);
                         setStatus('success');
-                        setMessage(email ? `The email address ${email} has been verified successfully.` : 'Your email address has been verified successfully.');
-                        showSuccess('Email verified successfully!');
+                        setMessage(
+                            email
+                                ? t('authAction.message.verifySuccessWithEmail').replace('{email}', email)
+                                : t('authAction.message.verifySuccess')
+                        );
+                        showSuccess(t('authAction.toast.verifySuccess'));
                         break;
                     case 'resetPassword':
                         setStatus('reset-password');
-                        setMessage(email ? `Updating password for ${email}` : 'Update your password below.');
+                        setMessage(
+                            email
+                                ? t('authAction.message.resetPromptWithEmail').replace('{email}', email)
+                                : t('authAction.message.resetPrompt')
+                        );
                         break;
                     case 'recoverEmail':
                         console.log('Applying recoverEmail...');
                         await applyActionCode(auth, oobCode!);
                         setStatus('success');
-                        setMessage(email ? `The email address ${email} has been recovered successfully.` : 'Your email address has been recovered successfully.');
+                        setMessage(
+                            email
+                                ? t('authAction.message.recoverSuccessWithEmail').replace('{email}', email)
+                                : t('authAction.message.recoverSuccess')
+                        );
                         break;
                     default:
                         setStatus('error');
-                        setMessage('This action is not supported or the link has expired.');
+                        setMessage(t('authAction.message.unsupported'));
                 }
             } catch (error: any) {
                 console.error('Final Auth Action Error:', error);
                 setStatus('error');
 
                 if (error.code === 'auth/invalid-action-code') {
-                    setMessage('This link has already been used or is invalid. Please check if your email is already verified in your settings.');
+                    setMessage(t('authAction.error.usedOrInvalid'));
                 } else if (error.code === 'auth/action-code-expired') {
-                    setMessage('This link has expired. Please request a new verification email from your settings.');
+                    setMessage(t('authAction.error.expired'));
                 } else if (error.code === 'auth/user-not-found') {
-                    setMessage('The user associated with this link could not be found.');
+                    setMessage(t('authAction.error.userNotFound'));
                 } else {
-                    setMessage(error.message || 'An error occurred while processing your request.');
+                    setMessage(error.message || t('authAction.error.generic'));
                 }
             }
         };
 
         handleAction();
-    }, [mode, oobCode, showSuccess]);
+    }, [mode, oobCode, showSuccess, t]);
 
     const handleConfirmReset = async (e: React.FormEvent) => {
         e.preventDefault();
         if (newPassword !== confirmPassword) {
-            showError('Passwords do not match');
+            showError(t('authAction.error.passwordsMismatch'));
             return;
         }
         if (newPassword.length < 6) {
-            showError('Password should be at least 6 characters');
+            showError(t('authAction.error.passwordTooShort'));
             return;
         }
 
         setProcessing(true);
         try {
             await confirmPasswordReset(auth, oobCode!, newPassword);
-            showSuccess('Password has been reset successfully!');
+            showSuccess(t('authAction.toast.passwordReset'));
             setStatus('success');
-            setMessage('Your password has been updated. You can now sign in with your new password.');
+            setMessage(t('authAction.message.passwordUpdated'));
         } catch (error: any) {
             showError(error.message);
         } finally {
@@ -126,78 +139,84 @@ export const AuthAction = () => {
         }
     };
 
-    return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-[var(--color-surface-bg)] p-4">
-            <Card className="max-w-md w-full p-8 shadow-2xl border-[var(--color-surface-border)] overflow-hidden relative">
-                {/* Background Decor */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/5 rounded-full -mr-16 -mt-16 blur-3xl" />
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-500/5 rounded-full -ml-16 -mb-16 blur-3xl" />
+    const statusTitle = useMemo(() => ({
+        loading: t('authAction.status.processing'),
+        success: t('authAction.status.success'),
+        error: t('authAction.status.error'),
+        'reset-password': t('authAction.status.resetPassword'),
+    }[status]), [status, t]);
 
-                <div className="relative z-10 space-y-6">
-                    <div className="flex justify-center">
-                        <div className="size-16 rounded-2xl bg-[var(--color-surface-hover)] flex items-center justify-center shadow-inner">
-                            {status === 'loading' && <span className="material-symbols-outlined text-4xl text-[var(--color-primary)] animate-spin">progress_activity</span>}
-                            {status === 'success' && <span className="material-symbols-outlined text-4xl text-emerald-500">check_circle</span>}
-                            {status === 'error' && <span className="material-symbols-outlined text-4xl text-rose-500">error</span>}
-                            {status === 'reset-password' && <span className="material-symbols-outlined text-4xl text-[var(--color-primary)]">lock_reset</span>}
+    const statusIconClass = [
+        'auth-action__status-icon',
+        status === 'loading' ? 'auth-action__status-icon--loading' : '',
+        status === 'success' ? 'auth-action__status-icon--success' : '',
+        status === 'error' ? 'auth-action__status-icon--error' : '',
+    ].filter(Boolean).join(' ');
+
+    return (
+        <div className="auth-action">
+            <Card className="auth-action__card">
+                <div className="auth-action__decor auth-action__decor--top" />
+                <div className="auth-action__decor auth-action__decor--bottom" />
+
+                <CardBody className="auth-action__body">
+                    <div className="auth-action__status">
+                        <div className={statusIconClass}>
+                            {status === 'loading' && <span className="material-symbols-outlined">progress_activity</span>}
+                            {status === 'success' && <span className="material-symbols-outlined">check_circle</span>}
+                            {status === 'error' && <span className="material-symbols-outlined">error</span>}
+                            {status === 'reset-password' && <span className="material-symbols-outlined">lock_reset</span>}
                         </div>
                     </div>
 
-                    <div className="text-center space-y-2">
-                        <h1 className="text-2xl font-display font-bold text-[var(--color-text-main)]">
-                            {status === 'loading' && 'Processing...'}
-                            {status === 'success' && 'Success!'}
-                            {status === 'error' && 'Action Failed'}
-                            {status === 'reset-password' && 'Reset Password'}
-                        </h1>
-                        <p className="text-[var(--color-text-muted)] text-sm leading-relaxed">
-                            {message}
-                        </p>
+                    <div>
+                        <h1 className="auth-action__title">{statusTitle}</h1>
+                        <p className="auth-action__message">{message}</p>
                     </div>
 
                     {status === 'reset-password' && (
-                        <form onSubmit={handleConfirmReset} className="space-y-4 pt-4">
-                            <Input
+                        <form onSubmit={handleConfirmReset} className="auth-action__form">
+                            <TextInput
                                 type="password"
-                                label="New Password"
+                                label={t('authAction.form.newPassword.label')}
                                 value={newPassword}
                                 onChange={(e) => setNewPassword(e.target.value)}
-                                placeholder="Min. 6 characters"
+                                placeholder={t('authAction.form.newPassword.placeholder')}
                                 required
                                 autoFocus
                             />
-                            <Input
+                            <TextInput
                                 type="password"
-                                label="Confirm New Password"
+                                label={t('authAction.form.confirmPassword.label')}
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
-                                placeholder="Repeat new password"
+                                placeholder={t('authAction.form.confirmPassword.placeholder')}
                                 required
                             />
-                            <Button type="submit" className="w-full h-11" loading={processing}>
-                                Update Password
+                            <Button type="submit" className="auth-action__action" isLoading={processing}>
+                                {t('authAction.form.submit')}
                             </Button>
                         </form>
                     )}
 
                     {(status === 'success' || status === 'error') && (
-                        <div className="pt-6">
+                        <div className="auth-action__actions">
                             <Button
-                                className="w-full h-11"
-                                variant={status === 'error' ? 'outline' : 'primary'}
+                                className="auth-action__action"
+                                variant={status === 'error' ? 'secondary' : 'primary'}
                                 onClick={() => navigate('/login')}
                             >
-                                Back to Login
+                                {t('authAction.actions.backToLogin')}
                             </Button>
                         </div>
                     )}
 
                     {status === 'success' && !auth.currentUser && (
-                        <p className="text-center text-xs text-[var(--color-text-muted)] pt-4">
-                            Verification complete. Please sign in to continue.
+                        <p className="auth-action__footer">
+                            {t('authAction.footer.verificationComplete')}
                         </p>
                     )}
-                </div>
+                </CardBody>
             </Card>
         </div>
     );

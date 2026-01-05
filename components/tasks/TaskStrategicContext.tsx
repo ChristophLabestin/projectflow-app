@@ -45,14 +45,14 @@ export const TaskStrategicContext: React.FC<TaskStrategicContextProps> = ({ proj
     if (loading) {
         return (
             <div className="flex items-center justify-center p-12">
-                <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-3xl">progress_activity</span>
+                <span className="material-symbols-outlined text-subtle animate-spin text-3xl">progress_activity</span>
             </div>
         );
     }
 
     if (!idea) {
         return (
-            <div className="p-8 text-center text-[var(--color-text-muted)]">
+            <div className="p-8 text-center text-muted">
                 <span className="material-symbols-outlined text-4xl mb-2">link_off</span>
                 <p>Strategic context not found.</p>
             </div>
@@ -60,30 +60,30 @@ export const TaskStrategicContext: React.FC<TaskStrategicContextProps> = ({ proj
     }
 
     return (
-        <div className="flex flex-col h-full bg-[var(--color-surface-bg)] rounded-xl border border-[var(--color-surface-border)] overflow-hidden">
+        <div className="flex flex-col h-full bg-surface rounded-xl border border-surface overflow-hidden">
             {/* Header */}
-            <div className="p-4 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-paper)] flex justify-between items-center">
+            <div className="p-4 border-b border-surface bg-surface-paper flex justify-between items-center">
                 <div className="flex items-center gap-3">
                     <div className="size-8 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center">
                         <span className="material-symbols-outlined">lightbulb</span>
                     </div>
                     <div>
-                        <h3 className="text-sm font-bold text-[var(--color-text-main)]">Strategic Context</h3>
-                        <p className="text-[10px] text-[var(--color-text-muted)]">Originating Flow logic & analysis</p>
+                        <h3 className="text-sm font-bold text-main">Strategic Context</h3>
+                        <p className="text-[10px] text-muted">Originating Flow logic & analysis</p>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <div className="flex items-center p-1 bg-[var(--color-surface-bg)] rounded-lg border border-[var(--color-surface-border)]">
+                    <div className="flex items-center p-1 bg-surface rounded-lg border border-surface">
                         <button
                             onClick={() => setViewMode('analysis')}
-                            className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${viewMode === 'analysis' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                            className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${viewMode === 'analysis' ? 'bg-surface-hover text-main shadow-sm' : 'text-muted hover:text-main'}`}
                         >
                             Analysis
                         </button>
                         <button
                             onClick={() => setViewMode('brief')}
-                            className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${viewMode === 'brief' ? 'bg-[var(--color-surface-hover)] text-[var(--color-text-main)] shadow-sm' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                            className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${viewMode === 'brief' ? 'bg-surface-hover text-main shadow-sm' : 'text-muted hover:text-main'}`}
                         >
                             Concept Brief
                         </button>
@@ -101,7 +101,7 @@ export const TaskStrategicContext: React.FC<TaskStrategicContextProps> = ({ proj
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-0 bg-[var(--color-surface-paper)]">
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-0 bg-surface-paper">
                 {viewMode === 'analysis' && (
                     <div className="h-full">
                         {/* We reuse the AnalysisDashboard but strip the "run" controls usually by not passing onRunAnalysis */}
@@ -110,7 +110,7 @@ export const TaskStrategicContext: React.FC<TaskStrategicContextProps> = ({ proj
                             loading={false}
                         />
                         {(!idea.riskWinAnalysis) && (
-                            <div className="p-12 text-center text-[var(--color-text-muted)]">
+                            <div className="p-12 text-center text-muted">
                                 <p>No CORA analysis available for this flow.</p>
                             </div>
                         )}

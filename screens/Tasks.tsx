@@ -223,7 +223,7 @@ export const Tasks = () => {
                             ? 'bg-orange-50/30 dark:bg-orange-500/5 border-orange-200 dark:border-orange-500/20'
                             : task.convertedIdeaId
                                 ? 'bg-gradient-to-r from-indigo-50/50 to-white dark:from-indigo-950/10 dark:to-transparent border-indigo-100 dark:border-indigo-500/20 hover:shadow-xl hover:shadow-indigo-500/10'
-                                : 'bg-white dark:bg-white/[0.03] border-black/5 dark:border-white/5 hover:border-[var(--color-primary)]/30 hover:shadow-xl hover:shadow-black/5 hover:-translate-y-0.5'
+                                : 'bg-white dark:bg-white/[0.03] border-black/5 dark:border-white/5 hover:border-primary/30 hover:shadow-xl hover:shadow-black/5 hover:-translate-y-0.5'
                     }
                 `}
             >
@@ -247,14 +247,14 @@ export const Tasks = () => {
                             {projectTitle && (
                                 <div
                                     onClick={(e) => { e.stopPropagation(); navigate(`/project/${task.projectId}`); }}
-                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-300 hover:bg-[var(--color-primary)] hover:text-[var(--color-primary-text)] transition-colors cursor-pointer"
+                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-300 hover:bg-primary hover:text-on-primary transition-colors cursor-pointer"
                                 >
                                     <span className="size-1.5 rounded-full bg-slate-400 group-hover:bg-white/80" />
                                     {projectTitle}
                                 </div>
                             )}
 
-                            <h4 className={`text-lg font-bold truncate transition-all duration-300 ${task.isCompleted ? 'text-[var(--color-text-muted)] line-through' : 'text-[var(--color-text-main)] group-hover:text-[var(--color-primary)]'}`}>
+                            <h4 className={`text-lg font-bold truncate transition-all duration-300 ${task.isCompleted ? 'text-muted line-through' : 'text-main group-hover:text-primary'}`}>
                                 {task.title}
                             </h4>
                             {task.convertedIdeaId && (
@@ -382,7 +382,7 @@ export const Tasks = () => {
                                     const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
                                     return (
                                         <div
-                                            className="h-full absolute top-0 left-0 rounded-full transition-all duration-1000 bg-[var(--color-primary)] shadow-[0_0_10px_rgba(var(--color-primary-rgb),0.5)]"
+                                            className="h-full absolute top-0 left-0 rounded-full transition-all duration-1000 bg-primary shadow-[0_0_10px_rgba(var(--color-primary-rgb),0.5)]"
                                             style={{ width: `${pct}%` }}
                                         />
                                     );
@@ -405,7 +405,7 @@ export const Tasks = () => {
 
                     {showDueDate && dueDate && (
                         <div className={`flex flex-col gap-1.5 ${isBoard ? 'w-full px-1' : 'w-full md:w-32'}`}>
-                            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${isOverdue ? 'border-rose-500/30 bg-rose-500/10 text-rose-500' : 'border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] text-[var(--color-text-main)]'}`}>
+                            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${isOverdue ? 'border-rose-500/30 bg-rose-500/10 text-rose-500' : 'border-surface bg-surface text-main'}`}>
                                 <span className="material-symbols-outlined text-[16px]">event</span>
                                 <div className="flex flex-col">
                                     <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-70">{t('tasks.card.due')}</span>
@@ -463,7 +463,7 @@ export const Tasks = () => {
 
     if (loading) return (
         <div className="flex items-center justify-center p-12">
-            <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-3xl">rotate_right</span>
+            <span className="material-symbols-outlined text-subtle animate-spin text-3xl">rotate_right</span>
         </div>
     );
 
@@ -472,11 +472,11 @@ export const Tasks = () => {
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
                 <div>
-                    <h1 className="text-4xl font-black text-[var(--color-text-main)] tracking-tight mb-2">
+                    <h1 className="text-4xl font-black text-main tracking-tight mb-2">
                         {t('tasks.header.titlePrefix')}{' '}
-                        <span className="text-[var(--color-primary)]">{t('tasks.header.titleEmphasis')}</span>
+                        <span className="text-primary">{t('tasks.header.titleEmphasis')}</span>
                     </h1>
-                    <p className="text-[var(--color-text-muted)] text-lg font-medium opacity-80">
+                    <p className="text-muted text-lg font-medium opacity-80">
                         {t('tasks.header.subtitle')}
                     </p>
                 </div>
@@ -506,7 +506,7 @@ export const Tasks = () => {
                         <div className="relative z-10">
                             <p className={`text-xs font-bold text-${stat.color}-600 dark:text-${stat.color}-400 uppercase tracking-[0.1em] mb-2`}>{stat.label}</p>
                             <div className="flex items-baseline gap-3">
-                                <p className="text-4xl font-black text-[var(--color-text-main)]">{stat.val}</p>
+                                <p className="text-4xl font-black text-main">{stat.val}</p>
                             </div>
                         </div>
                     </div>
@@ -524,8 +524,8 @@ export const Tasks = () => {
                                 className={`
                                     relative flex-1 lg:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all capitalize z-10
                                     ${filter === f
-                                        ? 'text-[var(--color-primary)] bg-white dark:bg-white/10 shadow-sm'
-                                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}
+                                        ? 'text-primary bg-white dark:bg-white/10 shadow-sm'
+                                        : 'text-muted hover:text-main'}
                                 `}
                             >
                                 {t(`tasks.filters.activity.${f}`)}
@@ -541,8 +541,8 @@ export const Tasks = () => {
                                 className={`
                                     relative flex-1 lg:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all capitalize z-10 flex items-center gap-2
                                     ${view === v
-                                        ? 'text-[var(--color-primary)] bg-white dark:bg-white/10 shadow-sm'
-                                        : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}
+                                        ? 'text-primary bg-white dark:bg-white/10 shadow-sm'
+                                        : 'text-muted hover:text-main'}
                                 `}
                             >
                                 <span className="material-symbols-outlined text-lg">{v === 'list' ? 'format_list_bulleted' : 'dashboard'}</span>
@@ -553,15 +553,15 @@ export const Tasks = () => {
 
                     {/* Sort Dropdown */}
                     <div className="relative group/sort">
-                        <button className="flex items-center gap-2 bg-white/60 dark:bg-white/5 backdrop-blur-md px-4 py-4 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm text-sm font-bold text-[var(--color-text-main)] hover:border-[var(--color-primary)]/30 transition-all">
+                        <button className="flex items-center gap-2 bg-white/60 dark:bg-white/5 backdrop-blur-md px-4 py-4 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm text-sm font-bold text-main hover:border-primary/30 transition-all">
                             <span className="material-symbols-outlined text-lg">sort</span>
                             <span className="hidden sm:inline">{t('tasks.sort.label')}</span>
-                            <span className="text-[var(--color-primary)] capitalize">
+                            <span className="text-primary capitalize">
                                 {sortLabels[sortBy]}
                             </span>
                             <span className="material-symbols-outlined text-sm opacity-50">expand_more</span>
                         </button>
-                        <div className="absolute top-full left-0 mt-2 opacity-0 invisible group-hover/sort:opacity-100 group-hover/sort:visible transition-all bg-white dark:bg-[#1E1E1E] border border-[var(--color-surface-border)] rounded-xl shadow-2xl py-2 min-w-[160px] z-50">
+                        <div className="absolute top-full left-0 mt-2 opacity-0 invisible group-hover/sort:opacity-100 group-hover/sort:visible transition-all bg-white dark:bg-[#1E1E1E] border border-surface rounded-xl shadow-2xl py-2 min-w-[160px] z-50">
                             {([
                                 { value: 'priority', label: t('tasks.sort.priority'), icon: 'flag' },
                                 { value: 'dueDate', label: t('tasks.sort.dueDate'), icon: 'event' },
@@ -571,7 +571,7 @@ export const Tasks = () => {
                                 <button
                                     key={opt.value}
                                     onClick={() => setSortBy(opt.value)}
-                                    className={`w-full px-4 py-2 text-left text-sm font-medium flex items-center gap-3 hover:bg-[var(--color-surface-hover)] transition-colors ${sortBy === opt.value ? 'text-[var(--color-primary)] bg-[var(--color-primary)]/5' : 'text-[var(--color-text-main)]'}`}
+                                    className={`w-full px-4 py-2 text-left text-sm font-medium flex items-center gap-3 hover:bg-surface-hover transition-colors ${sortBy === opt.value ? 'text-primary bg-primary/5' : 'text-main'}`}
                                 >
                                     <span className="material-symbols-outlined text-lg">{opt.icon}</span>
                                     {opt.label}
@@ -582,7 +582,7 @@ export const Tasks = () => {
 
                     {/* Project Filter */}
                     <div className="relative group/proj">
-                        <button className="flex items-center gap-2 bg-white/60 dark:bg-white/5 backdrop-blur-md px-4 py-4 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm text-sm font-bold text-[var(--color-text-main)] hover:border-[var(--color-primary)]/30 transition-all max-w-[200px]">
+                        <button className="flex items-center gap-2 bg-white/60 dark:bg-white/5 backdrop-blur-md px-4 py-4 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm text-sm font-bold text-main hover:border-primary/30 transition-all max-w-[200px]">
                             <span className="material-symbols-outlined text-lg">folder_open</span>
                             <span className="truncate">
                                 {projectFilter === 'all'
@@ -591,10 +591,10 @@ export const Tasks = () => {
                             </span>
                             <span className="material-symbols-outlined text-sm opacity-50">expand_more</span>
                         </button>
-                        <div className="absolute top-full left-0 mt-2 opacity-0 invisible group-hover/proj:opacity-100 group-hover/proj:visible transition-all bg-white dark:bg-[#1E1E1E] border border-[var(--color-surface-border)] rounded-xl shadow-2xl py-2 min-w-[200px] z-50 max-h-[300px] overflow-y-auto">
+                        <div className="absolute top-full left-0 mt-2 opacity-0 invisible group-hover/proj:opacity-100 group-hover/proj:visible transition-all bg-white dark:bg-[#1E1E1E] border border-surface rounded-xl shadow-2xl py-2 min-w-[200px] z-50 max-h-[300px] overflow-y-auto">
                             <button
                                 onClick={() => setProjectFilter('all')}
-                                className={`w-full px-4 py-2 text-left text-sm font-medium flex items-center gap-2 hover:bg-[var(--color-surface-hover)] transition-colors ${projectFilter === 'all' ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}
+                                className={`w-full px-4 py-2 text-left text-sm font-medium flex items-center gap-2 hover:bg-surface-hover transition-colors ${projectFilter === 'all' ? 'text-primary' : 'text-main'}`}
                             >
                                 {t('tasks.filters.project.all')}
                             </button>
@@ -602,7 +602,7 @@ export const Tasks = () => {
                                 <button
                                     key={p.id}
                                     onClick={() => setProjectFilter(p.id)}
-                                    className={`w-full px-4 py-2 text-left text-sm font-medium flex items-center gap-2 hover:bg-[var(--color-surface-hover)] transition-colors ${projectFilter === p.id ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}
+                                    className={`w-full px-4 py-2 text-left text-sm font-medium flex items-center gap-2 hover:bg-surface-hover transition-colors ${projectFilter === p.id ? 'text-primary' : 'text-main'}`}
                                 >
                                     <span className="truncate">{p.title}</span>
                                 </button>
@@ -617,9 +617,9 @@ export const Tasks = () => {
                         value={search}
                         onChange={handleSearchChange}
                         placeholder={t('tasks.search.placeholder')}
-                        className="w-full bg-white/60 dark:bg-white/5 backdrop-blur-md border-black/5 dark:border-white/5 ring-1 ring-black/5 dark:ring-white/10 focus:ring-2 focus:ring-[var(--color-primary)] rounded-2xl pl-12 pr-6 py-4 text-sm font-medium transition-all outline-none"
+                        className="w-full bg-white/60 dark:bg-white/5 backdrop-blur-md border-black/5 dark:border-white/5 ring-1 ring-black/5 dark:ring-white/10 focus:ring-2 focus:ring-primary rounded-2xl pl-12 pr-6 py-4 text-sm font-medium transition-all outline-none"
                     />
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] group-focus-within:text-[var(--color-primary)] transition-colors">search</span>
+                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-primary transition-colors">search</span>
                 </div>
             </div>
 
@@ -630,8 +630,8 @@ export const Tasks = () => {
                         <div className="size-24 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-full flex items-center justify-center mb-6 ring-8 ring-indigo-500/5">
                             <span className="material-symbols-outlined text-5xl text-indigo-500 animate-pulse">explore_off</span>
                         </div>
-                        <h3 className="text-2xl font-bold text-[var(--color-text-main)] mb-2">{t('tasks.empty.list.title')}</h3>
-                        <p className="text-[var(--color-text-muted)] max-w-sm font-medium opacity-70">
+                        <h3 className="text-2xl font-bold text-main mb-2">{t('tasks.empty.list.title')}</h3>
+                        <p className="text-muted max-w-sm font-medium opacity-70">
                             {t('tasks.empty.list.description')}
                         </p>
                         <Button

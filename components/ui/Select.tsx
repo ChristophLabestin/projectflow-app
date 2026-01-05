@@ -11,13 +11,13 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
         return (
             <div className="flex flex-col gap-1.5 w-full">
                 {label && (
-                    <label className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">
+                    <label className="text-xs font-semibold text-muted uppercase tracking-wider ml-1">
                         {label}
                     </label>
                 )}
                 <div className="relative group">
                     {icon && (
-                        <div className="absolute left-3 inset-y-0 flex items-center justify-center text-[var(--color-text-subtle)] pointer-events-none group-focus-within:text-[var(--color-primary)] transition-colors">
+                        <div className="absolute left-3 inset-y-0 flex items-center justify-center text-subtle pointer-events-none group-focus-within:text-primary transition-colors">
                             <span className="material-symbols-outlined text-[20px] leading-none">{icon}</span>
                         </div>
                     )}
@@ -25,9 +25,9 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                         ref={ref}
                         className={`
                             w-full 
-                            bg-[var(--color-surface-bg)] 
+                            bg-surface 
                             border 
-                            text-[var(--color-text-main)] 
+                            text-main 
                             rounded-xl 
                             py-2.5 
                             ${icon ? 'pl-10' : 'pl-3'} 
@@ -41,7 +41,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                             appearance-none
                             [&::-webkit-calendar-picker-indicator]:hidden
                             [&::-ms-expand]:hidden
-                            ${error ? 'border-[var(--color-error)]' : 'border-[var(--color-surface-border)]'}
+                            ${error ? 'border-[var(--color-error)]' : 'border-surface'}
                             ${className}
                         `}
 
@@ -51,7 +51,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
                     </select>
                 </div>
                 {error && (
-                    <span className="text-xs text-[var(--color-error)] ml-1">{error}</span>
+                    <span className="text-xs text-error ml-1">{error}</span>
                 )}
             </div>
         );
