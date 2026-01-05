@@ -63,71 +63,71 @@ export const JoinWorkspaceViaLink = () => {
     }, [inviteLinkId, searchParams, navigate]);
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[var(--color-surface-bg)] p-4">
-            <div className="max-w-md w-full">
+        <div className="invite-page">
+            <div className="invite-card">
                 {status === 'loading' && (
-                    <div className="bg-[var(--color-surface-paper)] rounded-2xl shadow-xl p-8 text-center">
-                        <div className="size-16 mx-auto mb-4 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                            <span className="material-symbols-outlined text-3xl text-blue-600 dark:text-blue-400 animate-spin">
+                    <>
+                        <div className="invite-status-icon loading">
+                            <span className="material-symbols-outlined animate-spin">
                                 progress_activity
                             </span>
                         </div>
-                        <h2 className="text-2xl font-bold text-[var(--color-text-main)] mb-2">
+                        <h2 className="invite-title mb-2">
                             Joining Workspace...
                         </h2>
-                        <p className="text-[var(--color-text-muted)]">
+                        <p className="invite-text">
                             Please wait while we add you to the workspace.
                         </p>
-                    </div>
+                    </>
                 )}
 
                 {status === 'success' && (
-                    <div className="bg-[var(--color-surface-paper)] rounded-2xl shadow-xl p-8 text-center">
-                        <div className="size-16 mx-auto mb-4 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-                            <span className="material-symbols-outlined text-3xl text-emerald-600 dark:text-emerald-400">
+                    <>
+                        <div className="invite-status-icon success">
+                            <span className="material-symbols-outlined">
                                 check_circle
                             </span>
                         </div>
-                        <h2 className="text-2xl font-bold text-[var(--color-text-main)] mb-2">
+                        <h2 className="invite-title mb-2">
                             Successfully Joined!
                         </h2>
-                        <p className="text-[var(--color-text-muted)] mb-4">
+                        <p className="invite-text mb-4">
                             You've been added to the workspace. Redirecting...
                         </p>
-                        <div className="h-1 bg-[var(--color-surface-hover)] rounded-full overflow-hidden">
-                            <div className="h-full bg-emerald-500 animate-pulse" style={{ width: '100%' }} />
+                        <div className="invite-progress-bar">
+                            <div className="bar" />
                         </div>
-                    </div>
+                    </>
                 )}
 
                 {status === 'error' && (
-                    <div className="bg-[var(--color-surface-paper)] rounded-2xl shadow-xl p-8 text-center">
-                        <div className="size-16 mx-auto mb-4 rounded-full bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
-                            <span className="material-symbols-outlined text-3xl text-rose-600 dark:text-rose-400">
+                    <>
+                        <div className="invite-status-icon error">
+                            <span className="material-symbols-outlined">
                                 error
                             </span>
                         </div>
-                        <h2 className="text-2xl font-bold text-[var(--color-text-main)] mb-2">
+                        <h2 className="invite-title mb-2">
                             Unable to Join
                         </h2>
-                        <p className="text-[var(--color-text-muted)] mb-6">
+                        <p className="invite-text mb-6">
                             {error}
                         </p>
-                        <div className="flex gap-3 justify-center">
+                        <div className="invite-actions">
                             <button
                                 onClick={() => navigate('/')}
-                                className="px-6 py-2 rounded-lg bg-[var(--color-primary)] text-[var(--color-primary-text)] font-semibold hover:opacity-90 transition-opacity"
+                                className="btn-invite-primary"
                             >
                                 Go to Dashboard
                             </button>
                             <button
                                 onClick={() => window.location.reload()}
-                                className="px-6 py-2 rounded-lg border border-[var(--color-surface-border)] text-[var(--color-text-main)] font-semibold hover:bg-[var(--color-surface-hover)] transition-colors"
+                                className="btn-invite-secondary"
                             >
                                 Try Again
                             </button>
                         </div>
-                    </div>
+                    </>
                 )}
             </div>
         </div>

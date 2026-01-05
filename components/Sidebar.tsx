@@ -7,6 +7,7 @@ import { ProjectSwitcher } from './ProjectSwitcher';
 import { NotificationDropdown } from './NotificationDropdown';
 import { WorkspaceTeamIndicator } from './WorkspaceTeamIndicator';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 
 type SidebarProps = {
     isDrawer?: boolean;
@@ -105,14 +106,17 @@ const NavItem = ({
 export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) => {
     const user = auth.currentUser;
     const { theme } = useTheme();
-
     const { t } = useLanguage();
+    const { isAuthReady, isAuthenticated } = useAuth();
 
     // Data Loaders for badges
     const [taskCount, setTaskCount] = React.useState<number>(0);
     const [ideaCount, setIdeaCount] = React.useState<number>(0);
 
     React.useEffect(() => {
+        // Only fetch when auth is ready and user is authenticated
+        if (!isAuthReady || !isAuthenticated) return;
+
         let mounted = true;
         (async () => {
             try {
@@ -133,7 +137,7 @@ export const Sidebar = ({ isDrawer = false, onClose, workspace }: SidebarProps) 
             }
         })();
         return () => { mounted = false; };
-    }, [user]);
+    }, [isAuthReady, isAuthenticated, user]);
 
     // Derived State: Is inside a project?
     const isProjectActive = Boolean(workspace?.projectId);

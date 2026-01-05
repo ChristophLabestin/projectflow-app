@@ -3,158 +3,147 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // --- Helper Functions ---
-
-    // Check if user is authenticated
     function authed() {
       return request.auth != null;
     }
-
-    // Check if user is the resource owner (generic)
-    function isResourceOwner(resourceData) {
-      return authed() && resourceData.ownerId == request.auth.uid;
+    
+    function isOwner(tenantId) {
+      return authed() && request.auth.uid == tenantId;
     }
-
-    // Get current user's role in a project (from 'roles' map)
-    // Returns: 'Owner' | 'Editor' | 'Viewer' | null
-    function getProjectRole(projectData) {
-      return projectData.roles[request.auth.uid];
+    
+    // Check if user is a member of the tenant (using members subcollection)
+    function isTenantMember(tenantId) {
+      return authed() && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid));
     }
-
-    // Check if user has specific project role
-    function hasProjectRole(projectData, role) {
-      return projectData.roles[request.auth.uid] == role;
+    
+    function canAccessTenant(tenantId) {
+      return isOwner(tenantId) || isTenantMember(tenantId);
     }
-
-    // Check if user is at least a Viewer (any role)
+    
+    // Check if user is a member of a specific project (supports external users)
     function isProjectMember(projectData) {
-      return (projectData.roles != null && request.auth.uid in projectData.roles) ||
-             (projectData.memberIds != null && request.auth.uid in projectData.memberIds) ||
-             projectData.ownerId == request.auth.uid;
+      return authed() && (
+        projectData.ownerId == request.auth.uid ||
+        request.auth.uid in projectData.memberIds
+      );
     }
 
-    // Check if user is Owner or Editor
-    function canEditProjectContent(projectData) {
-      let role = getProjectRole(projectData);
-      return role == "Owner" || role == "Editor";
+    // --- Public Collections (no auth required) ---
+    match /waitlist/{email} { 
+      allow read, write: if true; 
+    }
+    match /newsletter/{email} { 
+      allow read, write: if true; 
+    }
+    match /contact_submissions/{doc} { 
+      allow create: if true; 
+    }
+    match /blog_posts/{post} { 
+      allow read: if true; 
+    }
+    match /news/{doc} { 
+      allow read: if true; 
     }
 
-    // tenants/{tenantId}
+    // --- Top-level Users Collection (global user profiles) ---
+    match /users/{userId} {
+      // Users can read/write their own profile
+      allow read, write: if authed() && request.auth.uid == userId;
+      // Any authenticated user can read profiles (for team lists, @mentions, etc.)
+      allow read: if authed();
+    }
+
+    // --- Tenant Rules ---
     match /tenants/{tenantId} {
-      // Helper to validant access to tenant
-      function getTenantRole(tenantData) {
-          // Check explicit roles map OR legacy owner check
-          return tenantData.roles[request.auth.uid] 
-              || (tenantData.uid == request.auth.uid ? 'Owner' : null);
+      // Owner or member can read tenant
+      allow read: if canAccessTenant(tenantId);
+      // Only owner can write tenant doc
+      allow write: if isOwner(tenantId);
+
+      // Members subcollection (workspace membership)
+      match /members/{userId} {
+        // Tenant members can read all memberships
+        allow read: if canAccessTenant(tenantId);
+        // Owner can manage all memberships
+        allow write: if isOwner(tenantId);
+        // Users can write their own membership (for joining)
+        allow write: if authed() && request.auth.uid == userId;
       }
       
-      function isTenantMember(tenantData) {
-          return authed() && (
-             (tenantData.roles != null && request.auth.uid in tenantData.roles) ||
-             tenantData.uid == request.auth.uid
-          );
+      // Presence subcollection
+      match /presence/{presenceId} {
+        allow read, write: if canAccessTenant(tenantId);
+      }
+      
+      // Invite links - public read
+      match /invite_links/{linkId} {
+        allow read: if true;
+        allow write: if isOwner(tenantId);
+      }
+      match /inviteLinks/{linkId} {
+        allow read: if true;
+        allow write: if isOwner(tenantId);
       }
 
-      allow read: if isTenantMember(resource.data);
-      allow create: if authed(); // Anyone can create a tenant (personal workspace)
-      allow update: if authed() && getTenantRole(resource.data) == "Owner";
-      allow delete: if authed() && getTenantRole(resource.data) == "Owner";
-
-      // tenants/{tenantId}/secrets/{secret}
-      match /secrets/{secret} {
-         allow read, write: if authed() && getTenantRole(get(/databases/$(database)/documents/tenants/$(tenantId)).data) == "Owner";
-      }
-
-      // tenants/{tenantId}/users/{userId}
-      match /users/{userId} {
-         // User can read/write own profile
-         // Tenant members can read other members
-         allow read: if authed() && (request.auth.uid == userId || isTenantMember(get(/databases/$(database)/documents/tenants/$(tenantId)).data));
-         allow write: if authed() && request.auth.uid == userId;
-         
-         match /projectNavPrefs/{projectId} {
-            allow read, write: if authed() && request.auth.uid == userId;
-         }
-      }
-
-      // tenants/{tenantId}/projects/{projectId}
+      // Projects within tenant
       match /projects/{projectId} {
-         
-         function getProjectData() {
-            return resource.data;
-         }
+        // Tenant members OR project members (including external) can access
+        allow read: if canAccessTenant(tenantId) || isProjectMember(resource.data);
+        // Write requires tenant membership OR being project owner/member
+        allow write: if canAccessTenant(tenantId) || isProjectMember(resource.data);
 
-         allow read: if authed() && (
-             isProjectMember(resource.data) || 
-             resource.data.isPrivate == false || 
-             resource.data.visibilityGroupIds != null // TODO: check groups
-         );
-
-         allow create: if authed(); // Tenant members can create projects (checked by application logic mainly, or we can enforce tenant membership)
-         
-         // Only Owner can delete
-         allow delete: if authed() && hasProjectRole(resource.data, "Owner");
-         
-         // Owner/Editor can update, but Editor constrained
-         allow update: if authed() && (
-             hasProjectRole(resource.data, "Owner") ||
-             (hasProjectRole(resource.data, "Editor") && 
-              // Prevent Editor from changing sensitive fields (roles, ownerId) - this is complex in rules without diffing
-              // For now, allow Editor full update access except maybe deleting the project (handled above)
-              true
-             )
-         );
-
-         // Subcollections (Tasks, Ideas, etc.)
-         match /{subcollection}/{docId} {
-            function getParentProject() {
-                return get(/databases/$(database)/documents/tenants/$(tenantId)/projects/$(projectId)).data;
-            }
-
-            allow read: if authed() && isProjectMember(getParentProject());
-            
-            allow write: if authed() && (
-                canEditProjectContent(getParentProject()) ||
-                // Allow Viewers to comment OR if they are assigned (optional, depending on reqs)
-                (subcollection == "comments" && isProjectMember(getParentProject()))
-            );
-            
-            // Allow subtask writes if user can edit parent project
-            match /subtasks/{subtaskId} {
-               allow read, write: if authed() && canEditProjectContent(getParentProject());
-            }
-         }
+        // All project subcollections (tasks, issues, ideas, etc.)
+        match /{subcollection}/{docId} {
+          // Allow if user can access tenant OR is in project's memberIds
+          allow read, write: if canAccessTenant(tenantId) || 
+            isProjectMember(get(/databases/$(database)/documents/tenants/$(tenantId)/projects/$(projectId)).data);
+          
+          match /{nestedCollection}/{nestedDocId} {
+            allow read, write: if canAccessTenant(tenantId) ||
+              isProjectMember(get(/databases/$(database)/documents/tenants/$(tenantId)/projects/$(projectId)).data);
+          }
+        }
+      }
+      
+      // Catch-all for OTHER tenant subcollections (notifications, groups, etc.)
+      match /{subcollection}/{docId} {
+        allow read, write: if canAccessTenant(tenantId);
       }
     }
 
-    // --- Root Collections (Legacy/Global) ---
-
-    match /social_campaigns/{campaignId} {
-       allow read, write: if authed() && (
-           resource == null || 
-           resource.data.ownerId == request.auth.uid || 
-           request.auth.uid in resource.data.assignedUserIds
-       );
+    // --- CollectionGroup queries ---
+    // Projects (for getSharedProjects - external users finding their projects)
+    match /{path=**}/projects/{projectId} {
+      allow read: if authed() && (
+        resource.data.ownerId == request.auth.uid ||
+        request.auth.uid in resource.data.memberIds
+      );
     }
     
-    // Fallback for other root collections using ownerId pattern
-    match /social_posts/{docId} { allow read, write: if isResourceOwner(resource.data); }
-    match /social_assets/{docId} { allow read, write: if isResourceOwner(resource.data); }
-
-    // --- Landing Page & Public Collections ---
-
-    // Public Write Access (Landing Page Forms)
-    // Note: These allow unauthenticated writes. Ensure client-side validation or trigger-based validation exists.
-    match /waitlist/{email} { allow write: if true; }
-    match /newsletter/{email} { allow write: if true; }
-    match /contact_submissions/{doc} { allow create: if true; }
-
-    // Public Read Access (Content)
-    match /blog_posts/{post} { allow read: if true; }
-    match /news/{doc} { allow read: if true; }
+    // Tasks - allow if user is in memberIds of parent project
+    match /{path=**}/tasks/{taskId} {
+      allow read: if authed();
+    }
     
-    // Explicit deny for everything else (default)
+    // Ideas
+    match /{path=**}/ideas/{ideaId} {
+      allow read: if authed();
+    }
+
+    // --- Social Collections (any authenticated user) ---
+    match /social_campaigns/{docId} {
+       allow read, write: if authed();
+    }
+    match /social_posts/{docId} { 
+       allow read, write: if authed();
+    }
+    match /social_assets/{docId} { 
+       allow read, write: if authed();
+    }
+    
+    // --- Fallback for any unmatched paths (authenticated only) ---
     match /{document=**} {
-      allow read, write: if false; 
+      allow read, write: if authed();
     }
   }
 }

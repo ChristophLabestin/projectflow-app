@@ -127,36 +127,36 @@ export const AuthAction = () => {
     };
 
     return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-[var(--color-surface-bg)] p-4">
-            <Card className="max-w-md w-full p-8 shadow-2xl border-[var(--color-surface-border)] overflow-hidden relative">
+        <div className="auth-action-page">
+            <Card className="auth-action-card">
                 {/* Background Decor */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--color-primary)]/5 rounded-full -mr-16 -mt-16 blur-3xl" />
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-500/5 rounded-full -ml-16 -mb-16 blur-3xl" />
+                <div className="auth-bg-decor top-right" />
+                <div className="auth-bg-decor bottom-left" />
 
-                <div className="relative z-10 space-y-6">
-                    <div className="flex justify-center">
-                        <div className="size-16 rounded-2xl bg-[var(--color-surface-hover)] flex items-center justify-center shadow-inner">
-                            {status === 'loading' && <span className="material-symbols-outlined text-4xl text-[var(--color-primary)] animate-spin">progress_activity</span>}
-                            {status === 'success' && <span className="material-symbols-outlined text-4xl text-emerald-500">check_circle</span>}
-                            {status === 'error' && <span className="material-symbols-outlined text-4xl text-rose-500">error</span>}
-                            {status === 'reset-password' && <span className="material-symbols-outlined text-4xl text-[var(--color-primary)]">lock_reset</span>}
+                <div className="auth-content">
+                    <div className="auth-status-icon">
+                        <div className="icon-wrapper">
+                            {status === 'loading' && <span className="material-symbols-outlined loading animate-spin">progress_activity</span>}
+                            {status === 'success' && <span className="material-symbols-outlined success">check_circle</span>}
+                            {status === 'error' && <span className="material-symbols-outlined error">error</span>}
+                            {status === 'reset-password' && <span className="material-symbols-outlined reset">lock_reset</span>}
                         </div>
                     </div>
 
-                    <div className="text-center space-y-2">
-                        <h1 className="text-2xl font-display font-bold text-[var(--color-text-main)]">
+                    <div className="auth-text">
+                        <h1>
                             {status === 'loading' && 'Processing...'}
                             {status === 'success' && 'Success!'}
                             {status === 'error' && 'Action Failed'}
                             {status === 'reset-password' && 'Reset Password'}
                         </h1>
-                        <p className="text-[var(--color-text-muted)] text-sm leading-relaxed">
+                        <p>
                             {message}
                         </p>
                     </div>
 
                     {status === 'reset-password' && (
-                        <form onSubmit={handleConfirmReset} className="space-y-4 pt-4">
+                        <form onSubmit={handleConfirmReset} className="auth-form">
                             <Input
                                 type="password"
                                 label="New Password"
@@ -174,16 +174,16 @@ export const AuthAction = () => {
                                 placeholder="Repeat new password"
                                 required
                             />
-                            <Button type="submit" className="w-full h-11" loading={processing}>
+                            <Button type="submit" className="btn-update" loading={processing}>
                                 Update Password
                             </Button>
                         </form>
                     )}
 
                     {(status === 'success' || status === 'error') && (
-                        <div className="pt-6">
+                        <div className="auth-actions">
                             <Button
-                                className="w-full h-11"
+                                className="btn-back"
                                 variant={status === 'error' ? 'outline' : 'primary'}
                                 onClick={() => navigate('/login')}
                             >
@@ -193,7 +193,7 @@ export const AuthAction = () => {
                     )}
 
                     {status === 'success' && !auth.currentUser && (
-                        <p className="text-center text-xs text-[var(--color-text-muted)] pt-4">
+                        <p className="auth-footer">
                             Verification complete. Please sign in to continue.
                         </p>
                     )}

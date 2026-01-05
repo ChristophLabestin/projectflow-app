@@ -43,24 +43,26 @@ export const ProjectInviteLanding = () => {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center px-6">
-            <div className="app-panel max-w-md w-full p-8 space-y-4 animate-fade-up">
-                <span className="app-pill w-fit animate-pulse">Checking Access...</span>
-                <h1 className="text-2xl font-display font-bold text-ink">Join Project</h1>
-                <p className="text-muted text-sm">
-                    You have been invited to collaborate on a project in workspace <span className="font-semibold text-ink">{tenantId}</span>.
+        <div className="invite-page">
+            <div className="invite-card fade-up">
+                <div className="invite-header">
+                    <span className="invite-pill pulse">Checking Access...</span>
+                    <h1 className="invite-title">Join Project</h1>
+                </div>
+                <p className="invite-text">
+                    You have been invited to collaborate on a project in workspace <strong>{tenantId}</strong>.
                 </p>
                 {status && <div className="p-3 bg-indigo-50 text-indigo-700 rounded-lg text-sm font-medium">{status}</div>}
 
                 {!auth.currentUser && (
                     <div className="pt-4">
-                        <button onClick={handleAccept} className="w-full h-11 btn-primary font-bold text-sm">
+                        <button onClick={handleAccept} className="btn-invite-primary">
                             Log In to Accept
                         </button>
                     </div>
                 )}
                 {auth.currentUser && !status && (
-                    <p className="text-sm text-muted">You are signed in. We are adding you to the team...</p>
+                    <p className="invite-text">You are signed in. We are adding you to the team...</p>
                 )}
             </div>
         </div>

@@ -28,7 +28,7 @@ import { httpsCallable } from "firebase/functions";
 import { updateProfile, linkWithPopup, reauthenticateWithPopup } from "firebase/auth";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { db, storage, auth, functions, GithubAuthProvider, FacebookAuthProvider } from "./firebase";
-import type { Task, Idea, Activity, Project, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, EmailComponent, GeminiReport, Milestone, AIUsage, Member, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy } from '../types';
+import type { Task, Idea, Activity, Project, SubTask, TaskCategory, Issue, Mindmap, ProjectRole, ProjectMember, Comment as ProjectComment, WorkspaceGroup, WorkspaceRole, SocialCampaign, SocialPost, SocialAsset, SocialPostStatus, SocialPlatform, SocialIntegration, EmailBlock, EmailComponent, GeminiReport, Milestone, AIUsage, Member, User, TenantMembership, MarketingCampaign, AdCampaign, EmailCampaign, PersonalTask, ProjectNavPrefs, CaptionPreset, SocialStrategy } from '../types';
 import { toMillis } from "../utils/time";
 import {
     notifyTaskAssignment,
@@ -112,7 +112,16 @@ export const updateTenantSecret = async (tenantId: string, secretName: string, d
     const ref = doc(db, TENANTS, tenantId, "secrets", secretName);
     await setDoc(ref, data, { merge: true });
 };
-const tenantUsersCollection = (tenantId: string) => collection(tenantDocRef(tenantId), USERS);
+
+// --- Top-level users collection (global user profiles) ---
+const usersCollection = () => collection(db, USERS);
+const userDocRef = (userId: string) => doc(db, USERS, userId);
+
+// --- Tenant members collection (workspace membership) ---
+const tenantMembersCollection = (tenantId: string) => collection(db, TENANTS, tenantId, 'members');
+const tenantMemberDocRef = (tenantId: string, userId: string) => doc(db, TENANTS, tenantId, 'members', userId);
+
+// --- Project collections ---
 const projectsCollection = (tenantId: string) => collection(tenantDocRef(tenantId), PROJECTS);
 const projectDocRef = (tenantId: string, projectId: string) => doc(tenantDocRef(tenantId), PROJECTS, projectId);
 export const projectSubCollection = (tenantId: string, projectId: string, subCollectionName: string) => {
@@ -127,7 +136,33 @@ export const ensureTenantAndUser = async (tenantId: string, role?: WorkspaceRole
 
     const isOwner = user.uid === tenantId;
 
-    // Only the owner can create a tenant document
+    // 1. Ensure user exists in top-level users collection
+    const globalUserRef = userDocRef(user.uid);
+    const globalUserSnap = await getDoc(globalUserRef);
+
+    await setDoc(globalUserRef, {
+        uid: user.uid,
+        email: user.email || "",
+        displayName: user.displayName || "User",
+        photoURL: user.photoURL || "",
+        updatedAt: serverTimestamp(),
+        ...(!globalUserSnap.exists() ? { createdAt: serverTimestamp() } : {})
+    }, { merge: true });
+
+    // Initialize AI usage if not present (on global user doc)
+    if (!globalUserSnap.exists() || !globalUserSnap.data()?.aiUsage) {
+        await setDoc(globalUserRef, {
+            aiUsage: {
+                tokensUsed: 0,
+                tokenLimit: 1000000,
+                imagesUsed: 0,
+                imageLimit: 50,
+                lastReset: serverTimestamp()
+            }
+        }, { merge: true });
+    }
+
+    // 2. Only the owner can create a tenant document
     if (isOwner) {
         await setDoc(
             tenantDocRef(tenantId),
@@ -140,71 +175,88 @@ export const ensureTenantAndUser = async (tenantId: string, role?: WorkspaceRole
         );
     }
 
-    // Check if tenant exists before writing user document
-    // This prevents creating spurious tenant documents when a wrong ID is passed
+    // Check if tenant exists before writing membership
     const tenantDoc = await getDoc(tenantDocRef(tenantId));
     if (!tenantDoc.exists() && !isOwner) {
-        // Tenant doesn't exist and user is not the owner - don't create anything
-        console.warn(`ensureTenantAndUser: Tenant ${tenantId} does not exist and user is not owner.Skipping.`);
+        console.warn(`ensureTenantAndUser: Tenant ${tenantId} does not exist and user is not owner. Skipping.`);
         return;
     }
 
-    const payload: any = {
+    // 3. Add membership to tenants/{tenantId}/members/{userId}
+    const memberRef = tenantMemberDocRef(tenantId, user.uid);
+    const memberPayload: any = {
         uid: user.uid,
-        email: user.email || "",
-        displayName: user.displayName || "User",
-        photoURL: user.photoURL || "",
-        updatedAt: serverTimestamp(),
+        joinedAt: serverTimestamp(),
     };
 
-    // Only update role if explicitly passed or if owner
+    // Set role if explicitly passed or if owner
     if (role) {
-        payload.role = role;
+        memberPayload.role = role;
     } else if (isOwner) {
-        payload.role = 'Owner';
+        memberPayload.role = 'Owner';
+    } else {
+        memberPayload.role = 'Member';
     }
 
-    // Set joinedAt for new users
-    payload.joinedAt = serverTimestamp();
-
-    await setDoc(
-        doc(tenantUsersCollection(tenantId), user.uid),
-        payload,
-        { merge: true }
-    );
-
-    // Initialize AI usage if not present
-    const userRef = doc(tenantUsersCollection(tenantId), user.uid);
-    const userSnap = await getDoc(userRef);
-    if (userSnap.exists() && !userSnap.data().aiUsage) {
-        await updateDoc(userRef, {
-            aiUsage: {
-                tokensUsed: 0,
-                tokenLimit: 1000000,
-                imagesUsed: 0,
-                imageLimit: 50,
-                lastReset: serverTimestamp()
-            }
-        });
-    }
+    await setDoc(memberRef, memberPayload, { merge: true });
 };
 
-export const getUserProfile = async (userId: string, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const snap = await getDoc(doc(tenantUsersCollection(resolvedTenant), userId));
+/**
+ * Get user profile from top-level users collection
+ * @param userId - The user ID to fetch
+ * @param _tenantId - Deprecated, ignored. Kept for API compatibility.
+ */
+export const getUserProfile = async (userId: string, _tenantId?: string) => {
+    const snap = await getDoc(userDocRef(userId));
     return snap.exists() ? snap.data() : null;
 };
 
-export const getWorkspaceMembers = async (tenantId?: string): Promise<any[]> => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const usersCollection = tenantUsersCollection(resolvedTenant);
-    const snapshot = await getDocs(usersCollection);
-    return snapshot.docs.map(doc => doc.data());
+/**
+ * Get user's membership data for a specific tenant
+ */
+export const getUserTenantMembership = async (userId: string, tenantId: string) => {
+    const snap = await getDoc(tenantMemberDocRef(tenantId, userId));
+    return snap.exists() ? snap.data() : null;
 };
 
-export const updateUserData = async (userId: string, data: Partial<any>, tenantId?: string) => {
+/**
+ * Get all members of a workspace (combined profile + membership data)
+ */
+export const getWorkspaceMembers = async (tenantId?: string): Promise<Member[]> => {
     const resolvedTenant = resolveTenantId(tenantId);
-    await setDoc(doc(tenantUsersCollection(resolvedTenant), userId), data, { merge: true });
+    const memberRefs = await getDocs(tenantMembersCollection(resolvedTenant));
+
+    const members = await Promise.all(
+        memberRefs.docs.map(async (memberDoc) => {
+            const membership = memberDoc.data();
+            const userSnap = await getDoc(userDocRef(memberDoc.id));
+            const userData = userSnap.exists() ? userSnap.data() : {};
+            return {
+                ...userData,
+                uid: memberDoc.id,
+                role: membership.role,
+                joinedAt: membership.joinedAt,
+                groupIds: membership.groupIds,
+                pinnedProjectId: membership.pinnedProjectId,
+                githubToken: membership.githubToken,
+            } as Member;
+        })
+    );
+    return members;
+};
+
+/**
+ * Update user profile data (global)
+ */
+export const updateUserData = async (userId: string, data: Partial<any>) => {
+    await setDoc(userDocRef(userId), data, { merge: true });
+};
+
+/**
+ * Update user's membership data for a specific tenant
+ */
+export const updateUserMembership = async (userId: string, tenantId: string, data: Partial<any>) => {
+    await setDoc(tenantMemberDocRef(tenantId, userId), data, { merge: true });
 };
 
 export const linkWithGithub = async (): Promise<string> => {
@@ -231,13 +283,12 @@ export const linkWithGithub = async (): Promise<string> => {
     }
 };
 
-export const getAIUsage = async (userId: string, tenantId?: string): Promise<AIUsage | null> => {
+export const getAIUsage = async (userId: string): Promise<AIUsage | null> => {
     try {
-        const resolvedTenant = resolveTenantId(tenantId);
-        const userRef = doc(tenantUsersCollection(resolvedTenant), userId);
+        const userRef = userDocRef(userId);
         const snap = await getDoc(userRef);
         if (snap.exists()) {
-            const data = snap.data() as Member;
+            const data = snap.data() as User;
             // Monthly reset check
             if (data.aiUsage) {
                 const lastReset = data.aiUsage.lastReset?.toDate?.() || new Date(data.aiUsage.lastReset);
@@ -261,17 +312,15 @@ export const getAIUsage = async (userId: string, tenantId?: string): Promise<AIU
     return null;
 };
 
-export const incrementAIUsage = async (userId: string, tokens: number, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const userRef = doc(tenantUsersCollection(resolvedTenant), userId);
+export const incrementAIUsage = async (userId: string, tokens: number) => {
+    const userRef = userDocRef(userId);
     await updateDoc(userRef, {
         'aiUsage.tokensUsed': increment(tokens)
     });
 };
 
-export const incrementImageUsage = async (userId: string, count: number, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const userRef = doc(tenantUsersCollection(resolvedTenant), userId);
+export const incrementImageUsage = async (userId: string, count: number) => {
+    const userRef = userDocRef(userId);
     await updateDoc(userRef, {
         'aiUsage.imagesUsed': increment(count)
     });
@@ -1071,28 +1120,37 @@ export const joinProject = async (projectId: string, tenantId: string, role: Pro
             memberIds: arrayUnion(user.uid)
         });
 
-        // Check if user already exists in tenant to preserve role
-        const tenantUserRef = doc(tenantUsersCollection(tenantId), user.uid);
-        const tenantUserSnap = await getDoc(tenantUserRef);
+        // Check if user already exists in tenant members to preserve role
+        const memberRef = tenantMemberDocRef(tenantId, user.uid);
+        const memberSnap = await getDoc(memberRef);
 
         let targetRole: WorkspaceRole = 'Guest'; // Default for new project-only joins
 
-        if (tenantUserSnap.exists()) {
-            const existing = tenantUserSnap.data();
+        if (memberSnap.exists()) {
+            const existing = memberSnap.data();
             targetRole = existing.role || 'Guest';
         }
 
-        // Also add user profile to tenant's users collection for lookup
+        // Ensure user exists in global users collection
         await setDoc(
-            tenantUserRef,
+            userDocRef(user.uid),
             {
                 uid: user.uid,
                 email: user.email || "",
                 displayName: user.displayName || "User",
                 photoURL: user.photoURL || "",
-                role: targetRole,
-                joinedAt: tenantUserSnap.exists() ? (tenantUserSnap.data().joinedAt || serverTimestamp()) : serverTimestamp(),
                 updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+        );
+
+        // Add membership to tenant
+        await setDoc(
+            memberRef,
+            {
+                uid: user.uid,
+                role: targetRole,
+                joinedAt: memberSnap.exists() ? (memberSnap.data().joinedAt || serverTimestamp()) : serverTimestamp(),
             },
             { merge: true }
         );
@@ -1126,6 +1184,19 @@ export const getProjectMembers = async (projectId: string, tenantId?: string): P
             // New format: ProjectMember object
             return member.userId;
         });
+};
+
+/**
+ * Get all project members that have a specific role
+ */
+export const getMembersWithRole = async (projectId: string, roleId: string, tenantId?: string): Promise<string[]> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const project = await getProjectById(projectId, resolvedTenant);
+    if (!project?.roles) return [];
+
+    return Object.entries(project.roles)
+        .filter(([_, role]) => role === roleId)
+        .map(([userId]) => userId);
 };
 
 /**
@@ -1170,7 +1241,7 @@ export const inviteMember = async (
 export const updateMemberRole = async (
     projectId: string,
     userId: string,
-    newRole: ProjectRole,
+    newRole: ProjectRole | string,
     tenantId?: string
 ): Promise<void> => {
     const user = auth.currentUser;
@@ -1259,7 +1330,7 @@ export const removeMember = async (
  */
 export const generateInviteLink = async (
     projectId: string,
-    role: ProjectRole,
+    role: ProjectRole | string,
     maxUses?: number,
     expiresInHours: number = 24,
     tenantId?: string
@@ -2781,22 +2852,22 @@ export const updateUserProfile = async (data: {
         });
     }
 
-    if (tenantId) {
-        const userRef = doc(tenantUsersCollection(tenantId), user.uid);
-        const updateData: any = {
-            displayName: data.displayName || user.displayName,
-            photoURL: photoURL,
-            title: data.title ?? '',
-            bio: data.bio ?? '',
-            email: user.email,
-            address: data.address ?? '',
-            skills: data.skills ?? [],
-            privacySettings: data.privacySettings || {}
-        };
-        if (coverURL) updateData.coverURL = coverURL;
+    // Update global user profile
+    const globalUserRef = userDocRef(user.uid);
+    const updateData: any = {
+        displayName: data.displayName || user.displayName,
+        photoURL: photoURL,
+        title: data.title ?? '',
+        bio: data.bio ?? '',
+        email: user.email,
+        address: data.address ?? '',
+        skills: data.skills ?? [],
+        privacySettings: data.privacySettings || {},
+        updatedAt: serverTimestamp()
+    };
+    if (coverURL) updateData.coverURL = coverURL;
 
-        await setDoc(userRef, updateData, { merge: true });
-    }
+    await setDoc(globalUserRef, updateData, { merge: true });
 
     return { photoURL, coverURL };
 };
@@ -2910,7 +2981,7 @@ export const subscribeWorkspacePresence = (
 
 /**
  * Get all workspace members (distinct from project guests)
- * These are users who have been added to the tenant's users collection
+ * These are users who have been added to the tenant's members collection
  */
 export const subscribeWorkspaceMembers = (
     callback: (members: { uid: string, displayName: string, photoURL?: string, email?: string, role?: string }[]) => void,
@@ -2918,11 +2989,20 @@ export const subscribeWorkspaceMembers = (
 ) => {
     const resolvedTenant = resolveTenantId(tenantId);
 
-    return onSnapshot(tenantUsersCollection(resolvedTenant), (snap) => {
-        const members = snap.docs.map(d => ({
-            uid: d.id,
-            ...d.data()
-        } as any));
+    return onSnapshot(tenantMembersCollection(resolvedTenant), async (snap) => {
+        const memberPromises = snap.docs.map(async (memberDoc) => {
+            const membership = memberDoc.data();
+            const userSnap = await getDoc(userDocRef(memberDoc.id));
+            const userData = userSnap.exists() ? userSnap.data() : {};
+            return {
+                uid: memberDoc.id,
+                displayName: userData.displayName || 'Unknown User',
+                photoURL: userData.photoURL,
+                email: userData.email,
+                role: membership.role,
+            };
+        });
+        const members = await Promise.all(memberPromises);
         callback(members);
     });
 };
@@ -3010,8 +3090,22 @@ export const subscribeTenantUsers = (
 ) => {
     const resolvedTenant = resolveTenantId(tenantId);
     // Don't call ensureTenantAndUser here - this is a read operation and shouldn't create data
-    return onSnapshot(tenantUsersCollection(resolvedTenant), (snap) => {
-        const items = snap.docs.map(docSnap => ({ id: docSnap.id, ...docSnap.data() }));
+    return onSnapshot(tenantMembersCollection(resolvedTenant), async (snap) => {
+        const userPromises = snap.docs.map(async (memberDoc) => {
+            const membership = memberDoc.data();
+            const userSnap = await getDoc(userDocRef(memberDoc.id));
+            const userData = userSnap.exists() ? userSnap.data() : {};
+            return {
+                id: memberDoc.id,
+                email: userData.email,
+                displayName: userData.displayName,
+                photoURL: userData.photoURL,
+                joinedAt: membership.joinedAt,
+                role: membership.role,
+                groupIds: membership.groupIds,
+            };
+        });
+        const items = await Promise.all(userPromises);
         callback(items);
     });
 };
@@ -4683,16 +4777,9 @@ export const syncSocialStrategyPlatforms = async (projectId: string, platformToR
 export const updateUserOnboardingStatus = async (
     userId: string,
     tourKey: string,
-    status: 'completed' | 'skipped',
-    tenantId?: string
+    status: 'completed' | 'skipped'
 ) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const userRef = doc(tenantUsersCollection(resolvedTenant), userId);
-
-    // We must use the dot notation for the *path* to the nested field in updateDoc
-    // but the value must be the object we want to set at that path.
-    // However, if we want to merge deep without overwriting other peers, 
-    // we use "preferences.onboarding.TOURKEY": { ... }
+    const userRef = userDocRef(userId);
 
     await updateDoc(userRef, {
         [`preferences.onboarding.${tourKey}`]: {
@@ -4702,9 +4789,8 @@ export const updateUserOnboardingStatus = async (
     });
 };
 
-export const resetUserOnboarding = async (userId: string, tenantId?: string) => {
-    const resolvedTenant = resolveTenantId(tenantId);
-    const userRef = doc(tenantUsersCollection(resolvedTenant), userId);
+export const resetUserOnboarding = async (userId: string) => {
+    const userRef = userDocRef(userId);
 
     // To delete the whole map or reset it
     await updateDoc(userRef, {

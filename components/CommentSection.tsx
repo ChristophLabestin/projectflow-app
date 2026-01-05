@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Comment, Member, ProjectGroup } from '../types';
-import { addComment, subscribeComments, deleteComment, getProjectMembers, subscribeTenantUsers, getUserProfile } from '../services/dataService';
+import { addComment, subscribeComments, deleteComment, getProjectMembers, subscribeTenantUsers, getUserProfile, getMembersWithRole } from '../services/dataService';
 import { auth } from '../services/firebase';
 import { toMillis } from '../utils/time';
 import { Button } from './ui/Button';
 import { Textarea } from './ui/Textarea';
 import { getProjectGroups } from '../services/projectGroupService';
+import { getWorkspaceRoles } from '../services/rolesService';
 import { notifyMention } from '../services/notificationService';
 import { useToast } from '../context/UIContext';
 
@@ -40,10 +41,11 @@ interface CommentSectionProps {
 interface MentionTarget {
     id: string;
     name: string;
-    type: 'user' | 'group';
+    type: 'user' | 'group' | 'role';
     photoURL?: string;
     email?: string;
     memberIds?: string[]; // For groups
+    color?: string; // For roles
 }
 
 export const CommentSection: React.FC<CommentSectionProps> = ({
@@ -96,7 +98,6 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                     });
                 });
 
-                // 2. Fetch Groups
                 try {
                     const groups = await getProjectGroups(projectId, tenantId);
                     groups.forEach(g => {
@@ -110,6 +111,22 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                     });
                 } catch (e) {
                     console.error("Failed to load groups for mentions", e);
+                }
+
+                // 3. Fetch Workspace Roles
+                try {
+                    const roles = await getWorkspaceRoles(tenantId);
+                    roles.forEach(role => {
+                        targets.push({
+                            id: role.id,
+                            name: role.name,
+                            type: 'role',
+                            color: role.color,
+                            memberIds: [] // Resolved at notification time
+                        });
+                    });
+                } catch (e) {
+                    console.error("Failed to load roles for mentions", e);
                 }
 
                 if (mounted) {
@@ -159,6 +176,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
 
             // Handle Mentions and Notifications
             const mentionedUserIds = new Set<string>();
+            const rolesToResolve: string[] = [];
 
             // Match against known targets names explicitly, prioritizing longer names to avoid partial matches
             const sortedTargets = [...mentionTargets].sort((a, b) => b.name.length - a.name.length);
@@ -173,9 +191,18 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                         mentionedUserIds.add(target.id);
                     } else if (target.type === 'group' && target.memberIds) {
                         target.memberIds.forEach(uid => mentionedUserIds.add(uid));
+                    } else if (target.type === 'role') {
+                        // Role members will be resolved below
+                        rolesToResolve.push(target.id);
                     }
                 }
             });
+
+            // Resolve role members
+            for (const roleId of rolesToResolve) {
+                const roleMembers = await getMembersWithRole(projectId, roleId, tenantId);
+                roleMembers.forEach(uid => mentionedUserIds.add(uid));
+            }
 
             // Send Notifications
             const currentUserId = auth.currentUser?.uid;
@@ -377,13 +404,21 @@ export const CommentSection: React.FC<CommentSectionProps> = ({
                                         <div className="size-5 rounded-full bg-gray-200 overflow-hidden shrink-0">
                                             {target.photoURL ? <img src={target.photoURL} className="size-full object-cover" /> : <div className="size-full flex items-center justify-center text-[8px] font-bold">{target.name[0]}</div>}
                                         </div>
-                                    ) : (
+                                    ) : target.type === 'group' ? (
                                         <div className="size-5 rounded bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
                                             <span className="material-symbols-outlined text-[12px]">groups</span>
+                                        </div>
+                                    ) : (
+                                        <div
+                                            className="size-5 rounded flex items-center justify-center shrink-0"
+                                            style={{ backgroundColor: (target.color || '#6366f1') + '20', color: target.color || '#6366f1' }}
+                                        >
+                                            <span className="material-symbols-outlined text-[12px]">shield_person</span>
                                         </div>
                                     )}
                                     <span className="truncate flex-1 font-medium">{target.name}</span>
                                     {target.type === 'group' && <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider">Group</span>}
+                                    {target.type === 'role' && <span className="text-[9px] text-[var(--color-text-muted)] uppercase tracking-wider">Role</span>}
                                 </button>
                             ))}
                         </div>

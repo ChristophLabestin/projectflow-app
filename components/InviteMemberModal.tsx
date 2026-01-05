@@ -1,58 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Modal } from './ui/Modal';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Select } from './ui/Select';
-import { ProjectRole, WorkspaceRole } from '../types';
+import { ProjectRole, WorkspaceRole, CustomRole } from '../types';
 
 interface InviteMemberModalProps {
     isOpen: boolean;
     onClose: () => void;
     onGenerateLink: (role: any, maxUses?: number, expiresInHours?: number) => Promise<string>;
     onSendEmail?: (email: string, role: string) => Promise<void>;
-    projectTitle: string;
+    projectTitle?: string;
     isWorkspace?: boolean;
+    customRoles?: CustomRole[];
 }
 
-const PROJECT_ROLE_DESCRIPTIONS: Record<ProjectRole, { title: string; description: string; capabilities: string[] }> = {
-    Owner: {
-        title: 'Owner',
-        description: 'Full control over the project',
-        capabilities: ['Edit project settings', 'Delete project', 'Invite members', 'Manage all content'],
-    },
-    Editor: {
-        title: 'Editor',
-        description: 'Can create and manage content',
-        capabilities: ['Create/edit tasks, flows, and issues', 'Add comments', 'Cannot edit project settings'],
-    },
-    Viewer: {
-        title: 'Viewer',
-        description: 'Read-only access',
-        capabilities: ['View all content', 'Add comments', 'Cannot create or edit'],
-    },
-};
-
-const WORKSPACE_ROLE_DESCRIPTIONS: Record<WorkspaceRole, { title: string; description: string; capabilities: string[] }> = {
-    Owner: {
-        title: 'Workspace Owner',
-        description: 'Full administrative access',
-        capabilities: ['Manage billing', 'Delete workspace', 'Manage all members', 'Create projects'],
-    },
-    Admin: {
-        title: 'Admin',
-        description: 'Can manage members and projects',
-        capabilities: ['Invite members', 'Create projects', 'Manage groups', 'Manage settings'],
-    },
-    Member: {
-        title: 'Member',
-        description: 'Standard access',
-        capabilities: ['Create projects (if allowed)', 'View projects', 'Join projects'],
-    },
-    Guest: {
-        title: 'Guest',
-        description: 'Limited access',
-        capabilities: ['View assigned items only', 'Cannot create projects'],
-    }
+const PERMISSION_LABELS: Record<string, string> = {
+    canManageProjects: 'Manage Projects',
+    canManageMembers: 'Manage Members',
+    canManageSettings: 'Manage Settings',
+    canCreateProjects: 'Create Projects',
+    canViewAllProjects: 'View All Projects'
 };
 
 export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
@@ -60,11 +28,15 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
     onClose,
     onGenerateLink,
     onSendEmail,
-    projectTitle,
-    isWorkspace
+    projectTitle = 'Workspace',
+    isWorkspace,
+    customRoles = []
 }) => {
     const [activeTab, setActiveTab] = useState<'link' | 'email'>('link');
-    const [selectedRole, setSelectedRole] = useState<string>(isWorkspace ? 'Member' : 'Editor');
+    const [selectedRole, setSelectedRole] = useState<string>(() => {
+        const defaultRole = customRoles.find(r => r.isDefault)?.id || customRoles[0]?.id || '';
+        return defaultRole;
+    });
     const [maxUses, setMaxUses] = useState<string>('');
     const [expiresIn, setExpiresIn] = useState<string>('24');
     const [generatedLink, setGeneratedLink] = useState<string>('');
@@ -77,7 +49,9 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
     // Reset default role and state when mode changes
     React.useEffect(() => {
         if (isOpen) {
-            setSelectedRole(isWorkspace ? 'Member' : 'Editor');
+            // Try to find a default role or use the first available one
+            const defaultRole = customRoles.find(r => r.isDefault)?.id || customRoles[0]?.id || '';
+            setSelectedRole(defaultRole);
             setGeneratedLink('');
             setMaxUses('');
             setExpiresIn('24');
@@ -87,7 +61,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
             setCopied(false);
             setActiveTab('link');
         }
-    }, [isOpen, isWorkspace]);
+    }, [isOpen, isWorkspace, customRoles]);
 
     const handleGenerateLink = async () => {
         setError(null);
@@ -140,6 +114,22 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
     const handleClose = () => {
         onClose();
     };
+
+    // Helper to get role details for display
+    const getRoleInfo = (roleId: string) => {
+        const custom = customRoles.find(r => r.id === roleId);
+        if (custom) {
+            return {
+                title: custom.name,
+                description: custom.description || 'Custom Role',
+                capabilities: custom.permissions.map(p => PERMISSION_LABELS[p] || p),
+                color: custom.color
+            };
+        }
+        return { title: 'Unknown Role', description: '', capabilities: [], color: '#6b7280' };
+    };
+
+    const currentRoleInfo = getRoleInfo(selectedRole);
 
     return (
         <Modal
@@ -199,74 +189,39 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                                 Role
                             </label>
                             <div className="space-y-2 overflow-y-auto pr-2 pb-2">
-                                {isWorkspace ? (
-                                    (['Admin', 'Member', 'Guest'] as WorkspaceRole[]).map((role) => {
-                                        const roleInfo = WORKSPACE_ROLE_DESCRIPTIONS[role];
-                                        return (
-                                            <label
-                                                key={role}
-                                                className={`flex flex-col p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedRole === role
-                                                    ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                                                    : 'border-[var(--color-surface-border)] hover:border-[var(--color-primary)]/50 hover:bg-[var(--color-surface-hover)]'
-                                                    }`}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <input
-                                                        type="radio"
-                                                        name="role"
-                                                        value={role}
-                                                        checked={selectedRole === role}
-                                                        onChange={() => setSelectedRole(role)}
-                                                        className="size-4 text-[var(--color-primary)] border-[var(--color-surface-border)] focus:ring-[var(--color-primary)]"
-                                                    />
-                                                    <span className="font-bold text-[var(--color-text-main)]">
-                                                        {roleInfo.title}
-                                                    </span>
-                                                </div>
-                                                <p className="text-xs text-[var(--color-text-muted)] mt-1 ml-7">
-                                                    {roleInfo.description}
-                                                </p>
-                                            </label>
-                                        );
-                                    })
-                                ) : (
-                                    (['Editor', 'Viewer', 'Owner'] as ProjectRole[]).map((role) => {
-                                        const roleInfo = PROJECT_ROLE_DESCRIPTIONS[role];
-                                        return (
-                                            <label
-                                                key={role}
-                                                className={`flex flex-col p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedRole === role
-                                                    ? 'border-[var(--color-primary)] bg-[var(--color-primary)]/5'
-                                                    : 'border-[var(--color-surface-border)] hover:border-[var(--color-primary)]/50 hover:bg-[var(--color-surface-hover)]'
-                                                    }`}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <input
-                                                        type="radio"
-                                                        name="role"
-                                                        value={role}
-                                                        checked={selectedRole === role}
-                                                        onChange={() => setSelectedRole(role)}
-                                                        className="size-4 text-[var(--color-primary)] border-[var(--color-surface-border)] focus:ring-[var(--color-primary)]"
-                                                    />
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-[var(--color-text-main)]">
-                                                            {roleInfo.title}
-                                                        </span>
-                                                        {role === 'Owner' && (
-                                                            <span className="px-1.5 py-0.5 text-[10px] font-bold bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 rounded">
-                                                                Caution
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <p className="text-xs text-[var(--color-text-muted)] mt-1 ml-7">
-                                                    {roleInfo.description}
-                                                </p>
-                                            </label>
-                                        );
-                                    })
+                                {/* Custom Roles */}
+                                {customRoles.map(role => (
+                                    <label
+                                        key={role.id}
+                                        className={`flex flex-col p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedRole === role.id
+                                            ? 'bg-gray-50 dark:bg-white/5 shadow-sm'
+                                            : 'border-[var(--color-surface-border)] hover:border-gray-300 dark:hover:border-white/20'
+                                            }`}
+                                        style={{ borderColor: selectedRole === role.id ? role.color : undefined }}
+                                    >
+                                        <div className="flex items-center gap-3">
+                                            <input
+                                                type="radio"
+                                                name="role"
+                                                value={role.id}
+                                                checked={selectedRole === role.id}
+                                                onChange={() => setSelectedRole(role.id)}
+                                                className="size-4 border-[var(--color-surface-border)] focus:ring-0"
+                                                style={{ color: role.color }}
+                                            />
+                                            <span className="font-bold text-[var(--color-text-main)]" style={{ color: selectedRole === role.id ? role.color : undefined }}>{role.name}</span>
+                                        </div>
+                                        <p className="text-xs text-[var(--color-text-muted)] mt-1 ml-7 opacity-80">{role.description || (isWorkspace ? 'Custom workspace role' : 'Custom project role')}</p>
+                                    </label>
+                                ))}
+
+                                {customRoles.length === 0 && (
+                                    <div className="p-8 text-center bg-[var(--color-surface-hover)] rounded-xl border border-dashed border-[var(--color-surface-border)]">
+                                        <p className="text-sm text-[var(--color-text-muted)]">No custom roles defined.</p>
+                                        <p className="text-xs text-[var(--color-text-subtle)] mt-1">Please manage roles in settings first.</p>
+                                    </div>
                                 )}
+
                             </div>
                         </div>
 
@@ -274,11 +229,12 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                         <div className="flex flex-col gap-6 overflow-y-auto pr-2 pb-2">
                             {/* Role Capabilities */}
                             <div className="p-4 bg-[var(--color-surface-hover)] rounded-xl border border-[var(--color-surface-border)]">
-                                <h4 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3">
+                                <h4 className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-3 flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: currentRoleInfo.color }}></span>
                                     Permissions
                                 </h4>
                                 <ul className="space-y-2">
-                                    {(isWorkspace ? WORKSPACE_ROLE_DESCRIPTIONS[selectedRole as WorkspaceRole] : PROJECT_ROLE_DESCRIPTIONS[selectedRole as ProjectRole])?.capabilities.map((cap, i) => (
+                                    {currentRoleInfo.capabilities.map((cap, i) => (
                                         <li key={i} className="flex items-start gap-2 text-sm text-[var(--color-text-subtle)]">
                                             <span className="material-symbols-outlined text-[16px] text-emerald-600 dark:text-emerald-400 mt-0.5">
                                                 check_circle
@@ -286,6 +242,9 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                                             {cap}
                                         </li>
                                     ))}
+                                    {currentRoleInfo.capabilities.length === 0 && (
+                                        <li className="text-sm text-[var(--color-text-muted)] italic">No specific permissions listed.</li>
+                                    )}
                                 </ul>
                             </div>
 
@@ -346,19 +305,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                                 </div>
                             )}
 
-                            {selectedRole === 'Owner' && !isWorkspace && (
-                                <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg p-3 flex items-start gap-3">
-                                    <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 mt-0.5 text-[18px]">
-                                        warning
-                                    </span>
-                                    <div className="flex-1 text-xs text-amber-800 dark:text-amber-200">
-                                        <p className="font-bold mb-1">Sharing Ownership</p>
-                                        <p>
-                                            Invitees become owners with full control (delete project, remove you).
-                                        </p>
-                                    </div>
-                                </div>
-                            )}
+                            {/* Warning removed as ownership management is now part of the custom permission system */}
 
                             {error && (
                                 <p className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg p-3">
@@ -378,7 +325,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                                     <div className="flex-1">
                                         <p className="font-bold text-emerald-900 dark:text-emerald-100 mb-1">Invite Link Created!</p>
                                         <p className="text-sm text-emerald-800 dark:text-emerald-200">
-                                            Share this link to invite members as <span className="font-bold">{selectedRole}</span>
+                                            Share this link to invite members as <span className="font-bold" style={{ color: currentRoleInfo.color }}>{currentRoleInfo.title}</span>
                                         </p>
                                     </div>
                                 </div>
@@ -421,7 +368,7 @@ export const InviteMemberModal: React.FC<InviteMemberModalProps> = ({
                             <div className="grid grid-cols-3 gap-3 p-4 bg-[var(--color-surface-hover)] rounded-lg border border-[var(--color-surface-border)]">
                                 <div>
                                     <p className="text-xs text-[var(--color-text-muted)] mb-1">Role</p>
-                                    <p className="font-semibold text-sm">{selectedRole}</p>
+                                    <p className="font-semibold text-sm" style={{ color: currentRoleInfo.color }}>{currentRoleInfo.title}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-[var(--color-text-muted)] mb-1">Max Uses</p>

@@ -1,0 +1,33 @@
+/* Dark Mode Support */
+html.dark {
+    --color-primary: #e5e5e5;
+    --color-primary-text: #171717;
+    --color-primary-dark: #d4d4d4;
+    --color-primary-light: #a3a3a3;
+    --color-primary-fade: #262626;
+
+    --color-surface-bg: #0b0d11;
+    --color-surface-card: #151920;
+    --color-surface-paper: #151920;
+    /* Reusing card color for paper in dark mode by default */
+    --color-surface-hover: #1e242e;
+    --color-surface-border: #2e3440;
+
+    --color-text-main: #e5e7eb;
+    --color-text-muted: #9ca3af;
+    --color-text-subtle: #6b7280;
+
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+
+    /* Dark mode variants for specific colors */
+    --color-blue-500: #3b82f6;
+    --color-blue-400: #60a5fa;
+    --color-blue-100: #dbeafe;
+    /* Opacity usage might need adjustment or distinct token */
+}
+
+:root {
+    --color-surface-paper: var(--color-surface-card);
+    --color-primary-text: #ffffff;
+}

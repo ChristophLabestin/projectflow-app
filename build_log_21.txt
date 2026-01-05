@@ -1,0 +1,31 @@
+
+> projectflow-ai@0.0.0 build
+> vite build
+
+vite v6.4.1 building for production...
+transforming...
+✓ 130 modules transformed.
+✗ Build failed in 169ms
+error during build:
+[vite:esbuild] Transform failed with 1 error:
+/Users/christophlabestin/Documents/GitHub/projectflow-app/screens/ProjectOverview.tsx:2565:21: ERROR: Expected "}" but found ";"
+file: /Users/christophlabestin/Documents/GitHub/projectflow-app/screens/ProjectOverview.tsx:2565:21
+
+Expected "}" but found ";"
+2563|                              </div>
+2564|                          </>
+2565|                      );
+   |                       ^
+2566|  };
+2567|  
+
+    at failureErrorWithLog (/Users/christophlabestin/Documents/GitHub/projectflow-app/node_modules/esbuild/lib/main.js:1467:15)
+    at /Users/christophlabestin/Documents/GitHub/projectflow-app/node_modules/esbuild/lib/main.js:736:50
+    at responseCallbacks.<computed> (/Users/christophlabestin/Documents/GitHub/projectflow-app/node_modules/esbuild/lib/main.js:603:9)
+    at handleIncomingPacket (/Users/christophlabestin/Documents/GitHub/projectflow-app/node_modules/esbuild/lib/main.js:658:12)
+    at Socket.readFromStdout (/Users/christophlabestin/Documents/GitHub/projectflow-app/node_modules/esbuild/lib/main.js:581:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)

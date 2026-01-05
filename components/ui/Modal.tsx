@@ -12,9 +12,11 @@ interface ModalProps {
     className?: string;
     hideHeader?: boolean;
     noPadding?: boolean;
+    glass?: boolean;
+    borderless?: boolean;
 }
 
-export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', className = '', hideHeader = false, noPadding = false }: ModalProps) => {
+export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', className = '', hideHeader = false, noPadding = false, glass = false, ...props }: ModalProps) => {
     const overlayRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -56,29 +58,32 @@ export const Modal = ({ isOpen, onClose, title, children, footer, size = 'md', c
                 aria-hidden="true"
             />
             <div className={`
-                relative w-full ${sizeClasses[size]} bg-[var(--color-surface-card)] rounded-2xl shadow-xl 
-                border border-[var(--color-surface-border)] flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200 overflow-hidden
+                relative w-full ${sizeClasses[size]} 
+                ${glass
+                    ? `bg-[var(--color-surface-paper)] ${!props.borderless ? 'border border-[var(--color-border-main)]' : ''} shadow-[0_40px_80px_-15px_rgba(0,0,0,0.5)]`
+                    : `bg-[var(--color-surface-card)] ${!props.borderless ? 'border border-[var(--color-surface-border)]' : ''} shadow-xl`} 
+                rounded-3xl flex flex-col max-h-[95vh] animate-in fade-in zoom-in-95 duration-300 overflow-hidden
             `}>
                 {!hideHeader && (
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--color-surface-border)]">
-                        <h2 className="text-lg font-bold text-[var(--color-text-main)]">
+                    <div className={`flex items-center justify-between px-8 py-6 ${glass ? 'border-b border-[var(--color-border-main)]' : 'border-b border-[var(--color-surface-border)]'}`}>
+                        <h2 className="text-xl font-black text-[var(--color-text-main)]">
                             {title}
                         </h2>
                         <button
                             onClick={onClose}
-                            className="p-1 rounded-full text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)] transition-colors"
+                            className="size-8 flex items-center justify-center rounded-full text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)] transition-all hover:rotate-90"
                         >
-                            <span className="material-symbols-outlined text-[20px]">close</span>
+                            <span className="material-symbols-outlined text-[24px]">close</span>
                         </button>
                     </div>
                 )}
 
-                <div className={noPadding ? 'flex-1 overflow-hidden flex flex-col' : 'p-6 overflow-y-auto flex-1'}>
+                <div className={noPadding ? 'flex-1 overflow-hidden flex flex-col' : 'p-8 overflow-y-auto flex-1'}>
                     {children}
                 </div>
 
                 {footer && (
-                    <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] rounded-b-xl">
+                    <div className={`flex items-center justify-end gap-3 px-8 py-5 ${glass ? 'border-t border-[var(--color-border-main)] bg-black/[0.02] dark:bg-white/[0.02]' : 'border-t border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]'} rounded-b-3xl`}>
                         {footer}
                     </div>
                 )}

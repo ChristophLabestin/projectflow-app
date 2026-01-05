@@ -895,46 +895,46 @@ export const Dashboard = () => {
                 onClose={() => setShowPasskeyUpsell(false)}
                 onSetupComplete={() => setShowPasskeyUpsell(false)}
             />
-            <div className="space-y-6 pb-12 fade-in">
+            <div className="dashboard-container">
                 {/* Header - Greeting & Quick Stats */}
-                <div data-onboarding-id="dashboard-header" className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-8 animate-fade-in">
+                <div data-onboarding-id="dashboard-header" className="dashboard-header">
                     <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-[var(--color-primary)] font-bold uppercase tracking-wider text-xs">
+                        <div className="dashboard-date-label">
                             <span className="material-symbols-outlined text-sm">calendar_today</span>
                             {format(new Date(), dateFormat, { locale: dateLocale })}
                         </div>
-                        <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-[var(--color-text-main)] tracking-tight">
+                        <h1 className="dashboard-title">
                             {greeting}, {userName || t('dashboard.userFallback')}.
                         </h1>
-                        <p className="text-[var(--color-text-muted)] font-medium">
+                        <p className="dashboard-subtitle">
                             {t('dashboard.header.subtitle')}
                         </p>
                     </div>
 
-                    <div className="flex gap-4">
-                        <div className="flex-1 min-w-[100px] p-4 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-sm hover:shadow-md transition-shadow">
-                            <div className="text-3xl font-black text-[var(--color-text-main)]">{stats.activeProjects}</div>
-                            <div className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mt-1">{t('dashboard.header.stats.activeProjects')}</div>
+                    <div className="dashboard-header-stats">
+                        <div className="header-stat-card">
+                            <div className="stat-value">{stats.activeProjects}</div>
+                            <div className="stat-label">{t('dashboard.header.stats.activeProjects')}</div>
                         </div>
-                        <div className="flex-1 min-w-[100px] p-4 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-sm hover:shadow-md transition-shadow">
-                            <div className="text-3xl font-black text-amber-500">{dueSoonCount}</div>
-                            <div className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mt-1">{t('dashboard.header.stats.dueSoon')}</div>
+                        <div className="header-stat-card">
+                            <div className="stat-value amber">{dueSoonCount}</div>
+                            <div className="stat-label">{t('dashboard.header.stats.dueSoon')}</div>
                         </div>
-                        <div className="flex-1 min-w-[100px] p-4 rounded-2xl bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] shadow-sm hover:shadow-md transition-shadow">
-                            <div className="text-3xl font-black text-emerald-500">{stats.completedProjects}</div>
-                            <div className="text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider mt-1">{t('dashboard.header.stats.completed')}</div>
+                        <div className="header-stat-card">
+                            <div className="stat-value emerald">{stats.completedProjects}</div>
+                            <div className="stat-label">{t('dashboard.header.stats.completed')}</div>
                         </div>
                     </div>
                 </div>
 
                 {/* Main Dashboard Grid */}
-                <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+                <div className="dashboard-grid">
 
                     {/* Left Column: Metrics & Charts (3 cols wide on large screens) */}
-                    <div className="xl:col-span-3 space-y-6">
+                    <div className="dashboard-main-col">
 
                         {/* New Widget Cards Row */}
-                        <div data-onboarding-id="dashboard-kpis" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div data-onboarding-id="dashboard-kpis" className="kpi-grid">
                             {kpiCards.map((stat) => (
                                 <Card key={stat.key} padding="md" className="relative overflow-hidden group hover:shadow-lg transition-all border-l-4" style={{ borderLeftColor: stat.color }}>
                                     <div className="flex flex-col h-full justify-between">
@@ -972,19 +972,19 @@ export const Dashboard = () => {
                                         <p className="text-xs text-[var(--color-text-subtle)]">{t('dashboard.focus.subtitle')}</p>
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                <div className="focus-grid">
                                     {focusMetrics.map(metric => (
                                         <div
                                             key={metric.key}
-                                            className="rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 hover:shadow-sm transition-shadow"
+                                            className="focus-metric-card"
                                         >
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-subtle)]">
+                                            <div className="header">
+                                                <span className="label">
                                                     {metric.label}
                                                 </span>
                                                 <span className={`material-symbols-outlined text-sm ${metric.color}`}>{metric.icon}</span>
                                             </div>
-                                            <div className={`text-2xl font-black ${metric.value > 0 ? 'text-[var(--color-text-main)]' : 'text-[var(--color-text-subtle)]'}`}>
+                                            <div className={`value ${metric.value === 0 ? 'zero' : ''}`}>
                                                 {metric.value}
                                             </div>
                                         </div>
@@ -1002,7 +1002,7 @@ export const Dashboard = () => {
                                         {t('dashboard.risk.viewAll')}
                                     </Link>
                                 </div>
-                                <div className="space-y-3">
+                                <div className="risk-list">
                                     {projectsAtRisk.length === 0 ? (
                                         <div className="py-6 text-center text-sm text-[var(--color-text-muted)]">
                                             {t('dashboard.risk.empty')}
@@ -1019,7 +1019,7 @@ export const Dashboard = () => {
                                                 <Link
                                                     key={project.id}
                                                     to={`/project/${project.id}`}
-                                                    className="flex items-center gap-3 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-card)] p-3 hover:border-[var(--color-primary)]/40 hover:bg-[var(--color-surface-hover)] transition-colors"
+                                                    className="risk-item"
                                                 >
                                                     <HealthIndicator health={health} size="sm" showLabel={false} />
                                                     <div className="flex-1 min-w-0">
@@ -1529,46 +1529,46 @@ export const Dashboard = () => {
 
                                             return (
                                                 <Link key={proj.id} to={`/project/${proj.id}`} className="group block h-full">
-                                                    <Card padding="none" hoverable className="h-full flex flex-col relative overflow-hidden transition-all duration-300 group-hover:shadow-2xl border-[var(--color-surface-border)] hover:border-[var(--color-primary)]/50 bg-[var(--color-surface-paper)]">
+                                                    <Card padding="none" hoverable className="project-card">
 
-                                                        {/* Cover Image Area - Tall for impact */}
-                                                        <div className="h-28 w-full relative overflow-hidden bg-gray-100 dark:bg-gray-800">
+                                                        {/* Cover Image Area */}
+                                                        <div className="cover-area">
                                                             {proj.coverImage ? (
                                                                 <>
-                                                                    <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-surface-paper)]/90 via-transparent to-transparent z-10" />
-                                                                    <img src={proj.coverImage} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="" />
+                                                                    <div className="overlay" />
+                                                                    <img src={proj.coverImage} className="cover-image" alt="" />
                                                                 </>
                                                             ) : (
                                                                 <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-500/20" />
                                                             )}
 
-                                                            <div className="absolute top-3 right-3 z-20">
+                                                            <div className="status-badge">
                                                                 <Badge variant={isCompleted ? 'success' : isBrainstorming ? 'secondary' : 'primary'} className="backdrop-blur-md bg-white/90 dark:bg-black/50 shadow-sm border-0">
                                                                     {projectStatusLabels[proj.status as keyof typeof projectStatusLabels] || proj.status}
                                                                 </Badge>
                                                             </div>
                                                         </div>
 
-                                                        <div className="px-5 pb-5 flex flex-col flex-1 relative z-20">
+                                                        <div className="content-area">
                                                             {/* Floating Icon */}
-                                                            <div className="-mt-8 mb-3">
+                                                            <div className="icon-wrapper">
                                                                 {proj.squareIcon ? (
-                                                                    <div className="size-14 rounded-2xl overflow-hidden border-4 border-[var(--color-surface-paper)] bg-white shadow-md">
-                                                                        <img src={proj.squareIcon} alt="" className="w-full h-full object-cover" />
+                                                                    <div className="icon-box">
+                                                                        <img src={proj.squareIcon} alt="" />
                                                                     </div>
                                                                 ) : (
-                                                                    <div className={`size-14 rounded-2xl flex items-center justify-center border-4 border-[var(--color-surface-paper)] shadow-md ${iconClass} bg-[var(--color-surface-paper)]`}>
+                                                                    <div className={`icon-box ${iconClass}`}>
                                                                         <span className="material-symbols-outlined text-2xl">{icon}</span>
                                                                     </div>
                                                                 )}
                                                             </div>
 
-                                                            <div className="flex-1 space-y-1 mb-4">
-                                                                <h3 className="text-lg font-bold text-[var(--color-text-main)] group-hover:text-[var(--color-primary)] transition-colors line-clamp-1">
+                                                            <div className="project-info">
+                                                                <h3 className="project-title">
                                                                     {proj.title}
                                                                 </h3>
                                                                 {proj.description && (
-                                                                    <p className="text-xs text-[var(--color-text-muted)] line-clamp-2 leading-relaxed">
+                                                                    <p className="project-desc">
                                                                         {proj.description}
                                                                     </p>
                                                                 )}
@@ -1608,7 +1608,7 @@ export const Dashboard = () => {
 
 
                     {/* Right Column: Sidebar Widgets */}
-                    <div className="space-y-6">
+                    <div className="dashboard-sidebar-col">
 
                         {/* 1. Mini Calendar with View Toggle */}
                         <Card data-onboarding-id="dashboard-calendar" padding="md">
@@ -1646,12 +1646,12 @@ export const Dashboard = () => {
 
                             </div>
 
-                            <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                            <div className="calendar-grid-header">
                                 {weekdays.map((d, i) => (
-                                    <div key={`${d}-${i}`} className="text-[10px] font-semibold text-[var(--color-text-subtle)] uppercase">{d}</div>
+                                    <div key={`${d}-${i}`} className="day-label">{d}</div>
                                 ))}
                             </div>
-                            <div className="grid grid-cols-7 gap-1 text-center">
+                            <div className="calendar-grid-days">
                                 {(() => {
                                     const todayFull = new Date();
                                     const currentDay = currentDate.getDate();
@@ -1670,7 +1670,7 @@ export const Dashboard = () => {
                                             const isToday = thisDate.toDateString() === todayFull.toDateString();
 
                                             days.push(
-                                                <div key={i} className={`size-8 mx-auto flex items-center justify-center text-xs rounded-full cursor-pointer transition-colors ${isToday ? 'bg-emerald-500 text-white font-bold shadow-md' : 'text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}`}>
+                                                <div key={i} className={`day-cell ${isToday ? 'today' : ''}`}>
                                                     {i}
                                                 </div>
                                             );
@@ -1688,7 +1688,7 @@ export const Dashboard = () => {
                                             const isToday = d.toDateString() === todayFull.toDateString();
 
                                             days.push(
-                                                <div key={`week-${i}`} className={`size-8 mx-auto flex items-center justify-center text-xs rounded-full cursor-pointer transition-colors ${isToday ? 'bg-emerald-500 text-white font-bold shadow-md' : 'text-[var(--color-text-main)] hover:bg-[var(--color-surface-hover)]'}`}>
+                                                <div key={`week-${i}`} className={`day-cell ${isToday ? 'today' : ''}`}>
                                                     {dayNum}
                                                 </div>
                                             );

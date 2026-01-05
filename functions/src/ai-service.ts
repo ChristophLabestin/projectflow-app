@@ -7,11 +7,13 @@ import { db } from './init';
 const trackUsage = async (uid: string, tokens: number) => {
     if (tokens <= 0) return;
     try {
-        const usageRef = db.collection('users').doc(uid).collection('aiUsage').doc('current');
-        // Initialize if not exists, or increment
-        await usageRef.set({
-            tokensUsed: admin.firestore.FieldValue.increment(tokens),
-            lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+        // Store aiUsage directly on the user document (top-level users collection)
+        const userRef = db.collection('users').doc(uid);
+        await userRef.set({
+            aiUsage: {
+                tokensUsed: admin.firestore.FieldValue.increment(tokens),
+                lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+            }
         }, { merge: true });
     } catch (error) {
         console.error("Failed to track token usage:", error);

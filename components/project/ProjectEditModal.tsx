@@ -6,15 +6,17 @@ import { Textarea } from '../ui/Textarea';
 import { Select } from '../ui/Select';
 import { Checkbox } from '../ui/Checkbox';
 import { Badge } from '../ui/Badge';
-import { Project, WorkspaceGroup } from '../../types';
+import { Project, WorkspaceGroup, CustomRole } from '../../types';
 import { MediaLibrary } from '../MediaLibrary/MediaLibraryModal';
-import { ProjectGroupManager } from './ProjectGroupManager';
+
 import { ProjectTeamManager } from './ProjectTeamManager';
 import { useProjectPermissions } from '../../hooks/useProjectPermissions';
 import { useWorkspacePermissions } from '../../hooks/useWorkspacePermissions';
 import { getWorkspaceGroups } from '../../services/dataService';
 import { useLanguage } from '../../context/LanguageContext';
 import { useModuleAccess } from '../../hooks/useModuleAccess';
+import { RolesTab } from './RolesTab';
+import { getWorkspaceRoles } from '../../services/rolesService';
 
 import { auth } from '../../services/firebase';
 import { getUserProfile, linkWithGithub, updateUserData, getUserProjectNavPrefs, setUserProjectNavPrefs, ProjectNavPrefs } from '../../services/dataService';
@@ -28,7 +30,7 @@ interface ProjectEditModalProps {
     initialTab?: Tab;
 }
 
-export type Tab = 'general' | 'team' | 'appearance' | 'modules' | 'groups' | 'navigation' | 'integrations' | 'resources';
+export type Tab = 'general' | 'team' | 'roles' | 'appearance' | 'modules' | 'navigation' | 'integrations' | 'resources';
 
 export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     isOpen,
@@ -37,7 +39,6 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     onSave,
     initialTab = 'general'
 }) => {
-    const { can } = useProjectPermissions(project);
     const { t } = useLanguage();
     const { hasAccess: isSocialAllowed } = useModuleAccess('social');
     const { hasAccess: isMarketingAllowed } = useModuleAccess('marketing');
@@ -62,6 +63,9 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     const [visibilityGroupIds, setVisibilityGroupIds] = useState<string[]>(project.visibilityGroupIds || (project.visibilityGroupId ? [project.visibilityGroupId] : []));
     const [isPrivate, setIsPrivate] = useState(project.isPrivate || false);
     const [workspaceGroups, setWorkspaceGroups] = useState<WorkspaceGroup[]>([]);
+    const [customRoles, setCustomRoles] = useState<import('../../types').CustomRole[]>([]);
+    const [loadingRoles, setLoadingRoles] = useState(false);
+    const { can } = useProjectPermissions(project, customRoles);
 
     // Permission check for visibility settings
     const { isOwner, role: workspaceRole } = useWorkspacePermissions();
@@ -96,7 +100,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         { id: 'activity', icon: 'history', label: t('nav.activity'), moduleKey: 'activity' },
     ];
 
-    // Reset state when modal opens & Load GitHub & Nav Prefs
+    // Reset state when modal opens & Load GitHub & Nav Prefs & Roles
     useEffect(() => {
         if (isOpen) {
             setTitle(project.title);
@@ -114,8 +118,6 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
             setVisibilityGroupIds(project.visibilityGroupIds || (project.visibilityGroupId ? [project.visibilityGroupId] : []));
             setIsPrivate(project.isPrivate || false);
             setActiveTab(initialTab);
-
-            getWorkspaceGroups().then(setWorkspaceGroups).catch(console.error);
 
             // Load GitHub Data
             const loadGithubData = async () => {
@@ -160,8 +162,22 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 }
             };
             loadNavPrefs();
+            loadRoles();
         }
     }, [isOpen]); // Only reset when modal opens, avoid resetting on background project updates
+
+    const loadRoles = async () => {
+        if (!project.tenantId) return;
+        setLoadingRoles(true);
+        try {
+            const roles = await getWorkspaceRoles(project.tenantId);
+            setCustomRoles(roles);
+        } catch (e) {
+            console.error('Failed to load roles in edit modal', e);
+        } finally {
+            setLoadingRoles(false);
+        }
+    };
 
     const handleConnectGithub = async () => {
         const user = auth.currentUser;
@@ -219,12 +235,15 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         }
     };
 
+    // Check if current user is project owner (for showing Roles tab)
+    const isProjectOwner = auth.currentUser?.uid === project.ownerId;
+
     const tabs: { id: Tab; label: string; icon: string }[] = [
         { id: 'general', label: t('projectSettings.tabs.general'), icon: 'settings' },
         { id: 'team', label: t('projectSettings.tabs.team'), icon: 'group' },
+        ...(isProjectOwner ? [{ id: 'roles' as Tab, label: t('projectSettings.tabs.roles', 'Roles'), icon: 'shield_person' }] : []),
         { id: 'appearance', label: t('projectSettings.tabs.appearance'), icon: 'palette' },
         { id: 'modules', label: t('projectSettings.tabs.modules'), icon: 'extension' },
-        { id: 'groups', label: t('projectSettings.tabs.groups'), icon: 'groups' },
         { id: 'navigation', label: t('projectSettings.tabs.navigation'), icon: 'menu' },
         { id: 'integrations', label: t('projectSettings.tabs.integrations'), icon: 'integration_instructions' },
         { id: 'resources', label: t('projectSettings.tabs.resources'), icon: 'link' },
@@ -235,7 +254,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         milestones: t('nav.milestones'),
         issues: t('nav.issues'),
         ideas: t('nav.flows'),
-        groups: t('projectSettings.modules.groups'),
+
         activity: t('nav.activity'),
         social: t('nav.social'),
         marketing: t('nav.marketing'),
@@ -477,6 +496,16 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                     <ProjectTeamManager
                         project={project}
                         canManage={can('canInvite')}
+                        customRoles={customRoles}
+                    />
+                );
+            case 'roles':
+                return (
+                    <RolesTab
+                        project={project}
+                        isOwner={isProjectOwner}
+                        onProjectUpdate={loadRoles} // Trigger roles reload
+                        customRoles={customRoles}
                     />
                 );
             case 'appearance':
@@ -548,7 +577,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                     <div className="space-y-4 animate-in fade-in duration-300">
                         <p className="text-sm text-[var(--color-text-muted)]">{t('projectSettings.modules.description')}</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            {['tasks', 'sprints', 'issues', 'ideas', 'milestones', 'groups', 'activity', 'social', 'marketing', 'accounting'].map((mod) => {
+                            {['tasks', 'sprints', 'issues', 'ideas', 'milestones', 'activity', 'social', 'marketing', 'accounting'].map((mod) => {
                                 // Restricted Check
                                 // Restricted Check - using top-level hooks
 
@@ -586,9 +615,9 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                             mod === 'social' ? 'campaign' :
                                                                 mod === 'marketing' ? 'ads_click' :
                                                                     mod === 'accounting' ? 'receipt_long' :
-                                                                        mod === 'groups' ? 'groups' :
-                                                                            mod === 'sprints' ? 'directions_run' :
-                                                                                mod === 'activity' ? 'history' : 'bug_report'}
+
+                                                                        mod === 'sprints' ? 'directions_run' :
+                                                                            mod === 'activity' ? 'history' : 'bug_report'}
                                             </span>
                                         </div>
                                         <div className="flex-1">
@@ -605,14 +634,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                         </div>
                     </div>
                 );
-            case 'groups':
-                return (
-                    <ProjectGroupManager
-                        projectId={project.id}
-                        tenantId={project.tenantId}
-                        canManage={can('canManageGroups')}
-                    />
-                );
+
             case 'navigation':
                 // Get nav items in the user's custom order
                 const orderedNavItems = navOrder.length > 0

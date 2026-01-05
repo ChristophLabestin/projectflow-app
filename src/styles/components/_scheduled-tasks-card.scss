@@ -1,0 +1,173 @@
+.scheduled-tasks-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+
+    .card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 1rem;
+
+        h3 {
+            font-weight: 700;
+            color: var(--color-text-main);
+            font-size: 1.125rem; // h5 equivalent
+        }
+
+        .icon {
+            font-size: 1.5rem;
+
+            &.today {
+                color: #10b981;
+            }
+
+            &.upcoming {
+                color: var(--color-primary);
+            }
+
+            &.empty {
+                color: var(--color-text-subtle);
+            }
+        }
+    }
+
+    .empty-state {
+        padding: 1rem;
+        text-align: center;
+        font-size: 0.875rem;
+        color: var(--color-text-muted);
+    }
+
+    .tasks-list {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        // Negative margin hack from original to extend hover effect to edges if needed, 
+        // but assuming Card has padding, we might want to handle this gracefully.
+        // Original had -mx-2 px-2.
+        margin: 0 -0.5rem;
+        padding: 0 0.5rem;
+
+        // Divide-y
+        &> :not([hidden])~ :not([hidden]) {
+            border-top: 1px solid var(--color-surface-border);
+        }
+    }
+
+    .task-item {
+        display: block;
+        padding: 0.75rem 1rem;
+        margin: 0 -0.5rem;
+        border-radius: 0.5rem;
+        transition: background-color 0.2s;
+
+        &:first-child {
+            padding-top: 0.5rem;
+        }
+
+        &:last-child {
+            padding-bottom: 0.5rem;
+        }
+
+        &:hover {
+            background-color: var(--color-surface-hover);
+
+            .task-title {
+                color: var(--color-primary);
+            }
+
+            .chevron {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .item-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .item-content {
+            flex: 1;
+            min-width: 0;
+            padding-right: 0.75rem;
+        }
+
+        .title-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+
+            .bug-icon {
+                font-size: 0.875rem;
+                color: #f43f5e;
+            }
+
+            .task-title {
+                font-size: 0.875rem;
+                font-weight: 500;
+                color: var(--color-text-main);
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                transition: color 0.2s;
+            }
+        }
+
+        .meta-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.125rem;
+
+            .priority-badge {
+                font-size: 0.625rem;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.05em;
+
+                &.urgent {
+                    color: #f43f5e;
+                }
+
+                &.high {
+                    color: #f97316;
+                }
+
+                // orange-500
+                &.medium {
+                    color: #3b82f6;
+                }
+
+                &.low {
+                    color: var(--color-text-muted);
+                }
+            }
+
+            .date-badge {
+                font-size: 0.625rem;
+                color: var(--color-text-muted);
+                display: flex;
+                align-items: center;
+                gap: 0.25rem;
+
+                .dot {
+                    width: 0.25rem;
+                    height: 0.25rem;
+                    border-radius: 50%;
+                    background-color: var(--color-text-muted);
+                }
+            }
+        }
+
+        .chevron {
+            font-size: 1.125rem;
+            color: var(--color-text-subtle);
+            opacity: 0;
+            transition: all 0.2s;
+            transform: translateX(-0.5rem);
+        }
+    }
+}

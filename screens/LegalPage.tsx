@@ -174,8 +174,8 @@ const LegalPage: React.FC = () => {
         switch (page) {
             case 'impressum':
                 return (
-                    <div className="space-y-8">
-                        <h1 className="text-4xl font-bold tracking-tight mb-8 text-[var(--color-text-main)]">
+                    <div className="legal-typography">
+                        <h1>
                             {t("legal.titles.impressum")}
                         </h1>
 
@@ -246,9 +246,9 @@ const LegalPage: React.FC = () => {
                 const lastUpdatedDate = new Date().toLocaleDateString(language === 'de' ? 'de-DE' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 
                 return (
-                    <div className="space-y-8">
-                        <h1 className="text-4xl font-bold tracking-tight mb-8 text-[var(--color-text-main)]">{t('legal.titles.appPrivacy')}</h1>
-                        <div className="space-y-6 text-[var(--color-text-paragraph)] leading-relaxed font-sans text-base">
+                    <div className="legal-typography">
+                        <h1>{t('legal.titles.appPrivacy')}</h1>
+                        <div>
                             <section>
                                 <h2 id="app-intro" className="text-[var(--color-text-main)] font-bold text-2xl mb-4 scroll-mt-24">{t('legal.appPrivacy.intro.title')}</h2>
                                 <p dangerouslySetInnerHTML={{ __html: txt('legal.appPrivacy.intro.text') }} />
@@ -266,7 +266,7 @@ const LegalPage: React.FC = () => {
                                 <p className="mb-4">{t('legal.appPrivacy.collectedData.intro')}</p>
                                 {['account', 'auth', 'profile', 'content', 'social', 'lists', 'integration', 'ai', 'preferences', 'logs'].map(key => (
                                     <div key={key} className="mb-4">
-                                        <h3 className="font-bold text-[var(--color-text-main)] text-lg uppercase tracking-wide mb-2 mt-4">{t(`legal.appPrivacy.collectedData.${key}.title`)}</h3>
+                                        <h3>{t(`legal.appPrivacy.collectedData.${key}.title`)}</h3>
                                         <p dangerouslySetInnerHTML={{ __html: txt(`legal.appPrivacy.collectedData.${key}.text`) }} />
                                     </div>
                                 ))}
@@ -504,17 +504,17 @@ const LegalPage: React.FC = () => {
                 };
 
                 return (
-                    <div className="space-y-8">
-                        <h1 className="text-4xl font-bold tracking-tight mb-8 text-[var(--color-text-main)]">{t('legal.titles.terms')}</h1>
-                        <div className="space-y-6 text-[var(--color-text-paragraph)] leading-relaxed">
-                            <section className="space-y-3">
-                                <h2 className="text-[var(--color-text-main)] font-bold text-2xl">{terms.summary.title}</h2>
+                    <div className="legal-typography">
+                        <h1>{t('legal.titles.terms')}</h1>
+                        <div>
+                            <section>
+                                <h2>{terms.summary.title}</h2>
                                 <p dangerouslySetInnerHTML={{ __html: formatBold(terms.summary.text) }} />
                             </section>
 
                             {terms.sections.map((section, sectionIndex) => (
-                                <section key={sectionIndex} className="space-y-3">
-                                    <h3 id={slugify(section.title)} className="text-[var(--color-text-main)] font-bold text-2xl scroll-mt-24">{section.title}</h3>
+                                <section key={sectionIndex}>
+                                    <h3 id={slugify(section.title)} className="scroll-mt-24">{section.title}</h3>
                                     {section.blocks.map((block, blockIndex) => renderBlock(block, blockIndex))}
                                 </section>
                             ))}
@@ -530,10 +530,10 @@ const LegalPage: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 20 }}
-            className="h-full flex flex-col overflow-hidden bg-[var(--color-surface-bg)] bg-dots text-[var(--color-text-main)]"
+            className="legal-page"
         >
             {/* Mobile Header */}
-            <div className="md:hidden flex items-center justify-between p-6 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] sticky top-0 z-40">
+            <div className="legal-mobile-header">
                 <button
                     onClick={onClose}
                     className="flex items-center gap-2 text-[var(--color-text-muted)] font-medium"
@@ -551,28 +551,28 @@ const LegalPage: React.FC = () => {
                 </div>
             </div>
 
-            <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
+            <div className="legal-layout">
                 {/* Sidebar / Nav */}
-                <div className="hidden md:flex w-64 lg:w-80 bg-[var(--color-surface-card)] border-r border-[var(--color-surface-border)] p-10 shrink-0 h-full overflow-y-auto flex-col justify-between">
+                <div className="legal-sidebar">
 
                     <div>
                         <button
                             onClick={onClose}
-                            className="flex items-center gap-2 text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors mb-12 font-medium"
+                            className="btn-back"
                         >
                             <ArrowLeft size={18} /> {t('legal.back')}
                         </button>
 
-                        <nav className="space-y-2">
+                        <nav className="nav-group">
                             <button
                                 onClick={() => onNavigate('impressum')}
-                                className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${page === 'impressum' ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'}`}
+                                className={`legal-nav-item ${page === 'impressum' ? 'active' : ''}`}
                             >
                                 {t('legal.nav.impressum')}
                             </button>
                             <button
                                 onClick={() => onNavigate('privacy')}
-                                className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${page === 'privacy' ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'}`}
+                                className={`legal-nav-item ${page === 'privacy' ? 'active' : ''}`}
                             >
                                 {t('legal.nav.privacy')}
                             </button>
@@ -580,13 +580,13 @@ const LegalPage: React.FC = () => {
                                 <motion.div
                                     initial={{ opacity: 0, height: 0 }}
                                     animate={{ opacity: 1, height: 'auto' }}
-                                    className="ml-4 mt-2 mb-4 space-y-1 border-l-2 border-neutral-200 pl-4 overflow-hidden"
+                                    className="legal-subnav"
                                 >
                                     {appPrivacySections.map((section) => (
                                         <button
                                             key={section.id}
                                             onClick={() => scrollToSection(section.id)}
-                                            className={`block w-full text-left text-xs py-1 transition-colors ${activeSection === section.id ? 'text-[var(--color-primary)] font-semibold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                                            className={`subnav-item ${activeSection === section.id ? 'active' : ''}`}
                                         >
                                             {section.title}
                                         </button>
@@ -595,7 +595,7 @@ const LegalPage: React.FC = () => {
                             )}
                             <button
                                 onClick={() => onNavigate('terms')}
-                                className={`w-full text-left px-4 py-3 rounded-lg text-sm font-medium transition-colors ${page === 'terms' ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)]' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'}`}
+                                className={`legal-nav-item ${page === 'terms' ? 'active' : ''}`}
                             >
                                 {t('legal.nav.terms')}
                             </button>
@@ -603,13 +603,13 @@ const LegalPage: React.FC = () => {
                                 <motion.div
                                     initial={{ opacity: 0, height: 0 }}
                                     animate={{ opacity: 1, height: 'auto' }}
-                                    className="ml-4 mt-2 mb-4 space-y-1 border-l-2 border-neutral-200 pl-4 overflow-hidden"
+                                    className="legal-subnav"
                                 >
                                     {termsSections.map((section) => (
                                         <button
                                             key={section.id}
                                             onClick={() => scrollToSection(section.id)}
-                                            className={`block w-full text-left text-xs py-1 transition-colors ${activeSection === section.id ? 'text-[var(--color-primary)] font-semibold' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                                            className={`subnav-item ${activeSection === section.id ? 'active' : ''}`}
                                         >
                                             {section.title}
                                         </button>
@@ -632,9 +632,9 @@ const LegalPage: React.FC = () => {
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: '100%' }}
                             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                            className="fixed inset-0 z-50 bg-[var(--color-surface-bg)] flex flex-col md:hidden"
+                            className="legal-mobile-menu"
                         >
-                            <div className="flex justify-end p-6">
+                            <div className="menu-header">
                                 <button
                                     onClick={() => setIsMobileMenuOpen(false)}
                                     className="p-2 bg-neutral-100 rounded-full hover:bg-neutral-200 transition-colors"
@@ -643,28 +643,28 @@ const LegalPage: React.FC = () => {
                                 </button>
                             </div>
 
-                            <div className="flex-1 flex flex-col items-center justify-center space-y-8 p-8">
+                            <div className="menu-links">
                                 <button
                                     onClick={() => onNavigate('impressum')}
-                                    className={`text-3xl font-bold transition-colors ${page === 'impressum' ? 'text-[var(--color-text-main)]' : 'text-[var(--color-text-muted)]'}`}
+                                    className={page === 'impressum' ? 'active' : ''}
                                 >
                                     {t('legal.nav.impressum')}
                                 </button>
                                 <button
                                     onClick={() => onNavigate('privacy')}
-                                    className={`text-3xl font-bold transition-colors ${page === 'privacy' ? 'text-[var(--color-text-main)]' : 'text-[var(--color-text-muted)]'}`}
+                                    className={page === 'privacy' ? 'active' : ''}
                                 >
                                     {t('legal.nav.privacy')}
                                 </button>
                                 <button
                                     onClick={() => onNavigate('terms')}
-                                    className={`text-3xl font-bold transition-colors ${page === 'terms' ? 'text-[var(--color-text-main)]' : 'text-[var(--color-text-muted)]'}`}
+                                    className={page === 'terms' ? 'active' : ''}
                                 >
                                     {t('legal.nav.terms')}
                                 </button>
                             </div>
 
-                            <div className="p-8 border-t border-[var(--color-surface-border)] flex flex-col items-center gap-6 bg-[var(--color-surface-card)] mb-0">
+                            <div className="menu-footer">
                                 <button
                                     onClick={onClose}
                                     className="flex items-center gap-2 text-[var(--color-text-muted)] font-medium"
@@ -681,7 +681,7 @@ const LegalPage: React.FC = () => {
                 {/* Content Area */}
                 <div
                     ref={contentRef}
-                    className="flex-1 p-6 md:p-16 lg:p-24 max-w-4xl relative overflow-y-auto h-full scroll-smooth"
+                    className="legal-content-area legal-typography"
                 >
                     {renderContent()}
                 </div>

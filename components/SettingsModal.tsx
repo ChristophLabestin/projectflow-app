@@ -32,8 +32,9 @@ import { AnimatePresence } from 'framer-motion';
 import { Modal } from './ui/Modal';
 
 import { DateFormat, useLanguage } from '../context/LanguageContext';
+import { WorkspaceRolesTab } from './settings/WorkspaceRolesTab';
 
-type SettingsTab = 'account' | 'preferences' | 'security' | 'general' | 'billing' | 'email' | 'integrations' | 'prebeta';
+type SettingsTab = 'account' | 'preferences' | 'security' | 'general' | 'billing' | 'email' | 'integrations' | 'prebeta' | 'roles';
 
 interface SettingsModalProps {
     isOpen: boolean;
@@ -631,9 +632,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
     const tabs: { id: SettingsTab; label: string; icon: string }[] = [
         { id: 'account', label: t('settings.tabs.account'), icon: 'person' },
         { id: 'preferences', label: t('settings.tabs.preferences'), icon: 'tune' },
-        { id: 'security', label: t('settings.tabs.security'), icon: 'security' },
+        { id: 'security', label: t('settings.tabs.security'), icon: 'lock_person' },
+        { id: 'roles', label: t('settings.tabs.roles'), icon: 'shield_person' },
         { id: 'general', label: t('settings.tabs.general'), icon: 'settings' },
-        { id: 'api', label: 'API Keys', icon: 'key' } as any, // 'api' technically not in SettingsTab type in my assumption but used in effect? Ah, originally 'integrations' maybe? The original code had activeTab === 'api'.
+        { id: 'api', label: t('settings.tabs.api') || 'API Keys', icon: 'key' } as any,
         { id: 'prebeta', label: t('settings.tabs.prebeta'), icon: 'science' },
     ];
 
@@ -641,591 +643,500 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
         switch (activeTab) {
             case 'prebeta':
                 return (
-                    <div className="space-y-6 animate-fade-in">
-                        <div>
-                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">{t('settings.prebeta.title')}</h2>
-                            <p className="text-[var(--color-text-muted)] text-sm">{t('settings.prebeta.subtitle')}</p>
-                        </div>
-                        <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-sm">
-                            <div className="flex items-start gap-3">
-                                <span className="material-symbols-outlined text-xl shrink-0 mt-0.5">warning</span>
-                                <div className="space-y-1">
-                                    <p className="font-bold">{t('settings.prebeta.notice.title')}</p>
-                                    <p>{t('settings.prebeta.notice.body')}</p>
+                    <div className="animate-fade-in space-y-8">
+                        <header className="pb-6">
+                            <h2 className="text-2xl font-bold text-[var(--color-text-main)] mb-1">
+                                {t('settings.prebeta.title')}
+                            </h2>
+                            <p className="text-sm text-[var(--color-text-muted)] font-medium">
+                                {t('settings.prebeta.subtitle')}
+                            </p>
+                        </header>
+
+                        <div className="space-y-5">
+                            <section className="notice-card">
+                                <div className="content-wrapper">
+                                    <div className="icon-box">
+                                        <span className="material-symbols-outlined text-[20px]">info</span>
+                                    </div>
+                                    <div>
+                                        <h3 className="title">{t('settings.prebeta.noticeTitle')}</h3>
+                                        <p className="text">
+                                            {t('settings.prebeta.notice')}
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                        <div className="space-y-8 max-w-4xl">
-                            <section className="space-y-4">
-                                <Input
-                                    label={t('settings.prebeta.apiKey.label')}
-                                    type="password"
-                                    value={geminiApiKey}
-                                    onChange={(e) => setGeminiApiKey(e.target.value)}
-                                    placeholder={t('settings.prebeta.apiKey.placeholder')}
-                                />
-                                <p className="text-xs text-[var(--color-text-muted)]">
-                                    {t('settings.prebeta.apiKey.helperPrefix')}{' '}
-                                    <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-[var(--color-primary)] hover:underline">
-                                        {t('settings.prebeta.apiKey.helperLink')}
-                                    </a>
-                                    {t('settings.prebeta.apiKey.helperSuffix')}
-                                </p>
-                                <div className="pt-2"></div>
-                                <Input
-                                    label={t('settings.prebeta.tokenLimit.label')}
-                                    type="number"
-                                    value={geminiTokenLimit}
-                                    onChange={(e) => setGeminiTokenLimit(parseInt(e.target.value) || 0)}
-                                    placeholder={t('settings.prebeta.tokenLimit.placeholder')}
-                                />
-                                <p className="text-xs text-[var(--color-text-muted)]">
-                                    {t('settings.prebeta.tokenLimit.helper')}
-                                </p>
                             </section>
-                            <div className="pt-4 flex justify-end gap-3 sticky bottom-0 bg-[var(--color-surface-bg)] pb-2 z-10 border-t border-[var(--color-surface-border)]">
-                                <Button onClick={handleSavePreBeta} loading={saving}>
-                                    {t('common.saveChanges')}
-                                </Button>
-                            </div>
-                        </div >
-                    </div >
+
+                            <section className="settings-section-card">
+                                <header className="settings-section-header">
+                                    <div className="icon-box">
+                                        <span className="material-symbols-outlined text-[20px]">auto_awesome</span>
+                                    </div>
+                                    <h3>
+                                        {t('settings.prebeta.aiConfigTitle')}
+                                    </h3>
+                                </header>
+                                <div className="space-y-6">
+                                    <div className="max-w-2xl">
+                                        <Input
+                                            label={t('settings.prebeta.geminiKeyLabel')}
+                                            type="password"
+                                            value={geminiApiKey}
+                                            onChange={(e) => setGeminiApiKey(e.target.value)}
+                                            placeholder="AIza..."
+                                            className="settings-input"
+                                        />
+                                        <p className="mt-4 text-xs font-black text-[var(--color-text-main)] opacity-50 flex items-center gap-2">
+                                            <span className="material-symbols-outlined text-sm">info</span>
+                                            {t('settings.prebeta.geminiKeyHelp')}
+                                        </p>
+                                    </div>
+
+                                    <div className="pt-6 flex justify-end">
+                                        <Button
+                                            onClick={handleSavePreBeta}
+                                            loading={saving}
+                                            className="btn-save"
+                                        >
+                                            {t('common.saveChanges')}
+                                        </Button>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
                 );
             case 'preferences':
                 return (
-                    <div className="space-y-6 animate-fade-in">
-                        <div>
-                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">{t('settings.preferences.title')}</h2>
-                            <p className="text-[var(--color-text-muted)] text-sm">{t('settings.preferences.subtitle')}</p>
-                        </div>
-                        <div className="space-y-8">
-                            <section className="space-y-3">
-                                <label className="text-sm font-bold text-[var(--color-text-main)] block">
+                    <div className="animate-fade-in space-y-8">
+                        <header className="pb-6">
+                            <h2 className="text-2xl font-black text-[var(--color-text-main)] mb-1">
+                                {t('settings.preferences.title')}
+                            </h2>
+                            <p className="text-sm text-[var(--color-text-main)] font-bold opacity-70">
+                                {t('settings.preferences.subtitle')}
+                            </p>
+                        </header>
+
+                        <div className="space-y-6">
+                            <section className="settings-section-card">
+                                <h3 className="text-[11px] font-black text-[var(--color-text-main)] uppercase tracking-[0.25em] mb-6 opacity-40 px-1">
                                     {t('settings.preferences.language.label')}
-                                </label>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                </h3>
+                                <div className="card-grid">
                                     <button
                                         onClick={() => setLanguage('en')}
-                                        className={`
-                                            flex items-center gap-3 p-3 rounded-xl border text-left transition-all
-                                            ${language === 'en'
-                                                ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]'
-                                                : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'}
-                                        `}
+                                        className={`language-btn ${language === 'en' ? 'active' : 'inactive'}`}
                                     >
-                                        <div className="size-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-xs shrink-0">
-                                            EN
-                                        </div>
-                                        <div>
-                                            <div className={`font-medium ${language === 'en' ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}>{t('language.english')}</div>
-                                            <div className="text-xs text-[var(--color-text-muted)]">{t('settings.preferences.language.englishTag')}</div>
-                                        </div>
-                                        {language === 'en' && (
-                                            <span className="material-symbols-outlined text-[var(--color-primary)] ml-auto">check_circle</span>
-                                        )}
+                                        <span className="flag">🇺🇸</span>
+                                        <span className="label">{t('language.english')}</span>
+                                        {language === 'en' && <span className="material-symbols-outlined check-icon ml-auto">check_circle</span>}
                                     </button>
+
                                     <button
                                         onClick={() => setLanguage('de')}
-                                        className={`
-                                            flex items-center gap-3 p-3 rounded-xl border text-left transition-all
-                                            ${language === 'de'
-                                                ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]'
-                                                : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)]'}
-                                        `}
+                                        className={`language-btn ${language === 'de' ? 'active' : 'inactive'}`}
                                     >
-                                        <div className="size-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold text-xs shrink-0">
-                                            DE
-                                        </div>
-                                        <div>
-                                            <div className={`font-medium ${language === 'de' ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-main)]'}`}>{t('language.german')}</div>
-                                            <div className="text-xs text-[var(--color-text-muted)]">{t('settings.preferences.language.germanTag')}</div>
-                                        </div>
-                                        {language === 'de' && (
-                                            <span className="material-symbols-outlined text-[var(--color-primary)] ml-auto">check_circle</span>
-                                        )}
+                                        <span className="flag">🇩🇪</span>
+                                        <span className="label">{t('language.german', 'Deutsch')}</span>
+                                        {language === 'de' && <span className="material-symbols-outlined check-icon ml-auto">check_circle</span>}
                                     </button>
                                 </div>
                             </section>
 
-                            <section className="space-y-3">
-                                <Select
-                                    label={t('settings.preferences.dateFormat.label')}
-                                    value={dateFormat}
-                                    onChange={(e) => setDateFormat(e.target.value as DateFormat)}
-                                    className="max-w-md"
-                                >
-                                    {[
-                                        'MM/dd/yyyy',
-                                        'dd/MM/yyyy',
-                                        'dd.MM.yyyy',
-                                        'yyyy-MM-dd',
-                                        'yyyy/MM/dd',
-                                        'd. MMM yyyy',
-                                        'MMM d, yyyy',
-                                        'MMMM d, yyyy',
-                                        'd MMMM yyyy'
-                                    ].map((fmt) => (
-                                        <option key={fmt} value={fmt}>
-                                            {fmt} — ({format(new Date(2025, 11, 28), fmt)})
-                                        </option>
-                                    ))}
-                                </Select>
-                                <p className="text-[10px] text-[var(--color-text-muted)] ml-1">
-                                    {t('settings.preferences.dateFormat.helper')}
-                                </p>
+                            <section className="settings-section-card">
+                                <label className="text-[11px] font-black text-[var(--color-text-main)] uppercase tracking-[0.25em] mb-6 block opacity-40 px-1">
+                                    {t('settings.preferences.ui.dateFormat')}
+                                </label>
+                                <div className="max-w-xl">
+                                    <select
+                                        value={dateFormat}
+                                        onChange={(e) => handleDateFormatChange(e.target.value)}
+                                        className="settings-input w-full px-6 cursor-pointer"
+                                    >
+                                        <option value="MMM d, yyyy">Jan 20, 2024</option>
+                                        <option value="dd/MM/yyyy">20/01/2024</option>
+                                        <option value="MM/dd/yyyy">01/20/2024</option>
+                                        <option value="yyyy-MM-dd">2024-01-20</option>
+                                    </select>
+                                </div>
                             </section>
+                        </div>
+                    </div>
+                );
+            case 'roles':
+                return (
+                    <div className="animate-fade-in flex flex-col h-full">
+                        <header className="pb-10 shrink-0">
+                            <h2 className="text-3xl font-black text-[var(--color-text-main)] mb-1 tracking-tight">
+                                {t('settings.tabs.roles')}
+                            </h2>
+                            <p className="text-sm text-[var(--color-text-main)] font-bold opacity-70">
+                                {t('settings.roles.subtitle', 'Configure workspace-wide roles and their associated permissions.')}
+                            </p>
+                        </header>
+
+                        <div className="flex-1 min-h-0 min-w-0">
+                            <WorkspaceRolesTab
+                                tenant={tenant}
+                                isOwner={tenantId === auth.currentUser?.uid}
+                                onUpdate={() => {
+                                    const loadTenant = async () => {
+                                        if (tenantId) {
+                                            const data = await getTenant(tenantId);
+                                            if (data) setTenant(data);
+                                        }
+                                    };
+                                    loadTenant();
+                                }}
+                            />
                         </div>
                     </div>
                 );
             case 'general':
                 return (
-                    <div className="space-y-6 animate-fade-in">
-                        <div>
-                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">{t('settings.general.title')}</h2>
-                            <p className="text-[var(--color-text-muted)] text-sm">{t('settings.general.subtitle')}</p>
-                        </div>
+                    <div className="settings-tab-content">
+                        <header className="settings-header">
+                            <h2>
+                                {t('settings.tabs.general')}
+                            </h2>
+                            <p>
+                                {t('settings.general.subtitle', 'Manage your workspace information and system settings.')}
+                            </p>
+                        </header>
 
-                        <div className="space-y-8">
-                            <section>
-                                <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-4 pb-2 border-b border-[var(--color-surface-border)]">{t('settings.general.company.title')}</h3>
-                                <div className="space-y-4">
+                        <div className="flex flex-col gap-6">
+                            <section className="settings-section-card">
+                                <header className="settings-section-header">
+                                    <div className="icon-box">
+                                        <span className="material-symbols-outlined text-[20px]">business</span>
+                                    </div>
+                                    <h3>
+                                        {t('settings.general.company.title')}
+                                    </h3>
+                                </header>
+                                <div className="settings-input-group">
                                     <Input
                                         label={t('settings.general.company.name')}
                                         value={name}
                                         onChange={(e) => setName(e.target.value)}
-                                        placeholder={t('settings.general.company.namePlaceholder')}
+                                        className="settings-input"
                                     />
-                                    <Textarea
-                                        label={t('settings.general.company.description')}
-                                        value={description}
-                                        onChange={(e) => setDescription(e.target.value)}
-                                        placeholder={t('settings.general.company.descriptionPlaceholder')}
+                                    <Input
+                                        label={t('settings.general.company.website')}
+                                        value={website}
+                                        onChange={(e) => setWebsite(e.target.value)}
+                                        className="settings-input"
                                     />
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <Input
-                                            label={t('settings.general.company.website')}
-                                            value={website}
-                                            onChange={(e) => setWebsite(e.target.value)}
-                                            placeholder="https://"
-                                        />
-                                        <Input
-                                            label={t('settings.general.company.contactEmail')}
-                                            value={contactEmail}
-                                            onChange={(e) => setContactEmail(e.target.value)}
-                                            placeholder="contact@company.com"
-                                        />
-                                    </div>
                                 </div>
-
                             </section>
 
-                            <section>
-                                <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-4 pb-2 border-b border-[var(--color-surface-border)]">{t('settings.general.smtp.title')}</h3>
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <label className="text-sm font-medium text-[var(--color-text-main)]">{t('settings.general.smtp.useCustom')}</label>
-                                        <Checkbox
-                                            checked={useCustomSmtp}
-                                            onChange={(checked) => setUseCustomSmtp(checked)}
-                                        />
-                                    </div>
-
-                                    <AnimatePresence>
-                                        {useCustomSmtp && (
-                                            <div className="space-y-4 pt-2">
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <Input
-                                                        label={t('settings.general.smtp.host')}
-                                                        value={smtpHost}
-                                                        onChange={(e) => setSmtpHost(e.target.value)}
-                                                        placeholder="smtp.example.com"
-                                                    />
-                                                    <Input
-                                                        label={t('settings.general.smtp.port')}
-                                                        type="number"
-                                                        value={smtpPort}
-                                                        onChange={(e) => setSmtpPort(parseInt(e.target.value))}
-                                                        placeholder="587"
-                                                    />
-                                                </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                                    <Input
-                                                        label={t('settings.general.smtp.user')}
-                                                        value={smtpUser}
-                                                        onChange={(e) => setSmtpUser(e.target.value)}
-                                                        placeholder="user@example.com"
-                                                    />
-                                                    <Input
-                                                        label={t('settings.general.smtp.pass')}
-                                                        type="password"
-                                                        value={smtpPass}
-                                                        onChange={(e) => setSmtpPass(e.target.value)}
-                                                        placeholder="••••••••"
-                                                    />
-                                                </div>
-                                                <Input
-                                                    label={t('settings.general.smtp.fromEmail')}
-                                                    value={smtpFromEmail}
-                                                    onChange={(e) => setSmtpFromEmail(e.target.value)}
-                                                    placeholder="noreply@example.com"
-                                                    hint={t('settings.general.smtp.fromEmailHint')}
-                                                />
-
-                                                <div className="flex items-center gap-3 pt-2">
-                                                    <Button
-                                                        variant="secondary"
-                                                        onClick={handleTestConnection}
-                                                        loading={testingConnection}
-                                                        className="w-full sm:w-auto"
-                                                    >
-                                                        {t('settings.email.smtp.testConnection')}
-                                                    </Button>
-
-                                                    {connectionStatus === 'success' && (
-                                                        <span className="flex items-center gap-1.5 text-emerald-500 text-sm font-medium animate-fade-in">
-                                                            <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                                                            {t('settings.email.smtp.verified')}
-                                                        </span>
-                                                    )}
-
-                                                    {connectionStatus === 'error' && (
-                                                        <span className="flex items-center gap-1.5 text-rose-500 text-sm font-medium animate-fade-in">
-                                                            <span className="material-symbols-outlined text-[18px]">error</span>
-                                                            {t('settings.email.smtp.failed')}
-                                                        </span>
-                                                    )}
-                                                </div>
+                            <section className="settings-section-card">
+                                <header className="settings-section-header">
+                                    <div className="flex items-center justify-between w-full">
+                                        <div className="flex items-center gap-4">
+                                            <div className="icon-box">
+                                                <span className="material-symbols-outlined text-[20px]">mail</span>
                                             </div>
-                                        )}
-                                    </AnimatePresence>
+                                            <div>
+                                                <h3>
+                                                    {t('settings.general.smtp.title')}
+                                                </h3>
+                                                <p className="text-[11px] text-[var(--color-text-main)] font-black opacity-40 mt-0.5">
+                                                    {t('settings.general.smtp.subtitle')}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${connectionStatus === 'success' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-rose-500/10 text-rose-600 dark:text-rose-400'}`}>
+                                            <div className={`size-1.5 rounded-full ${connectionStatus === 'success' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]'}`} />
+                                            {connectionStatus === 'success' ? t('status.healthy') : t('status.disconnected', 'Disconnected')}
+                                        </div>
+                                    </div>
+                                </header>
+
+                                <div className="grid grid-cols-2 gap-6">
+                                    <Input label={t('settings.email.smtp.host')} value={smtpHost} onChange={(e) => setSmtpHost(e.target.value)} className="settings-input" />
+                                    <Input label={t('settings.email.smtp.port')} value={smtpPort.toString()} onChange={(e) => setSmtpPort(parseInt(e.target.value))} className="settings-input" />
+                                    <Input label={t('settings.email.smtp.user')} value={smtpUser} onChange={(e) => setSmtpUser(e.target.value)} className="settings-input" />
+                                    <Input label={t('settings.email.smtp.pass')} type="password" value={smtpPass} onChange={(e) => setSmtpPass(e.target.value)} className="settings-input" />
                                 </div>
 
-                            </section>
+                                <div className="mt-8 flex items-center justify-between">
+                                    <Button variant="ghost" size="sm" onClick={handleTestConnection} loading={testingConnection} className="font-black hover:bg-[var(--color-surface-paper)] px-5 h-10 rounded-xl text-[10px] uppercase tracking-widest opacity-60">
+                                        {t('settings.general.smtp.test')}
+                                    </Button>
 
-                            <section className="flex items-center justify-between p-4 bg-[var(--color-surface-hover)] rounded-xl border border-[var(--color-surface-border)]">
-                                <div>
-                                    <h3 className="font-bold text-[var(--color-text-main)] text-sm">{t('settings.general.onboarding.title')}</h3>
-                                    <p className="text-xs text-[var(--color-text-muted)] mt-1 max-w-sm">{t('settings.general.onboarding.description')}</p>
+                                    <Button
+                                        onClick={handleSave}
+                                        loading={saving}
+                                        className="btn-save"
+                                    >
+                                        {t('common.saveChanges')}
+                                    </Button>
                                 </div>
-                                <Button variant="secondary" onClick={handleRestartOnboarding}>
-                                    {t('settings.general.onboarding.button')}
-                                </Button>
-
                             </section>
 
-                            <div className="pt-4 flex justify-end gap-3 sticky bottom-0 bg-[var(--color-surface-bg)] pb-2 z-10 border-t border-[var(--color-surface-border)]">
-                                <Button onClick={handleSave} loading={saving}>
-                                    {t('common.saveChanges')}
-                                </Button>
-                            </div>
-                        </div >
-                    </div >
+                            <section className="notice-card bg-rose-500/[0.03] dark:bg-rose-500/[0.02]">
+                                <div className="flex items-center justify-between">
+                                    <div className="content-wrapper">
+                                        <div className="icon-box bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                                            <span className="material-symbols-outlined text-[20px]">restart_alt</span>
+                                        </div>
+                                        <div>
+                                            <h4 className="title text-rose-600 dark:text-rose-400">{t('settings.general.onboarding.title')}</h4>
+                                            <p className="text text-[11px] opacity-40">{t('settings.general.onboarding.description')}</p>
+                                        </div>
+                                    </div>
+                                    <Button variant="ghost" size="sm" onClick={handleRestartOnboarding} className="font-black text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 px-6 h-10 rounded-xl ring-1 ring-rose-500/20">
+                                        {t('settings.general.onboarding.button')}
+                                    </Button>
+                                </div>
+                            </section>
+                        </div>
+                    </div>
                 );
             case 'account':
                 return (
-                    <div className="space-y-6 animate-fade-in">
-                        <div>
-                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">{t('settings.account.title')}</h2>
-                            <p className="text-[var(--color-text-muted)] text-sm">{t('settings.account.subtitle')}</p>
-                        </div>
+                    <div className="animate-fade-in space-y-6">
+                        <header className="pb-4">
+                            <h2 className="text-2xl font-black text-[var(--color-text-main)] mb-1">
+                                {t('settings.tabs.account')}
+                            </h2>
+                            <p className="text-sm text-[var(--color-text-main)] font-bold opacity-70">
+                                {t('settings.account.subtitle')}
+                            </p>
+                        </header>
 
-                        <div className="space-y-8">
-                            {/* Email Verification */}
-                            <section>
-                                <div className="p-4 rounded-xl bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)]">
-                                    <div className="flex items-start justify-between">
-                                        <div>
-                                            <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
-                                                {t('settings.account.emailVerification.title')}
-                                                {emailVerified ? (
-                                                    <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 font-medium border border-emerald-500/20">
-                                                        {t('settings.account.emailVerification.verified')}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 font-medium border border-amber-500/20">
-                                                        {t('settings.account.emailVerification.unverified')}
-                                                    </span>
-                                                )}
-                                            </h3>
-                                            <p className="text-sm text-[var(--color-text-muted)] mt-1">{auth.currentUser?.email}</p>
-                                        </div>
-                                        {!emailVerified && (
-                                            <div className="flex flex-col gap-2">
-                                                <Button
-                                                    size="sm"
-                                                    onClick={handleSendVerification}
-                                                    loading={sendingVerification}
-                                                >
-                                                    {t('settings.account.emailVerification.sendButton')}
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={handleCheckVerification}
-                                                >
-                                                    {t('settings.account.emailVerification.checkButton')}
-                                                </Button>
+                        <div className="space-y-5">
+                            <section className="settings-section-card">
+                                <header className="settings-section-header">
+                                    <div className="icon-box">
+                                        <span className="material-symbols-outlined text-[20px]">person</span>
+                                    </div>
+                                    <h3>
+                                        {t('settings.account.profile.title')}
+                                    </h3>
+                                </header>
+                                <div className="card-grid">
+                                    <Input
+                                        label={t('settings.account.profile.displayName')}
+                                        value={auth.currentUser?.displayName || ''}
+                                        disabled
+                                        className="settings-input"
+                                    />
+                                    <Input
+                                        label={t('settings.account.profile.email')}
+                                        value={auth.currentUser?.email || ''}
+                                        disabled
+                                        className="settings-input"
+                                    />
+                                </div>
+                            </section>
+
+                            <section className="settings-section-card">
+                                <header className="settings-section-header">
+                                    <div className="icon-box">
+                                        <span className="material-symbols-outlined text-[20px]">link</span>
+                                    </div>
+                                    <h3>
+                                        {t('settings.account.connected.title')}
+                                    </h3>
+                                </header>
+                                <div className="card-grid">
+                                    <div className="connected-account">
+                                        <div className="provider-info text-slate-900 dark:text-white">
+                                            <div className="logo-box dark">
+                                                <svg className="size-6 fill-current" viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12" /></svg>
                                             </div>
-                                        )}
+                                            <span className="name">GitHub</span>
+                                        </div>
+                                        <span className="status-badge connected">{t('settings.account.connected.status')}</span>
+                                    </div>
+
+                                    <div className="connected-account">
+                                        <div className="provider-info text-slate-900 dark:text-white">
+                                            <div className="logo-box">
+                                                <svg className="size-6" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
+                                            </div>
+                                            <span className="name">Google</span>
+                                        </div>
+                                        <Button variant="ghost" size="sm" className="h-10 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[var(--color-primary)]/10 hover:text-[var(--color-primary)]">{t('settings.account.connected.action', 'Connect')}</Button>
                                     </div>
                                 </div>
                             </section>
 
-                            {/* Connected Accounts */}
-                            <section>
-                                <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-4 pb-2 border-b border-[var(--color-surface-border)]">{t('settings.account.connected.title')}</h3>
-                                <div className="space-y-3">
-                                    {/* GitHub */}
-                                    <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]">
-                                        <div className="flex items-center gap-3">
-                                            <div className="size-10 rounded-full bg-black/5 dark:bg-white/10 flex items-center justify-center">
-                                                <i className="devicon-github-original text-2xl"></i>
-                                            </div>
-                                            <div>
-                                                <div className="font-bold text-sm text-[var(--color-text-main)]">GitHub</div>
-                                                <div className="text-xs text-[var(--color-text-muted)]">
-                                                    {providers.includes('github.com') || githubLinked
-                                                        ? t('settings.account.connected.connected')
-                                                        : t('settings.account.connected.notConnected')}
-                                                </div>
-                                            </div>
+                            <section className="settings-section-card">
+                                <div className="flex items-center justify-between mb-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className="size-11 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400 shadow-inner">
+                                            <span className="material-symbols-outlined text-[20px]">shield</span>
                                         </div>
-                                        {providers.includes('github.com') || githubLinked ? (
-                                            <Button variant="ghost" disabled size="sm" className="text-emerald-500">
-                                                <span className="material-symbols-outlined mr-1 text-lg">check</span>
-                                                {t('settings.account.connected.linked')}
-                                            </Button>
-                                        ) : (
-                                            <Button variant="secondary" size="sm" onClick={handleConnectGithub} loading={connectingGithub}>
-                                                {t('settings.account.connected.connect')}
-                                            </Button>
-                                        )}
-                                    </div>
-
-                                    {/* Google */}
-                                    <div className="flex items-center justify-between p-4 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]">
-                                        <div className="flex items-center gap-3">
-                                            <div className="size-10 rounded-full bg-white border border-gray-200 flex items-center justify-center">
-                                                <img src="https://www.google.com/favicon.ico" alt="Google" className="size-5" />
-                                            </div>
-                                            <div>
-                                                <div className="font-bold text-sm text-[var(--color-text-main)]">Google</div>
-                                                <div className="text-xs text-[var(--color-text-muted)]">
-                                                    {providers.includes('google.com')
-                                                        ? t('settings.account.connected.connected')
-                                                        : t('settings.account.connected.notConnected')}
-                                                </div>
-                                            </div>
-                                        </div>
-                                        {providers.includes('google.com') ? (
-                                            <Button variant="ghost" disabled size="sm" className="text-emerald-500">
-                                                <span className="material-symbols-outlined mr-1 text-lg">check</span>
-                                                {t('settings.account.connected.linked')}
-                                            </Button>
-                                        ) : (
-                                            <Button variant="secondary" size="sm" onClick={handleConnectGoogle} loading={connectingGoogle}>
-                                                {t('settings.account.connected.connect')}
-                                            </Button>
-                                        )}
-                                    </div>
-                                </div>
-
-                            </section>
-
-                            {/* Password Management */}
-                            <section>
-                                <div className="flex items-center justify-between mb-4">
-                                    <div>
-                                        <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('settings.account.password.title')}</h3>
-                                        <p className="text-xs text-[var(--color-text-muted)]">
-                                            {providers.includes('password')
-                                                ? t('settings.account.password.description.manage')
-                                                : t('settings.account.password.description.set')}
-                                        </p>
+                                        <h3 className="text-[13px] font-black text-[var(--color-text-main)] uppercase tracking-widest opacity-90">
+                                            {t('settings.security.password.title', 'Password & Security')}
+                                        </h3>
                                     </div>
                                     <Button
-                                        variant="secondary"
+                                        variant="ghost"
+                                        size="sm"
                                         onClick={() => {
                                             setShowSetPassword(!showSetPassword);
                                             setIsChangingPassword(providers.includes('password'));
                                         }}
+                                        className="font-black underline decoration-[3px] underline-offset-8 text-[var(--color-primary)] hover:opacity-80 transition-all"
                                     >
-                                        {providers.includes('password') ? t('settings.account.password.changeButton') : t('settings.account.password.setButton')}
+                                        {providers.includes('password') ? t('settings.security.password.change') : t('settings.security.password.set')}
                                     </Button>
                                 </div>
 
                                 {showSetPassword && (
-                                    <div className="bg-[var(--color-surface-hover)] p-4 rounded-xl border border-[var(--color-surface-border)] animate-fade-in space-y-4">
-                                        <Input
-                                            label={t('settings.account.password.newPassword')}
-                                            type="password"
-                                            value={newPassword}
-                                            onChange={(e) => setNewPassword(e.target.value)}
-                                            placeholder="••••••••"
-                                        />
-                                        <Input
-                                            label={t('settings.account.password.confirmPassword')}
-                                            type="password"
-                                            value={confirmPassword}
-                                            onChange={(e) => setConfirmPassword(e.target.value)}
-                                            placeholder="••••••••"
-                                        />
-                                        <div className="flex justify-end gap-2 pt-2">
-                                            <Button variant="ghost" size="sm" onClick={() => setShowSetPassword(false)}>
-                                                {t('common.cancel')}
-                                            </Button>
-                                            <Button onClick={handleUpdatePassword} loading={settingPassword} size="sm">
-                                                {isChangingPassword ? t('settings.account.password.updateButton') : t('settings.account.password.setConfirmButton')}
-                                            </Button>
+                                    <div className="space-y-6 animate-in slide-in-from-top-4">
+                                        <div className="grid grid-cols-2 gap-8 p-8 rounded-[32px] bg-[var(--color-surface-paper)] shadow-inner ring-1 ring-[var(--color-border-main)]/10">
+                                            <Input label={t('settings.security.password.new')} type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="settings-input" />
+                                            <Input label={t('settings.security.password.confirm')} type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="settings-input" />
                                         </div>
-                                    </div>
-                                )}
-                            </section>
-                        </div >
-                    </div >
-                );
-            case 'security':
-                return (
-                    <div className="space-y-6 animate-fade-in">
-                        <div>
-                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">{t('settings.security.title')}</h2>
-                            <p className="text-[var(--color-text-muted)] text-sm">{t('settings.security.subtitle')}</p>
-                        </div>
-
-                        <div className="space-y-8">
-                            {/* Two Factor Auth */}
-                            <section className="flex items-center justify-between p-4 bg-[var(--color-surface-hover)] rounded-xl border border-[var(--color-surface-border)]">
-                                <div>
-                                    <h3 className="font-bold text-[var(--color-text-main)]">{t('settings.security.2fa.title')}</h3>
-                                    <p className="text-sm text-[var(--color-text-muted)] mt-1">
-                                        {twoFactorEnabled
-                                            ? t('settings.security.2fa.enabled')
-                                            : t('settings.security.2fa.disabled')}
-                                    </p>
-                                </div>
-                                <Button
-                                    variant={twoFactorEnabled ? 'secondary' : 'primary'}
-                                    onClick={() => setShowTwoFactorModal(true)}
-                                >
-                                    {twoFactorEnabled
-                                        ? t('settings.security.2fa.manageButton')
-                                        : t('settings.security.2fa.enableButton')}
-                                </Button>
-                            </section>
-
-                            {/* Passkeys */}
-                            <section>
-                                <div className="flex items-center justify-between mb-4">
-                                    <div>
-                                        <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('settings.security.passkeys.title')}</h3>
-                                        <p className="text-xs text-[var(--color-text-muted)] mt-1">
-                                            {t('settings.security.passkeys.description')}
-                                        </p>
-                                    </div>
-                                    <Button onClick={handleRegisterPasskey} loading={registeringPasskey}>
-                                        <span className="material-symbols-outlined mr-2">fingerprint</span>
-                                        {t('settings.security.passkeys.addButton')}
-                                    </Button>
-                                </div>
-
-                                {passkeys.length > 0 ? (
-                                    <div className="space-y-2">
-                                        {passkeys.map((key) => (
-                                            <div key={key.id} className="flex items-center justify-between p-3 rounded-lg border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="size-8 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
-                                                        <span className="material-symbols-outlined text-lg">passkey</span>
-                                                    </div>
-                                                    <div>
-                                                        <div className="font-medium text-sm text-[var(--color-text-main)]">{key.label || 'Passkey'}</div>
-                                                        <div className="text-xs text-[var(--color-text-muted)]">
-                                                            {t('settings.security.passkeys.created')}: {key.createdAt?.toDate ? format(key.createdAt.toDate(), 'PPP') : 'Unknown'}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/10"
-                                                    onClick={() => handleDeletePasskey(key.id, key.label)}
-                                                >
-                                                    <span className="material-symbols-outlined">delete</span>
-                                                </Button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="p-8 text-center rounded-xl border border-dashed border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]/50">
-                                        <span className="material-symbols-outlined text-3xl text-[var(--color-text-muted)] mb-2">fingerprint</span>
-                                        <p className="text-sm text-[var(--color-text-muted)]">{t('settings.security.passkeys.empty')}</p>
+                                        <div className="flex justify-end gap-4 px-1">
+                                            <Button variant="ghost" size="sm" onClick={() => setShowSetPassword(false)} className="font-black px-8">{t('settings.security.password.cancel')}</Button>
+                                            <Button size="sm" onClick={handleUpdatePassword} loading={settingPassword} className="btn-save">{t('settings.security.password.update')}</Button>
+                                        </div>
                                     </div>
                                 )}
                             </section>
                         </div>
                     </div>
                 );
-            case 'api': // Should match the id in tabs array, even if TS complains about SettingsTab type not including it yet
+            case 'security':
                 return (
-                    <div className="space-y-6 animate-fade-in">
-                        <div>
-                            <h2 className="text-xl font-display font-bold text-[var(--color-text-main)]">{t('settings.api.title')}</h2>
-                            <p className="text-[var(--color-text-muted)] text-sm">{t('settings.api.subtitle')}</p>
-                        </div>
+                    <div className="animate-fade-in space-y-8">
+                        <header className="pb-6">
+                            <h2 className="text-2xl font-black text-[var(--color-text-main)] mb-1">
+                                {t('settings.security.title')}
+                            </h2>
+                            <p className="text-sm text-[var(--color-text-main)] font-bold opacity-70">
+                                {t('settings.security.subtitle')}
+                            </p>
+                        </header>
 
-                        <div className="space-y-8 max-w-4xl">
-                            {/* Create Token Section */}
-                            <section className="p-4 rounded-xl bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] space-y-4">
-                                <h3 className="font-bold text-[var(--color-text-main)]">{t('settings.api.create.title')}</h3>
-                                <div className="flex gap-2">
-                                    <Input
-                                        value={newTokenName}
-                                        onChange={(e) => setNewTokenName(e.target.value)}
-                                        placeholder={t('settings.api.create.placeholder')}
-                                        className="flex-1"
-                                    />
-                                    <Button onClick={handleCreateToken} loading={creatingToken}>
-                                        {t('settings.api.create.button')}
+                        <div className="space-y-6">
+                            <section className="settings-section-card">
+                                <div className="flex items-center justify-between gap-8">
+                                    <div className="flex items-center gap-5">
+                                        <div className="size-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-inner">
+                                            <span className="material-symbols-outlined text-3xl">verified_user</span>
+                                        </div>
+                                        <div>
+                                            <div className="text-[13px] font-black text-[var(--color-text-main)] mb-1 opacity-90">{t('settings.security.2fa.title')}</div>
+                                            <div className="flex items-center gap-2">
+                                                <div className={`size-2 rounded-full ${twoFactorEnabled ? 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]' : 'bg-rose-500 shadow-[0_0_12px_rgba(244,63,94,0.5)]'}`} />
+                                                <div className={`text-[10px] font-black uppercase tracking-widest ${twoFactorEnabled ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                                                    {twoFactorEnabled ? t('common.enabled', 'Enabled') : t('common.disabled', 'Disabled')}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <Button variant="outline" size="sm" onClick={() => setShowTwoFactorModal(true)} className="h-12 px-6 rounded-xl font-black border-transparent hover:bg-[var(--color-surface-bg)] hover:shadow-lg transition-all text-sm ring-1 ring-[var(--color-border-main)]/10">
+                                        {t('settings.security.2fa.configure', 'Configure 2FA')}
                                     </Button>
                                 </div>
                             </section>
 
-                            {/* Token List */}
-                            <section>
-                                <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-4 pb-2 border-b border-[var(--color-surface-border)]">{t('settings.api.list.title')}</h3>
-                                {loadingTokens ? (
-                                    <div className="flex justify-center p-8">
-                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[var(--color-primary)]"></div>
-                                    </div>
-                                ) : apiTokens.length > 0 ? (
-                                    <div className="space-y-3">
-                                        {apiTokens.map((token) => (
-                                            <div key={token.id} className="flex items-center justify-between p-4 rounded-xl border border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]">
-                                                <div>
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="font-bold text-sm text-[var(--color-text-main)]">{token.name}</div>
-                                                        <div className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] font-medium">
-                                                            {token.prefix}...
-                                                        </div>
+                            <section className="settings-section-card">
+                                <h3 className="text-[11px] font-black text-[var(--color-text-main)] uppercase tracking-[0.25em] mb-6 opacity-40 px-1">{t('settings.security.passkeys.title')}</h3>
+                                {passkeys.length > 0 ? (
+                                    <div className="passkey-list">
+                                        {passkeys.map((key) => (
+                                            <div key={key.id} className="passkey-item group">
+                                                <div className="key-info">
+                                                    <div className="icon-box">
+                                                        <span className="material-symbols-outlined text-[20px]">passkey</span>
                                                     </div>
-                                                    <div className="text-xs text-[var(--color-text-muted)] mt-1">
-                                                        {t('settings.api.list.created')}: {format(new Date(token.createdAt), 'PPP')} • {t('settings.api.list.lastUsed')}: {token.lastUsedAt ? format(new Date(token.lastUsedAt), 'PPP') : t('settings.api.list.neverUsed')}
-                                                    </div>
+                                                    <span className="label">{key.label || 'Passkey'}</span>
                                                 </div>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    className="text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/10"
-                                                    onClick={() => handleDeleteToken(token.id, token.name)}
-                                                >
-                                                    <span className="material-symbols-outlined">delete</span>
-                                                </Button>
+                                                <button onClick={() => handleDeletePasskey(key.id, key.label)} className="delete-btn">
+                                                    <span className="material-symbols-outlined text-[20px]">delete</span>
+                                                </button>
                                             </div>
                                         ))}
                                     </div>
                                 ) : (
-                                    <div className="p-8 text-center rounded-xl border border-dashed border-[var(--color-surface-border)] bg-[var(--color-surface-bg)]/50">
-                                        <span className="material-symbols-outlined text-3xl text-[var(--color-text-muted)] mb-2">key_off</span>
-                                        <p className="text-sm text-[var(--color-text-muted)]">{t('settings.api.list.empty')}</p>
+                                    <div className="empty-state-box">
+                                        <div className="icon">
+                                            <span className="material-symbols-outlined text-3xl text-[var(--color-text-muted)] opacity-40">key_off</span>
+                                        </div>
+                                        <p className="text-[10px] text-[var(--color-text-main)] font-black uppercase tracking-widest opacity-40">{t('settings.security.passkeys.empty')}</p>
+                                    </div>
+                                )}
+                            </section>
+                        </div>
+                    </div>
+                );
+            case 'api':
+                return (
+                    <div className="animate-fade-in space-y-6">
+                        <header className="pb-4">
+                            <h2 className="text-2xl font-black text-[var(--color-text-main)] mb-1">
+                                {t('settings.tabs.api')}
+                            </h2>
+                            <p className="text-sm text-[var(--color-text-main)] font-bold opacity-70">
+                                {t('settings.api.subtitle')}
+                            </p>
+                        </header>
+
+                        <div className="space-y-5">
+                            <section className="settings-section-card">
+                                <div className="settings-section-header justify-between">
+                                    <div className="flex items-center gap-5">
+                                        <div className="icon-box">
+                                            <span className="material-symbols-outlined text-[20px]">key</span>
+                                        </div>
+                                        <div>
+                                            <h3>
+                                                {t('settings.api.list.title')}
+                                            </h3>
+                                            <p className="text-[11px] text-[var(--color-text-main)] font-black opacity-40">
+                                                {t('settings.api.list.subtitle')}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <Button onClick={() => setShowNewTokenModal(true)} className="btn-save shadow-none h-10 px-6">
+                                        {t('settings.api.list.button')}
+                                    </Button>
+                                </div>
+
+                                {loadingTokens ? (
+                                    <div className="flex justify-center p-12">
+                                        <div className="size-10 rounded-full border-4 border-[var(--color-primary)]/10 border-t-[var(--color-primary)] animate-spin" />
+                                    </div>
+                                ) : apiTokens.length > 0 ? (
+                                    <div className="api-token-list">
+                                        {apiTokens.map((token) => (
+                                            <div key={token.id} className="token-item group">
+                                                <div className="token-info">
+                                                    <div className="token-icon">
+                                                        <span className="material-symbols-outlined text-[20px]">password</span>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-[12px] font-black text-[var(--color-text-main)] mb-1 opacity-90">{token.name}</div>
+                                                        <div className="token-meta">
+                                                            <code>{token.tokenPrefix}...</code>
+                                                            <span className="date">
+                                                                {token.createdAt ? t('settings.api.list.created').replace('{date}', format(token.createdAt.toDate?.() || new Date(token.createdAt), 'MMM d, yyyy')) : t('settings.api.list.recently')}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => handleDeleteToken(token.id, token.name)} className="delete-btn">
+                                                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="empty-state-box">
+                                        <div className="icon">
+                                            <span className="material-symbols-outlined text-[24px]">key_off</span>
+                                        </div>
+                                        <p className="text-[10px] font-black uppercase tracking-widest opacity-40">{t('settings.api.list.empty')}</p>
                                     </div>
                                 )}
                             </section>
@@ -1235,35 +1146,69 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
             default:
                 return null;
         }
-    }
+    };
 
     return (
         <React.Fragment>
-            <Modal isOpen={isOpen} onClose={onClose} title={t('settings.title') || 'Settings'} size="4xl">
-                <div className="flex h-[80vh] -m-6">
+            <Modal
+                isOpen={isOpen}
+                onClose={onClose}
+                size="4xl"
+                noPadding
+                glass
+                hideHeader
+                borderless
+            >
+                <div className="settings-modal-container">
                     {/* Sidebar */}
-                    <div className="w-64 shrink-0 bg-[var(--color-surface-hover)]/50 border-r border-[var(--color-surface-border)] p-4 flex flex-col gap-1 overflow-y-auto">
-                        {tabs.map(tab => (
+                    <div className="settings-sidebar">
+                        <div className="settings-nav-header">
+                            <h3>
+                                {t('settings.nav.header', 'System Settings')}
+                            </h3>
+                            <div className="divider" />
+                        </div>
+
+                        <nav className="settings-nav">
+                            {tabs.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setActiveTab(tab.id as SettingsTab)}
+                                    className={`
+                                        settings-nav-item
+                                        ${activeTab === tab.id ? 'active' : ''}
+                                    `}
+                                >
+                                    <div className="icon-box">
+                                        <span className="material-symbols-outlined text-[20px] block">{tab.icon}</span>
+                                    </div>
+                                    <span className="truncate flex-1 text-left">{tab.label}</span>
+                                    {activeTab === tab.id && (
+                                        <div className="active-indicator" />
+                                    )}
+                                </button>
+                            ))}
+                        </nav>
+
+                        <div className="mt-auto px-1 pt-6 border-t border-black/5 dark:border-white/5">
                             <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`
-                                    flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
-                                    ${activeTab === tab.id
-                                        ? 'bg-[var(--color-primary)] text-[var(--color-primary-text)] shadow-md shadow-primary/20'
-                                        : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)]'}
-                                `}
+                                onClick={onClose}
+                                className="flex items-center gap-3 w-full px-4 py-3.5 rounded-2xl text-[13px] font-black transition-all group text-rose-500 hover:bg-rose-500/10 active:scale-95"
                             >
-                                <span className={`material-symbols-outlined text-[20px] ${activeTab === tab.id ? 'fill' : ''}`}>{tab.icon}</span>
-                                {tab.label}
+                                <div className="p-2 rounded-xl bg-rose-500/10 transition-all group-hover:scale-110">
+                                    <span className="material-symbols-outlined text-[20px] block">logout</span>
+                                </div>
+                                <span>{t('common.exit', 'Exit Settings')}</span>
                             </button>
-                        ))}
+                        </div>
                     </div>
 
                     {/* Content Area */}
-                    <div className="flex-1 flex flex-col min-w-0 bg-[var(--color-surface-bg)]">
-                        <div className="flex-1 overflow-y-auto p-8 scrollbar-thin">
-                            {renderContent()}
+                    <div className="settings-content-wrapper">
+                        <div className="settings-scroll-area">
+                            <div className="settings-container-max">
+                                {renderContent()}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1277,31 +1222,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, i
                     setGeneratedToken(null);
                 }}
                 title={t('settings.api.successModal.title')}
+                glass
             >
-                <div className="space-y-4">
-                    <div className="text-sm text-[var(--color-text-muted)]">
+                <div className="token-modal-content">
+                    <div className="text-sm text-[var(--color-text-main)] font-bold opacity-70">
                         {t('settings.api.successModal.message')}
                     </div>
 
-                    <div className="p-4 rounded-lg bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] break-all font-mono text-sm relative group">
-                        {generatedToken}
-                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button size="sm" onClick={() => generatedToken && copyToClipboard(generatedToken)}>
-                                {copiedToken ? 'Copied!' : 'Copy'}
+                    <div className="token-display-box group">
+                        <span>{generatedToken}</span>
+                        <div className="copy-btn-wrapper">
+                            <Button size="sm" onClick={() => generatedToken && copyToClipboard(generatedToken)} className="h-10 bg-[var(--color-surface-paper)] border-none ring-1 ring-[var(--color-border-main)]/10 font-black shadow-xl rounded-xl">
+                                {copiedToken ? t('common.copied', 'Copied!') : t('settings.api.newToken.copy')}
                             </Button>
                         </div>
                     </div>
 
-                    <div className="p-3 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 text-xs font-medium flex items-start gap-2">
-                        <span className="material-symbols-outlined text-lg">warning</span>
-                        <span>{t('settings.api.successModal.warning')}</span>
+                    <div className="warning-box">
+                        <span className="material-symbols-outlined">warning</span>
+                        <span>{t('settings.api.newToken.warning')}</span>
                     </div>
 
-                    <div className="flex justify-end pt-2">
+                    <div className="flex justify-end pt-4">
                         <Button onClick={() => {
                             setShowNewTokenModal(false);
                             setGeneratedToken(null);
-                        }}>
+                        }} className="btn-save shadow-2xl">
                             {t('common.done')}
                         </Button>
                     </div>

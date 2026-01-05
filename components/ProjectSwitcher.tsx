@@ -4,6 +4,7 @@ import { Project } from '../types';
 import { getUserProjects, getSharedProjects } from '../services/dataService';
 import { usePinnedProject } from '../context/PinnedProjectContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import logo from '../assets/logo.svg';
 
 interface ProjectSwitcherProps {
@@ -21,9 +22,13 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
     const dropdownRef = useRef<HTMLDivElement>(null);
     const { pinProject, unpinProject, pinnedProjectId } = usePinnedProject();
     const { t } = useLanguage();
+    const { isAuthReady, isAuthenticated } = useAuth();
 
-    // Fetch projects on mount to ensure we have icons for the active state
+    // Fetch projects on mount - only when auth is ready
     useEffect(() => {
+        // Only fetch when auth is ready and user is authenticated
+        if (!isAuthReady || !isAuthenticated) return;
+
         const fetchProjects = async () => {
             try {
                 const [myProjects, sharedProjects] = await Promise.all([
@@ -47,7 +52,7 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
             }
         };
         fetchProjects();
-    }, []);
+    }, [isAuthReady, isAuthenticated]);
 
     const activeProject = projects.find(p => p.id === currentProjectId);
 
@@ -194,12 +199,12 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                                                 <span>{p.title ? p.title.substring(0, 1).toUpperCase() : 'P'}</span>
                                             )}
                                         </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="text-sm font-medium text-[var(--color-text-main)] truncate">{p.title}</div>
-                                                <div className="text-[10px] text-[var(--color-text-muted)] truncate">
-                                                    {p.ownerId === p.id ? t('projectSwitcher.role.owner') : t('projectSwitcher.role.member')}
-                                                </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-medium text-[var(--color-text-main)] truncate">{p.title}</div>
+                                            <div className="text-[10px] text-[var(--color-text-muted)] truncate">
+                                                {p.ownerId === p.id ? t('projectSwitcher.role.owner') : t('projectSwitcher.role.member')}
                                             </div>
+                                        </div>
 
                                         {currentProjectId === p.id && (
                                             <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>

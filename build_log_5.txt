@@ -1,0 +1,46 @@
+
+> projectflow-ai@0.0.0 build
+> vite build
+
+vite v6.4.1 building for production...
+transforming...
+✓ 131 modules transformed.
+✗ Build failed in 259ms
+error during build:
+[vite:esbuild] Transform failed with 3 errors:
+/Users/christophlabestin/Documents/GitHub/projectflow-app/screens/ProjectOverview.tsx:2561:26: ERROR: Unexpected closing fragment tag does not match opening "div" tag
+/Users/christophlabestin/Documents/GitHub/projectflow-app/screens/ProjectOverview.tsx:2563:0: ERROR: The character "}" is not valid inside a JSX element
+/Users/christophlabestin/Documents/GitHub/projectflow-app/screens/ProjectOverview.tsx:2564:0: ERROR: Unexpected end of file before a closing fragment tag
+file: /Users/christophlabestin/Documents/GitHub/projectflow-app/screens/ProjectOverview.tsx:2561:26
+
+Unexpected closing fragment tag does not match opening "div" tag
+2559|                                  onSkip={skip}
+2560|                              />
+2561|                          </>
+   |                            ^
+2562|                          );
+2563|  };
+
+The character "}" is not valid inside a JSX element
+2561|                          </>
+2562|                          );
+2563|  };
+   |  ^
+2564|  
+
+Unexpected end of file before a closing fragment tag
+2562|                          );
+2563|  };
+2564|  
+   |  ^
+
+    at failureErrorWithLog (/Users/christophlabestin/Documents/GitHub/projectflow-app/node_modules/esbuild/lib/main.js:1467:15)
+    at /Users/christophlabestin/Documents/GitHub/projectflow-app/node_modules/esbuild/lib/main.js:736:50
+    at responseCallbacks.<computed> (/Users/christophlabestin/Documents/GitHub/projectflow-app/node_modules/esbuild/lib/main.js:603:9)
+    at handleIncomingPacket (/Users/christophlabestin/Documents/GitHub/projectflow-app/node_modules/esbuild/lib/main.js:658:12)
+    at Socket.readFromStdout (/Users/christophlabestin/Documents/GitHub/projectflow-app/node_modules/esbuild/lib/main.js:581:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)

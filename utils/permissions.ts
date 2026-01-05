@@ -1,5 +1,6 @@
-import { ProjectRole, RoleCapabilities, Project, ProjectMember, WorkspaceRole, WorkspacePermissions, Tenant, Member, ROLE_PERMISSIONS as PROJECT_PERMISSIONS, Permission } from '../types';
+import { ProjectRole, RoleCapabilities, Project, ProjectMember, WorkspaceRole, WorkspacePermissions, Tenant, Member, Permission, CustomRole } from '../types';
 import { auth } from '../services/firebase';
+import { getRolePermissions, getRoleCapabilities } from '../services/rolesService';
 
 /**
  * Role Capabilities Matrix (Project)
@@ -121,12 +122,31 @@ export function getUserRole(project: Project | null, userId?: string): ProjectRo
 export function checkPermission(
     project: Project | null,
     userId: string | undefined,
-    capability: keyof RoleCapabilities
+    capability: keyof RoleCapabilities,
+    customRoles?: CustomRole[]
 ): boolean {
+    if (!project || !userId) return false;
+
+    // Owner always has all capabilities
+    if (project.ownerId === userId) return true;
+
     const role = getUserRole(project, userId);
     if (!role) return false;
 
-    return ROLE_CAPABILITIES[role][capability];
+    // If we have custom roles, use the fine-grained permission logic
+    if (customRoles) {
+        const permissions = getRolePermissions(customRoles, role);
+        const capabilities = getRoleCapabilities(permissions);
+        return capabilities[capability];
+    }
+
+    // Fallback to legacy ROLE_CAPABILITIES (only handles hardcoded 'Editor', 'Viewer')
+    const legacyCaps = ROLE_CAPABILITIES[role as ProjectRole];
+    if (legacyCaps) {
+        return legacyCaps[capability];
+    }
+
+    return false;
 }
 
 /**
@@ -158,12 +178,19 @@ export function getUserCapabilities(project: Project | null, userId?: string): R
 export function hasPermission(
     project: Project | null,
     userId: string | undefined,
-    permission: Permission
+    permission: Permission,
+    customRoles?: CustomRole[]
 ): boolean {
+    if (!project || !userId) return false;
+
+    // Owner always has all permissions
+    if (project.ownerId === userId) return true;
+
     const role = getUserRole(project, userId);
     if (!role) return false;
 
-    return PROJECT_PERMISSIONS[role].includes(permission);
+    const permissions = getRolePermissions(customRoles, role);
+    return permissions.includes(permission);
 }
 
 // --- Workspace Permissions ---

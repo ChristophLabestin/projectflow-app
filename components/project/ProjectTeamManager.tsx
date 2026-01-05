@@ -18,10 +18,14 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { useConfirm } from '../../context/UIContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { format } from 'date-fns';
+import { getRoleDisplayInfo, getWorkspaceRoles } from '../../services/rolesService';
+import { CustomRole } from '../../types';
 
 interface ProjectTeamManagerProps {
     project: Project;
     canManage: boolean;
+    customRoles?: CustomRole[];
+    loadingRoles?: boolean;
 }
 
 interface EnrichedMember extends ProjectMember {
@@ -30,13 +34,15 @@ interface EnrichedMember extends ProjectMember {
     photoURL?: string;
 }
 
-export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project, canManage }) => {
+export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project, canManage, customRoles: passedRoles, loadingRoles }) => {
     const [members, setMembers] = useState<EnrichedMember[]>([]);
     const [inviteLinks, setInviteLinks] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [inviteRole, setInviteRole] = useState<ProjectRole>('Editor');
+    const [inviteRole, setInviteRole] = useState<ProjectRole | string>('Editor');
     const [generatedLink, setGeneratedLink] = useState<string>('');
     const [isGenerating, setIsGenerating] = useState(false);
+    const [internalCustomRoles, setInternalCustomRoles] = useState<CustomRole[]>([]);
+    const customRoles = passedRoles || internalCustomRoles;
     const confirm = useConfirm();
     const { t, dateFormat, dateLocale } = useLanguage();
 
@@ -80,8 +86,11 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
             }
         });
 
-        // Also fetch invite links
+        // Also fetch invite links and custom roles (if not passed)
         loadInviteLinks();
+        if (!passedRoles) {
+            loadCustomRoles();
+        }
 
         return () => unsubscribe();
     }, [project.id, project.tenantId]);
@@ -96,7 +105,24 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
         }
     };
 
-    const handleRoleChange = async (userId: string, newRole: ProjectRole) => {
+    const loadCustomRoles = async () => {
+        try {
+            const roles = await getWorkspaceRoles(project.tenantId);
+            setInternalCustomRoles(roles);
+
+            // Set default invite role if not already set or if it was 'Editor' (legacy default)
+            const defaultRole = roles.find(r => r.isDefault);
+            if (defaultRole && (inviteRole === 'Editor' || inviteRole === 'Viewer')) {
+                setInviteRole(defaultRole.id);
+            } else if (roles.length > 0 && (inviteRole === 'Editor' || inviteRole === 'Viewer')) {
+                setInviteRole(roles[0].id);
+            }
+        } catch (e) {
+            console.error("Failed to load custom roles", e);
+        }
+    };
+
+    const handleRoleChange = async (userId: string, newRole: ProjectRole | string) => {
         if (!canManage) return;
         try {
             await updateMemberRole(project.id, userId, newRole, project.tenantId);
@@ -192,12 +218,17 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
                                             <>
                                                 <Select
                                                     value={member.role}
-                                                    onChange={(e) => handleRoleChange(member.userId, e.target.value as ProjectRole)}
+                                                    onChange={(e) => handleRoleChange(member.userId, e.target.value)}
                                                     className="w-32 h-9 text-xs"
                                                 >
-                                                    <option value="Viewer">{t('roles.viewer')}</option>
-                                                    <option value="Editor">{t('roles.editor')}</option>
-                                                    <option value="Owner">{t('roles.owner')}</option>
+                                                    {/* If current role is legacy, show it as an option so it's not hidden/lost */}
+                                                    {['Viewer', 'Editor'].includes(member.role) && !customRoles.find(r => r.id === member.role) && (
+                                                        <option value={member.role}>{member.role} (Legacy)</option>
+                                                    )}
+                                                    <option value="Owner">{t('roles.owner', 'Owner')}</option>
+                                                    {customRoles.map(role => (
+                                                        <option key={role.id} value={role.id}>{role.name}</option>
+                                                    ))}
                                                 </Select>
                                                 <button
                                                     onClick={() => handleRemoveMember(member.userId)}
@@ -208,7 +239,16 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
                                                 </button>
                                             </>
                                         ) : (
-                                            <Badge variant={member.role === 'Owner' ? 'primary' : 'secondary'}>{member.role}</Badge>
+                                            <Badge
+                                                style={{
+                                                    backgroundColor: getRoleDisplayInfo(customRoles, member.role).color + '20',
+                                                    color: getRoleDisplayInfo(customRoles, member.role).color,
+                                                    borderColor: getRoleDisplayInfo(customRoles, member.role).color + '40'
+                                                }}
+                                                variant="outline"
+                                            >
+                                                {getRoleDisplayInfo(customRoles, member.role).name}
+                                            </Badge>
                                         )}
                                     </div>
                                 </div>
@@ -233,12 +273,13 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
                         <div className="flex gap-3">
                             <Select
                                 value={inviteRole}
-                                onChange={(e) => setInviteRole(e.target.value as ProjectRole)}
+                                onChange={(e) => setInviteRole(e.target.value)}
                                 className="w-32"
                             >
-                                <option value="Viewer">{t('roles.viewer')}</option>
-                                <option value="Editor">{t('roles.editor')}</option>
-                                <option value="Owner">{t('roles.owner')}</option>
+                                <option value="Owner">{t('roles.owner', 'Owner')}</option>
+                                {customRoles.map(role => (
+                                    <option key={role.id} value={role.id}>{role.name}</option>
+                                ))}
                             </Select>
                             <Button
                                 variant="primary"
@@ -266,14 +307,21 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
                             <div className="space-y-2">
                                 {inviteLinks.map(link => (
                                     <div key={link.id} className="flex items-center justify-between p-3 border border-[var(--color-surface-border)] rounded-lg bg-[var(--color-surface-card)]">
-                                        <div className="flex items-center gap-3">
-                                            <Badge variant="outline">{link.role}</Badge>
-                                            <div className="flex flex-col">
-                                                <span className="text-xs text-[var(--color-text-muted)]">
-                                                    {t('projectTeam.invite.expires').replace('{date}', format(new Date(link.expiresAt.toDate ? link.expiresAt.toDate() : link.expiresAt), dateFormat, { locale: dateLocale }))}
-                                                </span>
-                                                <span className="text-xs text-[var(--color-text-subtle)]">{t('projectTeam.invite.createdByYou')}</span>
-                                            </div>
+                                        <Badge
+                                            style={{
+                                                backgroundColor: getRoleDisplayInfo(customRoles, link.role).color + '20',
+                                                color: getRoleDisplayInfo(customRoles, link.role).color,
+                                                borderColor: getRoleDisplayInfo(customRoles, link.role).color + '40'
+                                            }}
+                                            variant="outline"
+                                        >
+                                            {getRoleDisplayInfo(customRoles, link.role).name}
+                                        </Badge>
+                                        <div className="flex flex-col">
+                                            <span className="text-xs text-[var(--color-text-muted)]">
+                                                {t('projectTeam.invite.expires', 'Expires {date}').replace('{date}', format(new Date(link.expiresAt.toDate ? link.expiresAt.toDate() : link.expiresAt), dateFormat, { locale: dateLocale }))}
+                                            </span>
+                                            <span className="text-xs text-[var(--color-text-subtle)]">{t('projectTeam.invite.createdByYou', 'Created by you')}</span>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             <button

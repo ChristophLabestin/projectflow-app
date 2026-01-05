@@ -285,10 +285,16 @@ export const AppLayout = () => {
         });
     }, [location.pathname, project, taskTitle, campaignName, t]);
 
+    const isFullWidth = location.pathname === '/create' ||
+        location.pathname.includes('/social') ||
+        location.pathname.includes('/marketing') ||
+        location.pathname.includes('/flows') ||
+        location.pathname.includes('/activity');
+
     return (
-        <div className="flex h-screen w-full bg-[var(--color-surface-bg)] overflow-hidden">
+        <div className="app-layout">
             {/* Sidebar Desktop */}
-            <div className="hidden md:flex flex-shrink-0 h-full">
+            <div className="sidebar-wrapper">
                 <Sidebar
                     workspace={projectId ? {
                         projectId,
@@ -306,12 +312,12 @@ export const AppLayout = () => {
 
             {/* Mobile Sidebar Drawer */}
             {navOpen && (
-                <div className="fixed inset-0 z-50 md:hidden flex">
+                <div className="mobile-drawer-overlay">
                     <div
-                        className="fixed inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
+                        className="backdrop"
                         onClick={() => setNavOpen(false)}
                     />
-                    <div className="relative w-4/5 max-w-xs h-full bg-[var(--color-surface-card)] shadow-2xl animate-fade-in-left">
+                    <div className="mobile-drawer">
                         <Sidebar
                             isDrawer
                             onClose={() => setNavOpen(false)}
@@ -332,7 +338,7 @@ export const AppLayout = () => {
             )}
 
             {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0 h-full relative">
+            <div className="main-content-wrapper">
 
                 {/* Header */}
                 <TopBar
@@ -342,8 +348,8 @@ export const AppLayout = () => {
                 />
 
                 {/* Main Scroll Area */}
-                <main className={`flex-1 w-full dotted-bg ${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/flows') || location.pathname.includes('/activity') ? 'p-0 overflow-hidden' : 'overflow-y-auto p-4 sm:p-6 lg:p-8'}`}>
-                    <div className={`${location.pathname === '/create' || location.pathname.includes('/social') || location.pathname.includes('/marketing') || location.pathname.includes('/flows') || location.pathname.includes('/activity') ? 'w-full h-full' : 'max-w-7xl mx-auto h-full'}`}>
+                <main className={`main-scroll-area dotted-bg ${isFullWidth ? 'full-width' : 'standard-padding'}`}>
+                    <div className={`main-container ${isFullWidth ? 'full' : 'centered'}`}>
                         <Outlet context={{ setTaskTitle, statusPreference }} />
                     </div>
                 </main>

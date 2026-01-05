@@ -137,45 +137,56 @@ export const ROLE_PERMISSIONS: Record<ProjectRole, string[]> = {
 /**
  * Verify if a user has a specific permission on a project.
  * Fetches the project from Firestore to check roles.
+ * NOW SUPPORTS CUSTOM ROLES.
  */
 export const checkProjectPermission = async (userId: string, projectId: string, permission: string): Promise<boolean> => {
     try {
-        // Try to find project in tenants (we need to find the tenant first, or use Collection Group query?)
-        // Since we don't know the tenant, we might need to search or assume passed context.
-        // For optimization, let's look up project directly if possible.
-        // BUT projects are in subcollections of tenants.
-        // We can use a collection group query for the project ID to find it.
-
         const projectsRef = db.collectionGroup('projects');
         const querySnapshot = await projectsRef.where(admin.firestore.FieldPath.documentId(), '==', projectId).limit(1).get();
 
         if (querySnapshot.empty) return false;
 
-        const projectData = querySnapshot.docs[0].data();
+        const projectDoc = querySnapshot.docs[0];
+        const projectData = projectDoc.data();
 
-        // Check Owner field
+        // 1. Check Owner field (full access)
         if (projectData.ownerId === userId) return true;
 
-        // Check Roles Map
-        const userRole = projectData.roles ? projectData.roles[userId] : null;
-        if (!userRole) {
-            // Check legacy members array
-            if (Array.isArray(projectData.members)) {
-                const member = projectData.members.find((m: any) =>
-                    (typeof m === 'string' && m === userId) || (m.userId === userId)
-                );
-
-                if (member) {
-                    // Legacy member is Editor or specific role
-                    const legacyRole = typeof member === 'object' ? member.role : 'Editor';
-                    // Check if legacy role has permission
-                    return (ROLE_PERMISSIONS[legacyRole as ProjectRole] || []).includes(permission);
-                }
+        // 2. Determine raw user role value
+        let userRole: string | null = null;
+        if (projectData.roles && projectData.roles[userId]) {
+            userRole = projectData.roles[userId];
+        } else if (Array.isArray(projectData.members)) {
+            const member = projectData.members.find((m: any) =>
+                (typeof m === 'string' && m === userId) || (m.userId === userId)
+            );
+            if (member) {
+                userRole = typeof member === 'object' ? member.role : 'Editor';
             }
-            return false;
         }
 
-        return (ROLE_PERMISSIONS[userRole as ProjectRole] || []).includes(permission);
+        if (!userRole) return false;
+
+        // 3. Handle Legacy Roles
+        if (ROLE_PERMISSIONS[userRole as ProjectRole]) {
+            return (ROLE_PERMISSIONS[userRole as ProjectRole] || []).includes(permission);
+        }
+
+        // 4. Handle Custom Roles (Workspace-level)
+        // Need to find the tenant doc to get customRoles
+        const tenantRef = projectDoc.ref.parent.parent;
+        if (!tenantRef) return false;
+
+        const tenantDoc = await tenantRef.get();
+        if (!tenantDoc.exists) return false;
+
+        const tenantData = tenantDoc.data() || {};
+        const customRoles: any[] = tenantData.customRoles || [];
+
+        const role = customRoles.find(r => r.id === userRole);
+        if (!role) return false;
+
+        return (role.permissions || []).includes(permission);
 
     } catch (e) {
         console.error('Permission check failed', e);

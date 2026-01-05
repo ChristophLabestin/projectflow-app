@@ -1,0 +1,58 @@
+
+> projectflow-ai@0.0.0 build
+> vite build
+
+vite v6.4.1 building for production...
+transforming...
+✓ 137 modules transformed.
+✗ Build failed in 322ms
+error during build:
+[vite:esbuild] Transform failed with 4 errors:
+/Users/christophlabestin/Documents/GitHub/projectflow-app/screens/ProjectOverview.tsx:2077:30: ERROR: Unexpected closing "div" tag does not match opening "Card" tag
+/Users/christophlabestin/Documents/GitHub/projectflow-app/screens/ProjectOverview.tsx:2079:26: ERROR: Unexpected closing "Card" tag does not match opening "div" tag
+/Users/christophlabestin/Documents/GitHub/projectflow-app/screens/ProjectOverview.tsx:2395:14: ERROR: Unexpected closing "div" tag does not match opening fragment tag
+/Users/christophlabestin/Documents/GitHub/projectflow-app/screens/ProjectOverview.tsx:2397:11: ERROR: Unterminated regular expression
+file: /Users/christophlabestin/Documents/GitHub/projectflow-app/screens/ProjectOverview.tsx:2077:30
+
+Unexpected closing "div" tag does not match opening "Card" tag
+2075|                                      </div>
+2076|  
+2077|                              </div>
+   |                                ^
+2078|  
+2079|                          </Card>
+
+Unexpected closing "Card" tag does not match opening "div" tag
+2077|                              </div>
+2078|  
+2079|                          </Card>
+   |                            ^
+2080|  
+2081|                          <Card data-onboarding-id="project-overview-milestones" className="flex flex-col relative overflow-hidden">
+
+Unexpected closing "div" tag does not match opening fragment tag
+2393|                          )}
+2394|                      </div>
+2395|              </div >
+   |                ^
+2396|  
+2397|          </>
+
+Unterminated regular expression
+2395|              </div >
+2396|  
+2397|          </>
+   |             ^
+2398|      )
+2399|  }
+
+    at failureErrorWithLog (/Users/christophlabestin/Documents/GitHub/projectflow-app/node_modules/esbuild/lib/main.js:1467:15)
+    at /Users/christophlabestin/Documents/GitHub/projectflow-app/node_modules/esbuild/lib/main.js:736:50
+    at responseCallbacks.<computed> (/Users/christophlabestin/Documents/GitHub/projectflow-app/node_modules/esbuild/lib/main.js:603:9)
+    at handleIncomingPacket (/Users/christophlabestin/Documents/GitHub/projectflow-app/node_modules/esbuild/lib/main.js:658:12)
+    at Socket.readFromStdout (/Users/christophlabestin/Documents/GitHub/projectflow-app/node_modules/esbuild/lib/main.js:581:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)
