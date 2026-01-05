@@ -203,99 +203,67 @@ export const Tasks = () => {
         const dueDate = task.dueDate ? new Date(task.dueDate) : null;
         const isOverdue = !!dueDate && dueDate < new Date() && !task.isCompleted;
 
-        // Dependencies/Blocking logic requires checking specific project tasks logic which we don't have fully loaded here 
-        // (we have all user tasks, so we MIGHT have the dependency if it's assigned to user, but not guaranteed).
-        // Simplification: Skip dependency check for personal view unless we fetch ALL project tasks which getUserTasks might not do.
-        // Assuming getUserTasks returns tasks assigned to user. Dependencies might be assigned to others.
-        const isBlocked = false;
-        const blockedBy: Task[] = [];
+        const isBlocked = false; // Logic simplification for global view as per original
+        const blockedBy: Task[] = []; // Placeholder
 
         const projectTitle = projectNameById[task.projectId];
+        const cardVariant = task.isCompleted ? 'completed' : isBlocked ? 'blocked' : task.convertedIdeaId ? 'strategic' : 'default';
 
         return (
             <div
                 onClick={() => navigate(`/project/${task.projectId}/tasks/${task.id}${task.tenantId ? `?tenant=${task.tenantId}` : ''}`)}
-                className={`
-                    group relative flex ${isBoard ? 'flex-col' : 'flex-col md:flex-row md:items-center'} gap-4 p-5 rounded-[24px] border transition-all duration-300 cursor-pointer
-                    ${task.isCompleted
-                        ? 'bg-slate-50/50 dark:bg-white/[0.01] border-slate-100 dark:border-white/5 opacity-80'
-                        : isBlocked
-                            ? 'bg-orange-50/30 dark:bg-orange-500/5 border-orange-200 dark:border-orange-500/20'
-                            : task.convertedIdeaId
-                                ? 'bg-gradient-to-r from-indigo-50/50 to-white dark:from-indigo-950/10 dark:to-transparent border-indigo-100 dark:border-indigo-500/20 hover:shadow-xl hover:shadow-indigo-500/10'
-                                : 'bg-white dark:bg-white/[0.03] border-black/5 dark:border-white/5 hover:border-primary/30 hover:shadow-xl hover:shadow-black/5 hover:-translate-y-0.5'
-                    }
-                `}
+                className={`task-card ${cardVariant} ${isBoard ? 'is-board' : ''}`}
             >
                 {/* Left: Status & Main Info */}
-                <div className="flex items-center gap-4 flex-1 min-w-0">
+                <div className="task-main-info">
                     <button
                         onClick={(e) => { e.stopPropagation(); handleToggle(task.id, task.isCompleted); }}
-                        className={`
-                        flex-shrink-0 size-7 rounded-xl border-2 flex items-center justify-center transition-all duration-300
-                        ${task.isCompleted
-                                ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/30 rotate-0'
-                                : 'border-slate-300 dark:border-white/20 hover:border-emerald-500 text-transparent bg-white dark:bg-transparent hover:rotate-12'}
-                    `}
+                        className={`check-btn ${task.isCompleted ? 'checked' : ''}`}
                     >
-                        <span className="material-symbols-outlined text-[18px] font-black">check</span>
+                        <span className="material-symbols-outlined">check</span>
                     </button>
 
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center flex-wrap gap-2 mb-2">
+                    <div className="info-content">
+                        <div className="title-row">
                             {/* Project Pill - NEW for Global View */}
                             {projectTitle && (
                                 <div
                                     onClick={(e) => { e.stopPropagation(); navigate(`/project/${task.projectId}`); }}
-                                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest bg-slate-100 dark:bg-white/10 text-slate-500 dark:text-slate-300 hover:bg-primary hover:text-on-primary transition-colors cursor-pointer"
+                                    className="project-pill"
                                 >
-                                    <span className="size-1.5 rounded-full bg-slate-400 group-hover:bg-white/80" />
+                                    <span className="dot" />
                                     {projectTitle}
                                 </div>
                             )}
 
-                            <h4 className={`text-lg font-bold truncate transition-all duration-300 ${task.isCompleted ? 'text-muted line-through' : 'text-main group-hover:text-primary'}`}>
+                            <h4 className={`task-title ${task.isCompleted ? 'completed' : ''}`}>
                                 {task.title}
                             </h4>
-                            {task.convertedIdeaId && (
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-indigo-500 text-white shadow-sm shadow-indigo-500/20">
-                                    <span className="material-symbols-outlined text-[12px]">auto_awesome</span>
-                                    {t('tasks.card.strategic')}
-                                </div>
-                            )}
-                            {task.priority && (
-                                <div className={`
-                                flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border
-                                ${task.priority === 'Urgent' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20 animate-pulse' :
-                                        task.priority === 'High' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                                            task.priority === 'Medium' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                                'bg-slate-500/10 text-slate-500 border-slate-500/20'}
-                            `}>
-                                    <span className="material-symbols-outlined text-[14px]">
-                                        {task.priority === 'Urgent' ? 'error' :
-                                            task.priority === 'High' ? 'keyboard_double_arrow_up' :
-                                                task.priority === 'Medium' ? 'drag_handle' :
-                                                    'keyboard_arrow_down'}
-                                    </span>
-                                    {priorityLabels[task.priority as keyof typeof priorityLabels] || task.priority}
-                                </div>
-                            )}
+                            <div className="meta-row">
+                                {task.convertedIdeaId && (
+                                    <div className="badge strategic">
+                                        <span className="material-symbols-outlined">auto_awesome</span>
+                                        {t('tasks.card.strategic')}
+                                    </div>
+                                )}
+                                {task.priority && (
+                                    <div className={`badge priority-${task.priority.toLowerCase()}`}>
+                                        <span className="material-symbols-outlined">
+                                            {task.priority === 'Urgent' ? 'error' :
+                                                task.priority === 'High' ? 'keyboard_double_arrow_up' :
+                                                    task.priority === 'Medium' ? 'drag_handle' :
+                                                        'keyboard_arrow_down'}
+                                        </span>
+                                        {priorityLabels[task.priority as keyof typeof priorityLabels] || task.priority}
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <div className="meta-row">
                             {task.status && (
-                                <div className={`
-                                flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.15em] border transition-all duration-300
-                                ${task.status === 'Done' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' :
-                                        task.status === 'In Progress' ? 'bg-blue-600/15 text-blue-400 border-blue-500/40 shadow-[0_0_12px_rgba(59,130,246,0.2)]' :
-                                            task.status === 'Review' ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.1)]' :
-                                                task.status === 'Open' || task.status === 'Todo' ? 'bg-violet-500/10 text-violet-400 border-violet-500/20' :
-                                                    task.status === 'Backlog' ? 'bg-slate-500/10 text-slate-400 border-slate-500/20 opacity-80' :
-                                                        task.status === 'On Hold' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                                                            task.status === 'Blocked' ? 'bg-rose-600/20 text-rose-500 border-rose-500/50 animate-pulse ring-1 ring-rose-500/20' :
-                                                                'bg-slate-500/5 text-slate-400 border-slate-500/10'}
-                            `}>
-                                    <span className="material-symbols-outlined text-[13px]">
+                                <div className={`badge status ${task.status.toLowerCase().replace(' ', '-')}`}>
+                                    <span className="material-symbols-outlined">
                                         {task.status === 'Done' ? 'check_circle' :
                                             task.status === 'In Progress' ? 'sync' :
                                                 task.status === 'Review' ? 'visibility' :
@@ -309,35 +277,29 @@ export const Tasks = () => {
                                 </div>
                             )}
                             {subtaskStats[task.id]?.total > 0 && (
-                                <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border bg-indigo-500/10 text-indigo-500 border-indigo-500/20">
-                                    <span className="material-symbols-outlined text-[12px]">checklist</span>
+                                <div className="badge subtasks">
+                                    <span className="material-symbols-outlined">checklist</span>
                                     {subtaskStats[task.id].done}/{subtaskStats[task.id].total}
                                 </div>
                             )}
                             {(() => {
                                 const cats = Array.isArray(task.category) ? task.category : [task.category].filter(Boolean);
-                                return cats.map(catName => {
-                                    // Use basic grey as we might not have all category colors loaded for all projects
-                                    return (
-                                        <div
-                                            key={catName as string}
-                                            className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border bg-slate-500/10 text-slate-500 border-slate-500/20"
-                                        >
-                                            {catName as string}
-                                        </div>
-                                    );
-                                });
+                                return cats.map(catName => (
+                                    <div key={catName as string} className="badge category" style={{ borderColor: 'rgba(100, 116, 139, 0.2)', color: '#64748b', backgroundColor: 'rgba(100, 116, 139, 0.1)' }}>
+                                        {catName as string}
+                                    </div>
+                                ));
                             })()}
                         </div>
                     </div>
                 </div>
 
                 {/* Right: Timeline & Actions */}
-                <div className={`flex ${isBoard ? 'flex-col w-full' : 'flex-col md:flex-row md:items-center md:ml-auto'} gap-6 pl-11 md:pl-0`}>
+                <div className={`task-actions-section ${isBoard ? 'is-board' : ''}`}>
                     {/* Minimal Timeline */}
                     {showStrategicTimeline && (
-                        <div className={`flex flex-col gap-2 ${isBoard ? 'w-full px-1' : 'w-56'}`}>
-                            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[0.18em] text-indigo-600 dark:text-indigo-300">
+                        <div className={`timeline-widget ${isBoard ? 'w-full' : 'w-56'}`}>
+                            <div className="timeline-header">
                                 <span className="flex items-center gap-1.5">
                                     <span className="material-symbols-outlined text-[14px]">timeline</span>
                                     {t('tasks.card.strategicTimeline')}
@@ -352,7 +314,7 @@ export const Tasks = () => {
                                     return <span>{Math.round(pct)}%</span>;
                                 })()}
                             </div>
-                            <div className="h-2.5 bg-indigo-500/15 rounded-full overflow-hidden ring-1 ring-indigo-500/20">
+                            <div className="timeline-bar">
                                 {(() => {
                                     const start = new Date(task.startDate!).getTime();
                                     const end = new Date(task.dueDate!).getTime();
@@ -362,7 +324,7 @@ export const Tasks = () => {
                                     const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
                                     return (
                                         <div
-                                            className="h-full rounded-full bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-[0_0_16px_rgba(99,102,241,0.45)] transition-all duration-1000"
+                                            className="progress"
                                             style={{ width: `${pct}%` }}
                                         />
                                     );
@@ -371,8 +333,8 @@ export const Tasks = () => {
                         </div>
                     )}
                     {showTimeline && (
-                        <div className={`flex flex-col gap-1.5 ${isBoard ? 'w-full px-1' : 'w-full md:w-32'}`}>
-                            <div className="h-1.5 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden relative ring-1 ring-black/[0.02]">
+                        <div className={`timeline-widget ${isBoard ? 'w-full' : 'w-32'}`}>
+                            <div className="timeline-simple-bar">
                                 {(() => {
                                     const start = new Date(task.startDate!).getTime();
                                     const end = new Date(task.dueDate!).getTime();
@@ -382,7 +344,7 @@ export const Tasks = () => {
                                     const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
                                     return (
                                         <div
-                                            className="h-full absolute top-0 left-0 rounded-full transition-all duration-1000 bg-primary shadow-[0_0_10px_rgba(var(--color-primary-rgb),0.5)]"
+                                            className="progress"
                                             style={{ width: `${pct}%` }}
                                         />
                                     );
@@ -392,31 +354,31 @@ export const Tasks = () => {
                     )}
 
                     {showStrategicDue && dueDate && (
-                        <div className={`flex flex-col gap-1.5 ${isBoard ? 'w-full px-1' : 'w-56'}`}>
-                            <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-sm ${isOverdue ? 'border-rose-500/30 bg-rose-500/10 text-rose-500' : 'border-indigo-500/20 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300'}`}>
+                        <div className={`timeline-widget ${isBoard ? 'w-full' : 'w-56'}`}>
+                            <div className={`due-date-box ${isOverdue ? 'overdue' : 'normal'}`}>
                                 <span className="material-symbols-outlined text-[18px]">event</span>
                                 <div className="flex flex-col">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-70">{t('tasks.card.strategicDue')}</span>
-                                    <span className="text-sm font-semibold">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
+                                    <span className="date-label">{t('tasks.card.strategicDue')}</span>
+                                    <span className="date-val">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
                                 </div>
                             </div>
                         </div>
                     )}
 
                     {showDueDate && dueDate && (
-                        <div className={`flex flex-col gap-1.5 ${isBoard ? 'w-full px-1' : 'w-full md:w-32'}`}>
-                            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl border ${isOverdue ? 'border-rose-500/30 bg-rose-500/10 text-rose-500' : 'border-surface bg-surface text-main'}`}>
+                        <div className={`timeline-widget ${isBoard ? 'w-full' : 'w-32'}`}>
+                            <div className={`due-date-box simple ${isOverdue ? 'overdue' : ''}`}>
                                 <span className="material-symbols-outlined text-[16px]">event</span>
                                 <div className="flex flex-col">
-                                    <span className="text-[9px] font-black uppercase tracking-[0.2em] opacity-70">{t('tasks.card.due')}</span>
-                                    <span className="text-xs font-semibold">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
+                                    <span className="date-label">{t('tasks.card.due')}</span>
+                                    <span className="date-val small">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
                                 </div>
                             </div>
                         </div>
                     )}
 
                     {/* Action Buttons */}
-                    <div className="flex items-center gap-2">
+                    <div className="action-btn-group">
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
@@ -437,20 +399,16 @@ export const Tasks = () => {
                                 e.preventDefault();
                                 setFocusItem(focusItemId === task.id ? null : task.id);
                             }}
-                            className={`
-                            size-10 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0
-                            bg-slate-100 dark:bg-white/5
-                            ${isPinned(task.id) ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 shadow-sm'}
-                        `}
+                            className={`action-btn pin ${isPinned(task.id) ? 'pinned' : 'unpinned'}`}
                             title={isPinned(task.id) ? t('tasks.actions.unpin') : t('tasks.actions.pin')}
                         >
-                            <span className={`material-symbols-outlined text-xl transition-colors duration-300 ${focusItemId === task.id ? 'text-amber-500' : 'text-white'}`}>
+                            <span className={`material-symbols-outlined text-xl transition-colors duration-300 ${focusItemId === task.id ? 'text-amber-500' : 'text-inherit'}`}>
                                 push_pin
                             </span>
                         </button>
                         <button
                             onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }}
-                            className="size-10 rounded-xl bg-slate-100 dark:bg-white/5 text-rose-500 hover:bg-rose-500 hover:text-white transition-all duration-300 opacity-0 group-hover:opacity-100 flex items-center justify-center shrink-0"
+                            className="action-btn delete"
                             title={t('tasks.actions.delete')}
                         >
                             <span className="material-symbols-outlined text-xl">delete</span>
@@ -463,20 +421,20 @@ export const Tasks = () => {
 
     if (loading) return (
         <div className="flex items-center justify-center p-12">
-            <span className="material-symbols-outlined text-subtle animate-spin text-3xl">rotate_right</span>
+            <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-3xl">rotate_right</span>
         </div>
     );
 
     return (
-        <div className="flex flex-col gap-8 fade-in max-w-6xl mx-auto pb-20 px-4 md:px-0">
+        <div className="project-tasks-container">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
+            <div className="tasks-header">
                 <div>
-                    <h1 className="text-4xl font-black text-main tracking-tight mb-2">
+                    <h1>
                         {t('tasks.header.titlePrefix')}{' '}
-                        <span className="text-primary">{t('tasks.header.titleEmphasis')}</span>
+                        <span>{t('tasks.header.titleEmphasis')}</span>
                     </h1>
-                    <p className="text-muted text-lg font-medium opacity-80">
+                    <p className="subtitle">
                         {t('tasks.header.subtitle')}
                     </p>
                 </div>
@@ -485,28 +443,28 @@ export const Tasks = () => {
                     icon={<span className="material-symbols-outlined font-bold">add</span>}
                     variant="primary"
                     size="lg"
-                    className="shadow-2xl shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all px-8 py-4 rounded-2xl"
+                    className="new-task-btn"
                 >
                     {t('tasks.actions.newTask')}
                 </Button>
             </div>
 
             {/* Stats Row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="tasks-stats-grid">
                 {[
                     { label: t('tasks.stats.openTasks'), val: stats.open, icon: 'list_alt', color: 'indigo' },
                     { label: t('tasks.stats.completed'), val: stats.completed, icon: 'check_circle', color: 'emerald', progress: stats.progress },
                     { label: t('tasks.stats.highPriority'), val: stats.high, icon: 'priority_high', color: 'amber' },
                     { label: t('tasks.stats.urgent'), val: stats.urgent, icon: 'warning', color: 'rose' }
                 ].map((stat, idx) => (
-                    <div key={idx} className={`p-6 rounded-2xl bg-white dark:bg-white/[0.03] border border-${stat.color}-100 dark:border-${stat.color}-500/20 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300`}>
-                        <div className="absolute -right-2 -top-2 p-4 opacity-[0.05] group-hover:opacity-[0.15] group-hover:scale-110 transition-all duration-500">
-                            <span className={`material-symbols-outlined text-8xl text-${stat.color}-500`}>{stat.icon}</span>
+                    <div key={idx} className={`stat-card variant-${stat.color}`}>
+                        <div className="bg-icon">
+                            <span className="material-symbols-outlined">{stat.icon}</span>
                         </div>
-                        <div className="relative z-10">
-                            <p className={`text-xs font-bold text-${stat.color}-600 dark:text-${stat.color}-400 uppercase tracking-[0.1em] mb-2`}>{stat.label}</p>
-                            <div className="flex items-baseline gap-3">
-                                <p className="text-4xl font-black text-main">{stat.val}</p>
+                        <div className="content">
+                            <p className="label">{stat.label}</p>
+                            <div className="value-row">
+                                <p className="value">{stat.val}</p>
                             </div>
                         </div>
                     </div>
@@ -514,36 +472,26 @@ export const Tasks = () => {
             </div>
 
             {/* Controls Bar */}
-            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 sticky top-0 z-20 py-4 bg-slate-50/80 dark:bg-[#0B0B0B]/80 backdrop-blur-xl -mx-4 px-4 md:mx-0 md:px-0 md:rounded-b-2xl transition-all duration-300">
-                <div className="flex flex-wrap gap-2">
-                    <div className="flex bg-white/60 dark:bg-white/5 backdrop-blur-md p-1.5 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm">
+            <div className="tasks-controls-bar">
+                <div className="controls-group-wrapper">
+                    <div className="control-group">
                         {(['active', 'completed', 'all'] as const).map((f) => (
                             <button
                                 key={f}
                                 onClick={() => setFilter(f)}
-                                className={`
-                                    relative flex-1 lg:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all capitalize z-10
-                                    ${filter === f
-                                        ? 'text-primary bg-white dark:bg-white/10 shadow-sm'
-                                        : 'text-muted hover:text-main'}
-                                `}
+                                className={`control-btn ${filter === f ? 'active' : ''}`}
                             >
                                 {t(`tasks.filters.activity.${f}`)}
                             </button>
                         ))}
                     </div>
 
-                    <div className="flex bg-white/60 dark:bg-white/5 backdrop-blur-md p-1.5 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm">
+                    <div className="control-group">
                         {(['list', 'board'] as const).map((v) => (
                             <button
                                 key={v}
                                 onClick={() => setView(v)}
-                                className={`
-                                    relative flex-1 lg:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all capitalize z-10 flex items-center gap-2
-                                    ${view === v
-                                        ? 'text-primary bg-white dark:bg-white/10 shadow-sm'
-                                        : 'text-muted hover:text-main'}
-                                `}
+                                className={`control-btn ${view === v ? 'active' : ''}`}
                             >
                                 <span className="material-symbols-outlined text-lg">{v === 'list' ? 'format_list_bulleted' : 'dashboard'}</span>
                                 {t(`tasks.view.${v}`)}
@@ -552,16 +500,16 @@ export const Tasks = () => {
                     </div>
 
                     {/* Sort Dropdown */}
-                    <div className="relative group/sort">
-                        <button className="flex items-center gap-2 bg-white/60 dark:bg-white/5 backdrop-blur-md px-4 py-4 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm text-sm font-bold text-main hover:border-primary/30 transition-all">
+                    <div className="sort-dropdown">
+                        <button className="sort-btn">
                             <span className="material-symbols-outlined text-lg">sort</span>
                             <span className="hidden sm:inline">{t('tasks.sort.label')}</span>
-                            <span className="text-primary capitalize">
+                            <span className="active-sort">
                                 {sortLabels[sortBy]}
                             </span>
-                            <span className="material-symbols-outlined text-sm opacity-50">expand_more</span>
+                            <span className="material-symbols-outlined chevron">expand_more</span>
                         </button>
-                        <div className="absolute top-full left-0 mt-2 opacity-0 invisible group-hover/sort:opacity-100 group-hover/sort:visible transition-all bg-white dark:bg-[#1E1E1E] border border-surface rounded-xl shadow-2xl py-2 min-w-[160px] z-50">
+                        <div className="sort-menu">
                             {([
                                 { value: 'priority', label: t('tasks.sort.priority'), icon: 'flag' },
                                 { value: 'dueDate', label: t('tasks.sort.dueDate'), icon: 'event' },
@@ -571,7 +519,7 @@ export const Tasks = () => {
                                 <button
                                     key={opt.value}
                                     onClick={() => setSortBy(opt.value)}
-                                    className={`w-full px-4 py-2 text-left text-sm font-medium flex items-center gap-3 hover:bg-surface-hover transition-colors ${sortBy === opt.value ? 'text-primary bg-primary/5' : 'text-main'}`}
+                                    className={`menu-item ${sortBy === opt.value ? 'selected' : ''}`}
                                 >
                                     <span className="material-symbols-outlined text-lg">{opt.icon}</span>
                                     {opt.label}
@@ -581,20 +529,20 @@ export const Tasks = () => {
                     </div>
 
                     {/* Project Filter */}
-                    <div className="relative group/proj">
-                        <button className="flex items-center gap-2 bg-white/60 dark:bg-white/5 backdrop-blur-md px-4 py-4 rounded-2xl border border-black/5 dark:border-white/5 shadow-sm text-sm font-bold text-main hover:border-primary/30 transition-all max-w-[200px]">
+                    <div className="project-filter-dropdown">
+                        <button className="filter-btn">
                             <span className="material-symbols-outlined text-lg">folder_open</span>
                             <span className="truncate">
                                 {projectFilter === 'all'
                                     ? t('tasks.filters.project.all')
                                     : projectNameById[projectFilter] || t('tasks.filters.project.unknown')}
                             </span>
-                            <span className="material-symbols-outlined text-sm opacity-50">expand_more</span>
+                            <span className="material-symbols-outlined chevron">expand_more</span>
                         </button>
-                        <div className="absolute top-full left-0 mt-2 opacity-0 invisible group-hover/proj:opacity-100 group-hover/proj:visible transition-all bg-white dark:bg-[#1E1E1E] border border-surface rounded-xl shadow-2xl py-2 min-w-[200px] z-50 max-h-[300px] overflow-y-auto">
+                        <div className="filter-menu">
                             <button
                                 onClick={() => setProjectFilter('all')}
-                                className={`w-full px-4 py-2 text-left text-sm font-medium flex items-center gap-2 hover:bg-surface-hover transition-colors ${projectFilter === 'all' ? 'text-primary' : 'text-main'}`}
+                                className={`menu-item ${projectFilter === 'all' ? 'selected' : ''}`}
                             >
                                 {t('tasks.filters.project.all')}
                             </button>
@@ -602,7 +550,7 @@ export const Tasks = () => {
                                 <button
                                     key={p.id}
                                     onClick={() => setProjectFilter(p.id)}
-                                    className={`w-full px-4 py-2 text-left text-sm font-medium flex items-center gap-2 hover:bg-surface-hover transition-colors ${projectFilter === p.id ? 'text-primary' : 'text-main'}`}
+                                    className={`menu-item ${projectFilter === p.id ? 'selected' : ''}`}
                                 >
                                     <span className="truncate">{p.title}</span>
                                 </button>
@@ -611,39 +559,38 @@ export const Tasks = () => {
                     </div>
                 </div>
 
-                <div className="relative group w-full lg:w-96">
+                <div className="search-wrapper">
                     <input
                         type="text"
                         value={search}
                         onChange={handleSearchChange}
                         placeholder={t('tasks.search.placeholder')}
-                        className="w-full bg-white/60 dark:bg-white/5 backdrop-blur-md border-black/5 dark:border-white/5 ring-1 ring-black/5 dark:ring-white/10 focus:ring-2 focus:ring-primary rounded-2xl pl-12 pr-6 py-4 text-sm font-medium transition-all outline-none"
                     />
-                    <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-primary transition-colors">search</span>
+                    <span className="material-symbols-outlined search-icon">search</span>
                 </div>
             </div>
 
             {/* Content using new styles */}
-            <div className="flex flex-col gap-4 min-h-[400px]">
+            <div className="view-area-container">
                 {filteredTasks.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-white/30 dark:bg-white/[0.02] border-2 border-dashed border-black/5 dark:border-white/5 rounded-[32px] fade-in">
-                        <div className="size-24 bg-gradient-to-br from-indigo-500/10 to-purple-500/10 rounded-full flex items-center justify-center mb-6 ring-8 ring-indigo-500/5">
-                            <span className="material-symbols-outlined text-5xl text-indigo-500 animate-pulse">explore_off</span>
+                    <div className="empty-state">
+                        <div className="icon-circle">
+                            <span className="material-symbols-outlined animate-pulse">explore_off</span>
                         </div>
-                        <h3 className="text-2xl font-bold text-main mb-2">{t('tasks.empty.list.title')}</h3>
-                        <p className="text-muted max-w-sm font-medium opacity-70">
+                        <h3>{t('tasks.empty.list.title')}</h3>
+                        <p>
                             {t('tasks.empty.list.description')}
                         </p>
                         <Button
                             variant="secondary"
-                            className="mt-8 rounded-xl px-10"
+                            className="create-btn"
                             onClick={() => setShowCreateModal(true)}
                         >
                             {t('tasks.empty.list.action')}
                         </Button>
                     </div>
                 ) : view === 'list' ? (
-                    <div className="grid grid-cols-1 gap-3">
+                    <div className="task-list-grid">
                         {filteredTasks.map(task => (
                             <TaskCard key={task.id} task={task} />
                         ))}

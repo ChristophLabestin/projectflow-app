@@ -1,26 +1,26 @@
 import React, { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Task, Issue } from '../../types';
-import { Card } from '../common/Card/Card';
-import { toDate, toMillis } from '../../utils/time';
+import { Card } from '../ui/Card';
+import { toMillis, toDate } from '../../utils/time';
 import { useLanguage } from '../../context/LanguageContext';
 import { format } from 'date-fns';
-import './dashboard-cards.scss';
 
 interface ScheduledTasksCardProps {
     tasks: Task[];
     issues?: Issue[];
 }
 
+
 export const ScheduledTasksCard: React.FC<ScheduledTasksCardProps> = ({ tasks, issues = [] }) => {
     const { t, language, dateFormat, dateLocale } = useLanguage();
+    const locale = language === 'de' ? 'de-DE' : 'en-US';
     const priorityLabels = useMemo(() => ({
         Urgent: t('tasks.priority.urgent'),
         High: t('tasks.priority.high'),
         Medium: t('tasks.priority.medium'),
         Low: t('tasks.priority.low')
     }), [t]);
-
     const { displayItems, isToday } = useMemo(() => {
         const now = new Date();
         const todayStr = now.toDateString();
@@ -36,6 +36,7 @@ export const ScheduledTasksCard: React.FC<ScheduledTasksCardProps> = ({ tasks, i
 
         const allItems = [...openTasks, ...openIssues];
 
+        // Filter for items due today (based on scheduledDate OR dueDate)
         const itemsDueToday = allItems.filter(item => {
             const date = getItemDate(item);
             return date && date.toDateString() === todayStr;
@@ -44,6 +45,7 @@ export const ScheduledTasksCard: React.FC<ScheduledTasksCardProps> = ({ tasks, i
         if (itemsDueToday.length > 0) {
             return {
                 displayItems: itemsDueToday.sort((a, b) => {
+                    // Sort by priority (Urgent > High > Medium > Low) then creation
                     const priorities = { 'Urgent': 3, 'High': 2, 'Medium': 1, 'Low': 0, undefined: 0 };
                     const pA = priorities[a.priority as keyof typeof priorities] || 0;
                     const pB = priorities[b.priority as keyof typeof priorities] || 0;
@@ -54,6 +56,7 @@ export const ScheduledTasksCard: React.FC<ScheduledTasksCardProps> = ({ tasks, i
             };
         }
 
+        // If no items today, get upcoming items
         const upcomingItems = allItems
             .filter(item => {
                 const date = getItemDate(item);
@@ -64,7 +67,7 @@ export const ScheduledTasksCard: React.FC<ScheduledTasksCardProps> = ({ tasks, i
                 const dateB = getItemDate(b)?.getTime() || 0;
                 return dateA - dateB;
             })
-            .slice(0, 5);
+            .slice(0, 5); // Take top 5
 
         return {
             displayItems: upcomingItems,
@@ -73,13 +76,16 @@ export const ScheduledTasksCard: React.FC<ScheduledTasksCardProps> = ({ tasks, i
     }, [tasks, issues]);
 
     if (displayItems.length === 0 && !isToday) {
+        // Optional: Don't render if absolutely no scheduled tasks ever?
+        // Or render empty state. Let's render empty state for consistency if desired, 
+        // buy specs said "if not then list the next scheduled ones". If none, maybe show placeholder.
         return (
-            <Card className="scheduled-card dashboard__card--padded">
-                <div className="dashboard-card-header">
-                    <h3 className="h5">{t('dashboard.scheduled.title')}</h3>
-                    <span className="material-symbols-outlined" style={{ color: 'var(--color-text-subtle)' }}>event</span>
+            <Card padding="md" className="scheduled-tasks-card">
+                <div className="card-header">
+                    <h3>{t('dashboard.scheduled.title')}</h3>
+                    <span className="material-symbols-outlined icon empty">event</span>
                 </div>
-                <div className="scheduled-card__empty">
+                <div className="empty-state">
                     {t('dashboard.scheduled.empty')}
                 </div>
             </Card>
@@ -87,44 +93,45 @@ export const ScheduledTasksCard: React.FC<ScheduledTasksCardProps> = ({ tasks, i
     }
 
     return (
-        <Card className="scheduled-card dashboard__card--padded">
-            <div className="dashboard-card-header">
-                <h3 className="h5">{isToday ? t('dashboard.scheduled.today') : t('dashboard.scheduled.upcoming')}</h3>
-                <span className="material-symbols-outlined" style={{ color: isToday ? 'var(--color-success)' : 'var(--color-primary)' }}>
+        <Card padding="md" className="scheduled-tasks-card">
+            <div className="card-header">
+                <h3>{isToday ? t('dashboard.scheduled.today') : t('dashboard.scheduled.upcoming')}</h3>
+                <span className={`material-symbols-outlined icon ${isToday ? 'today' : 'upcoming'}`}>
                     {isToday ? 'today' : 'event_upcoming'}
                 </span>
             </div>
 
-            <div className="scheduled-card__list">
+            <div className="tasks-list">
                 {displayItems.map(item => {
                     const isIssue = 'reporter' in item;
+                    const priorityClass = item.priority ? item.priority.toLowerCase() : 'low';
                     const date = item.scheduledDate ? toDate(item.scheduledDate) : ('dueDate' in item ? toDate(item.dueDate) : null);
-                    const priorityClass = item.priority ? `scheduled-card__item-tag--${item.priority.toLowerCase()}` : '';
 
                     return (
-                        <Link key={item.id} to={`/project/${item.projectId}/${isIssue ? 'issues' : 'tasks'}/${item.id}`} className="scheduled-card__item group">
-                            <div className="scheduled-card__item-content">
-                                <div className="scheduled-card__item-main">
-                                    <div className="scheduled-card__item-title-row">
-                                        {isIssue && <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'var(--color-error)' }}>bug_report</span>}
-                                        <p className="scheduled-card__item-title">{item.title}</p>
+                        <Link key={item.id} to={`/project/${item.projectId}/${isIssue ? 'issues' : 'tasks'}/${item.id}`} className="task-item group">
+                            <div className="item-row">
+                                <div className="item-content">
+                                    <div className="title-row">
+                                        {isIssue && <span className="material-symbols-outlined bug-icon">bug_report</span>}
+                                        <p className="task-title">{item.title}</p>
                                     </div>
-                                    <div className="scheduled-card__item-meta">
+                                    <div className="meta-row">
+
                                         {item.priority && (
-                                            <span className={`scheduled-card__item-tag ${priorityClass}`}>
+                                            <span className={`priority-badge ${priorityClass}`}>
                                                 {priorityLabels[item.priority as keyof typeof priorityLabels] || item.priority}
                                             </span>
                                         )}
 
                                         {!isToday && date && (
-                                            <span className="scheduled-card__item-date">
-                                                <span style={{ width: '4px', height: '4px', borderRadius: '50%', backgroundColor: 'currentColor' }}></span>
+                                            <span className="date-badge">
+                                                <span className="dot"></span>
                                                 {format(date, dateFormat, { locale: dateLocale })}
                                             </span>
                                         )}
                                     </div>
                                 </div>
-                                <span className="material-symbols-outlined scheduled-card__item-arrow">chevron_right</span>
+                                <span className="material-symbols-outlined chevron">chevron_right</span>
                             </div>
                         </Link>
                     )

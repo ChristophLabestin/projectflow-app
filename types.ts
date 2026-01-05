@@ -7,6 +7,8 @@ export interface Tenant {
     smtpConfig?: SMTPConfig;
     members?: Member[];
     roles?: { [userId: string]: WorkspaceRole }; // Map for O(1) access in rules
+    customRoles?: CustomRole[]; // Workspace-level custom roles (Discord-style)
+    defaultRoleId?: string; // Default custom role ID for new members
     createdAt?: any;
     updatedAt?: any;
     originIdeaId?: string;
@@ -24,7 +26,7 @@ export interface AIUsage {
 
 // Permission System Types
 export type ProjectRole = 'Owner' | 'Editor' | 'Viewer';
-export type WorkspaceRole = 'Owner' | 'Admin' | 'Member' | 'Guest';
+export type WorkspaceRole = 'Owner' | 'Admin' | 'Member' | 'Guest' | (string & {});
 
 export type Permission =
     // Project
@@ -53,34 +55,29 @@ export type Permission =
     // Groups
     | 'group.create'
     | 'group.update'
-    | 'group.delete';
+    | 'group.delete'
+    // Roles
+    | 'role.manage';
 
-export const ROLE_PERMISSIONS: Record<ProjectRole, Permission[]> = {
-    Owner: [
-        'project.read', 'project.update', 'project.delete', 'project.invite', 'project.view_settings',
-        'task.create', 'task.update', 'task.delete', 'task.view', 'task.assign', 'task.comment',
-        'issue.create', 'issue.update', 'issue.delete', 'issue.view',
-        'idea.create', 'idea.update', 'idea.delete', 'idea.view',
-        'group.create', 'group.update', 'group.delete'
-    ],
-    Editor: [
-        'project.read', 'project.invite', 'project.view_settings',
-        'task.create', 'task.update', 'task.delete', 'task.view', 'task.assign', 'task.comment',
-        'issue.create', 'issue.update', 'issue.delete', 'issue.view',
-        'idea.create', 'idea.update', 'idea.delete', 'idea.view',
-        'group.create', 'group.update', 'group.delete'
-    ],
-    Viewer: [
-        'project.read',
-        'task.view', 'task.comment',
-        'issue.view',
-        'idea.view'
-    ]
-};
+/**
+ * Custom Role (Discord-style) - stored per-project
+ */
+export interface CustomRole {
+    id: string;
+    name: string;
+    color: string; // Hex color for badges
+    position: number; // For ordering (lower = higher priority). Owner is always -1
+    permissions: Permission[];
+    isDefault?: boolean; // Assign to new members automatically?
+    createdAt: any; // Firestore Timestamp
+    createdBy: string; // userId
+}
+
+// ROLE_PERMISSIONS moved to rolesService.ts
 
 export interface ProjectMember {
     userId: string;
-    role: ProjectRole;
+    role: ProjectRole | string; // Legacy ProjectRole or custom role ID
     joinedAt: any; // Firestore Timestamp
     invitedBy: string; // User ID of inviter
     originIdeaId?: string;
@@ -135,7 +132,7 @@ export interface ProjectGroup {
 export interface ProjectInviteLink {
     id: string; // Unique invite link ID
     projectId: string;
-    role: ProjectRole; // Role assigned when joining
+    role: ProjectRole | string; // Role assigned when joining
     createdBy: string; // User ID who created the link
     createdAt: any; // Firestore Timestamp
     expiresAt: any; // Firestore Timestamp
@@ -164,7 +161,7 @@ export interface Project {
     links?: { title: string; url: string; originIdeaId?: string; }[]; // Links shown in Overview
     externalResources?: { title: string; url: string; icon?: string; originIdeaId?: string; }[]; // Links shown in Sidebar
     members?: ProjectMember[]; // Team members with roles (replaces string[])
-    roles?: { [userId: string]: ProjectRole }; // Map for O(1) access in rules
+    roles?: { [userId: string]: ProjectRole | string }; // Map for O(1) access in rules. Can be legacy ProjectRole or custom workspace role ID
     memberIds?: string[]; // IDs of all members for collectionGroup queries
     createdAt?: any; // Firestore Timestamp
     updatedAt?: any; // Firestore Timestamp
@@ -178,23 +175,53 @@ export interface Project {
     originIdeaId?: string;
 }
 
-export interface Member {
+/**
+ * Top-level user profile stored at users/{userId}
+ * Contains global user data that is shared across all workspaces
+ */
+export interface User {
     uid: string;
     email: string;
     displayName: string;
     photoURL?: string;
-    role: WorkspaceRole;
-    groupIds?: string[]; // IDs of groups the user belongs to
-    joinedAt?: any;
+    coverURL?: string;
+    title?: string;
+    bio?: string;
+    address?: string;
+    skills?: string[];
     aiUsage?: AIUsage;
-    githubToken?: string;
-    pinnedProjectId?: string;
-    privacySettings?: PrivacySettings;
-    originIdeaId?: string;
     geminiConfig?: {
         apiKey: string;
-        tokenLimit: number; // User-defined limit
+        tokenLimit: number;
     };
+    privacySettings?: PrivacySettings;
+    createdAt?: any;
+    updatedAt?: any;
+}
+
+/**
+ * Workspace membership stored at tenants/{tenantId}/members/{userId}
+ * Contains workspace-specific data for a user's membership in a tenant
+ */
+export interface TenantMembership {
+    uid: string;
+    role: WorkspaceRole;
+    joinedAt: any;
+    groupIds?: string[];
+    pinnedProjectId?: string;
+    githubToken?: string; // Workspace-specific GitHub token
+}
+
+/**
+ * Combined view of User + TenantMembership for UI display
+ * Used when showing workspace members with their full profile info
+ */
+export interface Member extends User {
+    role: WorkspaceRole;
+    groupIds?: string[];
+    joinedAt?: any;
+    githubToken?: string;
+    pinnedProjectId?: string;
 }
 
 export type PrivacyScope = 'public' | 'members' | 'guests' | 'private';

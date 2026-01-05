@@ -1,0 +1,119 @@
+@use '../tokens';
+@use '../mixins';
+
+.app-layout {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+    background-color: var(--color-surface-bg);
+    overflow: hidden;
+}
+
+.sidebar-wrapper {
+    display: none;
+    flex-shrink: 0;
+    height: 100%;
+
+    @include mixins.mq('md') {
+        display: flex;
+    }
+}
+
+.mobile-drawer-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+
+    .backdrop {
+        position: fixed;
+        inset: 0;
+        background-color: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px);
+        transition: opacity 0.2s;
+    }
+
+    /* Note: .md:hidden is handled by conditional rendering or media query if needed, 
+     but usually handled by React state. Here we apply flex logic. */
+    @include mixins.mq('md') {
+        display: none;
+    }
+}
+
+.mobile-drawer {
+    position: relative;
+    width: 80%;
+    max-width: 20rem;
+    /* max-w-xs */
+    height: 100%;
+    background-color: var(--color-surface-card);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    /* shadow-2xl */
+
+    /* Animation handled by utility or keyframes if needed, 
+     React 'animate-fade-in-left' usage implies global utility. */
+    animation: slideInLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.main-content-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    height: 100%;
+    position: relative;
+}
+
+.main-scroll-area {
+    flex: 1;
+    width: 100%;
+    /* background-image: radial-gradient(#e5e7eb 1px, transparent 1px); bg-dots logic handled globally or here? 
+     User code: 'dotted-bg'. This is often a utility. I'll stick to class replacement logic.
+  */
+
+    &.standard-padding {
+        overflow-y: auto;
+        padding: 16px;
+        /* p-4 */
+
+        @include mixins.mq('sm') {
+            padding: 24px;
+            /* p-6 */
+        }
+
+        @include mixins.mq('lg') {
+            padding: 32px;
+            /* p-8 */
+        }
+    }
+
+    &.full-width {
+        padding: 0;
+        overflow: hidden;
+    }
+}
+
+.main-container {
+    height: 100%;
+
+    &.centered {
+        max-width: 80rem;
+        /* max-w-7xl */
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    &.full {
+        width: 100%;
+    }
+}
+
+@keyframes slideInLeft {
+    from {
+        transform: translateX(-100%);
+    }
+
+    to {
+        transform: translateX(0);
+    }
+}

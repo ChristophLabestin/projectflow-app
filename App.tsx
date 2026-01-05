@@ -59,7 +59,6 @@ import { MarketingSettings } from './screens/marketing/MarketingSettings';
 import { BlogList } from './screens/marketing/BlogList';
 import { BlogEditor } from './screens/marketing/BlogEditor';
 import { auth } from './services/firebase';
-import { onAuthStateChanged } from 'firebase/auth';
 import { useUIState } from './context/UIContext';
 import { PinnedTasksModal } from './components/PinnedTasksModal';
 import { PinnedTasksProvider } from './context/PinnedTasksContext';
@@ -71,6 +70,7 @@ import { useLanguage } from './context/LanguageContext';
 import LegalPage from './screens/LegalPage';
 import { useModuleAccess } from './hooks/useModuleAccess';
 import { AccountingPlaceholder } from './screens/AccountingPlaceholder';
+import { useAuth } from './context/AuthContext';
 
 const RequireAuth = ({ children }: { children?: React.ReactNode }) => {
     const location = useLocation();
@@ -148,144 +148,135 @@ const AuthenticatedLayout = ({ user }: { user: any }) => {
 
 const App = () => {
     const { t } = useLanguage();
-    const [user, setUser] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
+    const { user, isAuthReady } = useAuth();
     const [error, setError] = useState<string | null>(null);
 
+    // Check for auth initialization errors
     useEffect(() => {
         if (!auth) {
             setError(t('app.error.authInit'));
-            setLoading(false);
-            return;
-        }
-
-        try {
-            const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-                setUser(currentUser);
-                setLoading(false);
-            });
-            return () => unsubscribe();
-        } catch (err: any) {
-            console.error("Auth State Change Error:", err);
-            setError(err.message || t('app.error.authConnection'));
-            setLoading(false);
         }
     }, [t]);
 
-    const router = useMemo(() => createBrowserRouter(
-        createRoutesFromElements(
-            <Route element={<RootLayout />} errorElement={<ErrorPage />}>
-                {/* Public / Auth-Action Routes - Higher priority siblings */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Login />} />
-                <Route path="/auth/action" element={<AuthAction />} />
-                <Route path="/legal/:type" element={<LegalPage />} />
-                <Route path="/invite/:tenantId" element={<InviteLanding />} />
-                <Route path="/invite-project/:projectId" element={<ProjectInviteLanding />} />
-                <Route path="/join/:inviteLinkId" element={<JoinProjectViaLink />} />
-                <Route path="/join-workspace/:inviteLinkId" element={<JoinWorkspaceViaLink />} />
 
-                {/* Authenticated Routes Block */}
-                <Route element={<AuthenticatedLayout user={user} />}>
-                    <Route path="/" element={<Dashboard />} />
-                    <Route path="/notifications" element={<Notifications />} />
-                    <Route path="/projects" element={<ProjectsList />} />
-                    <Route path="/tasks" element={<Tasks />} />
-                    <Route path="/calendar" element={<Calendar />} />
-                    <Route path="/brainstorm" element={<Brainstorming />} />
-                    <Route path="/create" element={<CreateProjectWizard />} />
-                    <Route path="/team" element={<Team />} />
-                    <Route path="/media" element={<MediaLibraryPage />} />
-                    <Route path="/profile" element={<Profile />} />
+    const router = useMemo(() => {
+        // Don't create router until auth is ready
+        if (!isAuthReady) return null;
 
-                    <Route path="/personal-tasks" element={<PersonalTasksPage />} />
-                    <Route path="/personal-tasks/:taskId" element={<PersonalTaskDetailPage />} />
+        return createBrowserRouter(
+            createRoutesFromElements(
+                <Route element={<RootLayout />} errorElement={<ErrorPage />}>
+                    {/* Public / Auth-Action Routes - Higher priority siblings */}
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/register" element={<Login />} />
+                    <Route path="/auth/action" element={<AuthAction />} />
+                    <Route path="/legal/:type" element={<LegalPage />} />
+                    <Route path="/invite/:tenantId" element={<InviteLanding />} />
+                    <Route path="/invite-project/:projectId" element={<ProjectInviteLanding />} />
+                    <Route path="/join/:inviteLinkId" element={<JoinProjectViaLink />} />
+                    <Route path="/join-workspace/:inviteLinkId" element={<JoinWorkspaceViaLink />} />
 
-                    <Route path="/project/:id">
-                        <Route index element={<ProjectOverview />} />
-                        <Route path="tasks" element={<ProjectTasks />} />
-                        <Route path="tasks/:taskId" element={<ProjectTaskDetail />} />
-                        <Route path="details" element={<ProjectDetails />} />
-                        <Route path="activity" element={<ProjectActivity />} />
-                        <Route path="flows" element={<ProjectFlows />} />
-                        <Route path="flows/:flowId" element={<FlowDetail />} />
-                        <Route path="ideas" element={<ProjectFlows />} />
-                        <Route path="ideas/:flowId" element={<FlowDetail />} />
-                        <Route path="issues" element={<ProjectIssues />} />
-                        <Route path="issues/:issueId" element={<ProjectIssueDetail />} />
-                        <Route path="milestones" element={<ProjectMilestones />} />
-                        <Route path="sprints" element={
-                            <RequireModuleAccess module="sprints">
-                                <ProjectSprints />
-                            </RequireModuleAccess>
-                        } />
+                    {/* Authenticated Routes Block */}
+                    <Route element={<AuthenticatedLayout user={user} />}>
+                        <Route path="/" element={<Dashboard />} />
+                        <Route path="/notifications" element={<Notifications />} />
+                        <Route path="/projects" element={<ProjectsList />} />
+                        <Route path="/tasks" element={<Tasks />} />
+                        <Route path="/calendar" element={<Calendar />} />
+                        <Route path="/brainstorm" element={<Brainstorming />} />
+                        <Route path="/create" element={<CreateProjectWizard />} />
+                        <Route path="/team" element={<Team />} />
+                        <Route path="/media" element={<MediaLibraryPage />} />
+                        <Route path="/profile" element={<Profile />} />
 
-                        <Route path="social" element={
-                            <RequireModuleAccess module="social">
-                                <SocialLayout />
-                            </RequireModuleAccess>
-                        }>
-                            <Route index element={<SocialDashboard />} />
-                            <Route path="campaigns" element={<CampaignList />} />
-                            <Route path="campaigns/create" element={<CreateCampaignPage />} />
-                            <Route path="campaigns/edit/:campaignId" element={<CreateCampaignPage />} />
-                            <Route path="campaigns/:campaignId" element={<CampaignDetailView />} />
-                            <Route path="review/:ideaId" element={<SocialCampaignReviewPage />} />
+                        <Route path="/personal-tasks" element={<PersonalTasksPage />} />
+                        <Route path="/personal-tasks/:taskId" element={<PersonalTaskDetailPage />} />
 
-                            <Route path="posts" element={<PostList />} />
-                            <Route path="calendar" element={<SocialCalendar />} />
-                            <Route path="settings" element={<SocialSettings />} />
-                            <Route path="assets" element={<SocialAssets />} />
+                        <Route path="/project/:id">
+                            <Route index element={<ProjectOverview />} />
+                            <Route path="tasks" element={<ProjectTasks />} />
+                            <Route path="tasks/:taskId" element={<ProjectTaskDetail />} />
+                            <Route path="details" element={<ProjectDetails />} />
+                            <Route path="activity" element={<ProjectActivity />} />
+                            <Route path="flows" element={<ProjectFlows />} />
+                            <Route path="flows/:flowId" element={<FlowDetail />} />
+                            <Route path="ideas" element={<ProjectFlows />} />
+                            <Route path="ideas/:flowId" element={<FlowDetail />} />
+                            <Route path="issues" element={<ProjectIssues />} />
+                            <Route path="issues/:issueId" element={<ProjectIssueDetail />} />
+                            <Route path="milestones" element={<ProjectMilestones />} />
+                            <Route path="sprints" element={
+                                <RequireModuleAccess module="sprints">
+                                    <ProjectSprints />
+                                </RequireModuleAccess>
+                            } />
+
+                            <Route path="social" element={
+                                <RequireModuleAccess module="social">
+                                    <SocialLayout />
+                                </RequireModuleAccess>
+                            }>
+                                <Route index element={<SocialDashboard />} />
+                                <Route path="campaigns" element={<CampaignList />} />
+                                <Route path="campaigns/create" element={<CreateCampaignPage />} />
+                                <Route path="campaigns/edit/:campaignId" element={<CreateCampaignPage />} />
+                                <Route path="campaigns/:campaignId" element={<CampaignDetailView />} />
+                                <Route path="review/:ideaId" element={<SocialCampaignReviewPage />} />
+
+                                <Route path="posts" element={<PostList />} />
+                                <Route path="calendar" element={<SocialCalendar />} />
+                                <Route path="settings" element={<SocialSettings />} />
+                                <Route path="assets" element={<SocialAssets />} />
+                            </Route>
+                            <Route path="social/create" element={
+                                <RequireModuleAccess module="social">
+                                    <CreateSocialPost />
+                                </RequireModuleAccess>
+                            } />
+                            <Route path="social/edit/:postId" element={
+                                <RequireModuleAccess module="social">
+                                    <CreateSocialPost />
+                                </RequireModuleAccess>
+                            } />
+                            <Route path="social/approvals" element={
+                                <RequireModuleAccess module="social">
+                                    <SocialApprovalsPage />
+                                </RequireModuleAccess>
+                            } />
+                            <Route path="social/archive" element={
+                                <RequireModuleAccess module="social">
+                                    <SocialPostArchive />
+                                </RequireModuleAccess>
+                            } />
+
+                            <Route path="marketing" element={
+                                <RequireModuleAccess module="marketing">
+                                    <MarketingLayout />
+                                </RequireModuleAccess>
+                            }>
+                                <Route index element={<MarketingDashboard />} />
+                                <Route path="ads" element={<PaidAdsList />} />
+                                <Route path="ads/create" element={<CreateAdCampaignPage />} />
+                                <Route path="ads/:campaignId" element={<AdCampaignDetail />} />
+                                <Route path="ads/:campaignId/edit" element={<CreateAdCampaignPage />} />
+                                <Route path="email" element={<EmailMarketingList />} />
+                                <Route path="email/create" element={<CreateEmailPage />} />
+                                <Route path="email/builder" element={<EmailBuilderPage />} />
+                                <Route path="recipients" element={<RecipientList />} />
+                                <Route path="blog" element={<BlogList />} />
+                                <Route path="blog/create" element={<BlogEditor />} />
+                                <Route path="blog/:blogId" element={<BlogEditor />} />
+                                <Route path="settings" element={<MarketingSettings />} />
+                            </Route>
+
+                            <Route path="accounting" element={
+                                <RequireModuleAccess module="accounting">
+                                    <AccountingPlaceholder />
+                                </RequireModuleAccess>
+                            } />
+
                         </Route>
-                        <Route path="social/create" element={
-                            <RequireModuleAccess module="social">
-                                <CreateSocialPost />
-                            </RequireModuleAccess>
-                        } />
-                        <Route path="social/edit/:postId" element={
-                            <RequireModuleAccess module="social">
-                                <CreateSocialPost />
-                            </RequireModuleAccess>
-                        } />
-                        <Route path="social/approvals" element={
-                            <RequireModuleAccess module="social">
-                                <SocialApprovalsPage />
-                            </RequireModuleAccess>
-                        } />
-                        <Route path="social/archive" element={
-                            <RequireModuleAccess module="social">
-                                <SocialPostArchive />
-                            </RequireModuleAccess>
-                        } />
-
-                        <Route path="marketing" element={
-                            <RequireModuleAccess module="marketing">
-                                <MarketingLayout />
-                            </RequireModuleAccess>
-                        }>
-                            <Route index element={<MarketingDashboard />} />
-                            <Route path="ads" element={<PaidAdsList />} />
-                            <Route path="ads/create" element={<CreateAdCampaignPage />} />
-                            <Route path="ads/:campaignId" element={<AdCampaignDetail />} />
-                            <Route path="ads/:campaignId/edit" element={<CreateAdCampaignPage />} />
-                            <Route path="email" element={<EmailMarketingList />} />
-                            <Route path="email/create" element={<CreateEmailPage />} />
-                            <Route path="email/builder" element={<EmailBuilderPage />} />
-                            <Route path="recipients" element={<RecipientList />} />
-                            <Route path="blog" element={<BlogList />} />
-                            <Route path="blog/create" element={<BlogEditor />} />
-                            <Route path="blog/:blogId" element={<BlogEditor />} />
-                            <Route path="settings" element={<MarketingSettings />} />
-                        </Route>
-
-                        <Route path="accounting" element={
-                            <RequireModuleAccess module="accounting">
-                                <AccountingPlaceholder />
-                            </RequireModuleAccess>
-                        } />
-
                     </Route>
-                </Route>
 
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Route>

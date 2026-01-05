@@ -1,0 +1,51 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import 'tokens';
+@import 'themes';
+@import 'mixins';
+@import 'utilities';
+@import 'components';
+@import 'components/settings';
+@import 'components/login';
+@import 'components/auth-action';
+@import 'components/legal';
+@import 'components/invite';
+@import 'components/layout';
+@import 'components/dashboard';
+@import 'components/project-overview';
+@import 'components/tasks';
+@import 'components/task-modals';
+@import 'components/pinned-tasks';
+@import 'components/scheduled-tasks-card';
+
+/* Global Reset */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--color-surface-bg);
+    color: var(--color-text-main);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Inputs Reset */
+input:focus,
+input:focus-visible,
+select:focus,
+select:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+button:focus,
+button:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}

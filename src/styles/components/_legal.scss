@@ -1,0 +1,307 @@
+@use '../tokens';
+@use '../mixins';
+
+.legal-page {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background-color: var(--color-surface-bg);
+    color: var(--color-text-main);
+
+    /* Dots background pattern */
+    background-image: radial-gradient(var(--color-surface-border) 1px, transparent 1px);
+    background-size: 24px 24px;
+}
+
+.legal-mobile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px;
+    /* p-6 */
+    border-bottom: 1px solid var(--color-surface-border);
+    background-color: var(--color-surface-bg);
+    position: sticky;
+    top: 0;
+    z-index: 40;
+
+    @include mixins.mq('md') {
+        display: none;
+    }
+
+    .btn-back {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--color-text-muted);
+        font-weight: 500;
+    }
+}
+
+.legal-layout {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+
+    @include mixins.mq('md') {
+        flex-direction: row;
+    }
+}
+
+.legal-sidebar {
+    display: none;
+    width: 256px;
+    /* w-64 */
+    background-color: var(--color-surface-card);
+    border-right: 1px solid var(--color-surface-border);
+    padding: 40px;
+    /* p-10 */
+    flex-shrink: 0;
+    height: 100%;
+    overflow-y: auto;
+    flex-direction: column;
+    justify-content: space-between;
+
+    @include mixins.mq('md') {
+        display: flex;
+    }
+
+    @include mixins.mq('lg') {
+        width: 320px;
+        /* w-80 */
+    }
+
+    .btn-back {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--color-text-muted);
+        transition: color 0.2s;
+        margin-bottom: 48px;
+        /* mb-12 */
+        font-weight: 500;
+
+        &:hover {
+            color: var(--color-text-main);
+        }
+    }
+
+    .nav-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        /* space-y-2 */
+    }
+}
+
+.legal-nav-item {
+    width: 100%;
+    text-align: left;
+    padding: 12px 16px;
+    /* px-4 py-3 */
+    border-radius: 8px;
+    /* rounded-lg */
+    font-size: 0.875rem;
+    /* text-sm */
+    font-weight: 500;
+    transition: all 0.2s;
+    color: var(--color-text-muted);
+
+    &:hover {
+        background-color: var(--color-surface-hover);
+        color: var(--color-text-main);
+    }
+
+    &.active {
+        background-color: var(--color-primary);
+        color: white;
+        /* Always white for active primary bg */
+    }
+}
+
+.legal-subnav {
+    margin-left: 16px;
+    /* ml-4 */
+    margin-top: 8px;
+    /* mt-2 */
+    margin-bottom: 16px;
+    /* mb-4 */
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    /* space-y-1 */
+    border-left: 2px solid var(--color-surface-border);
+    /* neutral-200 equivalent */
+    padding-left: 16px;
+    /* pl-4 */
+    overflow: hidden;
+
+    .subnav-item {
+        display: block;
+        width: 100%;
+        text-align: left;
+        font-size: 0.75rem;
+        /* text-xs */
+        padding-top: 4px;
+        padding-bottom: 4px;
+        transition: color 0.2s;
+        color: var(--color-text-muted);
+
+        &:hover {
+            color: var(--color-text-main);
+        }
+
+        &.active {
+            color: var(--color-primary);
+            font-weight: 600;
+        }
+    }
+}
+
+.legal-content-area {
+    flex: 1;
+    padding: 24px;
+    /* p-6 */
+    max-width: 56rem;
+    /* max-w-4xl */
+    position: relative;
+    overflow-y: auto;
+    height: 100%;
+    scroll-behavior: smooth;
+
+    @include mixins.mq('md') {
+        padding: 64px;
+        /* p-16 */
+    }
+
+    @include mixins.mq('lg') {
+        padding: 96px;
+        /* p-24 */
+    }
+}
+
+/* Typography for legal content */
+.legal-typography {
+    h1 {
+        font-size: 2.25rem;
+        /* text-4xl */
+        font-weight: 700;
+        letter-spacing: -0.025em;
+        /* tracking-tight */
+        margin-bottom: 32px;
+        /* mb-8 */
+        color: var(--color-text-main);
+    }
+
+    h2 {
+        font-size: 1.5rem;
+        /* text-2xl */
+        font-weight: 700;
+        color: var(--color-text-main);
+        margin-bottom: 16px;
+        /* mb-4 */
+        margin-top: 32px;
+        /* mt-8 */
+        scroll-margin-top: 96px;
+        /* scroll-mt-24 */
+
+        &:first-child {
+            margin-top: 0;
+        }
+    }
+
+    h3 {
+        font-size: 1.125rem;
+        /* text-lg */
+        font-weight: 700;
+        color: var(--color-text-main);
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+        /* tracking-wide */
+        margin-bottom: 8px;
+        /* mb-2 */
+        margin-top: 16px;
+        /* mt-4 */
+    }
+
+    p,
+    li {
+        line-height: 1.625;
+        /* leading-relaxed */
+        color: var(--color-text-paragraph);
+        /* Custom token or fallback */
+        margin-bottom: 16px;
+    }
+
+    ul {
+        list-style-type: disc;
+        padding-left: 20px;
+        /* pl-5 */
+        margin-bottom: 16px;
+    }
+
+    ol {
+        list-style-type: decimal;
+        padding-left: 20px;
+        /* pl-5 */
+        margin-bottom: 16px;
+    }
+}
+
+.legal-mobile-menu {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background-color: var(--color-surface-bg);
+    display: flex;
+    flex-direction: column;
+
+    @include mixins.mq('md') {
+        display: none;
+    }
+
+    .menu-header {
+        display: flex;
+        justify-content: flex-end;
+        padding: 24px;
+    }
+
+    .menu-links {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 32px;
+        /* space-y-8 */
+        padding: 32px;
+
+        button {
+            font-size: 1.875rem;
+            /* text-3xl */
+            font-weight: 700;
+            transition: color 0.2s;
+
+            &.active {
+                color: var(--color-text-main);
+            }
+
+            &:not(.active) {
+                color: var(--color-text-muted);
+            }
+        }
+    }
+
+    .menu-footer {
+        padding: 32px;
+        border-top: 1px solid var(--color-surface-border);
+        background-color: var(--color-surface-card);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 24px;
+    }
+}

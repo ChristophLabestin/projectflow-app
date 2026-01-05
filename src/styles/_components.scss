@@ -1,0 +1,171 @@
+/* --- Switch Component --- */
+.switch-track {
+    width: 48px;
+    /* w-12 */
+    height: 24px;
+    /* h-6 */
+    border-radius: 9999px;
+    /* rounded-full */
+    padding: 2px;
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+    background-color: #e4e4e7;
+    /* zinc-200 */
+    border: 1px solid transparent;
+    display: flex;
+    align-items: center;
+
+    html.dark & {
+        background-color: #3f3f46;
+        /* zinc-700 */
+        border-color: #52525b;
+        /* zinc-600 */
+    }
+
+    &.active,
+    html.dark &.active {
+        background-color: var(--color-success);
+        border-color: var(--color-success);
+    }
+}
+
+.switch-handle {
+    width: 16px;
+    /* size-4 */
+    height: 16px;
+    background-color: white;
+    border-radius: 9999px;
+    transition: transform 0.15s ease-in-out;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+
+    .switch-track.active & {
+        transform: translateX(26px);
+    }
+}
+
+/* --- Legacy / Global Overrides --- */
+.app-card {
+    background: var(--color-surface-card);
+    border: 1px solid var(--color-surface-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md);
+}
+
+/* --- Help Center Utilities --- */
+.help-section {
+    scroll-margin-top: 24px;
+}
+
+.help-highlight {
+    box-shadow: 0 0 0 2px rgba(23, 23, 23, 0.15);
+    background: var(--color-surface-hover);
+
+    html.dark & {
+        box-shadow: 0 0 0 2px rgba(229, 229, 229, 0.2);
+    }
+}
+
+/* --- Prose / Typography Content --- */
+.prose {
+    ul {
+        list-style-type: disc;
+        margin-top: 1em;
+        margin-bottom: 1em;
+        padding-left: 1.5em;
+    }
+
+    ol {
+        list-style-type: decimal;
+        margin-top: 1em;
+        margin-bottom: 1em;
+        padding-left: 1.5em;
+    }
+
+    li {
+        margin-top: 0.25em;
+        margin-bottom: 0.25em;
+    }
+
+    p {
+        margin: 0;
+    }
+
+    a {
+        color: var(--color-primary);
+        text-decoration: underline;
+        font-weight: 500;
+    }
+
+    h1 {
+        font-size: 1.5em;
+        font-weight: 700;
+        margin-top: 1.5em;
+        margin-bottom: 0.5em;
+    }
+
+    h2 {
+        font-size: 1.25em;
+        font-weight: 600;
+        margin-top: 1.25em;
+        margin-bottom: 0.5em;
+    }
+}
+
+/* --- Glass Effects & Advanced UI --- */
+.glass-card {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+
+    html.dark & {
+        background: rgba(21, 25, 32, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+}
+
+.glass-strong {
+    background: rgba(255, 255, 255, 0.65);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+
+    html.dark & {
+        background: rgba(2, 6, 23, 0.65);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+}
+
+/* --- Animations & Visual Effects --- */
+.animate-pulse-ring {
+    animation: pulse-ring 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-ring {
+
+    0%,
+    100% {
+        transform: scale(0.95);
+        opacity: 0.8;
+    }
+
+    50% {
+        transform: scale(1.05);
+        opacity: 0.4;
+    }
+}
+
+.health-ring-critical {
+    box-shadow: 0 0 20px rgba(244, 63, 94, 0.4);
+    border-color: rgba(244, 63, 94, 0.6);
+}
+
+.health-ring-warning {
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.4);
+    border-color: rgba(245, 158, 11, 0.6);
+}
+
+.health-ring-success {
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+    border-color: rgba(16, 185, 129, 0.6);
+}

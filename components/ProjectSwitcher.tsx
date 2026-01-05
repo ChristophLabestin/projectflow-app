@@ -4,6 +4,7 @@ import { Project } from '../types';
 import { getUserProjects, getSharedProjects } from '../services/dataService';
 import { usePinnedProject } from '../context/PinnedProjectContext';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import logo from '../assets/logo.svg';
 
 interface ProjectSwitcherProps {
@@ -21,9 +22,13 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
     const dropdownRef = useRef<HTMLDivElement>(null);
     const { pinProject, unpinProject, pinnedProjectId } = usePinnedProject();
     const { t } = useLanguage();
+    const { isAuthReady, isAuthenticated } = useAuth();
 
-    // Fetch projects on mount to ensure we have icons for the active state
+    // Fetch projects on mount - only when auth is ready
     useEffect(() => {
+        // Only fetch when auth is ready and user is authenticated
+        if (!isAuthReady || !isAuthenticated) return;
+
         const fetchProjects = async () => {
             try {
                 const [myProjects, sharedProjects] = await Promise.all([
@@ -47,7 +52,7 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
             }
         };
         fetchProjects();
-    }, []);
+    }, [isAuthReady, isAuthenticated]);
 
     const activeProject = projects.find(p => p.id === currentProjectId);
 
@@ -86,10 +91,10 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                     w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl 
                     transition-all duration-200 border border-transparent
                     ${isOpen
-                        ? 'bg-surface-hover'
-                        : 'bg-transparent hover:bg-surface-hover'}
+                        ? 'bg-[var(--color-surface-hover)]'
+                        : 'bg-transparent hover:bg-[var(--color-surface-hover)]'}
                     focus:outline-none focus:ring-0 focus-visible:outline-none focus:border-transparent
-                    outline-none active:bg-surface-hover active:outline-none
+                    outline-none active:bg-[var(--color-surface-hover)] active:outline-none
                     select-none
                 `}
                 style={{ WebkitTapHighlightColor: 'transparent', outline: 'none' }}
@@ -97,7 +102,7 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                 <div className="flex items-center gap-3 min-w-0">
                     <div className={`
                         size-8 rounded-lg flex items-center justify-center shrink-0 overflow-hidden
-                        ${activeProject?.squareIcon ? 'bg-transparent' : currentProjectId ? 'bg-gradient-to-br from-indigo-500 to-purple-600' : 'bg-surface-hover'}
+                        ${activeProject?.squareIcon ? 'bg-transparent' : currentProjectId ? 'bg-gradient-to-br from-indigo-500 to-purple-600' : 'bg-[var(--color-surface-hover)]'}
                         shadow-sm text-white font-bold
                     `}>
                         {activeProject?.squareIcon ? (
@@ -109,33 +114,33 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                         )}
                     </div>
                     <div className="flex flex-col items-start min-w-0">
-                        <span className="text-xs font-bold text-muted uppercase tracking-wider">
+                        <span className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
                             {currentProjectId ? t('projectSwitcher.scope.project') : t('projectSwitcher.scope.workspace')}
                         </span>
-                        <span className="text-sm font-bold text-main truncate max-w-[140px]">
+                        <span className="text-sm font-bold text-[var(--color-text-main)] truncate max-w-[140px]">
                             {currentProjectTitle || t('app.brand')}
                         </span>
                     </div>
                 </div>
-                <span className="material-symbols-outlined text-muted">unfold_more</span>
+                <span className="material-symbols-outlined text-[var(--color-text-muted)]">unfold_more</span>
             </button>
 
             {/* Dropdown */}
             {isOpen && (
                 <div className="absolute top-[calc(100%+8px)] left-0 w-[280px] z-50 origin-top-left animate-fade-in-down">
-                    <div className="bg-card border border-surface rounded-xl shadow-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/10">
+                    <div className="bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl shadow-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/10">
 
                         {/* Search */}
-                        <div className="p-2 border-b border-surface sticky top-0 bg-card">
+                        <div className="p-2 border-b border-[var(--color-surface-border)] sticky top-0 bg-[var(--color-surface-card)]">
                             <div className="relative">
-                                <span className="material-symbols-outlined absolute left-2.5 top-2 text-[18px] text-muted">search</span>
+                                <span className="material-symbols-outlined absolute left-2.5 top-2 text-[18px] text-[var(--color-text-muted)]">search</span>
                                 <input
                                     type="text"
                                     autoFocus
                                     placeholder={t('projectSwitcher.searchPlaceholder')}
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    className="w-full pl-9 pr-3 py-1.5 text-sm bg-surface text-main rounded-lg border border-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent placeholder-[var(--color-text-muted)]"
+                                    className="w-full pl-9 pr-3 py-1.5 text-sm bg-[var(--color-surface-bg)] text-[var(--color-text-main)] rounded-lg border border-[var(--color-surface-border)] focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] focus:border-transparent placeholder-[var(--color-text-muted)]"
                                 />
                             </div>
                         </div>
@@ -146,25 +151,25 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                             {/* Workspace (Home) */}
                             <button
                                 onClick={handleWorkspaceClick}
-                                className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-surface-hover transition-colors group"
+                                className="w-full flex items-center gap-3 px-3 py-2 text-left hover:bg-[var(--color-surface-hover)] transition-colors group"
                             >
-                                <div className="size-6 bg-surface-hover rounded-md flex items-center justify-center group-hover:bg-card transition-colors">
-                                    <span className="material-symbols-outlined text-[16px] text-main">grid_view</span>
+                                <div className="size-6 bg-[var(--color-surface-hover)] rounded-md flex items-center justify-center group-hover:bg-[var(--color-surface-card)] transition-colors">
+                                    <span className="material-symbols-outlined text-[16px] text-[var(--color-text-main)]">grid_view</span>
                                 </div>
                                 <div className="flex-1">
-                                    <div className="text-sm font-medium text-main">{t('nav.dashboard')}</div>
+                                    <div className="text-sm font-medium text-[var(--color-text-main)]">{t('nav.dashboard')}</div>
                                 </div>
                                 {!currentProjectId && (
-                                    <span className="material-symbols-outlined text-[16px] text-primary">check</span>
+                                    <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>
                                 )}
                             </button>
 
-                            <div className="h-px bg-surface-border my-1 mx-3" />
+                            <div className="h-px bg-[var(--color-surface-border)] my-1 mx-3" />
 
-                            <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-muted">{t('nav.projects')}</div>
+                            <div className="px-3 py-1.5 text-[10px] uppercase font-bold text-[var(--color-text-muted)]">{t('nav.projects')}</div>
 
                             {loading && filteredProjects.length === 0 ? (
-                                <div className="px-3 py-4 text-center text-sm text-muted">
+                                <div className="px-3 py-4 text-center text-sm text-[var(--color-text-muted)]">
                                     {t('projectSwitcher.loading')}
                                 </div>
                             ) : filteredProjects.length > 0 ? (
@@ -181,7 +186,7 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                                         }}
                                         className={`
                                             w-full flex items-center gap-3 px-3 py-2 text-left transition-colors cursor-pointer group outline-none
-                                            ${currentProjectId === p.id ? 'bg-surface-hover' : 'hover:bg-surface-hover'}
+                                            ${currentProjectId === p.id ? 'bg-[var(--color-surface-hover)]' : 'hover:bg-[var(--color-surface-hover)]'}
                                         `}
                                     >
                                         <div className={`
@@ -194,15 +199,15 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                                                 <span>{p.title ? p.title.substring(0, 1).toUpperCase() : 'P'}</span>
                                             )}
                                         </div>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="text-sm font-medium text-main truncate">{p.title}</div>
-                                                <div className="text-[10px] text-muted truncate">
-                                                    {p.ownerId === p.id ? t('projectSwitcher.role.owner') : t('projectSwitcher.role.member')}
-                                                </div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="text-sm font-medium text-[var(--color-text-main)] truncate">{p.title}</div>
+                                            <div className="text-[10px] text-[var(--color-text-muted)] truncate">
+                                                {p.ownerId === p.id ? t('projectSwitcher.role.owner') : t('projectSwitcher.role.member')}
                                             </div>
+                                        </div>
 
                                         {currentProjectId === p.id && (
-                                            <span className="material-symbols-outlined text-[16px] text-primary">check</span>
+                                            <span className="material-symbols-outlined text-[16px] text-[var(--color-primary)]">check</span>
                                         )}
                                         <button
                                             onClick={(e) => {
@@ -217,7 +222,7 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                                                 w-6 h-6 flex items-center justify-center rounded-full transition-all shrink-0 ml-1
                                                 ${pinnedProjectId === p.id
                                                     ? 'text-amber-500 bg-amber-500/10 hover:bg-amber-500/20'
-                                                    : 'text-muted opacity-0 group-hover:opacity-100 hover:text-main hover:bg-card'
+                                                    : 'text-[var(--color-text-muted)] opacity-0 group-hover:opacity-100 hover:text-[var(--color-text-main)] hover:bg-[var(--color-surface-card)]'
                                                 }
                                             `}
                                             title={pinnedProjectId === p.id ? t('projectSwitcher.unpinProject') : t('projectSwitcher.pinProject')}
@@ -227,20 +232,20 @@ export const ProjectSwitcher: React.FC<ProjectSwitcherProps> = ({ currentProject
                                     </div>
                                 ))
                             ) : (
-                                <div className="px-3 py-4 text-center text-sm text-muted">
+                                <div className="px-3 py-4 text-center text-sm text-[var(--color-text-muted)]">
                                     {t('projectSwitcher.empty')}
                                 </div>
                             )}
                         </div>
 
-                        <div className="p-2 border-t border-surface bg-surface text-center">
+                        <div className="p-2 border-t border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] text-center">
                             <button
                                 onClick={() => {
                                     setIsOpen(false);
                                     navigate('/create');
                                     if (onClose) onClose();
                                 }}
-                                className="w-full py-1.5 flex items-center justify-center gap-2 text-xs font-semibold text-primary hover:bg-primary/10 rounded-lg transition-colors"
+                                className="w-full py-1.5 flex items-center justify-center gap-2 text-xs font-semibold text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 rounded-lg transition-colors"
                             >
                                 <span className="material-symbols-outlined text-[14px]">add</span>
                                 {t('projectSwitcher.createProject')}

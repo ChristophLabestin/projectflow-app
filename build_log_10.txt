@@ -1,0 +1,37 @@
+
+> projectflow-ai@0.0.0 build
+> vite build
+
+vite v6.4.1 building for production...
+transforming...
+✓ 28 modules transformed.
+✗ Build failed in 163ms
+error during build:
+[vite:esbuild] Transform failed with 2 errors:
+/Users/christophlabestin/Documents/GitHub/projectflow-app/screens/ProjectOverview.tsx:2564:0: ERROR: The character "}" is not valid inside a JSX element
+/Users/christophlabestin/Documents/GitHub/projectflow-app/screens/ProjectOverview.tsx:2565:0: ERROR: Unexpected end of file before a closing "div" tag
+file: /Users/christophlabestin/Documents/GitHub/projectflow-app/screens/ProjectOverview.tsx:2564:0
+
+The character "}" is not valid inside a JSX element
+2562|                      </>
+2563|                  )}
+2564|  };
+   |  ^
+2565|  
+
+Unexpected end of file before a closing "div" tag
+2563|                  )}
+2564|  };
+2565|  
+   |  ^
+
+    at failureErrorWithLog (/Users/christophlabestin/Documents/GitHub/projectflow-app/node_modules/esbuild/lib/main.js:1467:15)
+    at /Users/christophlabestin/Documents/GitHub/projectflow-app/node_modules/esbuild/lib/main.js:736:50
+    at responseCallbacks.<computed> (/Users/christophlabestin/Documents/GitHub/projectflow-app/node_modules/esbuild/lib/main.js:603:9)
+    at handleIncomingPacket (/Users/christophlabestin/Documents/GitHub/projectflow-app/node_modules/esbuild/lib/main.js:658:12)
+    at Socket.readFromStdout (/Users/christophlabestin/Documents/GitHub/projectflow-app/node_modules/esbuild/lib/main.js:581:7)
+    at Socket.emit (node:events:508:28)
+    at addChunk (node:internal/streams/readable:559:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:510:3)
+    at Readable.push (node:internal/streams/readable:390:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)
