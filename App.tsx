@@ -160,7 +160,6 @@ const App = () => {
 
 
     const router = useMemo(() => {
-        // Don't create router until auth is ready
         if (!isAuthReady) return null;
 
         return createBrowserRouter(
@@ -278,12 +277,13 @@ const App = () => {
                         </Route>
                     </Route>
 
-                <Route path="*" element={<Navigate to="/" replace />} />
-            </Route>
-        )
-    ), [user]); // Only recreate if user identity changes
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                </Route>
+            )
+        );
+    }, [isAuthReady, user]);
 
-    if (loading) {
+    if (!isAuthReady || !router) {
         return (
             <div className="h-screen w-full flex items-center justify-center bg-surface">
                 <div className="flex flex-col items-center gap-4">
