@@ -1,7 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react';
+﻿import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '../../ui/Button';
-import { Modal } from '../../ui/Modal';
+import { Button } from '../../common/Button/Button';
+import { Card } from '../../common/Card/Card';
+import { Modal } from '../../common/Modal/Modal';
 import { Idea, SocialCampaign, ApprovalEvent, RiskWinAnalysis } from '../../../types';
 import { getProjectMembers, getUserProfile, getSocialCampaign, updateCampaign } from '../../../services/dataService';
 import { generateRiskWinAnalysis } from '../../../services/geminiService';
@@ -28,12 +29,9 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
     const [teamMembers, setTeamMembers] = useState<Array<{ id: string; displayName: string; photoURL?: string }>>([]);
     const [campaignHistory, setCampaignHistory] = useState<ApprovalEvent[]>([]);
     const [analyzing, setAnalyzing] = useState(false);
-
-    // Team Management State
     const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
     const [tempAssignedIds, setTempAssignedIds] = useState<string[]>([]);
 
-    // Checklist
     const [checklist, setChecklist] = useState({
         concept: { labelKey: 'flowStages.socialCampaignSubmit.checklist.concept', checked: false },
         strategy: { labelKey: 'flowStages.socialCampaignSubmit.checklist.strategy', checked: false },
@@ -41,27 +39,32 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
         brand: { labelKey: 'flowStages.socialCampaignSubmit.checklist.brand', checked: false },
     });
 
-    // Data Loading
     useEffect(() => {
         const loadMembers = async () => {
             if (!idea.projectId) return;
             try {
                 const memberIds = await getProjectMembers(idea.projectId, idea.tenantId || 'public');
                 const profiles = await Promise.all(memberIds.map(uid => getUserProfile(uid)));
-                setTeamMembers(profiles.filter(p => p !== null).map(p => ({
-                    id: p.uid, displayName: p.displayName, photoURL: p.photoURL
+                setTeamMembers(profiles.filter(profile => profile !== null).map(profile => ({
+                    id: profile.uid,
+                    displayName: profile.displayName,
+                    photoURL: profile.photoURL
                 })));
-            } catch (e) { console.error(e) }
+            } catch (e) {
+                console.error(e);
+            }
         };
         const loadHistory = async () => {
             if (idea.convertedCampaignId && idea.projectId) {
                 try {
-                    const c = await getSocialCampaign(idea.projectId, idea.convertedCampaignId);
-                    if (c?.approvalHistory) setCampaignHistory(c.approvalHistory);
-                    if (c?.assignedUserIds && (!idea.assignedUserIds || idea.assignedUserIds.length === 0)) {
-                        onUpdate({ assignedUserIds: c.assignedUserIds });
+                    const campaign = await getSocialCampaign(idea.projectId, idea.convertedCampaignId);
+                    if (campaign?.approvalHistory) setCampaignHistory(campaign.approvalHistory);
+                    if (campaign?.assignedUserIds && (!idea.assignedUserIds || idea.assignedUserIds.length === 0)) {
+                        onUpdate({ assignedUserIds: campaign.assignedUserIds });
                     }
-                } catch (e) { console.error(e) }
+                } catch (e) {
+                    console.error(e);
+                }
             }
         };
         loadMembers();
@@ -73,11 +76,13 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
         try {
             const result = await generateRiskWinAnalysis(idea);
             onUpdate({ riskWinAnalysis: result });
-        } catch (e) { console.error(e); }
-        finally { setAnalyzing(false); }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setAnalyzing(false);
+        }
     };
 
-    // Team Management Handlers
     const handleOpenTeamModal = () => {
         setTempAssignedIds(idea.assignedUserIds || []);
         setIsTeamModalOpen(true);
@@ -100,8 +105,11 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
     };
 
     const concept = useMemo(() => {
-        try { return idea.concept && idea.concept.startsWith('{') ? JSON.parse(idea.concept) : {}; }
-        catch { return {}; }
+        try {
+            return idea.concept && idea.concept.startsWith('{') ? JSON.parse(idea.concept) : {};
+        } catch {
+            return {};
+        }
     }, [idea.concept]);
 
     const platforms = useMemo(() => Array.isArray(concept.platforms) ? concept.platforms : [], [concept]);
@@ -110,440 +118,370 @@ export const SocialCampaignSubmitView: React.FC<SocialCampaignSubmitViewProps> =
     const isSubmitted = campaignStatus === 'PendingReview' || idea.stage === 'PendingReview';
     const isChangesRequested = campaignStatus === 'ChangesRequested';
 
-    const allChecked = Object.values(checklist).every(i => i.checked);
-    const progressPercent = Math.round((Object.values(checklist).filter(i => i.checked).length / Object.keys(checklist).length) * 100);
+    const allChecked = Object.values(checklist).every(item => item.checked);
+    const progressPercent = Math.round((Object.values(checklist).filter(item => item.checked).length / Object.keys(checklist).length) * 100);
 
-    const analysis = idea.riskWinAnalysis;
+    const analysis = idea.riskWinAnalysis as RiskWinAnalysis | undefined;
     const latestFeedback = campaignHistory
-        .filter(e => e.type === 'changes_requested' || e.type === 'rejection')
+        .filter(event => event.type === 'changes_requested' || event.type === 'rejection')
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
 
-    const assignedMembers = teamMembers.filter(m => (idea.assignedUserIds || []).includes(m.id));
+    const assignedMembers = teamMembers.filter(member => (idea.assignedUserIds || []).includes(member.id));
 
-    const getScoreColor = (score: number) => {
-        if (score >= 8) return 'text-emerald-500';
-        if (score >= 5) return 'text-amber-500';
-        return 'text-red-500';
+    const getScoreTone = (score: number) => {
+        if (score >= 8) return 'high';
+        if (score >= 5) return 'medium';
+        return 'low';
     };
 
-    const getScoreBarColor = (score: number) => {
-        if (score >= 8) return 'bg-emerald-500';
-        if (score >= 5) return 'bg-amber-500';
-        return 'bg-red-500';
-    };
     const severityLabels: Record<string, string> = {
         High: t('flowStages.socialCampaignSubmit.analysis.severity.high'),
         Medium: t('flowStages.socialCampaignSubmit.analysis.severity.medium'),
         Low: t('flowStages.socialCampaignSubmit.analysis.severity.low'),
     };
-
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="max-w-7xl mx-auto flex flex-col gap-6 pt-6 px-6 pb-20">
-
-                {/* Hero Header - Matching Strategy/Planning pattern */}
-                <div className="bg-gradient-to-br from-emerald-100 via-teal-50 to-white dark:from-emerald-900/30 dark:via-teal-900/10 dark:to-slate-900/50 rounded-3xl p-6 md:p-8 border border-emerald-200 dark:border-emerald-800/50 relative overflow-hidden shadow-xl shadow-emerald-100 dark:shadow-none">
-                    <div className="absolute top-0 right-0 p-8 opacity-[0.03] dark:opacity-[0.05] pointer-events-none select-none">
-                        <span className="material-symbols-outlined text-[200px] text-emerald-600 rotate-12 -translate-y-10 translate-x-10">rocket_launch</span>
+        <div className="flow-social-campaign-submit">
+            <div className="flow-social-campaign-submit__container">
+                <div className="flow-social-campaign-submit__hero">
+                    <div className="flow-social-campaign-submit__hero-glow">
+                        <span className="material-symbols-outlined">rocket_launch</span>
                     </div>
-                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div className="flex-1">
-                            <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
-                                <div className="flex items-center gap-2 shrink-0">
-                                <div className="px-3 py-1 bg-emerald-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-emerald-200 dark:shadow-none">
-                                        {t('flowStages.socialCampaignSubmit.hero.badge')}
-                                </div>
-                                <div className="h-[1px] w-8 bg-emerald-200 dark:bg-emerald-800 rounded-full" />
-                            </div>
-                            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
-                                    {isSubmitted ? t('flowStages.socialCampaignSubmit.hero.titleSubmitted') : t('flowStages.socialCampaignSubmit.hero.title')}
-                            </h1>
+                    <div className="flow-social-campaign-submit__hero-content">
+                        <div className="flow-social-campaign-submit__badge">
+                            {t('flowStages.socialCampaignSubmit.hero.badge')}
                         </div>
-                        <div className="max-w-3xl p-5 bg-white/70 dark:bg-slate-950/50 rounded-2xl border border-white dark:border-slate-800 shadow-lg shadow-emerald-100/50 dark:shadow-none backdrop-blur-md">
-                            <p className="text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
+                        <h1 className="flow-social-campaign-submit__title">
+                            {isSubmitted
+                                ? t('flowStages.socialCampaignSubmit.hero.titleSubmitted')
+                                : t('flowStages.socialCampaignSubmit.hero.title')}
+                        </h1>
+                        <div className="flow-social-campaign-submit__hero-summary">
+                            <p>
                                 {isSubmitted
-                                        ? <>{t('flowStages.socialCampaignSubmit.hero.submittedPrefix')} <span className="text-emerald-600 font-black">{t('flowStages.socialCampaignSubmit.hero.submittedEmphasis')}</span> {t('flowStages.socialCampaignSubmit.hero.submittedSuffix')}</>
-                                        : <>{t('flowStages.socialCampaignSubmit.hero.reviewPrefix')} <span className="text-emerald-600 font-black">{t('flowStages.socialCampaignSubmit.hero.reviewEmphasis')}</span> {t('flowStages.socialCampaignSubmit.hero.reviewSuffix')}</>}
+                                    ? <>{t('flowStages.socialCampaignSubmit.hero.submittedPrefix')} <span>{t('flowStages.socialCampaignSubmit.hero.submittedEmphasis')}</span> {t('flowStages.socialCampaignSubmit.hero.submittedSuffix')}</>
+                                    : <>{t('flowStages.socialCampaignSubmit.hero.reviewPrefix')} <span>{t('flowStages.socialCampaignSubmit.hero.reviewEmphasis')}</span> {t('flowStages.socialCampaignSubmit.hero.reviewSuffix')}</>}
                             </p>
                         </div>
                     </div>
-                    {/* Quick Stats */}
-                    <div className="flex gap-4">
-                        <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 text-center border border-white/50 dark:border-slate-700/50 min-w-[80px]">
-                            <div className="text-2xl font-black text-emerald-600">{platforms.length}</div>
-                            <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{t('flowStages.socialCampaignSubmit.hero.stats.channels')}</div>
+                    <div className="flow-social-campaign-submit__hero-stats">
+                        <div className="flow-social-campaign-submit__stat">
+                            <strong>{platforms.length}</strong>
+                            <span>{t('flowStages.socialCampaignSubmit.hero.stats.channels')}</span>
                         </div>
-                        <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 text-center border border-white/50 dark:border-slate-700/50 min-w-[80px]">
-                            <div className="text-2xl font-black text-emerald-600">{phases.length}</div>
-                            <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{t('flowStages.socialCampaignSubmit.hero.stats.phases')}</div>
+                        <div className="flow-social-campaign-submit__stat">
+                            <strong>{phases.length}</strong>
+                            <span>{t('flowStages.socialCampaignSubmit.hero.stats.phases')}</span>
                         </div>
-                        <div className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-2xl p-4 text-center border border-white/50 dark:border-slate-700/50 min-w-[80px]">
-                            <div className="text-2xl font-black text-emerald-600">{kpis.length}</div>
-                            <div className="text-[9px] font-bold text-slate-500 uppercase tracking-wider">{t('flowStages.socialCampaignSubmit.hero.stats.kpis')}</div>
+                        <div className="flow-social-campaign-submit__stat">
+                            <strong>{kpis.length}</strong>
+                            <span>{t('flowStages.socialCampaignSubmit.hero.stats.kpis')}</span>
                         </div>
                     </div>
                 </div>
-            </div>
 
-                {/* Feedback Banner */}
                 {isChangesRequested && latestFeedback && (
-                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 p-6 rounded-3xl flex gap-5 items-start">
-                        <div className="size-12 rounded-2xl bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center shrink-0 text-amber-600">
-                            <span className="material-symbols-outlined text-2xl">feedback</span>
+                    <Card className="flow-social-campaign-submit__feedback">
+                        <div className="flow-social-campaign-submit__feedback-icon">
+                            <span className="material-symbols-outlined">feedback</span>
                         </div>
                         <div>
-                            <h3 className="font-black text-amber-900 dark:text-amber-100 text-sm uppercase tracking-wider mb-2">{t('flowStages.socialCampaignSubmit.feedback.title')}</h3>
-                            <p className="text-sm text-amber-800 dark:text-amber-200 leading-relaxed">"{latestFeedback.notes}"</p>
+                            <h3>{t('flowStages.socialCampaignSubmit.feedback.title')}</h3>
+                            <p>"{latestFeedback.notes}"</p>
                         </div>
-                    </div>
+                    </Card>
                 )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-                    {/* Left Column: AI Report & Checklist (8 cols) */}
-                    <div className="lg:col-span-8 space-y-6">
-
-                        {/* AI Intelligence Report (Expanded) */}
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-                            <div className="p-6 md:p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="size-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white shadow-lg shadow-indigo-200 dark:shadow-none">
-                                        <span className="material-symbols-outlined">psychology</span>
-                                    </div>
-                                    <div>
-                                        <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialCampaignSubmit.analysis.title')}</h3>
-                                        <p className="text-[10px] text-slate-400 font-bold mt-1">{t('flowStages.socialCampaignSubmit.analysis.subtitle')}</p>
-                                    </div>
+                <div className="flow-social-campaign-submit__layout">
+                    <div className="flow-social-campaign-submit__main">
+                        <Card className="flow-social-campaign-submit__panel">
+                            <div className="flow-social-campaign-submit__panel-header">
+                                <div>
+                                    <h3>{t('flowStages.socialCampaignSubmit.analysis.title')}</h3>
+                                    <p>{t('flowStages.socialCampaignSubmit.analysis.subtitle')}</p>
                                 </div>
                                 {!isSubmitted && (
                                     <Button
+                                        size="sm"
+                                        variant="ghost"
                                         onClick={handleRunAnalysis}
-                                        disabled={analyzing}
-                                        className="h-9 px-4 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-100 dark:bg-indigo-900/30 dark:text-indigo-400 dark:hover:bg-indigo-900/50 text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
+                                        isLoading={analyzing}
+                                        icon={<span className="material-symbols-outlined">refresh</span>}
                                     >
-                                        <span className={`material-symbols-outlined text-[18px] ${analyzing ? 'animate-spin' : ''}`}>
-                                            {analyzing ? 'progress_activity' : 'refresh'}
-                                        </span>
-                                        {analyzing ? t('flowStages.socialCampaignSubmit.analysis.refreshing') : t('flowStages.socialCampaignSubmit.analysis.refresh')}
+                                        {analyzing
+                                            ? t('flowStages.socialCampaignSubmit.analysis.refreshing')
+                                            : t('flowStages.socialCampaignSubmit.analysis.refresh')}
                                     </Button>
                                 )}
                             </div>
 
                             {analysis ? (
-                                <div className="p-6 md:p-8">
-                                    {/* Top Level Metrics */}
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                                        {/* Success Probability */}
-                                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-100 dark:border-slate-700/50 relative overflow-hidden group">
-                                            <div className="absolute top-0 right-0 p-4 opacity-10">
-                                                <span className="material-symbols-outlined text-6xl">query_stats</span>
-                                            </div>
-                                            <div className="relative z-10">
-                                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('flowStages.socialCampaignSubmit.analysis.successProbability')}</div>
-                                                <div className={`text-4xl font-black ${getScoreColor(analysis.successProbability / 10)} mb-3`}>
-                                                    {analysis.successProbability}%
-                                                </div>
-                                                <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                                    <div className={`h-full ${getScoreBarColor(analysis.successProbability / 10)} transition-all duration-1000`} style={{ width: `${analysis.successProbability}%` }} />
-                                                </div>
+                                <div className="flow-social-campaign-submit__analysis">
+                                    <div className="flow-social-campaign-submit__metrics">
+                                        <div className="flow-social-campaign-submit__metric" data-tone={getScoreTone(analysis.successProbability / 10)}>
+                                            <span>{t('flowStages.socialCampaignSubmit.analysis.successProbability')}</span>
+                                            <strong>{analysis.successProbability}%</strong>
+                                            <div className="flow-social-campaign-submit__progress">
+                                                <div style={{ width: `${analysis.successProbability}%` }} />
                                             </div>
                                         </div>
-
-                                        {/* Market Fit */}
-                                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-100 dark:border-slate-700/50 flex flex-col justify-between">
-                                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('flowStages.socialCampaignSubmit.analysis.marketFit')}</div>
-                                            <div className="flex items-end gap-2">
-                                                <span className={`text-3xl font-black ${getScoreColor(analysis.marketFitScore)}`}>{analysis.marketFitScore}</span>
-                                                <span className="text-sm font-bold text-slate-400 mb-1">/ 10</span>
-                                            </div>
+                                        <div className="flow-social-campaign-submit__metric" data-tone={getScoreTone(analysis.marketFitScore)}>
+                                            <span>{t('flowStages.socialCampaignSubmit.analysis.marketFit')}</span>
+                                            <strong>{analysis.marketFitScore} / 10</strong>
                                         </div>
-
-                                        {/* Technical Feasibility */}
-                                        <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-100 dark:border-slate-700/50 flex flex-col justify-between">
-                                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('flowStages.socialCampaignSubmit.analysis.feasibility')}</div>
-                                            <div className="flex items-end gap-2">
-                                                <span className={`text-3xl font-black ${getScoreColor(analysis.technicalFeasibilityScore)}`}>{analysis.technicalFeasibilityScore}</span>
-                                                <span className="text-sm font-bold text-slate-400 mb-1">/ 10</span>
-                                            </div>
+                                        <div className="flow-social-campaign-submit__metric" data-tone={getScoreTone(analysis.technicalFeasibilityScore)}>
+                                            <span>{t('flowStages.socialCampaignSubmit.analysis.feasibility')}</span>
+                                            <strong>{analysis.technicalFeasibilityScore} / 10</strong>
                                         </div>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        {/* Risks */}
+                                    <div className="flow-social-campaign-submit__analysis-grid">
                                         <div>
-                                            <h4 className="flex items-center gap-2 text-[11px] font-black text-red-500 uppercase tracking-widest mb-4">
-                                                <span className="material-symbols-outlined text-lg">warning</span>
-                                                {t('flowStages.socialCampaignSubmit.analysis.risks')}
-                                            </h4>
-                                            <div className="space-y-3">
-                                                {analysis.risks.map((risk, i) => (
-                                                    <div key={i} className="bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-xl p-4">
-                                                        <div className="flex items-start justify-between gap-3 mb-2">
-                                                            <div className="font-bold text-red-900 dark:text-red-100 text-sm">{risk.title}</div>
-                                                            <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shrink-0 ${risk.severity === 'High' ? 'bg-red-500 text-white' : risk.severity === 'Medium' ? 'bg-amber-500 text-white' : 'bg-slate-500 text-white'}`}>
-                                                                {severityLabels[risk.severity] || risk.severity}
-                                                            </span>
+                                            <h4>{t('flowStages.socialCampaignSubmit.analysis.risks')}</h4>
+                                            <div className="flow-social-campaign-submit__list">
+                                                {analysis.risks.map((risk, index) => (
+                                                    <div key={index} className="flow-social-campaign-submit__list-item" data-level={risk.severity.toLowerCase()}>
+                                                        <div>
+                                                            <strong>{risk.title}</strong>
+                                                            {risk.mitigation && <p>{risk.mitigation}</p>}
                                                         </div>
-                                                        <div className="text-xs text-red-800/80 dark:text-red-200/80 leading-relaxed">
-                                                            <span className="font-bold">{t('flowStages.socialCampaignSubmit.analysis.mitigation')}:</span> {risk.mitigation}
-                                                        </div>
+                                                        <span className="flow-social-campaign-submit__pill">
+                                                            {severityLabels[risk.severity] || risk.severity}
+                                                        </span>
                                                     </div>
                                                 ))}
                                             </div>
                                         </div>
-
-                                        {/* Wins */}
                                         <div>
-                                            <h4 className="flex items-center gap-2 text-[11px] font-black text-emerald-500 uppercase tracking-widest mb-4">
-                                                <span className="material-symbols-outlined text-lg">verified</span>
-                                                {t('flowStages.socialCampaignSubmit.analysis.wins')}
-                                            </h4>
-                                            <div className="space-y-3">
-                                                {analysis.wins.map((win, i) => (
-                                                    <div key={i} className="bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/30 rounded-xl p-4">
-                                                        <div className="flex items-start justify-between gap-3 mb-1">
-                                                            <div className="font-bold text-emerald-900 dark:text-emerald-100 text-sm">{win.title}</div>
-                                                            <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-wider shrink-0 bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300`}>
-                                                                {(severityLabels[win.impact] || win.impact)} {t('flowStages.socialCampaignSubmit.analysis.impact')}
-                                                            </span>
+                                            <h4>{t('flowStages.socialCampaignSubmit.analysis.wins')}</h4>
+                                            <div className="flow-social-campaign-submit__list">
+                                                {analysis.wins.map((win, index) => (
+                                                    <div key={index} className="flow-social-campaign-submit__list-item" data-level={win.impact.toLowerCase()}>
+                                                        <div>
+                                                            <strong>{win.title}</strong>
                                                         </div>
+                                                        <span className="flow-social-campaign-submit__pill">
+                                                            {t(`flowStages.socialCampaignSubmit.analysis.severity.${win.impact.toLowerCase()}`)}
+                                                        </span>
                                                     </div>
                                                 ))}
-                                                {analysis.recommendation && (
-                                                    <div className="mt-6 bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
-                                                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('flowStages.socialCampaignSubmit.analysis.recommendation')}</div>
-                                                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300 italic">"{analysis.recommendation}"</p>
-                                                    </div>
-                                                )}
                                             </div>
                                         </div>
                                     </div>
+
+                                    {analysis.recommendation && (
+                                        <div className="flow-social-campaign-submit__recommendation">
+                                            <span>{t('flowStages.socialCampaignSubmit.analysis.recommendation')}</span>
+                                            <p>"{analysis.recommendation}"</p>
+                                        </div>
+                                    )}
                                 </div>
                             ) : (
-                                <div className="p-12 text-center flex flex-col items-center justify-center">
-                                    <div className="size-20 rounded-3xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center mb-6 shadow-sm">
-                                        <span className="material-symbols-outlined text-4xl text-slate-300">query_stats</span>
-                                    </div>
-                                    <h4 className="text-lg font-black text-slate-900 dark:text-white mb-2">{t('flowStages.socialCampaignSubmit.analysis.empty.title')}</h4>
-                                    <p className="text-sm text-slate-500 max-w-sm mb-8 leading-relaxed">{t('flowStages.socialCampaignSubmit.analysis.empty.subtitle')}</p>
-                                    <Button onClick={handleRunAnalysis} disabled={analyzing} className="h-12 px-8 rounded-xl">
-                                        {analyzing ? (
-                                            <>
-                                                <span className="animate-spin material-symbols-outlined mr-2">progress_activity</span>
-                                                {t('flowStages.socialCampaignSubmit.analysis.empty.loading')}
-                                            </>
-                                        ) : (
-                                            <>
-                                                <span className="material-symbols-outlined mr-2">play_arrow</span>
-                                                {t('flowStages.socialCampaignSubmit.analysis.empty.action')}
-                                            </>
-                                        )}
+                                <div className="flow-social-campaign-submit__analysis-empty">
+                                    <span className="material-symbols-outlined">query_stats</span>
+                                    <h4>{t('flowStages.socialCampaignSubmit.analysis.empty.title')}</h4>
+                                    <p>{t('flowStages.socialCampaignSubmit.analysis.empty.subtitle')}</p>
+                                    <Button onClick={handleRunAnalysis} isLoading={analyzing}>
+                                        {analyzing
+                                            ? t('flowStages.socialCampaignSubmit.analysis.empty.loading')
+                                            : t('flowStages.socialCampaignSubmit.analysis.empty.action')}
                                     </Button>
                                 </div>
                             )}
-                        </div>
+                        </Card>
 
-                        {/* Campaign Manifesto */}
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-                            <div className="flex items-center gap-4 mb-6">
-                                <div className="size-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white shadow-lg shadow-violet-200 dark:shadow-none">
-                                    <span className="material-symbols-outlined">description</span>
-                                </div>
+                        <Card className="flow-social-campaign-submit__panel">
+                            <div className="flow-social-campaign-submit__panel-header">
                                 <div>
-                                    <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialCampaignSubmit.manifesto.title')}</h3>
-                                    <p className="text-[10px] text-slate-400 font-bold mt-1">{t('flowStages.socialCampaignSubmit.manifesto.subtitle')}</p>
+                                    <h3>{t('flowStages.socialCampaignSubmit.manifesto.title')}</h3>
+                                    <p>{t('flowStages.socialCampaignSubmit.manifesto.subtitle')}</p>
                                 </div>
                             </div>
-                            <div className="space-y-6">
-                                <p className="text-xl font-black text-slate-900 dark:text-white leading-tight">
-                                    "{concept.bigIdea || idea.title}"
-                                </p>
-                                <div className="flex flex-wrap gap-2">
-                                    {platforms.map((p: any) => (
-                                        <div key={p.id} className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
-                                            <div className="size-5"><PlatformIcon platform={p.id} /></div>
-                                            <span className="text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest">{p.id}</span>
+                            <div className="flow-social-campaign-submit__manifesto">
+                                <p>"{concept.bigIdea || idea.title}"</p>
+                                <div className="flow-social-campaign-submit__platforms">
+                                    {platforms.map((platform: any) => (
+                                        <div key={platform.id} className="flow-social-campaign-submit__platform">
+                                            <PlatformIcon platform={platform.id} />
+                                            <span>{platform.id}</span>
                                         </div>
                                     ))}
                                 </div>
                                 {concept.themes?.length > 0 && (
-                                    <div className="flex flex-wrap gap-2 border-t border-slate-100 dark:border-slate-800 pt-6">
-                                        {concept.themes.map((t: string, i: number) => (
-                                            <span key={i} className="px-3 py-1 bg-violet-50 dark:bg-violet-900/20 text-violet-600 dark:text-violet-400 text-[10px] font-black rounded-lg uppercase tracking-wider">
-                                                #{t}
-                                            </span>
+                                    <div className="flow-social-campaign-submit__themes">
+                                        {concept.themes.map((theme: string, index: number) => (
+                                            <span key={index}>#{theme}</span>
                                         ))}
                                     </div>
                                 )}
                             </div>
-                        </div>
-
+                        </Card>
                     </div>
-
-                    {/* Right Column: Sidebar (4 cols) */}
-                    <div className="lg:col-span-4 space-y-6">
-
-                        {/* Pre-Flight Checklist Card */}
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
-                            <div className="p-6 md:p-8 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                    <div className="size-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-200 dark:shadow-none">
-                                        <span className="material-symbols-outlined">checklist</span>
-                                    </div>
-                                    <div>
-                                        <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialCampaignSubmit.checklist.title')}</h3>
-                                        <p className="text-[10px] text-slate-400 font-bold mt-1">{t('flowStages.socialCampaignSubmit.checklist.subtitle')}</p>
-                                    </div>
+                    <div className="flow-social-campaign-submit__sidebar">
+                        <Card className="flow-social-campaign-submit__panel flow-social-campaign-submit__checklist">
+                            <div className="flow-social-campaign-submit__panel-header">
+                                <div>
+                                    <h3>{t('flowStages.socialCampaignSubmit.checklist.title')}</h3>
+                                    <p>{t('flowStages.socialCampaignSubmit.checklist.subtitle')}</p>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <div className="text-right">
-                                        <span className={`text-2xl font-black ${allChecked ? 'text-emerald-500' : 'text-slate-400'}`}>{progressPercent}%</span>
-                                    </div>
+                                <div className="flow-social-campaign-submit__progress-label">
+                                    <strong>{progressPercent}%</strong>
                                 </div>
                             </div>
 
                             {!isSubmitted ? (
-                                <div className="p-6 md:p-8">
-                                    <div className="space-y-3 mb-8">
+                                <>
+                                    <div className="flow-social-campaign-submit__checklist-list">
                                         {Object.entries(checklist).map(([key, item]) => (
-                                            <div
+                                            <button
                                                 key={key}
-                                                onClick={() => setChecklist(prev => ({ ...prev, [key]: { ...item, checked: !item.checked } }))}
-                                                className={`flex items-center gap-4 p-5 rounded-2xl cursor-pointer transition-all border-2 group ${item.checked
-                                                    ? 'bg-emerald-50 dark:bg-emerald-900/10 border-emerald-500/20 dark:border-emerald-500/30'
-                                                    : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-emerald-200 dark:hover:border-emerald-800'}`}
+                                                type="button"
+                                                className={`flow-social-campaign-submit__check-item ${item.checked ? 'is-checked' : ''}`}
+                                                onClick={() => setChecklist(prev => ({
+                                                    ...prev,
+                                                    [key]: { ...item, checked: !item.checked }
+                                                }))}
+                                                aria-pressed={item.checked}
                                             >
-                                            <div className={`size-6 rounded-lg border-2 flex items-center justify-center transition-all ${item.checked
-                                                ? 'bg-emerald-500 border-emerald-500'
-                                                : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 group-hover:border-emerald-400'}`}>
-                                                {item.checked && <span className="material-symbols-outlined text-[16px] text-white">check</span>}
-                                            </div>
-                                            <span className={`text-sm font-bold ${item.checked ? 'text-emerald-800 dark:text-emerald-200' : 'text-slate-700 dark:text-slate-300'}`}>
-                                                {t(item.labelKey)}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {/* Submit Button */}
-                                <Button
-                                    onClick={onSubmit}
-                                    disabled={!allChecked}
-                                    className={`w-full h-16 rounded-2xl font-black uppercase tracking-[0.2em] text-sm flex items-center justify-center gap-3 transition-all ${allChecked
-                                        ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-xl shadow-emerald-200/50 dark:shadow-none hover:-translate-y-1'
-                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-400 cursor-not-allowed'}`}
-                                >
-                                    <span className="material-symbols-outlined text-2xl">{allChecked ? 'rocket_launch' : 'lock'}</span>
-                                    {allChecked ? t('flowStages.socialCampaignSubmit.checklist.submit') : t('flowStages.socialCampaignSubmit.checklist.submitLocked')}
-                                </Button>
-                            </div>
-                        ) : (
-                            <div className="p-12 text-center">
-                                <div className="inline-flex size-16 bg-amber-50 dark:bg-amber-900/30 rounded-2xl items-center justify-center mb-6 text-amber-500">
-                                    <span className="material-symbols-outlined text-4xl">lock_clock</span>
-                                </div>
-                                <h4 className="font-bold text-slate-900 dark:text-white mb-2 text-lg">{t('flowStages.socialCampaignSubmit.locked.title')}</h4>
-                                <p className="text-sm text-slate-500 mb-8">{t('flowStages.socialCampaignSubmit.locked.subtitle')}</p>
-                                <Button onClick={() => navigate('/social')} className="h-12 w-full mb-3 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 font-bold uppercase tracking-wider text-xs">
-                                    {t('flowStages.socialCampaignSubmit.locked.back')}
-                                </Button>
-                                <Button onClick={onRejectEntirely} variant="ghost" className="text-xs text-slate-500 hover:text-red-600">
-                                    <span className="material-symbols-outlined text-sm mr-2">undo</span>
-                                    {t('flowStages.socialCampaignSubmit.locked.retract')}
-                                </Button>
-                            </div>
-                        )}
-                        </div>
-
-                        {/* Mission Team */}
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialCampaignSubmit.team.title')}</h3>
-                                <button className="text-[10px] font-bold text-indigo-500 hover:text-indigo-600 uppercase tracking-widest" onClick={handleOpenTeamModal}>{t('flowStages.socialCampaignSubmit.team.manage')}</button>
-                            </div>
-                            <div className="space-y-3">
-                                {assignedMembers.length > 0 ? assignedMembers.map(m => (
-                                    <div key={m.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                                        <div className="size-8 rounded-full ring-2 ring-white dark:ring-slate-900 overflow-hidden bg-slate-200 relative">
-                                            {m.photoURL ? <img src={m.photoURL} className="size-full object-cover" /> : <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-slate-500">{m.displayName[0]}</span>}
-                                        </div>
-                                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">{m.displayName}</span>
+                                                <span className="flow-social-campaign-submit__check-icon">
+                                                    {item.checked && <span className="material-symbols-outlined">check</span>}
+                                                </span>
+                                                <span>{t(item.labelKey)}</span>
+                                            </button>
+                                        ))}
                                     </div>
-                                )) : (
-                                    <div className="text-center py-4 text-xs text-slate-400 italic">{t('flowStages.socialCampaignSubmit.team.empty')}</div>
-                                )}
-                                <button
-                                    className="w-full py-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 text-slate-400 hover:text-slate-600 hover:border-slate-300 flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-wider transition-all"
+
+                                    <Button
+                                        onClick={onSubmit}
+                                        disabled={!allChecked}
+                                        className="flow-social-campaign-submit__submit"
+                                        icon={<span className="material-symbols-outlined">rocket_launch</span>}
+                                    >
+                                        {allChecked
+                                            ? t('flowStages.socialCampaignSubmit.checklist.submit')
+                                            : t('flowStages.socialCampaignSubmit.checklist.submitLocked')}
+                                    </Button>
+                                </>
+                            ) : (
+                                <div className="flow-social-campaign-submit__locked">
+                                    <span className="material-symbols-outlined">lock_clock</span>
+                                    <h4>{t('flowStages.socialCampaignSubmit.locked.title')}</h4>
+                                    <p>{t('flowStages.socialCampaignSubmit.locked.subtitle')}</p>
+                                    <Button
+                                        variant="secondary"
+                                        onClick={() => navigate('/social')}
+                                    >
+                                        {t('flowStages.socialCampaignSubmit.locked.back')}
+                                    </Button>
+                                    <Button
+                                        variant="ghost"
+                                        onClick={onRejectEntirely}
+                                        className="flow-social-campaign-submit__retract"
+                                        icon={<span className="material-symbols-outlined">undo</span>}
+                                    >
+                                        {t('flowStages.socialCampaignSubmit.locked.retract')}
+                                    </Button>
+                                </div>
+                            )}
+                        </Card>
+
+                        <Card className="flow-social-campaign-submit__panel flow-social-campaign-submit__team">
+                            <div className="flow-social-campaign-submit__panel-header">
+                                <div>
+                                    <h3>{t('flowStages.socialCampaignSubmit.team.title')}</h3>
+                                </div>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
                                     onClick={handleOpenTeamModal}
                                 >
-                                    <span className="material-symbols-outlined text-sm">add</span>
+                                    {t('flowStages.socialCampaignSubmit.team.manage')}
+                                </Button>
+                            </div>
+                            <div className="flow-social-campaign-submit__team-list">
+                                {assignedMembers.length > 0 ? assignedMembers.map(member => (
+                                    <div key={member.id} className="flow-social-campaign-submit__team-member">
+                                        <div className="flow-social-campaign-submit__avatar">
+                                            {member.photoURL ? (
+                                                <img src={member.photoURL} alt={member.displayName} />
+                                            ) : (
+                                                <span>{member.displayName[0]}</span>
+                                            )}
+                                        </div>
+                                        <span>{member.displayName}</span>
+                                    </div>
+                                )) : (
+                                    <p className="flow-social-campaign-submit__empty">{t('flowStages.socialCampaignSubmit.team.empty')}</p>
+                                )}
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={handleOpenTeamModal}
+                                    icon={<span className="material-symbols-outlined">add</span>}
+                                >
                                     {t('flowStages.socialCampaignSubmit.team.add')}
-                                </button>
+                                </Button>
                             </div>
-                        </div>
+                        </Card>
 
-                        {/* AI Token Usage */}
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialCampaignSubmit.aiResources.title')}</h3>
-                                <span className="material-symbols-outlined text-base text-violet-500">auto_awesome</span>
-                            </div>
-                            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-4">
-                                <div className="flex items-end gap-2 mb-3">
-                                    <span className="text-3xl font-black text-slate-900 dark:text-white">{(idea.aiTokensUsed || 0).toLocaleString()}</span>
-                                    <span className="text-[10px] font-bold text-slate-400 mb-1 uppercase tracking-wider">{t('flowStages.socialCampaignSubmit.aiResources.tokens')}</span>
+                        <Card className="flow-social-campaign-submit__panel flow-social-campaign-submit__tokens">
+                            <div className="flow-social-campaign-submit__panel-header">
+                                <div>
+                                    <h3>{t('flowStages.socialCampaignSubmit.aiResources.title')}</h3>
                                 </div>
-                                <div className="h-2 w-full bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all"
-                                        style={{ width: `${Math.min(((idea.aiTokensUsed || 0) / 50000) * 100, 100)}%` }}
-                                    />
+                                <span className="material-symbols-outlined">auto_awesome</span>
+                            </div>
+                            <div className="flow-social-campaign-submit__tokens-body">
+                                <strong>{(idea.aiTokensUsed || 0).toLocaleString()}</strong>
+                                <span>{t('flowStages.socialCampaignSubmit.aiResources.tokens')}</span>
+                                <div className="flow-social-campaign-submit__progress">
+                                    <div style={{ width: `${Math.min(((idea.aiTokensUsed || 0) / 50000) * 100, 100)}%` }} />
                                 </div>
                             </div>
-                        </div>
-
+                        </Card>
                     </div>
                 </div>
-
-                {/* Team Management Modal */}
-                <Modal
-                    isOpen={isTeamModalOpen}
-                    onClose={() => setIsTeamModalOpen(false)}
-                    title={t('flowStages.socialCampaignSubmit.team.modal.title')}
-                    footer={
-                        <>
-                            <Button variant="ghost" onClick={() => setIsTeamModalOpen(false)}>{t('flowStages.socialCampaignSubmit.team.modal.cancel')}</Button>
-                            <Button onClick={handleSaveTeam}>{t('flowStages.socialCampaignSubmit.team.modal.save')}</Button>
-                        </>
-                    }
-                >
-                    <div className="space-y-4">
-                        <p className="text-sm text-slate-500 mb-4">{t('flowStages.socialCampaignSubmit.team.modal.subtitle')}</p>
-                        <div className="max-h-[300px] overflow-y-auto space-y-2">
-                            {teamMembers.map(member => {
-                                const isSelected = tempAssignedIds.includes(member.id);
-                                return (
-                                    <div
-                                        key={member.id}
-                                        onClick={() => handleToggleMember(member.id)}
-                                        className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${isSelected
-                                            ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-800'
-                                            : 'bg-white border-slate-100 dark:bg-slate-800 dark:border-slate-700 hover:border-emerald-200'}`}
-                                    >
-                                        <div className={`size-5 rounded border flex items-center justify-center ${isSelected ? 'bg-emerald-600 border-emerald-600' : 'bg-transparent border-slate-300'}`}>
-                                            {isSelected && <span className="material-symbols-outlined text-white text-sm">check</span>}
-                                        </div>
-                                        <div className="size-8 rounded-full bg-slate-200 overflow-hidden relative">
-                                            {member.photoURL ? <img src={member.photoURL} className="size-full object-cover" /> : <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-slate-500">{member.displayName[0]}</span>}
-                                        </div>
-                                        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{member.displayName}</span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </Modal>
             </div>
+
+            <Modal
+                isOpen={isTeamModalOpen}
+                onClose={() => setIsTeamModalOpen(false)}
+                title={t('flowStages.socialCampaignSubmit.team.modal.title')}
+                footer={
+                    <>
+                        <Button variant="ghost" onClick={() => setIsTeamModalOpen(false)}>{t('flowStages.socialCampaignSubmit.team.modal.cancel')}</Button>
+                        <Button onClick={handleSaveTeam}>{t('flowStages.socialCampaignSubmit.team.modal.save')}</Button>
+                    </>
+                }
+            >
+                <div className="flow-social-campaign-submit__team-modal">
+                    <p>{t('flowStages.socialCampaignSubmit.team.modal.subtitle')}</p>
+                    <div className="flow-social-campaign-submit__team-options">
+                        {teamMembers.map(member => {
+                            const isSelected = tempAssignedIds.includes(member.id);
+                            return (
+                                <button
+                                    key={member.id}
+                                    type="button"
+                                    className={`flow-social-campaign-submit__team-option ${isSelected ? 'is-selected' : ''}`}
+                                    onClick={() => handleToggleMember(member.id)}
+                                >
+                                    <span className="flow-social-campaign-submit__team-check">
+                                        {isSelected && <span className="material-symbols-outlined">check</span>}
+                                    </span>
+                                    <div className="flow-social-campaign-submit__avatar">
+                                        {member.photoURL ? (
+                                            <img src={member.photoURL} alt={member.displayName} />
+                                        ) : (
+                                            <span>{member.displayName[0]}</span>
+                                        )}
+                                    </div>
+                                    <span>{member.displayName}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            </Modal>
         </div>
     );
 };

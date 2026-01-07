@@ -1,7 +1,8 @@
-
-import React, { useState, useEffect } from 'react';
-import { Idea, SocialPlatform, SocialPost, SocialCampaign } from '../../../types';
-import { Button } from '../../ui/Button';
+﻿import React, { useState, useEffect } from 'react';
+import { Idea, SocialPlatform, SocialCampaign } from '../../../types';
+import { Button } from '../../common/Button/Button';
+import { Card } from '../../common/Card/Card';
+import { Select } from '../../common/Select/Select';
 import { PlatformIcon } from '../../../screens/social/components/PlatformIcon';
 import { subscribeCampaigns, createSocialPost } from '../../../services/dataService';
 import { useNavigate } from 'react-router-dom';
@@ -21,9 +22,9 @@ interface ContentDraft {
 
 interface StudioData {
     concepts: Record<string, { hook: string; contentBody: string; visualCue: string; format: string }>;
-    drafts: Record<string, ContentDraft>; // Keyed by platform
+    drafts: Record<string, ContentDraft>;
     activeDraftPlatform: string | null;
-    selectedCampaignId?: string; // Target campaign
+    selectedCampaignId?: string;
 }
 
 export const SocialPerformanceView: React.FC<SocialPerformanceViewProps> = ({ idea, onUpdate }) => {
@@ -33,18 +34,15 @@ export const SocialPerformanceView: React.FC<SocialPerformanceViewProps> = ({ id
     const [isDistributing, setIsDistributing] = useState(false);
     const [distributionResult, setDistributionResult] = useState<'success' | 'error' | null>(null);
 
-    // Subscribe to campaigns
     useEffect(() => {
         if (idea.projectId) {
             const unsubscribe = subscribeCampaigns(idea.projectId, (data) => {
-                setCampaigns(data.filter(c => c.status === 'Active' || c.status === 'Planning'));
+                setCampaigns(data.filter((campaign) => campaign.status === 'Active' || campaign.status === 'Planning'));
             });
             return () => unsubscribe();
         }
     }, [idea.projectId]);
 
-
-    // Parse Data from Strategy & Studio
     const studioData: StudioData = (() => {
         try {
             const parsed = idea.concept ? JSON.parse(idea.concept) : {};
@@ -59,7 +57,6 @@ export const SocialPerformanceView: React.FC<SocialPerformanceViewProps> = ({ id
         }
     })();
 
-    // Only show platforms that have drafts
     const platforms = Object.keys(studioData.drafts) as SocialPlatform[];
 
     const updateStudioData = (updates: Partial<StudioData>) => {
@@ -74,20 +71,19 @@ export const SocialPerformanceView: React.FC<SocialPerformanceViewProps> = ({ id
         setDistributionResult(null);
 
         try {
-            // Create a social post for each draft
-            const promises = platforms.map(async (p) => {
-                const draft = studioData.drafts[p];
-                if (!draft) return; // Ignore if no draft exists (shouldn't happen given 'platforms' definition)
+            const promises = platforms.map(async (platform) => {
+                const draft = studioData.drafts[platform];
+                if (!draft) return;
 
                 const postData = {
                     campaignId: studioData.selectedCampaignId || undefined,
-                    platform: p,
+                    platform: platform,
                     content: {
                         caption: draft.copy,
-                        hashtags: [], // Could extract hashtags here
+                        hashtags: [],
                         originIdeaId: idea.id
                     },
-                    assets: draft.assets.map(url => ({
+                    assets: draft.assets.map((url) => ({
                         id: Math.random().toString(36).substr(2, 9),
                         projectId: idea.projectId!,
                         url: url,
@@ -99,9 +95,9 @@ export const SocialPerformanceView: React.FC<SocialPerformanceViewProps> = ({ id
                         createdAt: new Date(),
                         createdBy: ''
                     })),
-                    format: (studioData.concepts[p]?.format as any) || 'Post',
-                    status: 'Draft' as const, // Start as Draft in Social Module
-                    isConcept: true, // Mark as concept
+                    format: (studioData.concepts[platform]?.format as any) || 'Post',
+                    status: 'Draft' as const,
+                    isConcept: true,
                     originIdeaId: idea.id
                 };
 
@@ -110,10 +106,6 @@ export const SocialPerformanceView: React.FC<SocialPerformanceViewProps> = ({ id
 
             await Promise.all(promises);
             setDistributionResult('success');
-
-            // Optionally update stage to 'Completed' or keep here? 
-            // Often "Distribution" IS the end of this pipeline, so staying here to show success is fine.
-
         } catch (e) {
             console.error(e);
             setDistributionResult('error');
@@ -122,141 +114,119 @@ export const SocialPerformanceView: React.FC<SocialPerformanceViewProps> = ({ id
         }
     };
 
+    const campaignOptions = [
+        { label: t('flowStages.socialPerformance.transmission.target.noneOption'), value: '' },
+        ...campaigns.map((campaign) => ({ label: campaign.name, value: campaign.id })),
+    ];
 
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="max-w-7xl mx-auto flex flex-col gap-6 pt-6 px-6 pb-20">
-                {/* Hero / Header */}
-                <div className="bg-gradient-to-br from-indigo-50 via-blue-50 to-white dark:from-indigo-900/30 dark:via-blue-900/10 dark:to-slate-900/50 rounded-3xl p-6 md:p-8 border border-indigo-200 dark:border-indigo-800/50 relative overflow-hidden shadow-xl shadow-indigo-100 dark:shadow-none flex flex-col md:flex-row justify-between gap-6">
-                    <div className="absolute top-0 right-0 p-8 opacity-[0.03] dark:opacity-[0.05] pointer-events-none select-none">
-                        <span className="material-symbols-outlined text-[200px] text-indigo-600 rotate-12 -translate-y-10 translate-x-10">podium</span>
+        <div className="flow-social-performance">
+            <div className="flow-social-performance__container">
+                <div className="flow-social-performance__hero">
+                    <div className="flow-social-performance__hero-glow">
+                        <span className="material-symbols-outlined">podium</span>
                     </div>
-                    <div className="relative z-10">
-                        <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4">
-                            <div className="flex items-center gap-2 shrink-0">
-                                <div className="px-3 py-1 bg-indigo-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-indigo-200 dark:shadow-none">
-                                    {t('flowStages.socialPerformance.hero.badge')}
-                                </div>
-                                <div className="h-[1px] w-8 bg-indigo-200 dark:bg-indigo-800 rounded-full" />
+                    <div className="flow-social-performance__hero-content">
+                        <div className="flow-social-performance__hero-header">
+                            <div className="flow-social-performance__badge">
+                                {t('flowStages.socialPerformance.hero.badge')}
                             </div>
-                            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-                                {t('flowStages.socialPerformance.hero.title')}
-                            </h1>
+                            <h1 className="flow-social-performance__title">{t('flowStages.socialPerformance.hero.title')}</h1>
                         </div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 font-medium max-w-2xl leading-relaxed">
-                            {t('flowStages.socialPerformance.hero.subtitle')}
-                        </p>
+                        <p className="flow-social-performance__subtitle">{t('flowStages.socialPerformance.hero.subtitle')}</p>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-                    {/* Left Column: Concept Manifesto (8/12) */}
-                    <div className="lg:col-span-8 space-y-6">
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[12px] tracking-widest mb-6 flex items-center gap-2">
-                                <span className="material-symbols-outlined text-indigo-500">inventory_2</span>
+                <div className="flow-social-performance__grid">
+                    <div className="flow-social-performance__main">
+                        <Card className="flow-social-performance__panel">
+                            <h3 className="flow-social-performance__panel-title">
+                                <span className="material-symbols-outlined">inventory_2</span>
                                 {t('flowStages.socialPerformance.ready.title')}
                             </h3>
 
                             {platforms.length === 0 ? (
-                                <div className="text-center py-10 text-slate-400">
-                                    <span className="material-symbols-outlined text-4xl mb-2">drafts</span>
-                                    <p className="text-sm font-medium">{t('flowStages.socialPerformance.ready.empty')}</p>
+                                <div className="flow-social-performance__empty">
+                                    <span className="material-symbols-outlined">drafts</span>
+                                    <p>{t('flowStages.socialPerformance.ready.empty')}</p>
                                     <Button
                                         onClick={() => onUpdate({ stage: 'Studio' })}
-                                        className="mt-4 text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg px-4 py-2"
+                                        size="sm"
+                                        variant="ghost"
                                     >
                                         {t('flowStages.socialPerformance.ready.backToStudio')}
                                     </Button>
                                 </div>
                             ) : (
-                                <div className="space-y-4">
-                                    {platforms.map(p => {
-                                        const draft = studioData.drafts[p];
-                                        const concept = studioData.concepts[p];
+                                <div className="flow-social-performance__list">
+                                    {platforms.map((platform) => {
+                                        const draft = studioData.drafts[platform];
+                                        const concept = studioData.concepts[platform];
                                         const isReady = draft.status === 'ready';
 
                                         return (
-                                            <div key={p} className="flex flex-col md:flex-row gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/30 border border-slate-100 dark:border-slate-800/50">
-                                                {/* Asset Preview */}
-                                                <div className="shrink-0 w-full md:w-32 aspect-video md:aspect-square rounded-xl bg-slate-200 dark:bg-slate-800 overflow-hidden relative">
+                                            <div key={platform} className="flow-social-performance__card">
+                                                <div className="flow-social-performance__asset">
                                                     {draft.assets[0] ? (
                                                         draft.assets[0].match(/\.(mp4|mov|webm)$/i) ? (
-                                                            <video src={`${draft.assets[0]}#t=0.001`} className="w-full h-full object-cover" />
+                                                            <video src={`${draft.assets[0]}#t=0.001`} className="flow-social-performance__asset-media" />
                                                         ) : (
-                                                            <img src={draft.assets[0]} alt="Asset" className="w-full h-full object-cover" />
+                                                            <img src={draft.assets[0]} alt="" className="flow-social-performance__asset-media" />
                                                         )
                                                     ) : (
-                                                        <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                                        <div className="flow-social-performance__asset-empty">
                                                             <span className="material-symbols-outlined">image_not_supported</span>
                                                         </div>
                                                     )}
-                                                    <div className="absolute top-2 left-2">
-                                                        <div className="size-6 bg-white/90 dark:bg-black/50 backdrop-blur rounded-lg flex items-center justify-center shadow-sm">
-                                                            <div className="size-3.5"><PlatformIcon platform={p} /></div>
-                                                        </div>
+                                                    <div className="flow-social-performance__asset-icon">
+                                                        <PlatformIcon platform={platform} />
                                                     </div>
                                                 </div>
 
-                                                {/* Info */}
-                                                <div className="flex-1 flex flex-col justify-between">
-                                                    <div>
-                                                        <div className="flex items-center justify-between mb-2">
-                                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">{p} • {concept?.format}</span>
-                                                            <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${isReady ? 'bg-green-100 text-green-600' : 'bg-amber-100 text-amber-600'}`}>
-                                                                {isReady ? t('flowStages.socialPerformance.ready.status.ready') : t('flowStages.socialPerformance.ready.status.draft')}
-                                                            </span>
-                                                        </div>
-                                                        <p className="text-xs font-medium text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed">
-                                                            {draft.copy || <span className="italic opacity-50">{t('flowStages.socialPerformance.ready.noCaption')}</span>}
-                                                        </p>
+                                                <div className="flow-social-performance__card-body">
+                                                    <div className="flow-social-performance__card-header">
+                                                        <span>{platform} - {concept?.format}</span>
+                                                        <span className={`flow-social-performance__status ${isReady ? 'is-ready' : ''}`}>
+                                                            {isReady ? t('flowStages.socialPerformance.ready.status.ready') : t('flowStages.socialPerformance.ready.status.draft')}
+                                                        </span>
                                                     </div>
+                                                    <p className="flow-social-performance__caption">
+                                                        {draft.copy || <span className="flow-social-performance__caption-empty">{t('flowStages.socialPerformance.ready.noCaption')}</span>}
+                                                    </p>
                                                 </div>
                                             </div>
                                         );
                                     })}
                                 </div>
                             )}
-                        </div>
+                        </Card>
                     </div>
 
-                    {/* Right Column: Distribution Settings (4/12) */}
-                    <div className="lg:col-span-4 space-y-6">
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm sticky top-6">
-                            <div className="flex items-center gap-3 mb-6">
-                                <div className="size-10 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600 dark:text-green-400">
-                                    <span className="material-symbols-outlined text-xl">rocket_launch</span>
+                    <div className="flow-social-performance__sidebar">
+                        <Card className="flow-social-performance__panel flow-social-performance__panel--sticky">
+                            <div className="flow-social-performance__transmission">
+                                <div className="flow-social-performance__transmission-icon">
+                                    <span className="material-symbols-outlined">rocket_launch</span>
                                 </div>
                                 <div>
-                                    <h3 className="font-black text-slate-900 dark:text-white text-lg tracking-tight">{t('flowStages.socialPerformance.transmission.title')}</h3>
-                                    <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest">{t('flowStages.socialPerformance.transmission.subtitle')}</p>
+                                    <h3>{t('flowStages.socialPerformance.transmission.title')}</h3>
+                                    <p>{t('flowStages.socialPerformance.transmission.subtitle')}</p>
                                 </div>
                             </div>
 
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-3 block opacity-70">
-                                        {t('flowStages.socialPerformance.transmission.target.label')}
-                                    </label>
-                                    <select
-                                        value={studioData.selectedCampaignId || ''}
-                                        onChange={(e) => updateStudioData({ selectedCampaignId: e.target.value })}
-                                        className="w-full appearance-none bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-3 text-[11px] font-black text-slate-700 dark:text-white focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all"
-                                    >
-                                        <option value="">{t('flowStages.socialPerformance.transmission.target.noneOption')}</option>
-                                        {campaigns.map(c => (
-                                            <option key={c.id} value={c.id}>{c.name}</option>
-                                        ))}
-                                    </select>
-                                    <p className="text-[10px] text-slate-400 font-medium mt-2 leading-snug">
-                                        {t('flowStages.socialPerformance.transmission.target.hint')}
-                                    </p>
-                                </div>
+                            <div className="flow-social-performance__settings">
+                                <Select
+                                    label={t('flowStages.socialPerformance.transmission.target.label')}
+                                    value={studioData.selectedCampaignId || ''}
+                                    onChange={(value) => updateStudioData({ selectedCampaignId: String(value) })}
+                                    options={campaignOptions}
+                                    className="flow-social-performance__select"
+                                />
+                                <p className="flow-social-performance__hint">{t('flowStages.socialPerformance.transmission.target.hint')}</p>
 
-                                <div className="h-px bg-slate-100 dark:bg-slate-800" />
+                                <div className="flow-social-performance__divider" />
 
-                                <div className="flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-400">
+                                <div className="flow-social-performance__total">
                                     <span>{t('flowStages.socialPerformance.transmission.total')}</span>
                                     <span>{platforms.length}</span>
                                 </div>
@@ -264,34 +234,32 @@ export const SocialPerformanceView: React.FC<SocialPerformanceViewProps> = ({ id
                                 <Button
                                     onClick={handleDistribute}
                                     disabled={isDistributing || distributionResult === 'success' || platforms.length === 0}
-                                    className={`w-full h-12 rounded-xl text-white font-black text-xs uppercase tracking-[.2em] shadow-lg transition-all flex items-center justify-center gap-2 group ${distributionResult === 'success' ? 'bg-green-500 shadow-green-200' :
-                                            'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200 dark:shadow-none'
-                                        }`}
+                                    className="flow-social-performance__send"
                                 >
                                     {isDistributing ? (
                                         <>
-                                            <span className="material-symbols-outlined animate-spin text-[18px]">sync</span>
+                                            <span className="material-symbols-outlined flow-social-performance__spinner animate-spin">sync</span>
                                             {t('flowStages.socialPerformance.transmission.sending')}
                                         </>
                                     ) : distributionResult === 'success' ? (
                                         <>
-                                            <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                                            <span className="material-symbols-outlined">check_circle</span>
                                             {t('flowStages.socialPerformance.transmission.sent')}
                                         </>
                                     ) : (
                                         <>
                                             {t('flowStages.socialPerformance.transmission.send')}
-                                            <span className="material-symbols-outlined text-[18px] group-hover:translate-x-1 transition-transform">send</span>
+                                            <span className="material-symbols-outlined">send</span>
                                         </>
                                     )}
                                 </Button>
 
                                 {distributionResult === 'success' && (
-                                    <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-xl border border-green-100 dark:border-green-800 text-center animate-fade-in">
-                                        <p className="text-xs font-bold text-green-700 dark:text-green-300 mb-2">{t('flowStages.socialPerformance.transmission.success')}</p>
+                                    <div className="flow-social-performance__success">
+                                        <p>{t('flowStages.socialPerformance.transmission.success')}</p>
                                         <Button
                                             variant="secondary"
-                                            className="text-xs w-full"
+                                            className="flow-social-performance__view-module"
                                             onClick={() => navigate(`/project/${idea.projectId}/social/campaigns`)}
                                         >
                                             {t('flowStages.socialPerformance.transmission.viewModule')}
@@ -299,10 +267,12 @@ export const SocialPerformanceView: React.FC<SocialPerformanceViewProps> = ({ id
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        </Card>
                     </div>
                 </div>
             </div>
         </div>
     );
 };
+
+
