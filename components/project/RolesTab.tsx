@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Project, CustomRole, Permission } from '../../types';
-import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
-import { Card } from '../ui/Card';
-import { Badge } from '../ui/Badge';
-import { Checkbox } from '../ui/Checkbox';
+import { Button } from '../common/Button/Button';
+import { TextInput } from '../common/Input/TextInput';
+import { Card } from '../common/Card/Card';
+import { Badge } from '../common/Badge/Badge';
+import { Checkbox } from '../common/Checkbox/Checkbox';
 import { useToast, useConfirm } from '../../context/UIContext';
 import { useLanguage } from '../../context/LanguageContext';
 import {
@@ -18,6 +18,7 @@ import {
     ALL_PERMISSIONS,
     getWorkspaceRoles
 } from '../../services/rolesService';
+import './roles-tab.scss';
 
 interface RolesTabProps {
     project: Project;
@@ -224,40 +225,37 @@ export const RolesTab: React.FC<RolesTabProps> = ({ project, isOwner, onProjectU
 
     if (!isOwner) {
         return (
-            <div className="text-center py-12 text-[var(--color-text-muted)]">
-                <span className="material-symbols-outlined text-4xl mb-3 opacity-30 block">lock</span>
+            <div className="roles-tab__locked">
+                <span className="material-symbols-outlined roles-tab__locked-icon">lock</span>
                 <p>{t('roles.noPermission')}</p>
             </div>
         );
     }
 
     return (
-        <div className="flex gap-6 min-h-[400px] animate-in fade-in duration-300">
+        <div className="roles-tab">
             {/* Roles List */}
-            <div className="w-64 flex-shrink-0 space-y-3">
-                <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-[var(--color-text-main)]">{t('roles.title')}</h3>
+            <div className="roles-tab__list">
+                <div className="roles-tab__list-header">
+                    <h3 className="roles-tab__list-title">{t('roles.title')}</h3>
                     <Button
                         size="sm"
-                        variant="outline"
+                        variant="secondary"
                         onClick={startCreateRole}
-                        icon={<span className="material-symbols-outlined text-[16px]">add</span>}
+                        icon={<span className="material-symbols-outlined">add</span>}
                     >
                         {t('roles.actions.create')}
                     </Button>
                 </div>
 
                 {/* Owner Role (always first, not editable) */}
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
-                    <div
-                        className="w-3 h-3 rounded-full ring-2 ring-white dark:ring-black/20"
-                        style={{ backgroundColor: '#f59e0b' }}
-                    />
-                    <div className="flex-1">
-                        <div className="font-semibold text-sm text-amber-900 dark:text-amber-100">{t('roles.owner')}</div>
-                        <div className="text-[10px] text-amber-600 dark:text-amber-400">{t('roles.ownerDescription')}</div>
+                <div className="roles-tab__owner">
+                    <div className="roles-tab__owner-dot" />
+                    <div className="roles-tab__owner-body">
+                        <div className="roles-tab__owner-title">{t('roles.owner')}</div>
+                        <div className="roles-tab__owner-subtitle">{t('roles.ownerDescription')}</div>
                     </div>
-                    <span className="material-symbols-outlined text-amber-500 text-[18px]">verified</span>
+                    <span className="material-symbols-outlined roles-tab__owner-icon">verified</span>
                 </div>
 
                 {/* Custom Roles */}
@@ -268,88 +266,79 @@ export const RolesTab: React.FC<RolesTabProps> = ({ project, isOwner, onProjectU
                     return (
                         <button
                             key={role.id}
+                            type="button"
                             onClick={() => selectRole(role)}
-                            className={`
-                                w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all
-                                ${isSelected
-                                    ? 'bg-[var(--color-primary)]/10 border-[var(--color-primary)] ring-1 ring-[var(--color-primary)]'
-                                    : 'bg-[var(--color-surface-bg)] border-[var(--color-surface-border)] hover:border-[var(--color-primary)]/50'
-                                }
-                            `}
+                            className={`roles-tab__role ${isSelected ? 'roles-tab__role--active' : ''}`}
                         >
                             <div
-                                className="w-3 h-3 rounded-full ring-2 ring-white dark:ring-black/20 shrink-0"
+                                className="roles-tab__role-dot"
                                 style={{ backgroundColor: role.color }}
                             />
-                            <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-sm text-[var(--color-text-main)] truncate">
-                                    {role.name}
-                                </div>
-                                <div className="text-[10px] text-[var(--color-text-muted)]">
+                            <div className="roles-tab__role-body">
+                                <div className="roles-tab__role-title">{role.name}</div>
+                                <div className="roles-tab__role-meta">
                                     {role.permissions.length} {t('roles.permissionsCount')}
                                 </div>
                             </div>
                             {isDefault && (
-                                <Badge size="sm" variant="success">{t('roles.default')}</Badge>
+                                <Badge variant="success" className="roles-tab__default-badge">
+                                    {t('roles.default')}
+                                </Badge>
                             )}
                         </button>
                     );
                 })}
 
                 {customRoles.length === 0 && !isCreating && (
-                    <div className="text-center py-6 text-[var(--color-text-muted)] text-sm">
-                        <span className="material-symbols-outlined text-2xl mb-2 opacity-30 block">shield_person</span>
-                        {t('roles.empty')}
+                    <div className="roles-tab__empty">
+                        <span className="material-symbols-outlined roles-tab__empty-icon">shield_person</span>
+                        <p>{t('roles.empty')}</p>
                     </div>
                 )}
             </div>
 
             {/* Role Editor */}
-            <div className="flex-1">
+            <div className="roles-tab__editor">
                 {(selectedRole || isCreating) ? (
-                    <Card className="h-full">
-                        <div className="flex items-start justify-between mb-6">
+                    <Card className="roles-tab__card">
+                        <div className="roles-tab__editor-header">
                             <div>
-                                <h3 className="font-bold text-lg text-[var(--color-text-main)]">
+                                <h3 className="roles-tab__editor-title">
                                     {isCreating ? t('roles.createTitle') : t('roles.editTitle')}
                                 </h3>
-                                <p className="text-sm text-[var(--color-text-muted)]">
+                                <p className="roles-tab__editor-subtitle">
                                     {isCreating ? t('roles.createSubtitle') : t('roles.editSubtitle')}
                                 </p>
                             </div>
-                            <button
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                className="roles-tab__close"
                                 onClick={cancelEdit}
-                                className="text-[var(--color-text-muted)] hover:text-[var(--color-text-main)] transition-colors"
+                                aria-label={t('common.cancel')}
                             >
                                 <span className="material-symbols-outlined">close</span>
-                            </button>
+                            </Button>
                         </div>
 
                         {/* Name & Color */}
-                        <div className="space-y-4 mb-6">
-                            <Input
+                        <div className="roles-tab__form">
+                            <TextInput
                                 label={t('roles.fields.name')}
                                 value={roleName}
                                 onChange={(e) => setRoleName(e.target.value)}
                                 placeholder={t('roles.fields.namePlaceholder')}
                             />
 
-                            <div>
-                                <label className="text-sm font-medium text-[var(--color-text-main)] mb-2 block">
-                                    {t('roles.fields.color')}
-                                </label>
-                                <div className="flex flex-wrap gap-2">
+                            <div className="roles-tab__color">
+                                <label className="roles-tab__color-label">{t('roles.fields.color')}</label>
+                                <div className="roles-tab__color-grid">
                                     {COLOR_PRESETS.map(preset => (
                                         <button
                                             key={preset.hex}
+                                            type="button"
                                             onClick={() => setRoleColor(preset.hex)}
-                                            className={`
-                                                w-7 h-7 rounded-lg transition-all
-                                                ${roleColor === preset.hex
-                                                    ? 'ring-2 ring-offset-2 ring-[var(--color-primary)] scale-110'
-                                                    : 'hover:scale-105'
-                                                }
-                                            `}
+                                            className={`roles-tab__color-swatch ${roleColor === preset.hex ? 'roles-tab__color-swatch--active' : ''}`}
                                             style={{ backgroundColor: preset.hex }}
                                             title={preset.name}
                                         />
@@ -359,34 +348,30 @@ export const RolesTab: React.FC<RolesTabProps> = ({ project, isOwner, onProjectU
                         </div>
 
                         {/* Permission Presets */}
-                        <div className="mb-4">
-                            <div className="flex items-center justify-between mb-2">
-                                <label className="text-sm font-medium text-[var(--color-text-main)]">
-                                    {t('roles.fields.permissions')}
-                                </label>
-                                <div className="flex gap-2">
-                                    <Button size="sm" variant="ghost" onClick={() => applyPreset('editor')}>
-                                        {t('roles.presets.editor')}
-                                    </Button>
-                                    <Button size="sm" variant="ghost" onClick={() => applyPreset('viewer')}>
-                                        {t('roles.presets.viewer')}
-                                    </Button>
-                                    <Button size="sm" variant="ghost" onClick={() => applyPreset('all')}>
-                                        {t('roles.presets.all')}
-                                    </Button>
-                                    <Button size="sm" variant="ghost" onClick={() => applyPreset('none')}>
-                                        {t('roles.presets.none')}
-                                    </Button>
-                                </div>
+                        <div className="roles-tab__presets">
+                            <label className="roles-tab__presets-label">{t('roles.fields.permissions')}</label>
+                            <div className="roles-tab__presets-actions">
+                                <Button size="sm" variant="ghost" onClick={() => applyPreset('editor')}>
+                                    {t('roles.presets.editor')}
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => applyPreset('viewer')}>
+                                    {t('roles.presets.viewer')}
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => applyPreset('all')}>
+                                    {t('roles.presets.all')}
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => applyPreset('none')}>
+                                    {t('roles.presets.none')}
+                                </Button>
                             </div>
                         </div>
 
                         {/* Permission Categories */}
-                        <div className="space-y-4 max-h-[300px] overflow-y-auto pr-2">
+                        <div className="roles-tab__permissions">
                             {Object.entries(PERMISSION_CATEGORIES).map(([key, category]) => (
-                                <div key={key} className="space-y-2">
-                                    <div className="flex items-center gap-2 text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
-                                        <span className="material-symbols-outlined text-[14px]">
+                                <div key={key} className="roles-tab__permission-group">
+                                    <div className="roles-tab__permission-title">
+                                        <span className="material-symbols-outlined">
                                             {key === 'project' ? 'folder' :
                                                 key === 'tasks' ? 'checklist' :
                                                     key === 'issues' ? 'bug_report' :
@@ -395,35 +380,27 @@ export const RolesTab: React.FC<RolesTabProps> = ({ project, isOwner, onProjectU
                                         </span>
                                         {category.label}
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {category.permissions.map(perm => (
-                                            <label
-                                                key={perm.key}
-                                                className={`
-                                                    flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-colors
-                                                    ${rolePermissions.includes(perm.key)
-                                                        ? 'bg-[var(--color-primary)]/10'
-                                                        : 'bg-[var(--color-surface-hover)]/50 hover:bg-[var(--color-surface-hover)]'
-                                                    }
-                                                `}
-                                            >
+                                    <div className="roles-tab__permission-grid">
+                                        {category.permissions.map(perm => {
+                                            const isActive = rolePermissions.includes(perm.key);
+                                            return (
                                                 <Checkbox
-                                                    checked={rolePermissions.includes(perm.key)}
+                                                    key={perm.key}
+                                                    checked={isActive}
                                                     onChange={() => togglePermission(perm.key)}
+                                                    label={perm.label}
+                                                    className={`roles-tab__permission-item ${isActive ? 'roles-tab__permission-item--active' : ''}`}
                                                 />
-                                                <span className="text-sm text-[var(--color-text-main)]">
-                                                    {perm.label}
-                                                </span>
-                                            </label>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             ))}
                         </div>
 
                         {/* Actions */}
-                        <div className="flex items-center justify-between mt-6 pt-4 border-t border-[var(--color-surface-border)]">
-                            <div className="flex gap-2">
+                        <div className="roles-tab__actions">
+                            <div className="roles-tab__actions-left">
                                 {!isCreating && selectedRoleId && (
                                     <>
                                         <Button
@@ -440,30 +417,28 @@ export const RolesTab: React.FC<RolesTabProps> = ({ project, isOwner, onProjectU
                                             size="sm"
                                             variant="ghost"
                                             onClick={handleDeleteRole}
-                                            className="text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20"
+                                            className="roles-tab__danger"
                                         >
                                             {t('roles.actions.delete')}
                                         </Button>
                                     </>
                                 )}
                             </div>
-                            <div className="flex gap-2">
-                                <Button variant="outline" onClick={cancelEdit}>
+                            <div className="roles-tab__actions-right">
+                                <Button variant="secondary" onClick={cancelEdit}>
                                     {t('common.cancel')}
                                 </Button>
-                                <Button onClick={handleSaveRole} loading={isSaving}>
+                                <Button onClick={handleSaveRole} isLoading={isSaving}>
                                     {isCreating ? t('roles.actions.create') : t('common.save')}
                                 </Button>
                             </div>
                         </div>
                     </Card>
                 ) : (
-                    <div className="h-full flex items-center justify-center text-center text-[var(--color-text-muted)]">
-                        <div>
-                            <span className="material-symbols-outlined text-5xl mb-3 opacity-20 block">shield_person</span>
-                            <p className="font-medium">{t('roles.selectOrCreate')}</p>
-                            <p className="text-sm mt-1">{t('roles.selectOrCreateHint')}</p>
-                        </div>
+                    <div className="roles-tab__placeholder">
+                        <span className="material-symbols-outlined roles-tab__placeholder-icon">shield_person</span>
+                        <p className="roles-tab__placeholder-title">{t('roles.selectOrCreate')}</p>
+                        <p className="roles-tab__placeholder-subtitle">{t('roles.selectOrCreateHint')}</p>
                     </div>
                 )}
             </div>

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Project, ProjectMember, ProjectRole } from '../../types';
-import { Button } from '../ui/Button';
-import { Select } from '../ui/Select';
-import { Badge } from '../ui/Badge';
-import { Input } from '../ui/Input';
+import { Button } from '../common/Button/Button';
+import { Select } from '../common/Select/Select';
+import { Badge } from '../common/Badge/Badge';
+import { TextInput } from '../common/Input/TextInput';
 import {
     updateMemberRole,
     removeMember,
@@ -15,11 +15,12 @@ import {
 } from '../../services/dataService';
 import { auth, db } from '../../services/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { useConfirm } from '../../context/UIContext';
+import { useConfirm, useToast } from '../../context/UIContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { format } from 'date-fns';
 import { getRoleDisplayInfo, getWorkspaceRoles } from '../../services/rolesService';
 import { CustomRole } from '../../types';
+import './project-team-manager.scss';
 
 interface ProjectTeamManagerProps {
     project: Project;
@@ -44,6 +45,7 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
     const [internalCustomRoles, setInternalCustomRoles] = useState<CustomRole[]>([]);
     const customRoles = passedRoles || internalCustomRoles;
     const confirm = useConfirm();
+    const { showError, showSuccess } = useToast();
     const { t, dateFormat, dateLocale } = useLanguage();
 
     // Subscribe to project updates to get real-time member list
@@ -128,7 +130,7 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
             await updateMemberRole(project.id, userId, newRole, project.tenantId);
         } catch (e) {
             console.error("Failed to update role", e);
-            alert(t('projectTeam.errors.updateRole'));
+            showError(t('projectTeam.errors.updateRole'));
         }
     };
 
@@ -140,7 +142,7 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
             await removeMember(project.id, userId, project.tenantId);
         } catch (e) {
             console.error("Failed to remove member", e);
-            alert(t('projectTeam.errors.removeMember'));
+            showError(t('projectTeam.errors.removeMember'));
         }
     };
 
@@ -153,7 +155,7 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
             loadInviteLinks();
         } catch (e) {
             console.error("Failed to generate link", e);
-            alert(t('projectTeam.errors.generateInvite'));
+            showError(t('projectTeam.errors.generateInvite'));
         } finally {
             setIsGenerating(false);
         }
@@ -166,184 +168,223 @@ export const ProjectTeamManager: React.FC<ProjectTeamManagerProps> = ({ project,
             loadInviteLinks();
         } catch (e) {
             console.error("Failed to revoke link", e);
+            showError(t('projectTeam.errors.revokeInvite'));
         }
     };
 
     const copyToClipboard = (text: string) => {
         navigator.clipboard.writeText(text);
-        // Could show a toast here
-        alert(t('projectTeam.actions.copied'));
+        showSuccess(t('projectTeam.actions.copied'));
+    };
+
+    const legacySuffix = t('projectTeam.roles.legacySuffix');
+    const baseRoleOptions = [
+        { value: 'Owner', label: t('roles.owner') },
+        ...customRoles.map(role => ({ value: role.id, label: role.name }))
+    ];
+
+    const getRoleOptions = (currentRole: string) => {
+        const isLegacy = ['Viewer', 'Editor'].includes(currentRole) && !customRoles.find(r => r.id === currentRole);
+        if (!isLegacy) return baseRoleOptions;
+        return [{ value: currentRole, label: `${currentRole} (${legacySuffix})` }, ...baseRoleOptions];
+    };
+
+    const getInviteRoleOptions = () => {
+        const isLegacy = ['Viewer', 'Editor'].includes(inviteRole) && !customRoles.find(r => r.id === inviteRole);
+        if (!isLegacy) return baseRoleOptions;
+        return [{ value: inviteRole, label: `${inviteRole} (${legacySuffix})` }, ...baseRoleOptions];
     };
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-300">
+        <div className="project-team">
             {/* Team Members List */}
-            <div className="space-y-4">
-                <div className="flex items-center justify-between">
+            <section className="project-team__section">
+                <div className="project-team__header">
                     <div>
-                        <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectTeam.title')}</h3>
-                        <p className="text-sm text-[var(--color-text-muted)]">{t('projectTeam.subtitle')}</p>
+                        <h3 className="project-team__title">{t('projectTeam.title')}</h3>
+                        <p className="project-team__subtitle">{t('projectTeam.subtitle')}</p>
                     </div>
                 </div>
 
-                <div className="border border-[var(--color-surface-border)] rounded-xl overflow-hidden">
+                <div className="project-team__list-card">
                     {loading ? (
-                        <div className="p-8 text-center text-[var(--color-text-muted)]">
-                            <span className="material-symbols-outlined animate-spin text-2xl">progress_activity</span>
+                        <div className="project-team__status">
+                            <span className="material-symbols-outlined project-team__status-icon">progress_activity</span>
                         </div>
                     ) : members.length === 0 ? (
-                        <div className="p-8 text-center text-[var(--color-text-muted)]">
+                        <div className="project-team__status project-team__status--empty">
                             <p>{t('projectTeam.empty')}</p>
                         </div>
                     ) : (
-                        <div className="divide-y divide-[var(--color-surface-border)]">
-                            {members.map((member) => (
-                                <div key={member.userId} className="p-4 flex items-center justify-between bg-[var(--color-surface-card)] hover:bg-[var(--color-surface-hover)]/50 transition-colors">
-                                    <div className="flex items-center gap-3">
-                                        <div className="size-10 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center shrink-0">
-                                            {member.photoURL ? (
-                                                <img src={member.photoURL} alt={member.displayName} className="size-full object-cover" />
+                        <div className="project-team__list">
+                            {members.map((member) => {
+                                const isSelf = auth.currentUser?.uid === member.userId;
+                                const roleOptions = getRoleOptions(member.role);
+                                const roleInfo = getRoleDisplayInfo(customRoles, member.role);
+
+                                return (
+                                    <div key={member.userId} className="project-team__member">
+                                        <div className="project-team__member-info">
+                                            <div className="project-team__avatar">
+                                                {member.photoURL ? (
+                                                    <img src={member.photoURL} alt={member.displayName} className="project-team__avatar-image" />
+                                                ) : (
+                                                    <span className="project-team__avatar-fallback">
+                                                        {member.displayName?.charAt(0) || '?'}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="project-team__member-meta">
+                                                <p className="project-team__member-name">
+                                                    {member.displayName}
+                                                    {isSelf && (
+                                                        <span className="project-team__member-you">
+                                                            ({t('common.you')})
+                                                        </span>
+                                                    )}
+                                                </p>
+                                                <p className="project-team__member-email">{member.email}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="project-team__member-actions">
+                                            {canManage && member.userId !== project.ownerId ? (
+                                                <>
+                                                    <Select
+                                                        value={member.role}
+                                                        onChange={(value) => handleRoleChange(member.userId, String(value))}
+                                                        options={roleOptions}
+                                                        className="project-team__role-select"
+                                                    />
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="project-team__remove"
+                                                        onClick={() => handleRemoveMember(member.userId)}
+                                                        aria-label={t('projectTeam.actions.remove')}
+                                                    >
+                                                        <span className="material-symbols-outlined">person_remove</span>
+                                                    </Button>
+                                                </>
                                             ) : (
-                                                <span className="text-sm font-bold text-slate-500">{member.displayName?.charAt(0) || '?'}</span>
+                                                <Badge
+                                                    variant="neutral"
+                                                    className="project-team__role-badge"
+                                                    style={{
+                                                        backgroundColor: `${roleInfo.color}20`,
+                                                        color: roleInfo.color,
+                                                        borderColor: `${roleInfo.color}40`
+                                                    }}
+                                                >
+                                                    {roleInfo.name}
+                                                </Badge>
                                             )}
                                         </div>
-                                        <div>
-                                            <p className="font-semibold text-sm text-[var(--color-text-main)]">{member.displayName} {auth.currentUser?.uid === member.userId && <span className="text-[var(--color-text-subtle)] text-xs font-normal">({t('common.you')})</span>}</p>
-                                            <p className="text-xs text-[var(--color-text-muted)]">{member.email}</p>
-                                        </div>
                                     </div>
-
-                                    <div className="flex items-center gap-3">
-                                        {canManage && member.userId !== project.ownerId ? (
-                                            <>
-                                                <Select
-                                                    value={member.role}
-                                                    onChange={(e) => handleRoleChange(member.userId, e.target.value)}
-                                                    className="w-32 h-9 text-xs"
-                                                >
-                                                    {/* If current role is legacy, show it as an option so it's not hidden/lost */}
-                                                    {['Viewer', 'Editor'].includes(member.role) && !customRoles.find(r => r.id === member.role) && (
-                                                        <option value={member.role}>{member.role} (Legacy)</option>
-                                                    )}
-                                                    <option value="Owner">{t('roles.owner', 'Owner')}</option>
-                                                    {customRoles.map(role => (
-                                                        <option key={role.id} value={role.id}>{role.name}</option>
-                                                    ))}
-                                                </Select>
-                                                <button
-                                                    onClick={() => handleRemoveMember(member.userId)}
-                                                    className="p-1.5 text-[var(--color-text-subtle)] hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                    title={t('projectTeam.actions.remove')}
-                                                >
-                                                    <span className="material-symbols-outlined text-[20px]">person_remove</span>
-                                                </button>
-                                            </>
-                                        ) : (
-                                            <Badge
-                                                style={{
-                                                    backgroundColor: getRoleDisplayInfo(customRoles, member.role).color + '20',
-                                                    color: getRoleDisplayInfo(customRoles, member.role).color,
-                                                    borderColor: getRoleDisplayInfo(customRoles, member.role).color + '40'
-                                                }}
-                                                variant="outline"
-                                            >
-                                                {getRoleDisplayInfo(customRoles, member.role).name}
-                                            </Badge>
-                                        )}
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
                 </div>
-            </div>
+            </section>
 
             {/* Invite Section */}
             {canManage && (
-                <div className="space-y-4">
-                    <div className="h-px bg-[var(--color-surface-border)]" />
-                    <div className="flex items-center justify-between">
+                <section className="project-team__section project-team__section--invite">
+                    <div className="project-team__divider" />
+                    <div className="project-team__header">
                         <div>
-                            <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectTeam.invite.title')}</h3>
-                            <p className="text-sm text-[var(--color-text-muted)]">{t('projectTeam.invite.subtitle')}</p>
+                            <h3 className="project-team__title">{t('projectTeam.invite.title')}</h3>
+                            <p className="project-team__subtitle">{t('projectTeam.invite.subtitle')}</p>
                         </div>
                     </div>
 
-                    <div className="bg-[var(--color-surface-hover)]/30 border border-[var(--color-surface-border)] rounded-xl p-4 space-y-4">
-                        <div className="flex gap-3">
+                    <div className="project-team__invite-card">
+                        <div className="project-team__invite-row">
                             <Select
                                 value={inviteRole}
-                                onChange={(e) => setInviteRole(e.target.value)}
-                                className="w-32"
-                            >
-                                <option value="Owner">{t('roles.owner', 'Owner')}</option>
-                                {customRoles.map(role => (
-                                    <option key={role.id} value={role.id}>{role.name}</option>
-                                ))}
-                            </Select>
+                                onChange={(value) => setInviteRole(String(value))}
+                                options={getInviteRoleOptions()}
+                                className="project-team__invite-select"
+                            />
                             <Button
                                 variant="primary"
                                 onClick={handleGenerateLink}
                                 isLoading={isGenerating}
                                 icon={<span className="material-symbols-outlined">link</span>}
-                                className="whitespace-nowrap flex-1"
+                                className="project-team__invite-button"
                             >
                                 {t('projectTeam.invite.generate')}
                             </Button>
                         </div>
 
                         {generatedLink && (
-                            <div className="flex gap-2 animate-in fade-in slide-in-from-top-2">
-                                <Input value={generatedLink} readOnly className="flex-1 font-mono text-xs" />
-                                <Button variant="secondary" onClick={() => copyToClipboard(generatedLink)}>{t('common.copy')}</Button>
+                            <div className="project-team__invite-link animate-fade-in">
+                                <TextInput
+                                    value={generatedLink}
+                                    readOnly
+                                    className="project-team__link-input"
+                                />
+                                <Button variant="secondary" onClick={() => copyToClipboard(generatedLink)}>
+                                    {t('common.copy')}
+                                </Button>
                             </div>
                         )}
                     </div>
 
                     {/* Active Invite Links */}
                     {inviteLinks.length > 0 && (
-                        <div className="space-y-2">
-                            <h4 className="text-sm font-semibold text-[var(--color-text-main)]">{t('projectTeam.invite.active')}</h4>
-                            <div className="space-y-2">
-                                {inviteLinks.map(link => (
-                                    <div key={link.id} className="flex items-center justify-between p-3 border border-[var(--color-surface-border)] rounded-lg bg-[var(--color-surface-card)]">
-                                        <Badge
-                                            style={{
-                                                backgroundColor: getRoleDisplayInfo(customRoles, link.role).color + '20',
-                                                color: getRoleDisplayInfo(customRoles, link.role).color,
-                                                borderColor: getRoleDisplayInfo(customRoles, link.role).color + '40'
-                                            }}
-                                            variant="outline"
-                                        >
-                                            {getRoleDisplayInfo(customRoles, link.role).name}
-                                        </Badge>
-                                        <div className="flex flex-col">
-                                            <span className="text-xs text-[var(--color-text-muted)]">
-                                                {t('projectTeam.invite.expires', 'Expires {date}').replace('{date}', format(new Date(link.expiresAt.toDate ? link.expiresAt.toDate() : link.expiresAt), dateFormat, { locale: dateLocale }))}
-                                            </span>
-                                            <span className="text-xs text-[var(--color-text-subtle)]">{t('projectTeam.invite.createdByYou', 'Created by you')}</span>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <button
-                                                onClick={() => copyToClipboard(`${window.location.origin}/join/${link.id}?projectId=${project.id}&tenantId=${project.tenantId}`)}
-                                                className="text-xs font-medium text-[var(--color-primary)] hover:underline"
+                        <div className="project-team__links">
+                            <h4 className="project-team__links-title">{t('projectTeam.invite.active')}</h4>
+                            <div className="project-team__links-list">
+                                {inviteLinks.map(link => {
+                                    const roleInfo = getRoleDisplayInfo(customRoles, link.role);
+                                    const expiresAt = new Date(link.expiresAt.toDate ? link.expiresAt.toDate() : link.expiresAt);
+                                    return (
+                                        <div key={link.id} className="project-team__link-row">
+                                            <Badge
+                                                variant="neutral"
+                                                className="project-team__role-badge"
+                                                style={{
+                                                    backgroundColor: `${roleInfo.color}20`,
+                                                    color: roleInfo.color,
+                                                    borderColor: `${roleInfo.color}40`
+                                                }}
                                             >
-                                                {t('projectTeam.invite.copyLink')}
-                                            </button>
-                                            <div className="w-px h-3 bg-[var(--color-surface-border)]" />
-                                            <button
-                                                onClick={() => handleRevokeLink(link.id)}
-                                                className="text-xs font-medium text-red-500 hover:text-red-600 hover:underline"
-                                            >
-                                                {t('projectTeam.invite.revoke')}
-                                            </button>
+                                                {roleInfo.name}
+                                            </Badge>
+                                            <div className="project-team__link-meta">
+                                                <span className="project-team__link-expires">
+                                                    {t('projectTeam.invite.expires').replace('{date}', format(expiresAt, dateFormat, { locale: dateLocale }))}
+                                                </span>
+                                                <span className="project-team__link-author">
+                                                    {t('projectTeam.invite.createdByYou')}
+                                                </span>
+                                            </div>
+                                            <div className="project-team__link-actions">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => copyToClipboard(`${window.location.origin}/join/${link.id}?projectId=${project.id}&tenantId=${project.tenantId}`)}
+                                                    className="project-team__link-action"
+                                                >
+                                                    {t('projectTeam.invite.copyLink')}
+                                                </button>
+                                                <span className="project-team__link-separator" />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRevokeLink(link.id)}
+                                                    className="project-team__link-action project-team__link-action--danger"
+                                                >
+                                                    {t('projectTeam.invite.revoke')}
+                                                </button>
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
+                                    );
+                                })}
                             </div>
                         </div>
                     )}
-                </div>
+                </section>
             )}
         </div>
     );
