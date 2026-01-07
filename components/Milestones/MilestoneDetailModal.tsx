@@ -1,8 +1,10 @@
-import React from 'react';
-import { Milestone } from '../../types';
-import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
+import React, { useMemo } from 'react';
 import { format } from 'date-fns';
+import { Milestone } from '../../types';
+import { Modal } from '../common/Modal/Modal';
+import { Button } from '../common/Button/Button';
+import { Badge } from '../common/Badge/Badge';
+import { Card } from '../common/Card/Card';
 import { useLanguage } from '../../context/LanguageContext';
 
 interface MilestoneDetailModalProps {
@@ -10,7 +12,7 @@ interface MilestoneDetailModalProps {
     onClose: () => void;
     milestone?: Milestone;
     onEdit: (milestone: Milestone) => void;
-    taskStatusLookup: Record<string, { isCompleted: boolean; hasSubtasks: boolean; dueDate?: string; priority?: string }>;
+    taskStatusLookup: Record<string, { isCompleted: boolean; hasSubtasks: boolean; dueDate?: string; priority?: string; title: string }>;
     subtaskLookup: Record<string, { total: number; completed: number }>;
     ideaLookup: Record<string, string>;
 }
@@ -24,21 +26,31 @@ export const MilestoneDetailModal = ({
     subtaskLookup,
     ideaLookup
 }: MilestoneDetailModalProps) => {
-    const { dateLocale } = useLanguage();
+    type RiskLevel = 'Low' | 'Medium' | 'High';
+    const { dateLocale, dateFormat, t } = useLanguage();
+
+    const statusLabels = useMemo(() => ({
+        Pending: t('projectMilestones.status.pending'),
+        Achieved: t('projectMilestones.status.achieved'),
+        Missed: t('projectMilestones.status.missed')
+    }), [t]);
+
+    const riskLabels = useMemo(() => ({
+        Low: t('projectMilestones.risk.low'),
+        Medium: t('projectMilestones.risk.medium'),
+        High: t('projectMilestones.risk.high')
+    }), [t]);
 
     if (!isOpen || !milestone) return null;
 
-    // Calculate Risk (Same logic as in ProjectMilestones to be consistent)
-    const getMilestoneRisk = () => {
+    const getMilestoneRisk = (): RiskLevel => {
         if (milestone.status === 'Achieved') return 'Low';
 
         const now = new Date();
         const dueDate = milestone.dueDate ? new Date(milestone.dueDate) : null;
 
-        // 1. Overdue = High Risk
         if (dueDate && dueDate < now) return 'High';
 
-        // Link Tasks Progress
         let totalProgress = 0;
         if (milestone.linkedTaskIds && milestone.linkedTaskIds.length > 0) {
             milestone.linkedTaskIds.forEach(tid => {
@@ -57,14 +69,12 @@ export const MilestoneDetailModal = ({
             ? Math.round((totalProgress / milestone.linkedTaskIds.length) * 100)
             : 0;
 
-        // 2. Time Criticality
         if (dueDate) {
             const diffDays = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
             if (diffDays <= 3 && progress < 50) return 'High';
             if (diffDays <= 7 && progress < 70) return 'Medium';
         }
 
-        // 3. Task Priorities
         let hasUrgent = false;
         let hasHigh = false;
         milestone.linkedTaskIds?.forEach(tid => {
@@ -81,131 +91,31 @@ export const MilestoneDetailModal = ({
         return 'Low';
     };
 
-    const risk = getMilestoneRisk();
+    const risk = (milestone.riskRating || getMilestoneRisk()) as RiskLevel;
     const isAchieved = milestone.status === 'Achieved';
 
-    // Helper to get task title (we only have lookup for status/priority currently, not title in the lookup passed from parent. 
-    // Parent only fetches status lookup? 
-    // Wait, ProjectMilestones.tsx `taskStatusLookup` only stores boolean/priority/date. It DOES NOT store title.
-    // If I want to list tasks names, I need them. 
-    // `availableTasks` in MilestoneModal fetches them. 
-    // ProjectMilestones doesn't seem to fetch all task TITLES for the whole project into a lookup?
-    // It has `tasksQ` snapshot but only maps status.
-    // I should update ProjectMilestones to include title in `taskStatusLookup` or separate `taskLookup`.
+    const getStatusVariant = (status: Milestone['status']) => {
+        if (status === 'Achieved') return 'success';
+        if (status === 'Missed') return 'error';
+        return 'neutral';
+    };
 
-    // For now, I'll update `ProjectMilestones` to include title in the lookup, 
-    // so I can display it here.
+    const getRiskVariant = (riskLevel: RiskLevel) => {
+        if (riskLevel === 'High') return 'error';
+        if (riskLevel === 'Medium') return 'warning';
+        return 'neutral';
+    };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-            <div className="bg-card rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-fade-up ring-1 ring-white/10 flex flex-col max-h-[90vh]">
-
-                {/* Header */}
-                <div className="px-6 py-4 border-b border-surface flex items-center justify-between bg-surface-hover/30">
-                    <div className="flex items-center gap-3">
-                        <Badge variant={isAchieved ? 'success' : 'neutral'}>
-                            {milestone.status}
-                        </Badge>
-                        {risk !== 'Low' && !isAchieved && (
-                            <Badge variant={risk === 'High' ? 'danger' : 'warning'}>
-                                {risk} Risk
-                            </Badge>
-                        )}
-                    </div>
-                    <button
-                        onClick={onClose}
-                        className="text-muted hover:text-main transition-colors"
-                    >
-                        <span className="material-symbols-outlined">close</span>
-                    </button>
-                </div>
-
-                {/* Body */}
-                <div className="p-6 overflow-y-auto space-y-6">
-                    <div>
-                        <h2 className="text-2xl font-bold text-main mb-2 font-display">
-                            {milestone.title}
-                        </h2>
-                        {milestone.description && (
-                            <p className="text-muted leading-relaxed whitespace-pre-wrap">
-                                {milestone.description}
-                            </p>
-                        )}
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="bg-surface rounded-xl p-4 border border-surface">
-                            <h4 className="text-xs font-bold uppercase text-subtle mb-2 tracking-wider">Due Date</h4>
-                            <div className="flex items-center gap-2">
-                                <span className="material-symbols-outlined text-primary">calendar_today</span>
-                                <span className="text-main font-medium">
-                                    {milestone.dueDate
-                                        ? format(new Date(milestone.dueDate), 'MMMM do, yyyy', { locale: dateLocale })
-                                        : 'No due date set'}
-                                </span>
-                            </div>
-                        </div>
-
-                        <div className="bg-surface rounded-xl p-4 border border-surface">
-                            <h4 className="text-xs font-bold uppercase text-subtle mb-2 tracking-wider">Linked Initiative</h4>
-                            {milestone.linkedInitiativeId ? (
-                                <div className="flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-indigo-500">rocket_launch</span>
-                                    <span className="text-main font-medium truncate">
-                                        {ideaLookup[milestone.linkedInitiativeId] || 'Unknown Initiative'}
-                                    </span>
-                                </div>
-                            ) : (
-                                <span className="text-muted text-sm">No initiative linked</span>
-                            )}
-                        </div>
-                    </div>
-
-                    <div>
-                        <h3 className="text-lg font-bold text-main mb-3 flex items-center gap-2">
-                            <span className="material-symbols-outlined">task</span>
-                            Linked Tasks ({milestone.linkedTaskIds?.length || 0})
-                        </h3>
-
-                        {milestone.linkedTaskIds && milestone.linkedTaskIds.length > 0 ? (
-                            <div className="space-y-2">
-                                {milestone.linkedTaskIds.map(tid => {
-                                    const task = taskStatusLookup[tid];
-                                    const sub = subtaskLookup[tid];
-                                    // Note: task.title is needed here. see previous comment.
-                                    // I will assume for this step that taskStatusLookup has title, and I will add it to ProjectMilestones next.
-                                    const title = (task as any)?.title || 'Task details unavailable';
-                                    const isDone = task?.isCompleted;
-
-                                    return (
-                                        <div key={tid} className="flex items-center justify-between p-3 bg-surface rounded-lg border border-surface">
-                                            <div className="flex items-center gap-3 overflow-hidden">
-                                                <div className={`size-5 rounded-full border-2 flex items-center justify-center shrink-0 ${isDone ? 'bg-emerald-500 border-emerald-500' : 'border-muted'}`}>
-                                                    {isDone && <span className="material-symbols-outlined text-[12px] text-white">check</span>}
-                                                </div>
-                                                <span className={`text-sm truncate ${isDone ? 'text-muted line-through' : 'text-main'}`}>
-                                                    {title}
-                                                </span>
-                                            </div>
-                                            {sub && sub.total > 0 && (
-                                                <span className="text-xs text-muted shrink-0 bg-surface-hover px-2 py-1 rounded">
-                                                    {sub.completed}/{sub.total} subtasks
-                                                </span>
-                                            )}
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        ) : (
-                            <p className="text-muted text-sm italic">No tasks linked to this milestone.</p>
-                        )}
-                    </div>
-                </div>
-
-                {/* Footer */}
-                <div className="p-4 border-t border-surface flex justify-end gap-3 bg-surface-hover/30">
-                    <Button variant="outline" onClick={onClose}>
-                        Close
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={t('projectMilestones.detail.title')}
+            size="lg"
+            footer={(
+                <>
+                    <Button variant="ghost" onClick={onClose}>
+                        {t('projectMilestones.detail.actions.close')}
                     </Button>
                     <Button
                         variant="primary"
@@ -215,10 +125,100 @@ export const MilestoneDetailModal = ({
                         }}
                         icon={<span className="material-symbols-outlined">edit</span>}
                     >
-                        Edit Milestone
+                        {t('projectMilestones.detail.actions.edit')}
                     </Button>
+                </>
+            )}
+        >
+            <div className="milestone-detail">
+                <div className="milestone-detail__header">
+                    <div className="milestone-detail__badges">
+                        <Badge variant={getStatusVariant(milestone.status)}>
+                            {statusLabels[milestone.status]}
+                        </Badge>
+                        {risk !== 'Low' && !isAchieved && (
+                            <Badge variant={getRiskVariant(risk)}>
+                                {riskLabels[risk]}
+                            </Badge>
+                        )}
+                    </div>
+                    <h2 className="milestone-detail__title">{milestone.title}</h2>
+                    {milestone.description && (
+                        <p className="milestone-detail__description">{milestone.description}</p>
+                    )}
+                </div>
+
+                <div className="milestone-detail__summary">
+                    <Card className="milestone-detail__summary-card">
+                        <div className="milestone-detail__summary-label">{t('projectMilestones.detail.dueDate')}</div>
+                        <div className="milestone-detail__summary-value">
+                            <span className="material-symbols-outlined">calendar_today</span>
+                            <span>
+                                {milestone.dueDate
+                                    ? format(new Date(milestone.dueDate), dateFormat, { locale: dateLocale })
+                                    : t('projectMilestones.detail.noDueDate')}
+                            </span>
+                        </div>
+                    </Card>
+
+                    <Card className="milestone-detail__summary-card">
+                        <div className="milestone-detail__summary-label">{t('projectMilestones.detail.initiative')}</div>
+                        {milestone.linkedInitiativeId ? (
+                            <div className="milestone-detail__summary-value">
+                                <span className="material-symbols-outlined">rocket_launch</span>
+                                <span>
+                                    {ideaLookup[milestone.linkedInitiativeId] || t('projectMilestones.detail.initiativeUnknown')}
+                                </span>
+                            </div>
+                        ) : (
+                            <div className="milestone-detail__summary-empty">{t('projectMilestones.detail.initiativeNone')}</div>
+                        )}
+                    </Card>
+                </div>
+
+                <div className="milestone-detail__tasks">
+                    <h3 className="milestone-detail__section-title">
+                        <span className="material-symbols-outlined">task</span>
+                        {t('projectMilestones.detail.tasks.title').replace('{count}', String(milestone.linkedTaskIds?.length || 0))}
+                    </h3>
+
+                    {milestone.linkedTaskIds && milestone.linkedTaskIds.length > 0 ? (
+                        <div className="milestone-detail__task-list">
+                            {milestone.linkedTaskIds.map(tid => {
+                                const task = taskStatusLookup[tid];
+                                const sub = subtaskLookup[tid];
+                                const title = task?.title || t('projectMilestones.detail.tasks.unavailable');
+                                const isDone = task?.isCompleted;
+
+                                return (
+                                    <div key={tid} className="milestone-detail__task">
+                                        <div className="milestone-detail__task-info">
+                                            <span
+                                                className="milestone-detail__task-status"
+                                                data-complete={isDone ? 'true' : 'false'}
+                                            >
+                                                {isDone && <span className="material-symbols-outlined">check</span>}
+                                            </span>
+                                            <span className={`milestone-detail__task-title ${isDone ? 'is-complete' : ''}`}>
+                                                {title}
+                                            </span>
+                                        </div>
+                                        {sub && sub.total > 0 && (
+                                            <span className="milestone-detail__task-subtasks">
+                                                {t('projectMilestones.detail.tasks.subtasks')
+                                                    .replace('{completed}', String(sub.completed))
+                                                    .replace('{total}', String(sub.total))}
+                                            </span>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <p className="milestone-detail__tasks-empty">{t('projectMilestones.detail.tasks.empty')}</p>
+                    )}
                 </div>
             </div>
-        </div>
+        </Modal>
     );
 };
