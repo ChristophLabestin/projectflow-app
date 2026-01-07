@@ -73,9 +73,9 @@ Base:
 
 Note: In the old routing, `ideas` reused the same components as `flows`.
 
-- [ ] `/project/:id/flows` — Flow pipelines list
+- [x] `/project/:id/flows` — Flow pipelines list (SCSS refactor, common components + i18n)
 - [ ] `/project/:id/flows/:flowId` — Flow detail view
-- [ ] `/project/:id/ideas` — Ideas list (alias/variant of flows)
+- [x] `/project/:id/ideas` — Ideas list (alias/variant of flows) (SCSS refactor, common components + i18n)
 - [ ] `/project/:id/ideas/:flowId` — Idea detail view (shared detail component)
 
 ### 3.4 Issues

@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { format } from 'date-fns';
 import { Comment } from '../../types';
 import { getIdeaComments, addIdeaComment } from '../../services/dataService';
 import { auth } from '../../services/firebase';
-import { Button } from '../ui/Button';
+import { Button } from '../common/Button/Button';
+import { TextArea } from '../common/Input/TextArea';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface FlowCommentsProps {
     projectId: string;
@@ -11,6 +14,7 @@ interface FlowCommentsProps {
 }
 
 export const FlowComments: React.FC<FlowCommentsProps> = ({ projectId, flowId, compact }) => {
+    const { t, dateLocale, dateFormat } = useLanguage();
     const [comments, setComments] = useState<Comment[]>([]);
     const [newComment, setNewComment] = useState('');
     const [loading, setLoading] = useState(true);
@@ -51,58 +55,51 @@ export const FlowComments: React.FC<FlowCommentsProps> = ({ projectId, flowId, c
     const formatDate = (timestamp: any) => {
         if (!timestamp) return '';
         const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-        return new Intl.DateTimeFormat('en-US', {
-            month: 'short',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: 'numeric'
-        }).format(date);
+        return format(date, `${dateFormat} p`, { locale: dateLocale });
     };
 
     return (
-        <div className={compact ? "" : "mt-8 pt-8 border-t border-surface"}>
+        <div className={`flow-comments ${compact ? 'flow-comments--compact' : ''}`}>
             {!compact && (
-                <h3 className="text-lg font-bold text-main mb-4 flex items-center gap-2">
-                    <span className="material-symbols-outlined">chat</span>
-                    Discussion
-                    <span className="text-sm font-normal text-muted ml-2">({comments.length})</span>
-                </h3>
+                <div className="flow-comments__header">
+                    <h3>
+                        <span className="material-symbols-outlined">chat</span>
+                        {t('flows.comments.title')}
+                    </h3>
+                    <span className="flow-comments__count">
+                        {t('flows.comments.count').replace('{count}', String(comments.length))}
+                    </span>
+                </div>
             )}
 
             {/* Comment List */}
-            <div className="space-y-4 mb-6">
+            <div className="flow-comments__list">
                 {loading ? (
-                    <div className="text-center py-4 text-muted">Loading comments...</div>
+                    <div className="flow-comments__state">{t('flows.comments.loading')}</div>
                 ) : comments.length === 0 ? (
-                    <div className="text-center py-8 bg-surface-paper rounded-xl border border-surface border-dashed">
-                        <p className="text-muted text-sm">No comments yet. Start the discussion!</p>
+                    <div className="flow-comments__empty">
+                        <p>{t('flows.comments.empty')}</p>
                     </div>
                 ) : (
                     comments.map(comment => (
-                        <div key={comment.id} className="flex gap-3 group">
-                            <div className="shrink-0 w-8 h-8 rounded-full bg-surface-hover overflow-hidden">
+                        <div key={comment.id} className="flow-comments__item">
+                            <div className="flow-comments__avatar">
                                 {comment.userPhotoURL ? (
-                                    <img src={comment.userPhotoURL} alt={comment.userDisplayName} className="w-full h-full object-cover" />
+                                    <img src={comment.userPhotoURL} alt={comment.userDisplayName} />
                                 ) : (
-                                    <div className="w-full h-full flex items-center justify-center text-xs font-bold text-muted">
-                                        {comment.userDisplayName[0]}
+                                    <div className="flow-comments__avatar-fallback">
+                                        {(comment.userDisplayName || t('user.fallbackInitial')).charAt(0)}
                                     </div>
                                 )}
                             </div>
-                            <div className="flex-1">
-                                <div className="bg-surface-paper rounded-xl p-3 border border-surface">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <span className="text-xs font-bold text-main">
-                                            {comment.userDisplayName}
-                                        </span>
-                                        <span className="text-[10px] text-muted">
-                                            {formatDate(comment.createdAt)}
-                                        </span>
-                                    </div>
-                                    <p className="text-sm text-main whitespace-pre-wrap leading-relaxed">
-                                        {comment.content}
-                                    </p>
+                            <div className="flow-comments__content">
+                                <div className="flow-comments__content-header">
+                                    <span>{comment.userDisplayName || t('user.fallbackName')}</span>
+                                    <span className="flow-comments__timestamp">
+                                        {formatDate(comment.createdAt)}
+                                    </span>
                                 </div>
+                                <p>{comment.content}</p>
                             </div>
                         </div>
                     ))
@@ -110,35 +107,35 @@ export const FlowComments: React.FC<FlowCommentsProps> = ({ projectId, flowId, c
             </div>
 
             {/* Comment Input */}
-            <div className="flex gap-3">
-                <div className="shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
-                    {auth.currentUser?.displayName?.[0] || 'U'}
+            <div className="flow-comments__composer">
+                <div className="flow-comments__avatar flow-comments__avatar--self">
+                    <span>{auth.currentUser?.displayName?.[0] || t('user.fallbackInitial')}</span>
                 </div>
-                <form onSubmit={handleSubmit} className="flex-1">
-                    <div className="relative">
-                        <textarea
-                            value={newComment}
-                            onChange={(e) => setNewComment(e.target.value)}
-                            placeholder="Add a comment..."
-                            className="w-full bg-surface-paper border border-surface rounded-xl p-3 text-sm min-h-[80px] focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all resize-none"
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !e.shiftKey) {
-                                    e.preventDefault();
-                                    handleSubmit(e);
-                                }
-                            }}
-                        />
-                        <div className="absolute bottom-2 right-2 flex items-center gap-2">
-                            <span className="text-[10px] text-muted hidden sm:inline">Press Enter to send</span>
-                            <Button
-                                type="submit"
-                                size="sm"
-                                disabled={!newComment.trim() || submitting}
-                                loading={submitting}
-                            >
-                                Comment
-                            </Button>
-                        </div>
+                <form onSubmit={handleSubmit} className="flow-comments__form">
+                    <TextArea
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        placeholder={t('flows.comments.placeholder')}
+                        rows={3}
+                        className="flow-comments__field"
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault();
+                                handleSubmit(e);
+                            }
+                        }}
+                    />
+                    <div className="flow-comments__actions">
+                        <span>{t('flows.comments.hint')}</span>
+                        <Button
+                            type="submit"
+                            size="sm"
+                            variant="secondary"
+                            disabled={!newComment.trim() || submitting}
+                            isLoading={submitting}
+                        >
+                            {t('flows.comments.submit')}
+                        </Button>
                     </div>
                 </form>
             </div>

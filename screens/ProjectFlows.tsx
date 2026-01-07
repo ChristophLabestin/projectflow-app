@@ -3,20 +3,19 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { deleteIdea, subscribeProjectIdeas, getProjectTasks, getProjectById, updateIdea } from '../services/dataService';
 import { generateProjectIdeasAI } from '../services/geminiService';
 import { Idea, Project, Task } from '../types';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
+import { Button } from '../components/common/Button/Button';
+import { Badge } from '../components/common/Badge/Badge';
 import { FlowPipelineBoard } from '../components/flows/FlowPipelineBoard';
 import { CreateFlowModal } from '../components/flows/CreateFlowModal';
 import { auth } from '../services/firebase';
 import { useConfirm } from '../context/UIContext';
-import { PIPELINE_CONFIGS, PipelineStageConfig, OVERVIEW_COLUMNS, TYPE_COLORS } from '../components/flows/constants';
+import { PIPELINE_CONFIGS, PipelineStageConfig, OVERVIEW_COLUMNS, TYPE_TONES } from '../components/flows/constants';
 import { PipelineSummary } from '../components/flows/PipelineSummary';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
 import { useLanguage } from '../context/LanguageContext';
 
-// ... (STAGE_CONFIG, TYPE_COLORS, OVERVIEW_COLUMNS constants remain unchanged)
+// ... (STAGE_CONFIG, TYPE_TONES, OVERVIEW_COLUMNS constants remain unchanged)
 
 export const ProjectFlows = () => {
     const { id } = useParams<{ id: string }>();
@@ -396,46 +395,44 @@ export const ProjectFlows = () => {
     } = useOnboardingTour('project_flows', { stepCount: onboardingSteps.length, autoStart: true, enabled: !loading });
 
     if (loading) return (
-        <div className="flex items-center justify-center p-12">
-            <span className="material-symbols-outlined text-subtle animate-spin text-3xl">rotate_right</span>
+        <div className="project-flows__loading">
+            <span className="material-symbols-outlined">rotate_right</span>
         </div>
     );
 
     return (
         <>
-            <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden fade-in px-6 pt-4 pb-0 gap-6">
-                {/* Header - Reworked for Pipeline Variants */}
-                <div className="flex flex-col gap-6 shrink-0 border-b border-surface pb-0">
-                    <div data-onboarding-id="project-flows-header" className="flex items-center justify-between gap-4">
-                        <div className="flex flex-col gap-1">
-                            <h1 className="text-2xl font-bold text-main">{t('flows.page.title')}</h1>
-                            <p className="text-sm text-muted">{t('flows.page.subtitle')}</p>
+            <div className="project-flows">
+                <div className="project-flows__header">
+                    <div data-onboarding-id="project-flows-header" className="project-flows__header-top">
+                        <div className="project-flows__title">
+                            <h1>{t('flows.page.title')}</h1>
+                            <p>{t('flows.page.subtitle')}</p>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                            {/* View Mode */}
-                            <div className="flex items-center rounded-lg border border-surface bg-surface-paper overflow-hidden p-0.5">
+                        <div className="project-flows__actions">
+                            <div className="project-flows__view-toggle">
                                 <button
+                                    type="button"
                                     onClick={() => setViewMode('board')}
-                                    className={`p-2 rounded-md transition-all flex items-center justify-center ${viewMode === 'board'
-                                        ? 'bg-primary/10 text-primary shadow-sm'
-                                        : 'text-muted hover:text-main hover:bg-surface-hover'}`}
+                                    className={`project-flows__view-button ${viewMode === 'board' ? 'is-active' : ''}`}
                                     title={t('flows.view.board')}
+                                    aria-pressed={viewMode === 'board'}
                                 >
-                                    <span className="material-symbols-outlined text-[20px]">view_kanban</span>
+                                    <span className="material-symbols-outlined">view_kanban</span>
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={() => setViewMode('list')}
-                                    className={`p-2 rounded-md transition-all flex items-center justify-center ${viewMode === 'list'
-                                        ? 'bg-primary/10 text-primary shadow-sm'
-                                        : 'text-muted hover:text-main hover:bg-surface-hover'}`}
+                                    className={`project-flows__view-button ${viewMode === 'list' ? 'is-active' : ''}`}
                                     title={t('flows.view.list')}
+                                    aria-pressed={viewMode === 'list'}
                                 >
-                                    <span className="material-symbols-outlined text-[20px]">view_list</span>
+                                    <span className="material-symbols-outlined">view_list</span>
                                 </button>
                             </div>
 
-                            <div className="h-8 w-px bg-surface-border" />
+                            <div className="project-flows__divider" />
 
                             <Button
                                 variant="secondary"
@@ -457,32 +454,21 @@ export const ProjectFlows = () => {
                         </div>
                     </div>
 
-                    {/* Navigation Tabs - Scrollable */}
-                    <div data-onboarding-id="project-flows-tabs" className="flex items-center gap-1 overflow-x-auto no-scrollbar -mb-px">
+                    <div data-onboarding-id="project-flows-tabs" className="project-flows__tabs">
                         <button
+                            type="button"
                             onClick={() => setActivePipeline('Overview')}
-                            className={`
-                            px-4 py-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap flex items-center gap-2
-                            ${activePipeline === 'Overview'
-                                    ? 'border-primary text-primary'
-                                    : 'border-transparent text-muted hover:text-main hover:border-[var(--color-surface-border-hover)]'
-                                }
-                        `}
+                            className={`project-flows__tab ${activePipeline === 'Overview' ? 'is-active' : ''}`}
                         >
-                            <span className="material-symbols-outlined text-[18px]">dashboard</span>
+                            <span className="material-symbols-outlined">dashboard</span>
                             {t('flows.tabs.overview')}
                         </button>
                         {Object.keys(PIPELINE_CONFIGS).map(type => (
                             <button
                                 key={type}
+                                type="button"
                                 onClick={() => setActivePipeline(type)}
-                                className={`
-                                px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap
-                                ${activePipeline === type
-                                        ? 'border-primary text-main'
-                                        : 'border-transparent text-muted hover:text-main hover:border-[var(--color-surface-border-hover)]'
-                                    }
-                            `}
+                                className={`project-flows__tab ${activePipeline === type ? 'is-active' : ''}`}
                             >
                                 {pipelineTypeLabels[type] || type}
                             </button>
@@ -490,10 +476,7 @@ export const ProjectFlows = () => {
                     </div>
                 </div>
 
-                {/* Content Area */}
-                <div className="flex-1 flex flex-col min-h-0">
-
-                    {/* Summary Dashboard */}
+                <div className="project-flows__content">
                     <div data-onboarding-id="project-flows-summary">
                         <PipelineSummary
                             stats={pipelineStats}
@@ -502,26 +485,22 @@ export const ProjectFlows = () => {
                         />
                     </div>
 
-                    <div data-onboarding-id="project-flows-board" className="flex-1 flex flex-col min-h-0">
+                    <div data-onboarding-id="project-flows-board" className="project-flows__board">
                         {filteredIdeas.length === 0 && !loading && !generating ? (
-                            <div className="flex-1 flex items-center justify-center border-2 border-dashed border-surface rounded-2xl bg-surface/50 m-1">
-                                <div className="text-center py-16 max-w-md">
-                                    <div className="size-20 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 flex items-center justify-center mx-auto mb-6">
-                                        <span className="material-symbols-outlined text-[40px] text-indigo-500">lightbulb</span>
-                                    </div>
-                                    <h3 className="text-xl font-bold text-main mb-2">{t('flows.empty.title')}</h3>
-                                    <p className="text-muted mb-6">
-                                        {t('flows.empty.description').replace('{pipeline}', pipelineTypeLabels[activePipeline] || activePipeline)}
-                                    </p>
-                                    <div className="flex items-center justify-center gap-3">
-                                        <Button variant="secondary" onClick={() => setShowCreateModal(true)}>
-                                            {t('flows.empty.actions.add')}
-                                        </Button>
-                                    </div>
+                            <div className="project-flows__empty">
+                                <div className="project-flows__empty-icon">
+                                    <span className="material-symbols-outlined">lightbulb</span>
                                 </div>
+                                <h3>{t('flows.empty.title')}</h3>
+                                <p>
+                                    {t('flows.empty.description').replace('{pipeline}', pipelineTypeLabels[activePipeline] || activePipeline)}
+                                </p>
+                                <Button variant="secondary" onClick={() => setShowCreateModal(true)}>
+                                    {t('flows.empty.actions.add')}
+                                </Button>
                             </div>
                         ) : viewMode === 'board' ? (
-                            <div className="flex-1 min-h-0 overflow-hidden">
+                            <div className="project-flows__board-surface">
                                 <FlowPipelineBoard
                                     flows={filteredIdeas}
                                     columns={activeColumns}
@@ -530,68 +509,73 @@ export const ProjectFlows = () => {
                                 />
                             </div>
                         ) : (
-                            <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar pb-8">
-                                <div className="grid grid-cols-1 gap-2">
+                            <div className="project-flows__list-wrapper">
+                                <div className="project-flows__list">
                                     {filteredIdeas.map((idea) => {
                                         const activeStageConfig = activeColumns.find(c => c.id === idea.stage);
                                         const icon = activeStageConfig?.icon || 'circle';
-                                        const bgColor = activeStageConfig?.color?.replace('bg-', 'text-') || 'text-slate-500';
-                                        const bgClass = activeStageConfig?.color?.replace('500', '100 dark:bg-opacity-10') || 'bg-slate-100 dark:bg-slate-800';
-                                        const typeColor = TYPE_COLORS[idea.type] || TYPE_COLORS['default'];
+                                        const tone = activeStageConfig?.tone || 'neutral';
+                                        const typeTone = TYPE_TONES[idea.type] || TYPE_TONES.default;
+                                        const badgeVariant = tone === 'success'
+                                            ? 'success'
+                                            : tone === 'warning'
+                                                ? 'warning'
+                                                : tone === 'danger'
+                                                    ? 'error'
+                                                    : 'neutral';
 
                                         return (
                                             <div
                                                 key={idea.id}
-                                                className="group bg-surface-paper border border-surface rounded-xl p-4 flex items-center gap-4 hover:shadow-md hover:border-surface cursor-pointer transition-all"
+                                                className={`flow-list-card flow-tone--${tone}`}
                                                 onClick={() => navigate(`/project/${id}/flows/${idea.id}`)}
                                             >
-                                                {/* Stage Icon */}
-                                                <div className={`size-10 rounded-xl ${bgClass} flex items-center justify-center shrink-0`}>
-                                                    <span className={`material-symbols-outlined text-[20px] ${bgColor.replace('bg-', 'text-')}`}>{icon}</span>
+                                                <div className="flow-list-card__icon">
+                                                    <span className="material-symbols-outlined">{icon}</span>
                                                 </div>
 
-                                                {/* Content */}
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${typeColor}`}>
+                                                <div className="flow-list-card__body">
+                                                    <div className="flow-list-card__tags">
+                                                        <span className={`flow-tag flow-tag--${typeTone}`}>
                                                             {pipelineTypeLabels[idea.type] || idea.type}
                                                         </span>
                                                         {idea.generated && (
-                                                            <span className="text-[10px] font-medium text-indigo-500 flex items-center gap-0.5">
-                                                                <span className="material-symbols-outlined text-[12px]">auto_awesome</span>
+                                                            <span className="flow-tag flow-tag--ai">
+                                                                <span className="material-symbols-outlined">auto_awesome</span>
                                                                 {t('flows.badge.ai')}
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <h4 className="font-semibold text-main truncate group-hover:text-primary transition-colors">
-                                                        {idea.title}
-                                                    </h4>
+                                                    <h4 className="flow-list-card__title">{idea.title}</h4>
                                                     {idea.description && (
-                                                        <p className="text-sm text-muted truncate mt-0.5">{idea.description}</p>
+                                                        <p className="flow-list-card__description">{idea.description}</p>
                                                     )}
                                                 </div>
 
-                                                {/* Meta */}
-                                                <div className="flex items-center gap-4 shrink-0">
-                                                    <div className="flex items-center gap-3 text-subtle">
-                                                        <span className="flex items-center gap-1 text-xs">
-                                                            <span className="material-symbols-outlined text-[14px]">thumb_up</span>
+                                                <div className="flow-list-card__meta">
+                                                    <div className="flow-list-card__stats">
+                                                        <span className="flow-list-card__stat">
+                                                            <span className="material-symbols-outlined">thumb_up</span>
                                                             {idea.votes || 0}
                                                         </span>
-                                                        <span className="flex items-center gap-1 text-xs">
-                                                            <span className="material-symbols-outlined text-[14px]">chat_bubble</span>
+                                                        <span className="flow-list-card__stat">
+                                                            <span className="material-symbols-outlined">chat_bubble</span>
                                                             {idea.comments || 0}
                                                         </span>
                                                     </div>
-                                                    <Badge size="sm" variant="outline" className={`${bgClass} border-0`}>
+                                                    <Badge variant={badgeVariant} className={`flow-list-card__stage flow-tone--${tone}`}>
                                                         {activeStageConfig?.title || idea.stage}
                                                     </Badge>
-                                                    <button
+                                                    <Button
+                                                        type="button"
+                                                        size="icon"
+                                                        variant="ghost"
+                                                        className="flow-list-card__delete"
                                                         onClick={(e) => { e.stopPropagation(); handleDelete(idea.id); }}
-                                                        className="p-2 text-muted hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        aria-label={t('flows.actions.delete')}
                                                     >
-                                                        <span className="material-symbols-outlined text-[20px]">delete</span>
-                                                    </button>
+                                                        <span className="material-symbols-outlined">delete</span>
+                                                    </Button>
                                                 </div>
                                             </div>
                                         );
@@ -602,7 +586,6 @@ export const ProjectFlows = () => {
                     </div>
                 </div>
 
-                {/* Create Modal */}
                 <CreateFlowModal
                     isOpen={showCreateModal}
                     onClose={() => setShowCreateModal(false)}
