@@ -58,11 +58,9 @@ export const FlowPipelineBoard: React.FC<FlowPipelineBoardProps> = ({ flows, col
 
     return (
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-            <div className="flex h-full gap-4 overflow-x-auto pb-2 items-start snap-x snap-mandatory">
+            <div className="flow-board">
                 {columns.map((column) => (
-                    <div key={column.id} className="snap-start shrink-0 h-full flex flex-col w-80">
-
-
+                    <div key={column.id} className="flow-board__column">
                         <FlowColumn
                             column={column}
                             flows={flows.filter((flow) => (flow.stage || columns[0].id) === column.id)}
@@ -75,7 +73,7 @@ export const FlowPipelineBoard: React.FC<FlowPipelineBoardProps> = ({ flows, col
             {createPortal(
                 <DragOverlay>
                     {activeFlow ? (
-                        <div className="transform rotate-3 opacity-95 cursor-grabbing">
+                        <div className="flow-board__drag-overlay">
                             <FlowCard flow={activeFlow} onClick={() => { }} isOverlay />
                         </div>
                     ) : null}
