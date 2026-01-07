@@ -1790,6 +1790,193 @@ html.dark .flow-concept__footer {
     }
 }
 
+.flow-marketing-analysis {
+    display: grid;
+    gap: 24px;
+    height: 100%;
+    min-height: 0;
+}
+
+.flow-marketing-analysis__main,
+.flow-marketing-analysis__sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding: 24px;
+}
+
+.flow-marketing-analysis__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.flow-marketing-analysis__heading {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    h2 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: var(--color-text-main);
+    }
+
+    p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+    }
+}
+
+.flow-marketing-analysis__metrics {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.flow-marketing-analysis__metric {
+    padding: 16px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-hover);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    color: var(--color-text-main);
+}
+
+.flow-marketing-analysis__metric-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+    color: var(--color-text-muted);
+
+    span.material-symbols-outlined {
+        font-size: 16px;
+    }
+}
+
+.flow-marketing-analysis__metric-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.flow-marketing-analysis__metric-input {
+    border: none;
+    border-radius: var(--radius-md);
+    padding: 6px 10px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    background: var(--color-surface-card);
+    color: var(--color-text-main);
+}
+
+.flow-marketing-analysis__metric[data-tone='primary'] {
+    background: rgba(var(--color-primary-rgb), 0.08);
+}
+
+.flow-marketing-analysis__metric[data-tone='success'] {
+    background: rgba(var(--color-success-rgb), 0.12);
+}
+
+.flow-marketing-analysis__metric[data-tone='warning'] {
+    background: rgba(var(--color-warning-rgb), 0.12);
+}
+
+.flow-marketing-analysis__metric[data-tone='neutral'] {
+    background: var(--color-surface-hover);
+}
+
+.flow-marketing-analysis__takeaways {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    flex: 1;
+    min-height: 0;
+
+    h3 {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--color-text-main);
+    }
+}
+
+.flow-marketing-analysis__takeaways-field {
+    .text-area {
+        min-height: 160px;
+        resize: vertical;
+    }
+}
+
+.flow-marketing-analysis__sidebar {
+    gap: 16px;
+    min-height: 0;
+}
+
+.flow-marketing-analysis__sidebar h3 {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+}
+
+.flow-marketing-analysis__roi {
+    background: rgba(var(--color-success-rgb), 0.12);
+    border-radius: var(--radius-xl);
+    padding: 24px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.flow-marketing-analysis__roi-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-success);
+}
+
+.flow-marketing-analysis__roi-input {
+    border: none;
+    border-radius: var(--radius-md);
+    padding: 8px 12px;
+    font-size: 2rem;
+    font-weight: 700;
+    text-align: center;
+    color: var(--color-success);
+    background: var(--color-surface-card);
+}
+
+.flow-marketing-analysis__roi-value {
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--color-success);
+}
+
+.flow-marketing-analysis__archive {
+    width: 100%;
+    margin-top: auto;
+}
+
+@include mixins.mq('lg') {
+    .flow-marketing-analysis {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    }
+
+    .flow-marketing-analysis__metrics {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
 .swot-card {
     --swot-accent: var(--color-primary);
     --swot-accent-soft: rgba(var(--color-primary-rgb), 0.12);
