@@ -15,6 +15,7 @@ const en = {
 
     'common.active': 'Active',
     'common.add': 'Add',
+    'common.delete': 'Delete',
     'common.manage': 'Manage',
     'common.noDescription': 'No description',
     'common.create': 'Create',

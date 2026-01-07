@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Idea } from '../../../types';
-import { Button } from '../../ui/Button';
-import { Textarea } from '../../ui/Textarea';
+import { Button } from '../../common/Button/Button';
+import { Card } from '../../common/Card/Card';
+import { TextArea } from '../../common/Input/TextArea';
 import { generateSWOTAnalysisAI } from '../../../services/geminiService';
 import { SWOTCard } from './SWOTCard';
 import { useLanguage } from '../../../context/LanguageContext';
@@ -72,23 +73,21 @@ export const RefinementView: React.FC<RefinementViewProps> = ({ idea, onUpdate }
     const renderPillSelector = (
         label: string,
         value: string | undefined,
-        options: string[],
-        colors: Record<string, string>,
         field: 'impact' | 'effort'
     ) => (
-        <div className="space-y-2">
-            <span className="text-xs font-bold text-subtle uppercase tracking-wider">{label}</span>
-            <div className="flex bg-surface-hover p-1 rounded-lg">
-                {options.map((option) => {
+        <div className="flow-refinement__metric">
+            <span className="flow-refinement__metric-label">{label}</span>
+            <div className="flow-refinement__pill-group">
+                {['Low', 'Medium', 'High'].map((option) => {
                     const isSelected = value === option;
                     return (
                         <button
                             key={option}
+                            type="button"
                             onClick={() => onUpdate({ [field]: option })}
-                            className={`flex-1 py-1.5 px-3 rounded-md text-xs font-semibold transition-all duration-200 ${isSelected
-                                ? `${colors[option]} shadow-sm transform scale-100`
-                                : 'text-muted hover:text-main hover:bg-white/50 dark:hover:bg-white/5'
-                                }`}
+                            className={`flow-refinement__pill ${isSelected ? 'is-active' : ''}`}
+                            data-level={option.toLowerCase()}
+                            aria-pressed={isSelected}
                         >
                             {levelLabels[option as keyof typeof levelLabels] || option}
                         </button>
@@ -99,88 +98,67 @@ export const RefinementView: React.FC<RefinementViewProps> = ({ idea, onUpdate }
     );
 
     return (
-        <div className="h-full flex flex-col gap-6 overflow-hidden">
-
-            {/* Top Bar: Generate Action */}
-            <div className="flex items-center justify-between shrink-0 px-1">
-                <div>
-                    <h2 className="text-lg font-bold text-main">{t('flowStages.refinement.title')}</h2>
-                    <p className="text-xs text-muted">{t('flowStages.refinement.subtitle')}</p>
+        <div className="flow-refinement">
+            <div className="flow-refinement__header">
+                <div className="flow-refinement__heading">
+                    <h2 className="flow-refinement__title">{t('flowStages.refinement.title')}</h2>
+                    <p className="flow-refinement__subtitle">{t('flowStages.refinement.subtitle')}</p>
                 </div>
                 <Button
                     variant="primary"
                     size="sm"
                     onClick={handleGenerateSWOT}
-                    loading={generating}
-                    className="bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 border-none shadow-md !text-white"
+                    isLoading={generating}
+                    className="flow-refinement__generate"
                     icon={<span className="material-symbols-outlined">auto_awesome</span>}
                 >
                     {t('flowStages.refinement.actions.generate')}
                 </Button>
             </div>
 
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0 overflow-y-auto pr-1">
-
-                {/* Left Panel: Core Attributes (4 cols) */}
-                <div className="lg:col-span-4 flex flex-col gap-6 h-full">
-                    {/* Description Editor */}
-                    <div className="bg-surface-paper p-4 rounded-xl border border-surface shadow-sm flex flex-col gap-3 flex-1 min-h-[300px]">
-                        <div className="flex items-center gap-2 text-main font-semibold border-b border-surface pb-2 shrink-0">
-                            <span className="material-symbols-outlined text-[18px] text-primary">subject</span>
-                            {t('flowStages.refinement.summary.title')}
+            <div className="flow-refinement__content">
+                <div className="flow-refinement__sidebar">
+                    <Card className="flow-refinement__panel flow-refinement__summary">
+                        <div className="flow-refinement__panel-header">
+                            <span className="material-symbols-outlined">subject</span>
+                            <span>{t('flowStages.refinement.summary.title')}</span>
                         </div>
-                        <textarea
+                        <TextArea
+                            className="flow-refinement__summary-field"
                             value={idea.description}
                             onChange={(e) => onUpdate({ description: e.target.value })}
-                            className="flex-1 w-full bg-transparent border-none focus:ring-0 p-0 resize-none text-sm leading-relaxed text-main placeholder-[var(--color-text-subtle)] focus:outline-none"
                             placeholder={t('flowStages.refinement.summary.placeholder')}
                         />
-                    </div>
+                    </Card>
 
-                    {/* Impact & Effort */}
-                    <div className="bg-surface-paper p-4 rounded-xl border border-surface shadow-sm space-y-6 shrink-0">
+                    <Card className="flow-refinement__panel flow-refinement__metrics">
                         {renderPillSelector(
                             t('flowStages.refinement.impact.title'),
                             idea.impact,
-                            ['Low', 'Medium', 'High'],
-                            {
-                                'Low': 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200',
-                                'Medium': 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-200',
-                                'High': 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-200'
-                            },
                             'impact'
                         )}
 
                         {renderPillSelector(
                             t('flowStages.refinement.effort.title'),
                             idea.effort,
-                            ['Low', 'Medium', 'High'],
-                            {
-                                'Low': 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-200',
-                                'Medium': 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200',
-                                'High': 'bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-200'
-                            },
                             'effort'
                         )}
-                    </div>
+                    </Card>
 
-                    {/* Footer Action - Advance */}
-                    <div className="mt-auto pt-4 border-t border-surface shrink-0">
+                    <div className="flow-refinement__advance">
                         <Button
-                            className="w-full h-12 text-base justify-between group bg-[var(--color-text-main)] text-[var(--color-surface-bg)] hover:bg-[var(--color-text-main)]/90 shadow-lg hover:shadow-xl transition-all rounded-xl"
+                            className="flow-refinement__advance-button"
                             onClick={() => onUpdate({ stage: 'Concept' })}
+                            icon={<span className="material-symbols-outlined">arrow_forward</span>}
+                            iconPosition="right"
                         >
-                            <span className="font-bold pl-1">{t('flowStages.refinement.actions.advance')}</span>
-                            <div className="size-8 rounded-lg bg-white/20 flex items-center justify-center group-hover:translate-x-1 transition-transform">
-                                <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-                            </div>
+                            {t('flowStages.refinement.actions.advance')}
                         </Button>
                     </div>
                 </div>
 
-                {/* Right Panel: SWOT Matrix (8 cols) */}
-                <div className="lg:col-span-8 flex flex-col gap-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full">
+                <div className="flow-refinement__main">
+                    <div className="flow-refinement__swot-grid">
                         <SWOTCard
                             title={t('flowStages.refinement.swot.strengths')}
                             icon="check_circle"
