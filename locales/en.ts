@@ -1916,6 +1916,7 @@ const en = {
     'flows.view.list': 'List view',
     'flows.actions.generate': 'Generate Flows',
     'flows.actions.add': 'Add Flow',
+    'flows.actions.back': 'Back to flows',
     'flows.tabs.overview': 'Triage & Overview',
     'flows.type.overview': 'Overview',
     'flows.type.feature': 'Feature',

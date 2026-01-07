@@ -1808,6 +1808,7 @@
     'flows.view.list': 'Listenansicht',
     'flows.actions.generate': 'Flows generieren',
     'flows.actions.add': 'Flow hinzufÃ¼gen',
+    'flows.actions.back': 'Zurueck zu Flows',
     'flows.tabs.overview': 'Triage & Ãœbersicht',
     'flows.type.overview': 'Ãœbersicht',
     'flows.type.feature': 'Feature',
