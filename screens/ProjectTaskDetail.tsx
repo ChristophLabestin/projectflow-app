@@ -1,59 +1,52 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { Link, useNavigate, useParams, useOutletContext, useSearchParams } from 'react-router-dom';
 import { addSubTask, getProjectTasks, getSubTasks, getTaskById, toggleSubTaskStatus, toggleTaskStatus, deleteTask, getProjectMembers, updateTaskFields, deleteSubTask, updateSubtaskFields, subscribeTenantUsers, getProjectById, getIdeaById, subscribeTaskActivity, getProjectCategories, subscribeProjectMilestones, updateMilestone } from '../services/dataService';
 import { deleteField } from 'firebase/firestore';
-import { SubTask, Task, Member, Project, Activity, Milestone } from '../types';
+import { SubTask, Task, Member, Project, Activity, Milestone, TaskCategory } from '../types';
 import { CommentSection } from '../components/CommentSection';
-import { Input } from '../components/ui/Input';
-import { Button } from '../components/ui/Button';
+import { Button } from '../components/common/Button/Button';
+import { TextInput } from '../components/common/Input/TextInput';
 import { EditTaskModal } from '../components/EditTaskModal';
 import { MultiAssigneeSelector } from '../components/MultiAssigneeSelector';
 import { TaskDependenciesCard } from '../components/TaskDependenciesCard';
 import { TaskCreateModal } from '../components/TaskCreateModal';
 import { ProjectLabelsModal } from '../components/ProjectLabelsModal';
 import { toMillis, timeAgo } from '../utils/time';
+import { activityIcon } from '../utils/activityHelpers';
 import { auth } from '../services/firebase';
-import { DatePicker } from '../components/ui/DatePicker';
+import { DatePicker } from '../components/common/DateTime/DatePicker';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { TaskStrategicContext } from '../components/tasks/TaskStrategicContext';
 import { useLanguage } from '../context/LanguageContext';
 import { format } from 'date-fns';
-
-const activityIcon = (type?: Activity['type'], actionText?: string) => {
-    const action = (actionText || '').toLowerCase();
-    if (type === 'task') {
-        if (action.includes('deleted') || action.includes('remove')) return { icon: 'delete', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-500/10' };
-        if (action.includes('reopened')) return { icon: 'undo', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-500/10' };
-        if (action.includes('completed') || action.includes('done')) return { icon: 'check_circle', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-500/10' };
-        return { icon: 'add_task', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-500/10' };
-    }
-    if (type === 'issue') {
-        if (action.includes('resolved') || action.includes('closed')) return { icon: 'check_circle', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-500/10' };
-        if (action.includes('reopened')) return { icon: 'undo', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-500/10' };
-        return { icon: 'bug_report', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-500/10' };
-    }
-    if (type === 'status') return { icon: 'swap_horiz', color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-100 dark:bg-indigo-500/10' };
-    if (type === 'report') return { icon: 'auto_awesome', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-500/10' };
-    if (type === 'comment') return { icon: 'chat_bubble', color: 'text-amber-600', bg: 'bg-amber-100' };
-    if (type === 'file') return { icon: 'attach_file', color: 'text-slate-600', bg: 'bg-slate-100' };
-    if (type === 'member') return { icon: 'person_add', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-500/10' };
-    if (type === 'commit') return { icon: 'code', color: 'text-blue-600', bg: 'bg-blue-100' };
-    if (type === 'priority') return { icon: 'priority_high', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-500/10' };
-    return { icon: 'more_horiz', color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-700/50' };
-};
+import { ConfirmModal } from '../components/common/Modal/ConfirmModal';
 
 const TASK_STATUS_OPTIONS = ['Backlog', 'Open', 'In Progress', 'On Hold', 'Review', 'Blocked', 'Done'] as const;
 
 const getTaskStatusStyle = (status?: string) => {
-    return status === 'Done' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' :
-        status === 'In Progress' ? 'bg-blue-600/15 text-blue-400 border-blue-500/40 shadow-[0_0_12px_rgba(59,130,246,0.2)]' :
-            status === 'Review' ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.1)]' :
-                status === 'Open' || status === 'Todo' ? 'bg-violet-500/10 text-violet-400 border-violet-500/20' :
-                    status === 'Backlog' ? 'bg-slate-500/10 text-slate-400 border-slate-500/20 opacity-80' :
-                        status === 'On Hold' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                            status === 'Blocked' ? 'bg-rose-600/20 text-rose-500 border-rose-500/50 animate-pulse ring-1 ring-rose-500/20' :
-                                'bg-slate-500/5 text-slate-400 border-slate-500/10';
+    if (status === 'Done') return 'task-detail__tone--success';
+    if (status === 'In Progress') return 'task-detail__tone--primary';
+    if (status === 'Review') return 'task-detail__tone--warning';
+    if (status === 'Open' || status === 'Todo') return 'task-detail__tone--primary';
+    if (status === 'Backlog') return 'task-detail__tone--neutral';
+    if (status === 'On Hold') return 'task-detail__tone--warning';
+    if (status === 'Blocked') return 'task-detail__tone--error';
+    return 'task-detail__tone--neutral';
+};
+
+const getPriorityTone = (priority?: string) => {
+    if (priority === 'Urgent') return 'task-detail__tone--error';
+    if (priority === 'High') return 'task-detail__tone--warning';
+    if (priority === 'Medium') return 'task-detail__tone--primary';
+    if (priority === 'Low') return 'task-detail__tone--neutral';
+    return 'task-detail__tone--neutral';
+};
+
+const getEffortTone = (effort?: string) => {
+    if (effort === 'High') return 'task-detail__tone--warning';
+    if (effort === 'Medium') return 'task-detail__tone--primary';
+    if (effort === 'Low') return 'task-detail__tone--neutral';
+    return 'task-detail__tone--neutral';
 };
 
 const getTaskStatusIcon = (status?: string) => {
@@ -358,8 +351,14 @@ export const ProjectTaskDetail = () => {
 
     const handleUpdateField = async (field: keyof Task, value: any) => {
         if (!task) return;
-        setTask({ ...task, [field]: value });
-        await updateTaskFields(task.id, { [field]: value }, id);
+        let nextValue = value;
+        if ((field === 'startDate' || field === 'dueDate') && value instanceof Date) {
+            nextValue = format(value, 'yyyy-MM-dd');
+        } else if ((field === 'startDate' || field === 'dueDate') && value === null) {
+            nextValue = '';
+        }
+        setTask({ ...task, [field]: nextValue });
+        await updateTaskFields(task.id, { [field]: nextValue }, id);
     };
 
     useEffect(() => {
@@ -434,19 +433,19 @@ export const ProjectTaskDetail = () => {
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center min-h-[50vh]">
-                <div className="flex flex-col items-center gap-3">
-                    <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
-                </div>
+            <div className="task-detail__loading">
+                <span className="material-symbols-outlined task-detail__loading-icon">progress_activity</span>
             </div>
         );
     }
 
     if (!task) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
-                <h3 className="text-xl font-bold text-main">{t('taskDetail.notFound.title')}</h3>
-                <Link to={`/project/${id}/tasks`} className="btn-secondary">{t('taskDetail.notFound.action')}</Link>
+            <div className="task-detail__empty">
+                <h3 className="task-detail__empty-title">{t('taskDetail.notFound.title')}</h3>
+                <Button variant="secondary" onClick={() => navigate(`/project/${id}/tasks`)}>
+                    {t('taskDetail.notFound.action')}
+                </Button>
             </div>
         );
     }
@@ -455,7 +454,7 @@ export const ProjectTaskDetail = () => {
     const currentStatusLabel = statusLabels[currentStatus as keyof typeof statusLabels] || t('tasks.status.unknown');
 
     return (
-        <div className="max-w-[1600px] mx-auto px-4 md:px-8 py-8 animate-fade-in pb-20">
+        <div className="task-detail">
             {isEditModalOpen && task && (
                 <EditTaskModal
                     task={task}
@@ -490,105 +489,76 @@ export const ProjectTaskDetail = () => {
                 />
             )}
 
-            {showDeleteConfirm && createPortal(
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="bg-card rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-surface">
-                        <div className="space-y-4 text-center">
-                            <h3 className="text-lg font-bold text-main">{t('taskDetail.confirm.delete.title')}</h3>
-                            <p className="text-sm text-muted">
-                                {t('taskDetail.confirm.delete.message').replace('{title}', task.title)}
-                            </p>
-                            <div className="grid grid-cols-2 gap-3">
-                                <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)}>{t('common.cancel')}</Button>
-                                <Button variant="danger" onClick={handleDeleteTask} isLoading={deleting}>{t('taskDetail.confirm.delete.confirm')}</Button>
-                            </div>
-                        </div>
-                    </div>
-                </div>,
-                document.body
-            )}
+            <ConfirmModal
+                isOpen={showDeleteConfirm}
+                onClose={() => setShowDeleteConfirm(false)}
+                onConfirm={handleDeleteTask}
+                title={t('taskDetail.confirm.delete.title')}
+                message={t('taskDetail.confirm.delete.message').replace('{title}', task.title)}
+                confirmLabel={t('taskDetail.confirm.delete.confirm')}
+                cancelLabel={t('common.cancel')}
+                variant="danger"
+                isLoading={deleting}
+            />
 
-            {subTaskToDelete && createPortal(
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="bg-card rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-surface animate-in fade-in zoom-in-95 duration-200">
-                        <div className="space-y-4 text-center">
-                            <h3 className="text-lg font-bold text-main">{t('taskDetail.confirm.deleteSubtask.title')}</h3>
-                            <p className="text-sm text-muted">
-                                {t('taskDetail.confirm.deleteSubtask.message')}
-                            </p>
-                            <div className="grid grid-cols-2 gap-3">
-                                <Button variant="ghost" onClick={() => setSubTaskToDelete(null)}>{t('common.cancel')}</Button>
-                                <Button variant="danger" onClick={confirmDeleteSubTask}>{t('taskDetail.confirm.deleteSubtask.confirm')}</Button>
-                            </div>
-                        </div>
-                    </div>
-                </div>,
-                document.body
-            )}
+            <ConfirmModal
+                isOpen={Boolean(subTaskToDelete)}
+                onClose={() => setSubTaskToDelete(null)}
+                onConfirm={confirmDeleteSubTask}
+                title={t('taskDetail.confirm.deleteSubtask.title')}
+                message={t('taskDetail.confirm.deleteSubtask.message')}
+                confirmLabel={t('taskDetail.confirm.deleteSubtask.confirm')}
+                cancelLabel={t('common.cancel')}
+                variant="danger"
+            />
 
             {/* Header / Hero Section */}
-            <header className="relative mb-10 overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] border border-surface shadow-sm">
-                {/* Decorative background element */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-3xl rounded-full -mr-20 -mt-20 pointer-events-none" />
+            <header className="task-detail__hero">
+                <div className="task-detail__hero-glow" />
 
-                <div className="relative px-6 py-8 md:px-10 md:py-10">
+                <div className="task-detail__hero-content">
 
 
-                    <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-3 mb-4 flex-wrap">
+                    <div className="task-detail__hero-layout">
+                        <div className="task-detail__hero-main">
+                            <div className="task-detail__badges">
                                 {/* Project Context */}
                                 {project && (
-                                    <Link to={`/project/${project.id}`} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-hover border border-surface rounded-full transition-all group">
-                                        <div className="size-2 rounded-full bg-primary" />
-                                        <span className="text-xs font-bold text-subtle group-hover:text-primary uppercase tracking-wide">{project.title}</span>
-                                        <span className="material-symbols-outlined text-[14px] text-muted group-hover:text-primary">arrow_forward</span>
+                                    <Link to={`/project/${project.id}`} className="task-detail__project-link">
+                                        <span className="task-detail__project-dot" />
+                                        <span className="task-detail__project-text">{project.title}</span>
+                                        <span className="material-symbols-outlined task-detail__project-icon">arrow_forward</span>
                                     </Link>
                                 )}
-                                <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black tracking-[0.15em] uppercase border transition-all duration-300 ${task.status === 'Done' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' :
-                                    task.status === 'In Progress' ? 'bg-blue-600/15 text-blue-400 border-blue-500/40 shadow-[0_0_12px_rgba(59,130,246,0.2)]' :
-                                        task.status === 'Review' ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30 shadow-[0_0_10px_rgba(34,211,238,0.1)]' :
-                                            task.status === 'Open' || task.status === 'Todo' ? 'bg-violet-500/10 text-violet-400 border-violet-500/20' :
-                                                task.status === 'Backlog' ? 'bg-slate-500/10 text-slate-400 border-slate-500/20 opacity-80' :
-                                                    task.status === 'On Hold' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                                                        task.status === 'Blocked' ? 'bg-rose-600/20 text-rose-500 border-rose-500/50 animate-pulse ring-1 ring-rose-500/20' :
-                                                            'bg-slate-500/5 text-slate-400 border-slate-500/10'
-                                    }`}>
-                                    <span className="material-symbols-outlined text-[14px]">
-                                        {task.status === 'Done' ? 'check_circle' :
-                                            task.status === 'In Progress' ? 'sync' :
-                                                task.status === 'Review' ? 'visibility' :
-                                                    task.status === 'Open' || task.status === 'Todo' ? 'play_circle' :
-                                                        task.status === 'Backlog' ? 'inventory_2' :
-                                                            task.status === 'On Hold' ? 'pause_circle' :
-                                                                task.status === 'Blocked' ? 'dangerous' :
-                                                                    'circle'}
+                                <span className={`task-detail__status-pill ${getTaskStatusStyle(task.status)}`}>
+                                    <span className="material-symbols-outlined task-detail__status-icon">
+                                        {getTaskStatusIcon(task.status)}
                                     </span>
                                     {currentStatusLabel}
                                 </span>
-                                <PriorityBadge priority={task.priority} />
+                                <PriorityBadge priority={task.priority || 'Low'} />
                                 {task.convertedIdeaId && (
-                                    <div className="flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border bg-indigo-500/10 text-indigo-500 border-indigo-500/20">
-                                        <span className="material-symbols-outlined text-[14px]">lightbulb</span>
+                                    <span className="task-detail__strategic-pill">
+                                        <span className="material-symbols-outlined task-detail__strategic-icon">lightbulb</span>
                                         {t('taskDetail.badges.strategic')}
-                                    </div>
+                                    </span>
                                 )}
                             </div>
 
-                            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-main leading-[1.1] tracking-tight mb-8">
+                            <h1 className="task-detail__title">
                                 {task.title}
                             </h1>
 
 
 
-                            <div className="flex flex-wrap items-center gap-6 text-sm">
-                                <div className="flex items-center gap-2.5 px-4 py-2 bg-surface-hover rounded-xl border border-surface">
-                                    <span className="material-symbols-outlined text-[20px] text-muted">calendar_today</span>
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] leading-none uppercase font-bold text-subtle mb-0.5">
+                            <div className="task-detail__meta-row">
+                                <div className="task-detail__meta-card">
+                                    <span className="material-symbols-outlined task-detail__meta-icon">calendar_today</span>
+                                    <div className="task-detail__meta-body">
+                                        <span className="task-detail__meta-label">
                                             {task.startDate && task.dueDate ? t('taskDetail.timeline.label') : t('taskDetail.timeline.dueDate')}
                                         </span>
-                                        <span className="text-main font-semibold whitespace-nowrap">
+                                        <span className="task-detail__meta-value">
                                             {task.startDate ? (
                                                 <>
                                                     {format(new Date(task.startDate), dateFormat, { locale: dateLocale })}
@@ -603,36 +573,47 @@ export const ProjectTaskDetail = () => {
                                 </div>
 
                                 {totalCount > 0 && (
-                                    <div className="flex items-center gap-2.5 px-4 py-2 bg-surface-hover rounded-xl border border-surface">
-                                        <div className="relative size-6 flex items-center justify-center">
-                                            <svg className="size-full -rotate-90">
-                                                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-[var(--color-surface-border)]" />
-                                                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2.5" strokeDasharray={2 * Math.PI * 10} strokeDashoffset={2 * Math.PI * 10 * (1 - progressPct / 100)} strokeLinecap="round" className="text-primary transition-all duration-700 ease-out" />
+                                    <div className="task-detail__meta-card">
+                                        <div className="task-detail__progress">
+                                            <svg className="task-detail__progress-ring" viewBox="0 0 24 24">
+                                                <circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" strokeWidth="2.5" className="task-detail__progress-track" />
+                                                <circle
+                                                    cx="12"
+                                                    cy="12"
+                                                    r="10"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    strokeWidth="2.5"
+                                                    strokeDasharray={2 * Math.PI * 10}
+                                                    strokeDashoffset={2 * Math.PI * 10 * (1 - progressPct / 100)}
+                                                    strokeLinecap="round"
+                                                    className="task-detail__progress-value"
+                                                />
                                             </svg>
-                                            <span className="absolute text-[8px] font-bold text-main">{Math.round(progressPct)}%</span>
+                                            <span className="task-detail__progress-label">{Math.round(progressPct)}%</span>
                                         </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] leading-none uppercase font-bold text-subtle mb-0.5">{t('taskDetail.subtasks.label')}</span>
-                                            <span className="text-main font-semibold">{doneCount}/{totalCount}</span>
+                                        <div className="task-detail__meta-body">
+                                            <span className="task-detail__meta-label">{t('taskDetail.subtasks.label')}</span>
+                                            <span className="task-detail__meta-value">{doneCount}/{totalCount}</span>
                                         </div>
                                     </div>
                                 )}
 
                                 {task.scheduledDate && (
-                                    <div className="flex items-center gap-2.5 px-4 py-2 bg-surface-hover rounded-xl border border-surface">
-                                        <span className="material-symbols-outlined text-[20px] text-muted">event_available</span>
-                                        <div className="flex flex-col">
-                                            <span className="text-[10px] leading-none uppercase font-bold text-subtle mb-0.5">{t('taskDetail.timeline.smartScheduled')}</span>
-                                            <span className="text-main font-semibold">
+                                    <div className="task-detail__meta-card">
+                                        <span className="material-symbols-outlined task-detail__meta-icon">event_available</span>
+                                        <div className="task-detail__meta-body">
+                                            <span className="task-detail__meta-label">{t('taskDetail.timeline.smartScheduled')}</span>
+                                            <span className="task-detail__meta-value">
                                                 {format(new Date(task.scheduledDate), dateFormat, { locale: dateLocale })}
                                             </span>
                                         </div>
                                     </div>
                                 )}
 
-                                <div className="hidden md:flex items-center gap-3 ml-2">
-                                    <div className="h-8 w-[1px] bg-surface-border" />
-                                    <div className="flex -space-x-2">
+                                <div className="task-detail__assignees">
+                                    <span className="task-detail__assignees-divider" />
+                                    <div className="task-detail__assignee-stack">
                                         {(task.assigneeIds || [task.assigneeId]).filter(id => id).map((uid, i) => {
                                             const user = allUsers.find(u => (u as any).id === uid || u.uid === uid);
                                             return (
@@ -640,14 +621,14 @@ export const ProjectTaskDetail = () => {
                                                     key={uid + i}
                                                     src={user?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'}
                                                     alt=""
-                                                    className="size-8 rounded-full border-2 border-card shadow-sm"
+                                                    className="task-detail__assignee"
                                                     title={user?.displayName || t('taskDetail.assignees.fallback')}
                                                 />
                                             );
                                         })}
                                         {(!task.assigneeIds && !task.assigneeId) && (
-                                            <div className="size-8 rounded-full border-2 border-dashed border-surface flex items-center justify-center text-subtle">
-                                                <span className="material-symbols-outlined text-[16px]">person</span>
+                                            <div className="task-detail__assignee task-detail__assignee--placeholder">
+                                                <span className="material-symbols-outlined">person</span>
                                             </div>
                                         )}
                                     </div>
@@ -655,21 +636,21 @@ export const ProjectTaskDetail = () => {
                             </div>
                         </div>
 
-                        <div className="flex flex-col items-stretch lg:items-end gap-3 lg:mb-1">
+                        <div className="task-detail__actions">
                             <Button
                                 variant={task.isCompleted ? 'secondary' : 'primary'}
                                 onClick={handleToggleTask}
                                 size="lg"
-                                className={`shadow-lg w-full lg:w-fit ${idea ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-500/25 border-none text-white' : 'shadow-primary/10'}`}
-                                icon={<span className="material-symbols-outlined">{task.isCompleted ? 'check_circle' : 'check'}</span>}
+                                className="task-detail__primary-action"
+                                icon={<span className="material-symbols-outlined task-detail__action-icon">{task.isCompleted ? 'check_circle' : 'check'}</span>}
                             >
                                 {task.isCompleted ? t('taskDetail.actions.completed') : t('taskDetail.actions.markDone')}
                             </Button>
 
-                            <div className="flex items-center gap-2 bg-surface-hover p-1 rounded-xl border border-surface w-full lg:w-fit">
+                            <div className="task-detail__action-toolbar">
                                 <Button
                                     variant="ghost"
-                                    size="sm"
+                                    size="icon"
                                     onClick={() => {
                                         if (isPinned(task.id)) {
                                             if (focusItemId === task.id) {
@@ -698,40 +679,34 @@ export const ProjectTaskDetail = () => {
                                             unpinItem(task.id);
                                         }
                                     }}
-                                    className={`flex-1 lg:flex-none transition-all ${focusItemId === task.id
-                                        ? 'text-amber-600 dark:text-amber-400 bg-amber-500/10 hover:bg-amber-500/20 shadow-sm border border-amber-500/20'
-                                        : isPinned(task.id)
-                                            ? 'text-primary bg-primary/10 hover:bg-primary/20 shadow-sm'
-                                            : 'hover:bg-card text-muted'
-                                        }`}
-                                    icon={<span className={`material-symbols-outlined text-[20px] ${focusItemId === task.id ? 'fill-current' : ''}`}>
-                                        {focusItemId === task.id ? 'push_pin' : 'push_pin'}
-                                    </span>}
+                                    className="task-detail__action-button"
+                                    data-state={focusItemId === task.id ? 'focused' : isPinned(task.id) ? 'pinned' : 'default'}
+                                    icon={<span className="material-symbols-outlined task-detail__action-icon">push_pin</span>}
                                 />
-                                <div className="w-[1px] h-4 bg-surface-border" />
+                                <span className="task-detail__action-divider" />
                                 <Button
                                     variant="ghost"
-                                    size="sm"
+                                    size="icon"
                                     onClick={() => setIsEditModalOpen(true)}
-                                    className="flex-1 lg:flex-none hover:bg-card"
-                                    icon={<span className="material-symbols-outlined text-[20px]">edit</span>}
+                                    className="task-detail__action-button"
+                                    icon={<span className="material-symbols-outlined task-detail__action-icon">edit</span>}
                                 />
-                                <div className="w-[1px] h-4 bg-surface-border" />
+                                <span className="task-detail__action-divider" />
                                 <Button
                                     variant="ghost"
-                                    size="sm"
-                                    className="flex-1 lg:flex-none text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                                    size="icon"
+                                    className="task-detail__action-button task-detail__action-button--danger"
                                     onClick={() => setShowDeleteConfirm(true)}
                                 >
-                                    <span className="material-symbols-outlined text-[20px]">delete</span>
+                                    <span className="material-symbols-outlined task-detail__action-icon">delete</span>
                                 </Button>
-                                <div className="w-[1px] h-4 bg-surface-border" />
+                                <span className="task-detail__action-divider" />
                                 <Button
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => setShowTaskModal(true)}
-                                    className="flex-1 lg:flex-none hover:bg-card"
-                                    icon={<span className="material-symbols-outlined text-[20px]">add</span>}
+                                    className="task-detail__action-button task-detail__action-button--wide"
+                                    icon={<span className="material-symbols-outlined task-detail__action-icon">add</span>}
                                 >
                                     {t('taskDetail.actions.newTask')}
                                 </Button>
@@ -741,12 +716,12 @@ export const ProjectTaskDetail = () => {
 
                     {/* Timeline Bar (Visual) */}
                     {task.startDate && task.dueDate && (
-                        <div className="mt-8 relative pt-4">
-                            <div className="flex justify-between text-[10px] font-bold text-subtle uppercase tracking-wider mb-2">
+                        <div className="task-detail__timeline">
+                            <div className="task-detail__timeline-labels">
                                 <span>{format(new Date(task.startDate), dateFormat, { locale: dateLocale })}</span>
                                 <span>{format(new Date(task.dueDate), dateFormat, { locale: dateLocale })}</span>
                             </div>
-                            <div className="h-2 bg-surface-border rounded-full overflow-hidden relative">
+                            <div className="task-detail__timeline-track">
                                 {/* Visual calculation for progress based on today vs start/end */}
                                 {(() => {
                                     const start = new Date(task.startDate).getTime();
@@ -757,7 +732,7 @@ export const ProjectTaskDetail = () => {
                                     const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
                                     return (
                                         <div
-                                            className={`h-full absolute top-0 left-0 rounded-full ${idea ? 'bg-indigo-500' : 'bg-primary'}`}
+                                            className="task-detail__timeline-progress"
                                             style={{ width: `${pct}%` }}
                                         />
                                     );
@@ -770,53 +745,39 @@ export const ProjectTaskDetail = () => {
 
 
 
-            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+            <div className="task-detail__layout">
                 {/* Main Content */}
-                <div className="xl:col-span-9 space-y-8">
+                <div className="task-detail__main">
 
                     {/* Top Meta Cards: Priority, Status, Assignee */}
                     {/* Top Meta Cards: Priority, Status, Effort, Assignee */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                    <div className="task-detail__meta-grid">
                         {/* Priority Card - Compact with Custom Dropdown */}
-                        <div className="app-card p-4 h-full flex flex-col">
-                            <div className="flex items-center gap-2 mb-3">
-                                <span className="material-symbols-outlined text-[18px] text-muted">flag</span>
-                                <span className="text-[10px] font-bold text-subtle uppercase tracking-wider">{t('taskDetail.priority.label')}</span>
+                        <div className="app-card task-detail__card">
+                            <div className="task-detail__card-header">
+                                <span className="material-symbols-outlined task-detail__card-icon">flag</span>
+                                <span className="task-detail__card-label">{t('taskDetail.priority.label')}</span>
                             </div>
-                            <div className="flex-1 flex items-center">
-                                <div ref={priorityMenuRef} className="relative w-full">
+                            <div className="task-detail__card-body">
+                                <div ref={priorityMenuRef} className="task-detail__select">
                                     <button
                                         type="button"
                                         onClick={() => setPriorityMenuOpen((open) => !open)}
-                                        className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl border transition-all hover:brightness-110 ${(() => {
-                                            const p = task.priority || 'Low';
-                                            const activeStyles: Record<string, string> = {
-                                                'Low': 'bg-slate-500/10 text-slate-500 border-slate-500/20 shadow-sm',
-                                                'Medium': 'bg-blue-500/10 text-blue-500 border-blue-500/20 shadow-sm',
-                                                'High': 'bg-orange-500/10 text-orange-500 border-orange-500/20 shadow-sm',
-                                                'Urgent': 'bg-rose-500/10 text-rose-500 border-rose-500/20 shadow-sm'
-                                            };
-                                            return activeStyles[p] || activeStyles['Low'];
-                                        })()}`}
+                                        className={`task-detail__select-trigger ${getPriorityTone(task.priority || 'Low')}`}
+                                        data-open={priorityMenuOpen ? 'true' : 'false'}
                                     >
-                                        <span className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-wide truncate">
+                                        <span className="task-detail__select-value">
                                             <PriorityIcon priority={task.priority || 'Low'} />
                                             {priorityLabels[task.priority as keyof typeof priorityLabels] || task.priority || t('tasks.priority.low')}
                                         </span>
-                                        <span className={`material-symbols-outlined text-[18px] text-current opacity-70 transition-transform ${priorityMenuOpen ? 'rotate-180' : ''}`}>
+                                        <span className="material-symbols-outlined task-detail__select-chevron">
                                             expand_more
                                         </span>
                                     </button>
 
                                     {priorityMenuOpen && (
-                                        <div className="absolute left-0 top-full mt-2 w-full rounded-2xl border border-surface bg-card shadow-lg p-2 space-y-1 z-20">
+                                        <div className="task-detail__select-menu">
                                             {(['Low', 'Medium', 'High', 'Urgent'] as const).map((p) => {
-                                                const activeStyles: Record<string, string> = {
-                                                    'Low': 'bg-slate-500/10 text-slate-500 border-slate-500/20 shadow-sm',
-                                                    'Medium': 'bg-blue-500/10 text-blue-500 border-blue-500/20 shadow-sm',
-                                                    'High': 'bg-orange-500/10 text-orange-500 border-orange-500/20 shadow-sm',
-                                                    'Urgent': 'bg-rose-500/10 text-rose-500 border-rose-500/20 shadow-sm'
-                                                };
                                                 const isSelected = task.priority === p;
 
                                                 return (
@@ -827,15 +788,14 @@ export const ProjectTaskDetail = () => {
                                                             setPriorityMenuOpen(false);
                                                             handleUpdateField('priority', p);
                                                         }}
-                                                        className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wide transition-all ${isSelected ? 'ring-1 ring-primary/30' : 'hover:brightness-110 border-surface hover:bg-surface-hover'
-                                                            } ${isSelected ? activeStyles[p] : 'text-muted'}`}
+                                                        className={`task-detail__select-item ${getPriorityTone(p)} ${isSelected ? 'task-detail__select-item--selected' : ''}`}
                                                     >
-                                                        <span className="flex items-center gap-2">
+                                                        <span className="task-detail__select-item-label">
                                                             <PriorityIcon priority={p} />
                                                             {priorityLabels[p]}
                                                         </span>
                                                         {isSelected && (
-                                                            <span className="material-symbols-outlined text-[16px] text-primary">check</span>
+                                                            <span className="material-symbols-outlined task-detail__select-item-check">check</span>
                                                         )}
                                                     </button>
                                                 );
@@ -847,30 +807,31 @@ export const ProjectTaskDetail = () => {
                         </div>
 
                         {/* Status Card */}
-                        <div className="app-card p-4 h-full flex flex-col">
-                            <div className="flex items-center gap-2 mb-3">
-                                <span className="material-symbols-outlined text-[18px] text-muted">timelapse</span>
-                                <span className="text-[10px] font-bold text-subtle uppercase tracking-wider">{t('taskDetail.status.label')}</span>
+                        <div className="app-card task-detail__card">
+                            <div className="task-detail__card-header">
+                                <span className="material-symbols-outlined task-detail__card-icon">timelapse</span>
+                                <span className="task-detail__card-label">{t('taskDetail.status.label')}</span>
                             </div>
-                            <div className="flex-1 flex items-center">
-                                <div ref={statusMenuRef} className="relative w-full">
+                            <div className="task-detail__card-body">
+                                <div ref={statusMenuRef} className="task-detail__select">
                                     <button
                                         type="button"
                                         onClick={() => setStatusMenuOpen((open) => !open)}
-                                        className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl border transition-all hover:brightness-110 ${getTaskStatusStyle(currentStatus)}`}
+                                        className={`task-detail__select-trigger ${getTaskStatusStyle(currentStatus)}`}
+                                        data-open={statusMenuOpen ? 'true' : 'false'}
                                     >
-                                        <span className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-wide truncate">
-                                            <span className="material-symbols-outlined text-[16px]">
+                                        <span className="task-detail__select-value">
+                                            <span className="material-symbols-outlined task-detail__select-icon">
                                                 {getTaskStatusIcon(currentStatus)}
                                             </span>
                                             {currentStatusLabel}
                                         </span>
-                                        <span className={`material-symbols-outlined text-[18px] text-current opacity-70 transition-transform ${statusMenuOpen ? 'rotate-180' : ''}`}>
+                                        <span className="material-symbols-outlined task-detail__select-chevron">
                                             expand_more
                                         </span>
                                     </button>
                                     {statusMenuOpen && (
-                                        <div className="absolute left-0 top-full mt-2 w-full rounded-2xl border border-surface bg-card shadow-lg p-2 space-y-1 z-20">
+                                        <div className="task-detail__select-menu">
                                             {TASK_STATUS_OPTIONS.map((status) => (
                                                 <button
                                                     key={status}
@@ -881,19 +842,16 @@ export const ProjectTaskDetail = () => {
                                                         setTask(prev => prev ? ({ ...prev, status: status as any, isCompleted: isDone }) : null);
                                                         updateTaskFields(task.id, { status: status as any, isCompleted: isDone }, id);
                                                     }}
-                                                    className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wide transition-all ${status === currentStatus
-                                                        ? 'ring-1 ring-primary/30'
-                                                        : 'hover:brightness-110'
-                                                        } ${getTaskStatusStyle(status)}`}
+                                                    className={`task-detail__select-item ${getTaskStatusStyle(status)} ${status === currentStatus ? 'task-detail__select-item--selected' : ''}`}
                                                 >
-                                                    <span className="flex items-center gap-2">
-                                                        <span className="material-symbols-outlined text-[14px]">
+                                                    <span className="task-detail__select-item-label">
+                                                        <span className="material-symbols-outlined task-detail__select-icon">
                                                             {getTaskStatusIcon(status)}
                                                         </span>
                                                         {statusLabels[status as keyof typeof statusLabels] || status}
                                                     </span>
                                                     {status === currentStatus && (
-                                                        <span className="material-symbols-outlined text-[16px] text-primary">check</span>
+                                                        <span className="material-symbols-outlined task-detail__select-item-check">check</span>
                                                     )}
                                                 </button>
                                             ))}
@@ -904,50 +862,37 @@ export const ProjectTaskDetail = () => {
                         </div>
 
                         {/* Effort Card (New) */}
-                        <div className="app-card p-4 h-full flex flex-col">
-                            <div className="flex items-center gap-2 mb-3">
-                                <span className="material-symbols-outlined text-[18px] text-muted">fitness_center</span>
-                                <span className="text-[10px] font-bold text-subtle uppercase tracking-wider">{t('taskDetail.effort.label')}</span>
+                        <div className="app-card task-detail__card">
+                            <div className="task-detail__card-header">
+                                <span className="material-symbols-outlined task-detail__card-icon">fitness_center</span>
+                                <span className="task-detail__card-label">{t('taskDetail.effort.label')}</span>
                             </div>
-                            <div className="flex-1 flex items-center">
-                                <div ref={effortMenuRef} className="relative w-full">
+                            <div className="task-detail__card-body">
+                                <div ref={effortMenuRef} className="task-detail__select">
                                     <button
                                         type="button"
                                         onClick={() => setEffortMenuOpen((open) => !open)}
-                                        className={`w-full flex items-center justify-between gap-3 px-3 py-2 rounded-xl border transition-all hover:brightness-110 ${(() => {
-                                            const e = task.effort || 'None';
-                                            const activeStyles: Record<string, string> = {
-                                                'None': 'border-surface text-muted hover:bg-surface-hover',
-                                                'Low': 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-sm',
-                                                'Medium': 'bg-blue-500/10 text-blue-500 border-blue-500/20 shadow-sm',
-                                                'High': 'bg-violet-500/10 text-violet-500 border-violet-500/20 shadow-sm'
-                                            };
-                                            return activeStyles[e] || activeStyles['None'];
-                                        })()}`}
+                                        className={`task-detail__select-trigger ${getEffortTone(task.effort || 'None')}`}
+                                        data-open={effortMenuOpen ? 'true' : 'false'}
                                     >
-                                        <span className="flex items-center gap-2 text-[12px] font-bold uppercase tracking-wide truncate">
+                                        <span className="task-detail__select-value">
                                             {task.effort ? (
                                                 <>
                                                     <EffortIcon effort={task.effort} />
                                                     {effortLabels[task.effort as keyof typeof effortLabels] || task.effort}
                                                 </>
                                             ) : (
-                                                <span className="text-muted italic text-[11px]">{t('taskDetail.effort.placeholder')}</span>
+                                                <span className="task-detail__select-placeholder">{t('taskDetail.effort.placeholder')}</span>
                                             )}
                                         </span>
-                                        <span className={`material-symbols-outlined text-[18px] text-current opacity-70 transition-transform ${effortMenuOpen ? 'rotate-180' : ''}`}>
+                                        <span className="material-symbols-outlined task-detail__select-chevron">
                                             expand_more
                                         </span>
                                     </button>
 
                                     {effortMenuOpen && (
-                                        <div className="absolute left-0 top-full mt-2 w-full rounded-2xl border border-surface bg-card shadow-lg p-2 space-y-1 z-20">
+                                        <div className="task-detail__select-menu">
                                             {(['Low', 'Medium', 'High'] as const).map((e) => {
-                                                const activeStyles: Record<string, string> = {
-                                                    'Low': 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20 shadow-sm',
-                                                    'Medium': 'bg-blue-500/10 text-blue-500 border-blue-500/20 shadow-sm',
-                                                    'High': 'bg-violet-500/10 text-violet-500 border-violet-500/20 shadow-sm'
-                                                };
                                                 const isSelected = task.effort === e;
 
                                                 return (
@@ -958,15 +903,14 @@ export const ProjectTaskDetail = () => {
                                                             setEffortMenuOpen(false);
                                                             handleUpdateField('effort', e);
                                                         }}
-                                                        className={`w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg border text-[10px] font-bold uppercase tracking-wide transition-all ${isSelected ? 'ring-1 ring-primary/30' : 'hover:brightness-110 border-surface hover:bg-surface-hover'
-                                                            } ${isSelected ? activeStyles[e] : 'text-muted'}`}
+                                                        className={`task-detail__select-item ${getEffortTone(e)} ${isSelected ? 'task-detail__select-item--selected' : ''}`}
                                                     >
-                                                        <span className="flex items-center gap-2">
+                                                        <span className="task-detail__select-item-label">
                                                             <EffortIcon effort={e} />
                                                             {effortLabels[e]}
                                                         </span>
                                                         {isSelected && (
-                                                            <span className="material-symbols-outlined text-[16px] text-primary">check</span>
+                                                            <span className="material-symbols-outlined task-detail__select-item-check">check</span>
                                                         )}
                                                     </button>
                                                 );
@@ -978,12 +922,12 @@ export const ProjectTaskDetail = () => {
                         </div>
 
                         {/* Assignees Card */}
-                        <div className="app-card p-4 h-full flex flex-col">
-                            <div className="flex items-center gap-2 mb-3">
-                                <span className="material-symbols-outlined text-[18px] text-muted">group</span>
-                                <span className="text-[10px] font-bold text-subtle uppercase tracking-wider">{t('taskDetail.assignees.label')}</span>
+                        <div className="app-card task-detail__card">
+                            <div className="task-detail__card-header">
+                                <span className="material-symbols-outlined task-detail__card-icon">group</span>
+                                <span className="task-detail__card-label">{t('taskDetail.assignees.label')}</span>
                             </div>
-                            <div className="flex-1 flex items-center justify-start">
+                            <div className="task-detail__card-body task-detail__assignee-card">
                                 <MultiAssigneeSelector
                                     projectId={id!}
                                     assigneeIds={task.assigneeIds || (task.assigneeId ? [task.assigneeId] : [])}
@@ -996,18 +940,18 @@ export const ProjectTaskDetail = () => {
                     </div>
 
                     {/* Description */}
-                    <div className="p-0">
-                        <h3 className="text-xs font-bold text-muted uppercase mb-3 flex items-center gap-2 tracking-wider">
-                            <span className="material-symbols-outlined text-[16px]">description</span>
+                    <div className="task-detail__section">
+                        <h3 className="task-detail__section-title">
+                            <span className="material-symbols-outlined task-detail__section-icon">description</span>
                             {t('taskDetail.description.label')}
                         </h3>
-                        <div className="app-card p-6 min-h-[120px]">
+                        <div className="app-card task-detail__card task-detail__card--roomy task-detail__description-card">
                             {task.description ? (
-                                <div className="prose prose-sm max-w-none text-main">
-                                    <p className="whitespace-pre-wrap leading-relaxed">{task.description}</p>
+                                <div className="prose task-detail__description-text">
+                                    <p className="task-detail__description-paragraph">{task.description}</p>
                                 </div>
                             ) : (
-                                <p className="text-muted italic">{t('taskDetail.description.empty')}</p>
+                                <p className="task-detail__empty-text">{t('taskDetail.description.empty')}</p>
                             )}
                         </div>
 
@@ -1015,83 +959,78 @@ export const ProjectTaskDetail = () => {
                     </div>
 
                     {/* Subtasks */}
-                    <div>
-                        <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                                <h3 className="text-xs font-bold text-muted uppercase flex items-center gap-2 tracking-wider">
-                                    <span className="material-symbols-outlined text-[16px]">checklist</span>
+                    <div className="task-detail__section">
+                        <div className="task-detail__subtasks-header">
+                            <div className="task-detail__subtasks-title">
+                                <h3 className="task-detail__section-title">
+                                    <span className="material-symbols-outlined task-detail__section-icon">checklist</span>
                                     {t('taskDetail.subtasks.label')}
                                 </h3>
                                 {totalCount > 0 && (
-                                    <span className="bg-surface-hover text-main text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                                    <span className="task-detail__subtasks-count">
                                         {totalCount}
                                     </span>
                                 )}
                             </div>
 
                             {totalCount > 0 && (
-                                <div className="flex items-center gap-2">
-                                    <div className="w-24 h-1.5 bg-surface-hover rounded-full overflow-hidden">
+                                <div className="task-detail__subtasks-progress">
+                                    <div className="task-detail__subtasks-bar">
                                         <div
-                                            className="h-full bg-primary transition-all duration-500 rounded-full"
+                                            className="task-detail__subtasks-bar-fill"
                                             style={{ width: `${progressPct}%` }}
                                         />
                                     </div>
-                                    <span className="text-xs font-medium text-muted">{Math.round(progressPct)}%</span>
+                                    <span className="task-detail__subtasks-progress-label">{Math.round(progressPct)}%</span>
                                 </div>
                             )}
                         </div>
 
-                        <div className="app-card overflow-hidden">
+                        <div className="app-card task-detail__card task-detail__card--flush">
 
-                            <div className="divide-y divide-[var(--color-surface-border)]">
+                            <div className="task-detail__subtasks-list">
                                 {subTasks.map(sub => (
-                                    <div key={sub.id} className="group flex items-center gap-3 p-3 hover:bg-surface-hover transition-colors">
+                                    <div key={sub.id} className="task-detail__subtask" data-complete={sub.isCompleted ? 'true' : 'false'}>
                                         <button
                                             onClick={() => handleToggleSubTask(sub.id, sub.isCompleted)}
-                                            className={`size-5 rounded border flex items-center justify-center transition-all ${sub.isCompleted
-                                                ? 'bg-primary border-primary text-on-primary'
-                                                : 'border-muted text-transparent hover:border-primary'
-                                                }`}
+                                            className="task-detail__subtask-toggle"
                                         >
-                                            <span className="material-symbols-outlined text-[14px] font-bold">check</span>
+                                            <span className="material-symbols-outlined task-detail__subtask-toggle-icon">check</span>
                                         </button>
-                                        <span className={`flex-1 text-sm ${sub.isCompleted ? 'text-muted line-through' : 'text-main'}`}>
+                                        <span className="task-detail__subtask-title">
                                             {sub.title}
                                         </span>
 
                                         {/* Subtask Assignee Selector */}
-                                        <div className="relative">
+                                        <div className="task-detail__subtask-assignee">
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     setActiveSubAssignMenu(activeSubAssignMenu === sub.id ? null : sub.id);
                                                 }}
-                                                className={`
-                                                    size-7 rounded-full border border-dashed flex items-center justify-center transition-all bg-cover bg-center
-                                                    ${sub.assigneeId ? 'border-transparent' : 'border-surface text-subtle hover:border-primary hover:text-primary'}
-                                                `}
+                                                className="task-detail__subtask-avatar"
+                                                data-assigned={sub.assigneeId ? 'true' : 'false'}
                                                 style={{
                                                     backgroundImage: sub.assigneeId ? `url(${allUsers.find(u => (u as any).id === sub.assigneeId)?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'})` : 'none'
                                                 }}
                                                 title={sub.assigneeId ? t('taskDetail.subtasks.assignedTo').replace('{name}', allUsers.find(u => (u as any).id === sub.assigneeId)?.displayName || '') : t('taskDetail.subtasks.assign')}
                                             >
-                                                {!sub.assigneeId && <span className="material-symbols-outlined text-[16px]">person_add</span>}
+                                                {!sub.assigneeId && <span className="material-symbols-outlined task-detail__subtask-avatar-icon">person_add</span>}
                                             </button>
 
                                             {activeSubAssignMenu === sub.id && (
                                                 <>
-                                                    <div className="fixed inset-0 z-40" onClick={() => setActiveSubAssignMenu(null)}></div>
-                                                    <div className="absolute right-0 top-full mt-1 w-48 bg-card border border-surface rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                                                        <div className="p-2 border-b border-surface bg-surface">
-                                                            <p className="px-2 text-[10px] font-bold text-subtle uppercase tracking-wider">{t('taskDetail.subtasks.assignTitle')}</p>
+                                                    <div className="task-detail__overlay" onClick={() => setActiveSubAssignMenu(null)}></div>
+                                                    <div className="task-detail__menu task-detail__menu--compact task-detail__menu--right">
+                                                        <div className="task-detail__menu-header">
+                                                            <p className="task-detail__menu-title">{t('taskDetail.subtasks.assignTitle')}</p>
                                                         </div>
-                                                        <div className="max-h-60 overflow-y-auto p-1">
+                                                        <div className="task-detail__menu-body">
                                                             <button
                                                                 onClick={() => handleUpdateSubTaskAssignee(sub.id, null)}
-                                                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/10 rounded-lg transition-colors"
+                                                                className="task-detail__menu-item task-detail__menu-item--danger"
                                                             >
-                                                                <span className="material-symbols-outlined text-[16px]">person_remove</span>
+                                                                <span className="material-symbols-outlined task-detail__menu-icon">person_remove</span>
                                                                 {t('taskDetail.subtasks.unassign')}
                                                             </button>
                                                             {taskAssignees.map(uid => {
@@ -1100,19 +1039,16 @@ export const ProjectTaskDetail = () => {
                                                                     <button
                                                                         key={uid}
                                                                         onClick={() => handleUpdateSubTaskAssignee(sub.id, uid)}
-                                                                        className={`
-                                                                            w-full flex items-center gap-2 px-3 py-2 text-xs font-medium rounded-lg transition-colors
-                                                                            ${sub.assigneeId === uid ? 'bg-[var(--color-primary-fade)] text-primary' : 'text-main hover:bg-surface-hover'}
-                                                                        `}
+                                                                        className={`task-detail__menu-item ${sub.assigneeId === uid ? 'task-detail__menu-item--selected' : ''}`}
                                                                     >
-                                                                        <img src={user?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'} alt="" className="size-5 rounded-full" />
-                                                                        <span className="truncate">{user?.displayName || user?.email || uid.slice(0, 8)}</span>
-                                                                        {sub.assigneeId === uid && <span className="material-symbols-outlined text-[14px] ml-auto">check</span>}
+                                                                        <img src={user?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'} alt="" className="task-detail__menu-avatar" />
+                                                                        <span className="task-detail__menu-text">{user?.displayName || user?.email || uid.slice(0, 8)}</span>
+                                                                        {sub.assigneeId === uid && <span className="material-symbols-outlined task-detail__menu-check">check</span>}
                                                                     </button>
                                                                 );
                                                             })}
                                                             {taskAssignees.length === 0 && (
-                                                                <p className="p-3 text-[10px] text-muted italic text-center">{t('taskDetail.subtasks.noneAssigned')}</p>
+                                                                <p className="task-detail__menu-empty">{t('taskDetail.subtasks.noneAssigned')}</p>
                                                             )}
                                                         </div>
                                                     </div>
@@ -1122,27 +1058,25 @@ export const ProjectTaskDetail = () => {
 
                                         <button
                                             onClick={() => handleDeleteSubTask(sub.id)}
-                                            className="opacity-0 group-hover:opacity-100 p-1.5 text-subtle hover:text-rose-500 rounded-lg transition-all"
+                                            className="task-detail__subtask-delete"
                                             title={t('taskDetail.subtasks.delete')}
                                         >
-                                            <span className="material-symbols-outlined text-[16px]">close</span>
+                                            <span className="material-symbols-outlined task-detail__subtask-delete-icon">close</span>
                                         </button>
                                     </div>
                                 ))}
                             </div>
 
-                            <div className="p-3 bg-surface border-t border-surface">
-                                <form onSubmit={handleAddSubTask} className="flex gap-2">
-                                    <div className="relative flex-1">
-                                        <Input
-                                            value={newSubTitle}
-                                            onChange={(e) => setNewSubTitle(e.target.value)}
-                                            placeholder={t('taskDetail.subtasks.addPlaceholder')}
-                                            className="w-full bg-transparent border-none focus:ring-0"
-                                            icon={<span className="material-symbols-outlined text-[18px]">add</span>}
-                                            disabled={adding}
-                                        />
-                                    </div>
+                            <div className="task-detail__subtask-form">
+                                <form onSubmit={handleAddSubTask} className="task-detail__subtask-form-row">
+                                    <TextInput
+                                        value={newSubTitle}
+                                        onChange={(e) => setNewSubTitle(e.target.value)}
+                                        placeholder={t('taskDetail.subtasks.addPlaceholder')}
+                                        className="task-detail__subtask-input"
+                                        leftElement={<span className="material-symbols-outlined">add</span>}
+                                        disabled={adding}
+                                    />
                                     <Button
                                         type="submit"
                                         size="sm"
@@ -1160,15 +1094,15 @@ export const ProjectTaskDetail = () => {
 
                     {/* Strategic Context (Moved here) */}
                     {task.convertedIdeaId && (
-                        <div className="animate-fade-in-up">
+                        <div className="task-detail__strategic-context">
                             <TaskStrategicContext projectId={id!} convertedIdeaId={task.convertedIdeaId} ideaData={idea} />
                         </div>
                     )}
 
                     {/* Comments */}
-                    <div>
-                        <h3 className="text-xs font-bold text-muted uppercase mb-3 flex items-center gap-2 tracking-wider">
-                            <span className="material-symbols-outlined text-[16px]">chat</span>
+                    <div className="task-detail__section">
+                        <h3 className="task-detail__section-title">
+                            <span className="material-symbols-outlined task-detail__section-icon">chat</span>
                             {t('taskDetail.comments.title').replace('{count}', String(commentCount))}
                         </h3>
                         <CommentSection
@@ -1186,33 +1120,31 @@ export const ProjectTaskDetail = () => {
 
                 </div>
                 {/* Side Details Column */}
-                <div className="xl:col-span-3 space-y-6">
+                <div className="task-detail__sidebar">
                     {/* Controls Card */}
-                    <div className="space-y-4">
+                    <div className="task-detail__sidebar-stack">
 
                         {/* Timeline Card */}
-                        <div className="app-card p-4">
-                            <div className="flex items-center gap-2 mb-4">
-                                <span className="material-symbols-outlined text-[18px] text-muted">event_note</span>
-                                <span className="text-[10px] font-bold text-subtle uppercase tracking-wider">{t('taskDetail.timeline.label')}</span>
+                        <div className="app-card task-detail__card">
+                            <div className="task-detail__card-header">
+                                <span className="material-symbols-outlined task-detail__card-icon">event_note</span>
+                                <span className="task-detail__card-label">{t('taskDetail.timeline.label')}</span>
                             </div>
-                            <div className="space-y-4 px-1">
-                                <div>
-                                    <span className="text-[10px] font-bold text-subtle uppercase tracking-wider block mb-1">{t('taskDetail.timeline.startDate')}</span>
+                            <div className="task-detail__timeline-fields">
+                                <div className="task-detail__field">
+                                    <span className="task-detail__field-label">{t('taskDetail.timeline.startDate')}</span>
                                     <DatePicker
-                                        value={task.startDate || ''}
+                                        value={task.startDate ? new Date(task.startDate) : null}
                                         onChange={(date) => handleUpdateField('startDate', date)}
                                         placeholder={t('taskDetail.timeline.startPlaceholder')}
-                                        className="w-full text-sm border-none p-0 h-auto bg-transparent focus:ring-0 text-main font-semibold"
                                     />
                                 </div>
-                                <div>
-                                    <span className="text-[10px] font-bold text-subtle uppercase tracking-wider block mb-1">{t('taskDetail.timeline.dueDate')}</span>
+                                <div className="task-detail__field">
+                                    <span className="task-detail__field-label">{t('taskDetail.timeline.dueDate')}</span>
                                     <DatePicker
-                                        value={task.dueDate || ''}
+                                        value={task.dueDate ? new Date(task.dueDate) : null}
                                         onChange={(date) => handleUpdateField('dueDate', date)}
                                         placeholder={t('taskDetail.timeline.duePlaceholder')}
-                                        className="w-full text-sm border-none p-0 h-auto bg-transparent focus:ring-0 text-main font-semibold"
                                     />
                                 </div>
                             </div>
@@ -1228,19 +1160,19 @@ export const ProjectTaskDetail = () => {
                         />
 
                         {/* Labels Card */}
-                        <div className="app-card p-4">
-                            <div className="flex items-center justify-between mb-3">
-                                <span className="text-[10px] font-bold text-subtle uppercase tracking-wider">{t('taskDetail.labels.title')}</span>
-                                <span className="material-symbols-outlined text-[18px] text-muted">sell</span>
+                        <div className="app-card task-detail__card task-detail__labels-card">
+                            <div className="task-detail__labels-header">
+                                <span className="task-detail__labels-title">{t('taskDetail.labels.title')}</span>
+                                <span className="material-symbols-outlined task-detail__labels-icon">sell</span>
                             </div>
 
-                            <div className="flex flex-wrap gap-2 mb-3">
+                            <div className="task-detail__labels-list">
                                 {(() => {
                                     const taskCats = Array.isArray(task.category) ? task.category : [task.category || ''];
                                     const filteredCats = taskCats.filter(Boolean);
 
                                     if (filteredCats.length === 0) {
-                                        return <span className="text-xs text-muted italic px-1">{t('taskDetail.labels.empty')}</span>;
+                                        return <span className="task-detail__labels-empty">{t('taskDetail.labels.empty')}</span>;
                                     }
 
                                     return filteredCats.map(catName => {
@@ -1249,23 +1181,22 @@ export const ProjectTaskDetail = () => {
                                         return (
                                             <span
                                                 key={catName}
-                                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border transition-all"
+                                                className="task-detail__label-pill"
                                                 style={{
                                                     backgroundColor: `${color}10`,
-                                                    color: color,
-                                                    borderColor: `${color}30`
+                                                    color: color
                                                 }}
                                             >
-                                                {catName}
+                                                <span className="task-detail__label-text">{catName}</span>
                                                 <button
                                                     onClick={() => {
                                                         const newCats = filteredCats.filter(c => c !== catName);
                                                         handleUpdateField('category', newCats.length > 0 ? newCats : null);
                                                     }}
-                                                    className="hover:opacity-70 transition-opacity flex items-center justify-center p-0.5"
+                                                    className="task-detail__label-remove"
                                                     style={{ color: color }}
                                                 >
-                                                    <span className="material-symbols-outlined text-[14px]">close</span>
+                                                    <span className="material-symbols-outlined task-detail__label-remove-icon">close</span>
                                                 </button>
                                             </span>
                                         );
@@ -1273,23 +1204,23 @@ export const ProjectTaskDetail = () => {
                                 })()}
                             </div>
 
-                            <div className="relative group/label">
-                                <button className="w-full py-2 px-3 rounded-xl bg-surface-hover border border-surface text-[10px] font-bold text-main uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-card transition-all">
-                                    <span className="material-symbols-outlined text-[16px]">add</span>
+                            <div className="task-detail__label-control">
+                                <button className="task-detail__label-add">
+                                    <span className="material-symbols-outlined task-detail__label-add-icon">add</span>
                                     {t('taskDetail.labels.add')}
                                 </button>
 
-                                <div className="absolute right-0 bottom-full mb-2 w-48 bg-card border border-surface rounded-2xl shadow-2xl py-2 opacity-0 invisible group-hover/label:opacity-100 group-hover/label:visible transition-all z-20">
-                                    <div className="px-3 py-1 mb-1 border-b border-surface">
+                                <div className="task-detail__menu task-detail__menu--floating task-detail__menu--right task-detail__menu--hover">
+                                    <div className="task-detail__menu-header">
                                         <button
                                             onClick={() => setShowLabelsModal(true)}
-                                            className="w-full flex items-center gap-2 px-2 py-2 rounded-xl text-[10px] font-black uppercase tracking-tighter text-primary hover:bg-[var(--color-accent)]/10 transition-colors"
+                                            className="task-detail__menu-item task-detail__menu-item--primary"
                                         >
-                                            <span className="material-symbols-outlined text-sm">settings</span>
+                                            <span className="material-symbols-outlined task-detail__menu-icon">settings</span>
                                             {t('taskDetail.labels.manage')}
                                         </button>
                                     </div>
-                                    <div className="max-h-48 overflow-y-auto custom-scrollbar px-1">
+                                    <div className="task-detail__menu-body">
                                         {allCategories.map(cat => {
                                             const taskCats = Array.isArray(task.category) ? task.category : [task.category || ''];
                                             const isSelected = taskCats.includes(cat.name);
@@ -1302,16 +1233,16 @@ export const ProjectTaskDetail = () => {
                                                         const next = isSelected ? current.filter(c => c !== cat.name) : [...current, cat.name];
                                                         handleUpdateField('category', next.length > 0 ? next : null);
                                                     }}
-                                                    className="w-full flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-surface-hover text-xs font-semibold text-main transition-colors text-left"
+                                                    className={`task-detail__menu-item ${isSelected ? 'task-detail__menu-item--selected' : ''}`}
                                                 >
-                                                    <div className="size-2 rounded-full" style={{ backgroundColor: cat.color || '#64748b' }} />
-                                                    <span className="flex-1">{cat.name}</span>
-                                                    {isSelected && <span className="material-symbols-outlined text-sm text-primary">check</span>}
+                                                    <span className="task-detail__menu-dot" style={{ backgroundColor: cat.color || '#64748b' }} />
+                                                    <span className="task-detail__menu-text">{cat.name}</span>
+                                                    {isSelected && <span className="material-symbols-outlined task-detail__menu-check">check</span>}
                                                 </button>
                                             );
                                         })}
                                         {allCategories.length === 0 && (
-                                            <div className="px-3 py-4 text-[10px] text-muted italic text-center">
+                                            <div className="task-detail__menu-empty">
                                                 {t('taskDetail.labels.noneDefined')}
                                             </div>
                                         )}
@@ -1323,25 +1254,25 @@ export const ProjectTaskDetail = () => {
 
                     {/* Strategic Value Card */}
                     {idea && (
-                        <div className="bg-gradient-to-br from-indigo-600 to-violet-700 rounded-2xl p-5 text-white shadow-lg shadow-indigo-500/20 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 blur-2xl rounded-full -mr-10 -mt-10 pointer-events-none" />
-                            <div className="relative">
-                                <h3 className="text-xs font-bold text-indigo-200 uppercase tracking-wider mb-4 flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-[16px]">stars</span>
+                        <div className="task-detail__strategic-card">
+                            <div className="task-detail__strategic-glow" />
+                            <div className="task-detail__strategic-content">
+                                <h3 className="task-detail__strategic-title">
+                                    <span className="material-symbols-outlined task-detail__strategic-icon">stars</span>
                                     {t('taskDetail.strategic.title')}
                                 </h3>
-                                <div className="grid grid-cols-2 gap-4 mb-4">
-                                    <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm border border-white/10">
-                                        <span className="text-[10px] uppercase text-indigo-200 font-bold block mb-1">{t('taskDetail.strategic.impact')}</span>
-                                        <span className="text-lg font-black">{idea.impact || t('taskDetail.strategic.na')}</span>
+                                <div className="task-detail__strategic-grid">
+                                    <div className="task-detail__strategic-metric">
+                                        <span className="task-detail__strategic-label">{t('taskDetail.strategic.impact')}</span>
+                                        <span className="task-detail__strategic-value">{idea.impact || t('taskDetail.strategic.na')}</span>
                                     </div>
-                                    <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm border border-white/10">
-                                        <span className="text-[10px] uppercase text-indigo-200 font-bold block mb-1">{t('taskDetail.strategic.effort')}</span>
-                                        <span className="text-lg font-black">{idea.effort || t('taskDetail.strategic.na')}</span>
+                                    <div className="task-detail__strategic-metric">
+                                        <span className="task-detail__strategic-label">{t('taskDetail.strategic.effort')}</span>
+                                        <span className="task-detail__strategic-value">{idea.effort || t('taskDetail.strategic.na')}</span>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-2 text-xs font-medium text-indigo-100 bg-white/10 px-3 py-2 rounded-lg backdrop-blur-md">
-                                    <span className="material-symbols-outlined text-[16px]">category</span>
+                                <div className="task-detail__strategic-type">
+                                    <span className="material-symbols-outlined task-detail__strategic-type-icon">category</span>
                                     {flowTypeLabels[idea.type as keyof typeof flowTypeLabels] || idea.type}
                                 </div>
                             </div>
@@ -1349,15 +1280,15 @@ export const ProjectTaskDetail = () => {
                     )}
 
                     {/* Consolidated Details Card */}
-                    <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-4">{t('taskDetail.details.title')}</h3>
-                        <div className="space-y-5">
+                    <div className="app-card task-detail__card task-detail__card--roomy">
+                        <h3 className="task-detail__details-title">{t('taskDetail.details.title')}</h3>
+                        <div className="task-detail__details-body">
                             {/* Task ID */}
-                            <div className="flex items-center justify-between group">
-                                <span className="text-[11px] font-bold text-subtle uppercase">{t('taskDetail.details.id')}</span>
-                                <div className="relative">
+                            <div className="task-detail__detail-row">
+                                <span className="task-detail__detail-label">{t('taskDetail.details.id')}</span>
+                                <div className="task-detail__detail-value">
                                     <button
-                                        className="text-[11px] font-mono text-subtle hover:text-main hover:bg-surface-hover px-2 py-1 rounded transition-colors flex items-center gap-1.5"
+                                        className="task-detail__id-button"
                                         onClick={() => {
                                             navigator.clipboard.writeText(task.id);
                                             setCopiedId(true);
@@ -1365,7 +1296,7 @@ export const ProjectTaskDetail = () => {
                                         }}
                                     >
                                         {task.id}
-                                        <span className="material-symbols-outlined text-[12px] opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <span className="material-symbols-outlined task-detail__id-icon">
                                             {copiedId ? 'check' : 'content_copy'}
                                         </span>
                                     </button>
@@ -1373,58 +1304,58 @@ export const ProjectTaskDetail = () => {
                             </div>
 
                             {/* Linked Milestone Card */}
-                            <div className="pt-3 border-t border-surface">
-                                <span className="text-[10px] font-bold text-subtle uppercase block mb-2">{t('taskDetail.details.milestone')}</span>
+                            <div className="task-detail__detail-section">
+                                <span className="task-detail__detail-label">{t('taskDetail.details.milestone')}</span>
 
                                 {linkedMilestone ? (
-                                    <div className="group relative">
-                                        <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 transition-all">
-                                            <div className="size-8 rounded bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-                                                <span className="material-symbols-outlined text-[16px]">flag</span>
+                                    <div className="task-detail__milestone">
+                                        <div className="task-detail__milestone-card">
+                                            <div className="task-detail__milestone-icon">
+                                                <span className="material-symbols-outlined">flag</span>
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <span className="block text-xs font-bold text-emerald-900 dark:text-emerald-100 truncate">{linkedMilestone.title}</span>
+                                            <div className="task-detail__milestone-body">
+                                                <span className="task-detail__milestone-title">{linkedMilestone.title}</span>
                                                 {linkedMilestone.dueDate && (
-                                                    <span className="block text-[10px] text-emerald-600 dark:text-emerald-400">
+                                                    <span className="task-detail__milestone-date">
                                                         {t('taskDetail.details.milestone.duePrefix').replace('{date}', format(new Date(linkedMilestone.dueDate), dateFormat, { locale: dateLocale }))}
                                                     </span>
                                                 )}
                                             </div>
                                             <button
                                                 onClick={() => handleUnlinkMilestone(linkedMilestone.id)}
-                                                className="opacity-0 group-hover:opacity-100 p-1 hover:bg-white/50 rounded transition-all text-emerald-600"
+                                                className="task-detail__milestone-unlink"
                                                 title={t('taskDetail.details.milestone.unlink')}
                                             >
-                                                <span className="material-symbols-outlined text-[16px]">link_off</span>
+                                                <span className="material-symbols-outlined task-detail__milestone-unlink-icon">link_off</span>
                                             </button>
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="relative">
+                                    <div className="task-detail__milestone">
                                         <button
                                             onClick={() => setActiveMilestoneMenu(!activeMilestoneMenu)}
-                                            className="w-full flex items-center justify-center gap-2 p-2 border border-dashed border-surface rounded-lg text-muted hover:text-primary hover:border-primary hover:bg-surface-hover transition-all text-xs font-medium"
+                                            className="task-detail__milestone-add"
                                         >
-                                            <span className="material-symbols-outlined text-[16px]">add_link</span>
+                                            <span className="material-symbols-outlined task-detail__milestone-add-icon">add_link</span>
                                             {t('taskDetail.details.milestone.link')}
                                         </button>
 
                                         {activeMilestoneMenu && (
                                             <>
-                                                <div className="fixed inset-0 z-40" onClick={() => setActiveMilestoneMenu(false)} />
-                                                <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-surface rounded-xl shadow-xl z-50 p-1 max-h-48 overflow-y-auto custom-scrollbar animate-in fade-in slide-in-from-top-1 duration-200">
+                                                <div className="task-detail__overlay" onClick={() => setActiveMilestoneMenu(false)} />
+                                                <div className="task-detail__menu task-detail__menu--floating">
                                                     {milestones.filter(m => m.status === 'Pending').length === 0 ? (
-                                                        <div className="p-3 text-center text-[10px] text-muted italic">{t('taskDetail.details.milestone.nonePending')}</div>
+                                                        <div className="task-detail__menu-empty">{t('taskDetail.details.milestone.nonePending')}</div>
                                                     ) : (
                                                         milestones.filter(m => m.status === 'Pending').map(m => (
                                                             <button
                                                                 key={m.id}
                                                                 onClick={() => handleLinkMilestone(m.id)}
-                                                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-main hover:bg-surface-hover rounded-lg transition-colors text-left"
+                                                                className="task-detail__menu-item"
                                                             >
-                                                                <span className="material-symbols-outlined text-[14px] text-subtle">flag</span>
-                                                                <span className="truncate flex-1">{m.title}</span>
-                                                                {m.dueDate && <span className="text-[10px] text-muted">{format(new Date(m.dueDate), 'MMM d', { locale: dateLocale })}</span>}
+                                                                <span className="material-symbols-outlined task-detail__menu-icon">flag</span>
+                                                                <span className="task-detail__menu-text">{m.title}</span>
+                                                                {m.dueDate && <span className="task-detail__menu-meta">{format(new Date(m.dueDate), 'MMM d', { locale: dateLocale })}</span>}
                                                             </button>
                                                         ))
                                                     )}
@@ -1437,54 +1368,54 @@ export const ProjectTaskDetail = () => {
 
                             {/* Strategic Origin Link */}
                             {task.convertedIdeaId && (
-                                <div className="pt-3 border-t border-surface">
-                                    <span className="text-[10px] font-bold text-subtle uppercase block mb-2">{t('taskDetail.details.origin')}</span>
+                                <div className="task-detail__detail-section">
+                                    <span className="task-detail__detail-label">{t('taskDetail.details.origin')}</span>
                                     <Link
                                         to={`/project/${id}/flows/${task.convertedIdeaId}`}
-                                        className="flex items-center gap-2 p-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 group hover:border-indigo-200 dark:hover:border-indigo-500/40 transition-all"
+                                        className="task-detail__detail-link"
                                     >
-                                        <div className="size-6 rounded bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
-                                            <span className="material-symbols-outlined text-[14px]">lightbulb</span>
+                                        <div className="task-detail__detail-link-icon">
+                                            <span className="material-symbols-outlined">lightbulb</span>
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <span className="block text-xs font-bold text-indigo-900 dark:text-indigo-100 truncate">{t('taskDetail.details.origin.label')}</span>
-                                            <span className="block text-[10px] text-indigo-600 dark:text-indigo-400">{t('taskDetail.details.origin.action')}</span>
+                                        <div className="task-detail__detail-link-body">
+                                            <span className="task-detail__detail-link-title">{t('taskDetail.details.origin.label')}</span>
+                                            <span className="task-detail__detail-link-subtitle">{t('taskDetail.details.origin.action')}</span>
                                         </div>
-                                        <span className="material-symbols-outlined text-[16px] text-indigo-400 -ml-1 opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+                                        <span className="material-symbols-outlined task-detail__detail-link-arrow">arrow_forward</span>
                                     </Link>
                                 </div>
                             )}
 
                             {/* Related Issue Link */}
                             {task.linkedIssueId && (
-                                <div className="pt-3 border-t border-surface">
-                                    <span className="text-[10px] font-bold text-subtle uppercase block mb-2">{t('taskDetail.details.reference')}</span>
+                                <div className="task-detail__detail-section">
+                                    <span className="task-detail__detail-label">{t('taskDetail.details.reference')}</span>
                                     <Link
                                         to={`/project/${id}/issues/${task.linkedIssueId}`}
-                                        className="flex items-center gap-2 p-2 rounded-lg bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 group hover:border-rose-200 dark:hover:border-rose-500/40 transition-all"
+                                        className="task-detail__detail-link"
                                     >
-                                        <div className="size-6 rounded bg-rose-100 dark:bg-rose-500/20 flex items-center justify-center text-rose-600 dark:text-rose-400">
-                                            <span className="material-symbols-outlined text-[14px]">bug_report</span>
+                                        <div className="task-detail__detail-link-icon">
+                                            <span className="material-symbols-outlined">bug_report</span>
                                         </div>
-                                        <div className="flex-1 min-w-0">
-                                            <span className="block text-xs font-bold text-rose-900 dark:text-rose-100 truncate">{t('taskDetail.details.reference.label')}</span>
-                                            <span className="block text-[10px] text-rose-600 dark:text-rose-400">{t('taskDetail.details.reference.action')}</span>
+                                        <div className="task-detail__detail-link-body">
+                                            <span className="task-detail__detail-link-title">{t('taskDetail.details.reference.label')}</span>
+                                            <span className="task-detail__detail-link-subtitle">{t('taskDetail.details.reference.action')}</span>
                                         </div>
-                                        <span className="material-symbols-outlined text-[16px] text-rose-400 -ml-1 opacity-0 group-hover:opacity-100 transition-opacity">arrow_forward</span>
+                                        <span className="material-symbols-outlined task-detail__detail-link-arrow">arrow_forward</span>
                                     </Link>
                                 </div>
                             )}
 
                             {/* Timestamps */}
-                            <div className="pt-3 border-t border-surface space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[10px] font-bold text-subtle uppercase">{t('taskDetail.details.created')}</span>
-                                    <div className="text-right">
-                                        <span className="block text-xs font-medium text-main">
+                            <div className="task-detail__detail-section task-detail__detail-section--stack">
+                                <div className="task-detail__detail-row">
+                                    <span className="task-detail__detail-label">{t('taskDetail.details.created')}</span>
+                                    <div className="task-detail__detail-meta">
+                                        <span className="task-detail__detail-date">
                                             {task.createdAt ? format(new Date(toMillis(task.createdAt)), dateFormat, { locale: dateLocale }) : '-'}
                                         </span>
                                         {task.createdBy && (
-                                            <span className="text-[10px] text-muted flex items-center justify-end gap-1">
+                                            <span className="task-detail__detail-by">
                                                 {t('taskDetail.details.by').replace('{name}', allUsers.find(u => (u as any).id === task.createdBy)?.displayName?.split(' ')[0] || t('taskDetail.details.unknownUser'))}
                                             </span>
                                         )}
@@ -1492,14 +1423,14 @@ export const ProjectTaskDetail = () => {
                                 </div>
 
                                 {task.isCompleted && (
-                                    <div className="flex items-center justify-between">
-                                        <span className="text-[10px] font-bold text-subtle uppercase">{t('taskDetail.details.completed')}</span>
-                                        <div className="text-right">
-                                            <span className="block text-xs font-medium text-main">
+                                    <div className="task-detail__detail-row">
+                                        <span className="task-detail__detail-label">{t('taskDetail.details.completed')}</span>
+                                        <div className="task-detail__detail-meta">
+                                            <span className="task-detail__detail-date">
                                                 {task.completedAt ? format(new Date(toMillis(task.completedAt)), dateFormat, { locale: dateLocale }) : t('taskDetail.details.justNow')}
                                             </span>
                                             {task.completedBy && (
-                                                <span className="text-[10px] text-muted flex items-center justify-end gap-1">
+                                                <span className="task-detail__detail-by">
                                                     {t('taskDetail.details.by').replace('{name}', allUsers.find(u => (u as any).id === task.completedBy)?.displayName?.split(' ')[0] || t('taskDetail.details.unknownUser'))}
                                                 </span>
                                             )}
@@ -1512,37 +1443,37 @@ export const ProjectTaskDetail = () => {
 
                     {/* Activity Feed (Moved to Sidebar) */}
                     {activities.length > 0 && (
-                        <div className="pt-4 border-t border-surface">
-                            <h3 className="text-xs font-bold text-muted uppercase mb-4 flex items-center gap-2 tracking-wider">
-                                <span className="material-symbols-outlined text-[16px]">history</span>
+                        <div className="task-detail__activity">
+                            <h3 className="task-detail__activity-title">
+                                <span className="material-symbols-outlined task-detail__activity-icon">history</span>
                                 {t('taskDetail.activity.title')}
                             </h3>
-                            <div className="relative pl-4 space-y-6 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                            <div className="task-detail__activity-list">
                                 {/* Vertical line */}
-                                <div className="absolute left-[31px] top-2 bottom-2 w-[2px] bg-surface-border" />
+                                <div className="task-detail__activity-line" />
 
                                 {displayedActivities.slice(0, 4).map((item) => {
 
 
                                     const { icon, color, bg } = activityIcon(item.type, item.action);
                                     return (
-                                        <div key={item.id} className="relative flex gap-3 group">
-                                            <div className={`
-                                                relative z-10 size-8 rounded-full border-2 border-[var(--color-surface-bg)] flex items-center justify-center shrink-0
-                                                ${bg} ${color}
-                                            `}>
-                                                <span className="material-symbols-outlined text-[16px]">{icon}</span>
+                                        <div key={item.id} className="task-detail__activity-item">
+                                            <div
+                                                className="task-detail__activity-badge"
+                                                style={{ backgroundColor: bg, color }}
+                                            >
+                                                <span className="material-symbols-outlined">{icon}</span>
                                             </div>
-                                            <div className="flex-1 min-w-0 py-1">
-                                                <div className="flex items-center gap-2 mb-0.5">
-                                                    <span className="text-sm font-medium text-main truncate">
+                                            <div className="task-detail__activity-body">
+                                                <div className="task-detail__activity-meta">
+                                                    <span className="task-detail__activity-user">
                                                         {item.user}
                                                     </span>
-                                                    <span className="text-xs text-subtle">
+                                                    <span className="task-detail__activity-time">
                                                         {timeAgo(item.createdAt)}
                                                     </span>
                                                 </div>
-                                                <p className="text-sm text-muted leading-relaxed">
+                                                <p className="task-detail__activity-text">
                                                     {item.action}
                                                 </p>
                                             </div>
@@ -1573,14 +1504,12 @@ const PriorityIcon = ({ priority }: { priority: string }) => {
         'Medium': 'drag_handle',
         'Low': 'keyboard_arrow_down',
     };
-    const colors: Record<string, string> = {
-        'Urgent': 'text-rose-500',
-        'High': 'text-orange-500',
-        'Medium': 'text-blue-500',
-        'Low': 'text-slate-500',
-    };
-    return <span className={`material-symbols-outlined text-[18px] ${colors[priority]}`}>{icons[priority]}</span>;
-}
+    return (
+        <span className="material-symbols-outlined task-detail__priority-icon" data-priority={priority.toLowerCase()}>
+            {icons[priority]}
+        </span>
+    );
+};
 
 const EffortIcon = ({ effort }: { effort: string }) => {
     const icons: Record<string, string> = {
@@ -1588,23 +1517,15 @@ const EffortIcon = ({ effort }: { effort: string }) => {
         'Medium': 'bolt',
         'Low': 'spa',
     };
-    const colors: Record<string, string> = {
-        'High': 'text-violet-500',
-        'Medium': 'text-blue-500',
-        'Low': 'text-emerald-500',
-    };
-    return <span className={`material-symbols-outlined text-[18px] ${colors[effort] || 'text-muted'}`}>{icons[effort] || 'circle'}</span>;
-}
+    return (
+        <span className="material-symbols-outlined task-detail__effort-icon" data-effort={effort.toLowerCase()}>
+            {icons[effort] || 'circle'}
+        </span>
+    );
+};
 
 const PriorityBadge = ({ priority }: { priority: string }) => {
     const { t } = useLanguage();
-    const styles: Record<string, string> = {
-        'Urgent': 'bg-rose-500/10 text-rose-500 border-rose-500/20',
-        'High': 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-        'Medium': 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-        'Low': 'bg-slate-500/10 text-slate-500 border-slate-500/20',
-    };
-
     const icons: Record<string, string> = {
         'Urgent': 'error',
         'High': 'keyboard_double_arrow_up',
@@ -1620,8 +1541,8 @@ const PriorityBadge = ({ priority }: { priority: string }) => {
     };
 
     return (
-        <span className={`px-2 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1.5 ${styles[priority] || styles['Medium']}`}>
-            <span className="material-symbols-outlined text-[14px]">{icons[priority]}</span>
+        <span className={`task-detail__priority-pill ${getPriorityTone(priority)}`}>
+            <span className="material-symbols-outlined task-detail__priority-icon">{icons[priority]}</span>
             {priorityLabels[priority] || priority}
         </span>
     );

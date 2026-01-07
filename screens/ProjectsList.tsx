@@ -1,1046 +1,949 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { format } from 'date-fns';
 import { useLanguage } from '../context/LanguageContext';
-import { getAllWorkspaceProjects } from '../services/dataService';
-import { auth } from '../services/firebase';
-import { Project, Member, Milestone, Task, Issue } from '../types';
-import { toMillis } from '../utils/time';
+import {
+    getAllWorkspaceProjects,
+    getProjectMembers,
+    getUserProfile,
+    getUserTasks,
+    getUserIdeas,
+    getUserIssues,
+    subscribeProjectMilestones,
+    getProjectActivity
+} from '../services/dataService';
+import { subscribeProjectSprints } from '../services/sprintService';
+import { collection, collectionGroup, onSnapshot, query, where, orderBy, getDocs } from 'firebase/firestore';
+import { db, auth } from '../services/firebase';
+import { Project, Member, Task, Idea, Issue, Milestone, Activity, Sprint } from '../types';
+import { Button } from '../components/common/Button/Button';
 import { Card } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Select } from '../components/ui/Select';
+import { Badge } from '../components/common/Badge/Badge';
 import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
-import { getProjectMembers, subscribeProjectTasks, subscribeProjectMilestones, getUserProfile, subscribeProjectIssues, getWorkspaceGroups } from '../services/dataService';
-import { calculateProjectHealth, ProjectHealth, calculateSpotlightScore, calculateWorkspaceHealth } from '../services/healthService';
-import { HealthIndicator } from '../components/project/HealthIndicator';
-import { getHealthFactorText, interpolate } from '../utils/healthLocalization';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
+import { calculateSpotlightScore, SpotlightReason, calculateProjectHealth, HealthStatus, ProjectHealth } from '../services/healthService';
+import { getTenant, setWorkspaceFocusProject, getActiveTenantId } from '../services/dataService';
+import { Tenant } from '../types';
+import './projects-list.scss';
 
-const getProjectStatusLabel = (status: string, t: (key: string, fallback?: string) => string) => {
-    const labels: Record<string, string> = {
-        Active: t('dashboard.projectStatus.active'),
-        Planning: t('dashboard.projectStatus.planning'),
-        Brainstorming: t('dashboard.projectStatus.brainstorming'),
-        Completed: t('dashboard.projectStatus.completed'),
-        'On Hold': t('dashboard.projectStatus.onHold')
-    };
-    return labels[status] || status;
+// --- Types ---
+export type ProjectMetrics = {
+    taskCount: number;
+    taskCompleted: number;
+    flowCount: number;
+    issueCount: number;
 };
 
-const MemberAvatars: React.FC<{ projectId: string }> = ({ projectId }) => {
-    const { t } = useLanguage();
+// --- Health Helpers (using healthService) ---
+const getHealthColor = (status: HealthStatus): string => {
+    switch (status) {
+        case 'critical': return '#ef4444';   // Red-500
+        case 'warning': return '#f59e0b';    // Amber-500  
+        case 'normal': return '#3b82f6';     // Blue-500
+        case 'healthy': return '#22c55e';    // Green-500
+        case 'excellent': return '#10b981';  // Emerald-500
+        case 'stalemate': return '#6b7280';  // Gray-500
+        default: return '#6b7280';
+    }
+};
+
+const getHealthLabel = (status: HealthStatus): string => {
+    switch (status) {
+        case 'critical': return 'Critical';
+        case 'warning': return 'At Risk';
+        case 'normal': return 'Normal';
+        case 'healthy': return 'Healthy';
+        case 'excellent': return 'Excellent';
+        case 'stalemate': return 'Stalled';
+        default: return 'Unknown';
+    }
+};
+
+const getHealthBadgeVariant = (status: HealthStatus): 'error' | 'warning' | 'success' | 'neutral' => {
+    switch (status) {
+        case 'critical': return 'error';
+        case 'warning': return 'warning';
+        case 'healthy':
+        case 'excellent': return 'success';
+        default: return 'neutral';
+    }
+};
+
+// --- Components ---
+
+const TeamAvatars: React.FC<{ projectId: string; limit?: number }> = ({ projectId, limit = 3 }) => {
     const [members, setMembers] = useState<Member[]>([]);
 
     useEffect(() => {
-        const fetchMembers = async () => {
-            try {
-                const memberIds = await getProjectMembers(projectId);
-                const memberPromises = memberIds.map(id => getUserProfile(id));
-                const memberProfiles = await Promise.all(memberPromises);
-                setMembers(memberProfiles.filter((m): m is Member => !!m));
-            } catch (err) {
-                console.error("Failed to fetch project members", err);
-            }
-        };
-        fetchMembers();
+        let mounted = true;
+        getProjectMembers(projectId).then(ids => {
+            if (!mounted) return;
+            Promise.all(ids.map(id => getUserProfile(id))).then(profiles => {
+                if (mounted) setMembers(profiles.filter((m): m is Member => !!m));
+            });
+        });
+        return () => { mounted = false; };
     }, [projectId]);
 
-    if (members.length === 0) return null;
-
     return (
-        <div className="flex items-center -space-x-2">
-            {members.slice(0, 3).map((member, i) => (
-                <div
-                    key={member.uid || i}
-                    className="size-7 rounded-full border-2 border-[var(--color-surface-paper)] overflow-hidden bg-surface-hover shadow-sm"
-                    title={member.displayName || t('projectsList.member')}
-                >
-                    {member.photoURL ? (
-                        <img src={member.photoURL} alt="" className="w-full h-full object-cover" />
-                    ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-muted">
-                            {(member.displayName || '?').charAt(0).toUpperCase()}
-                        </div>
-                    )}
+        <div className="team-avatars">
+            {members.slice(0, limit).map((m, i) => (
+                <div key={m.uid || i} className="avatar-circle" title={m.displayName}>
+                    {m.photoURL ? <img src={m.photoURL} alt={m.displayName} /> : <span>{m.displayName?.charAt(0)}</span>}
                 </div>
             ))}
-            {members.length > 3 && (
-                <div className="size-7 rounded-full border-2 border-[var(--color-surface-paper)] bg-surface-hover flex items-center justify-center text-[10px] font-bold text-muted shadow-sm">
-                    +{members.length - 3}
-                </div>
+            {members.length > limit && (
+                <div className="avatar-circle avatar-more">+{members.length - limit}</div>
             )}
         </div>
     );
 };
 
-const ProjectCard: React.FC<{
+// 1. Spotlight Hero
+interface SpotlightHeroProps {
     project: Project;
-    health: ProjectHealth;
-    isSpotlighted?: boolean;
-}> = ({ project, health, isSpotlighted = false }) => {
-    const { dateFormat, t, dateLocale } = useLanguage();
-    const healthState = health.status === 'excellent' || health.status === 'healthy' ? 'success' :
-        health.status === 'warning' ? 'warning' :
-            health.status === 'critical' ? 'critical' : 'normal';
-    const navigate = useNavigate();
-    const [tasks, setTasks] = useState<Task[]>([]);
-    const isBrainstorming = project.status === 'Brainstorming' || project.status === 'Planning';
-    const isCompleted = project.status === 'Completed';
-    const statusLabel = getProjectStatusLabel(project.status, t);
-    const primaryFactorLabel = health.factors[0] ? getHealthFactorText(health.factors[0], t).label : '';
+    metrics: ProjectMetrics;
+    healthStatus: HealthStatus;
+    healthScore: number;
+    reasons: SpotlightReason[];
+    pendingTaskCount: number;
+    completedTaskCount: number;
+    nextMilestone?: Milestone;
+    criticalIssuesCount?: number;
+    daysRemaining?: number;
+    sprintCount?: number;
+    onClick: () => void;
+    mode?: 'spotlight' | 'focus';
+}
 
-    useEffect(() => {
-        return subscribeProjectTasks(project.id, setTasks, project.tenantId);
-    }, [project.id, project.tenantId]);
+const SpotlightHero: React.FC<SpotlightHeroProps> = ({
+    project, metrics, healthStatus, healthScore, reasons,
+    pendingTaskCount, completedTaskCount, nextMilestone,
+    criticalIssuesCount = 0, daysRemaining, onClick,
+    sprintCount = 0,
+    mode = 'spotlight'
+}) => {
+    const healthColor = getHealthColor(healthStatus);
+    const primaryReason = reasons[0];
 
-    const progress = useMemo(() => {
-        if (tasks.length === 0) return project.progress || 0;
-        const completedCount = tasks.filter(t => t.isCompleted || t.status === 'Done').length;
-        return Math.round((completedCount / tasks.length) * 100);
-    }, [tasks, project.progress]);
+    const kickerText = mode === 'focus'
+        ? `TEAM FOCUS • ${primaryReason?.text || 'TOP PRIORITY'}`
+        : `SPOTLIGHT • ${primaryReason?.text || 'RECENTLY UPDATED'}`;
 
-    let icon = 'folder';
-    let iconColorClass = 'text-indigo-500';
-    let segClass = 'active-indigo';
+    const glowColor = mode === 'focus' ? '#6366f1' : healthColor; // Indigo for focus
 
-    if (isBrainstorming) {
-        icon = 'lightbulb';
-        iconColorClass = 'text-amber-500';
-        segClass = 'active-amber';
-    } else if (isCompleted) {
-        icon = 'check_circle';
-        iconColorClass = 'text-emerald-500';
-        segClass = 'active-emerald';
-    }
+    // Specialized "Dynamic Alert" based on health and reasons
+    const renderAlert = () => {
+        if (healthStatus === 'critical' || healthStatus === 'warning') {
+            const overdueReason = reasons.find(r => r.key.includes('Overdue') || r.key.includes('overdue'));
+            const count = overdueReason?.meta?.days || overdueReason?.meta?.count;
 
-    if (healthState === 'critical') {
-        segClass = 'active-rose';
-    } else if (healthState === 'warning') {
-        segClass = 'active-amber';
-    }
+            return (
+                <div className={`spotlight-alert-badge ${healthStatus}`}>
+                    <span className="material-symbols-outlined pulse-icon">
+                        {healthStatus === 'critical' ? 'gpp_maybe' : 'warning'}
+                    </span>
+                    <span className="alert-text">
+                        {overdueReason ? overdueReason.text : `${healthStatus.toUpperCase()} HEALTH`}
+                    </span>
+                </div>
+            );
+        }
 
-    const healthRingClass = healthState === 'critical' ? 'health-ring-critical animate-pulse-ring' :
-        healthState === 'warning' ? 'health-ring-warning animate-pulse-ring' :
-            healthState === 'success' ? 'health-ring-success' : '';
+        if (healthStatus === 'stalemate') {
+            return (
+                <div className="spotlight-alert-badge stalemate">
+                    <span className="material-symbols-outlined">pause_circle</span>
+                    <span className="alert-text">STALLED</span>
+                </div>
+            );
+        }
 
-    const borderClass = healthState === 'critical' ? 'ring-1 ring-rose-500/50' :
-        healthState === 'warning' ? 'ring-1 ring-amber-500/50' :
-            healthState === 'success' ? 'ring-1 ring-emerald-500/30' : '';
-
-    const shadowClass = healthState === 'critical' ? 'shadow-[0_10px_40px_-10px_rgba(244,63,94,0.4)]' :
-        healthState === 'warning' ? 'shadow-[0_10px_40px_-10px_rgba(245,158,11,0.4)]' :
-            healthState === 'success' ? 'shadow-[0_10px_40px_-10px_rgba(16,185,129,0.3)]' :
-                'shadow-xl';
+        return null;
+    };
 
     return (
-        <div onClick={() => navigate(`/project/${project.id}`)} className="cursor-pointer h-full group perspective-1000">
-            <div className={`glass-card h-full flex flex-col relative rounded-3xl overflow-hidden transition-all duration-700 group-hover:-translate-y-2 group-hover:rotate-x-1 hover:shadow-2xl sweep-effect ${borderClass} ${shadowClass}`}>
-
-                {/* Dynamic Background Glow - Subtle & Focused on Algorithm-Marked Projects */}
-                {(healthState !== 'normal' || isSpotlighted) && (
-                    <div className={`absolute -top-24 -right-24 size-64 rounded-full blur-[100px] opacity-10 transition-all duration-700 group-hover:opacity-20 ${healthState === 'critical' ? 'bg-rose-500/40' :
-                        healthState === 'warning' ? 'bg-amber-500/40' :
-                            healthState === 'success' ? 'bg-emerald-500/40' : 'bg-indigo-500/40'
-                        }`} />
-                )}
-
+        <div
+            className={`spotlight-hero status-${healthStatus} mode-${mode}`}
+            onClick={onClick}
+            style={{ '--spotlight-glow': glowColor } as React.CSSProperties}
+        >
+            {/* 1. Full Size Visual Background */}
+            <div className="spotlight-visual-bg">
                 {project.coverImage ? (
-                    <div className="h-40 w-full relative overflow-hidden">
-                        <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-surface-card)] via-transparent to-transparent z-10" />
-                        <img src={project.coverImage} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" alt="" />
-                    </div>
+                    <img src={project.coverImage} alt={project.title} />
                 ) : (
-                    <div className="h-20 w-full" />
+                    <div className="spotlight-placeholder" style={{ backgroundColor: getDeterministicColor(project.id) }}>
+                        {project.title.substring(0, 2).toUpperCase()}
+                    </div>
                 )}
+            </div>
 
-                <div className="px-6 pb-6 flex flex-col flex-1 relative z-20">
-                    {/* Floating Icon Header */}
-                    <div className="flex justify-between items-end -mt-10 mb-4">
-                        <div className={`size-16 rounded-2xl flex items-center justify-center bg-white dark:bg-slate-800 shadow-2xl border-2 border-white dark:border-slate-700 transition-all duration-500 group-hover:scale-110 group-hover:-rotate-3 ${healthRingClass}`}>
-                            {project.squareIcon ? (
-                                <img src={project.squareIcon} alt="" className="w-full h-full object-cover rounded-xl" />
-                            ) : (
-                                <span className={`material-symbols-outlined text-4xl ${iconColorClass}`}>{icon}</span>
-                            )}
+            {/* 2. Immersive Gradient Overlay */}
+            <div className="spotlight-gradient-overlay"></div>
+
+            {/* 3. Content floating on top - 2 column grid */}
+            <div className="spotlight-content">
+                {/* Left Column: Main Info */}
+                <div className="spotlight-main">
+                    <div className="spotlight-top-row">
+                        <div className="spotlight-kicker" style={{ color: glowColor }}>
+                            {kickerText}
                         </div>
-                        <div className="pb-1">
-                            <Badge variant={isCompleted ? 'success' : isBrainstorming ? 'secondary' : 'primary'} className="font-black text-[10px] tracking-widest uppercase px-3 py-1 glass-card border-white/20 shadow-lg">
-                                {statusLabel}
-                            </Badge>
-                        </div>
+                        {renderAlert()}
                     </div>
 
-                    <div className="flex-1 space-y-3">
-                        <div className="space-y-1">
-                            {health.status === 'critical' && (
-                                <span className="text-[10px] font-black text-rose-500 uppercase tracking-tighter flex items-center gap-1 animate-pulse">
-                                    <span className="material-symbols-outlined text-xs">priority_high</span> {t('projectsList.health.critical')}: {primaryFactorLabel || t('projectsList.health.needsAttention')}
+                    <h1 className="hero-title-large">{project.title}</h1>
+                    <p className="hero-desc">
+                        {project.description || "The central hub for your team's work."}
+                    </p>
+
+                    {/* Secondary Reasons as Pills */}
+                    {reasons.length > 1 && (
+                        <div className="spotlight-reasons-pills">
+                            {reasons.slice(1, 4).map((r, i) => (
+                                <span key={i} className="reason-pill" title={r.text}>
+                                    {r.text}
                                 </span>
-                            )}
-                            <div className="flex items-center justify-between gap-4">
-                                <h3 className="text-2xl font-black text-main transition-all duration-500 group-hover:translate-x-1 group-hover:text-primary tracking-tight leading-none truncate">
-                                    {project.title}
-                                </h3>
-                                <HealthIndicator health={health} size="sm" showLabel={false} />
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="spotlight-footer">
+                        <div className="health-display">
+                            <span className="health-score" style={{ color: glowColor }}>{healthScore}</span>
+                            <div className="health-meta">
+                                <span className="health-label" style={{ color: glowColor }}>{healthStatus.toUpperCase()} HEALTH</span>
+                                <span className="task-label">{completedTaskCount} / {completedTaskCount + pendingTaskCount} TASKS COMPLETE</span>
                             </div>
                         </div>
-                        <p className="text-sm text-muted line-clamp-2 leading-relaxed font-medium min-h-[3rem]">
-                            {project.description || t('projectsList.card.defaultDescription')}
+
+                        {project.dueDate && (
+                            <div className="due-date-box">
+                                <span className="material-symbols-outlined">calendar_today</span>
+                                <div className="due-date-info">
+                                    <span className="due-label">Due Date</span>
+                                    <span className="due-value">
+                                        {new Date(project.dueDate).toLocaleDateString()}
+                                        {healthStatus === 'critical' && reasons.some(r => r.key.includes('Overdue')) && (
+                                            <span className="overdue-tag"> OVERDUE</span>
+                                        )}
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Right Column: Metrics + CTA */}
+                <div className="spotlight-right">
+                    <div className="meta-pillars">
+                        <div className="pillar-unit">
+                            <span className="pillar-label">Tasks</span>
+                            <div className="pillar-value-row">
+                                <span className="material-symbols-outlined icon">task_alt</span>
+                                <span className="pillar-value">{completedTaskCount}/{completedTaskCount + pendingTaskCount}</span>
+                            </div>
+                            <span className="pillar-sub">Completed</span>
+                        </div>
+
+                        <div className="pillar-unit">
+                            <span className="pillar-label">Milestone</span>
+                            <div className="pillar-value-row">
+                                <span className="material-symbols-outlined icon">flag</span>
+                                <span className="pillar-value">{nextMilestone ? '1' : '—'}</span>
+                            </div>
+                            <span className="pillar-sub">{nextMilestone ? 'Upcoming' : 'No Milestones'}</span>
+                        </div>
+
+                        <div className="pillar-unit">
+                            <span className="pillar-label">Progress</span>
+                            <div className="pillar-value-row">
+                                <span className="material-symbols-outlined icon" style={{ color: (project.progress || 0) >= 75 ? '#10b981' : (project.progress || 0) >= 40 ? '#f59e0b' : '#ef4444' }}>
+                                    {(project.progress || 0) >= 75 ? 'trending_up' : (project.progress || 0) >= 40 ? 'trending_flat' : 'trending_down'}
+                                </span>
+                                <span className="pillar-value">{project.progress || 0}%</span>
+                            </div>
+                            <span className="pillar-sub">{(project.progress || 0) >= 75 ? 'On Track' : (project.progress || 0) >= 40 ? 'In Progress' : 'Getting Started'}</span>
+                        </div>
+
+                        <div className="pillar-unit">
+                            <span className="pillar-label">Team</span>
+                            <div className="pillar-value-row">
+                                <span className="material-symbols-outlined icon">group</span>
+                                <span className="pillar-value">{project.members?.length || 1}</span>
+                            </div>
+                            <span className="pillar-sub">Members</span>
+                        </div>
+
+                        <div className="pillar-unit">
+                            <span className="pillar-label">Sprints</span>
+                            <div className="pillar-value-row">
+                                <span className="material-symbols-outlined icon">repeat</span>
+                                <span className="pillar-value">{sprintCount}</span>
+                            </div>
+                            <span className="pillar-sub">Total Cycles</span>
+                        </div>
+
+                        <div className="pillar-unit">
+                            <span className="pillar-label">Flows</span>
+                            <div className="pillar-value-row">
+                                <span className="material-symbols-outlined icon">lightbulb</span>
+                                <span className="pillar-value">{metrics.flowCount || 0}</span>
+                            </div>
+                            <span className="pillar-sub">Ideas</span>
+                        </div>
+                    </div>
+
+                    <Button
+                        variant="primary"
+                        onClick={onClick}
+                        className="spotlight-cta-btn"
+                        style={{ width: '100%', justifyContent: 'center' }}
+                    >
+                        Open Project
+                    </Button>
+                </div>
+            </div>
+
+            {/* Aurora effect on top for extra pop */}
+            <div className="spotlight-aurora" style={{
+                background: `conic-gradient(from 0deg at 50% 50%, ${glowColor}22 0deg, transparent 60deg, transparent 300deg, ${glowColor}22 360deg)`
+            }} />
+        </div>
+    );
+};
+
+
+
+// 2. Rich Project Card
+interface RichProjectCardProps {
+    project: Project;
+    metrics?: ProjectMetrics;
+    healthStatus: HealthStatus;
+    healthScore: number;
+    isFocus?: boolean;
+    canSetFocus?: boolean;
+    onSetFocus?: () => void;
+    onClick: () => void;
+}
+
+const RichProjectCard: React.FC<RichProjectCardProps> = ({
+    project,
+    metrics,
+    healthStatus,
+    healthScore,
+    isFocus,
+    canSetFocus,
+    onSetFocus,
+    onClick
+}) => {
+    const healthColor = getHealthColor(healthStatus);
+
+    return (
+        <Card
+            padding="none"
+            className={`rich-card rich-card--${healthStatus} ${isFocus ? 'rich-card--focus' : ''}`}
+            onClick={onClick}
+        >
+            {/* 1. Compact Cover with Overlapping Content */}
+            <div className="rich-card__cover-wrapper">
+                <div
+                    className="rich-card__cover"
+                    style={{
+                        backgroundImage: project.coverImage
+                            ? `url(${project.coverImage})`
+                            : undefined,
+                        backgroundColor: getDeterministicColor(project.id)
+                    }}
+                />
+
+                {/* Badges (Top Right) */}
+                <div className="rich-card__badges">
+                    <div className="badge-pill">
+                        <span className={`material-symbols-outlined icon-xs text-${getHealthBadgeVariant(healthStatus)}`}>
+                            {healthStatus === 'critical' ? 'gpp_maybe' : 'check_circle'}
+                        </span>
+                        <span>{project.status || 'Active'}</span>
+                    </div>
+                </div>
+
+                {/* Overlapping Bottom Content */}
+                <div className="rich-card__overlay-content">
+                    {/* Icon */}
+                    <div className="rich-card__icon">
+                        {project.squareIcon ? (
+                            <img src={project.squareIcon} alt="icon" />
+                        ) : project.icon ? (
+                            <span>{project.icon}</span>
+                        ) : (
+                            <span className="material-symbols-outlined">dataset</span>
+                        )}
+                    </div>
+
+                    {/* Title & Description */}
+                    <div className="rich-card__header">
+                        <h3 className="title">{project.title}</h3>
+                        <p className="description">
+                            {project.description || "No description provided."}
                         </p>
                     </div>
+                </div>
+            </div>
 
-                    {/* Advanced Progress Terminal */}
-                    <div className="mt-6 space-y-3">
-                        <div className="flex items-center justify-between">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-black text-subtle uppercase tracking-widest">{t('projectsList.metrics.efficiency')}</span>
-                                <span className={`text-sm font-black ${iconColorClass}`}>{progress}%</span>
-                            </div>
-                            {project.dueDate && (
-                                <div className="flex flex-col items-end">
-                                    <span className="text-[10px] font-black text-subtle uppercase tracking-widest text-right">{t('projectsList.metrics.deadline')}</span>
-                                    <span className="text-xs font-bold text-main bg-white/50 dark:bg-black/20 px-2 py-0.5 rounded-md border border-white/10">{format(new Date(project.dueDate), dateFormat, { locale: dateLocale })}</span>
-                                </div>
-                            )}
+            <div className="rich-card__body">
+                <div className="rich-card__metrics-grid">
+                    {/* Health Score */}
+                    <div className={`metric-single metric-single--health metric-single--${healthStatus}`}>
+                        <span className="lbl">Health</span>
+                        <span className="val">
+                            <span className="health-score">{healthScore}</span>
+                        </span>
+                    </div>
+
+                    {/* Progress */}
+                    <div className="metric-single">
+                        <span className="lbl">Progress</span>
+                        <span className="val">
+                            <span className="material-symbols-outlined">trending_up</span>
+                            {project.progress || 0}%
+                        </span>
+                    </div>
+
+                    {/* Tasks */}
+                    <div className="metric-single">
+                        <span className="lbl">Tasks</span>
+                        <span className="val">
+                            <span className="material-symbols-outlined">check_circle</span>
+                            {metrics?.taskCompleted}/{metrics?.taskCount}
+                        </span>
+                    </div>
+
+                    {/* Team */}
+                    <div className="metric-single">
+                        <span className="lbl">Team</span>
+                        <span className="val">
+                            <span className="material-symbols-outlined">group</span>
+                            {project.members?.length || 1}
+                        </span>
+                    </div>
+
+                    {/* Flows */}
+                    <div className="metric-single">
+                        <span className="lbl">Flows</span>
+                        <span className="val">
+                            <span className="material-symbols-outlined">account_tree</span>
+                            {metrics?.flowCount || 0}
+                        </span>
+                    </div>
+
+                    {/* Issues */}
+                    <div className="metric-single">
+                        <span className="lbl">Issues</span>
+                        <span className="val">
+                            <span className="material-symbols-outlined">bug_report</span>
+                            {metrics?.issueCount || 0}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="rich-card__progress-section">
+                    <div className="progress-header">
+                        <span>Progress</span>
+                        <span>{project.progress || 0}%</span>
+                    </div>
+                    <div className="rich-card__progress-mini">
+                        <div
+                            className="bar"
+                            style={{
+                                width: `${project.progress || 0}%`,
+                                backgroundColor: healthColor
+                            }}
+                        />
+                    </div>
+                </div>
+
+                {/* 5. Footer (2-Column Buttons) */}
+                <div className="rich-card__footer">
+                    {canSetFocus && onSetFocus ? (
+                        <button
+                            className={`btn-focus ${isFocus ? 'active' : ''}`}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onSetFocus();
+                            }}
+                        >
+                            <span className="material-symbols-outlined">{isFocus ? 'push_pin' : 'keep'}</span>
+                            {isFocus ? 'Focused' : 'Focus'}
+                        </button>
+                    ) : (
+                        <div></div> // Spacer if cant focus
+                    )}
+
+                    <button className="btn-primary" onClick={(e) => {
+                        e.stopPropagation();
+                        onClick();
+                    }}>
+                        Open Project
+                        <span className="material-symbols-outlined icon-sm">arrow_forward</span>
+                    </button>
+                </div>
+            </div>
+        </Card>
+    );
+};
+
+// 3. Compact List Row
+const CompactProjectRow: React.FC<{ project: Project; onClick: () => void }> = ({ project, onClick }) => {
+    return (
+        <div className="compact-row" onClick={onClick}>
+            <div className="compact-status" title={project.status} />
+            <span className="compact-key">{(project as any).key || 'PRJ'}</span>
+            <span className="compact-title">{project.title}</span>
+            <span className="compact-meta">{new Date(project.updatedAt?.seconds * 1000 || Date.now()).toLocaleDateString()}</span>
+            <div className="compact-team">
+                <TeamAvatars projectId={project.id} limit={2} />
+            </div>
+            <span className="compact-badge">{project.status}</span>
+        </div>
+    );
+};
+
+const ProjectStatsRow: React.FC<{ projects: Project[]; criticalCount: number; warningCount: number }> = ({ projects, criticalCount, warningCount }) => {
+    const total = projects.length;
+    const active = projects.filter(p => p.status === 'Active').length;
+    const avgProgress = total > 0
+        ? Math.round(projects.reduce((acc, p) => acc + (p.progress || 0), 0) / total)
+        : 0;
+
+    return (
+        <div className="stats-row-header">
+            <div className="stat-card">
+                <div className="stat-icon icon-blue"><span className="material-symbols-outlined">folder</span></div>
+                <div className="stat-info">
+                    <span className="stat-val">{total}</span>
+                    <span className="stat-lbl">Total Projects</span>
+                </div>
+            </div>
+            <div className="stat-card">
+                <div className="stat-icon icon-green"><span className="material-symbols-outlined">bolt</span></div>
+                <div className="stat-info">
+                    <span className="stat-val">{active}</span>
+                    <span className="stat-lbl">Active Work</span>
+                </div>
+            </div>
+            <div className="stat-card">
+                <div className="stat-icon icon-red"><span className="material-symbols-outlined">gpp_maybe</span></div>
+                <div className="stat-info">
+                    <span className="stat-val">{criticalCount}</span>
+                    <span className="stat-lbl">Critical Issues</span>
+                </div>
+            </div>
+            <div className="stat-card">
+                <div className="stat-icon icon-purple"><span className="material-symbols-outlined">pie_chart</span></div>
+                <div className="stat-info">
+                    <span className="stat-val">{avgProgress}%</span>
+                    <span className="stat-lbl">Avg. Completion</span>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// Helper to get consistent color from string
+export const getDeterministicColor = (str: string) => {
+    const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#ef4444', '#06b6d4'];
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+};
+
+export const ProjectsList: React.FC = () => {
+    const navigate = useNavigate();
+    const { t } = useLanguage();
+    const [projects, setProjects] = useState<Project[]>([]);
+    const [tasks, setTasks] = useState<Task[]>([]);
+    const [ideas, setIdeas] = useState<Idea[]>([]); // Flows
+    const [issues, setIssues] = useState<Issue[]>([]);
+    const [milestones, setMilestones] = useState<Milestone[]>([]);
+    const [sprints, setSprints] = useState<Sprint[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [search, setSearch] = useState('');
+
+    const currentUser = auth.currentUser;
+    const { can, hasPermission } = useWorkspacePermissions();
+    const [focusProjectId, setFocusProjectId] = useState<string | null>(null);
+
+    // Fetch Tenant Data for Focus Project
+    useEffect(() => {
+        const fetchTenant = async () => {
+            const tid = getActiveTenantId();
+            if (tid) {
+                const tData = await getTenant(tid) as Tenant;
+                if (tData) {
+                    setFocusProjectId(tData.focusProjectId || null);
+                }
+            }
+        };
+        fetchTenant();
+    }, []);
+
+    const handleSetFocus = async (projectId: string) => {
+        const tid = getActiveTenantId();
+        if (tid) {
+            // Toggle off if already focused
+            const newFocusId = focusProjectId === projectId ? null : projectId;
+
+            // Optimistic update
+            setFocusProjectId(newFocusId);
+
+            try {
+                await setWorkspaceFocusProject(tid, newFocusId);
+            } catch (error) {
+                console.error("Failed to set focus project", error);
+                setFocusProjectId(focusProjectId); // Revert on error
+            }
+        }
+    };
+
+    useEffect(() => {
+        let mounted = true;
+        const load = async () => {
+            try {
+                const [allProjects, allTasks, allIdeas, allIssues] = await Promise.all([
+                    getAllWorkspaceProjects(),
+                    getUserTasks(),
+                    getUserIdeas(),
+                    getUserIssues()
+                ]);
+                if (mounted) {
+                    setProjects(allProjects);
+                    setTasks(allTasks);
+                    setIdeas(allIdeas);
+                    setIssues(allIssues);
+                }
+            } catch (e) {
+                console.error(e);
+            } finally {
+                if (mounted) setLoading(false);
+            }
+        };
+        load();
+
+        // Subscribe to all milestones and sprints in the workspace for current tenant
+        const activeTenantId = getActiveTenantId();
+        if (activeTenantId) {
+            const milestonesQuery = query(collectionGroup(db, 'milestones'), where('tenantId', '==', activeTenantId));
+            const sprintsQuery = query(collectionGroup(db, 'sprints'), where('tenantId', '==', activeTenantId));
+
+            const unsubMilestones = onSnapshot(milestonesQuery, (snap) => {
+                if (mounted) setMilestones(snap.docs.map(d => ({ id: d.id, ...d.data() } as Milestone)));
+            });
+            const unsubSprints = onSnapshot(sprintsQuery, (snap) => {
+                if (mounted) setSprints(snap.docs.map(d => ({ id: d.id, ...d.data() } as Sprint)));
+            });
+
+            return () => {
+                mounted = false;
+                unsubMilestones();
+                unsubSprints();
+            };
+        }
+
+        return () => { mounted = false; };
+    }, []);
+
+    // Helper to get metrics for a project
+    const getMetrics = (projectId: string): ProjectMetrics => {
+        const projectTasks = tasks.filter(t => t.projectId === projectId);
+        return {
+            taskCount: projectTasks.length,
+            taskCompleted: projectTasks.filter(t => t.isCompleted).length,
+            flowCount: ideas.filter(i => i.projectId === projectId).length,
+            issueCount: issues.filter(i => i.projectId === projectId).length
+        };
+    };
+
+    const filteredProjects = useMemo(() => {
+        if (!currentUser) return [];
+        return projects.filter(p => {
+            const isMember = !p.isPrivate || p.ownerId === currentUser.uid || (p.memberIds || []).includes(currentUser.uid);
+            if (!isMember) return false;
+            if (search && !p.title.toLowerCase().includes(search.toLowerCase())) return false;
+            return true;
+        }).sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0));
+    }, [projects, currentUser, search]);
+
+    const activeList = useMemo(() =>
+        filteredProjects.filter(p => p.status === 'Active'),
+        [filteredProjects]);
+
+    const inactiveList = useMemo(() =>
+        filteredProjects.filter(p => p.status !== 'Active'),
+        [filteredProjects]);
+
+    // Manual Focus Project
+    const manualFocusProject = useMemo(() => {
+        if (!focusProjectId) return null;
+        return activeList.find(p => p.id === focusProjectId); // Ensure user has access
+    }, [focusProjectId, activeList]);
+
+    const focusMilestones = useMemo(() =>
+        manualFocusProject ? milestones.filter(m => m.projectId === manualFocusProject.id) : [],
+        [manualFocusProject, milestones]);
+
+    const focusSprints = useMemo(() =>
+        manualFocusProject ? sprints.filter(s => s.projectId === manualFocusProject.id) : [],
+        [manualFocusProject, sprints]);
+
+    const nextFocusMilestone = useMemo(() => {
+        const pending = focusMilestones.filter(m => m.status === 'Pending');
+        if (pending.length === 0) return undefined;
+        pending.sort((a, b) => {
+            if (!a.dueDate) return 1;
+            if (!b.dueDate) return -1;
+            return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        });
+        return pending[0];
+    }, [focusMilestones]);
+
+    // Compute health for all active projects
+    const projectHealthMap = useMemo(() => {
+        const healthMap: Record<string, ProjectHealth> = {};
+        activeList.forEach(project => {
+            const projectTasks = tasks.filter(t => t.projectId === project.id);
+            const projectIssues = issues.filter(i => i.projectId === project.id);
+            const projectMilestones = milestones.filter(m => m.projectId === project.id);
+            const projectSprints = sprints.filter(s => s.projectId === project.id);
+            healthMap[project.id] = calculateProjectHealth(project, projectTasks, projectMilestones, projectIssues, projectSprints);
+        });
+        return healthMap;
+    }, [activeList, tasks, issues, milestones, sprints]);
+
+    // Calculate spotlight data for the manually focused project
+    const manualFocusSpotlightData = useMemo(() => {
+        if (!manualFocusProject) return null;
+        const projectTasks = tasks.filter(t => t.projectId === manualFocusProject.id);
+        const projectIssues = issues.filter(i => i.projectId === manualFocusProject.id);
+        const projectMilestones = milestones.filter(m => m.projectId === manualFocusProject.id);
+        const projectSprints = sprints.filter(s => s.projectId === manualFocusProject.id);
+
+        const score = calculateSpotlightScore(manualFocusProject, projectTasks, projectMilestones, projectIssues, projectSprints);
+        const health = projectHealthMap[manualFocusProject.id] || calculateProjectHealth(manualFocusProject, projectTasks, projectMilestones, projectIssues, projectSprints);
+        return {
+            reasons: score.reasons,
+            score: score.score,
+            health: health
+        };
+    }, [manualFocusProject, tasks, issues, projectHealthMap, milestones, sprints]);
+
+    // Count critical/warning projects
+    const { criticalCount, warningCount } = useMemo(() => {
+        let critical = 0;
+        let warning = 0;
+        Object.values(projectHealthMap).forEach(health => {
+            if (health.status === 'critical') critical++;
+            else if (health.status === 'warning') warning++;
+        });
+        return { criticalCount: critical, warningCount: warning };
+    }, [projectHealthMap]);
+
+    // Spotlight Logic: Uses enhanced algorithm to select most critical/urgent project
+    const spotlightData = useMemo(() => {
+        if (activeList.length === 0) return null;
+
+        // Calculate spotlight scores for all active projects
+        const scores = activeList.map(project => {
+            const projectTasks = tasks.filter(t => t.projectId === project.id);
+            const projectIssues = issues.filter(i => i.projectId === project.id);
+            const projectMilestones = milestones.filter(m => m.projectId === project.id);
+            const projectSprints = sprints.filter(s => s.projectId === project.id);
+
+            const score = calculateSpotlightScore(project, projectTasks, projectMilestones, projectIssues, projectSprints);
+            const health = projectHealthMap[project.id];
+            return { project, score, health };
+        });
+
+        // Sort by score (highest first) and pick the winner
+        scores.sort((a, b) => b.score.score - a.score.score);
+        const winner = scores[0];
+
+        if (!winner) return null;
+
+        return {
+            project: winner.project,
+            reasons: winner.score.reasons,
+            score: winner.score.score,
+            health: winner.health,
+            milestones: milestones.filter(m => m.projectId === winner.project.id),
+            sprints: sprints.filter(s => s.projectId === winner.project.id)
+        };
+    }, [activeList, tasks, issues, projectHealthMap, milestones, sprints]);
+
+    const spotlightProject = spotlightData?.project || null;
+    const spotlightProjectMilestones = useMemo(() =>
+        spotlightProject ? milestones.filter(m => m.projectId === spotlightProject.id) : [],
+        [spotlightProject, milestones]);
+
+    const spotlightProjectSprints = useMemo(() =>
+        spotlightProject ? sprints.filter(s => s.projectId === spotlightProject.id) : [],
+        [spotlightProject, sprints]);
+
+    const nextSpotlightMilestone = useMemo(() => {
+        const pending = spotlightProjectMilestones.filter(m => m.status === 'Pending');
+        if (pending.length === 0) return undefined;
+        pending.sort((a, b) => {
+            if (!a.dueDate) return 1;
+            if (!b.dueDate) return -1;
+            return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        });
+        return pending[0];
+    }, [spotlightProjectMilestones]);
+
+
+
+    // Determine what to show in the "Focus/Spotlight" slot
+    // Rule: Spotlight overrides Focus if they are DIFFERENT. 
+    // Wait, prompt said: "Notice: If a project is in spotlight by the algorithm its not marked as focus. so that overwrites the focus but in firebase the focus state can still be saved for that project"
+    // Interpretation: 
+    // 1. Calculate Spotlight.
+    // 2. Check Manual Focus.
+    // 3. If Spotlight is same as Focus, show Spotlight (Focus is hidden/redundant).
+    // 4. If Spotlight is different from Focus, show Spotlight AND Manual Focus (implicitly "have a similar card as the spotlight card but different").
+    // Actually, usually "Focus" implies "Main Thing". If we have TWO "Main Things", we should show both if they differ.
+
+    // Grid projects (Active minus spotlight minus manual focus)
+    const gridProjects = useMemo(() =>
+        activeList.filter(p => p.id !== spotlightProject?.id && p.id !== manualFocusProject?.id),
+        [activeList, spotlightProject, manualFocusProject]);
+
+    const onboardingSteps: OnboardingStep[] = [
+        { id: 'spotlight', targetId: 'spotlight-hero', title: 'Spotlight', description: 'Your most critical project.' },
+        { id: 'focus', targetId: 'focus-card', title: 'Team Focus', description: 'The project currently prioritized by the team.' },
+        { id: 'grid', targetId: 'grid-area', title: 'Active Projects', description: 'Key metrics for your active work.' },
+        { id: 'list', targetId: 'list-area', title: 'Backlog', description: 'Projects on hold or planning.' },
+    ];
+    const { onboardingActive, stepIndex, setStepIndex, skip, finish } = useOnboardingTour('projects_rich', { stepCount: onboardingSteps.length, autoStart: true, enabled: !loading });
+
+    if (loading) return <div className="p-8 text-center text-gray-500">Loading Workspace...</div>;
+
+    return (
+        <div className="rich-page">
+            <header className="rich-header-container">
+                <div className="rich-header-top">
+                    <h1>Projects</h1>
+                    <div className="header-actions">
+                        <div className="search-pill">
+                            <span className="material-symbols-outlined">search</span>
+                            <input
+                                type="text"
+                                placeholder="Search projects..."
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
                         </div>
+                        {can('canCreateProjects') && (
+                            <Link to="/create"><Button variant="primary" icon={<span className="material-symbols-outlined">add</span>}>New Project</Button></Link>
+                        )}
+                    </div>
+                </div>
 
-                        {/* Segmented Progress Bar */}
-                        <div className="segmented-progress">
-                            {Array.from({ length: 12 }).map((_, i) => {
-                                const step = 100 / 12;
-                                const isActive = progress > (i * step);
+                <ProjectStatsRow projects={filteredProjects} criticalCount={criticalCount} warningCount={warningCount} />
+            </header>
+
+            <div className="rich-content">
+                {spotlightProject && spotlightData && !search && (
+                    <div id="spotlight-hero" className="mb-12">
+                        <SpotlightHero
+                            project={spotlightProject}
+                            metrics={getMetrics(spotlightProject.id)}
+                            healthStatus={spotlightData.health?.status || 'normal'}
+                            healthScore={spotlightData.health?.score || 50}
+                            reasons={spotlightData.reasons}
+                            pendingTaskCount={tasks.filter(t => t.projectId === spotlightProject.id && !t.isCompleted && t.status !== 'Done').length}
+                            completedTaskCount={tasks.filter(t => t.projectId === spotlightProject.id && (t.isCompleted || t.status === 'Done')).length}
+                            nextMilestone={nextSpotlightMilestone}
+                            sprintCount={spotlightProjectSprints.length}
+                            onClick={() => navigate(`/project/${spotlightProject.id}`)}
+                        />
+                    </div>
+                )}
+
+                {/* Manual Focus Card (Only if different from spotlight) */}
+                {manualFocusProject && manualFocusProject.id !== spotlightProject?.id && !search && (
+                    <div id="focus-card" className="mb-12">
+                        <SpotlightHero
+                            project={manualFocusProject}
+                            metrics={getMetrics(manualFocusProject.id)}
+                            healthStatus={manualFocusSpotlightData?.health.status || 'normal'}
+                            healthScore={manualFocusSpotlightData?.health.score || 50}
+                            reasons={manualFocusSpotlightData?.reasons || []}
+                            pendingTaskCount={getMetrics(manualFocusProject.id).taskCount - getMetrics(manualFocusProject.id).taskCompleted}
+                            completedTaskCount={getMetrics(manualFocusProject.id).taskCompleted}
+                            nextMilestone={nextFocusMilestone}
+                            criticalIssuesCount={getMetrics(manualFocusProject.id).issueCount}
+                            sprintCount={focusSprints.length}
+                            onClick={() => navigate(`/project/${manualFocusProject.id}`)}
+                            mode="focus"
+                        />
+                    </div>
+                )}
+
+                {/* Health Warning Strip (Optional, if user wants repeated warnings, but Spotlight covers it mostly) */}
+                {/* We can integrate it if multiple criticals exist? User asked for Spotlight Glow. */}
+
+                {/* Active Grid */}
+                {gridProjects.length > 0 && (
+                    <div id="grid-area" className="mb-12">
+                        <h2 className="section-title">Active Projects ({gridProjects.length})</h2>
+                        <div className="rich-grid">
+                            {gridProjects.map(p => {
+                                const health = projectHealthMap[p.id];
                                 return (
-                                    <div
-                                        key={i}
-                                        className={`progress-segment ${isActive ? segClass : 'opacity-20'}`}
-                                        style={{ transitionDelay: `${i * 30}ms` }}
+                                    <RichProjectCard
+                                        key={p.id}
+                                        project={p}
+                                        metrics={getMetrics(p.id)}
+                                        healthStatus={health?.status || 'normal'}
+                                        healthScore={health?.score || 50}
+                                        onClick={() => navigate(`/project/${p.id}`)}
+                                        isFocus={p.id === focusProjectId}
+                                        canSetFocus={hasPermission('tenant.settings.edit')}
+                                        onSetFocus={() => handleSetFocus(p.id)}
                                     />
                                 );
                             })}
                         </div>
                     </div>
-                </div>
-
-                {/* Tactical Footer */}
-                <div className="px-6 py-4 bg-white/30 dark:bg-black/20 backdrop-blur-md border-t border-white/10 flex items-center justify-between mt-auto">
-                    <MemberAvatars projectId={project.id} />
-                    <button className="flex items-center gap-2 text-[10px] font-black tracking-widest uppercase py-2 px-4 rounded-xl bg-[var(--color-text-main)] text-[var(--color-surface-card)] shadow-lg transition-all duration-500 group-hover:gap-4 group-hover:scale-105 active:scale-95">
-                        {t('projectsList.actions.launch')} <span className="material-symbols-outlined text-lg">rocket_launch</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-
-const ProjectSpotlight: React.FC<{ project: Project; health: ProjectHealth; spotlightReason?: string }> = ({ project, health, spotlightReason }) => {
-    const { dateFormat, t, dateLocale } = useLanguage();
-    const navigate = useNavigate();
-    const [tasks, setTasks] = useState<Task[]>([]);
-
-    // Convert health status to legacy states for theme selection
-    const state = health.status === 'excellent' || health.status === 'healthy' ? 'success' :
-        health.status === 'warning' ? 'warning' :
-            health.status === 'critical' ? 'critical' : 'normal';
-    const primaryFactorDescription = health.factors[0]
-        ? getHealthFactorText(health.factors[0], t).description
-        : '';
-
-    useEffect(() => {
-        return subscribeProjectTasks(project.id, setTasks, project.tenantId);
-    }, [project.id, project.tenantId]);
-
-    const { progress, doneCount, pendingCount } = useMemo(() => {
-        if (tasks.length === 0) return { progress: project.progress || 0, doneCount: 0, pendingCount: 0 };
-        const done = tasks.filter(t => t.isCompleted || t.status === 'Done').length;
-        return {
-            progress: Math.round((done / tasks.length) * 100),
-            doneCount: done,
-            pendingCount: tasks.length - done
-        };
-    }, [tasks, project.progress]);
-
-    // Theme configuration based on state
-    const themes = {
-        critical: {
-            badge: 'bg-rose-100 text-rose-700 border-rose-200 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-500/30',
-            badgeIcon: 'warning',
-            badgeText: t('projectsList.spotlight.badge.urgent'),
-            statusDot: 'bg-rose-500',
-            gradient: 'from-rose-50 to-red-50 dark:from-rose-900 dark:via-red-900 dark:to-slate-900',
-            progressBar: 'from-rose-500 via-red-500 to-orange-500',
-            border: 'border-rose-200 dark:border-rose-500/20',
-            shadow: 'shadow-[0_15px_50px_-12px_rgba(244,63,94,0.6)]'
-        },
-        warning: {
-            badge: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30',
-            badgeIcon: 'schedule',
-            badgeText: t('projectsList.spotlight.badge.deadlineSoon'),
-            statusDot: 'bg-amber-500',
-            gradient: 'from-amber-50 to-orange-50 dark:from-amber-900 dark:via-orange-900 dark:to-slate-900',
-            progressBar: 'from-amber-500 via-orange-500 to-yellow-500',
-            border: 'border-amber-200 dark:border-amber-500/20',
-            shadow: 'shadow-[0_15px_50px_-12px_rgba(245,158,11,0.6)]'
-        },
-        success: {
-            badge: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30',
-            badgeIcon: 'check_circle',
-            badgeText: t('projectsList.spotlight.badge.almostDone'),
-            statusDot: 'bg-emerald-500',
-            gradient: 'from-emerald-50 to-green-50 dark:from-emerald-900 dark:via-green-900 dark:to-slate-900',
-            progressBar: 'from-emerald-500 via-green-500 to-teal-500',
-            border: 'border-emerald-200 dark:border-emerald-500/20',
-            shadow: 'shadow-[0_15px_50px_-12px_rgba(16,185,129,0.5)]'
-        },
-        normal: {
-            badge: 'bg-indigo-100 text-indigo-700 border-indigo-200 dark:bg-white/10 dark:text-white dark:border-white/20',
-            badgeIcon: 'auto_awesome',
-            badgeText: t('projectsList.spotlight.badge.spotlight'),
-            statusDot: 'bg-emerald-500',
-            gradient: 'from-indigo-50 to-purple-50 dark:from-indigo-900 dark:via-purple-900 dark:to-slate-900',
-            progressBar: 'from-indigo-500 via-purple-500 to-pink-500',
-            border: 'border-slate-200 dark:border-transparent',
-            shadow: 'shadow-[0_15px_40px_-10px_rgba(99,102,241,0.5)]'
-        },
-    };
-
-    const theme = themes[state];
-
-    return (
-        <div
-            className={`w-full relative z-10 rounded-3xl ${theme.shadow} group cursor-pointer transition-all duration-500 hover:scale-[1.01]`}
-            onClick={() => navigate(`/project/${project.id}`)}
-        >
-            <div className={`w-full relative rounded-3xl overflow-hidden border ${theme.border} transform-gpu [backface-visibility:hidden] [mask-image:linear-gradient(white,white)] isolate bg-white dark:bg-card`}>
-                {/* Background */}
-                <div className="absolute inset-0 z-0">
-                    {project.coverImage ? (
-                        <>
-                            <img
-                                src={project.coverImage}
-                                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                                alt=""
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-r from-white via-white/80 to-transparent dark:hidden" />
-                        </>
-                    ) : (
-                        <div className={`w-full h-full bg-gradient-to-br ${theme.gradient}`} />
-                    )}
-                    <div className="hidden dark:block absolute inset-0 bg-slate-950/40 mix-blend-multiply" />
-                    <div className="hidden dark:block absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/80 to-transparent" />
-                </div>
-
-                <div className="relative z-10 p-8 md:p-10 flex flex-col md:flex-row gap-8 items-start min-h-[320px]">
-                    <div className="flex-1 space-y-5">
-                        <div className="flex items-center gap-3">
-                            <div className={`px-3 py-1 rounded-full border text-[10px] font-bold uppercase tracking-wider shadow-sm flex items-center gap-2 backdrop-blur-md ${theme.badge}`}>
-                                <span className="material-symbols-outlined text-sm">{theme.badgeIcon}</span>
-                                {theme.badgeText}
-                            </div>
-                            <span className="flex items-center gap-1.5 text-[10px] font-bold text-slate-500 dark:text-white/80 uppercase tracking-wider backdrop-blur-sm px-2 py-1 rounded-full">
-                                <span className={`size-2 rounded-full ${theme.statusDot} animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]`} />
-                                {health.status === 'critical'
-                                    ? t('projectsList.spotlight.status.actionRequired')
-                                    : health.status === 'warning'
-                                        ? t('projectsList.spotlight.status.attentionNeeded')
-                                        : health.status === 'excellent'
-                                            ? t('projectsList.spotlight.status.peakPerformance')
-                                            : t('projectsList.spotlight.status.activeNow')}
-                            </span>
-                        </div>
-
-                        <div className="flex items-center gap-4 mb-2">
-                            <div>
-                                <div className="text-[10px] font-black uppercase tracking-widest text-primary">{t('projectsList.spotlight.reasonLabel')}</div>
-                                <div className="text-sm font-bold text-slate-900 dark:text-white line-clamp-1">
-                                    {spotlightReason || primaryFactorDescription || t('projectsList.spotlight.defaultReason')}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="space-y-3 max-w-2xl">
-                            <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tighter leading-[0.9] drop-shadow-sm">
-                                {project.title}
-                            </h2>
-                            <p className="text-lg text-slate-600 dark:text-white/80 line-clamp-2 leading-relaxed font-medium max-w-xl">
-                                {project.description || t('projectsList.spotlight.noDescription')}
-                            </p>
-                        </div>
-
-                        {/* Chips / Tags */}
-                        <div className="flex flex-wrap items-center gap-3 pt-2">
-                            {/* Deadline Chip - Highlighted if urgent */}
-                            <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${state === 'critical' ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300' :
-                                state === 'warning' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300' :
-                                    'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-white/70'
-                                }`}>
-                                <span className="material-symbols-outlined text-sm">schedule</span>
-                                {project.dueDate ? format(new Date(project.dueDate), dateFormat, { locale: dateLocale }) : t('projectsList.spotlight.noDeadline')}
-                            </div>
-
-                            {/* Priority Chip */}
-                            {(() => {
-                                const priority = project.priority || 'Medium';
-                                const priorityLabels: Record<string, string> = {
-                                    High: t('tasks.priority.high'),
-                                    Medium: t('tasks.priority.medium'),
-                                    Low: t('tasks.priority.low')
-                                };
-                                const priorityLabel = priorityLabels[priority] || priority;
-                                const priorityStyles = {
-                                    'High': 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300',
-                                    'Medium': 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300',
-                                    'Low': 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300',
-                                };
-                                const style = priorityStyles[priority as keyof typeof priorityStyles] || priorityStyles['Medium'];
-                                return (
-                                    <div className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${style}`}>
-                                        <span className="material-symbols-outlined text-sm">flag</span>
-                                        {priorityLabel}
-                                    </div>
-                                );
-                            })()}
-
-                            {/* Team Avatars */}
-                            <div className="flex items-center gap-2">
-                                <span className="text-[10px] font-bold text-slate-400 dark:text-white/50 uppercase tracking-wider">{t('projectsList.spotlight.team')}</span>
-                                <MemberAvatars projectId={project.id} />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="w-full md:w-auto flex flex-col gap-4 min-w-[300px] backdrop-blur-xl bg-white/60 dark:bg-white/5 p-5 rounded-2xl border border-slate-200 dark:border-white/10 shadow-lg">
-                        <div className="flex flex-col gap-4">
-                            <div className="flex justify-between items-end">
-                                <div className="space-y-1">
-                                    <span className="text-[10px] font-bold text-slate-500 dark:text-white/60 uppercase tracking-wider">{t('projectsList.spotlight.progress')}</span>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-3xl font-black text-slate-800 dark:text-white tracking-tight">{progress}%</span>
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="h-2 w-full bg-slate-200 dark:bg-white/5 rounded-full overflow-hidden">
-                                <div
-                                    className={`h-full bg-gradient-to-r ${theme.progressBar} shadow-sm relative`}
-                                    style={{ width: `${progress}%` }}
-                                >
-                                    <div className="absolute right-0 top-0 bottom-0 w-0.5 bg-white/50" />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200 dark:border-white/5">
-                            <div className="bg-slate-50 dark:bg-white/5 rounded-xl p-3 border border-slate-100 dark:border-white/5">
-                                <span className="block text-2xl font-bold text-slate-800 dark:text-white">{pendingCount}</span>
-                                <span className="text-[10px] text-slate-500 dark:text-white/50 uppercase font-bold">{t('projectsList.spotlight.pending')}</span>
-                            </div>
-                            <div className="bg-slate-50 dark:bg-white/5 rounded-xl p-3 border border-slate-100 dark:border-white/5">
-                                <span className="block text-2xl font-bold text-emerald-600 dark:text-emerald-400">{doneCount}</span>
-                                <span className="text-[10px] text-slate-500 dark:text-white/50 uppercase font-bold">{t('projectsList.spotlight.done')}</span>
-                            </div>
-                        </div>
-
-                        <Button
-                            size="lg"
-                            className={`w-full h-12 rounded-xl border-none font-bold text-sm shadow-xl mt-1 ${state === 'critical' ? 'bg-rose-600 text-white hover:bg-rose-700' :
-                                state === 'warning' ? 'bg-amber-500 text-white hover:bg-amber-600' :
-                                    'hover:opacity-90'
-                                }`}
-                            icon={<span className="material-symbols-outlined text-lg">arrow_forward</span>}
-                        >
-                            {state === 'critical'
-                                ? t('projectsList.actions.takeAction')
-                                : state === 'warning'
-                                    ? t('projectsList.actions.reviewNow')
-                                    : t('projectsList.actions.openProject')}
-                        </Button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-
-export const ProjectsList = () => {
-    const { dateFormat, t, dateLocale } = useLanguage();
-    const [projects, setProjects] = useState<Project[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [showSuggestion, setShowSuggestion] = useState(true);
-    const [filter, setFilter] = useState<'all' | 'active' | 'planning' | 'completed'>('all');
-    const [search, setSearch] = useState('');
-    const [sort, setSort] = useState<'activity' | 'recent' | 'due' | 'progress'>('activity');
-
-    const currentUser = auth.currentUser;
-    const { can, isOwner } = useWorkspacePermissions();
-    const [userGroupIds, setUserGroupIds] = useState<string[]>([]);
-
-    // Fetch user's allowed groups directly from WorkspaceGroups to be safe
-    useEffect(() => {
-        if (!currentUser) return;
-        getWorkspaceGroups().then(groups => {
-            const myGroups = groups.filter(g => g.memberIds.includes(currentUser.uid)).map(g => g.id);
-            setUserGroupIds(myGroups);
-        }).catch(err => console.warn('Failed to fetch groups', err));
-    }, [currentUser]);
-
-    useEffect(() => {
-        const fetchProjects = async () => {
-            try {
-                // Fetch ALL projects in the tenant
-                const allProjects = await getAllWorkspaceProjects();
-
-                // Filter checks happen in render/memo, but we can also filter here if we want to secure "projects" state
-                // However, "projects" is used for "allProjects" calculation.
-                // We should filter it before setting state or in the useMemo.
-                setProjects(allProjects);
-            } catch (error) {
-                console.error('Failed to fetch projects', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchProjects();
-    }, []);
-
-    // State for milestones, tasks and issues per project (for advanced health scoring)
-    const [projectMilestones, setProjectMilestones] = useState<Record<string, Milestone[]>>({});
-    const [projectTasks, setProjectTasks] = useState<Record<string, Task[]>>({});
-    const [projectIssues, setProjectIssues] = useState<Record<string, Issue[]>>({});
-
-    // Subscribe to milestones and tasks for all projects in myProjects
-    useEffect(() => {
-        if (!currentUser || projects.length === 0) return;
-
-        const myProjectIds = projects
-            .filter(p => p.ownerId === currentUser.uid || (p.memberIds || []).includes(currentUser.uid))
-            .filter(p => p.status !== 'Completed')
-            .map(p => ({ id: p.id, tenantId: p.tenantId }));
-
-        const unsubscribes: (() => void)[] = [];
-
-        // Subscribe to milestones for each project
-        myProjectIds.forEach(({ id, tenantId }) => {
-            const unsubMilestones = subscribeProjectMilestones(id, (milestones) => {
-                setProjectMilestones(prev => ({ ...prev, [id]: milestones }));
-            }, tenantId);
-            unsubscribes.push(unsubMilestones);
-
-            const unsubTasks = subscribeProjectTasks(id, (tasks) => {
-                setProjectTasks(prev => ({ ...prev, [id]: tasks }));
-            }, tenantId);
-            unsubscribes.push(unsubTasks);
-
-            const unsubIssues = subscribeProjectIssues(id, (issues) => {
-                setProjectIssues(prev => ({ ...prev, [id]: issues }));
-            }, tenantId);
-            unsubscribes.push(unsubIssues);
-        });
-
-        return () => {
-            unsubscribes.forEach(unsub => unsub());
-        };
-    }, [projects, currentUser]);
-
-    // Split projects into "My Projects" and "Other Projects"
-    const { myProjects, otherProjects } = useMemo(() => {
-        if (!currentUser) return { myProjects: [], otherProjects: [] };
-
-        const my: Project[] = [];
-        const other: Project[] = [];
-
-        projects.forEach(p => {
-            const isMember = p.ownerId === currentUser.uid || (p.memberIds || []).includes(currentUser.uid);
-
-            // Private Project Check: Only visible to members/owner
-            if (p.isPrivate) {
-                if (isMember) {
-                    my.push(p);
-                }
-                return;
-            }
-
-            // Visibility Check
-            if (p.visibilityGroupIds && p.visibilityGroupIds.length > 0) {
-                if (!isOwner && !p.visibilityGroupIds.some(id => userGroupIds.includes(id))) {
-                    return; // Skip hidden projects
-                }
-            } else if (p.visibilityGroupId) {
-                if (!isOwner && !userGroupIds.includes(p.visibilityGroupId)) {
-                    return; // Skip hidden projects
-                }
-            }
-
-            if (isMember) {
-                my.push(p);
-            } else {
-                other.push(p);
-            }
-        });
-
-        return { myProjects: my, otherProjects: other };
-    }, [projects, currentUser, isOwner, userGroupIds]);
-
-    // Filtering logic for My Projects
-    const filteredMyProjects = useMemo(() => {
-        const normalizedSearch = search.trim().toLowerCase();
-
-        const matchesFilter = (project: Project) => {
-            if (filter === 'active') return project.status === 'Active';
-            if (filter === 'planning') return project.status === 'Brainstorming' || project.status === 'Planning';
-            if (filter === 'completed') return project.status === 'Completed';
-            return true;
-        };
-
-        const matchesSearch = (project: Project) => {
-            if (!normalizedSearch) return true;
-            return [project.title, project.description].some((value) => (value || '').toLowerCase().includes(normalizedSearch));
-        };
-
-        return [...myProjects]
-            .filter((project) => matchesFilter(project) && matchesSearch(project))
-            .sort((a, b) => {
-                if (sort === 'progress') return (b.progress || 0) - (a.progress || 0);
-                if (sort === 'due') {
-                    const aDue = a.dueDate ? new Date(a.dueDate).getTime() : Number.POSITIVE_INFINITY;
-                    const bDue = b.dueDate ? new Date(b.dueDate).getTime() : Number.POSITIVE_INFINITY;
-                    return aDue - bDue;
-                }
-                if (sort === 'recent') {
-                    return toMillis(b.createdAt) - toMillis(a.createdAt);
-                }
-                // Default: activity (updatedAt)
-                const aUpdated = a.updatedAt ? toMillis(a.updatedAt) : toMillis(a.createdAt);
-                const bUpdated = b.updatedAt ? toMillis(b.updatedAt) : toMillis(b.createdAt);
-                return bUpdated - aUpdated;
-            });
-    }, [myProjects, filter, search, sort]);
-
-    // Advanced Intelligent Spotlight and Health Selection
-    const { featuredProject, spotlightHealth, projectHealthMap, spotlightReason, workspaceHealth } = useMemo(() => {
-        if (myProjects.length === 0) return { featuredProject: null, spotlightHealth: null, projectHealthMap: {} as Record<string, ProjectHealth>, spotlightReason: '', workspaceHealth: null };
-
-        const healthMap: Record<string, ProjectHealth> = {};
-
-        // Calculate health for all projects
-        myProjects.forEach(project => {
-            healthMap[project.id] = calculateProjectHealth(
-                project,
-                projectTasks[project.id] || [],
-                projectMilestones[project.id] || [],
-                projectIssues[project.id] || []
-            );
-        });
-
-        const activeSubscribedProjects = myProjects.filter(p => p.status !== 'Completed');
-
-        if (activeSubscribedProjects.length === 0) {
-            return {
-                featuredProject: myProjects[0],
-                spotlightHealth: healthMap[myProjects[0].id],
-                projectHealthMap: healthMap,
-                spotlightReason: t('projectsList.spotlight.onlyAvailable')
-            };
-        }
-
-        // Spotlight Selection: Strict Deadline/Urgency Priority
-        let maxScore = -9999;
-        let winner: Project | null = null;
-        let winnerReason = '';
-        let winnerReasonKey: string | undefined;
-        let winnerReasonMeta: Record<string, number | string> | undefined;
-
-        activeSubscribedProjects.forEach(p => {
-            const { score, reason, reasonKey, reasonMeta } = calculateSpotlightScore(
-                p,
-                projectTasks[p.id] || [],
-                projectMilestones[p.id] || [],
-                projectIssues[p.id] || []
-            );
-            if (score > maxScore) {
-                maxScore = score;
-                winner = p;
-                winnerReason = reason;
-                winnerReasonKey = reasonKey;
-                winnerReasonMeta = reasonMeta;
-            }
-        });
-
-        const selectedWinner = winner || activeSubscribedProjects[0];
-
-        const workspaceHealth = calculateWorkspaceHealth(activeSubscribedProjects, healthMap);
-
-        return {
-            featuredProject: selectedWinner,
-            spotlightHealth: healthMap[selectedWinner.id],
-            projectHealthMap: healthMap,
-            spotlightReason: winnerReasonKey
-                ? interpolate(
-                    t(winnerReasonKey, winnerReason || t('projectsList.spotlight.defaultReason')),
-                    winnerReasonMeta
-                )
-                : (winnerReason || t('projectsList.spotlight.defaultReason')),
-            workspaceHealth
-        };
-    }, [myProjects, projectMilestones, projectTasks, projectIssues, t]);
-
-    const filterCounts = {
-        all: myProjects.length,
-        active: myProjects.filter((p) => p.status === 'Active').length,
-        planning: myProjects.filter((p) => p.status === 'Brainstorming' || p.status === 'Planning').length,
-        completed: myProjects.filter((p) => p.status === 'Completed').length
-    };
-
-    const filterLabels = useMemo(() => ({
-        all: t('projectsList.filters.all'),
-        active: t('projectsList.filters.active'),
-        planning: t('projectsList.filters.planning'),
-        completed: t('projectsList.filters.completed')
-    }), [t]);
-
-    const onboardingSteps = useMemo<OnboardingStep[]>(() => ([
-        {
-            id: 'header',
-            targetId: 'projects-list-header',
-            title: t('projectsList.onboarding.header.title'),
-            description: t('projectsList.onboarding.header.description')
-        },
-        {
-            id: 'spotlight',
-            targetId: 'projects-list-spotlight',
-            title: t('projectsList.onboarding.spotlight.title'),
-            description: t('projectsList.onboarding.spotlight.description'),
-            placement: 'top'
-        },
-        {
-            id: 'filters',
-            targetId: 'projects-list-toolbar',
-            title: t('projectsList.onboarding.filters.title'),
-            description: t('projectsList.onboarding.filters.description'),
-            placement: 'top'
-        },
-        {
-            id: 'cards',
-            targetId: 'projects-list-grid',
-            title: t('projectsList.onboarding.cards.title'),
-            description: t('projectsList.onboarding.cards.description'),
-            placement: 'top'
-        },
-        {
-            id: 'other-projects',
-            targetId: 'projects-list-other',
-            title: t('projectsList.onboarding.other.title'),
-            description: t('projectsList.onboarding.other.description')
-        }
-    ]), [t]);
-
-    const {
-        onboardingActive,
-        stepIndex,
-        setStepIndex,
-        skip,
-        finish
-    } = useOnboardingTour('projects_list', { stepCount: onboardingSteps.length, autoStart: true, enabled: !loading });
-
-
-    if (loading) return (
-        <div className="flex items-center justify-center p-12" >
-            <span className="material-symbols-outlined text-subtle animate-spin text-3xl">rotate_right</span>
-        </div >
-    );
-
-    return (
-        <>
-            <div className="space-y-6 pb-12 fade-in">
-                {/* Split Header with stats and actions matched to Dashboard */}
-                <div data-onboarding-id="projects-list-header" className="flex flex-col md:flex-row justify-between gap-8 mb-6 mt-0">
-                    {/* Left Side: Title */}
-                    <div className="flex flex-col justify-end">
-                        <div className="flex items-center gap-2 text-primary font-bold uppercase tracking-wider text-xs mb-2">
-                            <span className="material-symbols-outlined text-sm">domain</span>
-                            {t('nav.workspace')}
-                        </div>
-                        {/* Typography matched to Dashboard */}
-                        <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-main tracking-tight mb-2">
-                            {t('nav.projects')}
-                        </h1>
-                        <p className="text-muted font-medium max-w-xl">
-                            {t('projectsList.header.subtitle')}
-                        </p>
-                    </div>
-
-                    {/* Right Side: Stats Only */}
-                    <div className="flex flex-row items-end gap-4">
-                        {/* Stats Boxes - Matched to Dashboard.tsx kpi style */}
-                        <div className="flex-1 min-w-[100px] p-4 rounded-2xl bg-card border border-surface shadow-sm hover:shadow-md transition-shadow">
-                            <div className="text-3xl font-black text-main">{filterCounts.active}</div>
-                            <div className="text-[10px] font-bold text-subtle uppercase tracking-wider mt-1 flex items-center gap-1">
-                                <span className="size-1.5 rounded-full bg-emerald-500" />
-                                {t('dashboard.projectStatus.active')}
-                            </div>
-                        </div>
-
-                        <div className="flex-1 min-w-[100px] p-4 rounded-2xl bg-card border border-surface shadow-sm hover:shadow-md transition-shadow">
-                            <div className="text-3xl font-black text-main">{filterCounts.planning}</div>
-                            <div className="text-[10px] font-bold text-subtle uppercase tracking-wider mt-1 flex items-center gap-1">
-                                <span className="size-1.5 rounded-full bg-amber-500" />
-                                {t('dashboard.projectStatus.planning')}
-                            </div>
-                        </div>
-
-                        {workspaceHealth && (
-                            <div className="flex-1 min-w-max p-4 rounded-2xl bg-card border border-surface shadow-sm hover:shadow-md transition-shadow">
-                                <div className={`text-3xl font-black ${workspaceHealth.status === 'critical' ? 'text-rose-500' :
-                                    workspaceHealth.status === 'warning' ? 'text-amber-500' :
-                                        workspaceHealth.status === 'excellent' ? 'text-emerald-500' :
-                                            workspaceHealth.status === 'healthy' ? 'text-emerald-600' :
-                                                'text-indigo-500'
-                                    }`}>{workspaceHealth.score}</div>
-                                <div className="text-[10px] font-bold text-subtle uppercase tracking-wider mt-1 flex items-center gap-1 whitespace-nowrap">
-                                    <span className={`size-1.5 rounded-full ${workspaceHealth.status === 'critical' ? 'bg-rose-500' :
-                                        workspaceHealth.status === 'warning' ? 'bg-amber-500' :
-                                            workspaceHealth.status === 'excellent' ? 'bg-emerald-500' :
-                                                workspaceHealth.status === 'healthy' ? 'bg-emerald-600' :
-                                                    'bg-indigo-500'
-                                        }`} />
-                                    {t('projectsList.header.avgHealth')}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Featured Section (Spotlight) */}
-                {featuredProject && filter === 'all' && !search && spotlightHealth && (
-                    <div data-onboarding-id="projects-list-spotlight">
-                        <ProjectSpotlight project={featuredProject} health={spotlightHealth} spotlightReason={spotlightReason} />
-                    </div>
                 )}
 
-                {showSuggestion && featuredProject && spotlightHealth && (
-                    <div className={`border rounded-xl px-3 pb-3 relative z-0 overflow-hidden backdrop-blur-sm group -mt-4 pt-3 ${spotlightHealth.status === 'critical' ? 'bg-gradient-to-r from-rose-500/10 to-red-500/5 border-rose-200 dark:border-rose-500/20' :
-                        spotlightHealth.status === 'warning' ? 'bg-gradient-to-r from-amber-500/10 to-orange-500/5 border-amber-200 dark:border-amber-500/20' :
-                            spotlightHealth.status === 'excellent' || spotlightHealth.status === 'healthy' ? 'bg-gradient-to-r from-emerald-500/10 to-green-500/5 border-emerald-200 dark:border-emerald-500/20' :
-                                'bg-gradient-to-r from-indigo-500/5 to-purple-500/5 border-surface'
-                        }`}>
-                        <div className="flex items-center gap-3">
-                            <div className={`size-8 rounded-lg shadow-sm flex items-center justify-center flex-shrink-0 ${spotlightHealth.status === 'critical' ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-500' :
-                                spotlightHealth.status === 'warning' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-500' :
-                                    spotlightHealth.status === 'excellent' || spotlightHealth.status === 'healthy' ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-500' :
-                                        'bg-card text-indigo-500'
-                                }`}>
-                                <span className="material-symbols-outlined text-lg">
-                                    {spotlightHealth.status === 'critical' ? 'priority_high' : spotlightHealth.status === 'warning' ? 'schedule' : spotlightHealth.status === 'excellent' || spotlightHealth.status === 'healthy' ? 'check_circle' : 'auto_awesome'}
-                                </span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="text-[10px] font-bold text-subtle uppercase tracking-wider flex items-center gap-1">
-                                        <span className="material-symbols-outlined text-xs">smart_toy</span>
-                                        {t('projectsList.suggestion.label')}
-                                    </span>
-                                    <span className="text-sm text-main font-medium">
-                                        {spotlightHealth.status === 'critical'
-                                            ? <><span className="text-rose-600 dark:text-rose-400">⚠️</span> {t('projectsList.suggestion.critical').replace('{title}', featuredProject.title)}</>
-                                            : spotlightHealth.status === 'warning'
-                                                ? <><span className="text-amber-600 dark:text-amber-400">⏰</span> {t('projectsList.suggestion.warning').replace('{title}', featuredProject.title)}</>
-                                                : spotlightHealth.status === 'excellent' || spotlightHealth.status === 'healthy'
-                                                    ? <><span className="text-emerald-600 dark:text-emerald-400">🎉</span> {t('projectsList.suggestion.healthy').replace('{title}', featuredProject.title)}</>
-                                                    : <>{t('projectsList.suggestion.focus').replace('{title}', featuredProject.title)}</>
-                                        }
-                                    </span>
-                                    {spotlightHealth.factors && spotlightHealth.factors.length > 0 && (
-                                        <div className="flex flex-wrap items-center gap-1">
-                                            {spotlightHealth.factors.slice(0, 4).map((factor) => {
-                                                const { label } = getHealthFactorText(factor, t);
-                                                return (
-                                                    <span
-                                                        key={factor.id}
-                                                        className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${factor.type === 'negative' ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-300' :
-                                                            factor.type === 'neutral' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300' :
-                                                                factor.type === 'positive' ? 'bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' :
-                                                                    'bg-slate-100 dark:bg-white/10 text-slate-600 dark:text-slate-300'
-                                                            }`}
-                                                    >
-                                                        {label}
-                                                    </span>
-                                                );
-                                            })}
-                                            {spotlightHealth.factors.length > 4 && (
-                                                <span className="text-[10px] text-subtle">
-                                                    {t('projectsList.suggestion.more').replace('{count}', String(spotlightHealth.factors.length - 4))}
-                                                </span>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            <button onClick={() => setShowSuggestion(false)} className="text-subtle hover:text-main transition-colors p-1 -m-1 flex-shrink-0">
-                                <span className="material-symbols-outlined text-lg">close</span>
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                <div className="flex flex-col gap-8">
-                    {/* My Projects Toolbar */}
-                    <div data-onboarding-id="projects-list-toolbar" className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 pb-2 border-b border-surface/50">
-                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-                            {(['all', 'active', 'planning', 'completed'] as const).map((f) => (
-                                <button
-                                    key={f}
-                                    onClick={() => setFilter(f)}
-                                    className={`
-                                    px-6 py-2.5 rounded-xl text-sm font-bold transition-all capitalize whitespace-nowrap flex items-center gap-2
-                                    ${filter === f
-                                            ? 'bg-[var(--color-text-main)] text-[var(--color-surface-paper)] shadow-md'
-                                            : 'text-muted hover:text-main hover:bg-surface-hover'}
-                                `}
-                                >
-                                    {filterLabels[f]}
-                                    <span className={`text-[10px] py-0.5 px-2 rounded-full font-bold ${filter === f ? 'bg-white/20' : 'bg-surface-border'}`}>
-                                        {f === 'planning' ? filterCounts.planning : (filterCounts as any)[f]}
-                                    </span>
-                                </button>
+                {/* Inactive List */}
+                {(inactiveList.length > 0) && (
+                    <div id="list-area" className="mb-12">
+                        <h2 className="section-title">On Hold & Backlog ({inactiveList.length})</h2>
+                        <div className="compact-list">
+                            {inactiveList.map(p => (
+                                <CompactProjectRow
+                                    key={p.id}
+                                    project={p}
+                                    onClick={() => navigate(`/project/${p.id}`)}
+                                />
                             ))}
                         </div>
-
-                        <div className="flex items-center gap-4 w-full lg:w-auto">
-                            <Input
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                placeholder={t('projectsList.search.placeholder')}
-                                className="w-full"
-                                icon="search"
-                            />
-                            <Select
-                                value={sort}
-                                onChange={(e) => setSort(e.target.value as any)}
-                                className="w-full lg:w-40"
-                            >
-                                <option value="activity">{t('projectsList.sort.activity')}</option>
-                                <option value="recent">{t('projectsList.sort.recent')}</option>
-                                <option value="due">{t('projectsList.sort.due')}</option>
-                                <option value="progress">{t('projectsList.sort.progress')}</option>
-                            </Select>
-
-                            {/* Action Button - Integrated into Toolbar */}
-                            {can('canCreateProjects') && (
-                                <Link to="/create">
-                                    <Button
-                                        size="lg"
-                                        className="h-10 px-6 rounded-xl hover:opacity-90 border-none font-bold text-sm shadow-xl hover:shadow-2xl transition-all whitespace-nowrap"
-                                        icon={<span className="material-symbols-outlined text-lg">add</span>}
-                                    >
-                                        {t('projectsList.actions.newProject')}
-                                    </Button>
-                                </Link>
-                            )}
-                        </div>
                     </div>
+                )}
 
-                    {/* My Projects Grid */}
-                    <div data-onboarding-id="projects-list-grid">
-                        {filteredMyProjects.length === 0 ? (
-                            <div className="text-center py-20 border-2 border-dashed border-surface rounded-xl">
-                                <span className="material-symbols-outlined text-4xl text-subtle mb-4">folder_off</span>
-                                <h3 className="text-lg font-bold text-main">{t('projectsList.empty.title')}</h3>
-                                <p className="text-muted mb-4">{t('projectsList.empty.description')}</p>
-                                {can('canCreateProjects') && (
-                                    <Link to="/create">
-                                        <Button variant="secondary">{t('projectsList.actions.createProject')}</Button>
-                                    </Link>
-                                )}
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                                {filteredMyProjects.map((p) => (
-                                    <ProjectCard
-                                        key={p.id}
-                                        project={p}
-                                        health={projectHealthMap[p.id] || { score: 0, status: 'normal', factors: [], recommendations: [], trend: 'stable', lastUpdated: Date.now() }}
-                                        isSpotlighted={p.id === featuredProject?.id}
-                                    />
-                                ))}
-                            </div>
-                        )}
+                {filteredProjects.length === 0 && (
+                    <div className="empty-state">
+                        <span className="material-symbols-outlined">folder_off</span>
+                        <h3>No projects found</h3>
                     </div>
-                </div>
-
-                {/* Other Projects List View */}
-                {
-                    otherProjects.length > 0 && (
-                        <div data-onboarding-id="projects-list-other" className="pt-10 space-y-6">
-                            <div className="flex items-center justify-between border-b border-surface pb-4">
-                                <div>
-                                    <h2 className="text-2xl font-bold text-main">{t('projectsList.other.title')}</h2>
-                                    <p className="text-sm text-muted">{t('projectsList.other.subtitle')}</p>
-                                </div>
-                            </div>
-
-                            <div className="bg-card rounded-xl border border-surface overflow-hidden">
-                                <table className="w-full text-left">
-                                    <thead className="bg-surface-hover text-xs text-subtle uppercase tracking-wider font-semibold border-b border-surface">
-                                        <tr>
-                                            <th className="px-6 py-4">{t('projectsList.other.table.project')}</th>
-                                            <th className="px-6 py-4">{t('projectsList.other.table.status')}</th>
-                                            <th className="px-6 py-4">{t('projectsList.other.table.members')}</th>
-                                            <th className="px-6 py-4">{t('projectsList.other.table.created')}</th>
-                                            <th className="px-6 py-4"></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-[var(--color-surface-border)]">
-                                        {otherProjects.map(project => (
-                                            <tr key={project.id} className="hover:bg-surface-hover transition-colors group">
-                                                <td className="px-6 py-4">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="size-10 rounded-lg flex items-center justify-center bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-                                                            {project.squareIcon ? (
-                                                                <img src={project.squareIcon} alt="" className="w-full h-full object-cover rounded-lg" />
-                                                            ) : (
-                                                                <span className="material-symbols-outlined">folder</span>
-                                                            )}
-                                                        </div>
-                                                        <div>
-                                                            <div className="font-bold text-main">{project.title}</div>
-                                                            <div className="text-xs text-muted line-clamp-1 max-w-xs">{project.description}</div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <Badge variant={project.status === 'Active' ? 'success' : 'secondary'} size="sm">
-                                                        {getProjectStatusLabel(project.status, t)}
-                                                    </Badge>
-                                                </td>
-                                                <td className="px-6 py-4">
-                                                    <MemberAvatars projectId={project.id} />
-                                                </td>
-                                                <td className="px-6 py-4 text-sm text-muted">
-                                                    {format(new Date(toMillis(project.createdAt)), dateFormat, { locale: dateLocale })}
-                                                </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => window.location.href = `/project/${project.id}`}
-                                                        icon={<span className="material-symbols-outlined">visibility</span>}
-                                                    >
-                                                        {t('projectsList.actions.view')}
-                                                    </Button>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )
-                }
+                )}
             </div>
+
             <OnboardingOverlay
                 isOpen={onboardingActive}
                 steps={onboardingSteps}
@@ -1049,6 +952,6 @@ export const ProjectsList = () => {
                 onFinish={finish}
                 onSkip={skip}
             />
-        </>
+        </div>
     );
 };

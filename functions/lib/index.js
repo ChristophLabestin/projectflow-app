@@ -14,7 +14,7 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.facebookCallback = exports.getFacebookAuthUrl = exports.debugScheduler = exports.checkScheduledPosts = exports.youtubeCallback = exports.getYouTubeAuthUrl = exports.tiktokCallback = exports.getTikTokAuthUrl = exports.callGemini = exports.editImage = exports.generateImage = exports.askCora = exports.sendContactFormEmail = exports.confirmNewsletterSignup = exports.requestNewsletterSignup = exports.confirmWaitlist = exports.requestWaitlist = exports.sendInvitation = exports.onNotificationCreated = exports.manageCategories = exports.getCategories = exports.onBlogPostWrite = exports.getBlogPosts = exports.createBlogPost = exports.api = exports.newsletterUnsubscribe = exports.newsletterSubscribe = exports.testSMTPConnection = void 0;
+exports.facebookCallback = exports.getFacebookAuthUrl = exports.debugHealthSnapshots = exports.dailyHealthSnapshots = exports.autoStartSprints = exports.debugScheduler = exports.checkScheduledPosts = exports.youtubeCallback = exports.getYouTubeAuthUrl = exports.tiktokCallback = exports.getTikTokAuthUrl = exports.callGemini = exports.editImage = exports.generateImage = exports.askCora = exports.sendContactFormEmail = exports.confirmNewsletterSignup = exports.requestNewsletterSignup = exports.confirmWaitlist = exports.requestWaitlist = exports.sendInvitation = exports.onNotificationCreated = exports.manageCategories = exports.getCategories = exports.onBlogPostWrite = exports.getBlogPosts = exports.createBlogPost = exports.api = exports.newsletterUnsubscribe = exports.newsletterSubscribe = exports.testSMTPConnection = void 0;
 require("./init"); // Ensure init runs
 const email_1 = require("./email");
 Object.defineProperty(exports, "testSMTPConnection", { enumerable: true, get: function () { return email_1.testSMTPConnection; } });
@@ -55,6 +55,9 @@ Object.defineProperty(exports, "youtubeCallback", { enumerable: true, get: funct
 const scheduler_1 = require("./scheduler");
 Object.defineProperty(exports, "checkScheduledPosts", { enumerable: true, get: function () { return scheduler_1.checkScheduledPosts; } });
 Object.defineProperty(exports, "debugScheduler", { enumerable: true, get: function () { return scheduler_1.debugScheduler; } });
+Object.defineProperty(exports, "autoStartSprints", { enumerable: true, get: function () { return scheduler_1.autoStartSprints; } });
+Object.defineProperty(exports, "dailyHealthSnapshots", { enumerable: true, get: function () { return scheduler_1.dailyHealthSnapshots; } });
+Object.defineProperty(exports, "debugHealthSnapshots", { enumerable: true, get: function () { return scheduler_1.debugHealthSnapshots; } });
 const facebook_1 = require("./facebook");
 Object.defineProperty(exports, "getFacebookAuthUrl", { enumerable: true, get: function () { return facebook_1.getFacebookAuthUrl; } });
 Object.defineProperty(exports, "facebookCallback", { enumerable: true, get: function () { return facebook_1.facebookCallback; } });

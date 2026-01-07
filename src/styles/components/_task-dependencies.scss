@@ -1,0 +1,185 @@
+.task-dependencies-card {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.task-dependencies-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.task-dependencies-card__title {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-text-subtle);
+}
+
+.task-dependencies-card__icon {
+    font-size: 1.1rem;
+    color: var(--color-text-subtle);
+}
+
+.task-dependencies-card__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.task-dependency-selector {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.task-dependency-selector__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.task-dependency-selector__tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.6rem;
+    border-radius: var(--radius-full);
+    background-color: var(--color-surface-hover);
+    color: var(--color-text-muted);
+    font-size: 0.65rem;
+    font-weight: 600;
+    box-shadow: var(--shadow-sm);
+    max-width: 100%;
+}
+
+.task-dependency-selector__tag-icon {
+    font-size: 0.85rem;
+}
+
+.task-dependency-selector__tag-text {
+    max-width: 12rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.task-dependency-selector__tag-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--radius-full);
+    color: var(--color-text-subtle);
+    opacity: 0.7;
+    transition: color var(--transition-fast), opacity var(--transition-fast);
+}
+
+.task-dependency-selector__tag-remove:hover {
+    color: var(--color-error);
+    opacity: 1;
+}
+
+.task-dependency-selector__control {
+    position: relative;
+}
+
+.task-dependency-selector__input .text-input {
+    background-color: var(--color-surface-bg);
+    box-shadow: var(--shadow-sm);
+}
+
+.task-dependency-selector__input .text-input:focus {
+    box-shadow: 0 0 0 2px var(--color-primary-fade);
+}
+
+.task-dependency-selector__chevron {
+    font-size: 1rem;
+    color: var(--color-text-subtle);
+    transition: transform var(--transition-fast);
+}
+
+.task-dependency-selector[data-open="true"] .task-dependency-selector__chevron {
+    transform: rotate(180deg);
+}
+
+.task-dependency-selector__menu {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 0;
+    width: 100%;
+    padding: 0.5rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface-card);
+    box-shadow: var(--shadow-lg);
+    z-index: 20;
+}
+
+.task-dependency-selector__menu-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    max-height: 12rem;
+    overflow-y: auto;
+}
+
+.task-dependency-selector__menu-item {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 0.6rem;
+    border-radius: var(--radius-md);
+    background: transparent;
+    border: 0;
+    text-align: left;
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.task-dependency-selector__menu-item:hover {
+    background-color: var(--color-surface-hover);
+}
+
+.task-dependency-selector__menu-dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: var(--radius-full);
+    background-color: var(--color-surface-border);
+}
+
+.task-dependency-selector__menu-dot[data-complete="true"] {
+    background-color: var(--color-success);
+}
+
+.task-dependency-selector__menu-text {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.task-dependency-selector__menu-tag {
+    padding: 0.2rem 0.45rem;
+    border-radius: var(--radius-full);
+    background-color: rgba(var(--color-error-rgb), 0.12);
+    color: var(--color-error);
+    font-size: 0.55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.task-dependency-selector__menu-empty {
+    padding: 0.75rem;
+    text-align: center;
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+    font-style: italic;
+}

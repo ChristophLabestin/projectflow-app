@@ -1,4 +1,4 @@
-import { Project, Task, Milestone, Issue, Activity, Comment } from '../types';
+import { Project, Task, Milestone, Issue, Activity, Comment, Sprint } from '../types';
 import { toMillis } from '../utils/time';
 
 export type HealthStatus = 'excellent' | 'healthy' | 'normal' | 'warning' | 'critical' | 'stalemate';
@@ -32,6 +32,7 @@ export const calculateProjectHealth = (
     tasks: Task[] = [],
     milestones: Milestone[] = [],
     issues: Issue[] = [],
+    sprints: Sprint[] = [],
     activities: Activity[] = [],
     comments: Comment[] = []
 ): ProjectHealth => {
@@ -421,8 +422,20 @@ export const calculateProjectHealth = (
     };
 };
 
+export interface SpotlightReason {
+    key: string;
+    text: string;
+    weight: number;
+    meta?: Record<string, number | string>;
+}
+
 export interface SpotlightScore {
     score: number;
+    reasons: SpotlightReason[];  // All contributing reasons with weights
+    primaryReason: string;       // Main reason text for display
+    primaryReasonKey?: string;   // i18n key for primary reason
+    primaryReasonMeta?: Record<string, number | string>;
+    // Legacy fields for backwards compatibility
     reason: string;
     reasonKey?: string;
     reasonMeta?: Record<string, number | string>;
@@ -432,47 +445,65 @@ export const calculateSpotlightScore = (
     project: Project,
     tasks: Task[] = [],
     milestones: Milestone[] = [],
-    issues: Issue[] = []
+    issues: Issue[] = [],
+    sprints: Sprint[] = [],
+    activities: Activity[] = []
 ): SpotlightScore => {
     let score = 0;
-    const reasons: { key: string; text: string; meta?: Record<string, number | string> }[] = [];
+    const reasons: SpotlightReason[] = [];
     const now = Date.now();
     const DAY = 24 * 60 * 60 * 1000;
-    const addReason = (key: string, text: string, meta?: Record<string, number | string>) => {
-        reasons.push({ key, text, meta });
+    const WEEK = 7 * DAY;
+
+    const addReason = (key: string, text: string, weight: number, meta?: Record<string, number | string>) => {
+        reasons.push({ key, text, weight, meta });
+        score += weight;
     };
 
-    // 1. Project Deadline Urgency
+    // 1. PROJECT DEADLINE URGENCY (Highest Priority Factor)
     if (project.dueDate) {
         const dueTime = new Date(project.dueDate).getTime();
         const daysUntilDue = (dueTime - now) / DAY;
 
         if (daysUntilDue < 0) {
-            score += 100; // Immediate top priority
-            addReason('health.spotlight.projectOverdue', 'Project is overdue');
+            const overdueDays = Math.abs(Math.floor(daysUntilDue));
+            addReason(
+                'health.spotlight.projectOverdue',
+                `Project is ${overdueDays} day${overdueDays !== 1 ? 's' : ''} overdue`,
+                100,
+                { days: overdueDays }
+            );
+        } else if (daysUntilDue <= 1) {
+            addReason('health.spotlight.projectDueToday', 'Project due today/tomorrow', 60);
         } else if (daysUntilDue <= 3) {
-            score += 40;
-            addReason('health.spotlight.projectDueSoon', 'Due in < 3 days');
+            addReason('health.spotlight.projectDueSoon', `Due in ${Math.ceil(daysUntilDue)} days`, 40, { days: Math.ceil(daysUntilDue) });
         } else if (daysUntilDue <= 7) {
-            score += 20;
-            addReason('health.spotlight.projectDueThisWeek', 'Due this week');
+            addReason('health.spotlight.projectDueThisWeek', 'Due this week', 20);
         }
     }
 
-    // 2. High Priority Project Boost
-    if (project.priority === 'High' || project.priority === 'Urgent') {
-        score += 20;
+    // 2. HIGH PRIORITY PROJECT BOOST
+    if (project.priority === 'Urgent') {
+        addReason('health.spotlight.urgentPriority', 'Marked as urgent priority', 30);
+    } else if (project.priority === 'High') {
+        addReason('health.spotlight.highPriority', 'High priority project', 15);
     }
 
-    // 3. Task Urgency (Overdue, High Priority, Blocked)
+    // 3. TASK URGENCY ANALYSIS
     const incompleteTasks = tasks.filter(t => !t.isCompleted && t.status !== 'Done');
-    let overduecritical = 0;
+    let overdueTaskCount = 0;
+    let overdueCriticalCount = 0;
     let blockedCount = 0;
-    let dueSoonCount = 0;
+    let dueTodayCount = 0;
+    let dueSoonCount = 0; // Within 3 days
+    let dueThisWeekCount = 0;
+
+    const todayMidnight = new Date();
+    todayMidnight.setHours(0, 0, 0, 0);
 
     incompleteTasks.forEach(t => {
+        // Count blocked tasks
         if (t.status === 'Blocked') {
-            score += 15; // Inreased from 5
             blockedCount++;
         }
 
@@ -480,65 +511,75 @@ export const calculateSpotlightScore = (
 
         const taskDate = new Date(t.dueDate);
         taskDate.setHours(0, 0, 0, 0);
-
-        const todayMidnight = new Date();
-        todayMidnight.setHours(0, 0, 0, 0);
-
         const diffTime = taskDate.getTime() - todayMidnight.getTime();
-        const diffDays = diffTime / DAY; // -1, 0, 1, ...
+        const diffDays = diffTime / DAY;
 
         if (diffDays < 0) {
-            // PAST DUE (Yesterday or earlier)
-            if (t.priority === 'Urgent') {
-                score += 80;
-                overduecritical++;
-            } else if (t.priority === 'High') {
-                score += 50;
-                overduecritical++;
-            } else {
-                score += 20;
+            // OVERDUE
+            overdueTaskCount++;
+            if (t.priority === 'Urgent' || t.priority === 'High') {
+                overdueCriticalCount++;
             }
-        } else if (diffDays === 1) { // TOMORROW
-            // DUE TOMORROW (Massive Priority Boost)
-            if (t.priority === 'Urgent') score += 70;
-            else if (t.priority === 'High') score += 50;
-            else score += 30;
+        } else if (diffDays === 0) {
+            // DUE TODAY
+            dueTodayCount++;
+        } else if (diffDays <= 3) {
+            // DUE SOON (1-3 days)
             dueSoonCount++;
-        } else if (diffDays <= 3 && diffDays >= 0) {
-            // DUE IN < 3 DAYS (0=Today, 1=Tomorrow, 2, 3)
-            if (t.priority === 'Urgent') score += 40;
-            else if (t.priority === 'High') score += 30;
-            else score += 15;
-            dueSoonCount++;
-        } else if (diffDays <= 7 && diffDays >= 0) {
-            // DUE IN < 7 DAYS
-            if (t.priority === 'Urgent') score += 20;
-            else if (t.priority === 'High') score += 15;
-            else score += 10;
+        } else if (diffDays <= 7) {
+            // DUE THIS WEEK
+            dueThisWeekCount++;
         }
     });
 
-    if (overduecritical > 0) {
+    // Add task-based reasons with weights
+    if (overdueCriticalCount > 0) {
         addReason(
             'health.spotlight.criticalOverdueTasks',
-            `${overduecritical} critical overdue tasks`,
-            { count: overduecritical }
+            `${overdueCriticalCount} critical overdue task${overdueCriticalCount !== 1 ? 's' : ''}`,
+            overdueCriticalCount * 50,
+            { count: overdueCriticalCount }
+        );
+    } else if (overdueTaskCount > 0) {
+        addReason(
+            'health.spotlight.overdueTasks',
+            `${overdueTaskCount} overdue task${overdueTaskCount !== 1 ? 's' : ''}`,
+            overdueTaskCount * 25,
+            { count: overdueTaskCount }
         );
     }
-    if (blockedCount > 0) {
-        if (reasons.length === 0) {
-            addReason(
-                'health.spotlight.blockedTasks',
-                `${blockedCount} blocked tasks`,
-                { count: blockedCount }
-            );
-        }
+
+    if (dueTodayCount > 0) {
+        addReason(
+            'health.spotlight.tasksDueToday',
+            `${dueTodayCount} task${dueTodayCount !== 1 ? 's' : ''} due today`,
+            dueTodayCount * 35,
+            { count: dueTodayCount }
+        );
     }
 
-    // 4. Milestone Urgency
+    if (dueSoonCount > 0) {
+        addReason(
+            'health.spotlight.tasksDueSoon',
+            `${dueSoonCount} task${dueSoonCount !== 1 ? 's' : ''} due in next 3 days`,
+            dueSoonCount * 15,
+            { count: dueSoonCount }
+        );
+    }
+
+    if (blockedCount > 0) {
+        addReason(
+            'health.spotlight.blockedTasks',
+            `${blockedCount} blocked task${blockedCount !== 1 ? 's' : ''} need attention`,
+            blockedCount * 20,
+            { count: blockedCount }
+        );
+    }
+
+    // 4. MILESTONE URGENCY
     const pendingMilestones = milestones.filter(m => m.status === 'Pending');
     let overdueMilestones = 0;
-    let imminentMilestones = 0; // < 7 days
+    let imminentMilestones = 0;
 
     pendingMilestones.forEach(m => {
         if (m.dueDate) {
@@ -546,10 +587,8 @@ export const calculateSpotlightScore = (
             const diffDays = (dueTime - now) / DAY;
 
             if (dueTime < now) {
-                score += 100; // Missed milestone is a major failure
                 overdueMilestones++;
             } else if (diffDays < 7) {
-                score += 40; // Approaching milestone (< 7 days) gets significant points
                 imminentMilestones++;
             }
         }
@@ -558,41 +597,156 @@ export const calculateSpotlightScore = (
     if (overdueMilestones > 0) {
         addReason(
             'health.spotlight.overdueMilestones',
-            `${overdueMilestones} overdue milestones`,
+            `${overdueMilestones} overdue milestone${overdueMilestones !== 1 ? 's' : ''}`,
+            overdueMilestones * 60,
             { count: overdueMilestones }
         );
     } else if (imminentMilestones > 0) {
         addReason(
             'health.spotlight.milestonesDueSoon',
-            `${imminentMilestones} milestones due soon`,
+            `${imminentMilestones} milestone${imminentMilestones !== 1 ? 's' : ''} due this week`,
+            imminentMilestones * 30,
             { count: imminentMilestones }
         );
     }
 
-    // 5. Issue Pressure
-    const urgentIssues = issues.filter(i => (i.priority === 'Urgent' || i.priority === 'High') && i.status !== 'Resolved' && i.status !== 'Closed').length;
+    // 5. ISSUE PRESSURE
+    const openIssues = issues.filter(i => i.status !== 'Resolved' && i.status !== 'Closed');
+    const urgentIssues = openIssues.filter(i => i.priority === 'Urgent').length;
+    const highPriorityIssues = openIssues.filter(i => i.priority === 'High').length;
+    const criticalIssues = urgentIssues + highPriorityIssues;
+
     if (urgentIssues > 0) {
-        score += (urgentIssues * 20);
-        if (reasons.length === 0) {
+        addReason(
+            'health.spotlight.urgentIssues',
+            `${urgentIssues} urgent issue${urgentIssues !== 1 ? 's' : ''} open`,
+            urgentIssues * 40,
+            { count: urgentIssues }
+        );
+    } else if (highPriorityIssues > 0) {
+        addReason(
+            'health.spotlight.highPriorityIssues',
+            `${highPriorityIssues} high-priority issue${highPriorityIssues !== 1 ? 's' : ''} open`,
+            highPriorityIssues * 20,
+            { count: highPriorityIssues }
+        );
+    }
+
+    // 6. ACTIVITY & ENGAGEMENT (Recent activity indicates active work)
+    if (activities.length > 0) {
+        const recentActivityCount = activities.filter(a => {
+            const createdAt = a.createdAt ? (typeof a.createdAt === 'object' && 'toMillis' in a.createdAt ? a.createdAt.toMillis() : toMillis(a.createdAt)) : 0;
+            return (now - createdAt) < WEEK;
+        }).length;
+
+        if (recentActivityCount > 10) {
             addReason(
-                'health.spotlight.urgentIssues',
-                `${urgentIssues} urgent issues`,
-                { count: urgentIssues }
+                'health.spotlight.highlyActive',
+                'Highly active with recent updates',
+                15,
+                { activityCount: recentActivityCount }
+            );
+        } else if (recentActivityCount > 0) {
+            addReason(
+                'health.spotlight.recentActivity',
+                'Recent project activity',
+                5,
+                { activityCount: recentActivityCount }
             );
         }
     }
 
-    // 6. Status Weight (Active projects > Planning)
-    if (project.status === 'Active') {
-        score += 5;
-    } else if (project.status === 'Brainstorming' || project.status === 'Planning') {
-        score -= 1000; // strong penalty (filter out unless they have massive urgency)
+    // 7. PROGRESS VS DEADLINE TRACKING
+    if (project.dueDate && project.startDate) {
+        const startTime = new Date(project.startDate).getTime();
+        const dueTime = new Date(project.dueDate).getTime();
+        const totalDuration = dueTime - startTime;
+        const elapsed = now - startTime;
+
+        if (totalDuration > 0 && elapsed > 0) {
+            const expectedProgress = Math.min(100, (elapsed / totalDuration) * 100);
+            const actualProgress = project.progress || 0;
+            const progressGap = expectedProgress - actualProgress;
+
+            if (progressGap > 30 && actualProgress < 80) {
+                addReason(
+                    'health.spotlight.behindSchedule',
+                    `${Math.round(progressGap)}% behind expected progress`,
+                    Math.min(40, progressGap),
+                    { gap: Math.round(progressGap), expected: Math.round(expectedProgress), actual: actualProgress }
+                );
+            }
+        }
     }
 
-    const primaryReason = reasons[0] || { key: 'health.spotlight.generalUpdate', text: 'General Update' };
+    // --- SPRINT ANALYSIS ---
+    const activeSprints = sprints.filter(s => s.status === 'Active');
+    const overdueSprints = sprints.filter(s => s.status === 'Active' && s.endDate && new Date(s.endDate).getTime() < now);
+
+    if (overdueSprints.length > 0) {
+        addReason(
+            'health.spotlight.overdueSprints',
+            `${overdueSprints.length} overdue sprint${overdueSprints.length !== 1 ? 's' : ''}`,
+            70,
+            { count: overdueSprints.length }
+        );
+    } else if (activeSprints.length > 0) {
+        addReason(
+            'health.spotlight.activeSprint',
+            'Active sprint in progress',
+            10,
+            { count: activeSprints.length }
+        );
+    }
+
+    // 8. LOW PROGRESS WARNING
+    if (project.status === 'Active' && (project.progress || 0) < 20) {
+        const progress = project.progress || 0;
+        if (!reasons.some(r => r.key === 'health.spotlight.behindSchedule')) {
+            addReason(
+                'health.spotlight.lowProgress',
+                `Only ${progress}% complete`,
+                20,
+                { progress }
+            );
+        }
+    }
+
+    // 9. STATUS WEIGHT
+    if (project.status === 'Active') {
+        score += 10; // Baseline boost for active projects
+    } else if (project.status === 'Brainstorming' || project.status === 'Planning') {
+        score -= 500; // Strong penalty for non-active projects
+    } else if (project.status === 'On Hold') {
+        score -= 200; // Moderate penalty for on-hold
+    }
+
+    // Sort reasons by weight (highest first)
+    reasons.sort((a, b) => b.weight - a.weight);
+
+    // Build the primary reason - if no urgency reasons, use a fallback
+    const primaryReason = reasons[0] || {
+        key: 'health.spotlight.recentlyUpdated',
+        text: 'Recently updated',
+        weight: 0
+    };
+
+    // Ensure reasons array has at least the primary reason
+    if (reasons.length === 0) {
+        reasons.push({
+            key: primaryReason.key,
+            text: primaryReason.text,
+            weight: primaryReason.weight,
+        });
+    }
 
     return {
         score,
+        reasons,
+        primaryReason: primaryReason.text,
+        primaryReasonKey: primaryReason.key,
+        primaryReasonMeta: primaryReason.meta,
+        // Legacy fields
         reason: primaryReason.text,
         reasonKey: primaryReason.key,
         reasonMeta: primaryReason.meta

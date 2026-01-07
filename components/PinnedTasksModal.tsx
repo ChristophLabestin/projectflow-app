@@ -1070,7 +1070,7 @@ export const PinnedTasksModal = () => {
 
     // Full modal mode
     return (
-        <div className="modal-overlay center-aligned" onClick={toggleModal}>
+        <div className="modal-overlay task-modal center-aligned" onClick={toggleModal}>
             <div
                 className="pinned-tasks-layout"
                 onClick={(e) => e.stopPropagation()}

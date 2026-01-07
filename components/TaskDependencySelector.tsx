@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Task } from '../types';
-import { getProjectTasks, subscribeProjectTasks } from '../services/dataService';
-import { Button } from './ui/Button';
+import { subscribeProjectTasks } from '../services/dataService';
+import { TextInput } from './common/Input/TextInput';
+import { useLanguage } from '../context/LanguageContext';
 
 interface TaskDependencySelectorProps {
     projectId: string;
@@ -16,6 +17,7 @@ export const TaskDependencySelector: React.FC<TaskDependencySelectorProps> = ({
     selectedDependencyIds,
     onChange
 }) => {
+    const { t } = useLanguage();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [loading, setLoading] = useState(false);
     const [search, setSearch] = useState('');
@@ -71,86 +73,76 @@ export const TaskDependencySelector: React.FC<TaskDependencySelectorProps> = ({
     const selectedTasks = tasks.filter(t => selectedDependencyIds.includes(t.id));
 
     return (
-        <div className="flex flex-col gap-3" ref={containerRef}>
-            {/* Selected Dependencies List */}
+        <div
+            className="task-dependency-selector"
+            ref={containerRef}
+            data-open={isOpen ? 'true' : 'false'}
+        >
             {selectedTasks.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-1">
+                <div className="task-dependency-selector__list">
                     {selectedTasks.map(task => (
-                        <div key={task.id} className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-500/20">
-                            <span className="material-symbols-outlined text-[14px]">link</span>
-                            <span className="truncate max-w-[150px]">{task.title}</span>
+                        <div key={task.id} className="task-dependency-selector__tag">
+                            <span className="material-symbols-outlined task-dependency-selector__tag-icon">link</span>
+                            <span className="task-dependency-selector__tag-text">{task.title}</span>
                             <button
                                 type="button"
                                 onClick={() => removeDependency(task.id)}
-                                className="ml-1 hover:text-indigo-900 dark:hover:text-indigo-100"
+                                className="task-dependency-selector__tag-remove"
                             >
-                                <span className="material-symbols-outlined text-[14px]">close</span>
+                                <span className="material-symbols-outlined">close</span>
                             </button>
                         </div>
                     ))}
                 </div>
             )}
 
-            <div className="relative">
-                <Button
-                    type="button"
-                    variant="ghost"
-                    className="w-full justify-start text-muted border border-surface hover:border-primary bg-surface-input hover:bg-surface-hover p-0 h-auto"
-                    onClick={() => setIsOpen(!isOpen)}
-                >
-                    <div className="flex items-center gap-2 w-full px-3 py-2.5">
-                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-muted">add_link</span>
-                        <input
-                            type="text"
-                            className="bg-transparent border-none outline-none text-sm w-full pl-7 placeholder:text-muted"
-                            placeholder="Add dependency..."
-                            value={search}
-                            onChange={(e) => {
-                                setSearch(e.target.value);
-                                setIsOpen(true);
-                            }}
-                            onFocus={() => setIsOpen(true)}
-                        />
-                        <span className="material-symbols-outlined text-muted text-sm">expand_more</span>
-                    </div>
-                </Button>
-
-                {isOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-card border border-surface rounded-xl shadow-xl z-50 animate-in fade-in slide-in-from-top-2">
-                        {loading && tasks.length === 0 ? (
-                            <div className="p-4 text-center text-sm text-muted">Loading tasks...</div>
-                        ) : filteredTasks.length === 0 ? (
-                            <div className="p-4 text-center text-sm text-muted">
-                                {search ? 'No matching tasks found' : 'No other tasks available'}
-                            </div>
-                        ) : (
-                            <div className="p-1">
-                                {filteredTasks.map(task => (
-                                    <button
-                                        key={task.id}
-                                        type="button"
-                                        onClick={() => {
-                                            toggleSelection(task.id);
-                                            setIsOpen(false);
-                                            setSearch('');
-                                        }}
-                                        className="w-full text-left px-3 py-2 rounded-lg hover:bg-surface-hover flex items-center gap-2 group transition-colors"
-                                    >
-                                        <div className={`
-                                            size-2 rounded-full 
-                                            ${task.isCompleted ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}
-                                        `} />
-                                        <span className="text-sm font-medium text-main truncate">{task.title}</span>
-                                        {task.priority === 'Urgent' && (
-                                            <span className="ml-auto text-[10px] font-bold text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded">URGENT</span>
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                )}
+            <div className="task-dependency-selector__control">
+                <TextInput
+                    value={search}
+                    onChange={(e) => {
+                        setSearch(e.target.value);
+                        setIsOpen(true);
+                    }}
+                    onFocus={() => setIsOpen(true)}
+                    placeholder={t('taskDetail.dependencies.searchPlaceholder')}
+                    className="task-dependency-selector__input"
+                    leftElement={<span className="material-symbols-outlined">add_link</span>}
+                    rightElement={<span className="material-symbols-outlined task-dependency-selector__chevron">expand_more</span>}
+                />
             </div>
+
+            {isOpen && (
+                <div className="task-dependency-selector__menu">
+                    {loading && tasks.length === 0 ? (
+                        <div className="task-dependency-selector__menu-empty">{t('taskDetail.dependencies.loading')}</div>
+                    ) : filteredTasks.length === 0 ? (
+                        <div className="task-dependency-selector__menu-empty">
+                            {search ? t('taskDetail.dependencies.emptyMatch') : t('taskDetail.dependencies.empty')}
+                        </div>
+                    ) : (
+                        <div className="task-dependency-selector__menu-list">
+                            {filteredTasks.map(task => (
+                                <button
+                                    key={task.id}
+                                    type="button"
+                                    onClick={() => {
+                                        toggleSelection(task.id);
+                                        setIsOpen(false);
+                                        setSearch('');
+                                    }}
+                                    className="task-dependency-selector__menu-item"
+                                >
+                                    <span className="task-dependency-selector__menu-dot" data-complete={task.isCompleted ? 'true' : 'false'} />
+                                    <span className="task-dependency-selector__menu-text">{task.title}</span>
+                                    {task.priority === 'Urgent' && (
+                                        <span className="task-dependency-selector__menu-tag">{t('tasks.priority.urgent')}</span>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            )}
         </div>
     );
 };

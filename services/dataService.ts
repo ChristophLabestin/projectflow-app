@@ -428,6 +428,13 @@ export const updateTenant = async (tenantId: string, updates: Record<string, any
     await updateDoc(tenantDocRef(tenantId), updates);
 };
 
+export const setWorkspaceFocusProject = async (tenantId: string, projectId: string | null) => {
+    // If projectId is null, we are clearing the focus
+    await updateDoc(tenantDocRef(tenantId), {
+        focusProjectId: projectId || null
+    });
+};
+
 const getProjectContextFromRef = (ref: { parent?: any }) => {
     const projectRef = ref.parent?.parent;
     const tenantRef = projectRef?.parent?.parent;
@@ -783,7 +790,111 @@ export const subscribeProjectMilestones = (
     });
 };
 
-// --- Gemini Reports ---
+// --- Health Snapshots ---
+// Store daily health score snapshots for historical tracking
+
+export const HEALTH_SNAPSHOTS = "healthSnapshots";
+
+export interface HealthSnapshot {
+    id?: string;
+    projectId: string;
+    tenantId: string;
+    score: number;
+    status: string;
+    trend: string;
+    date: string; // YYYY-MM-DD format for easy querying
+    timestamp: any; // Firestore timestamp for creation time
+}
+
+/**
+ * Save a health snapshot for a project (typically called once per day)
+ * Uses date as document ID to prevent duplicates
+ */
+export const saveHealthSnapshot = async (
+    projectId: string,
+    score: number,
+    status: string,
+    trend: string,
+    tenantId?: string
+): Promise<void> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+    const snapshotRef = doc(projectSubCollection(resolvedTenant, projectId, HEALTH_SNAPSHOTS), today);
+    await setDoc(snapshotRef, {
+        projectId,
+        tenantId: resolvedTenant,
+        score,
+        status,
+        trend,
+        date: today,
+        timestamp: serverTimestamp()
+    });
+};
+
+/**
+ * Get a specific health snapshot by date
+ */
+export const getHealthSnapshot = async (
+    projectId: string,
+    date: string,
+    tenantId?: string
+): Promise<HealthSnapshot | null> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const snapshotRef = doc(projectSubCollection(resolvedTenant, projectId, HEALTH_SNAPSHOTS), date);
+    const snap = await getDoc(snapshotRef);
+    if (snap.exists()) {
+        return { id: snap.id, ...snap.data() } as HealthSnapshot;
+    }
+    return null;
+};
+
+/**
+ * Subscribe to health snapshots for a project (last 30 days)
+ */
+export const subscribeHealthSnapshots = (
+    projectId: string,
+    onUpdate: (snapshots: HealthSnapshot[]) => void,
+    tenantId?: string
+): Unsubscribe => {
+    const resolvedTenant = resolveTenantId(tenantId);
+    const q = query(
+        projectSubCollection(resolvedTenant, projectId, HEALTH_SNAPSHOTS),
+        orderBy("date", "desc"),
+        limit(30)
+    );
+
+    return onSnapshot(q, (snapshot) => {
+        const snapshots = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        } as HealthSnapshot));
+        onUpdate(snapshots);
+    });
+};
+
+/**
+ * Calculate health delta vs last week
+ * Returns the difference in score from 7 days ago, or null if no data
+ */
+export const getHealthDelta = async (
+    projectId: string,
+    currentScore: number,
+    tenantId?: string
+): Promise<number | null> => {
+    const resolvedTenant = resolveTenantId(tenantId);
+
+    // Get date from 7 days ago
+    const lastWeek = new Date();
+    lastWeek.setDate(lastWeek.getDate() - 7);
+    const lastWeekDate = lastWeek.toISOString().split('T')[0];
+
+    const snapshot = await getHealthSnapshot(projectId, lastWeekDate, resolvedTenant);
+    if (snapshot) {
+        return currentScore - snapshot.score;
+    }
+    return null;
+};
 
 export const saveGeminiReport = async (projectId: string, content: string, tenantId?: string) => {
     const user = auth.currentUser;

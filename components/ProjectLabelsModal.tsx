@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { getProjectCategories, addProjectCategory, updateProjectCategory, deleteProjectCategory } from '../services/dataService';
 import { TaskCategory } from '../types';
-import { Modal } from './ui/Modal';
-import { Button } from './ui/Button';
-import { Input } from './ui/Input';
+import { Modal } from './common/Modal/Modal';
+import { Button } from './common/Button/Button';
+import { TextInput } from './common/Input/TextInput';
 import { useLanguage } from '../context/LanguageContext';
+import { useConfirm } from '../context/UIContext';
+import './project-labels-modal.scss';
 
 type Props = {
     isOpen: boolean;
@@ -46,6 +48,7 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const { t } = useLanguage();
+    const confirm = useConfirm();
 
     const loadLabels = async () => {
         setLoading(true);
@@ -94,7 +97,7 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
     };
 
     const handleDeleteLabel = async (id: string) => {
-        if (!window.confirm(t('projectLabels.confirm.delete'))) return;
+        if (!await confirm(t('projectLabels.confirm.deleteTitle'), t('projectLabels.confirm.delete'))) return;
         try {
             await deleteProjectCategory(projectId, id, tenantId);
             loadLabels();
@@ -111,62 +114,59 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
             title={t('projectLabels.title')}
             size="md"
         >
-            <div className="space-y-5">
-                {/* Add New Label Form / Compacted */}
-                <form onSubmit={handleAddLabel} className="space-y-4 p-3.5 rounded-xl bg-surface border border-surface">
-                    <div className="flex flex-col gap-3">
-                        <Input
-                            label={t('projectLabels.new.label')}
-                            value={newName}
-                            onChange={(e) => setNewName(e.target.value)}
-                            placeholder={t('projectLabels.new.placeholder')}
-                            autoComplete="off"
-                        />
-                        <div>
-                            <div className="flex flex-wrap gap-1.5">
-                                {PRESET_COLORS.map(color => (
-                                    <button
-                                        key={color}
-                                        type="button"
-                                        onClick={() => setNewColor(color)}
-                                        className={`size-5 rounded-full border transition-all ${newColor === color ? 'border-[var(--color-text-main)] scale-110 shadow-sm' : 'border-transparent hover:scale-105'}`}
-                                        style={{ backgroundColor: color }}
-                                    />
-                                ))}
-                            </div>
-                        </div>
-                        {error && <p className="text-xs text-rose-500">{error}</p>}
-                        <Button
-                            type="submit"
-                            disabled={!newName.trim() || isSaving}
-                            isLoading={isSaving}
-                            className="w-full py-2 h-9 text-sm"
-                        >
-                            {t('projectLabels.actions.create')}
-                        </Button>
+            <div className="project-labels">
+                {/* Add New Label Form */}
+                <form onSubmit={handleAddLabel} className="project-labels__form">
+                    <TextInput
+                        label={t('projectLabels.new.label')}
+                        value={newName}
+                        onChange={(e) => setNewName(e.target.value)}
+                        placeholder={t('projectLabels.new.placeholder')}
+                        autoComplete="off"
+                    />
+                    <div className="project-labels__palette">
+                        {PRESET_COLORS.map(color => (
+                            <button
+                                key={color}
+                                type="button"
+                                onClick={() => setNewColor(color)}
+                                className={`project-labels__color ${newColor === color ? 'is-selected' : ''}`}
+                                style={{ backgroundColor: color }}
+                                aria-label={color}
+                            />
+                        ))}
                     </div>
+                    {error && <p className="project-labels__error">{error}</p>}
+                    <Button
+                        type="submit"
+                        disabled={!newName.trim() || isSaving}
+                        isLoading={isSaving}
+                        className="project-labels__submit"
+                    >
+                        {t('projectLabels.actions.create')}
+                    </Button>
                 </form>
 
-                {/* Labels List / More Compact */}
-                <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-subtle uppercase tracking-widest block px-1">{t('projectLabels.list.title')}</label>
-                    <div className="space-y-1.5 max-h-[300px] overflow-y-auto px-1 custom-scrollbar">
+                {/* Labels List */}
+                <div className="project-labels__list">
+                    <label className="project-labels__list-title">{t('projectLabels.list.title')}</label>
+                    <div className="project-labels__items">
                         {loading ? (
-                            <div className="py-8 text-center text-muted animate-pulse">{t('projectLabels.loading')}</div>
+                            <div className="project-labels__status">{t('projectLabels.loading')}</div>
                         ) : labels.length === 0 ? (
-                            <div className="py-8 text-center text-muted italic text-sm">{t('projectLabels.empty')}</div>
+                            <div className="project-labels__empty">{t('projectLabels.empty')}</div>
                         ) : (
                             labels.map(label => (
-                                <div key={label.id} className={`flex flex-col p-1.5 rounded-lg transition-all border ${editingLabelId === label.id ? 'bg-card border-surface shadow-sm' : 'hover:bg-surface-hover border-transparent group'}`}>
-                                    <div className="flex items-center gap-2.5">
-                                        <div className="size-3.5 rounded-full flex-shrink-0" style={{ backgroundColor: label.color || '#64748b' }} />
-                                        <div className="flex-1">
+                                <div key={label.id} className={`project-labels__item ${editingLabelId === label.id ? 'is-editing' : ''}`}>
+                                    <div className="project-labels__item-row">
+                                        <div className="project-labels__swatch" style={{ backgroundColor: label.color || 'var(--color-text-muted)' }} />
+                                        <div className="project-labels__content">
                                             {editingLabelId === label.id ? (
                                                 <input
                                                     autoFocus
                                                     value={editName}
                                                     onChange={(e) => setEditName(e.target.value)}
-                                                    className="bg-transparent border-none outline-none text-sm font-semibold w-full text-main"
+                                                    className="project-labels__edit-input"
                                                     placeholder={t('projectLabels.edit.placeholder')}
                                                     onKeyDown={(e) => {
                                                         if (e.key === 'Enter') handleUpdateLabel(label.id, { name: editName.trim(), color: editColor });
@@ -174,8 +174,9 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
                                                     }}
                                                 />
                                             ) : (
-                                                <span
-                                                    className="text-sm font-medium text-main cursor-pointer"
+                                                <button
+                                                    type="button"
+                                                    className="project-labels__name"
                                                     onClick={() => {
                                                         setEditingLabelId(label.id);
                                                         setEditName(label.name);
@@ -183,45 +184,49 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
                                                     }}
                                                 >
                                                     {label.name}
-                                                </span>
+                                                </button>
                                             )}
                                         </div>
-                                        <div className="flex items-center gap-1">
+                                        <div className="project-labels__actions">
                                             {editingLabelId === label.id ? (
-                                                <div className="flex items-center gap-0.5">
+                                                <div className="project-labels__edit-actions">
                                                     <button
+                                                        type="button"
                                                         onClick={() => setEditingLabelId(null)}
-                                                        className="p-1 rounded-md hover:bg-surface text-muted"
+                                                        className="project-labels__icon-btn"
                                                         title={t('common.cancel')}
                                                     >
-                                                        <span className="material-symbols-outlined text-[16px]">close</span>
+                                                        <span className="material-symbols-outlined">close</span>
                                                     </button>
                                                     <button
+                                                        type="button"
                                                         onClick={() => handleUpdateLabel(label.id, { name: editName.trim(), color: editColor })}
                                                         disabled={!editName.trim() || isSaving}
-                                                        className="p-1 rounded-md hover:bg-primary/10 text-primary"
+                                                        className="project-labels__icon-btn project-labels__icon-btn--primary"
                                                         title={t('projectLabels.actions.save')}
                                                     >
-                                                        <span className="material-symbols-outlined text-[16px]">check</span>
+                                                        <span className="material-symbols-outlined">check</span>
                                                     </button>
                                                 </div>
                                             ) : (
-                                                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <div className="project-labels__view-actions">
                                                     <button
+                                                        type="button"
                                                         onClick={() => {
                                                             setEditingLabelId(label.id);
                                                             setEditName(label.name);
                                                             setEditColor(label.color || PRESET_COLORS[0]);
                                                         }}
-                                                        className="p-1 rounded-md hover:bg-surface text-muted hover:text-main"
+                                                        className="project-labels__icon-btn"
                                                     >
-                                                        <span className="material-symbols-outlined text-[16px]">edit</span>
+                                                        <span className="material-symbols-outlined">edit</span>
                                                     </button>
                                                     <button
+                                                        type="button"
                                                         onClick={() => handleDeleteLabel(label.id)}
-                                                        className="p-1 rounded-md hover:bg-surface text-muted hover:text-rose-500"
+                                                        className="project-labels__icon-btn project-labels__icon-btn--danger"
                                                     >
-                                                        <span className="material-symbols-outlined text-[16px]">delete</span>
+                                                        <span className="material-symbols-outlined">delete</span>
                                                     </button>
                                                 </div>
                                             )}
@@ -229,18 +234,17 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
                                     </div>
 
                                     {editingLabelId === label.id && (
-                                        <div className="mt-2 pt-2 border-t border-surface">
-                                            <div className="flex flex-wrap gap-1">
-                                                {PRESET_COLORS.map(color => (
-                                                    <button
-                                                        key={`edit-${color}`}
-                                                        type="button"
-                                                        onClick={() => setEditColor(color)}
-                                                        className={`size-4 rounded-full border transition-all ${editColor === color ? 'border-[var(--color-text-main)] scale-110' : 'border-transparent hover:scale-105'}`}
-                                                        style={{ backgroundColor: color }}
-                                                    />
-                                                ))}
-                                            </div>
+                                        <div className="project-labels__edit-palette">
+                                            {PRESET_COLORS.map(color => (
+                                                <button
+                                                    key={`edit-${color}`}
+                                                    type="button"
+                                                    onClick={() => setEditColor(color)}
+                                                    className={`project-labels__color ${editColor === color ? 'is-selected' : ''}`}
+                                                    style={{ backgroundColor: color }}
+                                                    aria-label={color}
+                                                />
+                                            ))}
                                         </div>
                                     )}
                                 </div>
@@ -252,3 +256,4 @@ export const ProjectLabelsModal: React.FC<Props> = ({ isOpen, onClose, projectId
         </Modal>
     );
 };
+

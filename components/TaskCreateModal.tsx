@@ -1,11 +1,13 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { format } from 'date-fns';
 import { useArrowReplacement } from '../hooks/useArrowReplacement';
 import { addTask, getProjectCategories, getProjectTasks, createSubTask } from '../services/dataService';
 import { IdeaGroup, Task, TaskCategory, TaskStatus } from '../types';
 import { generateProjectDescription } from '../services/geminiService';
-import { Button } from './ui/Button';
-import { DatePicker } from './ui/DatePicker';
+import { Button } from './common/Button/Button';
+import { Badge } from './common/Badge/Badge';
+import { DatePicker } from './common/DateTime/DatePicker';
 import { MultiAssigneeSelector } from './MultiAssigneeSelector';
 import { usePinnedTasks, PinnedItem } from '../context/PinnedTasksContext';
 import { ProjectLabelsModal } from './ProjectLabelsModal';
@@ -22,7 +24,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
     const [title, setTitle] = useState('');
     const [priority, setPriority] = useState<Task['priority']>('Medium');
     const [description, setDescription] = useState('');
-    const [dueDate, setDueDate] = useState('');
+    const [dueDate, setDueDate] = useState<Date | null>(null);
     const [selectedCategories, setSelectedCategories] = useState<IdeaGroup[]>([]);
     const [status, setStatus] = useState<TaskStatus>('Open');
     const [assigneeIds, setAssigneeIds] = useState<string[]>([]);
@@ -81,6 +83,22 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
         [categories, tasks]
     );
 
+    const priorityLabels: Record<string, string> = {
+        Urgent: t('tasks.priority.urgent'),
+        High: t('tasks.priority.high'),
+        Medium: t('tasks.priority.medium'),
+        Low: t('tasks.priority.low'),
+    };
+
+    const statusLabels: Record<string, string> = {
+        Backlog: t('tasks.status.backlog'),
+        Open: t('tasks.status.open'),
+        'In Progress': t('tasks.status.inProgress'),
+        'On Hold': t('tasks.status.onHold'),
+        Blocked: t('tasks.status.blocked'),
+        Done: t('tasks.status.done'),
+    };
+
     const handleSubmit = async (e?: React.FormEvent) => {
         e?.preventDefault();
         if (!title.trim()) return;
@@ -90,9 +108,10 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
             const categoriesToSave = Array.from(
                 new Set([...selectedCategories])
             );
+            const dueDateValue = dueDate ? format(dueDate, 'yyyy-MM-dd') : undefined;
 
             // Create the task first
-            const newTaskId = await addTask(projectId, title.trim(), dueDate || undefined, undefined, priority, {
+            const newTaskId = await addTask(projectId, title.trim(), dueDateValue, undefined, priority, {
                 description,
                 category: categoriesToSave.length ? categoriesToSave : undefined,
                 status,
@@ -159,32 +178,9 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
         setSubtasks(prev => prev.filter((_, i) => i !== index));
     };
 
-    const priorityConfig: Record<string, { color: string; bg: string }> = {
-        Urgent: { color: 'text-rose-500', bg: 'bg-rose-500/10' },
-        High: { color: 'text-orange-500', bg: 'bg-orange-500/10' },
-        Medium: { color: 'text-blue-500', bg: 'bg-blue-500/10' },
-        Low: { color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-    };
-
-    const priorityLabels: Record<string, string> = {
-        Urgent: t('tasks.priority.urgent'),
-        High: t('tasks.priority.high'),
-        Medium: t('tasks.priority.medium'),
-        Low: t('tasks.priority.low'),
-    };
-
-    const statusLabels: Record<string, string> = {
-        Backlog: t('tasks.status.backlog'),
-        Open: t('tasks.status.open'),
-        'In Progress': t('tasks.status.inProgress'),
-        'On Hold': t('tasks.status.onHold'),
-        Blocked: t('tasks.status.blocked'),
-        Done: t('tasks.status.done'),
-    };
-
     return createPortal(
         <div
-            className="modal-overlay"
+            className="modal-overlay task-modal"
             onClick={onClose}
         >
             <div
@@ -207,49 +203,49 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                     {/* Toolbar Row */}
                     <div className="toolbar-row">
                         {/* Priority Dropdown */}
-                        <div className="dropdown-group group">
+                        <div className="dropdown-group">
                             <button
                                 type="button"
-                                className={`trigger-btn ${priorityConfig[priority].color}`}
+                                className={`trigger-btn trigger-btn--priority priority-${priority.toLowerCase()}`}
                             >
-                                <span className="material-symbols-outlined text-[16px]">flag</span>
+                                <span className="material-symbols-outlined trigger-icon">flag</span>
                                 {priorityLabels[priority] || priority}
                                 <span className="material-symbols-outlined chevron">expand_more</span>
                             </button>
                             <div className="dropdown-menu">
-                                {(['Urgent', 'High', 'Medium', 'Low'] as const).map(p => (
+                                {(['Urgent', 'High', 'Medium', 'Low'] as const).map(level => (
                                     <button
-                                        key={p}
+                                        key={level}
                                         type="button"
-                                        onClick={() => setPriority(p)}
-                                        className={priority === p ? priorityConfig[p].color : ''}
+                                        onClick={() => setPriority(level)}
+                                        className={`dropdown-item priority-${level.toLowerCase()} ${priority === level ? 'selected' : ''}`}
                                     >
-                                        <span className={`size-2 rounded-full ${priorityConfig[p].bg} ${priorityConfig[p].color.replace('text-', 'bg-')}`} />
-                                        {priorityLabels[p] || p}
+                                        <span className={`priority-dot priority-dot--${level.toLowerCase()}`} />
+                                        {priorityLabels[level] || level}
                                     </button>
                                 ))}
                             </div>
                         </div>
 
                         {/* Status Dropdown */}
-                        <div className="dropdown-group group">
+                        <div className="dropdown-group">
                             <button
                                 type="button"
-                                className="trigger-btn text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+                                className="trigger-btn trigger-btn--status"
                             >
-                                <span className="material-symbols-outlined text-[16px]">radio_button_unchecked</span>
+                                <span className="material-symbols-outlined trigger-icon">radio_button_unchecked</span>
                                 {statusLabels[status] || status}
                                 <span className="material-symbols-outlined chevron">expand_more</span>
                             </button>
                             <div className="dropdown-menu">
-                                {(['Backlog', 'Open', 'In Progress', 'On Hold', 'Blocked', 'Done'] as const).map(s => (
+                                {(['Backlog', 'Open', 'In Progress', 'On Hold', 'Blocked', 'Done'] as const).map(value => (
                                     <button
-                                        key={s}
+                                        key={value}
                                         type="button"
-                                        onClick={() => setStatus(s)}
-                                        className={status === s ? 'text-[var(--color-accent)]' : ''}
+                                        onClick={() => setStatus(value)}
+                                        className={`dropdown-item status-${value.toLowerCase().replace(' ', '-')} ${status === value ? 'selected' : ''}`}
                                     >
-                                        {statusLabels[s] || s}
+                                        {statusLabels[value] || value}
                                     </button>
                                 ))}
                             </div>
@@ -261,60 +257,62 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                         {/* Categories */}
                         {selectedCategories.map(catName => {
                             const catData = categories.find(c => c.name === catName);
-                            const color = catData?.color || '#64748b';
+                            const color = catData?.color || 'var(--color-text-muted)';
                             return (
-                                <span
+                                <Badge
                                     key={catName}
-                                    className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-white text-[10px] font-bold uppercase tracking-wider shadow-sm"
+                                    variant="neutral"
+                                    className="task-create__category-tag"
                                     style={{ backgroundColor: color }}
                                 >
-                                    {catName}
+                                    <span className="task-create__category-text">{catName}</span>
                                     <button
                                         type="button"
                                         onClick={() => setSelectedCategories(prev => prev.filter(x => x !== catName))}
-                                        className="hover:text-rose-200 transition-colors"
+                                        className="task-create__category-remove"
                                     >
-                                        <span className="material-symbols-outlined text-[12px]">close</span>
+                                        <span className="material-symbols-outlined">close</span>
                                     </button>
-                                </span>
+                                </Badge>
                             );
                         })}
 
                         {/* Add Category */}
-                        <div className="dropdown-group group">
+                        <div className="dropdown-group">
                             <button
                                 type="button"
-                                className="trigger-btn text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]"
+                                className="trigger-btn trigger-btn--labels"
                             >
-                                <span className="material-symbols-outlined text-[14px]">sell</span>
+                                <span className="material-symbols-outlined trigger-icon">sell</span>
                                 {t('taskCreate.labels.button')}
                             </button>
                             <div className="dropdown-menu">
-                                <div className="p-1 border-b border-[var(--color-surface-border)] mb-1">
+                                <div className="dropdown-menu__header">
                                     <button
                                         type="button"
                                         onClick={() => setShowLabelsModal(true)}
-                                        className="text-[var(--color-accent)] font-bold uppercase"
+                                        className="dropdown-menu__action"
                                     >
-                                        <span className="material-symbols-outlined text-[16px]">settings</span>
+                                        <span className="material-symbols-outlined">settings</span>
                                         {t('taskCreate.labels.manage')}
                                     </button>
                                 </div>
-                                {categoryOptions.filter(c => !selectedCategories.includes(c)).map(c => {
-                                    const catData = categories.find(cat => cat.name === c);
+                                {categoryOptions.filter(c => !selectedCategories.includes(c)).map(option => {
+                                    const catData = categories.find(cat => cat.name === option);
                                     return (
                                         <button
-                                            key={c}
+                                            key={option}
                                             type="button"
-                                            onClick={() => setSelectedCategories(prev => [...prev, c])}
+                                            onClick={() => setSelectedCategories(prev => [...prev, option])}
+                                            className="dropdown-item"
                                         >
-                                            <div className="size-2 rounded-full" style={{ backgroundColor: catData?.color || '#64748b' }} />
-                                            {c}
+                                            <span className="category-dot" style={{ backgroundColor: catData?.color || 'var(--color-text-muted)' }} />
+                                            {option}
                                         </button>
                                     );
                                 })}
                                 {categoryOptions.filter(c => !selectedCategories.includes(c)).length === 0 && (
-                                    <div className="p-2 text-[10px] text-[var(--color-text-muted)] italic text-center">
+                                    <div className="dropdown-menu__empty">
                                         {t('taskCreate.labels.empty')}
                                     </div>
                                 )}
@@ -337,11 +335,9 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                                 disabled={isGeneratingDesc}
                                 className="generate-btn"
                             >
-                                {isGeneratingDesc ? (
-                                    <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
-                                ) : (
-                                    <span className="material-symbols-outlined text-sm">auto_awesome</span>
-                                )}
+                                <span className="material-symbols-outlined generate-icon">
+                                    {isGeneratingDesc ? 'progress_activity' : 'auto_awesome'}
+                                </span>
                                 {t('taskCreate.description.generate')}
                             </button>
                         )}
@@ -349,59 +345,57 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
 
                     {/* Subtasks Section */}
                     <div className="subtasks-section">
-                        <div className="space-y-2">
-                            <label className="section-label">{t('taskCreate.subtasks.title')}</label>
+                        <label className="section-label">{t('taskCreate.subtasks.title')}</label>
 
-                            {/* Existing subtasks */}
-                            {subtasks.length > 0 && (
-                                <div className="subtask-list">
-                                    {subtasks.map((subtask, idx) => (
-                                        <div key={idx} className="subtask-item group">
-                                            <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">check_box_outline_blank</span>
-                                            <span className="flex-1 text-sm text-[var(--color-text-main)]">{subtask}</span>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleRemoveSubtask(idx)}
-                                                className="remove-btn"
-                                            >
-                                                <span className="material-symbols-outlined text-[16px]">close</span>
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Add new subtask */}
-                            <div className="add-subtask-row">
-                                <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">add</span>
-                                <input
-                                    type="text"
-                                    value={newSubtask}
-                                    onChange={handleSubtaskChange}
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            e.preventDefault();
-                                            handleAddSubtask();
-                                        }
-                                    }}
-                                    placeholder={t('taskCreate.subtasks.placeholder')}
-                                />
-                                {newSubtask && (
-                                    <button
-                                        type="button"
-                                        onClick={handleAddSubtask}
-                                        className="text-xs text-[var(--color-accent)] hover:underline"
-                                    >
-                                        {t('common.add')}
-                                    </button>
-                                )}
+                        {/* Existing subtasks */}
+                        {subtasks.length > 0 && (
+                            <div className="subtask-list">
+                                {subtasks.map((subtask, idx) => (
+                                    <div key={idx} className="subtask-item">
+                                        <span className="material-symbols-outlined subtask-icon">check_box_outline_blank</span>
+                                        <span className="subtask-text">{subtask}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveSubtask(idx)}
+                                            className="remove-btn"
+                                        >
+                                            <span className="material-symbols-outlined">close</span>
+                                        </button>
+                                    </div>
+                                ))}
                             </div>
+                        )}
+
+                        {/* Add new subtask */}
+                        <div className="add-subtask-row">
+                            <span className="material-symbols-outlined subtask-add-icon">add</span>
+                            <input
+                                type="text"
+                                value={newSubtask}
+                                onChange={handleSubtaskChange}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        handleAddSubtask();
+                                    }
+                                }}
+                                placeholder={t('taskCreate.subtasks.placeholder')}
+                            />
+                            {newSubtask && (
+                                <button
+                                    type="button"
+                                    onClick={handleAddSubtask}
+                                    className="add-subtask-btn"
+                                >
+                                    {t('common.add')}
+                                </button>
+                            )}
                         </div>
                     </div>
 
                     {/* Due Date & Assignees - 2 Columns */}
                     <div className="fields-grid">
-                        <div className="space-y-2">
+                        <div className="task-field">
                             <label className="section-label">{t('taskCreate.dueDate.label')}</label>
                             <DatePicker
                                 value={dueDate}
@@ -409,7 +403,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                                 placeholder={t('taskCreate.dueDate.placeholder')}
                             />
                         </div>
-                        <div className="space-y-2">
+                        <div className="task-field">
                             <label className="section-label">{t('taskCreate.assignees.label')}</label>
                             <MultiAssigneeSelector
                                 projectId={projectId}
@@ -423,7 +417,7 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
 
                     {/* Error */}
                     {error && (
-                        <div className="mx-6 mb-4 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-500 text-xs">
+                        <div className="task-create-form__error">
                             {error}
                         </div>
                     )}
@@ -431,10 +425,10 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                     {/* Footer */}
                     <div className="modal-footer">
                         <span className="keyboard-hints">
-                            <kbd>⌘</kbd>
+                            <kbd>ƒO~</kbd>
                             <span>+</span>
-                            <kbd>↵</kbd>
-                            <span className="ml-1">{t('taskCreate.footer.toCreate')}</span>
+                            <kbd>ƒÅæ</kbd>
+                            <span className="keyboard-hints__label">{t('taskCreate.footer.toCreate')}</span>
                         </span>
                         <div className="actions">
                             <Button type="button" variant="ghost" size="sm" onClick={onClose}>
@@ -446,8 +440,10 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                                 type="button"
                                 onClick={() => setPinOnCreate(!pinOnCreate)}
                                 className={`pin-toggle ${pinOnCreate ? 'active' : ''}`}
+                                title={t('taskCreate.pin.label')}
+                                aria-label={t('taskCreate.pin.label')}
                             >
-                                <span className="material-symbols-outlined text-[16px]">{pinOnCreate ? 'keep' : 'keep_off'}</span>
+                                <span className="material-symbols-outlined">{pinOnCreate ? 'keep' : 'keep_off'}</span>
                             </button>
 
                             <Button type="submit" size="sm" isLoading={isAdding} disabled={!title.trim()}>
@@ -474,3 +470,4 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
         document.body
     );
 };
+

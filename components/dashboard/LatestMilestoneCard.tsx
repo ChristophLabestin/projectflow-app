@@ -77,7 +77,7 @@ export const LatestMilestoneCard: React.FC<LatestMilestoneCardProps> = ({ projec
 
     if (loading) {
         return (
-            <Card className="milestone-card dashboard__card--padded" style={{ opacity: 0.5 }}>
+            <Card className="milestone-card dashboard-card--padded" style={{ opacity: 0.5 }}>
                 {/* Simple loading state */}
                 <div style={{ height: '20px', backgroundColor: 'var(--color-surface-hover)', marginBottom: '10px', borderRadius: '4px' }}></div>
                 <div style={{ height: '60px', backgroundColor: 'var(--color-surface-hover)', borderRadius: '8px' }}></div>
@@ -87,7 +87,7 @@ export const LatestMilestoneCard: React.FC<LatestMilestoneCardProps> = ({ projec
 
     if (allMilestones.length === 0) {
         return (
-            <Card className="milestone-card dashboard__card--padded">
+            <Card className="milestone-card dashboard-card--padded">
                 <div className="dashboard-card-header">
                     <h3 className="h5">{t('dashboard.milestones.title')}</h3>
                     <span className="material-symbols-outlined" style={{ fontSize: '20px', color: 'var(--color-text-muted)' }}>flag</span>
@@ -101,7 +101,7 @@ export const LatestMilestoneCard: React.FC<LatestMilestoneCardProps> = ({ projec
     }
 
     return (
-        <Card className="milestone-card dashboard__card--padded">
+        <Card className="milestone-card dashboard-card--padded">
             <div className="dashboard-card-header">
                 <h3 className="h5" style={{ color: 'var(--color-success)' }}>{t('dashboard.milestones.latestTitle')}</h3>
                 <span className="material-symbols-outlined" style={{ color: 'var(--color-success)', fontSize: '20px' }}>emoji_events</span>
@@ -122,7 +122,7 @@ export const LatestMilestoneCard: React.FC<LatestMilestoneCardProps> = ({ projec
             {latestAchieved ? (
                 <Link
                     to={`/project/${latestAchieved.projectId}/milestones`}
-                    className="milestone-card__latest group"
+                    className="milestone-card__latest"
                 >
                     <div className="milestone-card__latest-header">
                         <span className="material-symbols-outlined" style={{ fontSize: '14px', color: 'var(--color-success)' }}>check_circle</span>

@@ -1,0 +1,170 @@
+@use '../styles/tokens';
+
+.project-labels {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.project-labels__form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: var(--radius-xl);
+    background-color: var(--color-surface-hover);
+    box-shadow: var(--shadow-sm);
+}
+
+.project-labels__palette {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.project-labels__color {
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 999px;
+    border: 0;
+    cursor: pointer;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.project-labels__color.is-selected {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 2px var(--color-text-main);
+}
+
+.project-labels__error {
+    font-size: 0.75rem;
+    color: var(--color-error);
+}
+
+.project-labels__submit {
+    width: 100%;
+}
+
+.project-labels__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.project-labels__list-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-text-subtle);
+}
+
+.project-labels__items {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.project-labels__item {
+    padding: 0.75rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface-card);
+    transition: background-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.project-labels__item:hover {
+    background-color: var(--color-surface-hover);
+}
+
+.project-labels__item.is-editing {
+    box-shadow: var(--shadow-sm);
+}
+
+.project-labels__item-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.project-labels__swatch {
+    width: 0.9rem;
+    height: 0.9rem;
+    border-radius: 999px;
+    flex-shrink: 0;
+}
+
+.project-labels__content {
+    flex: 1;
+    min-width: 0;
+}
+
+.project-labels__name {
+    background: none;
+    border: 0;
+    padding: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+    cursor: pointer;
+    text-align: left;
+}
+
+.project-labels__edit-input {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+    outline: none;
+}
+
+.project-labels__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.project-labels__icon-btn {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: 0.5rem;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.project-labels__icon-btn:hover {
+    background-color: var(--color-surface-bg);
+    color: var(--color-text-main);
+}
+
+.project-labels__icon-btn--primary {
+    color: var(--color-primary);
+}
+
+.project-labels__icon-btn--danger {
+    color: var(--color-error);
+}
+
+.project-labels__edit-palette {
+    margin-top: 0.75rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.project-labels__status,
+.project-labels__empty {
+    padding: 1rem;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}

@@ -10,11 +10,13 @@ const trackUsage = async (uid, tokens) => {
     if (tokens <= 0)
         return;
     try {
-        const usageRef = init_1.db.collection('users').doc(uid).collection('aiUsage').doc('current');
-        // Initialize if not exists, or increment
-        await usageRef.set({
-            tokensUsed: admin.firestore.FieldValue.increment(tokens),
-            lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+        // Store aiUsage directly on the user document (top-level users collection)
+        const userRef = init_1.db.collection('users').doc(uid);
+        await userRef.set({
+            aiUsage: {
+                tokensUsed: admin.firestore.FieldValue.increment(tokens),
+                lastUpdated: admin.firestore.FieldValue.serverTimestamp()
+            }
         }, { merge: true });
     }
     catch (error) {

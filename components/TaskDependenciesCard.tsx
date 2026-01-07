@@ -1,5 +1,6 @@
 import React from 'react';
 import { TaskDependencySelector } from './TaskDependencySelector';
+import { useLanguage } from '../context/LanguageContext';
 
 interface TaskDependenciesCardProps {
     projectId: string;
@@ -14,25 +15,16 @@ export const TaskDependenciesCard: React.FC<TaskDependenciesCardProps> = ({
     dependencies,
     onUpdate
 }) => {
+    const { t } = useLanguage();
+
     return (
-        <div className="app-card p-4">
-            <div className="flex items-center justify-between mb-3">
-                <span className="text-[10px] font-bold text-subtle uppercase tracking-wider">Dependencies</span>
-                <span className="material-symbols-outlined text-[18px] text-muted">link</span>
+        <div className="app-card task-dependencies-card">
+            <div className="task-dependencies-card__header">
+                <span className="task-dependencies-card__title">{t('taskDetail.dependencies.title')}</span>
+                <span className="material-symbols-outlined task-dependencies-card__icon">link</span>
             </div>
 
-            {dependencies.length > 0 && (
-                <div className="mb-3">
-                    <div className="flex flex-wrap gap-2">
-                        {/* We rely on the selector to show selected items, but here we can just show a count or let the selector handle it. 
-                            The previous selector implementation shows selected items. 
-                            Let's keep it simple and just render the selector which handles list + add.
-                         */}
-                    </div>
-                </div>
-            )}
-
-            <div className="flex justify-start w-full">
+            <div className="task-dependencies-card__body">
                 <TaskDependencySelector
                     projectId={projectId}
                     currentTaskId={currentTaskId}

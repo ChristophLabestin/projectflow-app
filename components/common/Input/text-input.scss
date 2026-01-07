@@ -40,9 +40,9 @@
     font-family: inherit;
     color: var(--color-text-main);
     background-color: var(--color-surface-hover); // Filled background
-    border: 1px solid transparent; // Transparent border to prevent layout shift on focus
     border-radius: var(--radius-md);
-    transition: all var(--transition-fast);
+    transition: all var(--transition-normal);
+    border: none !important;
 
     &__right-element {
         position: absolute;
@@ -73,14 +73,34 @@
     // Hover on self OR parent group
     &:hover:not(:disabled),
     .text-input-group:hover &:not(:disabled) {
-        background-color: var(--color-primary-fade);
+        background-color: var(--color-surface-hover-light);
+        transform: scale(1.01);
+    }
+
+    // Light Mode Variant (Distinct "Filled" look)
+    @media (prefers-color-scheme: light) {
+        :root:not(.dark) & {
+            background-color: #f4f4f5; // Explicit light grey for contrast
+
+            &:hover:not(:disabled),
+            .text-input-group:hover &:not(:disabled) {
+                background-color: #e4e4e7; // Darker interaction state
+            }
+
+            &:focus {
+                background-color: #f4f4f5;
+                box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.05); // Subtle focus ring in light mode
+            }
+        }
     }
 
     &:focus {
         outline: none;
-        background-color: var(--color-surface-card);
-        border-color: var(--color-primary);
+        background-color: var(--color-surface-hover);
+        border: none !important;
         box-shadow: 0 0 0 2px var(--color-primary-fade);
+        background-color: var(--color-surface-hover-light);
+        transform: scale(1.01);
     }
 
     &--error {

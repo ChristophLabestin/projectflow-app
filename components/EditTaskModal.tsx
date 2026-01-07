@@ -54,7 +54,7 @@ export const EditTaskModal: React.FC<EditTaskModalProps> = ({ task, isOpen, onCl
     if (!isOpen) return null;
 
     return createPortal(
-        <div className="modal-overlay center-aligned" onClick={onClose}>
+        <div className="modal-overlay task-modal center-aligned" onClick={onClose}>
             <div
                 className="modal-content max-w-2xl"
                 onClick={(e) => e.stopPropagation()}

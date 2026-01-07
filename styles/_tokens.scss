@@ -11,9 +11,14 @@
   --color-surface-bg: #fafafa;
   --color-surface-card: #ffffff;
   --color-surface-hover: #f5f5f5;
+  --color-surface-hover-light: #f5f5f5;
   --color-surface-border: #e5e7eb;
   --color-surface-border-hover: #d1d5db;
   --color-surface-paper: var(--color-surface-card);
+  --color-surface-bg-rgb: 250, 250, 250;
+  --color-surface-card-rgb: 255, 255, 255;
+  --color-surface-hover-rgb: 245, 245, 245;
+  --color-surface-paper-rgb: var(--color-surface-card-rgb);
 
   /* Text */
   --color-text-main: #171717;
@@ -47,6 +52,9 @@
   --color-success: #10b981;
   --color-warning: #f59e0b;
   --color-error: #ef4444;
+  --color-success-rgb: 16, 185, 129;
+  --color-warning-rgb: 245, 158, 11;
+  --color-error-rgb: 239, 68, 68;
 
   /* Pre-beta blue palette */
   --color-blue-100: #dbeafe;
@@ -95,8 +103,13 @@ html.dark {
   --color-surface-bg: #0b0d11;
   --color-surface-card: #151920;
   --color-surface-hover: #1e242e;
+  --color-surface-hover-light: #212732;
   --color-surface-border: #2e3440;
   --color-surface-border-hover: #3c4453;
+  --color-surface-bg-rgb: 11, 13, 17;
+  --color-surface-card-rgb: 21, 25, 32;
+  --color-surface-hover-rgb: 30, 36, 46;
+  --color-surface-paper-rgb: var(--color-surface-card-rgb);
 
   --color-text-main: #e5e7eb;
   --color-text-muted: #9ca3af;

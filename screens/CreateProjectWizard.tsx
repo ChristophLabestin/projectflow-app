@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { generateProjectDescription, generateProjectBlueprint } from '../services/geminiService';
 import { createProject, getWorkspaceMembers, createMilestone, addTask, getUserProfile, linkWithGithub, updateUserData, getWorkspaceGroups } from '../services/dataService';
@@ -7,15 +7,21 @@ import { useWorkspacePermissions } from '../hooks/useWorkspacePermissions';
 import { useArrowReplacement } from '../hooks/useArrowReplacement';
 import { useLanguage } from '../context/LanguageContext';
 import { format } from 'date-fns';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Textarea } from '../components/ui/Textarea';
+import { Button } from '../components/common/Button/Button';
+import { TextInput } from '../components/common/Input/TextInput';
+import { TextArea } from '../components/common/Input/TextArea';
+import { DatePicker } from '../components/common/DateTime/DatePicker';
+import { Select } from '../components/common/Select/Select';
+import { PrioritySelect, type Priority } from '../components/common/PrioritySelect/PrioritySelect';
+import { Card } from '../components/common/Card/Card';
 import { ImageCropper } from '../components/ui/ImageCropper';
-import { DatePicker } from '../components/ui/DatePicker';
 import { ProjectModule, ProjectBlueprint, WorkspaceGroup } from '../types';
 import { useToast } from '../context/UIContext';
-import { auth, storage } from '../services/firebase'; // Added storage for manual uploads if needed (though MediaLibrary handles it)
+import { auth } from '../services/firebase';
 import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
+import { ModuleSelection } from '../components/common/ModuleSelection/ModuleSelection';
+import MemberSelection from '../components/common/MemberSelection/MemberSelection';
+
 import { useModuleAccess } from '../hooks/useModuleAccess';
 
 const STEPS = [
@@ -27,17 +33,25 @@ const STEPS = [
     { id: 5, labelKey: 'createProjectWizard.steps.assets' },
 ];
 
-const MODULE_OPTIONS = [
+type ModuleOption = {
+    id: ProjectModule | 'groups';
+    labelKey: string;
+    descKey: string;
+    icon: string;
+};
+
+const MODULE_OPTIONS: ModuleOption[] = [
     { id: 'tasks', labelKey: 'createProjectWizard.modules.tasks.label', descKey: 'createProjectWizard.modules.tasks.desc', icon: 'check_circle' },
     { id: 'sprints', labelKey: 'createProjectWizard.modules.sprints.label', descKey: 'createProjectWizard.modules.sprints.desc', icon: 'directions_run' },
     { id: 'issues', labelKey: 'createProjectWizard.modules.issues.label', descKey: 'createProjectWizard.modules.issues.desc', icon: 'bug_report' },
     { id: 'ideas', labelKey: 'createProjectWizard.modules.flows.label', descKey: 'createProjectWizard.modules.flows.desc', icon: 'lightbulb' },
     { id: 'milestones', labelKey: 'createProjectWizard.modules.milestones.label', descKey: 'createProjectWizard.modules.milestones.desc', icon: 'flag' },
+    { id: 'activity', labelKey: 'createProjectWizard.modules.activity.label', descKey: 'createProjectWizard.modules.activity.desc', icon: 'history' },
+    { id: 'groups', labelKey: 'createProjectWizard.modules.groups.label', descKey: 'createProjectWizard.modules.groups.desc', icon: 'groups' },
     { id: 'social', labelKey: 'createProjectWizard.modules.social.label', descKey: 'createProjectWizard.modules.social.desc', icon: 'campaign' },
     { id: 'marketing', labelKey: 'createProjectWizard.modules.marketing.label', descKey: 'createProjectWizard.modules.marketing.desc', icon: 'ads_click' },
     { id: 'accounting', labelKey: 'createProjectWizard.modules.accounting.label', descKey: 'createProjectWizard.modules.accounting.desc', icon: 'receipt_long' },
-    { id: 'activity', labelKey: 'createProjectWizard.modules.activity.label', descKey: 'createProjectWizard.modules.activity.desc', icon: 'history' },
-] as const;
+];
 
 export const CreateProjectWizard = () => {
     const navigate = useNavigate();
@@ -48,8 +62,10 @@ export const CreateProjectWizard = () => {
     const { hasAccess: isAccountingAllowed } = useModuleAccess('accounting');
     const { showToast } = useToast();
     const { dateFormat, dateLocale, t } = useLanguage();
+    const descriptionFieldId = useId();
 
     const [currentStep, setCurrentStep] = useState(0);
+    const [furthestVisitedStep, setFurthestVisitedStep] = useState(0); // Track max progress
     const [creationMode, setCreationMode] = useState<'scratch' | 'ai' | null>(null);
 
     // Form Data
@@ -62,9 +78,9 @@ export const CreateProjectWizard = () => {
     const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
     const [visibilityGroupIds, setVisibilityGroupIds] = useState<string[]>([]);
     const [isPrivate, setIsPrivate] = useState(false);
-    const [startDate, setStartDate] = useState('');
-    const [dueDate, setDueDate] = useState('');
-    const [priority, setPriority] = useState('Medium');
+    const [startDate, setStartDate] = useState<Date | null>(null);
+    const [dueDate, setDueDate] = useState<Date | null>(null);
+    const [priority, setPriority] = useState<Priority>('medium');
     const [status, setStatus] = useState('Planning');
     const [coverFile, setCoverFile] = useState<File | null>(null);
     const [squareIconFile, setSquareIconFile] = useState<File | null>(null);
@@ -135,7 +151,14 @@ export const CreateProjectWizard = () => {
         }
     }, [projectType, creationMode]);
 
-    const handleNext = () => setCurrentStep(c => Math.min(c + 1, 5));
+    const handleNext = () => {
+        setCurrentStep(c => {
+            const next = Math.min(c + 1, 5);
+            setFurthestVisitedStep(max => Math.max(max, next));
+            return next;
+        });
+    };
+
     const handleBack = () => {
         if (currentStep === 1) {
             setCurrentStep(0);
@@ -146,9 +169,17 @@ export const CreateProjectWizard = () => {
         }
     };
 
+    const handleStepClick = (stepIndex: number) => {
+        // Only allow navigation to visited steps or the very next step
+        if (stepIndex <= furthestVisitedStep) {
+            setCurrentStep(stepIndex);
+        }
+    };
+
     const handleMethodSelect = (mode: 'scratch' | 'ai') => {
         setCreationMode(mode);
         setCurrentStep(1);
+        setFurthestVisitedStep(max => Math.max(max, 1));
     };
 
     const handleExecuteAI = async () => {
@@ -214,12 +245,14 @@ export const CreateProjectWizard = () => {
         if (!name) return;
         setIsSubmitting(true);
         try {
+            const formattedStartDate = startDate ? format(startDate, 'yyyy-MM-dd') : '';
+            const formattedDueDate = dueDate ? format(dueDate, 'yyyy-MM-dd') : '';
             const projectId = await createProject({
                 title: name,
                 description,
-                startDate,
-                dueDate,
-                priority,
+                startDate: formattedStartDate,
+                dueDate: formattedDueDate,
+                priority: priorityValue,
                 status: status as any,
                 isPrivate,
                 modules,
@@ -246,7 +279,22 @@ export const CreateProjectWizard = () => {
         }
     };
 
-    if (!can('canCreateProjects')) return <div className="p-10 text-center text-subtle">{t('createProjectWizard.errors.accessDenied')}</div>;
+    const handleModuleToggle = (moduleId: string) => {
+        // Map 'flows' from ModuleSelection to 'ideas' used in Wizard/Backend
+        const targetId = moduleId === 'flows' ? 'ideas' : moduleId as ProjectModule;
+
+        setModules(prev => {
+            if (prev.includes(targetId)) {
+                return prev.filter(m => m !== targetId);
+            } else {
+                return [...prev, targetId];
+            }
+        });
+    };
+
+    if (!can('canCreateProjects')) {
+        return <div className="create-project__blocked">{t('createProjectWizard.errors.accessDenied')}</div>;
+    }
 
     const getTypeIcon = (type: string) => {
         switch (type) {
@@ -262,24 +310,55 @@ export const CreateProjectWizard = () => {
         creative: t('createProjectWizard.type.creative'),
     };
 
-    const priorityLabels: Record<string, string> = {
-        Low: t('tasks.priority.low'),
-        Medium: t('tasks.priority.medium'),
-        High: t('tasks.priority.high'),
-        Urgent: t('tasks.priority.urgent'),
+    const priorityLabels: Record<Priority, string> = {
+        low: t('tasks.priority.low'),
+        medium: t('tasks.priority.medium'),
+        high: t('tasks.priority.high'),
+        urgent: t('tasks.priority.urgent'),
     };
+
+    const priorityValueMap: Record<Priority, 'Low' | 'Medium' | 'High' | 'Urgent'> = {
+        low: 'Low',
+        medium: 'Medium',
+        high: 'High',
+        urgent: 'Urgent',
+    };
+
+    const priorityValue = priorityValueMap[priority];
 
     const statusLabels: Record<string, string> = {
         Planning: t('dashboard.projectStatus.planning'),
         Active: t('dashboard.projectStatus.active'),
         'On Hold': t('dashboard.projectStatus.onHold'),
     };
+    const statusOptions = Object.entries(statusLabels).map(([value, label]) => ({
+        value,
+        label
+    }));
+    const statusLabel = statusLabels[status] || status;
+
+    const githubOptions = githubRepos.map((repo) => ({
+        label: repo.full_name,
+        value: repo.full_name,
+    }));
+    const githubPlaceholder = loadingGithub
+        ? t('createProjectWizard.github.loadingRepos')
+        : t('createProjectWizard.github.selectRepo');
+    const githubValue = selectedGithubRepo || null;
+    const githubSelectDisabled = loadingGithub || githubOptions.length === 0;
+
+    const coverPreview = coverUrl || (coverFile ? URL.createObjectURL(coverFile) : '');
+    const iconPreview = squareIconUrl || (squareIconFile ? URL.createObjectURL(squareIconFile) : '');
+    const teamEmptyLabel = t('createProjectWizard.preview.teamEmpty');
+    const deadlineValue = dueDate
+        ? format(dueDate, dateFormat, { locale: dateLocale })
+        : t('createProjectWizard.preview.deadlineEmpty');
 
     const totalSteps = STEPS.length - 1;
     const currentStepLabel = t(STEPS[currentStep]?.labelKey);
 
     return (
-        <div className="flex-1 flex items-center justify-center p-8 lg:p-12 bg-gradient-to-br from-[var(--color-surface-bg)] via-[var(--color-surface-bg)] to-zinc-100/30 dark:to-zinc-800/10 overflow-auto">
+        <div className="create-project">
             <ImageCropper
                 isOpen={!!cropImageSrc}
                 imageSrc={cropImageSrc}
@@ -315,80 +394,95 @@ export const CreateProjectWizard = () => {
                 }}
             />
 
-            {/* Main Split Card Container - Fixed Height */}
-            <div className="w-full max-w-6xl h-[780px] bg-card rounded-3xl shadow-2xl border border-surface flex overflow-hidden animate-fade-in">
+            <div className="create-project__shell animate-fade-in">
 
                 {/* LEFT: Form Panel */}
-                <div className="w-[55%] flex flex-col border-r border-surface">
+                <section className="create-project__form">
 
                     {/* Header */}
-                    <header className="px-8 py-5 border-b border-surface flex items-center justify-between shrink-0">
-                        <div className="flex items-center gap-4">
+                    <header className="create-project__header">
+                        <div className="create-project__header-title">
                             <div>
-                                <h1 className="text-lg font-bold text-main">{t('createProjectWizard.header.title')}</h1>
-                                {currentStep > 0 && (
-                                    <p className="text-[11px] text-subtle font-medium">
-                                        {t('createProjectWizard.header.step')
-                                            .replace('{step}', String(currentStep))
-                                            .replace('{total}', String(totalSteps))
-                                            .replace('{label}', currentStepLabel)}
-                                    </p>
-                                )}
+                                <h1>{t('createProjectWizard.header.title')}</h1>
+
                             </div>
                         </div>
 
                         {/* Step Pills */}
-                        <div className="flex items-center gap-1">
+                        {/* Stepper Navigation */}
+                        {/* Stepper Navigation (Pills) */}
+                        <div className="create-project__stepper">
+                            {STEPS.map((step, index) => {
+                                const isActive = currentStep === index;
+                                const isCompleted = currentStep > index;
+                                const isClickable = index <= furthestVisitedStep;
+
+                                return (
+                                    <div
+                                        key={step.id}
+                                        className={`create-project__step-item ${isActive ? 'is-active' : ''} ${isCompleted ? 'is-completed' : ''} ${isClickable ? 'is-clickable' : ''}`}
+                                        onClick={() => handleStepClick(index)}
+                                        role="button"
+                                        tabIndex={isClickable ? 0 : -1}
+                                        title={t(step.labelKey)} // Tooltip for context
+                                    >
+                                        <div className="create-project__step-indicator" />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <div className="create-project__progress" style={{ display: 'none' }}>
                             {STEPS.slice(1).map((step) => (
                                 <div
                                     key={step.id}
-                                    className={`h-2 rounded-full transition-all duration-500 ${currentStep >= step.id
-                                        ? 'w-6 bg-gradient-to-r from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 shadow-sm shadow-zinc-500/15'
-                                        : 'w-2 bg-surface-border'
-                                        }`}
+                                    className={`create-project__progress-pill ${currentStep >= step.id ? 'is-active' : ''}`}
                                 />
                             ))}
                         </div>
                     </header>
 
                     {/* Content Area - Fixed Height with Overflow */}
-                    <div className="flex-1 p-8 overflow-y-auto overflow-x-visible custom-scrollbar">
+                    <div className="create-project__content">
 
                         {/* Step 0: Method */}
                         {currentStep === 0 && (
-                            <div className="space-y-8 animate-fade-in h-full flex flex-col">
-                                <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold text-main">{t('createProjectWizard.method.title')}</h2>
-                                    <p className="text-sm text-subtle">{t('createProjectWizard.method.subtitle')}</p>
+                            <div className="create-project__step create-project__step--method animate-fade-in">
+                                <div className="create-project__step-header">
+                                    <h2>{t('createProjectWizard.method.title')}</h2>
+                                    <p>{t('createProjectWizard.method.subtitle')}</p>
                                 </div>
 
-                                <div className="grid gap-5 flex-1 content-center">
+                                <div className="create-project__method-grid">
                                     <button
                                         onClick={() => handleMethodSelect('scratch')}
-                                        className="group py-12 px-8 rounded-2xl bg-black/[0.03] dark:bg-white/[0.03] transition-all flex items-center gap-6 text-left hover:scale-[1.01] hover:shadow-lg hover:shadow-zinc-500/10"
+                                        type="button"
+                                        className="create-project__method-card"
+                                        data-mode="scratch"
                                     >
-                                        <div className="size-16 rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 text-white dark:text-zinc-800 flex items-center justify-center shadow-lg shadow-zinc-500/15">
-                                            <span className="material-symbols-outlined text-[28px]">edit_note</span>
+                                        <div className="create-project__method-icon">
+                                            <span className="material-symbols-outlined">edit_note</span>
                                         </div>
-                                        <div className="flex-1">
-                                            <div className="text-lg font-bold text-main">{t('createProjectWizard.method.scratch.title')}</div>
-                                            <div className="text-sm text-subtle mt-1">{t('createProjectWizard.method.scratch.description')}</div>
+                                        <div className="create-project__method-text">
+                                            <div className="create-project__method-title">{t('createProjectWizard.method.scratch.title')}</div>
+                                            <div className="create-project__method-description">{t('createProjectWizard.method.scratch.description')}</div>
                                         </div>
-                                        <span className="material-symbols-outlined text-muted text-[28px] group-hover:translate-x-1 transition-transform">chevron_right</span>
+                                        <span className="material-symbols-outlined create-project__method-chevron">chevron_right</span>
                                     </button>
 
                                     <button
                                         onClick={() => handleMethodSelect('ai')}
-                                        className="group py-12 px-8 rounded-2xl bg-black/[0.03] dark:bg-white/[0.03] transition-all flex items-center gap-6 text-left hover:scale-[1.01] hover:shadow-lg hover:shadow-zinc-500/10"
+                                        type="button"
+                                        className="create-project__method-card"
+                                        data-mode="ai"
                                     >
-                                        <div className="size-16 rounded-xl bg-gradient-to-br from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 text-white dark:text-zinc-800 flex items-center justify-center shadow-lg shadow-zinc-500/15">
-                                            <span className="material-symbols-outlined text-[28px]">auto_awesome</span>
+                                        <div className="create-project__method-icon">
+                                            <span className="material-symbols-outlined">auto_awesome</span>
                                         </div>
-                                        <div className="flex-1">
-                                            <div className="text-lg font-bold text-main">{t('createProjectWizard.method.ai.title')}</div>
-                                            <div className="text-sm text-subtle mt-1">{t('createProjectWizard.method.ai.description')}</div>
+                                        <div className="create-project__method-text">
+                                            <div className="create-project__method-title">{t('createProjectWizard.method.ai.title')}</div>
+                                            <div className="create-project__method-description">{t('createProjectWizard.method.ai.description')}</div>
                                         </div>
-                                        <span className="material-symbols-outlined text-muted text-[28px] group-hover:translate-x-1 transition-transform">chevron_right</span>
+                                        <span className="material-symbols-outlined create-project__method-chevron">chevron_right</span>
                                     </button>
                                 </div>
                             </div>
@@ -396,44 +490,41 @@ export const CreateProjectWizard = () => {
 
                         {/* Step 1: Details (AI) */}
                         {currentStep === 1 && creationMode === 'ai' && (
-                            <div className="space-y-6 animate-fade-in">
-                                <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold text-main">{t('createProjectWizard.ai.title')}</h2>
-                                    <p className="text-sm text-subtle">{t('createProjectWizard.ai.subtitle')}</p>
+                            <div className="create-project__step animate-fade-in">
+                                <div className="create-project__step-header">
+                                    <h2>{t('createProjectWizard.ai.title')}</h2>
+                                    <p>{t('createProjectWizard.ai.subtitle')}</p>
                                 </div>
 
-                                <textarea
+                                <TextArea
                                     value={aiPrompt}
                                     onChange={handleAiPromptChange}
                                     placeholder={t('createProjectWizard.ai.placeholder')}
-                                    className="w-full min-h-[200px] p-4 bg-surface border border-surface rounded-xl text-sm text-main placeholder:text-muted focus:ring-2 focus:ring-zinc-500/20 focus:border-zinc-500 outline-none resize-none transition-all"
+                                    className="create-project__ai-input"
                                 />
 
                                 <Button
                                     onClick={handleExecuteAI}
-                                    disabled={!aiPrompt.trim() || isGenerating}
-                                    className="w-full h-12 bg-gradient-to-r from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 hover:from-indigo-600 hover:to-violet-600"
-                                    variant="primary"
+                                    disabled={!aiPrompt.trim()}
+                                    isLoading={isGenerating}
+                                    icon={<span className="material-symbols-outlined">magic_button</span>}
+                                    className="create-project__ai-action"
                                 >
-                                    {isGenerating ? (
-                                        <><span className="material-symbols-outlined animate-spin text-[18px] mr-2">progress_activity</span>{t('createProjectWizard.ai.generating')}</>
-                                    ) : (
-                                        <><span className="material-symbols-outlined text-[18px] mr-2">magic_button</span>{t('createProjectWizard.ai.action')}</>
-                                    )}
+                                    {isGenerating ? t('createProjectWizard.ai.generating') : t('createProjectWizard.ai.action')}
                                 </Button>
                             </div>
                         )}
 
                         {/* Step 1: Details (Scratch) */}
                         {currentStep === 1 && creationMode === 'scratch' && (
-                            <div className="space-y-5 animate-fade-in">
-                                <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold text-main">{t('createProjectWizard.details.title')}</h2>
-                                    <p className="text-sm text-subtle">{t('createProjectWizard.details.subtitle')}</p>
+                            <div className="create-project__step animate-fade-in">
+                                <div className="create-project__step-header">
+                                    <h2>{t('createProjectWizard.details.title')}</h2>
+                                    <p>{t('createProjectWizard.details.subtitle')}</p>
                                 </div>
 
-                                <div className="space-y-4">
-                                    <Input
+                                <div className="create-project__form-grid">
+                                    <TextInput
                                         label={t('createProjectWizard.details.name.label')}
                                         value={name}
                                         onChange={e => setName(e.target.value)}
@@ -441,36 +532,44 @@ export const CreateProjectWizard = () => {
                                         autoFocus
                                     />
 
-                                    <div className="space-y-2">
-                                        <div className="flex justify-between items-center">
-                                            <label className="text-xs font-semibold text-muted uppercase tracking-wider">{t('createProjectWizard.details.description.label')}</label>
-                                            <button onClick={handleGenerateDesc} disabled={!name || isGenerating} className="text-[10px] font-semibold text-main hover:text-main disabled:opacity-30 flex items-center gap-1">
-                                                <span className={`material-symbols-outlined text-sm ${isGenerating ? 'animate-spin' : ''}`}>auto_awesome</span>
+                                    <div className="create-project__field">
+                                        <div className="create-project__field-header">
+                                            <label htmlFor={descriptionFieldId}>
+                                                {t('createProjectWizard.details.description.label')}
+                                            </label>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={handleGenerateDesc}
+                                                disabled={!name || isGenerating}
+                                                icon={<span className={`material-symbols-outlined ${isGenerating ? 'create-project__spin' : ''}`}>auto_awesome</span>}
+                                                className="create-project__ai-helper"
+                                            >
                                                 {t('createProjectWizard.details.description.aiCompose')}
-                                            </button>
+                                            </Button>
                                         </div>
-                                        <Textarea
+                                        <TextArea
+                                            id={descriptionFieldId}
                                             value={description}
                                             onChange={e => setDescription(e.target.value)}
                                             placeholder={t('createProjectWizard.details.description.placeholder')}
-                                            className="min-h-[80px]"
+                                            className="create-project__description-input"
                                         />
                                     </div>
 
-                                    <div className="space-y-3">
-                                        <label className="text-xs font-semibold text-muted uppercase tracking-wider">{t('createProjectWizard.details.type.label')}</label>
-                                        <div className="grid grid-cols-3 gap-3">
-                                            {(['standard', 'software', 'creative'] as const).map(t => (
+                                    <div className="create-project__field">
+                                        <label>{t('createProjectWizard.details.type.label')}</label>
+                                        <div className="create-project__type-grid">
+                                            {(['standard', 'software', 'creative'] as const).map(type => (
                                                 <button
-                                                    key={t}
-                                                    onClick={() => setProjectType(t)}
-                                                    className={`p-4 rounded-xl flex flex-col items-center gap-2 transition-all hover:scale-[1.02] hover:shadow-md ${projectType === t
-                                                        ? 'bg-gradient-to-br from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 text-white dark:text-zinc-800 shadow-lg shadow-zinc-500/10'
-                                                        : 'bg-black/[0.03] dark:bg-white/[0.03] text-subtle'
-                                                        }`}
+                                                    key={type}
+                                                    type="button"
+                                                    onClick={() => setProjectType(type)}
+                                                    className={`create-project__type-card ${projectType === type ? 'is-active' : ''}`}
                                                 >
-                                                    <span className="material-symbols-outlined text-[24px]">{getTypeIcon(t)}</span>
-                                                    <span className="text-[10px] font-bold uppercase">{typeLabels[t]}</span>
+                                                    <span className="material-symbols-outlined">{getTypeIcon(type)}</span>
+                                                    <span>{typeLabels[type]}</span>
                                                 </button>
                                             ))}
                                         </div>
@@ -481,120 +580,65 @@ export const CreateProjectWizard = () => {
 
                         {/* Step 2: Modules - GRID LAYOUT */}
                         {currentStep === 2 && (
-                            <div className="space-y-5 animate-fade-in">
-                                <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold text-main">{t('createProjectWizard.modules.title')}</h2>
-                                    <p className="text-sm text-subtle">{t('createProjectWizard.modules.subtitle')}</p>
+                            <div className="create-project__step animate-fade-in">
+                                <div className="create-project__step-header">
+                                    <h2>{t('createProjectWizard.modules.title')}</h2>
+                                    <p>{t('createProjectWizard.modules.subtitle')}</p>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
-                                    {[
-                                        { id: 'tasks', labelKey: 'createProjectWizard.modules.tasks.label', descKey: 'createProjectWizard.modules.tasks.desc', icon: 'check_circle' },
-                                        { id: 'sprints', labelKey: 'createProjectWizard.modules.sprints.label', descKey: 'createProjectWizard.modules.sprints.desc', icon: 'directions_run' },
-                                        { id: 'issues', labelKey: 'createProjectWizard.modules.issues.label', descKey: 'createProjectWizard.modules.issues.desc', icon: 'bug_report' },
-                                        { id: 'ideas', labelKey: 'createProjectWizard.modules.flows.label', descKey: 'createProjectWizard.modules.flows.desc', icon: 'lightbulb' },
-                                        { id: 'milestones', labelKey: 'createProjectWizard.modules.milestones.label', descKey: 'createProjectWizard.modules.milestones.desc', icon: 'flag' },
-                                        { id: 'activity', labelKey: 'createProjectWizard.modules.activity.label', descKey: 'createProjectWizard.modules.activity.desc', icon: 'history' },
-                                        { id: 'groups', labelKey: 'createProjectWizard.modules.groups.label', descKey: 'createProjectWizard.modules.groups.desc', icon: 'groups' },
-                                        { id: 'social', labelKey: 'createProjectWizard.modules.social.label', descKey: 'createProjectWizard.modules.social.desc', icon: 'campaign' },
-                                        { id: 'marketing', labelKey: 'createProjectWizard.modules.marketing.label', descKey: 'createProjectWizard.modules.marketing.desc', icon: 'ads_click' },
-                                        { id: 'accounting', labelKey: 'createProjectWizard.modules.accounting.label', descKey: 'createProjectWizard.modules.accounting.desc', icon: 'receipt_long' },
-                                    ].map((m) => {
-                                        // Restricted Check
-                                        if (m.id === 'social' && !isSocialAllowed) return null;
-                                        if (m.id === 'marketing' && !isMarketingAllowed) return null;
-                                        if (m.id === 'accounting' && !isAccountingAllowed) return null;
-
-                                        const isActive = modules.includes(m.id as any);
-                                        return (
-                                            <button
-                                                key={m.id}
-                                                onClick={() => setModules(curr => isActive ? curr.filter(x => x !== m.id) : [...curr, m.id as any])}
-                                                className={`p-4 rounded-xl flex items-center gap-3 transition-all hover:scale-[1.02] hover:shadow-md ${isActive
-                                                    ? 'bg-gradient-to-r from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 shadow-lg shadow-zinc-500/10'
-                                                    : 'bg-black/[0.03] dark:bg-white/[0.03]'
-                                                    }`}
-                                            >
-                                                <div className={`size-9 rounded-lg flex items-center justify-center transition-all shrink-0 ${isActive ? 'bg-white/20 dark:bg-black/10 text-white dark:text-zinc-800' : 'bg-surface text-muted'}`}>
-                                                    <span className="material-symbols-outlined text-[18px]">{m.icon}</span>
-                                                </div>
-                                                <div className="flex-1 text-left min-w-0">
-                                                    <div className={`text-sm font-semibold truncate ${isActive ? 'text-white dark:text-zinc-800' : 'text-main'}`}>{t(m.labelKey)}</div>
-                                                    <div className={`text-[10px] truncate ${isActive ? 'text-white/70 dark:text-zinc-600' : 'text-subtle'}`}>{t(m.descKey)}</div>
-                                                </div>
-                                                {isActive && <span className="material-symbols-outlined text-white dark:text-zinc-800 text-[18px] shrink-0">check_circle</span>}
-                                            </button>
-                                        );
-                                    })}
+                                <div className="create-project__selection-container">
+                                    <ModuleSelection
+                                        selectedModules={modules.map(m => m === 'ideas' ? 'flows' : m)}
+                                        onToggle={handleModuleToggle}
+                                    />
                                 </div>
                             </div>
                         )}
 
                         {/* Step 3: Team */}
                         {currentStep === 3 && (
-                            <div className="space-y-5 animate-fade-in">
-                                <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold text-main">{t('createProjectWizard.team.title')}</h2>
-                                    <p className="text-sm text-subtle">{t('createProjectWizard.team.subtitle')}</p>
+                            <div className="create-project__step animate-fade-in">
+                                <div className="create-project__step-header">
+                                    <h2>{t('createProjectWizard.team.title')}</h2>
+                                    <p>{t('createProjectWizard.team.subtitle')}</p>
                                 </div>
 
                                 {availableMembers.length === 0 ? (
-                                    <div className="text-center py-12 text-subtle">
-                                        <span className="material-symbols-outlined text-5xl opacity-30">group</span>
-                                        <p className="mt-3 text-sm">{t('createProjectWizard.team.empty')}</p>
+                                    <div className="create-project__empty">
+                                        <span className="material-symbols-outlined">group</span>
+                                        <p>{t('createProjectWizard.team.empty')}</p>
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-2 gap-3">
-                                        {availableMembers.map(user => {
-                                            const isSelected = selectedMemberIds.includes(user.uid);
-                                            return (
-                                                <button
-                                                    key={user.uid}
-                                                    onClick={() => setSelectedMemberIds(curr => isSelected ? curr.filter(id => id !== user.uid) : [...curr, user.uid])}
-                                                    className={`p-4 rounded-xl flex items-center gap-3 transition-all hover:scale-[1.02] hover:shadow-md ${isSelected
-                                                        ? 'bg-gradient-to-r from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 shadow-lg shadow-zinc-500/10'
-                                                        : 'bg-black/[0.03] dark:bg-white/[0.03]'
-                                                        }`}
-                                                >
-                                                    <div className={`size-10 rounded-full overflow-hidden flex items-center justify-center shrink-0 ${isSelected ? 'bg-white/20 dark:bg-black/10' : 'bg-surface'}`}>
-                                                        {user.photoURL ? <img src={user.photoURL} className="size-full object-cover" /> : <span className={`material-symbols-outlined text-base ${isSelected ? 'text-white dark:text-zinc-800' : 'text-subtle'}`}>person</span>}
-                                                    </div>
-                                                    <div className="flex-1 text-left min-w-0">
-                                                        <div className={`text-sm font-semibold truncate ${isSelected ? 'text-white dark:text-zinc-800' : 'text-main'}`}>{user.displayName}</div>
-                                                        <div className={`text-[10px] truncate ${isSelected ? 'text-white/70 dark:text-zinc-600' : 'text-subtle'}`}>{user.email}</div>
-                                                    </div>
-                                                    {isSelected && <span className="material-symbols-outlined text-white dark:text-zinc-800 text-[18px] shrink-0">check_circle</span>}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
+                                    <MemberSelection
+                                        members={availableMembers}
+                                        selectedIds={selectedMemberIds}
+                                        onToggle={(id) => setSelectedMemberIds(curr => curr.includes(id) ? curr.filter(x => x !== id) : [...curr, id])}
+                                    />
                                 )}
 
-                                {/* Project Visibility Section */}
-                                <div className="pt-6 mt-2 border-t border-surface">
-                                    <div className="space-y-2 mb-4">
-                                        <h3 className="text-lg font-bold text-main">{t('createProjectWizard.visibility.title')}</h3>
-                                        <p className="text-sm text-subtle">{t('createProjectWizard.visibility.subtitle')}</p>
+                                <div className="create-project__visibility">
+                                    <div className="create-project__visibility-header">
+                                        <h3>{t('createProjectWizard.visibility.title')}</h3>
+                                        <p>{t('createProjectWizard.visibility.subtitle')}</p>
                                     </div>
 
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <div className="create-project__visibility-grid">
                                         <button
+                                            type="button"
                                             onClick={() => { setVisibilityGroupIds([]); setIsPrivate(false); }}
-                                            className={`p-4 rounded-xl flex flex-col items-start gap-2 transition-all hover:scale-[1.02] ${!isPrivate && visibilityGroupIds.length === 0
-                                                ? 'bg-gradient-to-br from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 text-white dark:text-zinc-800 shadow-lg'
-                                                : 'bg-black/[0.03] dark:bg-white/[0.03] text-main'
-                                                }`}
+                                            className={`create-project__visibility-card ${!isPrivate && visibilityGroupIds.length === 0 ? 'is-active' : ''}`}
                                         >
-                                            <div className="flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-[20px]">public</span>
-                                                <span className="text-sm font-bold">{t('createProjectWizard.visibility.everyone')}</span>
+                                            <div className="create-project__visibility-title">
+                                                <span className="material-symbols-outlined">public</span>
+                                                {t('createProjectWizard.visibility.everyone')}
                                             </div>
-                                            <span className={`text-[10px] text-left ${!isPrivate && visibilityGroupIds.length === 0 ? 'text-white/70 dark:text-zinc-600' : 'text-subtle'}`}>
+                                            <span className="create-project__visibility-hint">
                                                 {t('createProjectWizard.visibility.everyoneHint')}
                                             </span>
                                         </button>
 
                                         <button
+                                            type="button"
                                             onClick={() => {
                                                 setIsPrivate(false);
                                                 if (visibilityGroupIds.length === 0 && workspaceGroups.length > 0) {
@@ -602,74 +646,58 @@ export const CreateProjectWizard = () => {
                                                 }
                                             }}
                                             disabled={workspaceGroups.length === 0}
-                                            className={`p-4 rounded-xl flex flex-col items-start gap-2 transition-all hover:scale-[1.02] ${!isPrivate && visibilityGroupIds.length > 0
-                                                ? 'bg-gradient-to-br from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 text-white dark:text-zinc-800 shadow-lg'
-                                                : 'bg-black/[0.03] dark:bg-white/[0.03] text-main'
-                                                } ${workspaceGroups.length === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                            className={`create-project__visibility-card ${!isPrivate && visibilityGroupIds.length > 0 ? 'is-active' : ''}`}
                                         >
-                                            <div className="flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-[20px]">lock_person</span>
-                                                <span className="text-sm font-bold">{t('createProjectWizard.visibility.groups')}</span>
+                                            <div className="create-project__visibility-title">
+                                                <span className="material-symbols-outlined">lock_person</span>
+                                                {t('createProjectWizard.visibility.groups')}
                                             </div>
-                                            <span className={`text-[10px] text-left ${!isPrivate && visibilityGroupIds.length > 0 ? 'text-white/70 dark:text-zinc-600' : 'text-subtle'}`}>
+                                            <span className="create-project__visibility-hint">
                                                 {workspaceGroups.length === 0 ? t('createProjectWizard.visibility.noGroups') : t('createProjectWizard.visibility.groupsHint')}
                                             </span>
                                         </button>
 
                                         <button
+                                            type="button"
                                             onClick={() => { setIsPrivate(true); setVisibilityGroupIds([]); }}
-                                            className={`p-4 rounded-xl flex flex-col items-start gap-2 transition-all hover:scale-[1.02] ${isPrivate
-                                                ? 'bg-gradient-to-br from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 text-white dark:text-zinc-800 shadow-lg'
-                                                : 'bg-black/[0.03] dark:bg-white/[0.03] text-main'
-                                                }`}
+                                            className={`create-project__visibility-card ${isPrivate ? 'is-active' : ''}`}
                                         >
-                                            <div className="flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-[20px]">lock</span>
-                                                <span className="text-sm font-bold">{t('createProjectWizard.visibility.private')}</span>
+                                            <div className="create-project__visibility-title">
+                                                <span className="material-symbols-outlined">lock</span>
+                                                {t('createProjectWizard.visibility.private')}
                                             </div>
-                                            <span className={`text-[10px] text-left ${isPrivate ? 'text-white/70 dark:text-zinc-600' : 'text-subtle'}`}>
+                                            <span className="create-project__visibility-hint">
                                                 {t('createProjectWizard.visibility.privateHint')}
                                             </span>
                                         </button>
                                     </div>
 
-                                    {/* Group Selector Dropdown */}
                                     {!isPrivate && visibilityGroupIds.length > 0 && workspaceGroups.length > 0 && (
-                                        <div className="mt-4 animate-fade-in">
-                                            <label className="text-xs font-semibold text-muted uppercase tracking-wider mb-2 block">
-                                                {t('createProjectWizard.visibility.selectGroups')}
-                                            </label>
-                                            <div className="grid grid-cols-2 gap-2">
+                                        <div className="create-project__group-select animate-fade-in">
+                                            <label>{t('createProjectWizard.visibility.selectGroups')}</label>
+                                            <div className="create-project__group-grid">
                                                 {workspaceGroups.map(group => {
                                                     const isSelected = visibilityGroupIds.includes(group.id);
                                                     return (
                                                         <button
                                                             key={group.id}
+                                                            type="button"
                                                             onClick={() => {
                                                                 if (isSelected) {
-                                                                    // Don't allow deselecting the last one directly from here (keeps "Specific Group" active), 
-                                                                    // or maybe allow it but if empty switch back to "Everyone"? 
-                                                                    // Let's allow deselecting, and if empty it technically means "Specific Group" but none selected... 
-                                                                    // typically empty array means "Everyone" in my logic? 
-                                                                    // Actually, my logic says "visibilityGroupIds.length === 0" is Everyone.
-                                                                    // So if they deselect the last one, it becomes Public. That's fine.
                                                                     setVisibilityGroupIds(prev => prev.filter(id => id !== group.id));
                                                                 } else {
                                                                     setVisibilityGroupIds(prev => [...prev, group.id]);
                                                                 }
                                                             }}
-                                                            className={`p-3 rounded-xl flex items-center gap-3 border transition-all ${isSelected
-                                                                ? 'bg-primary/10 border-primary text-primary'
-                                                                : 'bg-surface border-surface hover:border-primary/50'
-                                                                }`}
+                                                            className={`create-project__group-chip ${isSelected ? 'is-active' : ''}`}
                                                         >
-                                                            <div
-                                                                className="size-3 rounded-full shrink-0"
-                                                                style={{ backgroundColor: group.color || '#9ca3af' }}
+                                                            <span
+                                                                className="create-project__group-dot"
+                                                                style={{ backgroundColor: group.color || 'var(--color-text-subtle)' }}
                                                             />
-                                                            <span className="text-sm font-medium truncate">{group.name}</span>
+                                                            <span className="create-project__group-name">{group.name}</span>
                                                             {isSelected && (
-                                                                <span className="material-symbols-outlined text-[16px] ml-auto">check</span>
+                                                                <span className="material-symbols-outlined">check</span>
                                                             )}
                                                         </button>
                                                     );
@@ -683,127 +711,110 @@ export const CreateProjectWizard = () => {
 
                         {/* Step 4: Timeline */}
                         {currentStep === 4 && (
-                            <div className="space-y-5 animate-fade-in">
-                                <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold text-main">{t('createProjectWizard.timeline.title')}</h2>
-                                    <p className="text-sm text-subtle">{t('createProjectWizard.timeline.subtitle')}</p>
+                            <div className="create-project__step animate-fade-in">
+                                <div className="create-project__step-header">
+                                    <h2>{t('createProjectWizard.timeline.title')}</h2>
+                                    <p>{t('createProjectWizard.timeline.subtitle')}</p>
                                 </div>
 
-                                <div className="space-y-5">
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2 relative">
-                                            <label className="text-xs font-semibold text-muted uppercase tracking-wider">{t('createProjectWizard.timeline.startDate')}</label>
-                                            <DatePicker value={startDate} onChange={setStartDate} />
-                                        </div>
-                                        <div className="space-y-2 relative">
-                                            <label className="text-xs font-semibold text-muted uppercase tracking-wider">{t('createProjectWizard.timeline.dueDate')}</label>
-                                            <DatePicker value={dueDate} onChange={setDueDate} align="right" />
-                                        </div>
+                                <div className="create-project__timeline-grid">
+                                    <DatePicker
+                                        label={t('createProjectWizard.timeline.startDate')}
+                                        value={startDate}
+                                        onChange={setStartDate}
+                                    />
+                                    <DatePicker
+                                        label={t('createProjectWizard.timeline.dueDate')}
+                                        value={dueDate}
+                                        onChange={setDueDate}
+                                    />
+                                    <div className="create-project__field">
+                                        <label>{t('createProjectWizard.timeline.priority')}</label>
+                                        <PrioritySelect value={priority} onChange={setPriority} variant="group" />
                                     </div>
-
-                                    <div className="space-y-3">
-                                        <label className="text-xs font-semibold text-muted uppercase tracking-wider">{t('createProjectWizard.timeline.priority')}</label>
-                                        <div className="grid grid-cols-4 gap-2">
-                                            {['Low', 'Medium', 'High', 'Urgent'].map(p => (
-                                                <button
-                                                    key={p}
-                                                    onClick={() => setPriority(p)}
-                                                    className={`py-3 rounded-xl text-xs font-bold uppercase transition-all hover:scale-[1.02] hover:shadow-md ${priority === p
-                                                        ? 'bg-gradient-to-r from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 text-white dark:text-zinc-800 shadow-md shadow-zinc-500/10'
-                                                        : 'bg-black/[0.03] dark:bg-white/[0.03] text-subtle'
-                                                        }`}
-                                                >
-                                                    {priorityLabels[p] || p}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-semibold text-muted uppercase tracking-wider">{t('createProjectWizard.timeline.status')}</label>
-                                        <select
-                                            className="w-full h-11 bg-surface border border-surface rounded-xl px-4 text-sm text-main outline-none focus:ring-2 focus:ring-zinc-500/20 focus:border-zinc-500"
-                                            value={status}
-                                            onChange={e => setStatus(e.target.value)}
-                                        >
-                                            {Object.keys(statusLabels).map((key) => (
-                                                <option key={key} value={key}>{statusLabels[key]}</option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                    <Select
+                                        label={t('createProjectWizard.timeline.status')}
+                                        value={status}
+                                        onChange={(value) => setStatus(String(value))}
+                                        options={statusOptions}
+                                    />
                                 </div>
                             </div>
                         )}
 
                         {/* Step 5: Assets */}
                         {currentStep === 5 && (
-                            <div className="space-y-5 animate-fade-in">
-                                <div className="space-y-2">
-                                    <h2 className="text-2xl font-bold text-main">{t('createProjectWizard.assets.title')}</h2>
-                                    <p className="text-sm text-subtle">{t('createProjectWizard.assets.subtitle')}</p>
+                            <div className="create-project__step animate-fade-in">
+                                <div className="create-project__step-header">
+                                    <h2>{t('createProjectWizard.assets.title')}</h2>
+                                    <p>{t('createProjectWizard.assets.subtitle')}</p>
                                 </div>
 
-                                <div className="space-y-5">
-                                    <div className="flex gap-4">
+                                <div className="create-project__assets">
+                                    <div className="create-project__asset-grid">
                                         {/* Cover Selection */}
-                                        <div className="flex-1 space-y-2">
-                                            <label className="text-xs font-semibold text-muted uppercase tracking-wider">{t('createProjectWizard.assets.cover.label')}</label>
+                                        <div className="create-project__asset">
+                                            <label className="create-project__asset-label">{t('createProjectWizard.assets.cover.label')}</label>
                                             <div
                                                 onClick={() => { setMediaPickerTarget('cover'); setShowMediaLibrary(true); }}
-                                                className="relative h-32 rounded-2xl bg-gradient-to-br from-[var(--color-surface-bg)] to-[var(--color-surface-hover)] border border-dashed border-surface overflow-hidden flex flex-col items-center justify-center gap-2 group transition-all hover:border-primary/50 hover:bg-primary/5 cursor-pointer"
+                                                className="create-project__asset-card"
+                                                data-asset="cover"
                                             >
                                                 {coverUrl || coverFile ? (
                                                     <>
-                                                        <img src={coverUrl || (coverFile ? URL.createObjectURL(coverFile) : '')} className="absolute inset-0 size-full object-cover" />
-                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                            <span className="text-white text-xs font-bold flex items-center gap-2">
-                                                                <span className="material-symbols-outlined text-[16px]">edit</span>
+                                                        <img src={coverPreview} className="create-project__asset-image" />
+                                                        <div className="create-project__asset-overlay">
+                                                            <span>
+                                                                <span className="material-symbols-outlined">edit</span>
                                                                 {t('createProjectWizard.assets.change')}
                                                             </span>
                                                         </div>
                                                         <button
+                                                            type="button"
                                                             onClick={(e) => { e.stopPropagation(); setCoverUrl(null); setCoverFile(null); }}
-                                                            className="absolute top-2 right-2 size-6 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors z-20"
+                                                            className="create-project__asset-remove"
                                                         >
-                                                            <span className="material-symbols-outlined text-[14px]">close</span>
+                                                            <span className="material-symbols-outlined">close</span>
                                                         </button>
                                                     </>
                                                 ) : (
-                                                    <div className="flex flex-col items-center gap-2 text-muted group-hover:text-primary transition-colors">
-                                                        <span className="material-symbols-outlined text-[24px]">image</span>
-                                                        <span className="text-xs font-semibold">{t('createProjectWizard.assets.cover.select')}</span>
+                                                    <div className="create-project__asset-placeholder">
+                                                        <span className="material-symbols-outlined">image</span>
+                                                        <span>{t('createProjectWizard.assets.cover.select')}</span>
                                                     </div>
                                                 )}
                                             </div>
                                         </div>
 
                                         {/* Icon Selection */}
-                                        <div className="flex-1 space-y-2">
-                                            <label className="text-xs font-semibold text-muted uppercase tracking-wider">{t('createProjectWizard.assets.icon.label')}</label>
+                                        <div className="create-project__asset">
+                                            <label className="create-project__asset-label">{t('createProjectWizard.assets.icon.label')}</label>
                                             <div
                                                 onClick={() => { setMediaPickerTarget('icon'); setShowMediaLibrary(true); }}
-                                                className="relative h-32 rounded-2xl bg-gradient-to-br from-[var(--color-surface-bg)] to-[var(--color-surface-hover)] border border-dashed border-surface overflow-hidden flex flex-col items-center justify-center gap-2 group transition-all hover:border-primary/50 hover:bg-primary/5 cursor-pointer"
+                                                className="create-project__asset-card create-project__asset-card--icon"
+                                                data-asset="icon"
                                             >
                                                 {squareIconUrl || squareIconFile ? (
                                                     <>
-                                                        <img src={squareIconUrl || (squareIconFile ? URL.createObjectURL(squareIconFile) : '')} className="absolute inset-4 size-[calc(100%-32px)] object-cover rounded-xl shadow-sm" />
-                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                            <span className="text-white text-xs font-bold flex items-center gap-2">
-                                                                <span className="material-symbols-outlined text-[16px]">edit</span>
+                                                        <img src={iconPreview} className="create-project__asset-image create-project__asset-image--icon" />
+                                                        <div className="create-project__asset-overlay">
+                                                            <span>
+                                                                <span className="material-symbols-outlined">edit</span>
                                                                 {t('createProjectWizard.assets.change')}
                                                             </span>
                                                         </div>
                                                         <button
+                                                            type="button"
                                                             onClick={(e) => { e.stopPropagation(); setSquareIconUrl(null); setSquareIconFile(null); }}
-                                                            className="absolute top-2 right-2 size-6 bg-black/60 hover:bg-black/80 rounded-full flex items-center justify-center text-white transition-colors z-20"
+                                                            className="create-project__asset-remove"
                                                         >
-                                                            <span className="material-symbols-outlined text-[14px]">close</span>
+                                                            <span className="material-symbols-outlined">close</span>
                                                         </button>
                                                     </>
                                                 ) : (
-                                                    <div className="flex flex-col items-center gap-2 text-muted group-hover:text-primary transition-colors">
-                                                        <span className="material-symbols-outlined text-[24px]">smart_button</span>
-                                                        <span className="text-xs font-semibold">{t('createProjectWizard.assets.icon.select')}</span>
+                                                    <div className="create-project__asset-placeholder">
+                                                        <span className="material-symbols-outlined">smart_button</span>
+                                                        <span>{t('createProjectWizard.assets.icon.select')}</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -812,12 +823,10 @@ export const CreateProjectWizard = () => {
 
                                     {/* GitHub Integration - Only for Software Projects */}
                                     {projectType === 'software' && (
-                                        <div className="pt-4 border-t border-surface">
-                                            <div className="flex items-center justify-between mb-3">
-                                                <div>
-                                                    <label className="text-xs font-semibold text-muted uppercase tracking-wider">{t('createProjectWizard.github.title')}</label>
-                                                    <p className="text-[10px] text-subtle mt-0.5">{t('createProjectWizard.github.subtitle')}</p>
-                                                </div>
+                                        <div className="create-project__github">
+                                            <div className="create-project__section-header">
+                                                <h3 className="create-project__section-title">{t('createProjectWizard.github.title')}</h3>
+                                                <p className="create-project__section-subtitle">{t('createProjectWizard.github.subtitle')}</p>
                                             </div>
                                             {!githubToken ? (
                                                 <button
@@ -838,148 +847,143 @@ export const CreateProjectWizard = () => {
                                                         }
                                                     }}
                                                     disabled={connectingGithub}
-                                                    className="w-full p-4 rounded-xl bg-black/[0.03] dark:bg-white/[0.03] hover:scale-[1.01] hover:shadow-md transition-all flex items-center gap-4"
+                                                    className="create-project__github-connect"
+                                                    type="button"
+                                                    aria-busy={connectingGithub}
                                                 >
-                                                    <div className="size-10 rounded-lg bg-[#24292f] dark:bg-white flex items-center justify-center">
-                                                        <svg className="size-5 text-white dark:text-[#24292f]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" /></svg>
+                                                    <div className="create-project__github-icon">
+                                                        <svg className="create-project__github-mark" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" /></svg>
                                                     </div>
-                                                    <div className="flex-1 text-left">
-                                                        <div className="text-sm font-semibold text-main">
+                                                    <div className="create-project__github-text">
+                                                        <div className="create-project__github-title">
                                                             {connectingGithub ? t('createProjectWizard.github.connecting') : t('createProjectWizard.github.connect')}
                                                         </div>
-                                                        <div className="text-[10px] text-subtle">{t('createProjectWizard.github.connectHint')}</div>
+                                                        <div className="create-project__github-hint">{t('createProjectWizard.github.connectHint')}</div>
                                                     </div>
-                                                    <span className="material-symbols-outlined text-muted">arrow_forward</span>
+                                                    <span className="material-symbols-outlined create-project__github-arrow">arrow_forward</span>
                                                 </button>
                                             ) : (
-                                                <div className="space-y-2">
-                                                    <select
-                                                        value={selectedGithubRepo}
-                                                        onChange={(e) => setSelectedGithubRepo(e.target.value)}
-                                                        disabled={loadingGithub}
-                                                        className="w-full h-11 bg-surface border border-surface rounded-xl px-4 text-sm text-main outline-none focus:ring-2 focus:ring-zinc-500/20 focus:border-zinc-500"
-                                                    >
-                                                        <option value="">{loadingGithub ? t('createProjectWizard.github.loadingRepos') : t('createProjectWizard.github.selectRepo')}</option>
-                                                        {githubRepos.map(repo => (
-                                                            <option key={repo.id} value={repo.full_name}>{repo.full_name}</option>
-                                                        ))}
-                                                    </select>
+                                                <div className="create-project__github-select">
+                                                    <Select
+                                                        value={githubValue}
+                                                        onChange={(value) => setSelectedGithubRepo(String(value))}
+                                                        options={githubOptions}
+                                                        placeholder={githubPlaceholder}
+                                                        disabled={githubSelectDisabled}
+                                                        className="create-project__github-select-input"
+                                                    />
                                                     {selectedGithubRepo && (
-                                                        <p className="text-[10px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                                                            <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                                                        <div className="create-project__github-note">
+                                                            <span className="material-symbols-outlined">check_circle</span>
                                                             {t('createProjectWizard.github.syncNotice')}
-                                                        </p>
+                                                        </div>
                                                     )}
                                                 </div>
                                             )}
                                         </div>
                                     )}
 
-                                    {/* Links & Resources - Card Style */}
-                                    <div className="space-y-4 pt-4 border-t border-surface">
-                                        {/* Links & Resources - Updated Card Style */}
-                                        <div className="space-y-4 pt-4 border-t border-surface">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="material-symbols-outlined text-[16px] text-muted">link</span>
-                                                    <label className="text-xs font-semibold text-muted uppercase tracking-wider">{t('createProjectWizard.links.title')}</label>
-                                                </div>
-                                            </div>
+                                    <div className="create-project__links">
+                                        <div className="create-project__links-header">
+                                            <span className="material-symbols-outlined">link</span>
+                                            <h3 className="create-project__links-title">{t('createProjectWizard.links.title')}</h3>
+                                        </div>
 
-                                            <div className="grid grid-cols-1 gap-3">
-                                                {/* Combined List of all links for cleaner UI */}
-
-                                                {/* Sidebar Resources */}
-                                                {externalResources.map((res, idx) => (
-                                                    <div key={`res-${idx}`} className="flex items-center gap-3 p-3 rounded-xl bg-surface border border-surface group focus-within:ring-2 focus-within:ring-zinc-500/10 focus-within:border-zinc-500/50 transition-all">
-                                                        <div className="size-8 rounded-lg bg-card flex items-center justify-center shrink-0 text-subtle">
-                                                            <span className="material-symbols-outlined text-[18px]">open_in_new</span>
-                                                        </div>
-                                                        <div className="flex-1 space-y-1">
-                                                            <input
-                                                                placeholder={t('createProjectWizard.links.resourcePlaceholder')}
-                                                                value={res.title}
-                                                                onChange={(e) => {
-                                                                    const newRes = [...externalResources];
-                                                                    newRes[idx].title = e.target.value;
-                                                                    setExternalResources(newRes);
-                                                                }}
-                                                                className="w-full text-sm font-medium bg-transparent text-main placeholder:text-muted focus:outline-none"
-                                                            />
-                                                            <input
-                                                                placeholder={t('createProjectWizard.links.urlPlaceholder')}
-                                                                value={res.url}
-                                                                onChange={(e) => {
-                                                                    const newRes = [...externalResources];
-                                                                    newRes[idx].url = e.target.value;
-                                                                    setExternalResources(newRes);
-                                                                }}
-                                                                className="w-full text-xs bg-transparent text-subtle placeholder:text-muted focus:outline-none"
-                                                            />
-                                                        </div>
-                                                        <button
-                                                            onClick={() => setExternalResources(externalResources.filter((_, i) => i !== idx))}
-                                                            className="p-2 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                                                        >
-                                                            <span className="material-symbols-outlined text-[18px]">delete</span>
-                                                        </button>
+                                        <div className="create-project__links-list">
+                                            {externalResources.map((res, idx) => (
+                                                <div key={`res-${idx}`} className="create-project__link-row">
+                                                    <div className="create-project__link-icon">
+                                                        <span className="material-symbols-outlined">open_in_new</span>
                                                     </div>
-                                                ))}
-
-                                                {/* Overview Links */}
-                                                {links.map((link, idx) => (
-                                                    <div key={`link-${idx}`} className="flex items-center gap-3 p-3 rounded-xl bg-surface border border-surface group focus-within:ring-2 focus-within:ring-zinc-500/10 focus-within:border-zinc-500/50 transition-all">
-                                                        <div className="size-8 rounded-lg bg-card flex items-center justify-center shrink-0 text-subtle">
-                                                            <span className="material-symbols-outlined text-[18px]">link</span>
-                                                        </div>
-                                                        <div className="flex-1 space-y-1">
-                                                            <input
-                                                                placeholder={t('createProjectWizard.links.linkPlaceholder')}
-                                                                value={link.title}
-                                                                onChange={(e) => {
-                                                                    const newLinks = [...links];
-                                                                    newLinks[idx].title = e.target.value;
-                                                                    setLinks(newLinks);
-                                                                }}
-                                                                className="w-full text-sm font-medium bg-transparent text-main placeholder:text-muted focus:outline-none"
-                                                            />
-                                                            <input
-                                                                placeholder={t('createProjectWizard.links.urlPlaceholder')}
-                                                                value={link.url}
-                                                                onChange={(e) => {
-                                                                    const newLinks = [...links];
-                                                                    newLinks[idx].url = e.target.value;
-                                                                    setLinks(newLinks);
-                                                                }}
-                                                                className="w-full text-xs bg-transparent text-subtle placeholder:text-muted focus:outline-none"
-                                                            />
-                                                        </div>
-                                                        <button
-                                                            onClick={() => setLinks(links.filter((_, i) => i !== idx))}
-                                                            className="p-2 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-lg transition-all opacity-0 group-hover:opacity-100"
-                                                        >
-                                                            <span className="material-symbols-outlined text-[18px]">delete</span>
-                                                        </button>
+                                                    <div className="create-project__link-fields">
+                                                        <input
+                                                            placeholder={t('createProjectWizard.links.resourcePlaceholder')}
+                                                            value={res.title}
+                                                            onChange={(e) => {
+                                                                const newRes = [...externalResources];
+                                                                newRes[idx].title = e.target.value;
+                                                                setExternalResources(newRes);
+                                                            }}
+                                                            className="create-project__link-input create-project__link-input--title"
+                                                        />
+                                                        <input
+                                                            placeholder={t('createProjectWizard.links.urlPlaceholder')}
+                                                            value={res.url}
+                                                            onChange={(e) => {
+                                                                const newRes = [...externalResources];
+                                                                newRes[idx].url = e.target.value;
+                                                                setExternalResources(newRes);
+                                                            }}
+                                                            className="create-project__link-input create-project__link-input--url"
+                                                        />
                                                     </div>
-                                                ))}
-
-                                                <div className="flex gap-2 pt-2">
                                                     <button
-                                                        onClick={() => setExternalResources([...externalResources, { title: '', url: '', icon: 'open_in_new' }])}
-                                                        className="flex-1 py-3 px-4 rounded-xl border border-dashed border-surface text-xs font-medium text-subtle hover:border-muted hover:text-main hover:bg-surface transition-all flex items-center justify-center gap-2"
+                                                        type="button"
+                                                        onClick={() => setExternalResources(externalResources.filter((_, i) => i !== idx))}
+                                                        className="create-project__link-remove"
                                                     >
-                                                        <span className="material-symbols-outlined text-[16px]">add</span>
-                                                        {t('createProjectWizard.links.addResource')}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => setLinks([...links, { title: '', url: '' }])}
-                                                        className="flex-1 py-3 px-4 rounded-xl border border-dashed border-surface text-xs font-medium text-subtle hover:border-muted hover:text-main hover:bg-surface transition-all flex items-center justify-center gap-2"
-                                                    >
-                                                        <span className="material-symbols-outlined text-[16px]">add</span>
-                                                        {t('createProjectWizard.links.addOverview')}
+                                                        <span className="material-symbols-outlined">delete</span>
                                                     </button>
                                                 </div>
-                                            </div>
+                                            ))}
+
+                                            {links.map((link, idx) => (
+                                                <div key={`link-${idx}`} className="create-project__link-row">
+                                                    <div className="create-project__link-icon">
+                                                        <span className="material-symbols-outlined">link</span>
+                                                    </div>
+                                                    <div className="create-project__link-fields">
+                                                        <input
+                                                            placeholder={t('createProjectWizard.links.linkPlaceholder')}
+                                                            value={link.title}
+                                                            onChange={(e) => {
+                                                                const newLinks = [...links];
+                                                                newLinks[idx].title = e.target.value;
+                                                                setLinks(newLinks);
+                                                            }}
+                                                            className="create-project__link-input create-project__link-input--title"
+                                                        />
+                                                        <input
+                                                            placeholder={t('createProjectWizard.links.urlPlaceholder')}
+                                                            value={link.url}
+                                                            onChange={(e) => {
+                                                                const newLinks = [...links];
+                                                                newLinks[idx].url = e.target.value;
+                                                                setLinks(newLinks);
+                                                            }}
+                                                            className="create-project__link-input create-project__link-input--url"
+                                                        />
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setLinks(links.filter((_, i) => i !== idx))}
+                                                        className="create-project__link-remove"
+                                                    >
+                                                        <span className="material-symbols-outlined">delete</span>
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="create-project__links-actions">
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() => setExternalResources([...externalResources, { title: '', url: '', icon: 'open_in_new' }])}
+                                                icon={<span className="material-symbols-outlined">add</span>}
+                                                className="create-project__link-add"
+                                            >
+                                                {t('createProjectWizard.links.addResource')}
+                                            </Button>
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() => setLinks([...links, { title: '', url: '' }])}
+                                                icon={<span className="material-symbols-outlined">add</span>}
+                                                className="create-project__link-add"
+                                            >
+                                                {t('createProjectWizard.links.addOverview')}
+                                            </Button>
                                         </div>
                                     </div>
                                 </div>
@@ -988,116 +992,115 @@ export const CreateProjectWizard = () => {
                     </div>
 
                     {/* Footer */}
-                    <footer className="px-8 py-5 border-t border-surface flex items-center justify-between shrink-0">
+                    <footer className="create-project__footer">
                         <div>
                             {currentStep > 0 && (
-                                <button onClick={handleBack} className="px-4 py-2 text-sm font-semibold text-subtle hover:text-main hover:bg-surface-hover rounded-xl transition-all flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleBack}
+                                    icon={<span className="material-symbols-outlined">arrow_back</span>}
+                                >
                                     {t('createProjectWizard.actions.back')}
-                                </button>
+                                </Button>
                             )}
                         </div>
-                        <div className="flex gap-3">
+                        <div className="create-project__footer-actions">
                             {currentStep > 0 && currentStep < 5 && (
-                                <Button onClick={handleNext} disabled={currentStep === 1 && !name} variant="primary" className="px-8 h-11 bg-gradient-to-r from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 hover:from-zinc-900 hover:to-black dark:hover:from-zinc-100 dark:hover:to-white !text-white dark:!text-zinc-900">
+                                <Button onClick={handleNext} disabled={currentStep === 1 && !name}>
                                     {t('createProjectWizard.actions.continue')}
                                 </Button>
                             )}
                             {currentStep === 5 && (
-                                <Button onClick={handleSubmit} disabled={isSubmitting || !name} variant="primary" className="px-8 h-11 bg-gradient-to-r from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100 hover:from-zinc-900 hover:to-black dark:hover:from-zinc-100 dark:hover:to-white !text-white dark:!text-zinc-900">
+                                <Button onClick={handleSubmit} disabled={isSubmitting || !name} isLoading={isSubmitting}>
                                     {isSubmitting ? t('createProjectWizard.actions.creating') : t('createProjectWizard.actions.create')}
                                 </Button>
                             )}
                         </div>
                     </footer>
-                </div>
+                </section>
 
                 {/* RIGHT: Preview Panel */}
-                <div className="w-[45%] bg-gradient-to-br from-slate-50 to-zinc-100/50 dark:from-slate-900/50 dark:to-zinc-800/30 flex items-center justify-center p-6 relative overflow-hidden">
-                    {/* Decorative Elements */}
-                    <div className="absolute top-0 right-0 w-72 h-72 bg-gradient-to-br from-zinc-400/10 to-zinc-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-zinc-400/5 to-zinc-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-
-                    {/* Preview Card */}
-                    <div className="w-full max-w-sm bg-card rounded-2xl shadow-2xl border border-surface overflow-hidden relative z-10 group">
-                        {/* Cover */}
-                        <div className="h-36 bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-800 relative overflow-hidden">
-                            {coverFile ? (
-                                <img src={URL.createObjectURL(coverFile)} className="size-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                <aside className="create-project__preview">
+                    <Card className="create-project__preview-card">
+                        <div className="create-project__preview-cover">
+                            {coverPreview ? (
+                                <img src={coverPreview} className="create-project__preview-cover-image" alt="" />
                             ) : (
-                                <div className="size-full flex items-center justify-center opacity-20">
-                                    <span className="material-symbols-outlined text-6xl">landscape</span>
+                                <div className="create-project__preview-cover-placeholder">
+                                    <span className="material-symbols-outlined">landscape</span>
                                 </div>
                             )}
-                            <div className="absolute top-3 right-3">
-                                <span className="px-2.5 py-1 bg-white/90 dark:bg-zinc-800/90 backdrop-blur-md rounded-full text-[9px] font-bold uppercase tracking-wider text-main shadow-sm">
-                                    {status}
-                                </span>
+                            <div className="create-project__preview-status">
+                                {statusLabel}
                             </div>
                         </div>
 
-                        {/* Content */}
-                        <div className="p-6 pt-0 relative">
-                            <div className="size-16 bg-white dark:bg-zinc-900 rounded-xl absolute -top-8 left-6 shadow-xl border-4 border-card overflow-hidden flex items-center justify-center">
-                                {squareIconFile ? (
-                                    <img src={URL.createObjectURL(squareIconFile)} className="size-full object-cover" />
+                        <div className="create-project__preview-body">
+                            <div className="create-project__preview-icon">
+                                {iconPreview ? (
+                                    <img src={iconPreview} className="create-project__preview-icon-image" alt="" />
                                 ) : (
-                                    <span className="material-symbols-outlined text-2xl text-main/50">{getTypeIcon(projectType)}</span>
+                                    <span className="material-symbols-outlined create-project__preview-icon-fallback">{getTypeIcon(projectType)}</span>
                                 )}
                             </div>
 
-                            <div className="pt-12 space-y-4">
-                                <div className="space-y-1">
-                                    <h3 className="text-lg font-bold text-main leading-tight truncate">{name || t('createProjectWizard.preview.nameFallback')}</h3>
-                                    <p className="text-xs text-subtle line-clamp-2">
-                                        {description || t('createProjectWizard.preview.descriptionFallback')}
-                                    </p>
-                                </div>
+                            <div className="create-project__preview-info">
+                                <h3 className="create-project__preview-title">{name || t('createProjectWizard.preview.nameFallback')}</h3>
+                                <p className="create-project__preview-description">
+                                    {description || t('createProjectWizard.preview.descriptionFallback')}
+                                </p>
+                            </div>
 
-                                <div className="grid grid-cols-2 gap-4 py-4 border-y border-surface">
-                                    <div className="space-y-1">
-                                        <div className="text-[9px] font-bold text-muted uppercase tracking-wider">{t('createProjectWizard.preview.team')}</div>
-                                        <div className="flex -space-x-2 h-7">
-                                            {selectedMemberIds.length > 0 ? selectedMemberIds.slice(0, 3).map(id => (
-                                                <div key={id} className="size-7 rounded-full bg-gradient-to-br from-zinc-600 to-zinc-700 dark:from-zinc-300 dark:to-zinc-400 border-2 border-card flex items-center justify-center font-bold text-[9px] text-white overflow-hidden">
-                                                    {availableMembers.find(m => m.uid === id)?.photoURL ?
-                                                        <img src={availableMembers.find(m => m.uid === id).photoURL} className="size-full object-cover" /> :
-                                                        availableMembers.find(m => m.uid === id)?.displayName?.charAt(0) || '?'
-                                                    }
-                                                </div>
-                                            )) : <span className="text-[10px] text-muted leading-7">—</span>}
+                            <div className="create-project__preview-meta">
+                                <div className="create-project__preview-meta-block">
+                                    <span className="create-project__preview-label">{t('createProjectWizard.preview.team')}</span>
+                                    <div className="create-project__preview-team">
+                                        <div className="create-project__preview-team-list">
+                                            {selectedMemberIds.length > 0 ? selectedMemberIds.slice(0, 3).map((id) => {
+                                                const member = availableMembers.find((item) => item.uid === id);
+                                                return (
+                                                    <div key={id} className="create-project__preview-avatar">
+                                                        {member?.photoURL ? (
+                                                            <img src={member.photoURL} className="create-project__preview-avatar-image" alt="" />
+                                                        ) : (
+                                                            member?.displayName?.charAt(0) || '?'
+                                                        )}
+                                                    </div>
+                                                );
+                                            }) : (
+                                                <span className="create-project__preview-empty">{teamEmptyLabel}</span>
+                                            )}
                                             {selectedMemberIds.length > 3 && (
-                                                <div className="size-7 rounded-full bg-surface border-2 border-card flex items-center justify-center text-[9px] font-bold text-subtle">
+                                                <div className="create-project__preview-avatar create-project__preview-avatar--more">
                                                     +{selectedMemberIds.length - 3}
                                                 </div>
                                             )}
                                         </div>
                                     </div>
-                                    <div className="space-y-1 text-right">
-                                        <div className="text-[9px] font-bold text-muted uppercase tracking-wider">{t('createProjectWizard.preview.deadline')}</div>
-                                        <div className="text-sm font-bold text-main">{dueDate ? format(new Date(dueDate), dateFormat, { locale: dateLocale }) : '—'}</div>
-                                    </div>
                                 </div>
-
-                                <div className="flex items-center justify-between">
-                                    <div className="flex gap-1.5">
-                                        {modules.slice(0, 5).map(m => (
-                                            <div key={m} className="size-2 rounded-full bg-gradient-to-r from-zinc-800 to-zinc-900 dark:from-white dark:to-zinc-100" />
-                                        ))}
-                                        {modules.length > 5 && <span className="text-[8px] text-muted ml-0.5">+{modules.length - 5}</span>}
-                                    </div>
-                                    <span className={`px-2 py-1 rounded-md text-[8px] font-bold uppercase ${priority === 'Urgent' ? 'bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400' :
-                                        priority === 'High' ? 'bg-orange-100 text-orange-600 dark:bg-orange-900/20 dark:text-orange-400' :
-                                            priority === 'Medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400' :
-                                                'bg-green-100 text-green-600 dark:bg-green-900/20 dark:text-green-400'
-                                        }`}>
-                                        {priorityLabels[priority] || priority}
-                                    </span>
+                                <div className="create-project__preview-meta-block create-project__preview-meta-block--right">
+                                    <span className="create-project__preview-label">{t('createProjectWizard.preview.deadline')}</span>
+                                    <span className="create-project__preview-date">{deadlineValue}</span>
                                 </div>
                             </div>
+
+                            <div className="create-project__preview-footer">
+                                <div className="create-project__preview-modules">
+                                    {modules.slice(0, 5).map((module) => (
+                                        <span key={module} className="create-project__preview-module-dot" />
+                                    ))}
+                                    {modules.length > 5 && (
+                                        <span className="create-project__preview-module-more">+{modules.length - 5}</span>
+                                    )}
+                                </div>
+                                <span className={`create-project__preview-priority create-project__preview-priority--${priority}`}>
+                                    {priorityLabels[priority] || priority}
+                                </span>
+                            </div>
                         </div>
-                    </div>
-                </div>
+                    </Card>
+                </aside>
             </div>
         </div>
     );

@@ -88,6 +88,22 @@ These aliases exist for legacy styles during the Tailwind → SCSS migration. Pr
 
 ---
 
+## 1.7 Derived RGB Tokens (Alpha Overlays)
+
+Use these RGB triplets with `rgba(var(--token), alpha)` when a translucent surface is needed.
+
+| Token | Value | Description |
+|------|-------|-------------|
+| `--color-surface-bg-rgb` | RGB of `--color-surface-bg` | Alpha overlays on app background |
+| `--color-surface-card-rgb` | RGB of `--color-surface-card` | Alpha overlays on cards |
+| `--color-surface-hover-rgb` | RGB of `--color-surface-hover` | Alpha overlays on hover surfaces |
+| `--color-surface-paper-rgb` | RGB of `--color-surface-paper` | Alpha overlays on paper surfaces |
+| `--color-success-rgb` | RGB of `--color-success` | Alpha overlays for success states |
+| `--color-warning-rgb` | RGB of `--color-warning` | Alpha overlays for warning states |
+| `--color-error-rgb` | RGB of `--color-error` | Alpha overlays for error states |
+
+---
+
 ## 2) Border Radius
 
 Border radius tokens define the rounding used across components. Use them consistently (cards, buttons, inputs, modals).
@@ -173,7 +189,7 @@ These tokens define key layout constants used across the app shell.
 
 ---
 
-## 7) Quick Usage Notes (SCSS)
+## 8) Quick Usage Notes (SCSS)
 
 - Tokens should be defined in `styles/_tokens.scss`.
 - Components should consume tokens via CSS variables (recommended) or SCSS variables mapped to them.

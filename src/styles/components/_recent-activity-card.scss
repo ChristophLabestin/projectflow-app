@@ -1,0 +1,123 @@
+.recent-activity-card {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.recent-activity-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.recent-activity-card__title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+}
+
+.recent-activity-card__link {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+.recent-activity-card__link:hover {
+    color: var(--color-primary);
+}
+
+.recent-activity-card__list {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.recent-activity-card__loading {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.recent-activity-card__loading-icon {
+    color: var(--color-text-subtle);
+}
+
+.recent-activity-card__empty {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+    text-align: center;
+    padding: 1rem 0;
+}
+
+.recent-activity-card__item {
+    position: relative;
+    display: flex;
+    gap: 0.75rem;
+}
+
+.recent-activity-card__line {
+    position: absolute;
+    left: 0.875rem;
+    top: 2rem;
+    bottom: -1rem;
+    width: 1px;
+    background-color: var(--color-surface-border);
+}
+
+.recent-activity-card__icon {
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: var(--radius-full);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: var(--shadow-sm);
+}
+
+.recent-activity-card__icon-symbol {
+    font-size: 1rem;
+}
+
+.recent-activity-card__body {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.recent-activity-card__text {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--color-text-main);
+    display: flex;
+    gap: 0.25rem;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.recent-activity-card__user {
+    font-weight: 600;
+}
+
+.recent-activity-card__action {
+    color: var(--color-text-muted);
+}
+
+.recent-activity-card__time {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--color-text-subtle);
+}

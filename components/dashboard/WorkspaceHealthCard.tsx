@@ -23,13 +23,6 @@ export const WorkspaceHealthCard: React.FC<WorkspaceHealthCardProps> = ({ health
     const circumference = 2 * Math.PI * radius;
     const offset = circumference - (health.score / 100) * circumference;
 
-    const strokeClass =
-        health.status === 'critical' ? 'stroke-rose-500' :
-            health.status === 'warning' ? 'stroke-amber-500' :
-                health.status === 'excellent' ? 'stroke-emerald-500' :
-                    health.status === 'healthy' ? 'stroke-emerald-400' :
-                        'stroke-indigo-500';
-
     return (
         <div className="health-card">
             <div className="health-card__header">
@@ -61,17 +54,12 @@ export const WorkspaceHealthCard: React.FC<WorkspaceHealthCardProps> = ({ health
                             strokeLinecap="round"
                             strokeDasharray={circumference}
                             strokeDashoffset={offset}
-                            className={`${strokeClass}`} // Using standard tailwind class for color here as map was complex, but stroke color is css variable friendly if we define them. 
-                            // Actually, let's use inline styles or specific classes if we want to be pure SCSS 
-                            // Attempting to rely on the tailwind utility classes for color ONLY is risky if we are removing tailwind.
-                            // However, my SCSS file didn't define .stroke-rose-500. 
-                            // Let's use style={{ stroke: 'var(--color-xxx)' }} instead.
                             style={{
                                 stroke: health.status === 'critical' ? 'var(--color-error)' :
                                     health.status === 'warning' ? 'var(--color-warning)' :
-                                        health.status === 'excellent' ? 'var(--color-success-dark)' :
+                                        health.status === 'excellent' ? 'var(--color-success)' :
                                             health.status === 'healthy' ? 'var(--color-success)' :
-                                                'var(--color-info)'
+                                                'var(--color-primary)'
                             }}
                         />
                     </svg>

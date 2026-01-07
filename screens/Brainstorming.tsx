@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { generateBrainstormIdeas, generateProjectBlueprint, analyzeProjectRisks } from '../services/geminiService';
-import { getUserIdeas, saveIdea, createProject, addTask, getAIUsage } from '../services/dataService';
+import { saveIdea, createProject, addTask, getAIUsage } from '../services/dataService';
 import { Idea, ProjectBlueprint, ProjectRisk, StudioTool, AIUsage } from '../types';
 import { auth } from '../services/firebase';
 import { AIStudioHero } from '../components/studio/AIStudioHero';
@@ -8,16 +8,18 @@ import { StudioToolCard } from '../components/studio/StudioToolCard';
 import { BlueprintResult } from '../components/studio/BlueprintResult';
 import { RiskResult } from '../components/studio/RiskResult';
 import { useToast } from '../context/UIContext';
-import { Textarea } from '../components/ui/Textarea';
 import { useLanguage } from '../context/LanguageContext';
+import { Button } from '../components/common/Button/Button';
+import { Card, CardBody, CardFooter, CardHeader } from '../components/common/Card/Card';
+import { TextArea } from '../components/common/Input/TextArea';
+import { Badge } from '../components/common/Badge/Badge';
 
-const TOOL_CONFIGS: { id: StudioTool; titleKey: string; descriptionKey: string; placeholderKey: string; icon: string; color: string }[] = [
+const TOOL_CONFIGS: { id: StudioTool; titleKey: string; descriptionKey: string; placeholderKey: string; icon: string }[] = [
     {
         id: 'Architect',
         titleKey: 'aiStudio.tools.architect.title',
         descriptionKey: 'aiStudio.tools.architect.description',
         icon: 'architecture',
-        color: 'indigo',
         placeholderKey: 'aiStudio.tools.architect.placeholder'
     },
     {
@@ -25,7 +27,6 @@ const TOOL_CONFIGS: { id: StudioTool; titleKey: string; descriptionKey: string; 
         titleKey: 'aiStudio.tools.brainstormer.title',
         descriptionKey: 'aiStudio.tools.brainstormer.description',
         icon: 'lightbulb',
-        color: 'amber',
         placeholderKey: 'aiStudio.tools.brainstormer.placeholder'
     },
     {
@@ -33,7 +34,6 @@ const TOOL_CONFIGS: { id: StudioTool; titleKey: string; descriptionKey: string; 
         titleKey: 'aiStudio.tools.riskscout.title',
         descriptionKey: 'aiStudio.tools.riskscout.description',
         icon: 'shield',
-        color: 'rose',
         placeholderKey: 'aiStudio.tools.riskscout.placeholder'
     }
 ];
@@ -66,6 +66,7 @@ export const Brainstorming = () => {
     })), [t]);
 
     const activeToolLabel = toolLabels[activeTool] || activeTool;
+    const activeToolKey = activeTool.toLowerCase();
 
     const fetchUsage = async () => {
         const user = auth.currentUser;
@@ -152,167 +153,124 @@ export const Brainstorming = () => {
         }
     };
 
-    const currentToolPlaceholder = tools.find(tool => tool.id === activeTool)?.placeholder || "...";
+    const currentToolPlaceholder = tools.find(tool => tool.id === activeTool)?.placeholder ?? '';
+    const usagePercent = aiUsage?.tokenLimit
+        ? Math.min(100, (aiUsage.tokensUsed / aiUsage.tokenLimit) * 100)
+        : 0;
+    const isUsageCritical = usagePercent >= 90;
 
     return (
-        <div className="max-w-[1200px] mx-auto px-4 md:px-6 lg:px-10 py-6 md:py-10 animate-fade-up space-y-12">
-            <AIStudioHero />
+        <div className="ai-studio animate-fade-up" data-tool={activeToolKey}>
+            <div className="ai-studio__layout">
+                <AIStudioHero />
 
-            {/* Tool Selector */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {tools.map((tool) => (
-                    <StudioToolCard
-                        key={tool.id}
-                        tool={tool.id}
-                        title={tool.title}
-                        description={tool.description}
-                        icon={tool.icon}
-                        color={tool.color}
-                        active={activeTool === tool.id}
-                        onClick={() => setActiveTool(tool.id)}
-                    />
-                ))}
-            </div>
+                <div className="ai-studio__tool-grid">
+                    {tools.map((tool) => (
+                        <StudioToolCard
+                            key={tool.id}
+                            tool={tool.id}
+                            title={tool.title}
+                            description={tool.description}
+                            icon={tool.icon}
+                            active={activeTool === tool.id}
+                            onClick={() => setActiveTool(tool.id)}
+                        />
+                    ))}
+                </div>
 
-            {/* Studio Command - Clean Professional Design */}
-            <div className="max-w-4xl mx-auto">
-                <div className={`rounded-2xl border shadow-lg dark:shadow-2xl overflow-hidden transition-colors duration-300 ${activeTool === 'Architect'
-                    ? 'bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-800/50'
-                    : activeTool === 'Brainstormer'
-                        ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50'
-                        : 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-800/50'
-                    }`}>
-
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-100 dark:border-zinc-800">
-                        <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors duration-300 ${activeTool === 'Architect'
-                                    ? 'bg-indigo-100 dark:bg-indigo-500/20'
-                                    : activeTool === 'Brainstormer'
-                                        ? 'bg-amber-100 dark:bg-amber-500/20'
-                                        : 'bg-rose-100 dark:bg-rose-500/20'
-                                }`}>
-                                <span className={`material-symbols-outlined text-[20px] transition-colors duration-300 ${activeTool === 'Architect'
-                                        ? 'text-indigo-600 dark:text-indigo-400'
-                                        : activeTool === 'Brainstormer'
-                                            ? 'text-amber-600 dark:text-amber-400'
-                                            : 'text-rose-600 dark:text-rose-400'
-                                    }`}>terminal</span>
+                <div className="ai-studio__command">
+                    <Card className="ai-studio-command">
+                        <CardHeader className="ai-studio-command__header">
+                            <div className="ai-studio-command__meta">
+                                <div className="ai-studio-command__icon">
+                                    <span className="material-symbols-outlined">terminal</span>
+                                </div>
+                                <div>
+                                    <h3>{t('aiStudio.command.title')}</h3>
+                                    <p>{t('aiStudio.command.subtitle')}</p>
+                                </div>
                             </div>
-                            <div>
-                                <h3 className="text-lg font-display font-bold text-zinc-900 dark:text-white">{t('aiStudio.command.title')}</h3>
-                                <p className="text-xs text-zinc-500 dark:text-zinc-400">{t('aiStudio.command.subtitle')}</p>
-                            </div>
+
+                            {aiUsage && (
+                                <div className={`ai-studio-usage ${isUsageCritical ? 'is-critical' : ''}`.trim()}>
+                                    <span className="ai-studio-usage__label">{t('aiStudio.usage.label')}</span>
+                                    <div className="ai-studio-usage__bar">
+                                        <div
+                                            className="ai-studio-usage__fill"
+                                            style={{ width: `${usagePercent}%` }}
+                                        />
+                                    </div>
+                                    <span className="ai-studio-usage__value">{Math.round(usagePercent)}%</span>
+                                </div>
+                            )}
+                        </CardHeader>
+
+                        <CardBody className="ai-studio-command__body">
+                            <TextArea
+                                value={prompt}
+                                onChange={(e) => setPrompt(e.target.value)}
+                                className="ai-studio-command__input"
+                                placeholder={currentToolPlaceholder}
+                            />
+                        </CardBody>
+
+                        <CardFooter className="ai-studio-command__footer">
+                            <p className="ai-studio-command__hint">
+                                <span className="material-symbols-outlined">info</span>
+                                {t('aiStudio.hint.specific')}
+                            </p>
+
+                            <Button
+                                onClick={handleGenerate}
+                                disabled={!prompt.trim()}
+                                isLoading={isGenerating}
+                                icon={<span className="material-symbols-outlined">play_arrow</span>}
+                                className="ai-studio-command__action"
+                            >
+                                {isGenerating ? t('aiStudio.actions.generating') : t('aiStudio.actions.execute').replace('{tool}', activeToolLabel)}
+                            </Button>
+                        </CardFooter>
+                    </Card>
+                </div>
+
+                {(blueprint || ideas.length > 0 || risks.length > 0) && (
+                    <section className="ai-studio-results">
+                        <div className="ai-studio-results__header">
+                            <span className="material-symbols-outlined">output</span>
+                            <h3>{t('aiStudio.results.title')}</h3>
                         </div>
 
-                        {aiUsage && (
-                            <div className="flex items-center gap-3 text-xs">
-                                <span className="text-zinc-500 dark:text-zinc-400 font-medium">{t('aiStudio.usage.label')}</span>
-                                <div className="w-20 h-1.5 bg-zinc-200 dark:bg-zinc-700 rounded-full overflow-hidden">
-                                    <div
-                                        className={`h-full rounded-full transition-all duration-500 ${aiUsage.tokensUsed >= aiUsage.tokenLimit * 0.9
-                                            ? 'bg-rose-500'
-                                            : 'bg-indigo-500'
-                                            }`}
-                                        style={{ width: `${Math.min(100, (aiUsage.tokensUsed / aiUsage.tokenLimit) * 100)}%` }}
-                                    ></div>
-                                </div>
-                                <span className="text-zinc-700 dark:text-zinc-300 font-bold">{Math.round((aiUsage.tokensUsed / aiUsage.tokenLimit) * 100)}%</span>
+                        {activeTool === 'Architect' && blueprint && (
+                            <BlueprintResult
+                                blueprint={blueprint}
+                                onConvert={handleConvertToProject}
+                                isConverting={isConverting}
+                            />
+                        )}
+
+                        {activeTool === 'Brainstormer' && ideas.length > 0 && (
+                            <div className="ai-studio-ideas animate-fade-in">
+                                {ideas.map((idea) => (
+                                    <Card key={idea.id} className="ai-studio-idea-card">
+                                        <CardBody className="ai-studio-idea-card__body">
+                                            <div className="ai-studio-idea-card__header">
+                                                <Badge variant="neutral" className="ai-studio-idea-card__badge">{idea.type}</Badge>
+                                                <span className="material-symbols-outlined">auto_awesome</span>
+                                            </div>
+                                            <h4 className="ai-studio-idea-card__title">{idea.title}</h4>
+                                            <p className="ai-studio-idea-card__description">{idea.description}</p>
+                                        </CardBody>
+                                    </Card>
+                                ))}
                             </div>
                         )}
-                    </div>
 
-                    {/* Input Area */}
-                    <div className="p-6">
-                        <Textarea
-                            value={prompt}
-                            onChange={(e) => setPrompt(e.target.value)}
-                            className={`w-full min-h-[200px] border-2 rounded-xl p-5 text-lg font-display text-zinc-900 dark:text-white focus:ring-2 focus:border-transparent resize-none transition-all ${activeTool === 'Architect'
-                                ? 'bg-white dark:bg-indigo-950/50 border-indigo-300 dark:border-indigo-500/50 focus:ring-indigo-500 placeholder:text-indigo-400 dark:placeholder:text-indigo-400/60'
-                                : activeTool === 'Brainstormer'
-                                    ? 'bg-white dark:bg-amber-950/50 border-amber-300 dark:border-amber-500/50 focus:ring-amber-500 placeholder:text-amber-400 dark:placeholder:text-amber-400/60'
-                                    : 'bg-white dark:bg-rose-950/50 border-rose-300 dark:border-rose-500/50 focus:ring-rose-500 placeholder:text-rose-400 dark:placeholder:text-rose-400/60'
-                                }`}
-                            placeholder={currentToolPlaceholder}
-                        />
-                    </div>
-
-                    {/* Footer */}
-                    <div className={`px-6 py-4 border-t flex flex-col sm:flex-row items-center justify-between gap-4 transition-colors duration-300 ${activeTool === 'Architect'
-                        ? 'bg-indigo-100/50 dark:bg-indigo-900/30 border-indigo-200/50 dark:border-indigo-700/30'
-                        : activeTool === 'Brainstormer'
-                            ? 'bg-amber-100/50 dark:bg-amber-900/30 border-amber-200/50 dark:border-amber-700/30'
-                            : 'bg-rose-100/50 dark:bg-rose-900/30 border-rose-200/50 dark:border-rose-700/30'
-                        }`}>
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                            <span className="material-symbols-outlined text-[16px] align-middle mr-1">info</span>
-                            {t('aiStudio.hint.specific')}
-                        </p>
-
-                        <button
-                            onClick={handleGenerate}
-                            disabled={isGenerating || !prompt.trim()}
-                            className={`
-                                w-full sm:w-auto h-12 px-8 rounded-xl font-display font-bold text-sm
-                                flex items-center justify-center gap-2 transition-all duration-200
-                                ${isGenerating || !prompt.trim()
-                                    ? 'bg-zinc-200 text-zinc-400 dark:bg-zinc-700 dark:text-zinc-500 cursor-not-allowed'
-                                    : activeTool === 'Architect'
-                                        ? 'bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95 shadow-md'
-                                        : activeTool === 'Brainstormer'
-                                            ? 'bg-amber-500 text-white hover:bg-amber-600 active:scale-95 shadow-md'
-                                            : 'bg-rose-600 text-white hover:bg-rose-700 active:scale-95 shadow-md'
-                                }
-                            `}
-                        >
-                            <span className={`material-symbols-outlined text-[18px] ${isGenerating ? 'animate-spin' : ''}`}>
-                                {isGenerating ? 'refresh' : 'play_arrow'}
-                            </span>
-                            <span>{isGenerating ? t('aiStudio.actions.generating') : t('aiStudio.actions.execute').replace('{tool}', activeToolLabel)}</span>
-                        </button>
-                    </div>
-                </div>
+                        {activeTool === 'RiskScout' && risks.length > 0 && (
+                            <RiskResult risks={risks} />
+                        )}
+                    </section>
+                )}
             </div>
-
-            {/* Results Section */}
-            {(blueprint || ideas.length > 0 || risks.length > 0) && (
-                <div className="pt-12 border-t border-line dark:border-white/5 space-y-10">
-                    <div className="flex items-center gap-3">
-                        <span className="material-symbols-outlined text-indigo-500">output</span>
-                        <h3 className="text-2xl font-display font-bold">{t('aiStudio.results.title')}</h3>
-                    </div>
-
-                    {activeTool === 'Architect' && blueprint && (
-                        <BlueprintResult
-                            blueprint={blueprint}
-                            onConvert={handleConvertToProject}
-                            isConverting={isConverting}
-                        />
-                    )}
-
-                    {activeTool === 'Brainstormer' && ideas.length > 0 && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 animate-fade-in">
-                            {ideas.map((idea) => (
-                                <div key={idea.id} className="app-card group relative flex flex-col p-6 hover:translate-y-[-4px] transition-transform duration-300">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <span className="app-tag bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 border-none px-3">{idea.type}</span>
-                                        <span className="material-symbols-outlined text-indigo-400">auto_awesome</span>
-                                    </div>
-                                    <h4 className="text-ink dark:text-white text-lg font-display font-bold mb-3 leading-tight font-display">{idea.title}</h4>
-                                    <p className="text-muted text-sm leading-relaxed flex-1">{idea.description}</p>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-
-                    {activeTool === 'RiskScout' && risks.length > 0 && (
-                        <RiskResult risks={risks} />
-                    )}
-                </div>
-            )
-            }
-
-
-        </div >
+        </div>
     );
 };

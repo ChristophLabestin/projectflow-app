@@ -7,7 +7,7 @@ import { Project, Task, Idea, Issue, Activity, Member } from '../types';
 import { toMillis, toDate } from '../utils/time';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
+import { Badge } from '../components/common/Badge/Badge';
 import { Sparkline } from '../components/charts/Sparkline';
 import { DonutChart } from '../components/charts/DonutChart';
 import { ScheduledTasksCard } from '../components/dashboard/ScheduledTasksCard';
@@ -42,6 +42,12 @@ const TASK_STATUS_COLORS: Record<string, string> = {
     'Done': '#10b981'
 };
 
+const projectStatusTone = (status?: string): 'neutral' | 'success' | 'warning' | 'error' => {
+    if (status === 'Completed') return 'success';
+    if (status === 'On Hold' || status === 'Planning' || status === 'Brainstorming') return 'warning';
+    return 'neutral';
+};
+
 
 
 const MemberAvatars: React.FC<{ projectId: string }> = ({ projectId }) => {
@@ -65,24 +71,24 @@ const MemberAvatars: React.FC<{ projectId: string }> = ({ projectId }) => {
     if (members.length === 0) return null;
 
     return (
-        <div className="flex items-center -space-x-2">
+        <div className="member-avatars">
             {members.slice(0, 3).map((member, i) => (
                 <div
                     key={member.uid || i}
-                    className="size-7 rounded-full border-2 border-[var(--color-surface-paper)] overflow-hidden bg-[var(--color-surface-hover)] shadow-sm"
+                    className="member-avatar"
                     title={member.displayName || t('dashboard.members.member')}
                 >
                     {member.photoURL ? (
-                        <img src={member.photoURL} alt="" className="w-full h-full object-cover" />
+                        <img src={member.photoURL} alt="" className="member-avatar__image" />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center text-[10px] font-bold text-[var(--color-text-muted)]">
+                        <div className="member-avatar__fallback">
                             {((member.displayName || member.email || t('dashboard.members.unknown')).charAt(0)).toUpperCase()}
                         </div>
                     )}
                 </div>
             ))}
             {members.length > 3 && (
-                <div className="size-7 rounded-full border-2 border-[var(--color-surface-paper)] bg-[var(--color-surface-hover)] flex items-center justify-center text-[10px] font-bold text-[var(--color-text-muted)] shadow-sm">
+                <div className="member-avatar member-avatar--more">
                     +{members.length - 3}
                 </div>
             )}
@@ -883,7 +889,7 @@ export const Dashboard = () => {
     if (loading) {
         return (
             <div className="flex items-center justify-center p-12">
-                <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-3xl">rotate_right</span>
+                <span className="material-symbols-outlined text-3xl dashboard-spinner">rotate_right</span>
             </div>
         );
     }
@@ -1027,9 +1033,9 @@ export const Dashboard = () => {
                                                             <p>
                                                                 {project.title}
                                                             </p>
-                                                            <Badge variant="outline" size="sm" className="text-[8px]">
-                                                                {projectStatusLabels[project.status as keyof typeof projectStatusLabels] || project.status}
-                                                            </Badge>
+                                                        <Badge variant={projectStatusTone(project.status)} className="dashboard-badge dashboard-badge--compact">
+                                                            {projectStatusLabels[project.status as keyof typeof projectStatusLabels] || project.status}
+                                                        </Badge>
                                                         </div>
                                                         <div className="meta-row">
                                                             <span>{t('dashboard.risk.openTasks').replace('{count}', String(openTasks))}</span>
@@ -1037,7 +1043,7 @@ export const Dashboard = () => {
                                                             <span>{dueText}</span>
                                                         </div>
                                                     </div>
-                                                    <span className="material-symbols-outlined text-[16px] text-[var(--color-text-subtle)]">chevron_right</span>
+                                                    <span className="material-symbols-outlined risk-item__chevron">chevron_right</span>
                                                 </Link>
                                             );
                                         })
@@ -1101,11 +1107,11 @@ export const Dashboard = () => {
                                             </div>
                                         </div>
 
-                                        <div className="h-[200px] relative">
+                                        <div className="chart-plot">
                                             <svg
                                                 ref={trendRef}
                                                 viewBox={`0 0 ${chartOuterWidth} ${chartOuterHeight}`}
-                                                className="w-full h-full select-none"
+                                                className="chart-svg"
                                                 onMouseMove={handleTrendMove}
                                                 onMouseLeave={() => setHoverTrendIndex(null)}
                                                 preserveAspectRatio="xMidYMid meet"
@@ -1177,9 +1183,9 @@ export const Dashboard = () => {
                                                     return (
                                                         <g>
                                                             <line x1={x} x2={x} y1={margin.top} y2={margin.top + innerHeight} stroke="var(--color-primary)" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" />
-                                                            <circle cx={x} cy={yIdea} r={5} fill="#3b82f6" stroke="white" strokeWidth="2" />
-                                                            <circle cx={x} cy={yTask} r={5} fill="#f59e0b" stroke="white" strokeWidth="2" />
-                                                            {hasIssuesModule && <circle cx={x} cy={yIssue} r={5} fill="#f43f5e" stroke="white" strokeWidth={2} />}
+                                                            <circle cx={x} cy={yIdea} r={5} fill="#3b82f6" stroke="var(--color-absolute-white)" strokeWidth="2" />
+                                                            <circle cx={x} cy={yTask} r={5} fill="#f59e0b" stroke="var(--color-absolute-white)" strokeWidth="2" />
+                                                            {hasIssuesModule && <circle cx={x} cy={yIssue} r={5} fill="#f43f5e" stroke="var(--color-absolute-white)" strokeWidth={2} />}
                                                         </g>
                                                     );
                                                 })()}
@@ -1196,34 +1202,34 @@ export const Dashboard = () => {
 
                                                 return (
                                                     <div
-                                                        className="absolute top-2 z-20 bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-xl p-3 shadow-xl backdrop-blur-md min-w-[120px] pointer-events-none"
+                                                        className="trend-tooltip"
                                                         style={{ left: isRight ? 'auto' : `calc(${xPct}% + 20px)`, right: isRight ? `calc(${100 - xPct}% + 20px)` : 'auto' }}
                                                     >
-                                                        <div className="text-[9px] font-black text-[var(--color-text-subtle)] uppercase tracking-widest mb-2 border-b border-[var(--color-surface-border)] pb-1.5">
+                                                        <div className="trend-tooltip__label">
                                                             {trendLabel(hoverTrendIndex)}
                                                         </div>
-                                                        <div className="space-y-1.5">
-                                                            <div className="flex items-center justify-between gap-4">
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <div className="size-2 rounded-full bg-amber-500"></div>
-                                                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.tasks')}</span>
+                                                        <div className="trend-tooltip__rows">
+                                                            <div className="trend-tooltip__row">
+                                                                <div className="trend-tooltip__key">
+                                                                    <span className="trend-dot trend-dot--tasks" />
+                                                                    <span>{t('nav.tasks')}</span>
                                                                 </div>
-                                                                <span className="text-xs font-black text-[var(--color-text-main)]">{taskVal}</span>
+                                                                <span className="trend-tooltip__value">{taskVal}</span>
                                                             </div>
-                                                            <div className="flex items-center justify-between gap-4">
-                                                                <div className="flex items-center gap-1.5">
-                                                                    <div className="size-2 rounded-full bg-blue-500"></div>
-                                                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.flows')}</span>
+                                                            <div className="trend-tooltip__row">
+                                                                <div className="trend-tooltip__key">
+                                                                    <span className="trend-dot trend-dot--ideas" />
+                                                                    <span>{t('nav.flows')}</span>
                                                                 </div>
-                                                                <span className="text-xs font-black text-[var(--color-text-main)]">{ideaVal}</span>
+                                                                <span className="trend-tooltip__value">{ideaVal}</span>
                                                             </div>
                                                             {hasIssuesModule && (
-                                                                <div className="flex items-center justify-between gap-4">
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <div className="size-2 rounded-full bg-rose-500"></div>
-                                                                        <span className="text-[10px] font-bold text-[var(--color-text-muted)]">{t('nav.issues')}</span>
+                                                                <div className="trend-tooltip__row">
+                                                                    <div className="trend-tooltip__key">
+                                                                        <span className="trend-dot trend-dot--issues" />
+                                                                        <span>{t('nav.issues')}</span>
                                                                     </div>
-                                                                    <span className="text-xs font-black text-[var(--color-text-main)]">{issueVal}</span>
+                                                                    <span className="trend-tooltip__value">{issueVal}</span>
                                                                 </div>
                                                             )}
                                                         </div>
@@ -1238,32 +1244,32 @@ export const Dashboard = () => {
                                         <div className="footer-stat">
                                             <div className="stat-header">
                                                 <span className="stat-label">{t('nav.tasks')}</span>
-                                                <span className="material-symbols-outlined text-[10px] text-amber-500 font-bold">check_circle</span>
+                                                <span className="material-symbols-outlined trend-icon trend-icon--tasks">check_circle</span>
                                             </div>
                                             <div className="stat-main">
                                                 <span className="val">{taskTrend.reduce((a, b) => a + b.value, 0)}</span>
-                                                <span className="delta text-emerald-500">+12%</span>
+                                                <span className="delta trend-delta trend-delta--positive">+12%</span>
                                             </div>
                                         </div>
                                         <div className="footer-stat">
                                             <div className="stat-header">
                                                 <span className="stat-label">{t('nav.flows')}</span>
-                                                <span className="material-symbols-outlined text-[10px] text-blue-500 font-bold">lightbulb</span>
+                                                <span className="material-symbols-outlined trend-icon trend-icon--ideas">lightbulb</span>
                                             </div>
                                             <div className="stat-main">
                                                 <span className="val">{ideaTrend.reduce((a, b) => a + b.value, 0)}</span>
-                                                <span className="delta text-emerald-500">+5%</span>
+                                                <span className="delta trend-delta trend-delta--positive">+5%</span>
                                             </div>
                                         </div>
                                         {hasIssuesModule && (
                                             <div className="footer-stat">
                                                 <div className="stat-header">
                                                     <span className="stat-label">{t('nav.issues')}</span>
-                                                    <span className="material-symbols-outlined text-[10px] text-rose-500 font-bold">bug_report</span>
+                                                    <span className="material-symbols-outlined trend-icon trend-icon--issues">bug_report</span>
                                                 </div>
                                                 <div className="stat-main">
                                                     <span className="val">{issueTrend.reduce((a, b) => a + b.value, 0)}</span>
-                                                    <span className="delta text-[var(--color-text-subtle)]">0%</span>
+                                                    <span className="delta trend-delta trend-delta--neutral">0%</span>
                                                 </div>
                                             </div>
                                         )}
@@ -1309,7 +1315,7 @@ export const Dashboard = () => {
                                     </div>
                                     <div className="card-bottom-action">
                                         <Link to="/tasks" className="view-all-link">
-                                            {t('dashboard.taskStatus.manage')} <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                                            {t('dashboard.taskStatus.manage')} <span className="material-symbols-outlined dashboard-link-icon">arrow_forward</span>
                                         </Link>
                                     </div>
                                 </Card>
@@ -1350,7 +1356,7 @@ export const Dashboard = () => {
                                             <h3 className="h4">{t('dashboard.flowSpotlight.title')}</h3>
                                             <p className="subtitle">{t('dashboard.flowSpotlight.subtitle')}</p>
                                         </div>
-                                        <Badge variant="secondary" size="sm">
+                                        <Badge variant="neutral" className="dashboard-badge dashboard-badge--compact">
                                             {t('nav.flows')}
                                         </Badge>
                                     </div>
@@ -1375,7 +1381,7 @@ export const Dashboard = () => {
                                                             </div>
                                                         </div>
                                                         <div className="votes">
-                                                            <span className="material-symbols-outlined text-[16px] text-amber-500">star</span>
+                                                            <span className="material-symbols-outlined flow-spotlight__icon">star</span>
                                                             <span className="count">{idea.votes || 0}</span>
                                                         </div>
                                                     </div>
@@ -1427,7 +1433,7 @@ export const Dashboard = () => {
                                     </div>
                                     <div className="card-bottom-action mt-auto">
                                         <Link to="/tasks" className="view-all-link">
-                                            {t('dashboard.workload.manage')} <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                                            {t('dashboard.workload.manage')} <span className="material-symbols-outlined dashboard-link-icon">arrow_forward</span>
                                         </Link>
                                     </div>
                                 </Card>
@@ -1436,10 +1442,16 @@ export const Dashboard = () => {
                                 <Card data-onboarding-id="dashboard-deadlines" padding="md" className="card-stack">
                                     <h3 className="h4 mb-4">{t('dashboard.deadlines.title')}</h3>
                                     <div className="recent-tasks-list-nested">
-                                        {focusTasks.slice(0, 4).map(task => { // Showing top 4
-                                            const priorityColor = task.priority === 'Urgent' ? 'text-rose-500' : task.priority === 'High' ? 'text-orange-500' : 'text-blue-500';
-                                            const due = toDate(task.dueDate);
-                                            const isOverdue = due && due.getTime() < Date.now();
+                                            {focusTasks.slice(0, 4).map(task => { // Showing top 4
+                                                const priorityClass = task.priority === 'Urgent'
+                                                    ? 'priority-tag--urgent'
+                                                    : task.priority === 'High'
+                                                        ? 'priority-tag--high'
+                                                        : task.priority === 'Medium'
+                                                            ? 'priority-tag--medium'
+                                                            : 'priority-tag--low';
+                                                const due = toDate(task.dueDate);
+                                                const isOverdue = due && due.getTime() < Date.now();
 
                                             return (
                                                 <Link key={task.id} to={`/project/${task.projectId}/tasks/${task.id}`} className="recent-task-item">
@@ -1448,7 +1460,7 @@ export const Dashboard = () => {
                                                             <div>
                                                                 <p className="title">{task.title}</p>
                                                                 <div className="task-item-meta">
-                                                                    <span className={`priority-tag ${priorityColor}`}>
+                                                                    <span className={`priority-tag ${priorityClass}`}>
                                                                         {(task.priority && taskPriorityLabels[task.priority]) || task.priority || t('tasks.priority.medium')}
                                                                     </span>
                                                                     {due && (
@@ -1458,7 +1470,7 @@ export const Dashboard = () => {
                                                                     )}
                                                                 </div>
                                                             </div>
-                                                            <span className="material-symbols-outlined text-[18px] text-[var(--color-text-subtle)]">chevron_right</span>
+                                                            <span className="material-symbols-outlined deadline-item__chevron">chevron_right</span>
                                                         </div>
                                                     </div>
                                                 </Link>
@@ -1485,12 +1497,11 @@ export const Dashboard = () => {
                             </div>
                             <div className="flex-center-gap">
                                 <Link to="/projects" className="view-all-link">
-                                    {t('dashboard.projects.viewAll')} <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                                    {t('dashboard.projects.viewAll')} <span className="material-symbols-outlined dashboard-link-icon dashboard-link-icon--lg">arrow_forward</span>
                                 </Link>
                                 <Link to="/create">
                                     <Button
                                         size="md"
-                                        className="rounded-xl px-6 font-bold shadow-lg bg-[var(--color-primary)] text-[var(--color-primary-text)] hover:opacity-90 border-none"
                                         icon={<span className="material-symbols-outlined">add</span>}
                                     >
                                         {t('dashboard.projects.newProject')}
@@ -1500,8 +1511,8 @@ export const Dashboard = () => {
                         </div>
                         <div className="grid-cols-3">
                             {recentProjects.length === 0 ? (
-                                <div className="col-span-3 p-12 text-center text-[var(--color-text-subtle)] border-2 border-dashed border-[var(--color-surface-border)] rounded-2xl bg-[var(--color-surface-bg)]/50">
-                                    <div className="mb-4 inline-flex p-4 rounded-full bg-[var(--color-surface-hover)]">
+                                <div className="project-empty-state grid-col-span-full">
+                                    <div className="project-empty-icon">
                                         <span className="material-symbols-outlined text-4xl opacity-50">post_add</span>
                                     </div>
                                     <p className="text-lg font-medium">{t('dashboard.projects.empty.title')}</p>
@@ -1518,21 +1529,21 @@ export const Dashboard = () => {
                                     const isCompleted = proj.status === 'Completed';
 
                                     let icon = 'folder';
-                                    let iconClass = 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border-indigo-100 dark:border-indigo-500/20';
-                                    let progressColor = 'bg-indigo-500';
+                                    let accentClass = 'project-accent--default';
+                                    let progressClass = 'progress-fill--default';
 
                                     if (isBrainstorming) {
                                         icon = 'lightbulb';
-                                        iconClass = 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-500/10 border-amber-100 dark:border-amber-500/20';
-                                        progressColor = 'bg-amber-500';
+                                        accentClass = 'project-accent--brainstorm';
+                                        progressClass = 'progress-fill--brainstorm';
                                     } else if (isCompleted) {
                                         icon = 'check_circle';
-                                        iconClass = 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-500/10 border-emerald-100 dark:border-emerald-500/20';
-                                        progressColor = 'bg-emerald-500';
+                                        accentClass = 'project-accent--complete';
+                                        progressClass = 'progress-fill--complete';
                                     }
 
                                     return (
-                                        <Link key={proj.id} to={`/project/${proj.id}`} className="group block h-full">
+                                        <Link key={proj.id} to={`/project/${proj.id}`} className="project-card-link">
                                             <Card padding="none" hoverable className="project-card">
 
                                                 {/* Cover Image Area */}
@@ -1543,11 +1554,11 @@ export const Dashboard = () => {
                                                             <img src={proj.coverImage} className="cover-image" alt="" />
                                                         </>
                                                     ) : (
-                                                        <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 to-purple-500/20" />
+                                                        <div className="cover-fallback" />
                                                     )}
 
                                                     <div className="status-badge">
-                                                        <Badge variant={isCompleted ? 'success' : isBrainstorming ? 'secondary' : 'primary'} className="backdrop-blur-md bg-white/90 dark:bg-black/50 shadow-sm border-0">
+                                                        <Badge variant={projectStatusTone(proj.status)} className="dashboard-badge dashboard-badge--project">
                                                             {projectStatusLabels[proj.status as keyof typeof projectStatusLabels] || proj.status}
                                                         </Badge>
                                                     </div>
@@ -1561,7 +1572,7 @@ export const Dashboard = () => {
                                                                 <img src={proj.squareIcon} alt="" />
                                                             </div>
                                                         ) : (
-                                                            <div className={`icon-box ${iconClass}`}>
+                                                            <div className={`icon-box ${accentClass}`}>
                                                                 <span className="material-symbols-outlined text-2xl">{icon}</span>
                                                             </div>
                                                         )}
@@ -1579,23 +1590,23 @@ export const Dashboard = () => {
                                                     </div>
 
                                                     {/* Progress */}
-                                                    <div className="space-y-2 mb-4">
-                                                        <div className="flex items-center justify-between text-[10px] font-bold text-[var(--color-text-subtle)] uppercase tracking-wider">
+                                                    <div className="progress-section">
+                                                        <div className="progress-header">
                                                             <span>{t('dashboard.projects.progress')}</span>
                                                             <span>{pct}%</span>
                                                         </div>
-                                                        <div className="w-full bg-[var(--color-surface-border)] rounded-full h-1.5 overflow-hidden">
+                                                        <div className="progress-bar">
                                                             <div
-                                                                className={`h-full rounded-full transition-all duration-700 ease-out ${progressColor}`}
+                                                                className={`fill ${progressClass}`}
                                                                 style={{ width: `${pct}%` }}
                                                             />
                                                         </div>
                                                     </div>
 
                                                     {/* Footer members */}
-                                                    <div className="flex items-center justify-between mt-auto pt-4 border-t border-[var(--color-surface-border)]">
+                                                    <div className="card-footer">
                                                         <MemberAvatars projectId={proj.id} />
-                                                        <span className="material-symbols-outlined text-[var(--color-text-subtle)] group-hover:text-[var(--color-primary)] group-hover:translate-x-1 transition-all">arrow_forward</span>
+                                                        <span className="material-symbols-outlined project-card__arrow">arrow_forward</span>
                                                     </div>
                                                 </div>
                                             </Card>
@@ -1628,10 +1639,10 @@ export const Dashboard = () => {
                                     </h3>
                                     <div className="nav-controls">
                                         <button onClick={handlePrevDate}>
-                                            <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+                                            <span className="material-symbols-outlined calendar-nav-icon">chevron_left</span>
                                         </button>
                                         <button onClick={handleNextDate}>
-                                            <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+                                            <span className="material-symbols-outlined calendar-nav-icon">chevron_right</span>
                                         </button>
                                     </div>
                                 </div>
@@ -1736,7 +1747,7 @@ export const Dashboard = () => {
                                                 {item.userAvatar ? (
                                                     <img src={item.userAvatar} alt="" />
                                                 ) : (
-                                                    <div className="placeholder bg-indigo-100 text-indigo-600">
+                                            <div className="placeholder">
                                                         {(item.user || t('dashboard.activity.userFallback')).charAt(0)}
                                                     </div>
                                                 )}
@@ -1763,8 +1774,8 @@ export const Dashboard = () => {
                         {/* 3. Attention Needed (Moved Here) */}
                         <Card data-onboarding-id="dashboard-attention" padding="md" className="attention-card">
                             <div className="section-header-row">
-                                <h3 className="h5 text-rose-600 dark:text-rose-400">{t('dashboard.attention.title')}</h3>
-                                <span className="material-symbols-outlined text-rose-500 text-[20px]">warning</span>
+                                <h3 className="h5 attention-title">{t('dashboard.attention.title')}</h3>
+                                <span className="material-symbols-outlined attention-icon">warning</span>
                             </div>
                             <div className="attention-list">
                                 {(() => {
@@ -1775,7 +1786,7 @@ export const Dashboard = () => {
                                     if (attentionItems.length === 0) {
                                         return (
                                             <div className="empty-state-simple">
-                                                <span className="material-symbols-outlined text-3xl text-emerald-500 mb-2">check_circle</span>
+                                                <span className="material-symbols-outlined attention-empty-icon">check_circle</span>
                                                 <p>{t('dashboard.attention.allClear')}</p>
                                             </div>
                                         );
@@ -1803,17 +1814,27 @@ export const Dashboard = () => {
                                 {tasks
                                     .sort((a, b) => (toMillis(b.createdAt) || 0) - (toMillis(a.createdAt) || 0))
                                     .slice(0, 5)
-                                    .map(task => (
-                                        <Link key={task.id} to={`/project/${task.projectId}/tasks/${task.id}`} className="recent-task-item">
-                                            <div className={`priority-dot ${task.priority === 'Urgent' ? 'bg-red-500' : task.priority === 'High' ? 'bg-orange-500' : 'bg-blue-500'}`}></div>
-                                            <div className="content">
-                                                <p className="title">{task.title}</p>
-                                                <p className="date">
-                                                    {formatShortDate(new Date(toMillis(task.createdAt)), dateFormat, dateLocale)}
-                                                </p>
-                                            </div>
-                                        </Link>
-                                    ))}
+                                    .map(task => {
+                                        const priorityDotClass = task.priority === 'Urgent'
+                                            ? 'priority-dot--urgent'
+                                            : task.priority === 'High'
+                                                ? 'priority-dot--high'
+                                                : task.priority === 'Medium'
+                                                    ? 'priority-dot--medium'
+                                                    : 'priority-dot--low';
+
+                                        return (
+                                            <Link key={task.id} to={`/project/${task.projectId}/tasks/${task.id}`} className="recent-task-item">
+                                                <div className={`priority-dot ${priorityDotClass}`}></div>
+                                                <div className="content">
+                                                    <p className="title">{task.title}</p>
+                                                    <p className="date">
+                                                        {formatShortDate(new Date(toMillis(task.createdAt)), dateFormat, dateLocale)}
+                                                    </p>
+                                                </div>
+                                            </Link>
+                                        );
+                                    })}
                                 {tasks.length === 0 && <p className="empty-state-simple">{t('dashboard.recent.empty')}</p>}
                             </div>
                         </Card>
@@ -1828,7 +1849,7 @@ export const Dashboard = () => {
                                     {issues.slice(0, 4).map((issue) => (
                                         <div key={issue.id} className="status-item">
                                             <div className="flex-center-gap">
-                                                <span className={`material-symbols-outlined text-[18px] ${issue.status === 'Resolved' ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                                <span className={`material-symbols-outlined issue-status-icon ${issue.status === 'Resolved' ? 'issue-status-icon--resolved' : 'issue-status-icon--open'}`}>
                                                     {issue.status === 'Resolved' ? 'check_circle' : 'error'}
                                                 </span>
                                                 <div className="flex-1 min-w-0">

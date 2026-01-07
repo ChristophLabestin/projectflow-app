@@ -1,0 +1,27 @@
+.ui-card {
+    background-color: var(--color-surface-card);
+    border: 1px solid var(--color-surface-border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.ui-card--hoverable {
+    cursor: pointer;
+    transition: box-shadow var(--transition-fast);
+}
+
+.ui-card--hoverable:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.ui-card--pad-sm {
+    padding: 12px;
+}
+
+.ui-card--pad-md {
+    padding: 20px;
+}
+
+.ui-card--pad-lg {
+    padding: 32px;
+}

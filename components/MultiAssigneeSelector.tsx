@@ -1,7 +1,9 @@
-import React, { useEffect, useState, useRef } from 'react';
+﻿import React, { useEffect, useState, useRef } from 'react';
 import { getProjectMembers, subscribeTenantUsers, getActiveTenantId } from '../services/dataService';
 import { auth } from '../services/firebase';
 import { Input } from './ui/Input';
+import { useLanguage } from '../context/LanguageContext';
+import './multi-assignee-selector.scss';
 
 interface MultiAssigneeSelectorProps {
     projectId: string;
@@ -19,8 +21,8 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
     const [loading, setLoading] = useState(true);
     const [isOpen, setIsOpen] = useState(false);
     const [search, setSearch] = useState('');
-    const [projectModules, setProjectModules] = useState<string[]>([]);
     const wrapperRef = useRef<HTMLDivElement>(null);
+    const { t } = useLanguage();
 
     useEffect(() => {
         let unsubUsers: (() => void) | undefined;
@@ -28,24 +30,23 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
 
         const load = async () => {
             // 1. Fetch Project Member UIDs
-            const m = await getProjectMembers(projectId);
+            const memberIds = await getProjectMembers(projectId);
 
             // Ensure current user is in members list (e.g. owner might not be explicit member)
-            if (auth.currentUser && !m.includes(auth.currentUser.uid)) {
-                m.push(auth.currentUser.uid);
+            if (auth.currentUser && !memberIds.includes(auth.currentUser.uid)) {
+                memberIds.push(auth.currentUser.uid);
             }
 
             // Ensure all current assignees are in the list
             assigneeIds.forEach(id => {
-                if (!m.includes(id)) m.push(id);
+                if (!memberIds.includes(id)) memberIds.push(id);
             });
 
-            if (mounted) setMembers(m);
+            if (mounted) setMembers(memberIds);
 
             // 2. Get the project to determine its tenant
             const { getProjectById, getUserProfile } = await import('../services/dataService');
             const project = await getProjectById(projectId);
-            if (project?.modules) setProjectModules(project.modules);
             const projectTenantId = project?.tenantId || getActiveTenantId() || auth.currentUser?.uid;
 
             // 3. Fetch all member profiles
@@ -54,14 +55,14 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
             // Always add current user
             if (auth.currentUser) {
                 memberProfiles[auth.currentUser.uid] = {
-                    displayName: auth.currentUser.displayName || 'Me',
+                    displayName: auth.currentUser.displayName || t('assignees.me'),
                     photoURL: auth.currentUser.photoURL,
                     email: auth.currentUser.email
                 };
             }
 
             // Fetch each member's profile - try multiple sources
-            await Promise.all(m.map(async (uid) => {
+            await Promise.all(memberIds.map(async (uid) => {
                 if (uid === auth.currentUser?.uid) return; // Already have current user
                 if (memberProfiles[uid]) return; // Already fetched
 
@@ -71,7 +72,7 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                         const profileFromProjectTenant = await getUserProfile(uid, projectTenantId);
                         if (profileFromProjectTenant) {
                             memberProfiles[uid] = {
-                                displayName: profileFromProjectTenant.displayName || 'User',
+                                displayName: profileFromProjectTenant.displayName || t('assignees.unknownUser'),
                                 photoURL: profileFromProjectTenant.photoURL,
                                 email: profileFromProjectTenant.email
                             };
@@ -83,7 +84,7 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                     const profileFromPersonalTenant = await getUserProfile(uid, uid);
                     if (profileFromPersonalTenant) {
                         memberProfiles[uid] = {
-                            displayName: profileFromPersonalTenant.displayName || 'User',
+                            displayName: profileFromPersonalTenant.displayName || t('assignees.unknownUser'),
                             photoURL: profileFromPersonalTenant.photoURL,
                             email: profileFromPersonalTenant.email
                         };
@@ -110,7 +111,7 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                     users.forEach(u => {
                         if (!combinedMap[u.id] || !combinedMap[u.id].displayName) {
                             combinedMap[u.id] = {
-                                displayName: u.displayName || 'User',
+                                displayName: u.displayName || t('assignees.unknownUser'),
                                 photoURL: u.photoURL,
                                 email: u.email
                             };
@@ -126,7 +127,7 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                 const projectGroups = await getProjectGroups(projectId);
                 if (mounted) setGroups(projectGroups);
             } catch (error) {
-                console.error("Failed to fetch project groups", error);
+                console.error('Failed to fetch project groups', error);
             }
         };
         load();
@@ -135,7 +136,7 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
             mounted = false;
             if (unsubUsers) unsubUsers();
         };
-    }, [projectId]);
+    }, [projectId, t]);
 
     // Handle clicking outside to close
     useEffect(() => {
@@ -144,8 +145,8 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
                 setIsOpen(false);
             }
         };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
     const toggleSelection = (uid: string) => {
@@ -169,155 +170,162 @@ export const MultiAssigneeSelector: React.FC<MultiAssigneeSelectorProps> = ({ pr
         return name.toLowerCase().includes(search.toLowerCase());
     });
 
-    const filteredGroups = groups.filter(g => g.name.toLowerCase().includes(search.toLowerCase()));
+    const filteredGroups = groups.filter(group => group.name.toLowerCase().includes(search.toLowerCase()));
 
 
-    if (loading) return <div className="h-10 bg-gray-100 rounded animate-pulse" />;
+    if (loading) return <div className="assignee-select__loading" />;
 
     return (
-        <div className="flex flex-col gap-1 w-full" ref={wrapperRef}>
-            {label && <label className="text-xs font-bold text-muted uppercase tracking-wider ml-1">{label}</label>}
+        <div className="assignee-select" ref={wrapperRef}>
+            {label && <label className="assignee-select__label">{label}</label>}
 
-            <div className="relative">
+            <div className="assignee-select__control">
                 {/* Trigger */}
-                <div
+                <button
+                    type="button"
                     onClick={() => setIsOpen(!isOpen)}
-                    className={`h-10 px-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between
-                    bg-surface text-main
-                    ${isOpen ? 'border-[var(--color-text-subtle)]' : 'border-surface hover:border-[var(--color-text-subtle)]'}
-                    `}
+                    className={`assignee-select__trigger ${isOpen ? 'is-open' : ''}`}
+                    aria-expanded={isOpen}
+                    aria-haspopup="listbox"
                 >
                     {assigneeIds.length === 0 ? (
-                        <span className="text-sm text-subtle">Unassigned</span>
+                        <span className="assignee-select__placeholder">{t('assignees.unassigned')}</span>
                     ) : (
-                        <div className="flex items-center gap-2">
-                            <div className="flex -space-x-2 overflow-hidden">
+                        <div className="assignee-select__summary">
+                            <div className="assignee-select__avatars">
                                 {assigneeIds.slice(0, 4).map(uid => {
                                     const user = userMap[uid];
                                     return (
-                                        <div key={uid} className="inline-block size-6 rounded-full ring-2 ring-surface-bg bg-indigo-100 text-indigo-600 flex items-center justify-center overflow-hidden" title={user?.displayName}>
+                                        <div key={uid} className="assignee-select__avatar" title={user?.displayName}>
                                             {user?.photoURL ? (
-                                                <img src={user.photoURL} alt="" className="size-full object-cover" />
+                                                <img src={user.photoURL} alt="" className="assignee-select__avatar-image" />
                                             ) : (
-                                                <span className="text-[9px] font-bold">{user?.displayName?.slice(0, 1) || 'U'}</span>
+                                                <span className="assignee-select__avatar-fallback">
+                                                    {user?.displayName?.slice(0, 1) || t('assignees.unknownUser').slice(0, 1)}
+                                                </span>
                                             )}
                                         </div>
                                     );
                                 })}
                             </div>
                             {assigneeIds.length > 4 && (
-                                <span className="text-xs font-medium text-muted">+{assigneeIds.length - 4}</span>
+                                <span className="assignee-select__count">+{assigneeIds.length - 4}</span>
                             )}
                             {assigneeIds.length > 0 && assigneeIds.length <= 4 && (
-                                <span className="text-xs text-muted ml-1">
-                                    {assigneeIds.length === 1 ? userMap[assigneeIds[0]]?.displayName.split(' ')[0] : ''}
+                                <span className="assignee-select__name">
+                                    {assigneeIds.length === 1 ? (userMap[assigneeIds[0]]?.displayName.split(' ')[0] || '') : ''}
                                 </span>
                             )}
                         </div>
                     )}
 
                     {assignedGroupIds.length > 0 && (
-                        <div className="flex items-center gap-1 ml-2 pl-2 border-l border-surface">
-                            <span className="material-symbols-outlined text-[16px] text-indigo-500">groups</span>
-                            <span className="text-xs font-medium text-main">{assignedGroupIds.length}</span>
+                        <div className="assignee-select__group">
+                            <span className="material-symbols-outlined">groups</span>
+                            <span className="assignee-select__group-count">{assignedGroupIds.length}</span>
                         </div>
                     )}
 
-                    <span className="material-symbols-outlined text-[20px] text-subtle leading-none ml-auto">expand_more</span>
-                </div>
+                    <span className="material-symbols-outlined assignee-select__chevron">expand_more</span>
+                </button>
 
                 {/* Dropdown */}
                 {isOpen && (
-                    <div className="absolute z-50 top-full mt-2 left-1/2 -translate-x-1/2 min-w-full w-72 bg-card border border-surface rounded-xl shadow-xl overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                        <div className="p-2 border-b border-surface">
-                            <div className="px-2 py-1.5 bg-surface rounded-lg">
-                                <Input
-                                    ref={(input) => {
-                                        // Manual focus on mount with preventScroll
-                                        if (input) {
-                                            input.focus({ preventScroll: true });
-                                        }
-                                    }}
-                                    type="text"
-                                    className="border-none focus:ring-0 px-0 h-auto py-1 shadow-none bg-transparent"
-                                    icon="search"
-                                    placeholder="Search members..."
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                />
-                            </div>
+                    <div className="assignee-select__dropdown">
+                        <div className="assignee-select__search">
+                            <Input
+                                ref={(input) => {
+                                    // Manual focus on mount with preventScroll
+                                    if (input) {
+                                        input.focus({ preventScroll: true });
+                                    }
+                                }}
+                                type="text"
+                                className="assignee-select__search-input"
+                                icon="search"
+                                placeholder={t('assignees.searchPlaceholder')}
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                            />
                         </div>
-                        <div className="max-h-60 overflow-y-auto p-1">
+                        <div className="assignee-select__list" role="listbox">
                             {filteredMembers.length === 0 ? (
-                                <div className="px-4 py-3 text-sm text-subtle text-center">No members found</div>
+                                <div className="assignee-select__empty">{t('assignees.noResults')}</div>
                             ) : (
                                 filteredMembers.map(uid => {
                                     const user = userMap[uid];
                                     const isSelected = assigneeIds.includes(uid);
                                     return (
-                                        <div
+                                        <button
                                             key={uid}
+                                            type="button"
                                             onClick={() => toggleSelection(uid)}
-                                            className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-primary/10' : 'hover:bg-surface-hover'}`}
+                                            className={`assignee-select__option ${isSelected ? 'is-selected' : ''}`}
+                                            role="option"
+                                            aria-selected={isSelected}
                                         >
-                                            <div className={`size-4 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-muted'}`}>
-                                                {isSelected && <span className="material-symbols-outlined text-[12px] text-white">check</span>}
-                                            </div>
+                                            <span className={`assignee-select__checkbox ${isSelected ? 'is-checked' : ''}`}>
+                                                {isSelected && <span className="material-symbols-outlined">check</span>}
+                                            </span>
 
-                                            <div className="size-8 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                            <div className="assignee-select__avatar assignee-select__avatar--option">
                                                 {user?.photoURL ? (
-                                                    <img src={user.photoURL} alt="" className="size-full object-cover" />
+                                                    <img src={user.photoURL} alt="" className="assignee-select__avatar-image" />
                                                 ) : (
-                                                    <span className="text-xs font-bold">{user?.displayName?.slice(0, 1) || 'U'}</span>
+                                                    <span className="assignee-select__avatar-fallback">
+                                                        {user?.displayName?.slice(0, 1) || t('assignees.unknownUser').slice(0, 1)}
+                                                    </span>
                                                 )}
                                             </div>
-                                            <div className="flex flex-col min-w-0">
-                                                <span className={`text-sm font-medium truncate ${isSelected ? 'text-primary' : 'text-main'}`}>
-                                                    {user ? user.displayName : 'Unknown User'}
+                                            <div className="assignee-select__option-text">
+                                                <span className="assignee-select__option-title">
+                                                    {user ? user.displayName : t('assignees.unknownUser')}
                                                 </span>
-                                                <span className="text-[10px] text-muted truncate">
-                                                    {user?.email || 'No email'}
+                                                <span className="assignee-select__option-meta">
+                                                    {user?.email || t('assignees.noEmail')}
                                                 </span>
                                             </div>
-                                        </div>
+                                        </button>
                                     );
                                 })
                             )}
 
                             {onGroupChange && filteredGroups.length > 0 && (
-                                <>
-                                    <div className="px-2 py-1 text-xs font-bold text-muted uppercase mt-2">Groups</div>
+                                <div className="assignee-select__section">
+                                    <div className="assignee-select__section-title">{t('assignees.groupsLabel')}</div>
                                     {filteredGroups.map(group => {
                                         const isSelected = assignedGroupIds.includes(group.id);
                                         return (
-                                            <div
+                                            <button
                                                 key={group.id}
+                                                type="button"
                                                 onClick={() => toggleGroupSelection(group.id)}
-                                                className={`flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer transition-colors ${isSelected ? 'bg-primary/10' : 'hover:bg-surface-hover'}`}
+                                                className={`assignee-select__option ${isSelected ? 'is-selected' : ''}`}
+                                                role="option"
+                                                aria-selected={isSelected}
                                             >
-                                                <div className={`size-4 rounded border flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-muted'}`}>
-                                                    {isSelected && <span className="material-symbols-outlined text-[12px] text-white">check</span>}
+                                                <span className={`assignee-select__checkbox ${isSelected ? 'is-checked' : ''}`}>
+                                                    {isSelected && <span className="material-symbols-outlined">check</span>}
+                                                </span>
+                                                <div className="assignee-select__avatar assignee-select__avatar--group">
+                                                    <span className="material-symbols-outlined">groups</span>
                                                 </div>
-                                                <div className="size-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 border border-indigo-200">
-                                                    <span className="material-symbols-outlined text-[18px]">groups</span>
-                                                </div>
-                                                <div className="flex flex-col min-w-0">
-                                                    <span className={`text-sm font-medium truncate ${isSelected ? 'text-primary' : 'text-main'}`}>
-                                                        {group.name}
-                                                    </span>
-                                                    <span className="text-[10px] text-muted truncate">
-                                                        {group.memberIds.length} members
+                                                <div className="assignee-select__option-text">
+                                                    <span className="assignee-select__option-title">{group.name}</span>
+                                                    <span className="assignee-select__option-meta">
+                                                        {t('projectGroups.count.members').replace('{count}', String(group.memberIds.length))}
                                                     </span>
                                                 </div>
-                                            </div>
+                                            </button>
                                         );
                                     })}
-                                </>
+                                </div>
                             )}
                         </div>
                     </div>
                 )}
             </div>
-        </div >
+        </div>
     );
 };
+

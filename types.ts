@@ -13,6 +13,7 @@ export interface Tenant {
     updatedAt?: any;
     originIdeaId?: string;
     AccessToModules?: string[];
+    focusProjectId?: string; // ID of the manually focused project
 }
 
 export interface AIUsage {
