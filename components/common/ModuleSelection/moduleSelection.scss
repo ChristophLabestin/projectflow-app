@@ -39,34 +39,30 @@
         }
 
         &--selected {
-            background-color: var(--color-primary); // Selected bg (Light: #171717 / Dark: #fff)
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            // Strictly use Primary Button Tokens
+            background-color: var(--color-primary);
+            box-shadow: var(--shadow-md);
 
-            // Invert colors for selected state
             .module-selection__title {
-                color: var(--color-text-ondark); // Light: White / Dark: Black
+                color: var(--color-primary-text);
             }
 
             .module-selection__desc {
-                color: var(--color-text-ondark);
-                opacity: 0.7;
+                color: var(--color-primary-text);
+                opacity: 0.8;
             }
 
             .module-selection__icon {
-                // Invert icon box
-                // If bg is dark (light mode), box should be lighter.
-                // If bg is white (dark mode), box should be light grey.
-                // We can use a transparent white overlay for simple inversion effect?
-                background-color: rgba(128, 128, 128, 0.2);
-                color: var(--color-text-ondark);
+                // Use inverted colors for high contrast (Cutout look)
+                // Light Mode: Black Card -> White Box -> Black Icon
+                // Dark Mode: White Card -> Black Box -> White Icon
+                background-color: var(--color-primary-text);
+                color: var(--color-primary);
             }
 
             .module-selection__check {
-                background-color: transparent; // Circle itself is transparent? Or white?
-                // Screenshot shows just a checkmark in a circle. 
-                // Let's make the circle border match the text color, and checkmark same.
-                border-color: var(--color-text-ondark);
-                color: var(--color-text-ondark);
+                border-color: var(--color-primary-text);
+                color: var(--color-primary-text);
             }
         }
     }

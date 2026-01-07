@@ -1,4 +1,5 @@
 import React from 'react';
+import './card.scss';
 
 type CardProps = React.HTMLAttributes<HTMLDivElement> & {
     children: React.ReactNode;
@@ -9,25 +10,13 @@ type CardProps = React.HTMLAttributes<HTMLDivElement> & {
 
 export const Card = ({ children, className = '', padding = 'md', hoverable = false, ...props }: CardProps) => {
     let paddingClass = "";
-    if (padding === 'sm') paddingClass = "p-3";
-    if (padding === 'md') paddingClass = "p-5";
-    if (padding === 'lg') paddingClass = "p-8";
+    if (padding === 'sm') paddingClass = "ui-card--pad-sm";
+    if (padding === 'md') paddingClass = "ui-card--pad-md";
+    if (padding === 'lg') paddingClass = "ui-card--pad-lg";
 
     return (
         <div
-            className={`
-                bg-card 
-                border border-surface 
-                rounded-[var(--radius-lg)] 
-                shadow-sm 
-                ${hoverable ? 'hover:shadow-md transition-shadow duration-200 cursor-pointer' : ''} 
-                ${paddingClass} 
-                ${className}
-            `}
-            style={{
-                backgroundColor: 'var(--color-surface-card)',
-                borderColor: 'var(--color-surface-border)'
-            }}
+            className={`ui-card ${hoverable ? 'ui-card--hoverable' : ''} ${paddingClass} ${className}`.trim()}
             {...props}
         >
             {children}

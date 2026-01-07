@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { getProjectById } from '../services/dataService';
 import { Project } from '../types';
 import { useLanguage } from '../context/LanguageContext';
+import { Badge } from '../components/common/Badge/Badge';
+import { Card, CardBody } from '../components/common/Card/Card';
 
 export const ProjectDetails = () => {
     const { t } = useLanguage();
@@ -26,14 +28,14 @@ export const ProjectDetails = () => {
 
     if (loading) {
         return (
-            <div className="flex justify-center py-12">
-                <span className="material-symbols-outlined animate-spin text-3xl text-gray-400">progress_activity</span>
+            <div className="project-details__loading">
+                <span className="material-symbols-outlined project-details__loading-icon">progress_activity</span>
             </div>
         );
     }
 
     if (!project) {
-        return <div className="p-4">{t('projectDetails.notFound')}</div>;
+        return <div className="project-details__empty">{t('projectDetails.notFound')}</div>;
     }
 
     const statusLabels: Record<string, string> = {
@@ -52,28 +54,30 @@ export const ProjectDetails = () => {
     };
 
     return (
-        <div className="max-w-[900px] mx-auto flex flex-col gap-6 animate-fade-up">
-            <div>
-                <span className="app-pill w-fit">{t('projectDetails.pill')}</span>
-                <h1 className="text-2xl font-display font-bold text-ink">{t('projectDetails.title')}</h1>
-                <p className="text-muted text-sm">{t('projectDetails.subtitle')}</p>
+        <div className="project-details animate-fade-up">
+            <div className="project-details__header">
+                <Badge variant="neutral" className="project-details__pill">{t('projectDetails.pill')}</Badge>
+                <h1 className="project-details__title">{t('projectDetails.title')}</h1>
+                <p className="project-details__subtitle">{t('projectDetails.subtitle')}</p>
             </div>
 
-            <div className="app-card p-6 space-y-5">
-                <DetailRow label={t('projectDetails.fields.title')} value={project.title} />
-                <DetailRow label={t('projectDetails.fields.description')} value={project.description || t('projectDetails.notSet')} />
-                <DetailRow label={t('projectDetails.fields.status')} value={(project.status && statusLabels[project.status]) || project.status || t('projectDetails.unknown')} />
-                <DetailRow label={t('projectDetails.fields.priority')} value={(project.priority && priorityLabels[project.priority]) || project.priority || t('tasks.priority.medium')} />
-                <DetailRow label={t('projectDetails.fields.startDate')} value={project.startDate || t('projectDetails.notSet')} />
-                <DetailRow label={t('projectDetails.fields.dueDate')} value={project.dueDate || t('projectDetails.notSet')} />
-            </div>
+            <Card>
+                <CardBody className="project-details__list">
+                    <DetailRow label={t('projectDetails.fields.title')} value={project.title} />
+                    <DetailRow label={t('projectDetails.fields.description')} value={project.description || t('projectDetails.notSet')} />
+                    <DetailRow label={t('projectDetails.fields.status')} value={(project.status && statusLabels[project.status]) || project.status || t('projectDetails.unknown')} />
+                    <DetailRow label={t('projectDetails.fields.priority')} value={(project.priority && priorityLabels[project.priority]) || project.priority || t('tasks.priority.medium')} />
+                    <DetailRow label={t('projectDetails.fields.startDate')} value={project.startDate || t('projectDetails.notSet')} />
+                    <DetailRow label={t('projectDetails.fields.dueDate')} value={project.dueDate || t('projectDetails.notSet')} />
+                </CardBody>
+            </Card>
         </div>
     );
 };
 
 const DetailRow = ({ label, value }: { label: string; value: string }) => (
-    <div className="flex items-start justify-between gap-4">
-        <span className="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">{label}</span>
-        <span className="text-sm font-medium text-gray-900 dark:text-white text-right max-w-[60%] break-words">{value}</span>
+    <div className="detail-row">
+        <span className="detail-row__label">{label}</span>
+        <span className="detail-row__value">{value}</span>
     </div>
 );

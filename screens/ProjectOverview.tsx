@@ -14,17 +14,17 @@ import { getDownloadURL, ref, uploadBytes, listAll } from 'firebase/storage';
 import { format, addDays, startOfToday, endOfToday, isWithinInterval, parseISO } from 'date-fns';
 import { getRoleDisplayInfo, getWorkspaceRoles } from '../services/rolesService';
 import { useLanguage } from '../context/LanguageContext';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
-import { Modal } from '../components/ui/Modal';
-import { Select } from '../components/ui/Select';
-import { DatePicker } from '../components/ui/DatePicker';
+import { Button } from '../components/common/Button/Button';
+import { Card } from '../components/common/Card/Card';
+import { Badge } from '../components/common/Badge/Badge';
+import { Modal } from '../components/common/Modal/Modal';
+import { Select, type SelectOption } from '../components/common/Select/Select';
+import { DatePicker } from '../components/common/DateTime/DatePicker';
 import { InviteMemberModal } from '../components/InviteMemberModal';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
 // import { Checkbox } from '../components/ui/Checkbox'; // Removed
 import { fetchLastCommits, GithubCommit } from '../services/githubService';
-import { getUserProfile, subscribeProjectMilestones, updateMilestone } from '../services/dataService';
+import { getUserProfile, subscribeProjectMilestones, updateMilestone, saveHealthSnapshot, getHealthDelta } from '../services/dataService';
 import { subscribeProjectGroups } from '../services/projectGroupService';
 import { calculateProjectHealth } from '../services/healthService';
 import { HealthIndicator } from '../components/project/HealthIndicator';
@@ -32,48 +32,54 @@ import { HealthDetailModal } from '../components/project/HealthDetailModal';
 import { getHealthFactorText } from '../utils/healthLocalization';
 import { ProjectEditModal, Tab } from '../components/project/ProjectEditModal';
 import { ProjectReportModal } from '../components/project/ProjectReportModal';
-import { TYPE_COLORS } from '../components/flows/constants';
 import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/OnboardingOverlay';
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
 import { ProjectMindmap } from '../components/mindmap/ProjectMindmap';
 
-const cleanText = (value?: string | null) => (value || '').replace(/\*\*/g, '');
-
-
+const buildTone = (colorVar: string, rgbVar: string, alpha = 0.12) => ({
+    color: `var(${colorVar})`,
+    bg: `rgba(var(${rgbVar}), ${alpha})`
+});
 
 const activityIcon = (type?: Activity['type'], actionText?: string) => {
     const action = (actionText || '').toLowerCase();
+    const successTone = buildTone('--color-success', '--color-success-rgb');
+    const warningTone = buildTone('--color-warning', '--color-warning-rgb');
+    const errorTone = buildTone('--color-error', '--color-error-rgb');
+    const primaryTone = buildTone('--color-primary', '--color-primary-rgb');
+    const neutralTone = buildTone('--color-text-muted', '--color-surface-hover-rgb', 0.6);
+
     if (type === 'task') {
-        if (action.includes('deleted') || action.includes('remove')) return { icon: 'delete', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-500/10' };
-        if (action.includes('reopened')) return { icon: 'undo', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-500/10' };
-        if (action.includes('completed') || action.includes('done')) return { icon: 'check_circle', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-500/10' };
-        return { icon: 'add_task', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-500/10' };
+        if (action.includes('deleted') || action.includes('remove')) return { icon: 'delete', ...errorTone };
+        if (action.includes('reopened')) return { icon: 'undo', ...warningTone };
+        if (action.includes('completed') || action.includes('done')) return { icon: 'check_circle', ...successTone };
+        return { icon: 'add_task', ...primaryTone };
     }
     if (type === 'issue') {
-        if (action.includes('resolved') || action.includes('closed')) return { icon: 'check_circle', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-500/10' };
-        if (action.includes('reopened')) return { icon: 'undo', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-500/10' };
-        return { icon: 'bug_report', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-500/10' };
+        if (action.includes('resolved') || action.includes('closed')) return { icon: 'check_circle', ...successTone };
+        if (action.includes('reopened')) return { icon: 'undo', ...warningTone };
+        return { icon: 'bug_report', ...errorTone };
     }
-    if (type === 'status') return { icon: 'swap_horiz', color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-100 dark:bg-indigo-500/10' };
-    if (type === 'report') return { icon: 'auto_awesome', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-500/10' };
-    if (type === 'comment') return { icon: 'chat_bubble', color: 'text-amber-600', bg: 'bg-amber-100' };
-    if (type === 'file') return { icon: 'attach_file', color: 'text-slate-600', bg: 'bg-slate-100' };
-    if (type === 'member') return { icon: 'person_add', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-500/10' };
-    if (type === 'commit') return { icon: 'code', color: 'text-blue-600', bg: 'bg-blue-100' };
-    if (type === 'priority') return { icon: 'priority_high', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-500/10' };
-    return { icon: 'more_horiz', color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-700/50' };
+    if (type === 'status') return { icon: 'swap_horiz', ...primaryTone };
+    if (type === 'report') return { icon: 'auto_awesome', ...primaryTone };
+    if (type === 'comment') return { icon: 'chat_bubble', ...warningTone };
+    if (type === 'file') return { icon: 'attach_file', ...neutralTone };
+    if (type === 'member') return { icon: 'person_add', ...successTone };
+    if (type === 'commit') return { icon: 'code', ...primaryTone };
+    if (type === 'priority') return { icon: 'priority_high', ...errorTone };
+    return { icon: 'more_horiz', ...neutralTone };
 };
 
-const getModuleIcon = (name: string) => {
-    if (name === 'tasks') return { icon: 'check_circle', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-50 dark:bg-emerald-500/10' };
-    if (name === 'ideas') return { icon: 'lightbulb', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-500/10' };
-    if (name === 'mindmap') return { icon: 'hub', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-500/10' };
-    if (name === 'issues') return { icon: 'bug_report', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-50 dark:bg-rose-500/10' };
-    if (name === 'social') return { icon: 'campaign', color: 'text-pink-600 dark:text-pink-400', bg: 'bg-pink-50 dark:bg-pink-500/10' };
-    if (name === 'marketing') return { icon: 'ads_click', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-50 dark:bg-purple-500/10' };
-    if (name === 'sprints') return { icon: 'directions_run', color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-50 dark:bg-orange-500/10' };
-    if (name === 'activity') return { icon: 'history', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-500/10' };
-    return { icon: 'more_horiz', color: 'text-slate-600 dark:text-slate-400', bg: 'bg-[var(--color-surface-hover)]' };
+const getTypeBadgeClass = (type?: string) => {
+    const key = (type || '').toLowerCase();
+    if (key === 'feature') return 'type-badge--feature';
+    if (key === 'product') return 'type-badge--product';
+    if (key === 'marketing') return 'type-badge--marketing';
+    if (key === 'social') return 'type-badge--social';
+    if (key === 'moonshot') return 'type-badge--moonshot';
+    if (key === 'optimization') return 'type-badge--optimization';
+    if (key === 'paidads') return 'type-badge--paid-ads';
+    return 'type-badge--default';
 };
 
 import { usePresence, useProjectPresence } from '../hooks/usePresence';
@@ -136,6 +142,7 @@ export const ProjectOverview = () => {
     const [githubCommits, setGithubCommits] = useState<GithubCommit[]>([]);
     const [commitsLoading, setCommitsLoading] = useState(false);
     const [commitsError, setCommitsError] = useState<string | null>(null);
+    const [healthDelta, setHealthDelta] = useState<number | null>(null);
 
 
 
@@ -317,6 +324,22 @@ export const ProjectOverview = () => {
 
         void loadSubtaskStats();
     }, [tasks, project?.id, project?.tenantId]);
+
+    // Health tracking: Save snapshot daily and load delta
+    useEffect(() => {
+        if (!id || !project?.tenantId || !tasks.length) return;
+
+        const health = calculateProjectHealth(project, tasks, milestones, issues, activity);
+
+        // Save daily health snapshot (uses date as doc ID so won't duplicate)
+        saveHealthSnapshot(id, health.score, health.status, health.trend, project.tenantId)
+            .catch(err => console.warn('Failed to save health snapshot:', err));
+
+        // Load delta vs last week
+        getHealthDelta(id, health.score, project.tenantId)
+            .then(delta => setHealthDelta(delta))
+            .catch(err => console.warn('Failed to get health delta:', err));
+    }, [id, project, tasks, milestones, issues, activity]);
 
     useEffect(() => {
         let mounted = true;
@@ -527,6 +550,9 @@ export const ProjectOverview = () => {
         }
     };
 
+    const toDateValue = (value?: string) => (value ? parseISO(value) : null);
+    const toDateString = (value: Date | null) => (value ? format(value, 'yyyy-MM-dd') : '');
+
 
 
 
@@ -627,6 +653,25 @@ export const ProjectOverview = () => {
         Medium: t('tasks.priority.medium'),
         Low: t('tasks.priority.low')
     }), [t]);
+    const statusOptions = useMemo<SelectOption[]>(() => ([
+        { value: 'Active', label: projectStatusLabels.Active },
+        { value: 'Planning', label: projectStatusLabels.Planning },
+        { value: 'On Hold', label: projectStatusLabels['On Hold'] },
+        { value: 'Completed', label: projectStatusLabels.Completed },
+        { value: 'Brainstorming', label: projectStatusLabels.Brainstorming },
+        { value: 'Review', label: projectStatusLabels.Review }
+    ]), [projectStatusLabels]);
+    const priorityOptions = useMemo<SelectOption[]>(() => ([
+        { value: 'Low', label: priorityLabels.Low },
+        { value: 'Medium', label: priorityLabels.Medium },
+        { value: 'High', label: priorityLabels.High },
+        { value: 'Urgent', label: priorityLabels.Urgent }
+    ]), [priorityLabels]);
+    const projectStateOptions = useMemo<SelectOption[]>(() => ([
+        { value: 'not specified', label: t('projectOverview.controls.state.notSpecified') },
+        { value: 'pre-release', label: t('projectOverview.controls.state.preRelease') },
+        { value: 'released', label: t('projectOverview.controls.state.released') }
+    ]), [t]);
     const issueStatusLabels = useMemo(() => ({
         Open: t('projectIssues.status.open'),
         'In Progress': t('projectIssues.status.inProgress'),
@@ -661,22 +706,22 @@ export const ProjectOverview = () => {
     }, [sprints]);
 
     if (loading) return (
-        <div className="flex items-center justify-center p-12">
-            <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-3xl">progress_activity</span>
+        <div className="project-overview__loading">
+            <span className="material-symbols-outlined project-overview__loading-icon">progress_activity</span>
         </div>
     );
 
     if (unauthorized) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8">
-                <div className="size-24 rounded-full bg-rose-100 dark:bg-rose-900/20 flex items-center justify-center mb-6">
-                    <span className="material-symbols-outlined text-5xl text-rose-500">lock</span>
+            <div className="project-overview__unauthorized">
+                <div className="project-overview__unauthorized-badge">
+                    <span className="material-symbols-outlined project-overview__unauthorized-icon">lock</span>
                 </div>
-                <h1 className="text-3xl font-bold text-[var(--color-text-main)] mb-2">{t('projectOverview.unauthorized.title')}</h1>
-                <p className="text-[var(--color-text-muted)] max-w-md mb-8">
+                <h1 className="project-overview__unauthorized-title">{t('projectOverview.unauthorized.title')}</h1>
+                <p className="project-overview__unauthorized-text">
                     {t('projectOverview.unauthorized.description')}
                 </p>
-                <Link to="/projects">
+                <Link to="/projects" className="project-overview__unauthorized-action">
                     <Button variant="primary" icon={<span className="material-symbols-outlined">arrow_back</span>}>
                         {t('projectOverview.unauthorized.back')}
                     </Button>
@@ -685,7 +730,7 @@ export const ProjectOverview = () => {
         );
     }
 
-    if (!project) return <div className="p-8">{t('projectOverview.error.notFound')}</div>;
+    if (!project) return <div className="project-overview__not-found">{t('projectOverview.error.notFound')}</div>;
 
     const health = calculateProjectHealth(project, tasks, milestones, issues, activity);
 
@@ -767,6 +812,7 @@ export const ProjectOverview = () => {
         .slice(0, 3);
     const inProgressCount = tasks.filter(t => t.status === 'In Progress').length;
     const workloadMetric = { label: t('tasks.status.inProgress'), value: inProgressCount, icon: 'pending_actions' };
+    const projectPriorityKey = (project.priority || 'Medium').toLowerCase();
 
 
     return (
@@ -775,11 +821,11 @@ export const ProjectOverview = () => {
 
 
                 {/* PROFILE BANNER LAYOUT */}
-                <div data-onboarding-id="project-overview-header" className="project-header-card group/header">
+                <div data-onboarding-id="project-overview-header" className="project-header-card">
 
                     {/* 1. Cover Image Banner */}
                     <div
-                        className={`cover-section group/cover ${!project.coverImage ? 'no-image' : 'has-image'}`}
+                        className={`cover-section ${!project.coverImage ? 'no-image' : 'has-image'}`}
                         style={{
                             backgroundImage: !coverRemoved && project.coverImage ? `url(${project.coverImage})` : undefined,
                             backgroundColor: !project.coverImage ? 'var(--color-surface-hover)' : undefined
@@ -796,8 +842,8 @@ export const ProjectOverview = () => {
                             <div className="edit-cover-btn-wrapper">
                                 <Button
                                     size="sm"
-                                    className="bg-white/80 backdrop-blur text-black hover:bg-white shadow-sm border-none"
-                                    icon={<span className="material-symbols-outlined text-[18px]">photo_camera</span>}
+                                    className="cover-edit-btn"
+                                    icon={<span className="material-symbols-outlined cover-edit-icon">photo_camera</span>}
                                     onClick={() => { setMediaPickerTarget('cover'); setShowMediaLibrary(true); }}
                                 >
                                     {t('projectOverview.actions.editCover')}
@@ -811,19 +857,19 @@ export const ProjectOverview = () => {
 
                         {/* Overlapping Icon */}
                         <div className="project-icon-wrapper">
-                            <div className="icon-container group/icon">
+                            <div className="icon-container">
                                 <div className="icon-frame">
                                     <div className={`icon-inner ${project.squareIcon ? 'with-image' : 'no-image'}`} onClick={() => { if (isOwner) { setMediaPickerTarget('icon'); setShowMediaLibrary(true); } }}>
                                         {project.squareIcon ? (
                                             <img src={project.squareIcon} alt="" />
                                         ) : (
-                                            <span className="bg-gradient-to-br from-indigo-500 to-purple-600 bg-clip-text text-transparent">{project.title.charAt(0)}</span>
+                                            <span className="icon-placeholder-text">{project.title.charAt(0)}</span>
                                         )}
                                     </div>
                                 </div>
                                 {isOwner && (
                                     <div className="edit-overlay">
-                                        <span className="material-symbols-outlined text-white">edit</span>
+                                        <span className="material-symbols-outlined edit-overlay-icon">edit</span>
                                     </div>
                                 )}
                             </div>
@@ -834,11 +880,11 @@ export const ProjectOverview = () => {
                             <div>
                                 <div className="title-row">
                                     <h1>{project.title}</h1>
-                                    <Badge variant={project.status === 'Active' ? 'success' : 'primary'}>
+                                    <Badge variant={project.status === 'Active' ? 'success' : 'neutral'}>
                                         {projectStatusLabels[project.status as keyof typeof projectStatusLabels] || project.status}
                                     </Badge>
                                 </div>
-                                <div className="description-area group/desc">
+                                <div className="description-area">
                                     <p className="desc-text">{project.description || t('projectOverview.header.noDescription')}</p>
 
                                     {/* Hover Expand Box */}
@@ -861,14 +907,14 @@ export const ProjectOverview = () => {
                                     onClick={() => setViewMode('overview')}
                                     className={viewMode === 'overview' ? 'active' : ''}
                                 >
-                                    <span className="material-symbols-outlined text-[16px]">grid_view</span>
+                                    <span className="material-symbols-outlined view-toggle-icon">grid_view</span>
                                     <span>{t('nav.overview')}</span>
                                 </button>
                                 <button
                                     onClick={() => setViewMode('mindmap')}
                                     className={viewMode === 'mindmap' ? 'active' : ''}
                                 >
-                                    <span className="material-symbols-outlined text-[16px]">hub</span>
+                                    <span className="material-symbols-outlined view-toggle-icon">hub</span>
                                     <span>{t('nav.mindmap')}</span>
                                 </button>
                             </div>
@@ -896,7 +942,7 @@ export const ProjectOverview = () => {
                                         }
                                     }}
                                     title={pinnedProjectId === project.id ? t('projectOverview.actions.unpinProject') : t('projectOverview.actions.pinProject')}
-                                    className={pinnedProjectId === project.id ? 'text-amber-500 hover:text-amber-600' : ''}
+                                    className={`project-pin-btn ${pinnedProjectId === project.id ? 'is-pinned' : ''}`.trim()}
                                 >
                                     <span className="material-symbols-outlined">
                                         {pinnedProjectId === project.id ? 'push_pin' : 'keep'}
@@ -917,7 +963,7 @@ export const ProjectOverview = () => {
                     <div data-onboarding-id="project-overview-metrics" className="metrics-footer">
                         {/* 1. Progress */}
                         <div className="metric-item">
-                            <span className="material-symbols-outlined text-[var(--color-primary)] icon">speed</span>
+                            <span className="material-symbols-outlined icon metric-icon metric-icon--primary">speed</span>
                             <div className="content">
                                 <div className="value-row">
                                     <span className="label">{t('projectOverview.metrics.completion')}</span>
@@ -933,8 +979,8 @@ export const ProjectOverview = () => {
                         </div>
 
                         {/* 2. Tasks Stat */}
-                        <div className="metric-item group relative cursor-help">
-                            <span className="material-symbols-outlined text-green-500 icon">task_alt</span>
+                        <div className="metric-item metric-item--tooltip">
+                            <span className="material-symbols-outlined icon metric-icon metric-icon--success">task_alt</span>
                             <div className="content">
                                 <div className="main-value">
                                     {completedTasksWithSubtasks} / {totalTasksWithSubtasks}
@@ -943,62 +989,59 @@ export const ProjectOverview = () => {
                             </div>
 
                             {/* Floating Hover Card (Keeping inline styles for complex layout specific to this popup not fully covered by general SCSS yet) */}
-                            <div className="absolute left-1/2 -translate-x-1/2 top-[calc(100%+8px)] z-50 w-72 pointer-events-none group-hover:pointer-events-auto">
-                                <div className="relative opacity-0 translate-y-2 scale-95 group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100 transition-all duration-200 ease-out origin-top shadow-2xl rounded-2xl">
-                                    {/* Container */}
-                                    <div className="bg-white dark:bg-[var(--color-surface-card)] border border-[var(--color-surface-border)] rounded-2xl overflow-hidden ring-1 ring-black/5 dark:ring-white/5">
-                                        {/* Header */}
-                                        <div className="px-5 py-3 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-hover)]/30 flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">donut_small</span>
-                                                <span className="text-xs font-bold text-[var(--color-text-main)]">{t('projectOverview.metrics.composition')}</span>
-                                            </div>
-                                            <span className="text-[10px] font-medium text-[var(--color-text-muted)]">
-                                                {t('projectOverview.metrics.totalCompleted')}
-                                            </span>
+                            <div className="metric-tooltip">
+                                <div className="metric-tooltip__card">
+                                    <div className="metric-tooltip__header">
+                                        <div className="metric-tooltip__title">
+                                            <span className="material-symbols-outlined">donut_small</span>
+                                            <span>{t('projectOverview.metrics.composition')}</span>
                                         </div>
-                                        {/* Body */}
-                                        <div className="p-5 space-y-5">
-                                            {/* Visual Bar */}
-                                            <div className="space-y-2">
-                                                <div className="flex w-full h-3 bg-[var(--color-surface-hover)] rounded-full overflow-hidden ring-1 ring-inset ring-black/5 dark:ring-white/5">
-                                                    <div
-                                                        className="h-full bg-emerald-500 transition-all duration-300 relative group/segment"
-                                                        style={{ width: `${taskCompletionShare}%` }}
-                                                    >
-                                                        {taskCompletionShare > 10 && <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-white/90">{taskCompletionShare}%</span>}
-                                                    </div>
-                                                    <div
-                                                        className="h-full bg-sky-500 transition-all duration-300 relative group/segment"
-                                                        style={{ width: `${subtaskCompletionShare}%` }}
-                                                    >
-                                                        {subtaskCompletionShare > 10 && <span className="absolute inset-0 flex items-center justify-center text-[8px] font-bold text-white/90">{subtaskCompletionShare}%</span>}
-                                                    </div>
+                                        <span className="metric-tooltip__meta">
+                                            {t('projectOverview.metrics.totalCompleted')}
+                                        </span>
+                                    </div>
+                                    <div className="metric-tooltip__body">
+                                        <div className="metric-tooltip__bar">
+                                            <div
+                                                className="metric-tooltip__segment metric-tooltip__segment--tasks"
+                                                style={{ width: `${taskCompletionShare}%` }}
+                                            >
+                                                {taskCompletionShare > 10 && (
+                                                    <span className="metric-tooltip__segment-text">{taskCompletionShare}%</span>
+                                                )}
+                                            </div>
+                                            <div
+                                                className="metric-tooltip__segment metric-tooltip__segment--subtasks"
+                                                style={{ width: `${subtaskCompletionShare}%` }}
+                                            >
+                                                {subtaskCompletionShare > 10 && (
+                                                    <span className="metric-tooltip__segment-text">{subtaskCompletionShare}%</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <div className="metric-tooltip__labels">
+                                            <span>{t('projectOverview.metrics.tasks')}</span>
+                                            <span>{t('projectOverview.metrics.subtasks')}</span>
+                                        </div>
+                                        <div className="metric-tooltip__grid">
+                                            <div className="metric-tooltip__stat-card">
+                                                <div className="metric-tooltip__stat-row">
+                                                    <span className="metric-tooltip__stat-dot metric-tooltip__stat-dot--tasks" />
+                                                    <span className="metric-tooltip__stat-label">{t('projectOverview.metrics.mainTasks')}</span>
                                                 </div>
-                                                <div className="flex justify-between text-[10px] text-[var(--color-text-muted)] px-0.5">
-                                                    <span>{t('projectOverview.metrics.tasks')}</span>
-                                                    <span>{t('projectOverview.metrics.subtasks')}</span>
+                                                <div className="metric-tooltip__stat-value">
+                                                    {completedTasks}
+                                                    <span className="metric-tooltip__stat-total">/ {tasks.length}</span>
                                                 </div>
                                             </div>
-                                            {/* Detailed grid */}
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div className="flex flex-col p-3 rounded-xl bg-[var(--color-surface-hover)]/50 border border-[var(--color-surface-border)] transition-colors hover:bg-[var(--color-surface-hover)]">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <div className="size-2 rounded-full bg-emerald-500 shadow-sm shadow-emerald-500/20"></div>
-                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('projectOverview.metrics.mainTasks')}</span>
-                                                    </div>
-                                                    <div className="text-xl font-bold text-[var(--color-text-main)] mt-1 tabular-nums tracking-tight">
-                                                        {completedTasks} <span className="text-sm font-medium text-[var(--color-text-muted)]">/ {tasks.length}</span>
-                                                    </div>
+                                            <div className="metric-tooltip__stat-card">
+                                                <div className="metric-tooltip__stat-row">
+                                                    <span className="metric-tooltip__stat-dot metric-tooltip__stat-dot--subtasks" />
+                                                    <span className="metric-tooltip__stat-label">{t('projectOverview.metrics.subtasksLabel')}</span>
                                                 </div>
-                                                <div className="flex flex-col p-3 rounded-xl bg-[var(--color-surface-hover)]/50 border border-[var(--color-surface-border)] transition-colors hover:bg-[var(--color-surface-hover)]">
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <div className="size-2 rounded-full bg-sky-500 shadow-sm shadow-sky-500/20"></div>
-                                                        <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t('projectOverview.metrics.subtasksLabel')}</span>
-                                                    </div>
-                                                    <div className="text-xl font-bold text-[var(--color-text-main)] mt-1 tabular-nums tracking-tight">
-                                                        {subtaskTotals.done} <span className="text-sm font-medium text-[var(--color-text-muted)]">/ {subtaskTotals.total}</span>
-                                                    </div>
+                                                <div className="metric-tooltip__stat-value">
+                                                    {subtaskTotals.done}
+                                                    <span className="metric-tooltip__stat-total">/ {subtaskTotals.total}</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -1009,13 +1052,9 @@ export const ProjectOverview = () => {
 
                         {/* 3. Priority */}
                         <div className="metric-item">
-                            <span className={`material-symbols-outlined icon ${project.priority === 'High' ? 'text-rose-500' :
-                                project.priority === 'Medium' ? 'text-amber-500' : 'text-blue-500'
-                                }`}>flag</span>
+                            <span className={`material-symbols-outlined icon metric-icon metric-icon--${projectPriorityKey}`}>flag</span>
                             <div className="content">
-                                <div className={`main-value ${project.priority === 'High' ? 'text-rose-600 dark:text-rose-400' :
-                                    project.priority === 'Medium' ? 'text-amber-600 dark:text-amber-400' : 'text-blue-600 dark:text-blue-400'
-                                    }`}>
+                                <div className={`main-value priority-text priority-text--${projectPriorityKey}`}>
                                     {project.priority ? (priorityLabels[project.priority] || project.priority) : t('tasks.priority.medium')}
                                 </div>
                                 <span className="sub-label">{t('projectOverview.metrics.priority')}</span>
@@ -1024,7 +1063,7 @@ export const ProjectOverview = () => {
 
                         {/* 4. Next Sprint */}
                         <div className="metric-item">
-                            <span className="material-symbols-outlined text-orange-500 icon">directions_run</span>
+                            <span className="material-symbols-outlined icon metric-icon metric-icon--warning">directions_run</span>
                             <div className="content">
                                 <div className="main-value">
                                     {nextSprint ? nextSprint.name : t('None', 'None')}
@@ -1035,7 +1074,7 @@ export const ProjectOverview = () => {
 
                         {/* 5. Next Deadline */}
                         <div className="metric-item">
-                            <span className="material-symbols-outlined text-indigo-500 icon">event_upcoming</span>
+                            <span className="material-symbols-outlined icon metric-icon metric-icon--primary">event_upcoming</span>
                             <div className="content">
                                 <div className="main-value">
                                     {upcomingDeadlines[0]
@@ -1048,20 +1087,20 @@ export const ProjectOverview = () => {
                     </div>
 
                     {/* Mobile View Toggle */}
-                    <div className="md:hidden px-6 pb-6 pt-0">
-                        <div className="flex bg-[var(--color-surface-hover)] p-0.5 rounded-lg border border-[var(--color-surface-border)] w-full">
+                    <div className="project-overview__mobile-toggle">
+                        <div className="project-overview__toggle-group">
                             <button
                                 onClick={() => setViewMode('overview')}
-                                className={`flex-1 px-3 py-2 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${viewMode === 'overview' ? 'bg-white dark:bg-slate-700 shadow-sm text-[var(--color-text-main)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                                className={`project-overview__toggle-btn ${viewMode === 'overview' ? 'is-active' : ''}`}
                             >
-                                <span className="material-symbols-outlined text-[16px]">grid_view</span>
+                                <span className="material-symbols-outlined view-toggle-icon">grid_view</span>
                                 <span>{t('nav.overview')}</span>
                             </button>
                             <button
                                 onClick={() => setViewMode('mindmap')}
-                                className={`flex-1 px-3 py-2 rounded-md text-xs font-bold transition-all flex items-center justify-center gap-1.5 ${viewMode === 'mindmap' ? 'bg-white dark:bg-slate-700 shadow-sm text-[var(--color-text-main)]' : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                                className={`project-overview__toggle-btn ${viewMode === 'mindmap' ? 'is-active' : ''}`}
                             >
-                                <span className="material-symbols-outlined text-[16px]">hub</span>
+                                <span className="material-symbols-outlined view-toggle-icon">hub</span>
                                 <span>{t('nav.mindmap')}</span>
                             </button>
                         </div>
@@ -1071,7 +1110,7 @@ export const ProjectOverview = () => {
 
                 {
                     viewMode === 'mindmap' ? (
-                        <div className="w-full h-[calc(100vh-340px)] min-h-[600px] animate-fade-in">
+                        <div className="project-overview__mindmap">
                             <ProjectMindmap projectId={id!} />
                         </div>
                     ) : (
@@ -1088,49 +1127,66 @@ export const ProjectOverview = () => {
                                             <span className="subtitle">{t('projectOverview.snapshot.subtitle')}</span>
                                         </div>
                                         <div className="snapshot-grid">
-                                            <Card className="widget-card hover-effect">
+                                            {/* Health Card */}
+                                            <Card className="widget-card health-widget">
                                                 <div className="card-header">
                                                     <h3 className="title">
-                                                        <span className="material-symbols-outlined icon">query_stats</span>
+                                                        <span className="material-symbols-outlined icon">monitor_heart</span>
                                                         {t('projectOverview.snapshot.health.title')}
                                                     </h3>
                                                     <button onClick={() => setShowHealthModal(true)} className="header-action-btn">
                                                         <span className="material-symbols-outlined">arrow_forward</span>
                                                     </button>
                                                 </div>
-                                                <div className="health-content">
-                                                    <HealthIndicator health={health} size="md" showLabel={false} onOpenDetail={() => setShowHealthModal(true)} />
-                                                    <div>
-                                                        <div className={`status-text ${health.status}`}>
-                                                            {healthStatusLabels[health.status] || health.status}
+
+                                                {/* Semi-Circle Gauge Section */}
+                                                <div className="health-widget__gauge-section">
+                                                    <div className={`health-widget__gauge health-widget__gauge--${health.status}`}>
+                                                        <svg viewBox="0 0 120 70" className="health-widget__svg">
+                                                            {/* Background arc */}
+                                                            <path
+                                                                d="M 10 60 A 50 50 0 0 1 110 60"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                strokeWidth="8"
+                                                                strokeLinecap="round"
+                                                                className="health-widget__track"
+                                                            />
+                                                            {/* Progress arc */}
+                                                            <path
+                                                                d="M 10 60 A 50 50 0 0 1 110 60"
+                                                                fill="none"
+                                                                stroke="currentColor"
+                                                                strokeWidth="8"
+                                                                strokeLinecap="round"
+                                                                strokeDasharray="157"
+                                                                strokeDashoffset={157 - (health.score / 100) * 157}
+                                                                className="health-widget__progress"
+                                                            />
+                                                        </svg>
+                                                        <div className="health-widget__score-group">
+                                                            <span className="health-widget__score">{health.score}</span>
+                                                            <span className="health-widget__score-suffix">/100</span>
                                                         </div>
-                                                        <div className="score-label">{t('projectOverview.snapshot.health.score')}</div>
                                                     </div>
-                                                </div>
-                                                <div className="risks-section">
-                                                    <p className="label">{t('projectOverview.snapshot.health.topRisks')}</p>
-                                                    {health.factors.filter(f => f.type === 'negative').length > 0 ? (
-                                                        <ul className="risks-list">
-                                                            {health.factors.filter(f => f.type === 'negative').slice(0, 2).map((factor) => {
-                                                                const { label } = getHealthFactorText(factor, t);
-                                                                return (
-                                                                    <li key={factor.id}>
-                                                                        <span className="dot">●</span>
-                                                                        <span className="text">{label}</span>
-                                                                    </li>
-                                                                );
-                                                            })}
-                                                        </ul>
-                                                    ) : (
-                                                        <p className="no-risks">
-                                                            <span className="material-symbols-outlined">check_circle</span>
-                                                            {t('projectOverview.snapshot.health.noRisks')}
-                                                        </p>
-                                                    )}
+
+                                                    {/* Status & Trend Row */}
+                                                    <div className="health-widget__status-row">
+                                                        <span className={`health-widget__status-badge health-widget__status-badge--${health.status}`}>
+                                                            {healthStatusLabels[health.status] || health.status}
+                                                        </span>
+                                                        <span className={`health-widget__trend health-widget__trend--${healthDelta !== null ? (healthDelta > 0 ? 'improving' : healthDelta < 0 ? 'declining' : 'stable') : health.trend}`}>
+                                                            <span className="material-symbols-outlined">
+                                                                {healthDelta !== null ? (healthDelta > 0 ? 'trending_up' : healthDelta < 0 ? 'trending_down' : 'trending_flat') : (health.trend === 'improving' ? 'trending_up' : health.trend === 'declining' ? 'trending_down' : 'trending_flat')}
+                                                            </span>
+                                                            {healthDelta !== null ? `${healthDelta > 0 ? '+' : ''}${healthDelta}` : '—'} {t('health.vsLastWeek', 'vs last week')}
+                                                        </span>
+                                                    </div>
                                                 </div>
                                             </Card>
 
-                                            <Card className="widget-card hover-effect">
+                                            {/* Workload Card */}
+                                            <Card className="widget-card">
                                                 <div className="card-header">
                                                     <h3 className="title">
                                                         <span className="material-symbols-outlined icon">inbox</span>
@@ -1163,10 +1219,40 @@ export const ProjectOverview = () => {
                                                         <span className="stat-value">{workloadMetric.value}</span>
                                                     </div>
                                                 </div>
-
                                             </Card>
 
-                                            <Card className="widget-card hover-effect">
+                                            {/* Priority Card */}
+                                            <Card className="widget-card priority-widget">
+                                                <div className="card-header">
+                                                    <h3 className="title">
+                                                        <span className="material-symbols-outlined icon">flag</span>
+                                                        {t('projectOverview.snapshot.priority.title', 'Priority')}
+                                                    </h3>
+                                                    <Link to={`/project/${id}/tasks`} className="header-action-btn">
+                                                        <span className="material-symbols-outlined">arrow_forward</span>
+                                                    </Link>
+                                                </div>
+                                                <div className="priority-widget__content">
+                                                    {[
+                                                        { key: 'Urgent', label: t('tasks.priority.urgent', 'Urgent'), color: 'urgent' },
+                                                        { key: 'High', label: t('tasks.priority.high', 'High'), color: 'high' },
+                                                        { key: 'Medium', label: t('tasks.priority.medium', 'Medium'), color: 'medium' },
+                                                        { key: 'Low', label: t('tasks.priority.low', 'Low'), color: 'low' },
+                                                    ].map(p => {
+                                                        const count = tasks.filter(t => !t.isCompleted && t.priority === p.key).length;
+                                                        return (
+                                                            <div key={p.key} className="priority-widget__row">
+                                                                <span className={`priority-widget__dot priority-widget__dot--${p.color}`} />
+                                                                <span className="priority-widget__label">{p.label}</span>
+                                                                <span className="priority-widget__count">{count}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </Card>
+
+                                            {/* Activity Card */}
+                                            <Card className="widget-card">
                                                 <div className="card-header">
                                                     <h3 className="title">
                                                         <span className="material-symbols-outlined icon">insights</span>
@@ -1198,41 +1284,6 @@ export const ProjectOverview = () => {
                                                 </div>
                                             </Card>
 
-                                            <Card className="widget-card hover-effect">
-                                                <div className="card-header">
-                                                    <h3 className="title">
-                                                        <span className="material-symbols-outlined icon">event_upcoming</span>
-                                                        {t('projectOverview.snapshot.upcoming.title')}
-                                                    </h3>
-                                                    <Link to={`/project/${id}/tasks`} className="header-action-btn">
-                                                        <span className="material-symbols-outlined">arrow_forward</span>
-                                                    </Link>
-                                                </div>
-                                                <div className="upcoming-content">
-                                                    {upcomingDeadlines.length === 0 ? (
-                                                        <p className="empty-text">{t('projectOverview.snapshot.upcoming.empty')}</p>
-                                                    ) : (
-                                                        upcomingDeadlines.slice(0, 2).map(task => (
-                                                            <div key={task.id} className="upcoming-task-row">
-                                                                <div className="task-info">
-                                                                    <p className="task-title">{task.title}</p>
-                                                                    <p className="task-meta">
-                                                                        {task.priority ? (priorityLabels[task.priority] || task.priority) : t('projectOverview.snapshot.upcoming.priorityNotSet')}
-                                                                    </p>
-                                                                </div>
-                                                                <span className="task-date">
-                                                                    {format(new Date(task.dueDate!), dateFormat, { locale: dateLocale })}
-                                                                </span>
-                                                            </div>
-                                                        ))
-                                                    )}
-                                                </div>
-                                                {upcomingDeadlines.length > 2 && (
-                                                    <p className="more-count">
-                                                        {t('projectOverview.snapshot.upcoming.moreTasks').replace('{count}', String(upcomingDeadlines.length - 2))}
-                                                    </p>
-                                                )}
-                                            </Card>
                                         </div>
                                     </section>
 
@@ -1246,8 +1297,8 @@ export const ProjectOverview = () => {
                                                 {showIdeaCard && <span>{t('projectOverview.execution.flows').replace('{count}', String(ideas.length))}</span>}
                                             </div>
                                         </div>
-                                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                            <Card className={`widget-card hover-effect ${executionSideCards === 0 ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
+                                        <div className="execution-grid">
+                                            <Card className={`widget-card execution-main ${executionSideCards === 0 ? 'execution-main--full' : ''}`.trim()}>
                                                 <div className="card-header">
                                                     <div className="title-group">
                                                         <span className="material-symbols-outlined icon">checklist</span>
@@ -1267,7 +1318,7 @@ export const ProjectOverview = () => {
                                                             <div
                                                                 key={task.id}
                                                                 onClick={() => navigate(`/project/${id}/tasks/${task.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
-                                                                className="list-row group"
+                                                                className="list-row"
                                                             >
                                                                 <button
                                                                     onClick={(e) => handleToggleTask(task.id, task.isCompleted, e)}
@@ -1397,9 +1448,9 @@ export const ProjectOverview = () => {
                                             </Card>
 
                                             {(showIdeaCard || showIssueCard) && (
-                                                <div className={`lg:col-span-1 grid grid-cols-1 gap-6 ${executionSideCards > 1 ? 'lg:grid-rows-2 lg:auto-rows-fr' : ''}`}>
+                                                <div className={`execution-side ${executionSideCards > 1 ? 'execution-side--stacked' : ''}`.trim()}>
                                                     {showIdeaCard && (
-                                                        <Card className={`widget-card hover-effect ${executionSideCards > 1 ? 'lg:h-full' : ''}`}>
+                                                        <Card className={`widget-card execution-side-card ${executionSideCards > 1 ? 'execution-side-card--stacked' : ''}`.trim()}>
                                                             <div className="card-header">
                                                                 <h3 className="title">
                                                                     <span className="material-symbols-outlined icon">lightbulb</span>
@@ -1410,15 +1461,15 @@ export const ProjectOverview = () => {
                                                                 </Link>
                                                             </div>
                                                             {topIdea ? (() => {
-                                                                const typeColor = TYPE_COLORS[topIdea.type] || TYPE_COLORS['default'] || 'bg-slate-100 text-slate-600';
+                                                                const typeBadgeClass = getTypeBadgeClass(topIdea.type);
                                                                 return (
                                                                     <Link
                                                                         to={`/project/${id}/flows/${topIdea.id}`}
-                                                                        className="flow-spotlight-card group"
+                                                                        className="flow-spotlight-card"
                                                                     >
                                                                         {/* Type Badge Row */}
                                                                         <div className="flow-meta">
-                                                                            <span className={`type-badge ${typeColor}`}>
+                                                                            <span className={`type-badge ${typeBadgeClass}`}>
                                                                                 {topIdea.type}
                                                                             </span>
                                                                             {topIdea.generated && (
@@ -1469,7 +1520,7 @@ export const ProjectOverview = () => {
                                                     )}
 
                                                     {showIssueCard && (
-                                                        <Card className={`widget-card hover-effect ${executionSideCards > 1 ? 'lg:h-full' : ''}`}>
+                                                        <Card className={`widget-card execution-side-card ${executionSideCards > 1 ? 'execution-side-card--stacked' : ''}`.trim()}>
                                                             <div className="card-header">
                                                                 <h3 className="title">
                                                                     <span className="material-symbols-outlined icon">bug_report</span>
@@ -1488,10 +1539,10 @@ export const ProjectOverview = () => {
                                                                         <div
                                                                             key={issue.id}
                                                                             onClick={() => navigate(`/project/${id}/issues/${issue.id}`)}
-                                                                            className="list-row group"
+                                                                            className="list-row"
                                                                         >
                                                                             <div className="row-content">
-                                                                                <p className="row-title max-w">{issue.title}</p>
+                                                                                <p className="row-title row-title--truncate">{issue.title}</p>
                                                                                 <div className="meta-row">
                                                                                     <div className={`badge priority-${issue.priority.toLowerCase()}`}>
                                                                                         <span className="material-symbols-outlined">
@@ -1614,18 +1665,18 @@ export const ProjectOverview = () => {
 
                                         {/* Initiatives Row */}
                                         {initiatives.length > 0 && (
-                                            <div className="mt-6">
-                                                <div className="flex items-center justify-between mb-3">
-                                                    <h3 className="text-sm font-bold text-[var(--color-text-main)] flex items-center gap-2">
-                                                        <span className="material-symbols-outlined text-[16px] text-indigo-500">rocket_launch</span>
+                                            <div className="initiatives-section">
+                                                <div className="initiatives-header">
+                                                    <h3 className="initiatives-title">
+                                                        <span className="material-symbols-outlined initiatives-title-icon">rocket_launch</span>
                                                         {t('projectOverview.initiatives.title')}
-                                                        <span className="text-xs font-medium text-[var(--color-text-muted)]">({initiatives.length})</span>
+                                                        <span className="initiatives-count">({initiatives.length})</span>
                                                     </h3>
-                                                    <Link to={`/project/${id}/tasks`} className="size-7 flex items-center justify-center rounded-md transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 active:scale-95">
-                                                        <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                                                    <Link to={`/project/${id}/tasks`} className="icon-btn" aria-label={t('projectOverview.initiatives.title')}>
+                                                        <span className="material-symbols-outlined">arrow_forward</span>
                                                     </Link>
                                                 </div>
-                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                                <div className="initiatives-grid">
                                                     {initiatives.map(initiative => {
                                                         const { done: doneSub, total: totalSub } = subtaskStats[initiative.id] || { done: 0, total: 0 };
                                                         const hasStart = !!initiative.startDate;
@@ -1649,79 +1700,74 @@ export const ProjectOverview = () => {
                                                         const dueDate = initiative.dueDate ? new Date(initiative.dueDate) : null;
 
                                                         // Status-based styling
-                                                        const status = initiative.status?.toLowerCase() || '';
-                                                        const isInProgress = status === 'in progress' || status === 'inprogress';
-                                                        const isReview = status === 'review' || status === 'in review';
-                                                        const isBlocked = status === 'blocked';
+                                                        const statusKey = initiative.status?.toLowerCase().replace(/\s+/g, '-') || '';
+                                                        const isInProgress = statusKey === 'in-progress' || statusKey === 'inprogress';
+                                                        const isReview = statusKey === 'review' || statusKey === 'in-review';
+                                                        const isBlocked = statusKey === 'blocked';
 
                                                         let statusClass = '';
                                                         if (isBlocked) statusClass = 'status-blocked';
                                                         else if (isInProgress) statusClass = 'status-active';
                                                         else if (isReview) statusClass = 'status-review';
 
-                                                        const priorityLower = initiative.priority?.toLowerCase();
-                                                        const priorityClass = priorityLower === 'urgent' ? 'priority-urgent' :
-                                                            priorityLower === 'high' ? 'priority-high' :
-                                                                priorityLower === 'medium' ? 'priority-medium' : 'priority-low';
+                                                        const priorityKey = initiative.priority?.toLowerCase() || '';
+                                                        const priorityClass = priorityKey === 'urgent' ? 'priority-urgent' :
+                                                            priorityKey === 'high' ? 'priority-high' :
+                                                                priorityKey === 'medium' ? 'priority-medium' : 'priority-low';
 
                                                         return (
                                                             <div
                                                                 key={initiative.id}
                                                                 onClick={() => navigate(`/project/${id}/tasks/${initiative.id}${project?.tenantId ? `?tenant=${project.tenantId}` : ''}`)}
-                                                                className={`initiative-card group ${statusClass}`}
+                                                                className={`initiative-card ${statusClass}`}
                                                             >
                                                                 {/* Priority indicator */}
                                                                 <div className={`initiative-priority-indicator ${priorityClass}`} />
 
-                                                                <div className="flex items-start justify-between gap-2 mb-2">
-                                                                    <h4 className="text-sm font-semibold text-[var(--color-text-main)] line-clamp-2 leading-tight">
+                                                                <div className="initiative-header">
+                                                                    <h4 className="initiative-title">
                                                                         {initiative.title}
                                                                     </h4>
-                                                                    <span className="material-symbols-outlined text-[14px] text-indigo-500 shrink-0">rocket_launch</span>
+                                                                    <span className="material-symbols-outlined initiative-icon">rocket_launch</span>
                                                                 </div>
 
                                                                 {/* Description */}
                                                                 {initiative.description && (
-                                                                    <p className="text-[11px] text-[var(--color-text-muted)] line-clamp-2 mb-3">
+                                                                    <p className="initiative-description">
                                                                         {initiative.description}
                                                                     </p>
                                                                 )}
 
                                                                 {/* Status & Priority Row */}
-                                                                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                                                                <div className="initiative-tags">
                                                                     {initiative.status && (
-                                                                        <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest border bg-slate-100 dark:bg-white/5 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-white/10">
+                                                                        <span className={`initiative-tag initiative-tag--status status-${statusKey}`}>
                                                                             {taskStatusLabels[initiative.status] || initiative.status}
-                                                                        </div>
+                                                                        </span>
                                                                     )}
                                                                     {initiative.priority && (
-                                                                        <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border
-                                                                            ${initiative.priority === 'Urgent' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
-                                                                                initiative.priority === 'High' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                                                                                    initiative.priority === 'Medium' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                                                                        'bg-slate-500/10 text-slate-500 border-slate-500/20'}
-                                                                        `}>
-                                                                            <span className="material-symbols-outlined text-[10px]">
+                                                                        <span className={`initiative-tag initiative-tag--priority priority-${priorityKey}`}>
+                                                                            <span className="material-symbols-outlined">
                                                                                 {initiative.priority === 'Urgent' ? 'error' :
                                                                                     initiative.priority === 'High' ? 'keyboard_double_arrow_up' :
                                                                                         initiative.priority === 'Medium' ? 'drag_handle' : 'keyboard_arrow_down'}
                                                                             </span>
                                                                             {priorityLabels[initiative.priority] || initiative.priority}
-                                                                        </div>
+                                                                        </span>
                                                                     )}
                                                                 </div>
 
                                                                 {/* Assignees */}
                                                                 {initiative.assignedGroupIds && initiative.assignedGroupIds.length > 0 && (
-                                                                    <div className="flex items-center gap-2 mb-3">
-                                                                        <div className="flex -space-x-1.5 overflow-hidden">
+                                                                    <div className="initiative-assignees">
+                                                                        <div className="initiative-avatars">
                                                                             {initiative.assignedGroupIds.slice(0, 3).map(gid => {
                                                                                 const group = projectGroups.find(g => g.id === gid);
                                                                                 if (!group) return null;
                                                                                 return (
                                                                                     <div
                                                                                         key={gid}
-                                                                                        className="size-5 rounded-full flex items-center justify-center text-[8px] font-bold text-white shadow-sm ring-1 ring-white dark:ring-[#1E1E1E]"
+                                                                                        className="initiative-avatar"
                                                                                         style={{ backgroundColor: group.color }}
                                                                                         title={group.name}
                                                                                     >
@@ -1731,22 +1777,22 @@ export const ProjectOverview = () => {
                                                                             })}
                                                                         </div>
                                                                         {initiative.assignedGroupIds.length > 3 && (
-                                                                            <span className="text-[10px] text-[var(--color-text-muted)]">+{initiative.assignedGroupIds.length - 3}</span>
+                                                                            <span className="initiative-assignees-more">+{initiative.assignedGroupIds.length - 3}</span>
                                                                         )}
                                                                     </div>
                                                                 )}
 
                                                                 {/* Subtask progress if available */}
                                                                 {subtaskStats[initiative.id]?.total > 0 && (
-                                                                    <div className="flex items-center gap-2 mb-2">
-                                                                        <span className="material-symbols-outlined text-[12px] text-[var(--color-text-muted)]">checklist</span>
-                                                                        <div className="flex-1 h-1.5 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                                                    <div className="initiative-progress">
+                                                                        <span className="material-symbols-outlined initiative-progress-icon">checklist</span>
+                                                                        <div className="initiative-progress-bar">
                                                                             <div
-                                                                                className="h-full bg-indigo-500 rounded-full transition-all"
+                                                                                className="initiative-progress-fill"
                                                                                 style={{ width: `${(subtaskStats[initiative.id].done / subtaskStats[initiative.id].total) * 100}%` }}
                                                                             />
                                                                         </div>
-                                                                        <span className="text-[10px] font-semibold text-[var(--color-text-muted)]">
+                                                                        <span className="initiative-progress-text">
                                                                             {subtaskStats[initiative.id].done}/{subtaskStats[initiative.id].total}
                                                                         </span>
                                                                     </div>
@@ -1754,24 +1800,22 @@ export const ProjectOverview = () => {
 
                                                                 {/* Timeline */}
                                                                 {hasStart && hasDue && (
-                                                                    <div className="flex items-center gap-1.5 text-[9px] text-[var(--color-text-muted)]">
-                                                                        <span className="material-symbols-outlined text-[12px]">schedule</span>
-                                                                        <span className="font-semibold">{format(new Date(initiative.startDate!), dateFormat, { locale: dateLocale })}</span>
-                                                                        <div className="flex-1 h-1 bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
+                                                                    <div className={`initiative-timeline ${isOverdue ? 'is-overdue' : ''}`}>
+                                                                        <span className="material-symbols-outlined">schedule</span>
+                                                                        <span className="initiative-timeline-date">{format(new Date(initiative.startDate!), dateFormat, { locale: dateLocale })}</span>
+                                                                        <div className="initiative-timeline-bar">
                                                                             <div
-                                                                                className={`h-full rounded-full ${isOverdue ? 'bg-rose-500' : 'bg-indigo-500'}`}
+                                                                                className="initiative-timeline-fill"
                                                                                 style={{ width: `${pct}%` }}
                                                                             />
                                                                         </div>
-                                                                        <span className={`font-semibold ${isOverdue ? 'text-rose-500' : ''}`}>
-                                                                            {format(dueDate!, dateFormat, { locale: dateLocale })}
-                                                                        </span>
+                                                                        <span className="initiative-timeline-date">{format(dueDate!, dateFormat, { locale: dateLocale })}</span>
                                                                     </div>
                                                                 )}
                                                                 {/* Due Date Only */}
                                                                 {!hasStart && hasDue && (
-                                                                    <div className={`flex items-center gap-1.5 text-[9px] ${isOverdue ? 'text-rose-500 font-semibold' : 'text-[var(--color-text-muted)]'}`}>
-                                                                        <span className="material-symbols-outlined text-[12px] fill-current">event</span>
+                                                                    <div className={`initiative-due ${isOverdue ? 'is-overdue' : ''}`}>
+                                                                        <span className="material-symbols-outlined">event</span>
                                                                         {t('projectOverview.initiatives.due')} {format(dueDate!, dateFormat, { locale: dateLocale })}
                                                                     </div>
                                                                 )}
@@ -1784,54 +1828,54 @@ export const ProjectOverview = () => {
                                     </section>
 
                                     {/* Updates */}
-                                    <section className="space-y-3">
+                                    <section className="updates-section">
                                         <div className="section-header-simple">
                                             <h2>{t('projectOverview.updates.title')}</h2>
                                             <span className="subtitle">{t('projectOverview.updates.subtitle')}</span>
                                         </div>
                                         <div className="updates-grid">
                                             <Card className={`updates-card ${showGithubCard ? 'span-half' : 'span-full'}`}>
-                                                <div className="flex items-center justify-between mb-4">
-                                                    <h3 className="text-lg font-bold text-[var(--color-text-main)] flex items-center gap-2">
-                                                        <span className="material-symbols-outlined text-slate-500">history</span>
+                                                <div className="updates-card__header">
+                                                    <h3 className="updates-card__title">
+                                                        <span className="material-symbols-outlined updates-card__title-icon">history</span>
                                                         {t('projectOverview.updates.latestActivity')}
                                                     </h3>
-                                                    <Link to={`/project/${id}/activity`} className="size-7 flex items-center justify-center rounded-md transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 active:scale-95">
-                                                        <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                                                    <Link to={`/project/${id}/activity`} className="icon-btn" aria-label={t('projectOverview.updates.latestActivity')}>
+                                                        <span className="material-symbols-outlined">arrow_forward</span>
                                                     </Link>
                                                 </div>
 
-                                                <div className="activity-list space-y-5">
+                                                <div className="activity-list">
                                                     {activity.slice(0, 6).map((item) => {
                                                         const { icon, color, bg } = activityIcon(item.type, item.action);
                                                         return (
                                                             <div key={item.id} className="activity-item">
-                                                                <div className={`absolute left-0 top-0 size-8 rounded-full border-2 border-white dark:border-[var(--color-surface-card)] ${bg} z-10 flex items-center justify-center`}>
-                                                                    <span className={`material-symbols-outlined text-[16px] ${color}`}>{icon}</span>
+                                                                <div className="activity-icon" style={{ backgroundColor: bg }}>
+                                                                    <span className="material-symbols-outlined" style={{ color }}>{icon}</span>
                                                                 </div>
-                                                                <div className="space-y-0.5 pt-0.5">
-                                                                    <p className="text-xs text-[var(--color-text-main)] leading-snug">
-                                                                        <span className="font-semibold">{item.user}</span> {item.action}
+                                                                <div className="activity-content">
+                                                                    <p className="activity-text">
+                                                                        <span className="activity-user">{item.user}</span> {item.action}
                                                                     </p>
-                                                                    <p className="text-[10px] text-[var(--color-text-muted)]">{timeAgo(item.createdAt)}</p>
+                                                                    <p className="activity-time">{timeAgo(item.createdAt)}</p>
                                                                 </div>
                                                             </div>
                                                         );
                                                     })}
-                                                    {activity.length === 0 && <p className="text-xs text-[var(--color-text-muted)] pl-2">{t('projectOverview.updates.noActivity')}</p>}
+                                                    {activity.length === 0 && <p className="activity-empty">{t('projectOverview.updates.noActivity')}</p>}
                                                 </div>
                                             </Card>
 
                                             {showGithubCard && (
                                                 <Card className="updates-card span-half">
-                                                    <div className="flex items-center justify-between mb-4">
-                                                        <div className="flex items-center gap-3 min-w-0">
-                                                            <div className="size-10 rounded-xl bg-slate-100 dark:bg-slate-900/30 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0">
-                                                                <span className="material-symbols-outlined text-xl">terminal</span>
+                                                    <div className="github-card__header">
+                                                        <div className="github-card__info">
+                                                            <div className="github-card__icon">
+                                                                <span className="material-symbols-outlined">terminal</span>
                                                             </div>
-                                                            <div className="min-w-0">
-                                                                <h3 className="font-bold text-[var(--color-text-main)] truncate">{t('projectOverview.github.title')}</h3>
-                                                                <p className="text-[10px] text-[var(--color-text-muted)] font-medium uppercase tracking-tight line-clamp-1">
+                                                            <div className="github-card__text">
+                                                                <h3 className="github-card__title">{t('projectOverview.github.title')}</h3>
+                                                                <p className="github-card__subtitle">
                                                                     {project.githubRepo || t('projectOverview.github.noRepo')}
                                                                 </p>
                                                             </div>
@@ -1841,15 +1885,15 @@ export const ProjectOverview = () => {
                                                                 href={`https://github.com/${project.githubRepo}`}
                                                                 target="_blank"
                                                                 rel="noopener noreferrer"
-                                                                className="text-xs font-semibold text-[var(--color-primary)] hover:underline flex items-center gap-1 shrink-0"
+                                                                className="github-card__link"
                                                             >
-                                                                {t('projectOverview.github.repoLink')} <span className="material-symbols-outlined text-sm">open_in_new</span>
+                                                                {t('projectOverview.github.repoLink')} <span className="material-symbols-outlined">open_in_new</span>
                                                             </a>
                                                         )}
                                                     </div>
 
                                                     {!project.githubRepo ? (
-                                                        <div className="text-xs text-[var(--color-text-muted)] space-y-3">
+                                                        <div className="github-card__empty-state">
                                                             <p>{t('projectOverview.github.noRepoHint')}</p>
                                                             {isOwner && (
                                                                 <button
@@ -1857,23 +1901,23 @@ export const ProjectOverview = () => {
                                                                         setEditModalTab('integrations');
                                                                         setShowEditModal(true);
                                                                     }}
-                                                                    className="inline-flex items-center gap-1 text-[var(--color-primary)] font-semibold hover:underline"
+                                                                    className="github-card__settings-btn"
                                                                 >
-                                                                    {t('projectOverview.github.openSettings')} <span className="material-symbols-outlined text-sm">settings</span>
+                                                                    {t('projectOverview.github.openSettings')} <span className="material-symbols-outlined">settings</span>
                                                                 </button>
                                                             )}
                                                         </div>
                                                     ) : commitsLoading ? (
-                                                        <div className="flex items-center gap-2 text-[10px] text-[var(--color-text-muted)]">
-                                                            <span className="material-symbols-outlined animate-spin text-[14px] text-[var(--color-primary)]">progress_activity</span>
+                                                        <div className="github-card__loading">
+                                                            <span className="material-symbols-outlined github-card__loading-icon">progress_activity</span>
                                                             {t('projectOverview.github.loading')}
                                                         </div>
                                                     ) : commitsError ? (
-                                                        <div className="text-xs text-rose-600 dark:text-rose-400">{commitsError}</div>
+                                                        <div className="github-card__error">{commitsError}</div>
                                                     ) : githubCommits.length === 0 ? (
-                                                        <div className="text-xs text-[var(--color-text-muted)]">{t('projectOverview.github.none')}</div>
+                                                        <div className="github-card__empty">{t('projectOverview.github.none')}</div>
                                                     ) : (
-                                                        <div className="space-y-2 max-h-[320px] overflow-y-auto pr-2">
+                                                        <div className="github-card__list">
                                                             {githubCommits.map(commit => (
                                                                 <a
                                                                     key={commit.sha}
@@ -1882,31 +1926,31 @@ export const ProjectOverview = () => {
                                                                     rel="noopener noreferrer"
                                                                     className="github-commit-item"
                                                                 >
-                                                                    <div className="flex items-start justify-between gap-3">
-                                                                        <div className="flex items-start gap-2 min-w-0">
+                                                                    <div className="github-commit__row">
+                                                                        <div className="github-commit__meta">
                                                                             {commit.author?.avatar_url ? (
                                                                                 <img
                                                                                     src={commit.author.avatar_url}
                                                                                     alt={commit.author.login}
-                                                                                    className="size-7 rounded-full border border-[var(--color-surface-border)]"
+                                                                                    className="github-commit__avatar"
                                                                                 />
                                                                             ) : (
-                                                                                <div className="size-7 rounded-full bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] flex items-center justify-center text-[10px] font-bold">
+                                                                                <div className="github-commit__avatar-fallback">
                                                                                     {(commit.commit.author.name || '?').charAt(0).toUpperCase()}
                                                                                 </div>
                                                                             )}
-                                                                            <div className="min-w-0">
-                                                                                <p className="text-xs font-semibold text-[var(--color-text-main)] line-clamp-1">
+                                                                            <div className="github-commit__details">
+                                                                                <p className="github-commit__message">
                                                                                     {commit.commit.message.split(/\r?\n/)[0]}
                                                                                 </p>
-                                                                                <div className="flex items-center gap-2 text-[10px] text-[var(--color-text-muted)]">
+                                                                                <div className="github-commit__sub">
                                                                                     <span>@{commit.author?.login || commit.commit.author.name || t('projectOverview.github.unknownAuthor')}</span>
                                                                                     <span>•</span>
                                                                                     <span>{format(new Date(commit.commit.author.date), dateFormat, { locale: dateLocale })}</span>
                                                                                 </div>
                                                                             </div>
                                                                         </div>
-                                                                        <span className="text-[10px] font-mono text-[var(--color-text-subtle)] shrink-0">
+                                                                        <span className="github-commit__sha">
                                                                             {commit.sha.slice(0, 7)}
                                                                         </span>
                                                                     </div>
@@ -1920,15 +1964,15 @@ export const ProjectOverview = () => {
                                     </section>
 
                                     {/* Resources */}
-                                    <section className="space-y-3">
+                                    <section className="resources-section">
                                         <div className="section-header-simple">
                                             <h2>{t('projectOverview.resources.title')}</h2>
                                             <span className="subtitle">{t('projectOverview.resources.subtitle')}</span>
                                         </div>
                                         <div className="resources-grid">
                                             <Card className="updates-card">
-                                                <div className="flex items-center justify-between">
-                                                    <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectOverview.resources.quickLinks')}</h3>
+                                                <div className="resources-card__header">
+                                                    <h3 className="resources-card__title">{t('projectOverview.resources.quickLinks')}</h3>
                                                     {isOwner && (
                                                         <Button size="sm" variant="ghost" onClick={() => {
                                                             setEditModalTab('resources');
@@ -1938,11 +1982,11 @@ export const ProjectOverview = () => {
                                                         </Button>
                                                     )}
                                                 </div>
-                                                <div className="mt-4 space-y-2 flex-1">
+                                                <div className="resources-card__list">
                                                     {project.links?.slice(0, 4).map((link, i) => (
-                                                        <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="resource-link-item group">
+                                                        <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" className="resource-link-item">
                                                             <div className="icon-box">
-                                                                <span className="material-symbols-outlined text-[18px]">link</span>
+                                                                <span className="material-symbols-outlined">link</span>
                                                             </div>
                                                             <div className="link-info">
                                                                 <p className="link-title">{link.title}</p>
@@ -1951,18 +1995,18 @@ export const ProjectOverview = () => {
                                                             <span className="material-symbols-outlined open-icon">open_in_new</span>
                                                         </a>
                                                     ))}
-                                                    {(!project.links || project.links.length === 0) && <p className="text-sm text-[var(--color-text-muted)]">{t('projectOverview.resources.noLinks')}</p>}
+                                                    {(!project.links || project.links.length === 0) && <p className="resources-card__empty">{t('projectOverview.resources.noLinks')}</p>}
                                                 </div>
                                                 {project.links && project.links.length > 4 && (
-                                                    <p className="text-[10px] text-[var(--color-text-muted)] mt-2">
+                                                    <p className="resources-card__footer">
                                                         {t('projectOverview.resources.moreLinks').replace('{count}', String(project.links.length - 4))}
                                                     </p>
                                                 )}
                                             </Card>
 
                                             <Card className="updates-card">
-                                                <div className="flex items-center justify-between">
-                                                    <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectOverview.resources.gallery')}</h3>
+                                                <div className="resources-card__header">
+                                                    <h3 className="resources-card__title">{t('projectOverview.resources.gallery')}</h3>
                                                     <Button size="sm" variant="ghost" onClick={() => setShowMediaLibrary(true)}>{t('projectOverview.resources.manage')}</Button>
                                                 </div>
 
@@ -1987,14 +2031,14 @@ export const ProjectOverview = () => {
                                     </section>
                                 </div>
 
-                                <div className="xl:col-span-1 space-y-6">
+                                <div className="project-overview__sidebar">
                                     <Card data-onboarding-id="project-overview-planning" className="updates-card">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-3">
-                                                <div className="size-9 rounded-full bg-[var(--color-surface-hover)] text-[var(--color-text-subtle)] flex items-center justify-center shrink-0">
-                                                    <span className="material-symbols-outlined text-[18px]">schedule</span>
+                                        <div className="planning-card__header">
+                                            <div className="planning-card__title-wrap">
+                                                <div className="planning-card__icon">
+                                                    <span className="material-symbols-outlined">schedule</span>
                                                 </div>
-                                                <h3 className="text-lg font-bold text-[var(--color-text-main)]">{t('projectOverview.planning.title')}</h3>
+                                                <h3 className="planning-card__title">{t('projectOverview.planning.title')}</h3>
                                             </div>
                                             {isOwner && (
                                                 <button
@@ -2002,18 +2046,18 @@ export const ProjectOverview = () => {
                                                         setEditModalTab('general');
                                                         setShowEditModal(true);
                                                     }}
-                                                    className="size-7 flex items-center justify-center rounded-md transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 active:scale-95"
+                                                    className="icon-btn"
                                                     title={t('projectOverview.planning.editDates')}
                                                 >
-                                                    <span className="material-symbols-outlined text-[18px]">edit_calendar</span>
+                                                    <span className="material-symbols-outlined">edit_calendar</span>
                                                 </button>
                                             )}
                                         </div>
-                                        <div className="mt-2 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-[var(--color-text-muted)]">
-                                            <span>{t('projectOverview.planning.subtitle')}</span>
-                                            <span className="flex items-center gap-1.5">
-                                                <span className="size-1.5 rounded-full bg-[var(--color-primary)]" />
-                                                <span className="text-[var(--color-text-main)]">{progress}%</span>
+                                        <div className="planning-card__meta">
+                                            <span className="planning-card__meta-label">{t('projectOverview.planning.subtitle')}</span>
+                                            <span className="planning-card__meta-progress">
+                                                <span className="planning-card__dot" />
+                                                <span className="planning-card__percent">{progress}%</span>
                                                 {t('projectOverview.planning.complete')}
                                             </span>
                                         </div>
@@ -2026,7 +2070,7 @@ export const ProjectOverview = () => {
                                                         {project.startDate ? format(new Date(project.startDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
                                                     </p>
                                                 </div>
-                                                <div className="text-right">
+                                                <div className="dates-grid__item dates-grid__item--right">
                                                     <p className="date-label">{t('projectOverview.planning.due')}</p>
                                                     <p className="date-value">
                                                         {project.dueDate ? format(new Date(project.dueDate), dateFormat, { locale: dateLocale }) : t('projectOverview.planning.notSet')}
@@ -2040,36 +2084,36 @@ export const ProjectOverview = () => {
                                     </Card>
 
                                     <Card data-onboarding-id="project-overview-milestones" className="milestones-card">
-                                        <div className="flex items-center justify-between mb-2 z-10 relative">
-                                            <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-[var(--color-text-subtle)]">flag</span>
+                                        <div className="milestones-header">
+                                            <h3 className="milestones-title">
+                                                <span className="material-symbols-outlined milestones-title-icon">flag</span>
                                                 {t('projectOverview.milestones.title')}
                                             </h3>
-                                            <Link to={`/project/${id}/milestones`} className="size-7 flex items-center justify-center rounded-md transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 active:scale-95">
-                                                <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                                            <Link to={`/project/${id}/milestones`} className="icon-btn" aria-label={t('projectOverview.milestones.title')}>
+                                                <span className="material-symbols-outlined">arrow_forward</span>
                                             </Link>
                                         </div>
 
                                         {/* Progress Header */}
                                         <div className="milestone-progress-header">
-                                            <div className="flex-1">
-                                                <div className="h-1 w-full bg-[var(--color-surface-hover)] rounded-full overflow-hidden">
+                                            <div className="milestone-progress">
+                                                <div className="milestone-progress-bar">
                                                     <div
-                                                        className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-500"
+                                                        className="milestone-progress-fill"
                                                         style={{ width: `${milestones.length > 0 ? (milestones.filter(m => m.status === 'Achieved').length / milestones.length) * 100 : 0}%` }}
                                                     />
                                                 </div>
-                                                <div className="flex items-center justify-between mt-1.5">
-                                                    <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">{t('projectOverview.milestones.progress')}</span>
-                                                    <span className="text-[10px] font-bold text-[var(--color-text-main)]">{milestones.filter(m => m.status === 'Achieved').length}/{milestones.length}</span>
+                                                <div className="milestone-progress-meta">
+                                                    <span className="milestone-progress-label">{t('projectOverview.milestones.progress')}</span>
+                                                    <span className="milestone-progress-count">{milestones.filter(m => m.status === 'Achieved').length}/{milestones.length}</span>
                                                 </div>
                                             </div>
                                         </div>
 
-                                        <div className="space-y-4 flex-1 relative z-10">
+                                        <div className="milestone-list">
                                             {/* Vertical Line */}
                                             {pendingMilestones.length > 0 && (
-                                                <div className="absolute left-[11px] top-2 bottom-4 w-0.5 bg-[var(--color-surface-border)]" />
+                                                <div className="milestone-line" />
                                             )}
 
                                             {pendingMilestones.length > 0 ? (
@@ -2079,27 +2123,25 @@ export const ProjectOverview = () => {
                                                     .slice(0, 3)
                                                     .map((milestone, index) => {
                                                         const isFirst = index === 0;
+                                                        const isOverdue = milestone.dueDate ? new Date(milestone.dueDate) < new Date() : false;
                                                         return (
-                                                            <div key={milestone.id} className="milestone-item group">
+                                                            <div key={milestone.id} className="milestone-item">
                                                                 <div className={`timeline-dot ${isFirst ? 'is-next' : 'is-future'}`}>
                                                                     {isFirst && <div className="inner-pulse" />}
                                                                 </div>
 
-                                                                <div className={`flex-1 min-w-0 transition-all ${isFirst ? '' : 'opacity-80 group-hover:opacity-100'}`}>
-                                                                    <div className="flex items-start justify-between gap-2">
-                                                                        <div className="min-w-0">
-                                                                            <p className={`text-xs font-bold truncate leading-snug ${isFirst ? 'text-[var(--color-text-main)] text-[13px] mb-0.5' : 'text-[var(--color-text-main)]'}`}>
+                                                                <div className={`milestone-content ${isFirst ? 'is-primary' : 'is-secondary'}`}>
+                                                                    <div className="milestone-row">
+                                                                        <div className="milestone-text">
+                                                                            <p className={`milestone-title ${isFirst ? 'is-next' : ''}`}>
                                                                                 {milestone.title}
                                                                             </p>
-                                                                            <div className="flex items-center gap-2">
-                                                                                <p className={`text-[10px] font-medium ${new Date(milestone.dueDate || '') < new Date()
-                                                                                    ? 'text-rose-500 font-bold'
-                                                                                    : isFirst ? 'text-indigo-600 dark:text-indigo-400' : 'text-[var(--color-text-muted)]'
-                                                                                    }`}>
+                                                                            <div className="milestone-meta">
+                                                                                <p className={`milestone-date ${isOverdue ? 'is-overdue' : isFirst ? 'is-up-next' : ''}`}>
                                                                                     {milestone.dueDate ? format(new Date(milestone.dueDate), dateFormat, { locale: dateLocale }) : t('projectOverview.milestones.noDate')}
                                                                                 </p>
                                                                                 {isFirst && (
-                                                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-[var(--color-text-muted)] bg-[var(--color-surface-hover)] px-1.5 py-px rounded">
+                                                                                    <span className="milestone-tag">
                                                                                         {t('projectOverview.milestones.nextUp')}
                                                                                     </span>
                                                                                 )}
@@ -2109,10 +2151,10 @@ export const ProjectOverview = () => {
                                                                         {isFirst && (
                                                                             <button
                                                                                 onClick={() => handleToggleMilestone(milestone)}
-                                                                                className="size-7 rounded-lg bg-[var(--color-surface-hover)] hover:bg-emerald-50 dark:hover:bg-emerald-900/20 text-[var(--color-text-muted)] hover:text-emerald-600 dark:hover:text-emerald-400 flex items-center justify-center transition-all shrink-0"
+                                                                                className="milestone-action"
                                                                                 title={t('projectOverview.milestones.markAchieved')}
                                                                             >
-                                                                                <span className="material-symbols-outlined text-[16px]">check</span>
+                                                                                <span className="material-symbols-outlined">check</span>
                                                                             </button>
                                                                         )}
                                                                     </div>
@@ -2121,19 +2163,19 @@ export const ProjectOverview = () => {
                                                         );
                                                     })
                                             ) : (
-                                                <div className="text-center py-8 text-[var(--color-text-muted)] flex flex-col items-center">
-                                                    <div className="size-12 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center mb-3">
-                                                        <span className="material-symbols-outlined text-xl opacity-50">emoji_events</span>
+                                                <div className="milestone-empty">
+                                                    <div className="milestone-empty-icon">
+                                                        <span className="material-symbols-outlined">emoji_events</span>
                                                     </div>
-                                                    <p className="text-xs font-medium">{t('projectOverview.milestones.allAchieved')}</p>
-                                                    <p className="text-[10px] opacity-70 mt-1">{t('projectOverview.milestones.celebrate')}</p>
+                                                    <p className="milestone-empty-title">{t('projectOverview.milestones.allAchieved')}</p>
+                                                    <p className="milestone-empty-text">{t('projectOverview.milestones.celebrate')}</p>
                                                 </div>
                                             )}
                                         </div>
 
                                         {/* Background Decoration */}
                                         <div className="bg-decoration">
-                                            <span className="material-symbols-outlined text-[120px]">flag</span>
+                                            <span className="material-symbols-outlined bg-decoration-icon">flag</span>
                                         </div>
                                     </Card>
 
@@ -2146,36 +2188,36 @@ export const ProjectOverview = () => {
                                             <span className="material-symbols-outlined">auto_awesome</span>
                                         </div>
                                         <div className="content-wrapper">
-                                            <div className="size-10 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
-                                                <span className="material-symbols-outlined text-xl">psychology</span>
+                                            <div className="ai-insights__icon">
+                                                <span className="material-symbols-outlined">psychology</span>
                                             </div>
-                                            <div className="flex-1 min-w-0">
-                                                <h3 className="text-sm font-bold">{t('projectOverview.aiReport.title')}</h3>
-                                                <p className="text-[10px] text-indigo-100 truncate">
+                                            <div className="ai-insights__text">
+                                                <h3 className="ai-insights__title">{t('projectOverview.aiReport.title')}</h3>
+                                                <p className="ai-insights__subtitle">
                                                     {pinnedReport ? t('projectOverview.aiReport.updated').replace('{time}', timeAgo(pinnedReport.createdAt)) : t('projectOverview.aiReport.generateAnalysis')}
                                                 </p>
                                             </div>
-                                            <span className="material-symbols-outlined text-white/70">arrow_forward</span>
+                                            <span className="material-symbols-outlined ai-insights__arrow">arrow_forward</span>
                                         </div>
                                     </div>
 
                                     <Card className="updates-card">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h3 className="font-bold text-[var(--color-text-main)] flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-slate-500">group</span>
+                                        <div className="team-card__header">
+                                            <h3 className="team-card__title">
+                                                <span className="material-symbols-outlined team-card__title-icon">group</span>
                                                 {t('projectOverview.team.title')}
-                                                <span className="text-xs font-medium text-[var(--color-text-muted)] bg-[var(--color-surface-hover)] px-2 py-0.5 rounded-full">
+                                                <span className="team-card__count">
                                                     {teamMemberProfiles.length}
                                                 </span>
                                             </h3>
-                                            <div className="flex items-center gap-1">
+                                            <div className="team-card__actions">
                                                 {can('canInvite') && (
                                                     <button
                                                         onClick={handleInvite}
-                                                        className="size-7 flex items-center justify-center rounded-md transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 active:scale-95"
+                                                        className="icon-btn"
                                                         title={t('projectOverview.team.invite')}
                                                     >
-                                                        <span className="material-symbols-outlined text-[18px]">person_add</span>
+                                                        <span className="material-symbols-outlined">person_add</span>
                                                     </button>
                                                 )}
                                                 <Link
@@ -2185,18 +2227,18 @@ export const ProjectOverview = () => {
                                                         setEditModalTab('team');
                                                         setShowEditModal(true);
                                                     }}
-                                                    className="size-7 flex items-center justify-center rounded-md transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-primary)] hover:bg-[var(--color-primary)]/10 active:scale-95"
+                                                    className="icon-btn"
                                                     title={t('projectOverview.team.manage')}
                                                 >
-                                                    <span className="material-symbols-outlined text-[18px]">settings</span>
+                                                    <span className="material-symbols-outlined">settings</span>
                                                 </Link>
                                             </div>
                                         </div>
 
                                         {teamMemberProfiles.length === 0 ? (
-                                            <div className="py-6 text-center text-[var(--color-text-muted)] bg-[var(--color-surface-hover)]/30 rounded-xl border border-dashed border-[var(--color-surface-border)]">
-                                                <span className="material-symbols-outlined text-2xl opacity-30 mb-2 block">person_add</span>
-                                                <p className="text-xs">{t('projectOverview.team.empty')}</p>
+                                            <div className="team-empty">
+                                                <span className="material-symbols-outlined">person_add</span>
+                                                <p>{t('projectOverview.team.empty')}</p>
                                             </div>
                                         ) : (
                                             <div className="team-grid">
@@ -2211,10 +2253,10 @@ export const ProjectOverview = () => {
                                                                     <img
                                                                         src={member.photoURL}
                                                                         alt={member.displayName}
-                                                                        className={`size-8 rounded-full object-cover shadow-sm ${isOnline ? 'ring-2 ring-emerald-500 ring-offset-1 dark:ring-offset-[#1E1E1E]' : ''}`}
+                                                                        className={`member-avatar__image ${isOnline ? 'is-online' : ''}`}
                                                                     />
                                                                 ) : (
-                                                                    <div className={`avatar-placeholder size-8 bg-gradient-to-br from-indigo-50 to-slate-100 dark:from-indigo-900/20 dark:to-slate-800 flex items-center justify-center text-xs font-bold text-indigo-600 dark:text-indigo-400 shadow-sm ${isOnline ? 'ring-2 ring-emerald-500 ring-offset-1 dark:ring-offset-[#1E1E1E]' : ''}`}>
+                                                                    <div className={`avatar-placeholder ${isOnline ? 'is-online' : ''}`}>
                                                                         {member.displayName?.charAt(0)?.toUpperCase() || '?'}
                                                                     </div>
                                                                 )}
@@ -2249,13 +2291,13 @@ export const ProjectOverview = () => {
                                                         onClick={() => { setEditModalTab('team'); setShowEditModal(true); }}
                                                         className="view-all-btn"
                                                     >
-                                                        <div className="flex -space-x-1.5 mr-1">
+                                                        <div className="view-all-avatars">
                                                             {teamMemberProfiles.slice(4, 7).map(m => (
-                                                                <div key={m.id} className="size-4 rounded-full border border-white dark:border-[#1E1E1E] overflow-hidden bg-[var(--color-surface-hover)]">
+                                                                <div key={m.id} className="view-all-avatar">
                                                                     {m.photoURL ? (
-                                                                        <img src={m.photoURL} alt="" className="w-full h-full object-cover" />
+                                                                        <img src={m.photoURL} alt="" className="view-all-avatar__image" />
                                                                     ) : (
-                                                                        <div className="w-full h-full flex items-center justify-center text-[6px] font-bold text-indigo-500">{m.displayName?.charAt(0)}</div>
+                                                                        <div className="view-all-avatar__fallback">{m.displayName?.charAt(0)}</div>
                                                                     )}
                                                                 </div>
                                                             ))}
@@ -2269,71 +2311,52 @@ export const ProjectOverview = () => {
 
                                     {isOwner && (
                                         <Card className="updates-card">
-                                            <div className="flex items-center gap-2 mb-4">
-                                                <span className="material-symbols-outlined text-[var(--color-text-subtle)]">tune</span>
-                                                <h3 className="font-bold text-[var(--color-text-main)]">{t('projectOverview.controls.title')}</h3>
+                                            <div className="controls-card__header">
+                                                <span className="material-symbols-outlined controls-card__icon">tune</span>
+                                                <h3 className="controls-card__title">{t('projectOverview.controls.title')}</h3>
                                             </div>
                                             <div className="controls-form">
                                                 <div className="form-group-row">
                                                     <Select
                                                         label={t('projectOverview.controls.status')}
                                                         value={project.status}
-                                                        onChange={(e) => handleUpdateField('status', e.target.value)}
-                                                        className="!py-2 !text-sm"
-                                                    >
-                                                        <option value="Active">{projectStatusLabels.Active}</option>
-                                                        <option value="Planning">{projectStatusLabels.Planning}</option>
-                                                        <option value="On Hold">{projectStatusLabels['On Hold']}</option>
-                                                        <option value="Completed">{projectStatusLabels.Completed}</option>
-                                                        <option value="Brainstorming">{projectStatusLabels.Brainstorming}</option>
-                                                        <option value="Review">{projectStatusLabels.Review}</option>
-                                                    </Select>
+                                                        options={statusOptions}
+                                                        onChange={(value) => handleUpdateField('status', value)}
+                                                        className="project-overview__select"
+                                                    />
 
                                                     <Select
                                                         label={t('projectOverview.controls.priority')}
                                                         value={project.priority || 'Medium'}
-                                                        onChange={(e) => handleUpdateField('priority', e.target.value)}
-                                                        className="!py-2 !text-sm"
-                                                    >
-                                                        <option value="Low">{t('tasks.priority.low')}</option>
-                                                        <option value="Medium">{t('tasks.priority.medium')}</option>
-                                                        <option value="High">{t('tasks.priority.high')}</option>
-                                                        <option value="Urgent">{t('tasks.priority.urgent')}</option>
-                                                    </Select>
+                                                        options={priorityOptions}
+                                                        onChange={(value) => handleUpdateField('priority', value)}
+                                                        className="project-overview__select"
+                                                    />
                                                 </div>
 
                                                 <div>
                                                     <Select
                                                         label={t('projectOverview.controls.projectState')}
                                                         value={project.projectState || 'not specified'}
-                                                        onChange={(e) => handleUpdateField('projectState', e.target.value)}
-                                                        className="!py-2 !text-sm"
-                                                    >
-                                                        <option value="not specified">{t('projectOverview.controls.state.notSpecified')}</option>
-                                                        <option value="pre-release">{t('projectOverview.controls.state.preRelease')}</option>
-                                                        <option value="released">{t('projectOverview.controls.state.released')}</option>
-                                                    </Select>
+                                                        options={projectStateOptions}
+                                                        onChange={(value) => handleUpdateField('projectState', value)}
+                                                        className="project-overview__select"
+                                                    />
                                                 </div>
 
                                                 <div className="date-inputs">
-                                                    <div>
-                                                        <label>{t('projectOverview.planning.start')}</label>
-                                                        <DatePicker
-                                                            value={project.startDate}
-                                                            onChange={(date) => handleUpdateField('startDate', date)}
-                                                            placeholder={t('projectOverview.controls.startPlaceholder')}
-                                                            className="!py-2 !text-sm w-full"
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label>{t('projectOverview.planning.due')}</label>
-                                                        <DatePicker
-                                                            value={project.dueDate}
-                                                            onChange={(date) => handleUpdateField('dueDate', date)}
-                                                            placeholder={t('projectOverview.controls.duePlaceholder')}
-                                                            className="!py-2 !text-sm w-full"
-                                                        />
-                                                    </div>
+                                                    <DatePicker
+                                                        label={t('projectOverview.planning.start')}
+                                                        value={toDateValue(project.startDate)}
+                                                        onChange={(date) => handleUpdateField('startDate', toDateString(date))}
+                                                        placeholder={t('projectOverview.controls.startPlaceholder')}
+                                                    />
+                                                    <DatePicker
+                                                        label={t('projectOverview.planning.due')}
+                                                        value={toDateValue(project.dueDate)}
+                                                        onChange={(date) => handleUpdateField('dueDate', toDateString(date))}
+                                                        placeholder={t('projectOverview.controls.duePlaceholder')}
+                                                    />
                                                 </div>
                                             </div>
                                         </Card>
@@ -2347,7 +2370,7 @@ export const ProjectOverview = () => {
                             {/* Gallery Modal */}
                             <Modal isOpen={showGalleryModal} onClose={() => setShowGalleryModal(false)} title={t('projectOverview.gallery.title')} size="xl">
                                 <div className="gallery-viewer">
-                                    <div className="main-view group">
+                                    <div className="main-view">
                                         {projectAssets[selectedImageIndex] ? (
                                             <>
                                                 <img src={projectAssets[selectedImageIndex]} alt={t('projectOverview.gallery.imageAlt')} />
@@ -2441,7 +2464,7 @@ export const ProjectOverview = () => {
                                     </>
                                 }
                             >
-                                <p className="text-sm text-[var(--color-text-muted)]">
+                                <p className="delete-modal__text">
                                     {t('projectOverview.delete.description').replace('{project}', project.title)}
                                 </p>
                             </Modal>
@@ -2508,8 +2531,9 @@ export const ProjectOverview = () => {
                                 onSkip={skip}
                             />
                         </>
-                    )}
-            </div>
+                    )
+                }
+            </div >
         </>
     );
 };

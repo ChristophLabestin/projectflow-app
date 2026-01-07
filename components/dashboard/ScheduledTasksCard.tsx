@@ -108,7 +108,7 @@ export const ScheduledTasksCard: React.FC<ScheduledTasksCardProps> = ({ tasks, i
                     const date = item.scheduledDate ? toDate(item.scheduledDate) : ('dueDate' in item ? toDate(item.dueDate) : null);
 
                     return (
-                        <Link key={item.id} to={`/project/${item.projectId}/${isIssue ? 'issues' : 'tasks'}/${item.id}`} className="task-item group">
+                        <Link key={item.id} to={`/project/${item.projectId}/${isIssue ? 'issues' : 'tasks'}/${item.id}`} className="task-item">
                             <div className="item-row">
                                 <div className="item-content">
                                     <div className="title-row">

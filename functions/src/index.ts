@@ -13,7 +13,7 @@ import { sendContactFormEmail } from './contact';
 import { askCora, generateImage, editImage, callGemini } from './ai-service';
 import { getTikTokAuthUrl, tiktokCallback } from './tiktok';
 import { getYouTubeAuthUrl, youtubeCallback } from './youtube';
-import { checkScheduledPosts, debugScheduler } from './scheduler';
+import { checkScheduledPosts, debugScheduler, autoStartSprints, dailyHealthSnapshots, debugHealthSnapshots } from './scheduler';
 import { getFacebookAuthUrl, facebookCallback } from './facebook';
 
 
@@ -45,6 +45,9 @@ export {
     youtubeCallback,
     checkScheduledPosts,
     debugScheduler,
+    autoStartSprints,
+    dailyHealthSnapshots,
+    debugHealthSnapshots,
     getFacebookAuthUrl,
     facebookCallback
 };

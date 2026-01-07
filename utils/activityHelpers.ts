@@ -7,27 +7,49 @@ import { enUS } from 'date-fns/locale';
 export const dateFormat = 'MMM d, yyyy';
 export const dateLocale = enUS;
 
+const buildTone = (colorVar: string, rgbVar: string, alpha = 0.12) => ({
+    color: `var(${colorVar})`,
+    bg: `rgba(var(${rgbVar}), ${alpha})`,
+});
+
 export const activityIcon = (type?: Activity['type'], actionText?: string) => {
     const action = (actionText || '').toLowerCase();
+    const successTone = buildTone('--color-success', '--color-success-rgb');
+    const warningTone = buildTone('--color-warning', '--color-warning-rgb');
+    const errorTone = buildTone('--color-error', '--color-error-rgb');
+    const primaryTone = buildTone('--color-primary', '--color-primary-rgb');
+    const neutralTone = buildTone('--color-text-muted', '--color-surface-hover-rgb', 0.6);
+
     if (type === 'task') {
-        if (action.includes('deleted') || action.includes('remove')) return { icon: 'delete', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-500/10' };
-        if (action.includes('reopened')) return { icon: 'undo', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-500/10' };
-        if (action.includes('completed') || action.includes('done')) return { icon: 'check_circle', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-500/10' };
-        return { icon: 'add_task', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-500/10' };
+        if (action.includes('deleted') || action.includes('remove')) return { icon: 'delete', ...errorTone };
+        if (action.includes('reopened')) return { icon: 'undo', ...warningTone };
+        if (action.includes('completed') || action.includes('done')) return { icon: 'check_circle', ...successTone };
+        return { icon: 'add_task', ...primaryTone };
     }
-    if (type === 'status') return { icon: 'swap_horiz', color: 'text-indigo-600 dark:text-indigo-400', bg: 'bg-indigo-100 dark:bg-indigo-500/10' };
-    if (type === 'report') return { icon: 'auto_awesome', color: 'text-purple-600 dark:text-purple-400', bg: 'bg-purple-100 dark:bg-purple-500/10' };
-    if (type === 'comment') return { icon: 'chat_bubble', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-100 dark:bg-amber-500/10' };
-    if (type === 'file') return { icon: 'attach_file', color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-500/10' };
-    if (type === 'member') return { icon: 'person_add', color: 'text-emerald-600 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-500/10' };
-    if (type === 'commit') return { icon: 'code', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-100 dark:bg-blue-500/10' };
-    if (type === 'priority') return { icon: 'priority_high', color: 'text-rose-600 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-500/10' };
-    if (type === 'issue') return { icon: 'bug_report', color: 'text-rose-500 dark:text-rose-400', bg: 'bg-rose-100 dark:bg-rose-500/10' };
-    return { icon: 'more_horiz', color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-700/50' };
+    if (type === 'issue') {
+        if (action.includes('resolved') || action.includes('closed')) return { icon: 'check_circle', ...successTone };
+        if (action.includes('reopened')) return { icon: 'undo', ...warningTone };
+        return { icon: 'bug_report', ...errorTone };
+    }
+    if (type === 'status') return { icon: 'swap_horiz', ...primaryTone };
+    if (type === 'report') return { icon: 'auto_awesome', ...primaryTone };
+    if (type === 'comment') return { icon: 'chat_bubble', ...warningTone };
+    if (type === 'file') return { icon: 'attach_file', ...neutralTone };
+    if (type === 'member') return { icon: 'person_add', ...successTone };
+    if (type === 'commit') return { icon: 'code', ...primaryTone };
+    if (type === 'priority') return { icon: 'priority_high', ...errorTone };
+    return { icon: 'more_horiz', ...neutralTone };
 };
 
-export const groupActivitiesByDate = (activities: Activity[], dateFormat?: string, dateLocale?: Locale) => {
+export const groupActivitiesByDate = (
+    activities: Activity[],
+    dateFormat?: string,
+    dateLocale?: Locale,
+    labels?: { today: string; yesterday: string }
+) => {
     const groups: { [key: string]: Activity[] } = {};
+    const todayLabel = labels?.today || 'Today';
+    const yesterdayLabel = labels?.yesterday || 'Yesterday';
 
     activities.forEach(activity => {
         const date = new Date(toMillis(activity.createdAt));
@@ -38,16 +60,13 @@ export const groupActivitiesByDate = (activities: Activity[], dateFormat?: strin
         let dateKey = '';
 
         if (date.toDateString() === today.toDateString()) {
-            dateKey = 'Today';
+            dateKey = todayLabel;
         } else if (date.toDateString() === yesterday.toDateString()) {
-            dateKey = 'Yesterday';
+            dateKey = yesterdayLabel;
         } else {
             // Use provided format/locale or fallback
-            if (dateFormat && dateLocale) {
-                dateKey = format(date, 'MMMM d, yyyy', { locale: dateLocale });
-            } else {
-                dateKey = format(date, 'MMMM d, yyyy', { locale: enUS });
-            }
+            const formatString = dateFormat || 'MMMM d, yyyy';
+            dateKey = format(date, formatString, { locale: dateLocale || enUS });
         }
 
         if (!groups[dateKey]) {

@@ -1,6 +1,9 @@
 import React from 'react';
 import { ProjectBlueprint } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
+import { Button } from '../common/Button/Button';
+import { Card, CardBody } from '../common/Card/Card';
+import { Badge } from '../common/Badge/Badge';
 
 interface BlueprintResultProps {
     blueprint: ProjectBlueprint;
@@ -12,88 +15,99 @@ export const BlueprintResult: React.FC<BlueprintResultProps> = ({
     blueprint, onConvert, isConverting
 }) => {
     const { t } = useLanguage();
+    const getPriorityClass = (priority: string) => {
+        if (priority === 'High') return 'high';
+        if (priority === 'Medium') return 'medium';
+        if (priority === 'Low') return 'low';
+        return 'medium';
+    };
 
     return (
-        <div className="space-y-8 animate-fade-in">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div className="space-y-2">
-                    <span className="text-xs font-bold text-indigo-500 uppercase tracking-widest">{t('aiStudio.blueprint.conceptLabel')}</span>
-                    <h2 className="text-3xl font-display font-bold text-ink dark:text-white">{blueprint.title}</h2>
+        <div className="ai-studio-blueprint animate-fade-in">
+            <div className="ai-studio-blueprint__header">
+                <div className="ai-studio-blueprint__title">
+                    <span className="ai-studio-blueprint__label">{t('aiStudio.blueprint.conceptLabel')}</span>
+                    <h2 className="ai-studio-blueprint__heading">{blueprint.title}</h2>
                 </div>
-                <button
+                <Button
                     onClick={() => onConvert(blueprint)}
-                    disabled={isConverting}
-                    className="btn-primary px-8 py-3 rounded-xl flex items-center justify-center gap-2 group whitespace-nowrap"
+                    isLoading={isConverting}
+                    icon={<span className="material-symbols-outlined">rocket_launch</span>}
+                    iconPosition="right"
+                    className="ai-studio-blueprint__action"
                 >
-                    <span className={`material-symbols-outlined transition-transform ${isConverting ? 'animate-spin' : 'group-hover:translate-x-1'}`}>
-                        {isConverting ? 'autorenew' : 'rocket_launch'}
-                    </span>
-                    <span>{isConverting ? t('aiStudio.blueprint.launching') : t('aiStudio.blueprint.convert')}</span>
-                </button>
+                    {isConverting ? t('aiStudio.blueprint.launching') : t('aiStudio.blueprint.convert')}
+                </Button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left Column: Description & Audience */}
-                <div className="lg:col-span-2 space-y-8">
-                    <div className="app-panel p-6 space-y-4">
-                        <h3 className="text-lg font-bold flex items-center gap-2">
-                            <span className="material-symbols-outlined text-indigo-500">description</span>
-                            {t('aiStudio.blueprint.vision')}
-                        </h3>
-                        <p className="text-muted leading-relaxed">{blueprint.description}</p>
+            <div className="ai-studio-blueprint__grid">
+                <div className="ai-studio-blueprint__main">
+                    <Card className="ai-studio-blueprint__card">
+                        <CardBody className="ai-studio-blueprint__card-body">
+                            <h3 className="ai-studio-blueprint__card-title">
+                                <span className="material-symbols-outlined">description</span>
+                                {t('aiStudio.blueprint.vision')}
+                            </h3>
+                            <p className="ai-studio-blueprint__text">{blueprint.description}</p>
 
-                        <div className="pt-4 border-t border-line dark:border-white/5">
-                            <h4 className="text-sm font-bold text-ink/60 dark:text-white/60 mb-2 uppercase tracking-tight">{t('aiStudio.blueprint.audience')}</h4>
-                            <p className="text-sm text-muted">{blueprint.targetAudience}</p>
-                        </div>
-                    </div>
+                            <div className="ai-studio-blueprint__audience">
+                                <h4>{t('aiStudio.blueprint.audience')}</h4>
+                                <p>{blueprint.targetAudience}</p>
+                            </div>
+                        </CardBody>
+                    </Card>
 
-                    <div className="space-y-4">
-                        <h3 className="text-lg font-bold flex items-center gap-2">
-                            <span className="material-symbols-outlined text-indigo-500">flag</span>
+                    <div className="ai-studio-blueprint__milestones">
+                        <h3 className="ai-studio-blueprint__card-title">
+                            <span className="material-symbols-outlined">flag</span>
                             {t('aiStudio.blueprint.milestones')}
                         </h3>
-                        <div className="space-y-4">
+                        <div className="ai-studio-blueprint__milestone-list">
                             {blueprint.milestones.map((ms, idx) => (
-                                <div key={idx} className="relative pl-8 pb-4 last:pb-0 border-l-2 border-indigo-100 dark:border-indigo-900/30 ml-3">
-                                    <div className="absolute left-[-9px] top-0 w-4 h-4 rounded-full bg-indigo-500 border-4 border-white dark:border-zinc-900 shadow-sm"></div>
-                                    <h4 className="font-bold text-ink dark:text-white">{ms.title}</h4>
-                                    <p className="text-sm text-muted">{ms.description}</p>
+                                <div key={idx} className="ai-studio-blueprint__milestone">
+                                    <span className="ai-studio-blueprint__milestone-dot" aria-hidden="true" />
+                                    <div className="ai-studio-blueprint__milestone-body">
+                                        <h4>{ms.title}</h4>
+                                        <p>{ms.description}</p>
+                                    </div>
                                 </div>
                             ))}
                         </div>
                     </div>
                 </div>
 
-                {/* Right Column: Tasks & Tech */}
-                <div className="space-y-8">
-                    <div className="app-panel p-6 space-y-4 bg-zinc-50 dark:bg-white/5 border-dashed">
-                        <h4 className="text-sm font-bold flex items-center gap-2 uppercase tracking-widest text-ink/40 dark:text-white/40">
-                            {t('aiStudio.blueprint.backlog')}
-                        </h4>
-                        <div className="space-y-3">
-                            {blueprint.initialTasks.map((task, idx) => (
-                                <div key={idx} className="flex items-center gap-3 p-3 rounded-lg bg-white dark:bg-zinc-800 border border-line dark:border-white/5 shadow-sm">
-                                    <span className={`w-2 h-2 rounded-full ${task.priority === 'High' ? 'bg-rose-500' :
-                                            task.priority === 'Medium' ? 'bg-amber-500' : 'bg-emerald-500'
-                                        }`}></span>
-                                    <span className="text-xs font-medium text-ink dark:text-white flex-1">{task.title}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {blueprint.suggestedTechStack && (
-                        <div className="app-panel p-6 space-y-4">
-                            <h4 className="text-sm font-bold uppercase tracking-widest text-ink/40 dark:text-white/40">{t('aiStudio.blueprint.stack')}</h4>
-                            <div className="flex flex-wrap gap-2">
-                                {blueprint.suggestedTechStack.map((tech, idx) => (
-                                    <span key={idx} className="px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 text-xs font-bold border border-indigo-100 dark:border-indigo-900/30">
-                                        {tech}
-                                    </span>
+                <div className="ai-studio-blueprint__aside">
+                    <Card className="ai-studio-blueprint__card ai-studio-blueprint__card--backlog">
+                        <CardBody className="ai-studio-blueprint__card-body">
+                            <div className="ai-studio-blueprint__section-label">
+                                {t('aiStudio.blueprint.backlog')}
+                            </div>
+                            <div className="ai-studio-blueprint__task-list">
+                                {blueprint.initialTasks.map((task, idx) => (
+                                    <div key={idx} className="ai-studio-blueprint__task">
+                                        <span className={`ai-studio-priority-dot ai-studio-priority-dot--${getPriorityClass(task.priority)}`} />
+                                        <span className="ai-studio-blueprint__task-title">{task.title}</span>
+                                    </div>
                                 ))}
                             </div>
-                        </div>
+                        </CardBody>
+                    </Card>
+
+                    {blueprint.suggestedTechStack && (
+                        <Card className="ai-studio-blueprint__card">
+                            <CardBody className="ai-studio-blueprint__card-body">
+                                <div className="ai-studio-blueprint__section-label">
+                                    {t('aiStudio.blueprint.stack')}
+                                </div>
+                                <div className="ai-studio-blueprint__stack">
+                                    {blueprint.suggestedTechStack.map((tech, idx) => (
+                                        <Badge key={idx} variant="neutral" className="ai-studio-blueprint__stack-tag">
+                                            {tech}
+                                        </Badge>
+                                    ))}
+                                </div>
+                            </CardBody>
+                        </Card>
                     )}
                 </div>
             </div>

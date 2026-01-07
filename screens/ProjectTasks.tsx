@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
+import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { useLanguage } from '../context/LanguageContext';
 import { getProjectById, subscribeProjectTasks, toggleTaskStatus, updateTaskFields, deleteTask, getSubTasks, getProjectCategories } from '../services/dataService';
 import { subscribeProjectGroups } from '../services/projectGroupService';
 import { Task, Project, TaskCategory, ProjectGroup } from '../types';
 import { TaskCreateModal } from '../components/TaskCreateModal';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
-import { Input } from '../components/ui/Input';
+import { Button } from '../components/common/Button/Button';
+import { Badge } from '../components/common/Badge/Badge';
+import { TextInput } from '../components/common/Input/TextInput';
+import { Select, type SelectOption } from '../components/common/Select/Select';
 import { useProjectPermissions } from '../hooks/useProjectPermissions';
 import { useArrowReplacement } from '../hooks/useArrowReplacement';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
@@ -157,12 +157,12 @@ export const ProjectTasks = () => {
         list: t('projectTasks.view.list'),
         board: t('projectTasks.view.board')
     }), [t]);
-    const sortLabels = useMemo(() => ({
-        priority: t('projectTasks.sort.priority'),
-        dueDate: t('projectTasks.sort.dueDate'),
-        title: t('projectTasks.sort.title'),
-        createdAt: t('projectTasks.sort.created')
-    }), [t]);
+    const sortOptions = useMemo<SelectOption[]>(() => ([
+        { value: 'priority', label: t('projectTasks.sort.priority') },
+        { value: 'dueDate', label: t('projectTasks.sort.dueDate') },
+        { value: 'title', label: t('projectTasks.sort.title') },
+        { value: 'createdAt', label: t('projectTasks.sort.created') },
+    ]), [t]);
 
     const filteredTasks = useMemo(() => {
         const filtered = tasks.filter(t => {
@@ -307,6 +307,7 @@ export const ProjectTasks = () => {
                 {/* Left: Status & Main Info */}
                 <div className="task-main-info">
                     <button
+                        type="button"
                         onClick={(e) => { e.stopPropagation(); handleToggle(task.id, task.isCompleted); }}
                         disabled={!can('canManageTasks')}
                         className={`check-btn ${task.isCompleted ? 'checked' : ''} ${!can('canManageTasks') ? 'disabled' : ''}`}
@@ -321,13 +322,13 @@ export const ProjectTasks = () => {
                             </h4>
                             <div className="meta-row">
                                 {task.convertedIdeaId && (
-                                    <div className="badge strategic">
+                                    <Badge variant="neutral" className="badge strategic">
                                         <span className="material-symbols-outlined">auto_awesome</span>
                                         {t('projectTasks.badge.strategic')}
-                                    </div>
+                                    </Badge>
                                 )}
                                 {task.priority && (
-                                    <div className={`badge priority-${task.priority.toLowerCase()}`}>
+                                    <Badge variant="neutral" className={`badge priority-${task.priority.toLowerCase()}`}>
                                         <span className="material-symbols-outlined">
                                             {task.priority === 'Urgent' ? 'error' :
                                                 task.priority === 'High' ? 'keyboard_double_arrow_up' :
@@ -335,44 +336,41 @@ export const ProjectTasks = () => {
                                                         'keyboard_arrow_down'}
                                         </span>
                                         {priorityLabel}
-                                    </div>
+                                    </Badge>
                                 )}
 
                                 {/* Blocked Indicator */}
                                 {isBlocked && (
-                                    <div className="badge blocked group/blocked">
+                                    <Badge variant="neutral" className="badge blocked">
                                         <span className="material-symbols-outlined">link_off</span>
                                         {t('projectTasks.badge.blocked')}
-                                        {/* Tooltip */}
-                                        <div className="absolute left-0 top-full mt-2 w-48 p-3 bg-white dark:bg-[#1E1E1E] rounded-xl border border-orange-200 dark:border-orange-500/20 shadow-xl opacity-0 invisible group-hover/blocked:opacity-100 group-hover/blocked:visible transition-all z-50">
-                                            <p className="text-[10px] font-bold text-orange-500 uppercase tracking-widest mb-2">{t('projectTasks.badge.blockedBy')}</p>
-                                            <div className="flex flex-col gap-1.5">
-                                                {blockedBy.map(t => (
-                                                    <div key={t.id} className="flex items-center gap-2">
-                                                        <span className="material-symbols-outlined text-[12px] text-orange-400">lock</span>
-                                                        <span className="text-xs font-medium truncate text-[var(--color-text-main)] w-full">
-                                                            {t.title}
-                                                        </span>
-                                                    </div>
+                                        <span className="blocked-tooltip">
+                                            <span className="blocked-tooltip__title">{t('projectTasks.badge.blockedBy')}</span>
+                                            <span className="blocked-tooltip__list">
+                                                {blockedBy.map(blockedTask => (
+                                                    <span key={blockedTask.id} className="blocked-tooltip__item">
+                                                        <span className="material-symbols-outlined blocked-tooltip__icon">lock</span>
+                                                        <span className="blocked-tooltip__text">{blockedTask.title}</span>
+                                                    </span>
                                                 ))}
-                                            </div>
-                                        </div>
-                                    </div>
+                                            </span>
+                                        </span>
+                                    </Badge>
                                 )}
 
                                 {/* Dependency Count */}
                                 {!isBlocked && (task.dependencies?.length || 0) > 0 && (
-                                    <div className="badge dependency">
+                                    <Badge variant="neutral" className="badge dependency">
                                         <span className="material-symbols-outlined">link</span>
                                         {dependencyCount} {dependencyLabel}
-                                    </div>
+                                    </Badge>
                                 )}
                             </div>
                         </div>
 
                         <div className="meta-row">
                             {task.status && (
-                                <div className={`badge status ${task.status.toLowerCase().replace(' ', '-')}`}>
+                                <Badge variant="neutral" className={`badge status ${task.status.toLowerCase().replace(' ', '-')}`}>
                                     <span className="material-symbols-outlined">
                                         {task.status === 'Done' ? 'check_circle' :
                                             task.status === 'In Progress' ? 'sync' :
@@ -384,13 +382,13 @@ export const ProjectTasks = () => {
                                                                     'circle'}
                                     </span>
                                     {statusLabel || t('tasks.status.unknown')}
-                                </div>
+                                </Badge>
                             )}
                             {subtaskStats[task.id]?.total > 0 && (
-                                <div className="badge subtasks">
+                                <Badge variant="neutral" className="badge subtasks">
                                     <span className="material-symbols-outlined">checklist</span>
                                     {subtaskStats[task.id].done}/{subtaskStats[task.id].total}
-                                </div>
+                                </Badge>
                             )}
                             {(() => {
                                 const cats = Array.isArray(task.category) ? task.category : [task.category].filter(Boolean);
@@ -398,17 +396,17 @@ export const ProjectTasks = () => {
                                     const catData = allCategories.find(c => c.name === catName);
                                     const color = catData?.color || '#64748b';
                                     return (
-                                        <div
+                                        <Badge
                                             key={catName as string}
+                                            variant="neutral"
                                             className="badge category"
                                             style={{
                                                 backgroundColor: `${color}10`,
-                                                color: color,
-                                                borderColor: `${color}30`
+                                                color: color
                                             }}
                                         >
                                             {catName as string}
-                                        </div>
+                                        </Badge>
                                     );
                                 });
                             })()}
@@ -440,10 +438,10 @@ export const ProjectTasks = () => {
                 <div className={`task-actions-section ${isBoard ? 'is-board' : ''}`}>
                     {/* Minimal Timeline */}
                     {showStrategicTimeline && (
-                        <div className={`timeline-widget ${isBoard ? 'w-full' : 'w-56'}`}>
+                        <div className={`timeline-widget ${isBoard ? 'timeline-widget--full' : 'timeline-widget--wide'}`.trim()}>
                             <div className="timeline-header">
-                                <span className="flex items-center gap-1.5">
-                                    <span className="material-symbols-outlined text-[14px]">timeline</span>
+                                <span className="timeline-label">
+                                    <span className="material-symbols-outlined timeline-icon">timeline</span>
                                     {t('projectTasks.timeline.strategic')}
                                 </span>
                                 {(() => {
@@ -453,7 +451,7 @@ export const ProjectTasks = () => {
                                     const total = end - start;
                                     const elapsed = now - start;
                                     const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
-                                    return <span>{Math.round(pct)}%</span>;
+                                    return <span className="timeline-percent">{Math.round(pct)}%</span>;
                                 })()}
                             </div>
                             <div className="timeline-bar">
@@ -481,7 +479,7 @@ export const ProjectTasks = () => {
                         </div>
                     )}
                     {showTimeline && (
-                        <div className={`timeline-widget ${isBoard ? 'w-full' : 'w-32'}`}>
+                        <div className={`timeline-widget ${isBoard ? 'timeline-widget--full' : 'timeline-widget--compact'}`}>
                             <div className="timeline-simple-bar">
                                 {(() => {
                                     const start = new Date(task.startDate!).getTime();
@@ -508,10 +506,10 @@ export const ProjectTasks = () => {
                     )}
 
                     {showStrategicDue && dueDate && (
-                        <div className={`timeline-widget ${isBoard ? 'w-full' : 'w-56'}`}>
+                        <div className={`timeline-widget ${isBoard ? 'timeline-widget--full' : 'timeline-widget--wide'}`}>
                             <div className={`due-date-box ${isOverdue ? 'overdue' : 'normal'}`}>
-                                <span className="material-symbols-outlined text-[18px]">event</span>
-                                <div className="flex flex-col">
+                                <span className="material-symbols-outlined due-date-icon">event</span>
+                                <div className="due-date-info">
                                     <span className="date-label">{t('projectTasks.timeline.strategicDue')}</span>
                                     <span className="date-val">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
                                 </div>
@@ -520,10 +518,10 @@ export const ProjectTasks = () => {
                     )}
 
                     {showDueDate && dueDate && (
-                        <div className={`timeline-widget ${isBoard ? 'w-full' : 'w-32'}`}>
+                        <div className={`timeline-widget ${isBoard ? 'timeline-widget--full' : 'timeline-widget--compact'}`}>
                             <div className={`due-date-box simple ${isOverdue ? 'overdue' : ''}`}>
-                                <span className="material-symbols-outlined text-[16px]">event</span>
-                                <div className="flex flex-col">
+                                <span className="material-symbols-outlined due-date-icon">event</span>
+                                <div className="due-date-info">
                                     <span className="date-label">{t('projectTasks.timeline.due')}</span>
                                     <span className="date-val small">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
                                 </div>
@@ -535,13 +533,15 @@ export const ProjectTasks = () => {
                     <div className="action-btn-group">
                         {can('canManageTasks') && (
                             <button
+                                type="button"
                                 onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }}
-                                className="action-btn delete"
+                                className="action-btn action-btn--delete"
                             >
-                                <span className="material-symbols-outlined text-xl">delete</span>
+                                <span className="material-symbols-outlined action-btn__icon">delete</span>
                             </button>
                         )}
                         <button
+                            type="button"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 if (isPinned(task.id)) {
@@ -561,15 +561,15 @@ export const ProjectTasks = () => {
                                 e.preventDefault();
                                 setFocusItem(focusItemId === task.id ? null : task.id);
                             }}
-                            className={`action-btn pin ${isPinned(task.id) ? 'pinned' : 'unpinned'}`}
+                            className={`action-btn action-btn--pin ${isPinned(task.id) ? 'pinned' : 'unpinned'}`}
                             title={isPinned(task.id) ? t('projectTasks.actions.unpinTitle') : t('projectTasks.actions.pinTitle')}
                         >
-                            <span className={`material-symbols-outlined text-xl transition-colors duration-300 ${focusItemId === task.id ? 'text-amber-500' : 'text-inherit'}`}>
+                            <span className={`material-symbols-outlined action-btn__icon ${focusItemId === task.id ? 'action-btn__icon--focused' : ''}`}>
                                 push_pin
                             </span>
                         </button>
                         <div className="action-btn">
-                            <span className="material-symbols-outlined text-xl">east</span>
+                            <span className="material-symbols-outlined action-btn__icon">east</span>
                         </div>
                     </div>
                 </div>
@@ -578,8 +578,8 @@ export const ProjectTasks = () => {
     };
 
     if (loading) return (
-        <div className="flex items-center justify-center p-12">
-            <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-3xl">rotate_right</span>
+        <div className="tasks-loading">
+            <span className="material-symbols-outlined tasks-loading__icon">rotate_right</span>
         </div>
     );
 
@@ -602,7 +602,7 @@ export const ProjectTasks = () => {
                     {can('canManageTasks') && (
                         <Button
                             onClick={() => setShowCreateModal(true)}
-                            icon={<span className="material-symbols-outlined font-bold">add</span>}
+                            icon={<span className="material-symbols-outlined">add</span>}
                             variant="primary"
                             size="lg"
                             className="new-task-btn"
@@ -629,9 +629,9 @@ export const ProjectTasks = () => {
                                 <div className="value-row">
                                     <p className="value">{stat.val}</p>
                                     {stat.progress !== undefined && (
-                                        <span className="badge">
+                                        <Badge variant="neutral" className="badge">
                                             {stat.progress}%
-                                        </span>
+                                        </Badge>
                                     )}
                                 </div>
                             </div>
@@ -646,6 +646,7 @@ export const ProjectTasks = () => {
                             {(['active', 'completed', 'all'] as const).map((f) => (
                                 <button
                                     key={f}
+                                    type="button"
                                     onClick={() => setFilter(f)}
                                     className={`control-btn ${filter === f ? 'active' : ''}`}
                                 >
@@ -658,56 +659,35 @@ export const ProjectTasks = () => {
                             {(['list', 'board'] as const).map((v) => (
                                 <button
                                     key={v}
+                                    type="button"
                                     onClick={() => setView(v)}
                                     className={`control-btn ${view === v ? 'active' : ''}`}
                                 >
-                                    <span className="material-symbols-outlined text-lg">{v === 'list' ? 'format_list_bulleted' : 'dashboard'}</span>
+                                    <span className="material-symbols-outlined control-btn__icon">{v === 'list' ? 'format_list_bulleted' : 'dashboard'}</span>
                                     {viewLabels[v]}
                                 </button>
                             ))}
                         </div>
 
-                        {/* Sort Dropdown */}
-                        <div className="sort-dropdown">
-                            <button className="sort-btn">
-                                <span className="material-symbols-outlined text-lg">sort</span>
-                                <span className="hidden sm:inline">{t('projectTasks.sort.label')}</span>
-                                <span className="active-sort">
-                                    {sortLabels[sortBy]}
-                                </span>
-                                <span className="material-symbols-outlined chevron">expand_more</span>
-                            </button>
-                            <div className="sort-menu">
-                                {([
-                                    { value: 'priority', label: t('projectTasks.sort.priority'), icon: 'flag' },
-                                    { value: 'dueDate', label: t('projectTasks.sort.dueDate'), icon: 'event' },
-                                    { value: 'title', label: t('projectTasks.sort.title'), icon: 'sort_by_alpha' },
-                                    { value: 'createdAt', label: t('projectTasks.sort.created'), icon: 'schedule' }
-                                ] as const).map(opt => (
-                                    <button
-                                        key={opt.value}
-                                        onClick={() => setSortBy(opt.value)}
-                                        className={`menu-item ${sortBy === opt.value ? 'selected' : ''}`}
-                                    >
-                                        <span className="material-symbols-outlined text-lg">{opt.icon}</span>
-                                        {opt.label}
-                                        {sortBy === opt.value && (
-                                            <span className="material-symbols-outlined text-sm ml-auto">check</span>
-                                        )}
-                                    </button>
-                                ))}
-                            </div>
+                        <div className="tasks-selects">
+                            <Select
+                                label={t('projectTasks.sort.label')}
+                                value={sortBy}
+                                onChange={(value) => setSortBy(value as typeof sortBy)}
+                                options={sortOptions}
+                                className="tasks-select"
+                            />
                         </div>
                     </div>
 
                     <div className="search-wrapper">
-                        <input
-                            type="text"
+                        <TextInput
                             value={search}
                             onChange={handleSearchChange}
                             placeholder={t('projectTasks.search.placeholder')}
+                            className="tasks-search"
+                            leftElement={<span className="material-symbols-outlined">search</span>}
                         />
-                        <span className="material-symbols-outlined search-icon">search</span>
                     </div>
                 </div>
 
@@ -716,7 +696,7 @@ export const ProjectTasks = () => {
                     {filteredTasks.length === 0 ? (
                         <div className="empty-state">
                             <div className="icon-circle">
-                                <span className="material-symbols-outlined animate-pulse">explore_off</span>
+                                <span className="material-symbols-outlined">explore_off</span>
                             </div>
                             <h3>{t('projectTasks.empty.title')}</h3>
                             <p>

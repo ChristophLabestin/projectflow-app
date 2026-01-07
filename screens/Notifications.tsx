@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { auth } from '../services/firebase';
 import {
@@ -11,10 +10,13 @@ import {
 } from '../services/notificationService';
 import { respondToJoinRequest } from '../services/dataService';
 import { Button } from '../components/ui/Button';
+import { Card } from '../components/ui/Card';
+import { ConfirmModal } from '../components/common/Modal/ConfirmModal';
 import { Notification } from '../types';
 import { useToast } from '../context/UIContext';
 import { useLanguage } from '../context/LanguageContext';
 import { format } from 'date-fns';
+import './notifications.scss';
 
 export const Notifications = () => {
     const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -151,88 +153,70 @@ export const Notifications = () => {
     };
 
     return (
-        <div className="p-6 md:p-8 max-w-5xl mx-auto space-y-6 animate-fade-in relative">
+        <div className="notifications-page">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="notifications-header">
                 <div>
-                    <h1 className="text-2xl font-bold text-main">{t('notifications.title')}</h1>
-                    <p className="text-muted">
+                    <h1 className="notifications-title">{t('notifications.title')}</h1>
+                    <p className="notifications-subtitle">
                         {t('notifications.page.subtitle')}
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="notifications-actions">
                     {notifications.length > 0 && (
                         <Button
-                            variant="utility"
+                            variant="ghost"
                             onClick={() => setShowClearConfirm(true)}
-                            className="flex items-center gap-2 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20 border-transparent"
+                            className="notifications-action notifications-action--danger"
                         >
-                            <span className="material-symbols-outlined text-[18px]">delete_sweep</span>
+                            <span className="material-symbols-outlined notifications-action__icon">delete_sweep</span>
                             {t('notifications.actions.clearAll')}
                         </Button>
                     )}
                     {unreadCount > 0 && (
                         <Button
-                            variant="utility"
+                            variant="ghost"
                             onClick={handleMarkAllAsRead}
-                            className="flex items-center gap-2"
+                            className="notifications-action"
                         >
-                            <span className="material-symbols-outlined text-[18px]">done_all</span>
+                            <span className="material-symbols-outlined notifications-action__icon">done_all</span>
                             {t('notifications.actions.markAllRead')}
                         </Button>
                     )}
                 </div>
             </div>
 
-            {/* Clear All Confirmation Modal */}
-            {showClearConfirm && createPortal(
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="bg-card rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-surface">
-                        <div className="space-y-4 text-center">
-                            <h3 className="text-lg font-bold text-main">{t('notifications.clearConfirm.title')}</h3>
-                            <p className="text-sm text-muted">
-                                {t('notifications.clearConfirm.message')}
-                            </p>
-                            <div className="grid grid-cols-2 gap-3">
-                                <Button
-                                    variant="ghost"
-                                    onClick={() => setShowClearConfirm(false)}
-                                >
-                                    {t('notifications.clearConfirm.cancel')}
-                                </Button>
-                                <Button
-                                    variant="danger"
-                                    onClick={handleClearAll}
-                                >
-                                    {t('notifications.clearConfirm.confirm')}
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
-                </div>,
-                document.body
-            )}
+            <ConfirmModal
+                isOpen={showClearConfirm}
+                onClose={() => setShowClearConfirm(false)}
+                onConfirm={handleClearAll}
+                title={t('notifications.clearConfirm.title')}
+                message={t('notifications.clearConfirm.message')}
+                confirmLabel={t('notifications.clearConfirm.confirm')}
+                cancelLabel={t('notifications.clearConfirm.cancel')}
+                variant="danger"
+            />
 
             {/* Notifications List */}
-            <div className="bg-card rounded-xl border border-surface shadow-sm overflow-hidden">
+            <Card padding="none" className="notifications-card">
                 {loading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                    <div className="notifications-loading">
+                        <div className="notifications-spinner" />
                     </div>
                 ) : notifications.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 text-center">
-                        <div className="w-16 h-16 rounded-full bg-surface-hover flex items-center justify-center mb-4">
-                            <span className="material-symbols-outlined text-3xl text-muted">
+                    <div className="notifications-empty">
+                        <div className="notifications-empty__icon">
+                            <span className="material-symbols-outlined notifications-empty__symbol">
                                 notifications_off
                             </span>
                         </div>
-                        <h3 className="text-lg font-medium text-main">{t('notifications.empty.title')}</h3>
-                        <p className="text-muted mt-1">
+                        <h3 className="notifications-empty__title">{t('notifications.empty.title')}</h3>
+                        <p className="notifications-empty__text">
                             {t('notifications.empty.description')}
                         </p>
                     </div>
                 ) : (
-                    <div className="divide-y divide-[var(--color-surface-border)]">
+                    <div className="notifications-list">
                         {notifications.map((notification) => (
                             <div
                                 key={notification.id}
@@ -240,53 +224,46 @@ export const Notifications = () => {
                                 tabIndex={0}
                                 onClick={() => handleNotificationClick(notification)}
                                 onMouseEnter={() => !notification.read && markNotificationAsRead(notification.id, notification.tenantId)}
-                                className={`w-full text-left px-6 py-4 hover:bg-surface-hover transition-colors cursor-pointer group ${!notification.read ? 'bg-blue-50/50 dark:bg-blue-900/10' : ''
-                                    }`}
+                                className={`notification-item ${!notification.read ? 'notification-item--unread' : ''}`}
                             >
-                                <div className="flex items-start gap-4">
+                                <div className="notification-item__main">
                                     {/* Icon */}
-                                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 ${!notification.read
-                                        ? 'bg-blue-500 text-white shadow-md shadow-blue-500/20'
-                                        : 'bg-surface text-muted border border-surface'
-                                        }`}>
-                                        <span className="material-symbols-outlined text-[20px]">
+                                    <div className={`notification-icon ${!notification.read ? 'notification-icon--unread' : 'notification-icon--read'}`}>
+                                        <span className="material-symbols-outlined notification-icon__symbol">
                                             {getNotificationIcon(notification.type)}
                                         </span>
                                     </div>
 
                                     {/* Content */}
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-start justify-between gap-4">
-                                            <p className={`text-base ${!notification.read
-                                                ? 'font-semibold text-main'
-                                                : 'text-main'
-                                                }`}>
+                                    <div className="notification-content">
+                                        <div className="notification-content__header">
+                                            <p className={`notification-title ${!notification.read ? 'notification-title--unread' : ''}`}>
                                                 {notification.title}
                                             </p>
-                                            <span className="text-xs text-muted whitespace-nowrap">
+                                            <span className="notification-time">
                                                 {formatTime(notification.createdAt)}
                                             </span>
                                         </div>
-                                        <p className="text-sm text-muted mt-1">
+                                        <p className="notification-message">
                                             {notification.message}
                                         </p>
 
                                         {/* Action Buttons for specific types */}
                                         {notification.type === 'project_join_request' && !notification.read && (
-                                            <div className="flex items-center gap-3 mt-4">
+                                            <div className="notification-actions">
                                                 <Button
                                                     size="sm"
                                                     variant="primary"
                                                     onClick={(e) => handleJoinResponse(e, notification, true)}
-                                                    className="bg-emerald-500 hover:bg-emerald-600 border-emerald-500 text-white min-w-[80px]"
+                                                    className="notification-action"
                                                 >
                                                     {t('notifications.actions.accept')}
                                                 </Button>
                                                 <Button
                                                     size="sm"
-                                                    variant="utility"
+                                                    variant="ghost"
                                                     onClick={(e) => handleJoinResponse(e, notification, false)}
-                                                    className="hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-900/20 border-transparent min-w-[80px]"
+                                                    className="notification-action notification-action--decline"
                                                 >
                                                     {t('notifications.actions.decline')}
                                                 </Button>
@@ -295,16 +272,16 @@ export const Notifications = () => {
                                     </div>
 
                                     {/* Unread indicator & Actions */}
-                                    <div className="flex items-center gap-2 self-center flex-shrink-0">
+                                    <div className="notification-meta">
                                         {!notification.read && (
-                                            <div className="w-2.5 h-2.5 bg-blue-500 rounded-full shadow-sm shadow-blue-500/50"></div>
+                                            <span className="notification-unread-dot" />
                                         )}
                                         <button
                                             onClick={(e) => handleDelete(e, notification.id, notification.tenantId)}
-                                            className="p-1.5 rounded-full text-muted hover:bg-surface-hover hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
+                                            className="notification-delete"
                                             title={t('notifications.actions.delete')}
                                         >
-                                            <span className="material-symbols-outlined text-[20px]">close</span>
+                                            <span className="material-symbols-outlined notification-delete__icon">close</span>
                                         </button>
                                     </div>
                                 </div>
@@ -312,7 +289,7 @@ export const Notifications = () => {
                         ))}
                     </div>
                 )}
-            </div>
+            </Card>
         </div>
     );
 };

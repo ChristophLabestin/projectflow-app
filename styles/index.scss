@@ -1,5 +1,18 @@
 @use './tokens';
 @use './utilities';
+@use '../src/styles/components/dashboard';
+@use '../src/styles/components/project-overview';
+@use '../src/styles/components/project-details';
+@use '../src/styles/components/project-activity';
+@use '../src/styles/components/recent-activity-card';
+@use '../src/styles/components/scheduled-tasks-card';
+@use '../src/styles/components/tasks';
+@use '../src/styles/components/project-task-detail';
+@use '../src/styles/components/task-dependencies';
+@use '../src/styles/components/calendar';
+@use '../src/styles/components/ai-studio';
+@use '../src/styles/components/create-project';
+@use '../src/styles/components/task-modals';
 
 * {
   box-sizing: border-box;
@@ -68,6 +81,12 @@ html.dark .dotted-bg {
 
 .h4 {
   font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.h5 {
+  font-size: 1rem;
   font-weight: 600;
   line-height: 1.4;
 }
@@ -434,6 +453,24 @@ html.dark .switch-track.active {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+.animate-spin-slow {
+  animation: spin 3s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
   }
 }
 

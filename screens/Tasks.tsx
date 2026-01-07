@@ -1,15 +1,12 @@
-import React, { useMemo, useState, useEffect } from 'react';
+﻿import React, { useMemo, useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { auth } from '../services/firebase';
-import { getUserTasks, toggleTaskStatus, addTask, getUserProjects, deleteTask, getSubTasks, getProjectCategories } from '../services/dataService';
-import { Project, Task, TaskCategory } from '../types';
-import { toMillis } from '../utils/time';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
-import { Input } from '../components/ui/Input';
-import { Select } from '../components/ui/Select';
+import { useNavigate } from 'react-router-dom';
+import { getUserTasks, toggleTaskStatus, getUserProjects, deleteTask, getSubTasks } from '../services/dataService';
+import { Project, Task } from '../types';
+import { Button } from '../components/common/Button/Button';
+import { Badge } from '../components/common/Badge/Badge';
+import { TextInput } from '../components/common/Input/TextInput';
+import { Select, type SelectOption } from '../components/common/Select/Select';
 import { useLanguage } from '../context/LanguageContext';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { useConfirm } from '../context/UIContext';
@@ -18,10 +15,8 @@ import { TaskCreateModal } from '../components/TaskCreateModal';
 import { useArrowReplacement } from '../hooks/useArrowReplacement';
 
 export const Tasks = () => {
-    const { t, language, dateFormat, dateLocale } = useLanguage();
-    const locale = language === 'de' ? 'de-DE' : 'en-US';
+    const { t, dateFormat, dateLocale } = useLanguage();
     const navigate = useNavigate();
-    const location = useLocation();
     const confirm = useConfirm();
 
     // Data State
@@ -29,7 +24,6 @@ export const Tasks = () => {
     const [projects, setProjects] = useState<Project[]>([]);
     const [loading, setLoading] = useState(true);
     const [subtaskStats, setSubtaskStats] = useState<Record<string, { done: number; total: number }>>({});
-    const [allCategories, setAllCategories] = useState<TaskCategory[]>([]); // We might need to fetch basic cats or skip
 
     // View State
     const [view, setView] = useState<'list' | 'board'>('list');
@@ -42,7 +36,6 @@ export const Tasks = () => {
     const [projectFilter, setProjectFilter] = useState<string>('all');
     const [priorityFilter, setPriorityFilter] = useState<string>('all');
 
-    const user = auth.currentUser;
     const { pinItem, unpinItem, isPinned, focusItemId, setFocusItem } = usePinnedTasks();
 
     // Arrow Replacement for Search
@@ -70,10 +63,10 @@ export const Tasks = () => {
             if (!tasks.length) return;
             try {
                 // Optimization: only load for visible tasks if possible, but for now load all to match project view
-                const entries = await Promise.all(tasks.map(async (t) => {
-                    const subs = await getSubTasks(t.id);
+                const entries = await Promise.all(tasks.map(async (task) => {
+                    const subs = await getSubTasks(task.id);
                     const done = subs.filter(s => s.isCompleted).length;
-                    return [t.id, { done, total: subs.length }] as const;
+                    return [task.id, { done, total: subs.length }] as const;
                 }));
                 setSubtaskStats(Object.fromEntries(entries));
             } catch (err) {
@@ -85,7 +78,7 @@ export const Tasks = () => {
 
     const handleToggle = async (taskId: string, currentStatus: boolean) => {
         // Optimistic update
-        setTasks(prev => prev.map(t => t.id === taskId ? { ...t, isCompleted: !currentStatus } : t));
+        setTasks(prev => prev.map(task => task.id === taskId ? { ...task, isCompleted: !currentStatus } : task));
         await toggleTaskStatus(taskId, currentStatus);
     };
 
@@ -93,14 +86,14 @@ export const Tasks = () => {
         if (!await confirm(t('tasks.confirm.deleteTitle'), t('tasks.confirm.deleteMessage'))) return;
         try {
             await deleteTask(taskId);
-            setTasks(prev => prev.filter(t => t.id !== taskId));
+            setTasks(prev => prev.filter(task => task.id !== taskId));
         } catch (e) {
             console.error(e);
         }
     };
 
     const projectNameById = useMemo(() => {
-        const entries = projects.map((p) => [p.id, p.title] as const);
+        const entries = projects.map((project) => [project.id, project.title] as const);
         return Object.fromEntries(entries);
     }, [projects]);
 
@@ -122,29 +115,42 @@ export const Tasks = () => {
         Blocked: t('tasks.status.blocked')
     }), [t]);
 
-    const sortLabels = useMemo(() => ({
-        priority: t('tasks.sort.priority'),
-        dueDate: t('tasks.sort.dueDate'),
-        title: t('tasks.sort.title'),
-        createdAt: t('tasks.sort.created')
-    }), [t]);
+    const sortOptions = useMemo<SelectOption[]>(() => ([
+        { value: 'priority', label: t('tasks.sort.priority') },
+        { value: 'dueDate', label: t('tasks.sort.dueDate') },
+        { value: 'title', label: t('tasks.sort.title') },
+        { value: 'createdAt', label: t('tasks.sort.created') }
+    ]), [t]);
+
+    const projectOptions = useMemo<SelectOption[]>(() => ([
+        { value: 'all', label: t('tasks.filters.project.all') },
+        ...projects.map((project) => ({ value: project.id, label: project.title }))
+    ]), [projects, t]);
+
+    const priorityOptions = useMemo<SelectOption[]>(() => ([
+        { value: 'all', label: t('tasks.filters.priority.any') },
+        { value: 'Urgent', label: t('tasks.priority.urgent') },
+        { value: 'High', label: t('tasks.priority.high') },
+        { value: 'Medium', label: t('tasks.priority.medium') },
+        { value: 'Low', label: t('tasks.priority.low') }
+    ]), [t]);
 
     const priorityMap: Record<string, number> = { Urgent: 4, High: 3, Medium: 2, Low: 1 };
 
     const filteredTasks = useMemo(() => {
-        let result = tasks.filter(t => {
+        let result = tasks.filter(task => {
             // Status Logic matching ProjectTasks
-            if (filter === 'active' && t.isCompleted) return false;
-            if (filter === 'completed' && !t.isCompleted) return false;
+            if (filter === 'active' && task.isCompleted) return false;
+            if (filter === 'completed' && !task.isCompleted) return false;
 
             // Search
-            if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
+            if (search && !task.title.toLowerCase().includes(search.toLowerCase())) return false;
 
             // Project Filter
-            if (projectFilter !== 'all' && t.projectId !== projectFilter) return false;
+            if (projectFilter !== 'all' && task.projectId !== projectFilter) return false;
 
             // Priority Filter
-            if (priorityFilter !== 'all' && t.priority !== priorityFilter) return false;
+            if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
 
             return true;
         });
@@ -181,13 +187,13 @@ export const Tasks = () => {
     // Stats Calculation
     const stats = useMemo(() => {
         const total = tasks.length;
-        const open = tasks.filter(t => !t.isCompleted).length;
-        const completed = tasks.filter(t => t.isCompleted).length;
-        const urgent = tasks.filter(t => t.priority === 'Urgent' && !t.isCompleted).length;
-        const high = tasks.filter(t => t.priority === 'High' && !t.isCompleted).length;
+        const open = tasks.filter(task => !task.isCompleted).length;
+        const completed = tasks.filter(task => task.isCompleted).length;
+        const urgent = tasks.filter(task => task.priority === 'Urgent' && !task.isCompleted).length;
+        const high = tasks.filter(task => task.priority === 'High' && !task.isCompleted).length;
         const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
 
-        // Also calculate 'due today' and 'overdue' to match previous View if desired, 
+        // Also calculate 'due today' and 'overdue' to match previous View if desired,
         // but current design uses ProjectTasks stats style (Urgent/High/Open/Completed)
         return { total, open, completed, urgent, high, progress };
     }, [tasks]);
@@ -204,7 +210,6 @@ export const Tasks = () => {
         const isOverdue = !!dueDate && dueDate < new Date() && !task.isCompleted;
 
         const isBlocked = false; // Logic simplification for global view as per original
-        const blockedBy: Task[] = []; // Placeholder
 
         const projectTitle = projectNameById[task.projectId];
         const cardVariant = task.isCompleted ? 'completed' : isBlocked ? 'blocked' : task.convertedIdeaId ? 'strategic' : 'default';
@@ -217,6 +222,7 @@ export const Tasks = () => {
                 {/* Left: Status & Main Info */}
                 <div className="task-main-info">
                     <button
+                        type="button"
                         onClick={(e) => { e.stopPropagation(); handleToggle(task.id, task.isCompleted); }}
                         className={`check-btn ${task.isCompleted ? 'checked' : ''}`}
                     >
@@ -227,13 +233,14 @@ export const Tasks = () => {
                         <div className="title-row">
                             {/* Project Pill - NEW for Global View */}
                             {projectTitle && (
-                                <div
+                                <button
+                                    type="button"
                                     onClick={(e) => { e.stopPropagation(); navigate(`/project/${task.projectId}`); }}
                                     className="project-pill"
                                 >
                                     <span className="dot" />
-                                    {projectTitle}
-                                </div>
+                                    <span className="project-pill__label">{projectTitle}</span>
+                                </button>
                             )}
 
                             <h4 className={`task-title ${task.isCompleted ? 'completed' : ''}`}>
@@ -241,13 +248,13 @@ export const Tasks = () => {
                             </h4>
                             <div className="meta-row">
                                 {task.convertedIdeaId && (
-                                    <div className="badge strategic">
+                                    <Badge variant="neutral" className="badge strategic">
                                         <span className="material-symbols-outlined">auto_awesome</span>
                                         {t('tasks.card.strategic')}
-                                    </div>
+                                    </Badge>
                                 )}
                                 {task.priority && (
-                                    <div className={`badge priority-${task.priority.toLowerCase()}`}>
+                                    <Badge variant="neutral" className={`badge priority-${task.priority.toLowerCase()}`}>
                                         <span className="material-symbols-outlined">
                                             {task.priority === 'Urgent' ? 'error' :
                                                 task.priority === 'High' ? 'keyboard_double_arrow_up' :
@@ -255,14 +262,14 @@ export const Tasks = () => {
                                                         'keyboard_arrow_down'}
                                         </span>
                                         {priorityLabels[task.priority as keyof typeof priorityLabels] || task.priority}
-                                    </div>
+                                    </Badge>
                                 )}
                             </div>
                         </div>
 
                         <div className="meta-row">
                             {task.status && (
-                                <div className={`badge status ${task.status.toLowerCase().replace(' ', '-')}`}>
+                                <Badge variant="neutral" className={`badge status ${task.status.toLowerCase().replace(' ', '-')}`}>
                                     <span className="material-symbols-outlined">
                                         {task.status === 'Done' ? 'check_circle' :
                                             task.status === 'In Progress' ? 'sync' :
@@ -274,20 +281,20 @@ export const Tasks = () => {
                                                                     'circle'}
                                     </span>
                                     {statusLabels[task.status as keyof typeof statusLabels] || task.status}
-                                </div>
+                                </Badge>
                             )}
                             {subtaskStats[task.id]?.total > 0 && (
-                                <div className="badge subtasks">
+                                <Badge variant="neutral" className="badge subtasks">
                                     <span className="material-symbols-outlined">checklist</span>
                                     {subtaskStats[task.id].done}/{subtaskStats[task.id].total}
-                                </div>
+                                </Badge>
                             )}
                             {(() => {
                                 const cats = Array.isArray(task.category) ? task.category : [task.category].filter(Boolean);
                                 return cats.map(catName => (
-                                    <div key={catName as string} className="badge category" style={{ borderColor: 'rgba(100, 116, 139, 0.2)', color: '#64748b', backgroundColor: 'rgba(100, 116, 139, 0.1)' }}>
+                                    <Badge key={catName as string} variant="neutral" className="badge category">
                                         {catName as string}
-                                    </div>
+                                    </Badge>
                                 ));
                             })()}
                         </div>
@@ -298,10 +305,10 @@ export const Tasks = () => {
                 <div className={`task-actions-section ${isBoard ? 'is-board' : ''}`}>
                     {/* Minimal Timeline */}
                     {showStrategicTimeline && (
-                        <div className={`timeline-widget ${isBoard ? 'w-full' : 'w-56'}`}>
+                        <div className={`timeline-widget ${isBoard ? 'timeline-widget--full' : 'timeline-widget--wide'}`}>
                             <div className="timeline-header">
-                                <span className="flex items-center gap-1.5">
-                                    <span className="material-symbols-outlined text-[14px]">timeline</span>
+                                <span className="timeline-label">
+                                    <span className="material-symbols-outlined timeline-icon">timeline</span>
                                     {t('tasks.card.strategicTimeline')}
                                 </span>
                                 {(() => {
@@ -311,7 +318,7 @@ export const Tasks = () => {
                                     const total = end - start;
                                     const elapsed = now - start;
                                     const pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
-                                    return <span>{Math.round(pct)}%</span>;
+                                    return <span className="timeline-percent">{Math.round(pct)}%</span>;
                                 })()}
                             </div>
                             <div className="timeline-bar">
@@ -333,7 +340,7 @@ export const Tasks = () => {
                         </div>
                     )}
                     {showTimeline && (
-                        <div className={`timeline-widget ${isBoard ? 'w-full' : 'w-32'}`}>
+                        <div className={`timeline-widget ${isBoard ? 'timeline-widget--full' : 'timeline-widget--compact'}`}>
                             <div className="timeline-simple-bar">
                                 {(() => {
                                     const start = new Date(task.startDate!).getTime();
@@ -354,10 +361,10 @@ export const Tasks = () => {
                     )}
 
                     {showStrategicDue && dueDate && (
-                        <div className={`timeline-widget ${isBoard ? 'w-full' : 'w-56'}`}>
+                        <div className={`timeline-widget ${isBoard ? 'timeline-widget--full' : 'timeline-widget--wide'}`}>
                             <div className={`due-date-box ${isOverdue ? 'overdue' : 'normal'}`}>
-                                <span className="material-symbols-outlined text-[18px]">event</span>
-                                <div className="flex flex-col">
+                                <span className="material-symbols-outlined due-date-icon">event</span>
+                                <div className="due-date-info">
                                     <span className="date-label">{t('tasks.card.strategicDue')}</span>
                                     <span className="date-val">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
                                 </div>
@@ -366,10 +373,10 @@ export const Tasks = () => {
                     )}
 
                     {showDueDate && dueDate && (
-                        <div className={`timeline-widget ${isBoard ? 'w-full' : 'w-32'}`}>
+                        <div className={`timeline-widget ${isBoard ? 'timeline-widget--full' : 'timeline-widget--compact'}`}>
                             <div className={`due-date-box simple ${isOverdue ? 'overdue' : ''}`}>
-                                <span className="material-symbols-outlined text-[16px]">event</span>
-                                <div className="flex flex-col">
+                                <span className="material-symbols-outlined due-date-icon">event</span>
+                                <div className="due-date-info">
                                     <span className="date-label">{t('tasks.card.due')}</span>
                                     <span className="date-val small">{format(dueDate, dateFormat, { locale: dateLocale })}</span>
                                 </div>
@@ -380,6 +387,7 @@ export const Tasks = () => {
                     {/* Action Buttons */}
                     <div className="action-btn-group">
                         <button
+                            type="button"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 if (isPinned(task.id)) {
@@ -399,19 +407,20 @@ export const Tasks = () => {
                                 e.preventDefault();
                                 setFocusItem(focusItemId === task.id ? null : task.id);
                             }}
-                            className={`action-btn pin ${isPinned(task.id) ? 'pinned' : 'unpinned'}`}
+                            className={`action-btn action-btn--pin ${isPinned(task.id) ? 'pinned' : 'unpinned'}`}
                             title={isPinned(task.id) ? t('tasks.actions.unpin') : t('tasks.actions.pin')}
                         >
-                            <span className={`material-symbols-outlined text-xl transition-colors duration-300 ${focusItemId === task.id ? 'text-amber-500' : 'text-inherit'}`}>
+                            <span className={`material-symbols-outlined action-btn__icon ${focusItemId === task.id ? 'action-btn__icon--focused' : ''}`}>
                                 push_pin
                             </span>
                         </button>
                         <button
+                            type="button"
                             onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }}
-                            className="action-btn delete"
+                            className="action-btn action-btn--delete"
                             title={t('tasks.actions.delete')}
                         >
-                            <span className="material-symbols-outlined text-xl">delete</span>
+                            <span className="material-symbols-outlined action-btn__icon">delete</span>
                         </button>
                     </div>
                 </div>
@@ -420,8 +429,8 @@ export const Tasks = () => {
     };
 
     if (loading) return (
-        <div className="flex items-center justify-center p-12">
-            <span className="material-symbols-outlined text-[var(--color-text-subtle)] animate-spin text-3xl">rotate_right</span>
+        <div className="tasks-loading">
+            <span className="material-symbols-outlined tasks-loading__icon">rotate_right</span>
         </div>
     );
 
@@ -440,7 +449,7 @@ export const Tasks = () => {
                 </div>
                 <Button
                     onClick={() => setShowCreateModal(true)}
-                    icon={<span className="material-symbols-outlined font-bold">add</span>}
+                    icon={<span className="material-symbols-outlined">add</span>}
                     variant="primary"
                     size="lg"
                     className="new-task-btn"
@@ -452,12 +461,12 @@ export const Tasks = () => {
             {/* Stats Row */}
             <div className="tasks-stats-grid">
                 {[
-                    { label: t('tasks.stats.openTasks'), val: stats.open, icon: 'list_alt', color: 'indigo' },
-                    { label: t('tasks.stats.completed'), val: stats.completed, icon: 'check_circle', color: 'emerald', progress: stats.progress },
-                    { label: t('tasks.stats.highPriority'), val: stats.high, icon: 'priority_high', color: 'amber' },
-                    { label: t('tasks.stats.urgent'), val: stats.urgent, icon: 'warning', color: 'rose' }
+                    { label: t('tasks.stats.openTasks'), val: stats.open, icon: 'list_alt', tone: 'neutral' },
+                    { label: t('tasks.stats.completed'), val: stats.completed, icon: 'check_circle', tone: 'success', progress: stats.progress },
+                    { label: t('tasks.stats.highPriority'), val: stats.high, icon: 'priority_high', tone: 'warning' },
+                    { label: t('tasks.stats.urgent'), val: stats.urgent, icon: 'warning', tone: 'error' }
                 ].map((stat, idx) => (
-                    <div key={idx} className={`stat-card variant-${stat.color}`}>
+                    <div key={idx} className={`stat-card stat-card--${stat.tone}`}>
                         <div className="bg-icon">
                             <span className="material-symbols-outlined">{stat.icon}</span>
                         </div>
@@ -465,6 +474,11 @@ export const Tasks = () => {
                             <p className="label">{stat.label}</p>
                             <div className="value-row">
                                 <p className="value">{stat.val}</p>
+                                {stat.progress !== undefined && (
+                                    <Badge variant="neutral" className="badge">
+                                        {stat.progress}%
+                                    </Badge>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -478,6 +492,7 @@ export const Tasks = () => {
                         {(['active', 'completed', 'all'] as const).map((f) => (
                             <button
                                 key={f}
+                                type="button"
                                 onClick={() => setFilter(f)}
                                 className={`control-btn ${filter === f ? 'active' : ''}`}
                             >
@@ -490,83 +505,49 @@ export const Tasks = () => {
                         {(['list', 'board'] as const).map((v) => (
                             <button
                                 key={v}
+                                type="button"
                                 onClick={() => setView(v)}
                                 className={`control-btn ${view === v ? 'active' : ''}`}
                             >
-                                <span className="material-symbols-outlined text-lg">{v === 'list' ? 'format_list_bulleted' : 'dashboard'}</span>
+                                <span className="material-symbols-outlined control-btn__icon">{v === 'list' ? 'format_list_bulleted' : 'dashboard'}</span>
                                 {t(`tasks.view.${v}`)}
                             </button>
                         ))}
                     </div>
 
-                    {/* Sort Dropdown */}
-                    <div className="sort-dropdown">
-                        <button className="sort-btn">
-                            <span className="material-symbols-outlined text-lg">sort</span>
-                            <span className="hidden sm:inline">{t('tasks.sort.label')}</span>
-                            <span className="active-sort">
-                                {sortLabels[sortBy]}
-                            </span>
-                            <span className="material-symbols-outlined chevron">expand_more</span>
-                        </button>
-                        <div className="sort-menu">
-                            {([
-                                { value: 'priority', label: t('tasks.sort.priority'), icon: 'flag' },
-                                { value: 'dueDate', label: t('tasks.sort.dueDate'), icon: 'event' },
-                                { value: 'title', label: t('tasks.sort.title'), icon: 'sort_by_alpha' },
-                                { value: 'createdAt', label: t('tasks.sort.created'), icon: 'schedule' }
-                            ] as const).map(opt => (
-                                <button
-                                    key={opt.value}
-                                    onClick={() => setSortBy(opt.value)}
-                                    className={`menu-item ${sortBy === opt.value ? 'selected' : ''}`}
-                                >
-                                    <span className="material-symbols-outlined text-lg">{opt.icon}</span>
-                                    {opt.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Project Filter */}
-                    <div className="project-filter-dropdown">
-                        <button className="filter-btn">
-                            <span className="material-symbols-outlined text-lg">folder_open</span>
-                            <span className="truncate">
-                                {projectFilter === 'all'
-                                    ? t('tasks.filters.project.all')
-                                    : projectNameById[projectFilter] || t('tasks.filters.project.unknown')}
-                            </span>
-                            <span className="material-symbols-outlined chevron">expand_more</span>
-                        </button>
-                        <div className="filter-menu">
-                            <button
-                                onClick={() => setProjectFilter('all')}
-                                className={`menu-item ${projectFilter === 'all' ? 'selected' : ''}`}
-                            >
-                                {t('tasks.filters.project.all')}
-                            </button>
-                            {projects.map(p => (
-                                <button
-                                    key={p.id}
-                                    onClick={() => setProjectFilter(p.id)}
-                                    className={`menu-item ${projectFilter === p.id ? 'selected' : ''}`}
-                                >
-                                    <span className="truncate">{p.title}</span>
-                                </button>
-                            ))}
-                        </div>
+                    <div className="tasks-selects">
+                        <Select
+                            label={t('tasks.sort.label')}
+                            value={sortBy}
+                            onChange={(value) => setSortBy(value as typeof sortBy)}
+                            options={sortOptions}
+                            className="tasks-select"
+                        />
+                        <Select
+                            label={t('tasks.filters.project.label')}
+                            value={projectFilter}
+                            onChange={(value) => setProjectFilter(String(value))}
+                            options={projectOptions}
+                            className="tasks-select"
+                        />
+                        <Select
+                            label={t('tasks.filters.priority.label')}
+                            value={priorityFilter}
+                            onChange={(value) => setPriorityFilter(String(value))}
+                            options={priorityOptions}
+                            className="tasks-select"
+                        />
                     </div>
                 </div>
 
                 <div className="search-wrapper">
-                    <input
-                        type="text"
+                    <TextInput
                         value={search}
                         onChange={handleSearchChange}
                         placeholder={t('tasks.search.placeholder')}
+                        className="tasks-search"
+                        leftElement={<span className="material-symbols-outlined">search</span>}
                     />
-                    <span className="material-symbols-outlined search-icon">search</span>
                 </div>
             </div>
 
@@ -575,7 +556,7 @@ export const Tasks = () => {
                 {filteredTasks.length === 0 ? (
                     <div className="empty-state">
                         <div className="icon-circle">
-                            <span className="material-symbols-outlined animate-pulse">explore_off</span>
+                            <span className="material-symbols-outlined">explore_off</span>
                         </div>
                         <h3>{t('tasks.empty.list.title')}</h3>
                         <p>
@@ -619,3 +600,4 @@ export const Tasks = () => {
         </div>
     );
 };
+

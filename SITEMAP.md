@@ -8,7 +8,7 @@ Legend:
 - [~] In progress
 - [x] Implemented
 - [!] Blocked / Needs decision
-
+- [ ] [X] Confirmed by User
 ---
 
 ## 1) Public Routes (No authentication required)
@@ -33,13 +33,13 @@ These routes are rendered inside the authenticated app shell/layout.
 
 ### 2.1 Global / Workspace-level Pages
 
-- [x] Refactored SCSS | `/` | Main dashboard
-- [ ] `/notifications` — Notifications center
-- [ ] `/projects` — Projects list
-- [ ] `/tasks` — Global tasks overview
-- [ ] `/calendar` — Global calendar view
-- [ ] `/brainstorm` — Brainstorming / ideation hub
-- [ ] `/create` — Create Project Wizard
+- [x] Refactored SCSS | `/` | Main dashboard (Dashboard.tsx + dashboard cards aligned to SCSS; ui Card uses SCSS)
+- [x] `/notifications` — Notifications center (SCSS refactor, ConfirmModal)
+- [x] `/projects` — Projects list (SCSS refactor complete: cards/spotlight/suggestion/table/toolbars aligned to tokens + common components)
+- [x] `/tasks` — Global tasks overview (SCSS refactor, common controls, board + modal alignment)
+- [x] `/calendar` — Global calendar view (SCSS refactor, common components, schedule modal + tooltip alignment)
+- [x] `/brainstorm` — Brainstorming / ideation hub (SCSS refactor, AI Studio components aligned to common Button/Card/TextArea/Badge)
+- [x] `/create` — Create Project Wizard (SCSS refactor, common inputs/buttons/selects, preview + assets panels aligned)
 - [ ] `/team` — Team / members management
 - [ ] `/media` — Media library
 - [ ] `/profile` — User profile
@@ -56,18 +56,18 @@ These routes are rendered inside the authenticated app shell/layout.
 All routes below are scoped to a specific project via `:id`.
 
 Base:
-- [ ] `/project/:id` — Project root (project overview is the index route)
+- [x] `/project/:id` — Project root (project overview index SCSS + common components aligned)
 
 ### 3.1 Project Core
 
-- [ ] `/project/:id` (index) — Project overview
-- [ ] `/project/:id/details` — Project details/settings
-- [ ] `/project/:id/activity` — Project activity feed
+- [x] `/project/:id` (index) — Project overview (SCSS refactor + common components)
+- [x] `/project/:id/details` — Project details/settings (SCSS refactor + common components)
+- [x] `/project/:id/activity` — Project activity feed (SCSS refactor + common components)
 
 ### 3.2 Project Tasks
 
-- [ ] `/project/:id/tasks` — Project tasks list/board
-- [ ] `/project/:id/tasks/:taskId` — Project task detail
+- [x] `/project/:id/tasks` — Project tasks list/board (SCSS refactor, common controls + badges, tooltip + timeline alignment)
+- [x] `/project/:id/tasks/:taskId` — Project task detail (SCSS refactor, dependencies card, common components + i18n)
 
 ### 3.3 Flows & Ideas
 

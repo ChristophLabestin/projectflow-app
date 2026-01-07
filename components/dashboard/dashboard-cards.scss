@@ -21,6 +21,10 @@
     margin-top: 0.25rem;
 }
 
+.dashboard-card--padded {
+    padding: 1.5rem;
+}
+
 // Scheduled Tasks Card
 .scheduled-card {
     &__list {
@@ -89,7 +93,7 @@
             }
 
             &--medium {
-                color: var(--color-info);
+                color: var(--color-primary);
             }
 
             &--low {
@@ -290,12 +294,12 @@
         }
 
         &--normal {
-            color: var(--color-info);
-            background: rgba(var(--color-info-rgb), 0.1);
+            color: var(--color-primary);
+            background: rgba(var(--color-primary-rgb), 0.1);
         }
 
         &--excellent {
-            color: var(--color-success-dark);
+            color: var(--color-success);
             background: rgba(var(--color-success-rgb), 0.2);
         }
 

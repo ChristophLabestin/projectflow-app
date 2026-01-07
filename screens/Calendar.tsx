@@ -1,18 +1,17 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { format, isSameDay, startOfDay, addDays, isToday, startOfWeek, endOfWeek, eachDayOfInterval, isValid, parseISO, startOfMonth, endOfMonth, isSameMonth, isAfter } from 'date-fns';
-import { useTheme } from '../context/ThemeContext';
+import { format, isSameDay, addDays, isToday, startOfWeek, endOfWeek, eachDayOfInterval, isValid, startOfMonth, endOfMonth, isSameMonth, isAfter } from 'date-fns';
+import { Button } from '../components/common/Button/Button';
+import { Modal } from '../components/common/Modal/Modal';
 import { useToast } from '../context/UIContext';
 import { useLanguage } from '../context/LanguageContext';
 import { getUserTasks, getUserIssues, updateIssue, updateTask, getUnassignedTasks, getUsersTasks } from '../services/dataService';
 import { Task, Issue } from '../types';
 import { distributeTasks, ProposedSchedule } from '../utils/scheduler';
-import { updateDoc, doc } from 'firebase/firestore';
-import { db, auth } from '../services/firebase';
+import { auth } from '../services/firebase';
 
 export const Calendar = () => {
-    const { theme } = useTheme();
     const { t, dateLocale } = useLanguage();
     const navigate = useNavigate();
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -40,7 +39,27 @@ export const Calendar = () => {
         Medium: t('tasks.priority.medium'),
         Low: t('tasks.priority.low')
     }), [t]);
+    const scheduleReasonLabels = useMemo(() => ({
+        Overdue: t('calendar.modal.reasons.overdue'),
+        'Global Optimization': t('calendar.modal.reasons.optimization')
+    }), [t]);
     const getErrorMessage = (error: any) => error?.message || t('calendar.errors.unknown');
+    const getScheduleReason = (reason?: string) => {
+        if (!reason) return '';
+        return scheduleReasonLabels[reason as keyof typeof scheduleReasonLabels] || reason;
+    };
+    const getPriorityTone = (priority?: string) => {
+        switch (priority) {
+            case 'Urgent':
+                return 'urgent';
+            case 'High':
+                return 'high';
+            case 'Medium':
+                return 'medium';
+            default:
+                return 'low';
+        }
+    };
 
     // Drag and Drop State & Handlers
     const [dragActiveDate, setDragActiveDate] = useState<string | null>(null);
@@ -81,12 +100,6 @@ export const Calendar = () => {
         if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
             setDragOverInbox(false);
         }
-    };
-
-    const handleDragLeave = (e: React.DragEvent) => {
-        // Optional: clear active state if leaving the grid entirely? 
-        // For individual cells, we might want to clear only if leaving that specific cell, 
-        // but React events bubble. Simplest is to clear dragActiveDate on Drop or end.
     };
 
     const handleDropOnDay = async (e: React.DragEvent, date: Date) => {
@@ -443,500 +456,459 @@ export const Calendar = () => {
         return [...personalTasks, ...personalIssues, ...unassignedUnscheduled];
     }, [tasks, issues, unassignedTasks]);
 
-    // Layout classes based on view mode
-    const gridCols = viewMode === 'week' ? 'grid-cols-7' : 'grid-cols-7'; // Both 7 cols
-    const gridRows = viewMode === 'week' ? 'grid-rows-1' : 'auto-rows-fr';
-
-
-
     return (
-        <div className="relative h-full overflow-hidden text-main">
-            {/* Loading Overlay */}
-            <div className={`
-                absolute inset-0 z-[100] flex items-center justify-center bg-surface transition-opacity duration-700 ease-in-out pointer-events-none
-                ${loading ? 'opacity-100 pointer-events-auto' : 'opacity-0'}
-            `}>
-                <div className="flex flex-col items-center gap-4">
-                    <div className="relative">
-                        <div className="absolute inset-0 bg-primary/20 rounded-full blur-xl animate-pulse"></div>
-                        <span className="material-symbols-outlined animate-spin text-5xl text-primary relative z-10">
-                            progress_activity
-                        </span>
+        <div className="calendar-page">
+            <div className={`calendar-loading ${loading ? 'is-visible' : ''}`}>
+                <div className="calendar-loading__content">
+                    <div className="calendar-loading__icon-wrap">
+                        <span className="calendar-loading__glow" />
+                        <span className="material-symbols-outlined calendar-loading__icon">progress_activity</span>
                     </div>
-                    <p className="text-muted font-medium animate-pulse">{t('calendar.loading')}</p>
+                    <p className="calendar-loading__text">{t('calendar.loading')}</p>
                 </div>
             </div>
 
-            {/* Main Content Container (now wrapped to handle relative positioning context if needed, though parent is relative) */}
-            <div className="flex h-full w-full overflow-hidden">
+            <div className="calendar-page__layout">
 
-                {/* Main Calendar Area */}
-                <div className="flex-1 flex flex-col min-w-0">
-                    {/* Header */}
-                    <header className="flex items-center justify-between p-4 border-b border-surface bg-card shrink-0">
-                        <div className="flex items-center gap-4">
-                            <button onClick={() => setViewDate(d => viewMode === 'week' ? addDays(d, -7) : addDays(startOfMonth(d), -1))} className="p-2 hover:bg-surface-hover rounded-full transition-colors">
+                <section className="calendar-main">
+                    <header className="calendar-header">
+                        <div className="calendar-header__nav">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="calendar-header__nav-btn"
+                                onClick={() => setViewDate(d => viewMode === 'week' ? addDays(d, -7) : addDays(startOfMonth(d), -1))}
+                            >
                                 <span className="material-symbols-outlined">chevron_left</span>
-                            </button>
-                            <h2 className="text-xl font-bold min-w-[200px] text-center">
+                            </Button>
+                            <h2 className="calendar-header__title">
                                 {viewMode === 'week'
                                     ? `${format(days[0], 'MMM d', { locale: dateLocale })} - ${format(days[days.length - 1], 'MMM d, yyyy', { locale: dateLocale })}`
                                     : format(viewDate, 'MMMM yyyy', { locale: dateLocale })
                                 }
                             </h2>
-                            <button onClick={() => setViewDate(d => viewMode === 'week' ? addDays(d, 7) : addDays(endOfMonth(d), 1))} className="p-2 hover:bg-surface-hover rounded-full transition-colors">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="calendar-header__nav-btn"
+                                onClick={() => setViewDate(d => viewMode === 'week' ? addDays(d, 7) : addDays(endOfMonth(d), 1))}
+                            >
                                 <span className="material-symbols-outlined">chevron_right</span>
-                            </button>
+                            </Button>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                            <div className="flex bg-surface rounded-lg p-1 border border-surface">
-                                <button
+                        <div className="calendar-header__controls">
+                            <div className="calendar-view-toggle">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
                                     onClick={() => setViewMode('week')}
-                                    className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${viewMode === 'week' ? 'bg-white dark:bg-slate-700 shadow-sm' : 'text-muted hover:text-main'}`}
+                                    className={`calendar-view-toggle__button ${viewMode === 'week' ? 'is-active' : ''}`}
                                 >
                                     {t('calendar.view.week')}
-                                </button>
-                                <button
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
                                     onClick={() => setViewMode('month')}
-                                    className={`px-3 py-1 rounded-md text-sm font-medium transition-all ${viewMode === 'month' ? 'bg-white dark:bg-slate-700 shadow-sm' : 'text-muted hover:text-main'}`}
+                                    className={`calendar-view-toggle__button ${viewMode === 'month' ? 'is-active' : ''}`}
                                 >
                                     {t('calendar.view.month')}
-                                </button>
+                                </Button>
                             </div>
 
-                            <button
+                            <Button
+                                type="button"
+                                variant="primary"
+                                size="sm"
                                 onClick={prepareAutoSchedule}
                                 disabled={distributing}
-                                className="flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-xl hover:opacity-90 transition-all font-semibold disabled:opacity-50 shadow-sm"
+                                className="calendar-header__schedule-btn"
+                                icon={<span className="material-symbols-outlined">{distributing ? 'hourglass_top' : 'auto_fix_high'}</span>}
                             >
-                                <span className="material-symbols-outlined text-[18px]">{distributing ? 'hourglass_top' : 'auto_fix_high'}</span>
-                                <span className="hidden sm:inline">{distributing ? t('calendar.actions.optimizing') : t('calendar.actions.smartSchedule')}</span>
-                            </button>
+                                <span className="calendar-header__schedule-label">
+                                    {distributing ? t('calendar.actions.optimizing') : t('calendar.actions.smartSchedule')}
+                                </span>
+                            </Button>
 
-                            <button
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
                                 onClick={() => setIsUnscheduledOpen(!isUnscheduledOpen)}
-                                className={`h-10 w-10 flex items-center justify-center rounded-xl transition-all relative ${isUnscheduledOpen ? 'bg-primary/10 text-primary' : 'bg-transparent text-muted hover:text-main hover:bg-surface-hover'}`}
+                                className={`calendar-header__inbox-btn ${isUnscheduledOpen ? 'is-active' : ''}`}
                             >
-                                <span className="material-symbols-outlined text-[20px]">inbox</span>
+                                <span className="material-symbols-outlined">inbox</span>
                                 {unscheduledItems.length > 0 && (
-                                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-surface-bg">
-                                        {unscheduledItems.length}
-                                    </span>
+                                    <span className="calendar-header__badge">{unscheduledItems.length}</span>
                                 )}
-                            </button>
+                            </Button>
                         </div>
                     </header>
 
-                    {/* Grid */}
-                    <div className={`flex-1 grid ${gridCols} ${gridRows} overflow-hidden bg-surface-border gap-[1px]`}>
+                    <div className={`calendar-grid calendar-grid--${viewMode}`}>
                         {days.map(day => {
+                            const dayKey = day.toISOString();
                             const isSelected = isSameDay(day, selectedDate);
                             const isCurrent = isToday(day);
                             const isCurrentMonth = isSameMonth(day, viewDate);
 
                             const items = getItemsForDate(day);
                             const displayDate = format(day, 'd', { locale: dateLocale });
-                            const displayDay = format(day, 'EEE', { locale: dateLocale });
+                            const displayDay = viewMode === 'week' ? format(day, 'EEE', { locale: dateLocale }) : '';
+
+                            const dayClasses = [
+                                'calendar-day',
+                                isCurrent ? 'calendar-day--today' : '',
+                                isSelected ? 'calendar-day--selected' : '',
+                                dragActiveDate === dayKey ? 'calendar-day--drag' : '',
+                                !isCurrentMonth && viewMode === 'month' ? 'calendar-day--muted' : ''
+                            ]
+                                .filter(Boolean)
+                                .join(' ');
 
                             return (
                                 <div
-                                    key={day.toISOString()}
+                                    key={dayKey}
                                     onClick={() => setSelectedDate(day)}
-                                    onDragOver={(e) => handleDragOver(e, day.toISOString())}
+                                    onDragOver={(e) => handleDragOver(e, dayKey)}
                                     onDrop={(e) => handleDropOnDay(e, day)}
-                                    className={`
-                                    flex flex-col transition-all cursor-pointer overflow-hidden
-                                    ${!isCurrentMonth && viewMode === 'month' ? 'bg-surface opacity-60' : 'bg-card'}
-                                    ${viewMode === 'week' ? 'min-h-[200px]' : 'min-h-[120px]'}
-                                    ${dragActiveDate === day.toISOString() ? 'ring-2 ring-inset ring-primary bg-primary/5' : ''}
-                                `}
+                                    className={dayClasses}
                                 >
-                                    {/* Date Header */}
-                                    <div className={`p-2 flex items-center justify-between shrink-0 ${isCurrent ? 'bg-primary/5' : ''}`}>
-                                        <span className="text-xs font-medium uppercase text-muted">{viewMode === 'week' ? displayDay : ''}</span>
-                                        <div className={`flex items-center justify-center w-7 h-7 rounded-full text-sm font-medium ${isCurrent ? 'bg-primary text-on-primary shadow-sm' : 'text-main'}`}>
-                                            {displayDate}
-                                        </div>
+                                    <div className="calendar-day__header">
+                                        <span className="calendar-day__weekday">{displayDay}</span>
+                                        <span className="calendar-day__date">{displayDate}</span>
                                     </div>
 
-                                    {/* Scrollable List Area */}
-                                    <div className="flex-1 overflow-y-auto p-2 min-h-0 custom-scrollbar">
-                                        <div className="flex flex-col gap-2">
-                                            {items.map(item => {
-                                                // Issues have 'reporter' field, tasks don't
-                                                const itemType = 'reporter' in item ? 'issue' : 'task';
-                                                return (
-                                                    <div
-                                                        key={item.id}
-                                                        draggable
-                                                        onDragStart={(e) => handleDragStart(e, item, itemType)}
-                                                        onClick={(e) => handleItemClick(e, item, itemType)}
-                                                        className={`
-                                                    group p-2 text-xs rounded border shadow-sm hover:shadow-md transition-all cursor-pointer relative
-                                                    bg-white dark:bg-slate-800 border-surface
-                                                    ${(item as any).status && !(item as any).isCompleted ? 'border-l-4 border-l-purple-500' : ''}
-                                                    active:cursor-grabbing hover:scale-[1.02]
-                                                `}
-                                                        onMouseEnter={(e) => {
-                                                            const rect = e.currentTarget.getBoundingClientRect();
-                                                            setHoveredTask({
-                                                                item,
-                                                                x: rect.right + 8,
-                                                                y: rect.top
-                                                            });
-                                                        }}
-                                                        onMouseLeave={() => setHoveredTask(null)}
-                                                    >
-                                                        <div className="font-semibold line-clamp-2 mb-1 pr-5">{item.title}</div>
-                                                        <div className="flex items-center justify-between text-muted">
-                                                            <div className="flex items-center gap-1">
-                                                                <span className={`size-2 rounded-full ${item.priority === 'Urgent' ? 'bg-red-500' :
-                                                                    item.priority === 'High' ? 'bg-orange-500' :
-                                                                        item.priority === 'Medium' ? 'bg-yellow-500' :
-                                                                            'bg-green-500'
-                                                                    }`}></span>
-                                                                <span className='scale-75 origin-left'>
-                                                                    {(item as Task).dueDate ? format(new Date((item as Task).dueDate!), 'HH:mm', { locale: dateLocale }) : ''}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                        {/* Unschedule Button */}
-                                                        <button
-                                                            onClick={(e) => handleUnschedule(e, item, itemType)}
-                                                            className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-surface-hover transition-opacity"
-                                                            title={t('calendar.actions.unschedule')}
-                                                        >
-                                                            <span className="material-symbols-outlined text-[14px] text-muted">event_busy</span>
-                                                        </button>
+                                    <div className="calendar-day__list">
+                                        {items.map(item => {
+                                            const itemType = 'reporter' in item ? 'issue' : 'task';
+                                            const priorityTone = getPriorityTone((item as Task).priority);
+                                            return (
+                                                <div
+                                                    key={item.id}
+                                                    draggable
+                                                    onDragStart={(e) => handleDragStart(e, item, itemType)}
+                                                    onClick={(e) => handleItemClick(e, item, itemType)}
+                                                    className={`calendar-item calendar-item--${itemType}`}
+                                                    onMouseEnter={(e) => {
+                                                        const rect = e.currentTarget.getBoundingClientRect();
+                                                        setHoveredTask({
+                                                            item,
+                                                            x: rect.right + 8,
+                                                            y: rect.top
+                                                        });
+                                                    }}
+                                                    onMouseLeave={() => setHoveredTask(null)}
+                                                >
+                                                    <div className="calendar-item__title">{item.title}</div>
+                                                    <div className="calendar-item__meta">
+                                                        <span className={`calendar-priority-dot calendar-priority-dot--${priorityTone}`} />
+                                                        {(item as Task).dueDate && (
+                                                            <span className="calendar-item__time">
+                                                                {format(new Date((item as Task).dueDate!), 'HH:mm', { locale: dateLocale })}
+                                                            </span>
+                                                        )}
                                                     </div>
-                                                )
-                                            })}
-                                        </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => handleUnschedule(e, item, itemType)}
+                                                        className="calendar-item__action"
+                                                        title={t('calendar.actions.unschedule')}
+                                                    >
+                                                        <span className="material-symbols-outlined">event_busy</span>
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             );
                         })}
                     </div>
-                </div>
+                </section>
 
-                {/* Unscheduled Sidebar */}
                 {isUnscheduledOpen && (
-                    <div
-                        className={`w-80 border-l border-surface bg-card flex flex-col shrink-0 transition-all relative ${dragOverInbox ? 'ring-2 ring-inset ring-primary bg-primary/5' : ''}`}
+                    <aside
+                        className={`calendar-sidebar ${dragOverInbox ? 'calendar-sidebar--drag' : ''}`}
                         onDragOver={handleDragOverInbox}
                         onDragLeave={handleDragLeaveInbox}
                         onDrop={handleDropOnUnscheduled}
                     >
-                        {/* Drop zone visual overlay */}
                         {dragOverInbox && (
-                            <div className="absolute inset-0 pointer-events-none bg-primary/10 flex items-center justify-center z-10">
-                                <div className="text-primary font-bold text-sm flex items-center gap-2">
+                            <div className="calendar-sidebar__drop">
+                                <div className="calendar-sidebar__drop-content">
                                     <span className="material-symbols-outlined">inbox</span>
-                                    {t('calendar.unassigned.dropHint')}
+                                    <span>{t('calendar.unassigned.dropHint')}</span>
                                 </div>
                             </div>
                         )}
-                        <div className="p-4 border-b border-surface flex items-center justify-between">
-                            <h3 className="font-bold flex items-center gap-2">
-                                <span className="material-symbols-outlined text-muted">inbox</span>
-                                {t('calendar.unassigned.title')}
-                                <span className="bg-surface-hover text-muted text-xs px-2 py-0.5 rounded-full">{unscheduledItems.length}</span>
-                            </h3>
-                            <div className="flex items-center gap-1">
-                                <button
+                        <div className="calendar-sidebar__header">
+                            <div className="calendar-sidebar__title">
+                                <span className="material-symbols-outlined">inbox</span>
+                                <span>{t('calendar.unassigned.title')}</span>
+                                <span className="calendar-sidebar__count">{unscheduledItems.length}</span>
+                            </div>
+                            <div className="calendar-sidebar__actions">
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
                                     onClick={unscheduleFutureItems}
-                                    className="p-1.5 rounded-lg hover:bg-surface-hover text-muted hover:text-main transition-colors"
+                                    className="calendar-sidebar__action"
                                     title={t('calendar.actions.unscheduleFuture')}
                                 >
-                                    <span className="material-symbols-outlined text-[18px]">event_busy</span>
-                                </button>
-                                <button
+                                    <span className="material-symbols-outlined">event_busy</span>
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
                                     onClick={clearUnassignedFromCalendar}
-                                    className="p-1.5 rounded-lg hover:bg-surface-hover text-muted hover:text-main transition-colors"
+                                    className="calendar-sidebar__action"
                                     title={t('calendar.actions.clearUnassigned')}
                                 >
-                                    <span className="material-symbols-outlined text-[18px]">playlist_remove</span>
-                                </button>
-                                <button onClick={() => setIsUnscheduledOpen(false)} className="hover:bg-surface-hover p-1 rounded">
-                                    <span className="material-symbols-outlined text-[20px]">close</span>
-                                </button>
+                                    <span className="material-symbols-outlined">playlist_remove</span>
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setIsUnscheduledOpen(false)}
+                                    className="calendar-sidebar__action"
+                                >
+                                    <span className="material-symbols-outlined">close</span>
+                                </Button>
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                        <div className="calendar-sidebar__body">
                             {unscheduledItems.length === 0 ? (
-                                <div className="text-center py-10 text-muted">
-                                    <span className="material-symbols-outlined text-[48px] opacity-20 block mb-2">check_circle</span>
-                                    <p className="text-sm">{t('calendar.unassigned.empty')}</p>
+                                <div className="calendar-sidebar__empty">
+                                    <span className="material-symbols-outlined">check_circle</span>
+                                    <p>{t('calendar.unassigned.empty')}</p>
                                 </div>
                             ) : (
-                                <div className="flex flex-col gap-3">
-                                    {unscheduledItems.map(item => (
-                                        <div
-                                            key={item.id}
-                                            draggable
-                                            onDragStart={(e) => handleDragStart(e, item, 'reporter' in item ? 'issue' : 'task')}
-                                            onClick={(e) => handleItemClick(e, item, 'reporter' in item ? 'issue' : 'task')}
-                                            className="p-3 bg-surface rounded-xl transition-all text-sm group cursor-grab active:cursor-grabbing hover:bg-surface-hover hover:translate-y-[-2px] hover:shadow-md"
-                                        >
-                                            <div className="font-medium mb-1 line-clamp-2">{item.title}</div>
-                                            <div className="flex items-center justify-between text-xs text-muted">
-                                                <div className="flex items-center gap-1">
-                                                    <span className={`w-1.5 h-1.5 rounded-full ${item.priority === 'Urgent' ? 'bg-red-500' :
-                                                        item.priority === 'High' ? 'bg-orange-500' :
-                                                            'bg-green-500'
-                                                        }`}></span>
-                                                    {'reporter' in item ? t('calendar.item.issue') : t('calendar.item.task')}
+                                <div className="calendar-sidebar__list">
+                                    {unscheduledItems.map(item => {
+                                        const itemType = 'reporter' in item ? 'issue' : 'task';
+                                        const priorityTone = getPriorityTone((item as Task).priority);
+                                        return (
+                                            <div
+                                                key={item.id}
+                                                draggable
+                                                onDragStart={(e) => handleDragStart(e, item, itemType)}
+                                                onClick={(e) => handleItemClick(e, item, itemType)}
+                                                className="calendar-unscheduled-card"
+                                            >
+                                                <div className="calendar-unscheduled-card__title">{item.title}</div>
+                                                <div className="calendar-unscheduled-card__meta">
+                                                    <div className="calendar-unscheduled-card__type">
+                                                        <span className={`calendar-priority-dot calendar-priority-dot--${priorityTone}`} />
+                                                        <span>{itemType === 'issue' ? t('calendar.item.issue') : t('calendar.item.task')}</span>
+                                                    </div>
+                                                    <button type="button" className="calendar-unscheduled-card__hint">
+                                                        {t('calendar.unassigned.dragToSchedule')}
+                                                    </button>
                                                 </div>
-                                                <button className="opacity-0 group-hover:opacity-100 text-primary font-bold transition-opacity">
-                                                    {t('calendar.unassigned.dragToSchedule')}
-                                                </button>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
                         </div>
 
-                        <div className="p-4 border-t border-surface bg-surface">
-                            <p className="text-xs text-muted text-center">
+                        <div className="calendar-sidebar__footer">
+                            <p>
                                 {t('calendar.unassigned.helper').replace('{action}', t('calendar.actions.smartSchedule'))}
                             </p>
                         </div>
-                    </div>
+                    </aside>
                 )}
 
-                {/* Smart Schedule Modal */}
-                {showScheduleModal && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-fade-in">
-                        <div className="bg-card rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col max-h-[85vh] animate-scale-up border-[3px] border-surface">
-                            <div className="p-6 border-b border-surface flex items-center justify-between bg-surface/50">
-                                <div>
-                                    <h3 className="text-xl font-bold flex items-center gap-3 text-main">
-                                        <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                                            <span className="material-symbols-outlined text-[24px]">auto_fix_high</span>
-                                        </div>
-                                        {t('calendar.modal.title')}
-                                    </h3>
-                                    <p className="text-muted text-sm mt-1 ml-14">
-                                        {t('calendar.modal.subtitle').replace('{count}', String(selectedChanges.size))}
-                                    </p>
-                                </div>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => setSelectedChanges(new Set(proposedSchedule.map(p => p.taskId)))}
-                                        className="px-4 py-2 text-xs font-bold uppercase tracking-wider bg-surface-hover text-main rounded-lg hover:bg-surface-border transition-colors"
-                                    >
-                                        {t('calendar.modal.selectAll')}
-                                    </button>
-                                    <button
-                                        onClick={() => setSelectedChanges(new Set())}
-                                        className="px-4 py-2 text-xs font-bold uppercase tracking-wider bg-transparent text-muted rounded-lg hover:bg-surface-hover transition-colors border border-surface hover:border-muted"
-                                    >
-                                        {t('calendar.modal.deselectAll')}
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Table Header */}
-                            <div className="bg-surface border-b border-surface px-6 py-3 grid grid-cols-[24px_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)] gap-6 items-center text-xs font-bold text-muted uppercase tracking-wider">
-                                <div className="w-6 flex justify-center">
-                                    <span className="material-symbols-outlined text-[18px]">check_box</span>
-                                </div>
-                                <div>{t('calendar.modal.headers.taskDetails')}</div>
-                                <div>{t('calendar.modal.headers.assignee')}</div>
-                                <div>{t('calendar.modal.headers.scheduleChange')}</div>
-                                <div className="text-right">{t('calendar.modal.headers.action')}</div>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto custom-scrollbar bg-surface/30">
-                                {proposedSchedule.length === 0 ? (
-                                    <div className="flex flex-col items-center justify-center h-64 text-muted">
-                                        <span className="material-symbols-outlined text-5xl mb-4 opacity-20">check_circle</span>
-                                        <p className="text-lg font-medium">{t('calendar.modal.empty.title')}</p>
-                                        <p className="text-sm opacity-60">{t('calendar.modal.empty.subtitle')}</p>
-                                    </div>
-                                ) : (
-                                    <div className="flex flex-col">
-                                        {proposedSchedule.map((change, idx) => {
-                                            const isIssue = change.type === 'issue';
-                                            const isUnassigned = unassignedTasks.some(t => t.id === change.taskId);
-                                            const item = isIssue
-                                                ? issues.find(i => i.id === change.taskId)
-                                                : tasks.find(t => t.id === change.taskId) ||
-                                                tempTeamTasks.find(t => t.id === change.taskId) ||
-                                                unassignedTasks.find(t => t.id === change.taskId);
-
-                                            const itemTitle = item?.title;
-                                            const assignee = isUnassigned ? t('calendar.assignee.unassigned') : ((item as any)?.assignee || t('calendar.assignee.me'));
-                                            const isSelected = selectedChanges.has(change.taskId);
-
-                                            // Priority & Status colors
-                                            const priority = (item as any)?.priority || 'Medium';
-                                            const priorityColor = priority === 'Urgent' ? 'bg-red-500' :
-                                                priority === 'High' ? 'bg-orange-500' :
-                                                    priority === 'Medium' ? 'bg-yellow-500' : 'bg-green-500';
-
-                                            return (
-                                                <div
-                                                    key={idx}
-                                                    onClick={() => {
-                                                        const next = new Set(selectedChanges);
-                                                        if (isSelected) next.delete(change.taskId);
-                                                        else next.add(change.taskId);
-                                                        setSelectedChanges(next);
-                                                    }}
-                                                    className={`
-                                                    px-6 py-4 grid grid-cols-[24px_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)] gap-6 items-center border-b border-surface cursor-pointer transition-all duration-200 group
-                                                    ${isSelected
-                                                            ? 'bg-primary/5 hover:bg-primary/10'
-                                                            : 'bg-card hover:bg-surface-hover opacity-75 hover:opacity-100'}
-                                                `}
-                                                >
-                                                    {/* Checkbox Column */}
-                                                    <div className="w-6 flex justify-center">
-                                                        <div className={`
-                                                        size-6 rounded-lg flex items-center justify-center transition-all duration-200 border
-                                                        ${isSelected
-                                                                ? 'bg-indigo-600 border-indigo-600 shadow-md shadow-indigo-500/30 scale-100'
-                                                                : 'bg-surface border-surface group-hover:border-muted scale-90'}
-                                                    `}>
-                                                            {isSelected && <span className="material-symbols-outlined text-[16px] text-white font-bold">check</span>}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Task / Issue Column */}
-                                                    <div className="min-w-0 pr-4">
-                                                        <div className="font-semibold text-main truncate text-sm mb-1 flex items-center gap-2">
-                                                            <span className={`material-symbols-outlined text-[18px] shrink-0 ${isIssue ? 'text-purple-500' : 'text-blue-500'}`}>
-                                                                {isIssue ? 'bug_report' : 'check_circle'}
-                                                            </span>
-                                                            <span className="truncate">{itemTitle || t('calendar.modal.unknownItem')}</span>
-                                                        </div>
-                                                        <div className="flex items-center gap-2 mt-1.5 ml-6">
-                                                            <span className={`h-1.5 w-1.5 rounded-full ${priorityColor}`}></span>
-                                                            <span className="text-[11px] font-medium text-muted uppercase tracking-wide opacity-80">{t('calendar.modal.priority').replace('{priority}', priorityLabels[priority as keyof typeof priorityLabels] || priority)}</span>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Assignee Column */}
-                                                    <div>
-                                                        <div className={`
-                                                        px-2.5 py-1 rounded-md text-xs font-semibold inline-flex items-center gap-1.5 border
-                                                        ${isUnassigned
-                                                                ? 'bg-orange-500/10 text-orange-600 border-orange-500/20'
-                                                                : 'bg-surface text-muted border-surface'}
-                                                    `}>
-                                                            <span className="material-symbols-outlined text-[14px] shrink-0">
-                                                                {isUnassigned ? 'person_add' : 'person'}
-                                                            </span>
-                                                            <span className="truncate max-w-[120px] block font-medium">
-                                                                {assignee}
-                                                            </span>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Schedule Change Column */}
-                                                    <div className="flex flex-col justify-center">
-                                                        <div className="flex items-center gap-3 text-sm">
-                                                            <span className={`font-medium ${change.originalDate ? 'text-muted line-through opacity-70' : 'text-muted italic'}`}>
-                                                                {change.originalDate ? format(new Date(change.originalDate), 'MMM d', { locale: dateLocale }) : t('calendar.modal.unscheduled')}
-                                                            </span>
-                                                            <span className="material-symbols-outlined text-[16px] text-muted opacity-50">arrow_forward</span>
-                                                            <span className="font-bold text-primary">
-                                                                {format(change.newDate, 'MMM d', { locale: dateLocale })}
-                                                            </span>
-                                                        </div>
-                                                        <div className="text-[10px] text-muted mt-1 opacity-70 flex items-center gap-1">
-                                                            <span className="material-symbols-outlined text-[12px]">info</span>
-                                                            {change.reason}
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Action Column */}
-                                                    <div className="text-right">
-                                                        {isUnassigned ? (
-                                                            <span className={`
-                                                            inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold shadow-sm transition-all border
-                                                            ${isSelected
-                                                                    ? 'bg-orange-500/10 text-orange-600 border-orange-500/20 shadow-orange-500/10'
-                                                                    : 'bg-surface-border text-muted border-transparent opacity-50'}
-                                                        `}>
-                                                                {t('calendar.modal.assignAndSchedule')}
-                                                            </span>
-                                                        ) : (
-                                                            <span className={`
-                                                            inline-flex items-center px-2.5 py-1 rounded-md text-xs font-semibold shadow-sm transition-all border
-                                                            ${isSelected
-                                                                    ? 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20 shadow-indigo-500/10'
-                                                                    : 'bg-surface-border text-muted border-transparent opacity-50'}
-                                                        `}>
-                                                                {t('calendar.modal.reschedule')}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="p-6 border-t border-surface bg-card flex justify-end gap-3 shadow-[0_-4px_20px_rgba(0,0,0,0.2)] z-10">
-                                <button
-                                    onClick={() => setShowScheduleModal(false)}
-                                    className="px-6 py-3 rounded-xl font-semibold text-muted hover:text-main hover:bg-surface-hover transition-all"
-                                >
-                                    {t('calendar.actions.cancel')}
-                                </button>
-                                <button
-                                    onClick={applyAutoSchedule}
-                                    disabled={proposedSchedule.length === 0 || selectedChanges.size === 0}
-                                    className="px-8 py-3 rounded-xl font-bold bg-primary text-on-primary hover:brightness-110 active:scale-95 transition-all shadow-lg shadow-indigo-500/30 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed flex items-center gap-2"
-                                >
-                                    {selectedChanges.size > 0 && <span className="flex items-center justify-center bg-white/20 text-on-primary w-5 h-5 rounded-full text-[10px]">{selectedChanges.size}</span>}
-                                    <span>{t('calendar.actions.startSchedule')}</span>
-                                </button>
-                            </div>
+            <Modal
+                isOpen={showScheduleModal}
+                onClose={() => setShowScheduleModal(false)}
+                size="xl"
+                title={t('calendar.modal.title')}
+                footer={(
+                    <>
+                        <Button variant="ghost" onClick={() => setShowScheduleModal(false)}>
+                            {t('calendar.actions.cancel')}
+                        </Button>
+                        <Button
+                            onClick={applyAutoSchedule}
+                            disabled={proposedSchedule.length === 0 || selectedChanges.size === 0}
+                            className="calendar-schedule__apply"
+                        >
+                            {selectedChanges.size > 0 && (
+                                <span className="calendar-schedule__apply-count">{selectedChanges.size}</span>
+                            )}
+                            {t('calendar.actions.startSchedule')}
+                        </Button>
+                    </>
+                )}
+            >
+                <div className="calendar-schedule">
+                    <div className="calendar-schedule__toolbar">
+                        <p className="calendar-schedule__subtitle">
+                            {t('calendar.modal.subtitle').replace('{count}', String(selectedChanges.size))}
+                        </p>
+                        <div className="calendar-schedule__toolbar-actions">
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                onClick={() => setSelectedChanges(new Set(proposedSchedule.map(p => p.taskId)))}
+                            >
+                                {t('calendar.modal.selectAll')}
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setSelectedChanges(new Set())}
+                            >
+                                {t('calendar.modal.deselectAll')}
+                            </Button>
                         </div>
                     </div>
-                )}
 
+                    <div className="calendar-schedule__table">
+                        <div className="calendar-schedule__header-row">
+                            <div className="calendar-schedule__header-check">
+                                <span className="material-symbols-outlined">check_box</span>
+                            </div>
+                            <div>{t('calendar.modal.headers.taskDetails')}</div>
+                            <div>{t('calendar.modal.headers.assignee')}</div>
+                            <div>{t('calendar.modal.headers.scheduleChange')}</div>
+                            <div className="calendar-schedule__header-action">{t('calendar.modal.headers.action')}</div>
+                        </div>
 
-                {/* Hover Tooltip */}
-                {hoveredTask && (
+                        {proposedSchedule.length === 0 ? (
+                            <div className="calendar-schedule__empty">
+                                <span className="material-symbols-outlined">check_circle</span>
+                                <p className="calendar-schedule__empty-title">{t('calendar.modal.empty.title')}</p>
+                                <p className="calendar-schedule__empty-subtitle">{t('calendar.modal.empty.subtitle')}</p>
+                            </div>
+                        ) : (
+                            <div className="calendar-schedule__rows">
+                                {proposedSchedule.map((change, idx) => {
+                                    const isIssue = change.type === 'issue';
+                                    const isUnassigned = unassignedTasks.some(t => t.id === change.taskId);
+                                    const item = isIssue
+                                        ? issues.find(i => i.id === change.taskId)
+                                        : tasks.find(t => t.id === change.taskId) ||
+                                        tempTeamTasks.find(t => t.id === change.taskId) ||
+                                        unassignedTasks.find(t => t.id === change.taskId);
+
+                                    const itemTitle = item?.title;
+                                    const assignee = isUnassigned ? t('calendar.assignee.unassigned') : ((item as any)?.assignee || t('calendar.assignee.me'));
+                                    const isSelected = selectedChanges.has(change.taskId);
+
+                                    const priority = (item as any)?.priority || 'Medium';
+                                    const priorityTone = getPriorityTone(priority);
+
+                                    return (
+                                        <div
+                                            key={idx}
+                                            onClick={() => {
+                                                const next = new Set(selectedChanges);
+                                                if (isSelected) next.delete(change.taskId);
+                                                else next.add(change.taskId);
+                                                setSelectedChanges(next);
+                                            }}
+                                            className={`calendar-schedule__row ${isSelected ? 'calendar-schedule__row--selected' : ''}`}
+                                        >
+                                            <div className="calendar-schedule__checkbox-cell">
+                                                <div className={`calendar-schedule__checkbox ${isSelected ? 'is-selected' : ''}`}>
+                                                    {isSelected && <span className="material-symbols-outlined">check</span>}
+                                                </div>
+                                            </div>
+
+                                            <div className="calendar-schedule__details">
+                                                <div className="calendar-schedule__item-title">
+                                                    <span className={`material-symbols-outlined calendar-schedule__item-icon calendar-schedule__item-icon--${isIssue ? 'issue' : 'task'}`}>
+                                                        {isIssue ? 'bug_report' : 'check_circle'}
+                                                    </span>
+                                                    <span className="calendar-schedule__item-text">{itemTitle || t('calendar.modal.unknownItem')}</span>
+                                                </div>
+                                                <div className="calendar-schedule__item-meta">
+                                                    <span className={`calendar-priority-dot calendar-priority-dot--${priorityTone}`} />
+                                                    <span className="calendar-schedule__priority">
+                                                        {t('calendar.modal.priority').replace('{priority}', priorityLabels[priority as keyof typeof priorityLabels] || priority)}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="calendar-schedule__assignee">
+                                                <div className={`calendar-schedule__assignee-pill ${isUnassigned ? 'is-unassigned' : ''}`}>
+                                                    <span className="material-symbols-outlined">
+                                                        {isUnassigned ? 'person_add' : 'person'}
+                                                    </span>
+                                                    <span>{assignee}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="calendar-schedule__change">
+                                                <div className="calendar-schedule__dates">
+                                                    <span className={`calendar-schedule__date ${change.originalDate ? 'is-original' : 'is-unscheduled'}`}>
+                                                        {change.originalDate ? format(new Date(change.originalDate), 'MMM d', { locale: dateLocale }) : t('calendar.modal.unscheduled')}
+                                                    </span>
+                                                    <span className="material-symbols-outlined calendar-schedule__arrow">arrow_forward</span>
+                                                    <span className="calendar-schedule__date calendar-schedule__date--new">
+                                                        {format(change.newDate, 'MMM d', { locale: dateLocale })}
+                                                    </span>
+                                                </div>
+                                                <div className="calendar-schedule__reason">
+                                                    <span className="material-symbols-outlined">info</span>
+                                                    <span>{getScheduleReason(change.reason)}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="calendar-schedule__action">
+                                                <span className={`calendar-schedule__action-tag ${isUnassigned ? 'is-unassigned' : 'is-assigned'} ${isSelected ? 'is-selected' : ''}`}>
+                                                    {isUnassigned ? t('calendar.modal.assignAndSchedule') : t('calendar.modal.reschedule')}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </Modal>
+
+            {hoveredTask && (
                     <div
-                        className="fixed z-[70] pointer-events-none animate-fade-in"
+                        className="calendar-tooltip"
                         style={{
                             left: `${hoveredTask.x}px`,
                             top: `${hoveredTask.y}px`,
                             maxWidth: '320px'
                         }}
                     >
-                        <div className="bg-card rounded-xl shadow-2xl border border-surface p-4 backdrop-blur-sm">
-                            <div className="flex items-start gap-3 mb-3">
-                                <div className={`
-                                p-2 rounded-lg shrink-0
-                                ${(hoveredTask.item as any).status ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600'}
-                            `}>
-                                    <span className="material-symbols-outlined text-[18px]">
-                                        {(hoveredTask.item as any).status !== undefined ? 'bug_report' : 'check_circle'}
+                        <div className="calendar-tooltip__card">
+                            <div className="calendar-tooltip__header">
+                                <div className={`calendar-tooltip__icon ${'reporter' in hoveredTask.item ? 'calendar-tooltip__icon--issue' : 'calendar-tooltip__icon--task'}`}>
+                                    <span className="material-symbols-outlined">
+                                        {'reporter' in hoveredTask.item ? 'bug_report' : 'check_circle'}
                                     </span>
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <h4 className="font-bold text-sm mb-1 line-clamp-2">{hoveredTask.item.title}</h4>
-                                    <div className="flex items-center gap-2 text-xs text-muted">
-                                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${hoveredTask.item.priority === 'Urgent' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                                            hoveredTask.item.priority === 'High' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
-                                                hoveredTask.item.priority === 'Medium' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400' :
-                                                    'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                            }`}>
+                                <div className="calendar-tooltip__body">
+                                    <h4 className="calendar-tooltip__title">{hoveredTask.item.title}</h4>
+                                    <div className="calendar-tooltip__meta">
+                                        <span className={`calendar-priority calendar-priority--${getPriorityTone((hoveredTask.item as Task).priority)}`}>
                                             {priorityLabels[(hoveredTask.item.priority || 'Low') as keyof typeof priorityLabels] || hoveredTask.item.priority || t('tasks.priority.low')}
                                         </span>
-                                        <span className="text-[10px] opacity-60">•</span>
-                                        <span>
-                                            {(hoveredTask.item as any).status !== undefined
+                                        <span className="calendar-tooltip__separator" />
+                                        <span className="calendar-tooltip__status">
+                                            {'reporter' in hoveredTask.item
                                                 ? t('calendar.tooltip.issue').replace('{status}', (hoveredTask.item as Issue).status || t('tasks.status.open'))
                                                 : t('calendar.tooltip.task').replace('{status}', (hoveredTask.item as Task).status || t('tasks.status.open'))
                                             }
@@ -947,14 +919,14 @@ export const Calendar = () => {
 
                             {/* Description if available */}
                             {((hoveredTask.item as Task).description || (hoveredTask.item as Issue).description) && (
-                                <p className="text-xs text-muted line-clamp-3 mb-3 leading-relaxed">
+                                <p className="calendar-tooltip__description">
                                     {(hoveredTask.item as Task).description || (hoveredTask.item as Issue).description}
                                 </p>
                             )}
 
-                            <div className="flex items-center justify-between text-xs pt-3 border-t border-surface">
-                                <div className="flex items-center gap-1 text-muted">
-                                    <span className="material-symbols-outlined text-[14px]">schedule</span>
+                            <div className="calendar-tooltip__footer">
+                                <div className="calendar-tooltip__meta-item">
+                                    <span className="material-symbols-outlined calendar-tooltip__meta-icon">schedule</span>
                                     <span>
                                         {hoveredTask.item.scheduledDate
                                             ? format(new Date(hoveredTask.item.scheduledDate), 'MMM d, HH:mm', { locale: dateLocale })
@@ -965,9 +937,9 @@ export const Calendar = () => {
                                     </span>
                                 </div>
                                 {((hoveredTask.item as Task).assigneeIds?.length > 0 || (hoveredTask.item as Task).assigneeId) && (
-                                    <div className="flex items-center gap-1 text-muted">
-                                        <span className="material-symbols-outlined text-[14px]">person</span>
-                                        <span className="text-[10px]">{t('calendar.tooltip.assigned')}</span>
+                                    <div className="calendar-tooltip__meta-item">
+                                        <span className="material-symbols-outlined calendar-tooltip__meta-icon">person</span>
+                                        <span className="calendar-tooltip__meta-label">{t('calendar.tooltip.assigned')}</span>
                                     </div>
                                 )}
                             </div>

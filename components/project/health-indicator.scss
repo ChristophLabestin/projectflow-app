@@ -1,0 +1,315 @@
+@use '../../styles/tokens';
+
+.health-indicator {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+
+    --health-color: var(--color-primary);
+    --health-color-rgb: var(--color-primary-rgb);
+    --health-bg: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    --health-size: 48px;
+    --health-font-size: 0.75rem;
+
+    &--sm {
+        --health-size: 32px;
+        --health-font-size: 0.625rem;
+    }
+
+    &--md {
+        --health-size: 48px;
+        --health-font-size: 0.75rem;
+    }
+
+    &--lg {
+        --health-size: 80px;
+        --health-font-size: 1rem;
+    }
+
+    &--warning {
+        --health-color: var(--color-warning);
+        --health-color-rgb: var(--color-warning-rgb);
+        --health-bg: rgba(var(--color-warning-rgb), 0.12);
+    }
+
+    &--critical {
+        --health-color: var(--color-error);
+        --health-color-rgb: var(--color-error-rgb);
+        --health-bg: rgba(var(--color-error-rgb), 0.12);
+    }
+
+    &--excellent,
+    &--healthy,
+    &--success {
+        --health-color: var(--color-success);
+        --health-color-rgb: var(--color-success-rgb);
+        --health-bg: rgba(var(--color-success-rgb), 0.12);
+    }
+
+    &--normal {
+        --health-color: var(--color-primary);
+        --health-color-rgb: var(--color-primary-rgb);
+        --health-bg: color-mix(in srgb, var(--color-primary) 12%, transparent);
+    }
+
+    &--stalemate {
+        --health-color: var(--color-text-subtle);
+        --health-bg: color-mix(in srgb, var(--color-text-subtle) 16%, transparent);
+    }
+}
+
+.health-indicator__ring {
+    position: relative;
+    width: var(--health-size);
+    height: var(--health-size);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform var(--transition-fast);
+    cursor: help;
+}
+
+.health-indicator--interactive .health-indicator__ring {
+    cursor: pointer;
+}
+
+.health-indicator--interactive .health-indicator__ring:hover {
+    transform: scale(1.05);
+}
+
+.health-indicator__svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+}
+
+.health-indicator__track {
+    color: color-mix(in srgb, var(--color-text-main) 12%, transparent);
+}
+
+.health-indicator__progress {
+    color: var(--health-color);
+    transition: stroke-dashoffset 1s ease;
+}
+
+.health-indicator__score {
+    position: absolute;
+    font-weight: 800;
+    font-size: var(--health-font-size);
+    color: var(--health-color);
+    line-height: 1;
+}
+
+.health-indicator__tooltip {
+    position: absolute;
+    top: calc(100% + 12px);
+    left: 0;
+    width: 280px;
+    z-index: 100;
+    padding: 16px;
+    border-radius: var(--radius-xl);
+    background-color: var(--color-surface-card);
+    box-shadow: var(--shadow-soft);
+    animation: health-tooltip-in 0.2s ease;
+}
+
+.health-indicator__tooltip-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.health-indicator__tooltip-title {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.health-indicator__status-pill {
+    padding: 2px 6px;
+    border-radius: var(--radius-full);
+    background-color: var(--health-bg);
+    color: var(--health-color);
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.health-indicator__tooltip-subtitle {
+    margin: 4px 0 0;
+    font-size: 0.625rem;
+    color: var(--color-text-muted);
+}
+
+.health-indicator__trend {
+    display: flex;
+    align-items: center;
+}
+
+.health-indicator__trend-icon {
+    font-size: 1rem;
+    color: var(--color-text-subtle);
+}
+
+.health-indicator__factors {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.health-indicator__factor {
+    display: flex;
+    gap: 8px;
+}
+
+.health-indicator__factor-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    margin-top: 5px;
+    flex-shrink: 0;
+
+    &--positive {
+        background-color: var(--color-success);
+    }
+
+    &--negative {
+        background-color: var(--color-error);
+    }
+
+    &--neutral {
+        background-color: var(--color-warning);
+    }
+}
+
+.health-indicator__factor-body {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.health-indicator__factor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.health-indicator__factor-title {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+.health-indicator__factor-impact {
+    font-size: 0.5625rem;
+    font-weight: 800;
+    font-family: ui-monospace, SFMono-Regular, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono',
+        'Courier New', monospace;
+
+    &--positive {
+        color: var(--color-success);
+    }
+
+    &--negative {
+        color: var(--color-error);
+    }
+
+    &--neutral {
+        color: var(--color-warning);
+    }
+}
+
+.health-indicator__factor-text {
+    margin: 0;
+    font-size: 0.625rem;
+    color: var(--color-text-muted);
+    line-height: 1.4;
+}
+
+.health-indicator__recommendation {
+    margin-top: 16px;
+    padding-top: 12px;
+}
+
+.health-indicator__recommendation-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-subtle);
+}
+
+.health-indicator__recommendation-text {
+    margin: 0;
+    font-size: 0.625rem;
+    font-weight: 600;
+    color: var(--color-primary);
+    font-style: italic;
+}
+
+.health-indicator__footer {
+    margin-top: 12px;
+    padding-top: 12px;
+    text-align: center;
+}
+
+.health-indicator__footer-text {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.625rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.health-indicator__footer-icon {
+    font-size: 0.75rem;
+}
+
+.health-indicator__label {
+    display: flex;
+    flex-direction: column;
+}
+
+.health-indicator__label-title {
+    font-size: 0.625rem;
+    font-weight: 800;
+    color: var(--health-color);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.health-indicator__label-subtitle {
+    margin-top: 2px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-subtle);
+}
+
+@keyframes health-tooltip-in {
+    from {
+        opacity: 0;
+        transform: translateY(-4px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
