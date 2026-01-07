@@ -7,6 +7,8 @@ import { IdeaGroup, Task, TaskCategory, TaskStatus } from '../types';
 import { generateProjectDescription } from '../services/geminiService';
 import { Button } from './common/Button/Button';
 import { Badge } from './common/Badge/Badge';
+import { TextInput } from './common/Input/TextInput';
+import { TextArea } from './common/Input/TextArea';
 import { DatePicker } from './common/DateTime/DatePicker';
 import { MultiAssigneeSelector } from './MultiAssigneeSelector';
 import { usePinnedTasks, PinnedItem } from '../context/PinnedTasksContext';
@@ -190,13 +192,14 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
                 <form onSubmit={handleSubmit} className="task-create-form">
                     {/* Title Input */}
                     <div className="title-input-section">
-                        <input
-                            type="text"
+                        <TextInput
                             value={title}
                             onChange={handleTitleChange}
                             placeholder={t('tasks.quickAdd.placeholder')}
                             autoFocus
                             maxLength={100}
+                            aria-label={t('tasks.quickAdd.placeholder')}
+                            className="task-create__title-input"
                         />
                     </div>
 
@@ -322,11 +325,13 @@ export const TaskCreateModal: React.FC<Props> = ({ projectId, tenantId, onClose,
 
                     {/* Description */}
                     <div className="description-section">
-                        <textarea
+                        <TextArea
                             value={description}
                             onChange={handleDescriptionChange}
                             placeholder={t('taskCreate.description.placeholder')}
                             rows={2}
+                            aria-label={t('taskCreate.description.placeholder')}
+                            className="task-create__description-input"
                         />
                         {title && (
                             <button
