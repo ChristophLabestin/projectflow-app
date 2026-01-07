@@ -1,23 +1,23 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useOutletContext, useParams } from 'react-router-dom';
+import { collection, collectionGroup, getDocs, onSnapshot, query, where } from 'firebase/firestore';
+import { format } from 'date-fns';
 import { Milestone } from '../types';
 import { MilestoneModal } from '../components/Milestones/MilestoneModal';
 import { MilestoneDetailModal } from '../components/Milestones/MilestoneDetailModal';
 import { useConfirm } from '../context/UIContext';
 import { subscribeProjectMilestones, deleteMilestone, updateMilestone } from '../services/dataService';
 import { db } from '../services/firebase';
-import { collectionGroup, query, where, getDocs, onSnapshot, collection } from 'firebase/firestore';
-import { toMillis } from '../utils/time';
-import { Card } from '../components/ui/Card';
-import { Badge } from '../components/ui/Badge';
-import { Button } from '../components/ui/Button';
-import { format } from 'date-fns';
+import { Badge } from '../components/common/Badge/Badge';
+import { Button } from '../components/common/Button/Button';
+import { Card } from '../components/common/Card/Card';
 import { useLanguage } from '../context/LanguageContext';
 
 export const ProjectMilestones = () => {
+    type RiskLevel = 'Low' | 'Medium' | 'High';
     const { id: projectId } = useParams<{ id: string }>();
     const { setTaskTitle } = useOutletContext<{ setTaskTitle: (t: string | null) => void }>();
-    const { dateLocale } = useLanguage();
+    const { dateLocale, t } = useLanguage();
     const [milestones, setMilestones] = useState<Milestone[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -29,8 +29,24 @@ export const ProjectMilestones = () => {
     const [subtaskLookup, setSubtaskLookup] = useState<Record<string, { total: number; completed: number }>>({});
     const confirm = useConfirm();
 
+    const statusLabels = useMemo(() => ({
+        Pending: t('projectMilestones.status.pending'),
+        Achieved: t('projectMilestones.status.achieved'),
+        Missed: t('projectMilestones.status.missed'),
+    }), [t]);
+
+    const riskLabels = useMemo(() => ({
+        Low: t('projectMilestones.risk.low'),
+        Medium: t('projectMilestones.risk.medium'),
+        High: t('projectMilestones.risk.high'),
+    }), [t]);
+
     useEffect(() => {
-        setTaskTitle('Milestones');
+        setTaskTitle(t('nav.milestones'));
+        return () => setTaskTitle(null);
+    }, [setTaskTitle, t]);
+
+    useEffect(() => {
         if (!projectId) return;
 
         const unsub = subscribeProjectMilestones(projectId, (data) => {
@@ -38,25 +54,20 @@ export const ProjectMilestones = () => {
             setLoading(false);
         });
 
-        // Background fetch for idea names (Initiatives)
         const fetchIdeas = async () => {
             try {
-                const q = query(collectionGroup(db, 'ideas'), where('projectId', '==', projectId));
-                const snap = await getDocs(q);
+                const snapshot = await getDocs(query(collectionGroup(db, 'ideas'), where('projectId', '==', projectId)));
                 const lookup: Record<string, string> = {};
-                snap.forEach(doc => {
+                snapshot.forEach(doc => {
                     lookup[doc.id] = doc.data().title;
                 });
                 setIdeaLookup(lookup);
             } catch (e) {
-                console.error("Failed to fetch flow lookup", e);
+                console.error('Failed to fetch flow lookup', e);
             }
         };
         fetchIdeas();
 
-
-
-        // Subscribe to tasks for progress calculation
         const tasksQ = query(collectionGroup(db, 'tasks'), where('projectId', '==', projectId));
         const unsubTasks = onSnapshot(tasksQ, (snap) => {
             const lookup: Record<string, { isCompleted: boolean; hasSubtasks: boolean; dueDate?: string; priority?: string; title: string }> = {};
@@ -76,11 +87,9 @@ export const ProjectMilestones = () => {
         return () => {
             unsub();
             unsubTasks();
-            setTaskTitle(null);
         };
-    }, [projectId, setTaskTitle]);
+    }, [projectId]);
 
-    // Separate useEffect for Subtasks (Per-Task Listeners) to avoid CollectionGroup Index issues
     useEffect(() => {
         if (milestones.length === 0) return;
         const tenantId = milestones[0].tenantId;
@@ -97,7 +106,6 @@ export const ProjectMilestones = () => {
         const unsubs: (() => void)[] = [];
 
         allTaskIds.forEach(taskId => {
-            // Path: tenants/{tid}/projects/{pid}/tasks/{taskId}/subtasks
             const subtasksRef = collection(db, 'tenants', tenantId, 'projects', projectId!, 'tasks', taskId, 'subtasks');
 
             const unsub = onSnapshot(subtasksRef, (snap) => {
@@ -119,7 +127,7 @@ export const ProjectMilestones = () => {
         return () => {
             unsubs.forEach(u => u());
         };
-    }, [milestones, projectId]); // Re-run if milestones (and thus linked tasks) change
+    }, [milestones, projectId]);
 
     const handleEdit = (milestone: Milestone) => {
         setEditingMilestone(milestone);
@@ -128,7 +136,11 @@ export const ProjectMilestones = () => {
 
     const handleDelete = async (milestone: Milestone) => {
         if (!projectId) return;
-        if (await confirm("Delete Milestone", `Are you sure you want to delete "${milestone.title}"?`)) {
+        const confirmed = await confirm(
+            t('projectMilestones.confirm.delete.title'),
+            t('projectMilestones.confirm.delete.message').replace('{title}', milestone.title)
+        );
+        if (confirmed) {
             await deleteMilestone(projectId, milestone.id);
         }
     };
@@ -137,16 +149,14 @@ export const ProjectMilestones = () => {
         if (!projectId) return;
         const newStatus = milestone.status === 'Achieved' ? 'Pending' : 'Achieved';
 
-        // Optimistic update for better UX
         const optimisticMilestones = milestones.map(m =>
-            m.id === milestone.id ? { ...m, status: newStatus as any } : m
+            m.id === milestone.id ? { ...m, status: newStatus as Milestone['status'] } : m
         );
         setMilestones(optimisticMilestones);
 
         await updateMilestone(projectId, milestone.id, { status: newStatus });
     };
 
-    // Derived State
     const stats = useMemo(() => {
         const total = milestones.length;
         const achieved = milestones.filter(m => m.status === 'Achieved').length;
@@ -164,374 +174,291 @@ export const ProjectMilestones = () => {
 
     const nextPendingIndex = sortedMilestones.findIndex(m => m.status === 'Pending');
 
+    const getMilestoneProgress = (milestone: Milestone) => {
+        if (!milestone.linkedTaskIds || milestone.linkedTaskIds.length === 0) return 0;
+        let totalProgress = 0;
+        milestone.linkedTaskIds.forEach(tid => {
+            const sub = subtaskLookup[tid];
+            if (sub && sub.total > 0) {
+                totalProgress += (sub.completed / sub.total);
+            } else {
+                const taskData = taskStatusLookup[tid];
+                if (taskData && taskData.isCompleted) {
+                    totalProgress += 1;
+                }
+            }
+        });
+        return Math.round((totalProgress / milestone.linkedTaskIds.length) * 100);
+    };
+
+    const getMilestoneRisk = (milestone: Milestone, progress: number): RiskLevel => {
+        if (milestone.status === 'Achieved') return 'Low';
+
+        const now = new Date();
+        const dueDate = milestone.dueDate ? new Date(milestone.dueDate) : null;
+
+        if (dueDate && dueDate < now) return 'High';
+
+        if (dueDate) {
+            const diffDays = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+            if (diffDays <= 3 && progress < 50) return 'High';
+            if (diffDays <= 7 && progress < 70) return 'Medium';
+        }
+
+        let hasUrgent = false;
+        let hasHigh = false;
+
+        milestone.linkedTaskIds?.forEach(tid => {
+            const task = taskStatusLookup[tid];
+            if (task && !task.isCompleted) {
+                if (task.priority === 'Urgent') hasUrgent = true;
+                if (task.priority === 'High') hasHigh = true;
+            }
+        });
+
+        if (hasUrgent) return 'High';
+        if (hasHigh) return 'Medium';
+
+        return 'Low';
+    };
+
+    const getStatusVariant = (status: Milestone['status']) => {
+        if (status === 'Achieved') return 'success';
+        if (status === 'Missed') return 'error';
+        return 'neutral';
+    };
+
     if (loading) {
         return (
-            <div className="flex justify-center py-20">
-                <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
+            <div className="project-milestones__loading">
+                <span className="material-symbols-outlined project-milestones__loading-icon">progress_activity</span>
             </div>
         );
     }
 
-    if (!projectId) return <div>Project ID missing</div>;
+    if (!projectId) {
+        return (
+            <div className="project-milestones__empty">
+                <h3 className="project-milestones__empty-title">{t('projectMilestones.error.projectMissing')}</h3>
+            </div>
+        );
+    }
 
     return (
-        <div className="max-w-6xl mx-auto h-full flex flex-col gap-8 pb-20 animate-fade-in">
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                <div>
-                    <div className="flex items-center gap-2 mb-2">
-                        <span className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                            Roadmap
-                        </span>
-                    </div>
-                    <h1 className="text-3xl md:text-4xl font-display font-bold text-main mb-2">
-                        Project Milestones
-                    </h1>
-                    <p className="text-muted max-w-xl">
-                        Track your journey from start to finish. Visualize key achievements and upcoming deadlines in a unified timeline.
-                    </p>
+        <div className="project-milestones">
+            <header className="project-milestones__header">
+                <div className="project-milestones__heading">
+                    <Badge variant="neutral" className="project-milestones__tag">
+                        {t('projectMilestones.header.tag')}
+                    </Badge>
+                    <h1 className="project-milestones__title">{t('projectMilestones.header.title')}</h1>
+                    <p className="project-milestones__subtitle">{t('projectMilestones.header.subtitle')}</p>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    {/* Mini Stat Card */}
-                    <div className="hidden md:flex flex-col items-end mr-4">
-                        <div className="text-2xl font-bold text-main">
-                            {stats.achieved} <span className="text-subtle text-lg">/ {stats.total}</span>
-                        </div>
-                        <div className="text-xs font-bold text-muted uppercase tracking-wider">
-                            Milestones Achieved
-                        </div>
+                <div className="project-milestones__header-actions">
+                    <div className="project-milestones__stat">
+                        <span className="project-milestones__stat-value">{stats.achieved} / {stats.total}</span>
+                        <span className="project-milestones__stat-label">{t('projectMilestones.stats.achieved')}</span>
                     </div>
-
                     <Button
                         onClick={() => { setEditingMilestone(undefined); setIsModalOpen(true); }}
                         variant="primary"
-                        className="shadow-lg shadow-indigo-500/20"
+                        className="project-milestones__new-button"
                         icon={<span className="material-symbols-outlined">add</span>}
                     >
-                        New Milestone
+                        {t('projectMilestones.actions.new')}
                     </Button>
+                </div>
+            </header>
+
+            <div className="project-milestones__progress">
+                <div className="project-milestones__progress-track">
+                    <div
+                        className="project-milestones__progress-fill"
+                        style={{ width: `${stats.progress}%` }}
+                    />
+                </div>
+                <div className="project-milestones__progress-meta">
+                    <span className="project-milestones__progress-label">{t('projectMilestones.progress.label')}</span>
+                    <span className="project-milestones__progress-value">{stats.progress}%</span>
                 </div>
             </div>
 
-            {/* Progress Bar (Visual Header) */}
-            <Card padding="none" className="overflow-hidden relative h-2">
-                <div className="absolute inset-0 bg-surface-hover w-full h-full" />
-                <div
-                    className="absolute inset-y-0 left-0 bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-1000 ease-out"
-                    style={{ width: `${stats.progress}%` }}
-                />
-            </Card>
-
-            {/* Timeline View */}
-            <div className="relative pl-4 md:pl-0 mt-4">
-                {/* Vertical Line */}
-                <div className="absolute left-[27px] md:left-1/2 top-4 bottom-10 w-0.5 bg-surface-border -translate-x-1/2 hidden md:block" />
-                <div className="absolute left-[27px] top-4 bottom-10 w-0.5 bg-surface-border -translate-x-1/2 md:hidden" />
-
-                <div className="space-y-12">
-                    {sortedMilestones.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-20 text-center">
-                            <div className="size-20 rounded-full bg-surface-hover flex items-center justify-center mb-4">
-                                <span className="material-symbols-outlined text-4xl text-muted opacity-50">map</span>
-                            </div>
-                            <h3 className="text-lg font-bold text-main">No milestones yet</h3>
-                            <p className="text-muted max-w-xs mx-auto mb-6">
-                                Start planning your project journey by adding your first milestone.
-                            </p>
-                            <Button
-                                onClick={() => { setEditingMilestone(undefined); setIsModalOpen(true); }}
-                                variant="outline"
-                            >
-                                add your first milestone
-                            </Button>
+            <section className="project-milestones__timeline">
+                {sortedMilestones.length === 0 ? (
+                    <div className="project-milestones__empty-state">
+                        <div className="project-milestones__empty-icon">
+                            <span className="material-symbols-outlined">map</span>
                         </div>
-                    ) : (
-                        sortedMilestones.map((milestone, index) => {
-                            const isPending = milestone.status === 'Pending';
+                        <h3 className="project-milestones__empty-title">{t('projectMilestones.empty.title')}</h3>
+                        <p className="project-milestones__empty-text">{t('projectMilestones.empty.description')}</p>
+                        <Button
+                            onClick={() => { setEditingMilestone(undefined); setIsModalOpen(true); }}
+                            variant="secondary"
+                        >
+                            {t('projectMilestones.empty.action')}
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="project-milestones__list">
+                        <div className="project-milestones__line" />
+                        {sortedMilestones.map((milestone, index) => {
                             const isAchieved = milestone.status === 'Achieved';
                             const isNextUp = index === nextPendingIndex;
-                            const isPast = index < nextPendingIndex && isAchieved;
-
-                            // Alternate sides for desktop
                             const isLeft = index % 2 === 0;
-
-                            // Risk Calculation
-                            const getMilestoneRisk = (m: Milestone, progress: number) => {
-                                if (m.status === 'Achieved') return 'Low';
-
-                                const now = new Date();
-                                const dueDate = m.dueDate ? new Date(m.dueDate) : null;
-
-                                // 1. Overdue = High Risk
-                                if (dueDate && dueDate < now) return 'High';
-
-                                // 2. Time Criticality
-                                if (dueDate) {
-                                    const diffDays = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
-                                    // < 3 days left & < 50% done = High
-                                    if (diffDays <= 3 && progress < 50) return 'High';
-
-                                    // < 7 days left & < 70% done = Medium
-                                    if (diffDays <= 7 && progress < 70) return 'Medium';
-                                }
-
-                                // 3. Task Priorities (Urgent/High incomplete tasks)
-                                let hasUrgent = false;
-                                let hasHigh = false;
-
-                                m.linkedTaskIds?.forEach(tid => {
-                                    const task = taskStatusLookup[tid];
-                                    if (task && !task.isCompleted) {
-                                        if (task.priority === 'Urgent') hasUrgent = true;
-                                        if (task.priority === 'High') hasHigh = true;
-                                    }
-                                });
-
-                                if (hasUrgent) return 'High';
-                                if (hasHigh) return 'Medium';
-
-                                return 'Low';
-                            };
-
-                            // Calculate Progress First (needed for Risk)
-                            let totalProgress = 0;
-                            if (milestone.linkedTaskIds && milestone.linkedTaskIds.length > 0) {
-                                milestone.linkedTaskIds.forEach(tid => {
-                                    const sub = subtaskLookup[tid];
-                                    if (sub && sub.total > 0) {
-                                        totalProgress += (sub.completed / sub.total);
-                                    } else {
-                                        const taskData = taskStatusLookup[tid];
-                                        if (taskData && taskData.isCompleted) {
-                                            totalProgress += 1;
-                                        }
-                                    }
-                                });
-                            }
-                            const finalPct = milestone.linkedTaskIds && milestone.linkedTaskIds.length > 0
-                                ? Math.round((totalProgress / milestone.linkedTaskIds.length) * 100)
-                                : 0;
-
-                            const calculatedRisk = getMilestoneRisk(milestone, finalPct);
+                            const progress = getMilestoneProgress(milestone);
+                            const calculatedRisk = getMilestoneRisk(milestone, progress);
+                            const riskLevel = (milestone.riskRating || calculatedRisk) as RiskLevel;
+                            const showRisk = riskLevel !== 'Low' && milestone.status !== 'Achieved';
 
                             return (
-                                <div key={milestone.id} className={`relative flex items-center md:justify-center group ${isAchieved ? 'opacity-70 hover:opacity-100 transition-opacity' : ''}`}>
-
-                                    {/* Timeline Marker (Center) */}
-                                    <div className={`
-                                        absolute left-[27px] md:left-1/2 -translate-x-1/2 z-10 
-                                        size-8 rounded-full border-4 flex items-center justify-center shadow-sm transition-all duration-300
-                                        ${isAchieved
-                                            ? 'bg-emerald-500 border-emerald-100 dark:border-emerald-900 text-white scale-90'
-                                            : isNextUp
-                                                ? 'bg-white dark:bg-card border-indigo-500 text-indigo-500 scale-110 shadow-indigo-500/30'
-                                                : 'bg-white dark:bg-card border-surface text-subtle'
-                                        }
-                                    `}>
-                                        <span className="material-symbols-outlined text-[14px] font-bold">
+                                <div
+                                    key={milestone.id}
+                                    className={`project-milestones__item ${isLeft ? 'is-left' : 'is-right'} ${isAchieved ? 'is-achieved' : ''}`}
+                                >
+                                    <div
+                                        className="project-milestones__marker"
+                                        data-status={milestone.status.toLowerCase()}
+                                        data-next={isNextUp ? 'true' : 'false'}
+                                    >
+                                        <span className="material-symbols-outlined">
                                             {isAchieved ? 'check' : isNextUp ? 'near_me' : 'radio_button_unchecked'}
                                         </span>
                                     </div>
 
-                                    {/* Content Card */}
-                                    <div className={`
-                                        ml-16 md:ml-0 w-full md:w-[45%] 
-                                        ${isLeft ? 'md:mr-auto md:pr-12 md:text-right' : 'md:ml-auto md:pl-12 md:text-left'}
-                                    `}>
+                                    <div className="project-milestones__card-wrapper">
                                         <Card
-                                            padding="none"
-                                            className={`
-                                                relative overflow-hidden transition-all duration-300 group-hover:-translate-y-1 group-hover:shadow-lg
-                                                ${calculatedRisk === 'High'
-                                                    ? 'border-red-500 shadow-lg shadow-red-500/20 ring-1 ring-red-500'
-                                                    : calculatedRisk === 'Medium'
-                                                        ? 'border-orange-500 shadow-lg shadow-orange-500/20 ring-1 ring-orange-500'
-                                                        : isNextUp
-                                                            ? 'ring-2 ring-indigo-500/20 border-indigo-500/50 shadow-md'
-                                                            : 'border-surface'
-                                                }
-                                            `}
+                                            className="project-milestones__card"
+                                            data-status={milestone.status.toLowerCase()}
+                                            data-risk={riskLevel.toLowerCase()}
+                                            data-next={isNextUp ? 'true' : 'false'}
                                             onClick={() => {
                                                 setViewingMilestone(milestone);
                                                 setIsDetailModalOpen(true);
                                             }}
                                         >
-                                            <div className="p-5 cursor-pointer">
-                                                <div className={`flex items-start gap-4 ${isLeft ? 'md:flex-row-reverse' : ''}`}>
-
-                                                    {/* Date Badge */}
-                                                    <div className={`
-                                                        flex flex-col items-center justify-center p-2 rounded-xl shrink-0 min-w-[60px]
-                                                        ${isNextUp
-                                                            ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400'
-                                                            : isAchieved
-                                                                ? 'bg-emerald-50 dark:bg-emerald-900/10 text-emerald-600 dark:text-emerald-500'
-                                                                : calculatedRisk === 'High'
-                                                                    ? 'bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400'
-                                                                    : calculatedRisk === 'Medium'
-                                                                        ? 'bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400'
-                                                                        : 'bg-surface-hover text-muted'
-                                                        }
-                                                    `}>
-                                                        {milestone.dueDate ? (
-                                                            <>
-                                                                <span className="text-xs uppercase font-bold tracking-wider opacity-70">
-                                                                    {format(new Date(milestone.dueDate), 'MMM', { locale: dateLocale })}
-                                                                </span>
-                                                                <span className="text-xl font-bold leading-none">
-                                                                    {new Date(milestone.dueDate).getDate()}
-                                                                </span>
-                                                            </>
-                                                        ) : (
-                                                            <span className="material-symbols-outlined">event</span>
-                                                        )}
-                                                    </div>
-
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className={`flex items-center gap-2 mb-1 ${isLeft ? 'md:justify-end' : ''}`}>
-                                                            {isNextUp && (
-                                                                <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-500 animate-pulse">
-                                                                    Next Milestone
-                                                                </span>
-                                                            )}
-                                                            {isAchieved && (
-                                                                <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-500 flex items-center gap-1">
-                                                                    <span className="material-symbols-outlined text-[12px]">check_circle</span>
-                                                                    Completed
-                                                                </span>
-                                                            )}
-                                                        </div>
-
-                                                        <h3 className={`text-lg font-bold mb-1 ${isAchieved ? 'text-muted decoration-slice' : 'text-main'}`}>
-                                                            {milestone.title}
-                                                        </h3>
-
-                                                        {milestone.description && (
-                                                            <p className="text-sm text-muted line-clamp-2 leading-relaxed">
-                                                                {milestone.description}
-                                                            </p>
-                                                        )}
-
-                                                        {/* Linked Items & Risk */}
-                                                        <div className="flex flex-wrap items-center gap-2 mt-3">
-                                                            {(milestone.riskRating || calculatedRisk !== 'Low') && (
-                                                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${(milestone.riskRating === 'High' || calculatedRisk === 'High') ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                                                                    (milestone.riskRating === 'Medium' || calculatedRisk === 'Medium') ? 'bg-orange-500/10 text-orange-500 border-orange-500/20' :
-                                                                        'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
-                                                                    }`}>
-                                                                    {calculatedRisk !== 'Low' ? `${calculatedRisk} Risk` : `${milestone.riskRating} Risk`}
-                                                                </span>
-                                                            )}
-
-                                                            {milestone.linkedTaskIds && milestone.linkedTaskIds.length > 0 && (
-                                                                <div className="flex flex-col gap-1">
-                                                                    <span className="flex items-center gap-1 text-[11px] font-medium text-subtle bg-surface px-2 py-0.5 rounded-full border border-surface w-fit">
-                                                                        <span className="material-symbols-outlined text-[14px]">task</span>
-                                                                        {milestone.linkedTaskIds.length} Tasks
-                                                                    </span>
-                                                                </div>
-                                                            )}
-
-                                                            {milestone.linkedInitiativeId && (
-                                                                <span className="flex items-center gap-1 text-[11px] font-medium text-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-full border border-indigo-200 dark:border-indigo-800">
-                                                                    <span className="material-symbols-outlined text-[14px]">rocket_launch</span>
-                                                                    <span className="truncate max-w-[150px]">{ideaLookup[milestone.linkedInitiativeId] || 'Initiative'}</span>
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </div>
+                                            <div className="project-milestones__card-header">
+                                                <div className="project-milestones__date-badge" data-tone={isNextUp ? 'next' : isAchieved ? 'success' : showRisk ? riskLevel.toLowerCase() : 'neutral'}>
+                                                    {milestone.dueDate ? (
+                                                        <>
+                                                            <span className="project-milestones__date-month">
+                                                                {format(new Date(milestone.dueDate), 'MMM', { locale: dateLocale })}
+                                                            </span>
+                                                            <span className="project-milestones__date-day">
+                                                                {new Date(milestone.dueDate).getDate()}
+                                                            </span>
+                                                        </>
+                                                    ) : (
+                                                        <span className="material-symbols-outlined">event</span>
+                                                    )}
                                                 </div>
 
+                                                <div className="project-milestones__card-body">
+                                                    <div className="project-milestones__card-meta">
+                                                        <Badge variant={getStatusVariant(milestone.status)} className="project-milestones__status-badge">
+                                                            {statusLabels[milestone.status]}
+                                                        </Badge>
+                                                        {isNextUp && (
+                                                            <Badge variant="warning" className="project-milestones__next-badge">
+                                                                {t('projectMilestones.timeline.next')}
+                                                            </Badge>
+                                                        )}
+                                                        {showRisk && (
+                                                            <Badge variant={riskLevel === 'High' ? 'error' : 'warning'} className="project-milestones__risk-badge">
+                                                                {riskLabels[riskLevel]}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
 
-                                                {/* Progress Bar (Above Footer) */}
-                                                {milestone.linkedTaskIds && milestone.linkedTaskIds.length > 0 && (() => {
-                                                    let totalProgress = 0;
-                                                    milestone.linkedTaskIds.forEach(tid => {
-                                                        const sub = subtaskLookup[tid];
-                                                        if (sub && sub.total > 0) {
-                                                            totalProgress += (sub.completed / sub.total);
-                                                        } else {
-                                                            const taskData = taskStatusLookup[tid];
-                                                            if (taskData && taskData.isCompleted) {
-                                                                totalProgress += 1;
-                                                            }
-                                                        }
-                                                    });
+                                                    <h3 className="project-milestones__card-title">{milestone.title}</h3>
 
-                                                    const finalPct = Math.round((totalProgress / milestone.linkedTaskIds.length) * 100);
-                                                    const isDone = finalPct === 100;
+                                                    {milestone.description && (
+                                                        <p className="project-milestones__card-description">{milestone.description}</p>
+                                                    )}
 
-                                                    return (
-                                                        <div className="mt-4 mb-1">
-                                                            <div className="flex items-center justify-between mb-1.5">
-                                                                <span className="text-[10px] uppercase font-bold text-subtle tracking-wider">Progress</span>
-                                                                <span className={`text-xs font-bold ${isDone ? 'text-emerald-500' : 'text-indigo-500'}`}>
-                                                                    {finalPct}%
+                                                    <div className="project-milestones__card-tags">
+                                                        {milestone.linkedTaskIds && milestone.linkedTaskIds.length > 0 && (
+                                                            <span className="project-milestones__tag-pill">
+                                                                <span className="material-symbols-outlined">task</span>
+                                                                {t('projectMilestones.timeline.tasks').replace('{count}', String(milestone.linkedTaskIds.length))}
+                                                            </span>
+                                                        )}
+                                                        {milestone.linkedInitiativeId && (
+                                                            <span className="project-milestones__tag-pill project-milestones__tag-pill--initiative">
+                                                                <span className="material-symbols-outlined">rocket_launch</span>
+                                                                <span className="project-milestones__tag-text">
+                                                                    {ideaLookup[milestone.linkedInitiativeId] || t('projectMilestones.timeline.initiativeFallback')}
                                                                 </span>
+                                                            </span>
+                                                        )}
+                                                    </div>
+
+                                                    {milestone.linkedTaskIds && milestone.linkedTaskIds.length > 0 && (
+                                                        <div className="project-milestones__card-progress">
+                                                            <div className="project-milestones__card-progress-label">
+                                                                <span>{t('projectMilestones.timeline.progress')}</span>
+                                                                <span className={progress === 100 ? 'is-complete' : ''}>{progress}%</span>
                                                             </div>
-                                                            <div className="h-2 bg-surface-hover rounded-full overflow-hidden">
+                                                            <div className="project-milestones__card-progress-track">
                                                                 <div
-                                                                    className={`h-full rounded-full transition-all duration-1000 ease-out ${isDone ? 'bg-emerald-500' : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`}
-                                                                    style={{ width: `${finalPct}%` }}
+                                                                    className="project-milestones__card-progress-fill"
+                                                                    style={{ width: `${progress}%` }}
+                                                                    data-complete={progress === 100 ? 'true' : 'false'}
                                                                 />
                                                             </div>
                                                         </div>
-                                                    );
-                                                })()}
+                                                    )}
 
-                                                {/* Actions Footer */}
-                                                <div className={`mt-4 pt-3 flex items-center gap-2 ${isLeft ? 'md:flex-row-reverse' : ''}`}>
-                                                    <Button
-                                                        size="sm"
-                                                        variant={isAchieved ? "outline" : "primary"}
-                                                        className={isAchieved ? "border-emerald-200 text-emerald-600 hover:bg-emerald-50" : ""}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleStatusToggle(milestone);
-                                                        }}
-                                                    >
-                                                        {isAchieved ? 'Mark Incomplete' : 'Achieve Milestone'}
-                                                    </Button>
-                                                    <div className="flex-1" />
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleEdit(milestone);
-                                                        }}
-                                                        className="p-1.5 text-muted hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
-                                                        title="Edit"
-                                                    >
-                                                        <span className="material-symbols-outlined text-[18px]">edit</span>
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleDelete(milestone);
-                                                        }}
-                                                        className="p-1.5 text-muted hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg transition-colors"
-                                                        title="Delete"
-                                                    >
-                                                        <span className="material-symbols-outlined text-[18px]">delete</span>
-                                                    </button>
+                                                    <div className="project-milestones__card-actions">
+                                                        <Button
+                                                            size="sm"
+                                                            variant={isAchieved ? 'secondary' : 'primary'}
+                                                            className="project-milestones__status-button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleStatusToggle(milestone);
+                                                            }}
+                                                        >
+                                                            {isAchieved ? t('projectMilestones.actions.markIncomplete') : t('projectMilestones.actions.achieve')}
+                                                        </Button>
+                                                        <div className="project-milestones__icon-actions">
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                className="project-milestones__icon-button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleEdit(milestone);
+                                                                }}
+                                                                aria-label={t('projectMilestones.actions.edit')}
+                                                            >
+                                                                <span className="material-symbols-outlined">edit</span>
+                                                            </Button>
+                                                            <Button
+                                                                size="icon"
+                                                                variant="ghost"
+                                                                className="project-milestones__icon-button project-milestones__icon-button--danger"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleDelete(milestone);
+                                                                }}
+                                                                aria-label={t('projectMilestones.actions.delete')}
+                                                            >
+                                                                <span className="material-symbols-outlined">delete</span>
+                                                            </Button>
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
-
-                                            {/* Status Stripe */}
-                                            <div className={`absolute left-0 top-0 bottom-0 w-1 ${isAchieved ? 'bg-emerald-500' : isNextUp ? 'bg-indigo-500' :
-                                                calculatedRisk === 'High' ? 'bg-red-500' :
-                                                    calculatedRisk === 'Medium' ? 'bg-orange-500' :
-                                                        'bg-transparent'
-                                                }`} />
+                                            <span className="project-milestones__card-accent" data-status={milestone.status.toLowerCase()} data-risk={riskLevel.toLowerCase()} />
                                         </Card>
                                     </div>
                                 </div>
                             );
-                        })
-                    )}
-                </div>
-            </div >
+                        })}
+                    </div>
+                )}
+            </section>
 
             <MilestoneModal
                 projectId={projectId}
@@ -547,15 +474,15 @@ export const ProjectMilestones = () => {
                     setViewingMilestone(undefined);
                 }}
                 milestone={viewingMilestone}
-                onEdit={(m) => {
-                    setEditingMilestone(m);
-                    setIsDetailModalOpen(false); // Close detail first
-                    setTimeout(() => setIsModalOpen(true), 100); // Slight delay for smooth transition
+                onEdit={(milestoneToEdit) => {
+                    setEditingMilestone(milestoneToEdit);
+                    setIsDetailModalOpen(false);
+                    setTimeout(() => setIsModalOpen(true), 100);
                 }}
                 taskStatusLookup={taskStatusLookup}
                 subtaskLookup={subtaskLookup}
                 ideaLookup={ideaLookup}
             />
-        </div >
+        </div>
     );
 };

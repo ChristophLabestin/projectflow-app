@@ -1,69 +1,64 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { collectionGroup, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import { format } from 'date-fns';
 import { Milestone } from '../../types';
-import { createMilestone, updateMilestone, projectSubCollection } from '../../services/dataService';
+import { createMilestone, updateMilestone } from '../../services/dataService';
 import { db } from '../../services/firebase';
-import { getDocs, query, where, doc, updateDoc, collection } from 'firebase/firestore';
+import { Modal } from '../common/Modal/Modal';
+import { Button } from '../common/Button/Button';
+import { TextInput } from '../common/Input/TextInput';
+import { TextArea } from '../common/Input/TextArea';
+import { Select, type SelectOption } from '../common/Select/Select';
+import { Checkbox } from '../common/Checkbox/Checkbox';
+import { DatePicker } from '../common/DateTime/DatePicker';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface MilestoneModalProps {
     projectId: string;
     isOpen: boolean;
     onClose: () => void;
-    milestone?: Milestone; // If provided, we are in edit mode
+    milestone?: Milestone;
 }
 
 export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: MilestoneModalProps) => {
+    const { t } = useLanguage();
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [dueDate, setDueDate] = useState('');
     const [status, setStatus] = useState<'Pending' | 'Achieved' | 'Missed'>('Pending');
     const [linkedTaskIds, setLinkedTaskIds] = useState<string[]>([]);
     const [linkedInitiativeId, setLinkedInitiativeId] = useState<string>('');
-
     const [availableTasks, setAvailableTasks] = useState<any[]>([]);
     const [availableInitiatives, setAvailableInitiatives] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+
+    const initiativeOptions = useMemo<SelectOption[]>(() => ([
+        { value: '', label: t('projectMilestones.modal.fields.initiativeNone') },
+        ...availableInitiatives.map(idea => ({ value: idea.id, label: idea.title }))
+    ]), [availableInitiatives, t]);
+
+    const statusOptions = useMemo<SelectOption[]>(() => ([
+        { value: 'Pending', label: t('projectMilestones.status.pending') },
+        { value: 'Achieved', label: t('projectMilestones.status.achieved') },
+        { value: 'Missed', label: t('projectMilestones.status.missed') }
+    ]), [t]);
 
     useEffect(() => {
         const fetchData = async () => {
             if (!projectId) return;
 
-            // Fetch Tasks
-            // Assuming tasks are in a subcollection of the project (via dataService helper)
-            // or we can just use the projectSubCollection helper
             try {
-                // We need to resolve tenantId. For now, assuming current user's tenant context or passed prop.
-                // dataService usually handles resolution internally, but here we need direct access. 
-                // Let's rely on dataService helpers if possible, or direct query if we have tenantId.
-                // Actually, projectSubCollection requires tenantId. Milestones are fetching successfully?
-                // Wait, createMilestone uses projectSubCollection(resolvedTenant...).
-                // We don't have tenantId prop here. We might need to fetch it or rely on existing auth.
-                // Let's use a simpler approach: get tasks via dataService if possible, or standard fetch.
-                // Re-checking dataService... it has `subscribeProjectMilestones`.
-                // Let's just use `collection(db, 'tenants', ..., 'projects', projectId, ...)` but we don't have tenantId easily.
-                // Alternative: The parent component likely passes projectId.
-                // IMPORTANT: The existing `createMilestone` resolves tenantId internally.
-                // We cannot use `projectSubCollection` easily here without tenantId.
-                // However, we can use `collectionGroup` but that's broad.
-                // Let's assume we can pass tenantId or use a workaround.
-                // Actually, let's look at `createMilestone` again. It calls `resolveTenantId(tenantId)`.
-                // We can import `resolveTenantId` from dataService? No it is not exported.
-                // Let's try to fetch using `collectionGroup` filtered by projectId for now, as it is safest without tenantId.
-
-                const tasksQuery = query(collection(db, 'tasks'), where('projectId', '==', projectId));
-                // Actually, tasks are subcollections. CollectionGroup is better.
                 const tasksRef = collectionGroup(db, 'tasks');
                 const qTasks = query(tasksRef, where('projectId', '==', projectId));
                 const tasksSnap = await getDocs(qTasks);
-                setAvailableTasks(tasksSnap.docs.map(d => ({ id: d.id, ...d.data() })));
+                setAvailableTasks(tasksSnap.docs.map(d => ({ id: d.id, ...d.data(), ref: d.ref })));
 
-                // Fetch Initiatives (Ideas)
                 const ideasRef = collectionGroup(db, 'ideas');
-                const qIdeas = query(ideasRef, where('projectId', '==', projectId)); // Initiatives might be Ideas
+                const qIdeas = query(ideasRef, where('projectId', '==', projectId));
                 const ideasSnap = await getDocs(qIdeas);
                 setAvailableInitiatives(ideasSnap.docs.map(d => ({ id: d.id, ...d.data() })));
-
             } catch (e) {
-                console.error("Error fetching dependencies", e);
+                console.error('Error fetching dependencies', e);
             }
         };
 
@@ -76,76 +71,46 @@ export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: Milest
                 setStatus(milestone.status);
                 setLinkedTaskIds(milestone.linkedTaskIds || []);
                 setLinkedInitiativeId(milestone.linkedInitiativeId || '');
-
             } else {
-                // Reset for create mode
                 setTitle('');
                 setDescription('');
                 setDueDate('');
                 setStatus('Pending');
                 setLinkedTaskIds([]);
                 setLinkedInitiativeId('');
-
             }
         }
     }, [isOpen, milestone, projectId]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSave = async () => {
         setLoading(true);
 
         try {
+            const payload = {
+                title,
+                description,
+                dueDate,
+                status,
+                linkedTaskIds,
+                linkedInitiativeId
+            };
+
             if (milestone) {
-                await updateMilestone(projectId, milestone.id, {
-                    title,
-                    description,
-                    dueDate,
-                    status,
-                    linkedTaskIds,
-                    linkedInitiativeId
-                });
+                await updateMilestone(projectId, milestone.id, payload);
             } else {
-                await createMilestone(projectId, {
-                    title,
-                    description,
-                    dueDate,
-                    status,
-                    linkedTaskIds,
-                    linkedInitiativeId
-                });
+                await createMilestone(projectId, payload);
             }
 
-            // Post-save: Update Linked Tasks Due Date Logic
             if (dueDate && linkedTaskIds.length > 0) {
-                // We need to iterate and update. 
-                // Optimized: We fetched availableTasks earlier. We can check them.
-                // However, getting the task ref to update requires knowing its path or using general update mechanism.
-                // Since we used collectionGroup to fetch, we have the docs. We can use their refs if we stored them, or re-query.
-                // Simplest: re-query to get refs or just use dataService `updateTaskFields` if we can make it public or similar.
-                // `updateDoc` takes a DocumentReference. 
-                // Let's use the local `availableTasks` to find the ones we need to update, 
-                // BUT we need their actual references. `availableTasks` maps only data/id usually.
-                // Let's re-fetch the specific docs to get refs, or just use the IDs and `findTaskDoc` equivalent logic?
-                // Wait, I can't easily get the ref without path.
-                // But I used `collectionGroup` which returns QueryDocumentSnapshot, which has `.ref`!
-                // Let's store the full docs in state or re-fetch properly.
-
-                // Better: Fetch them again to be safe and get refs.
                 const tasksRef = collectionGroup(db, 'tasks');
-                const qTasks = query(tasksRef, where('projectId', '==', projectId), where('id', 'in', linkedTaskIds)); // 'id' field check might be redundant if documentId is used, but safe for custom id field.
-                // Firestore 'in' has limit 10. `linkedTaskIds` might be large?
-                // Let's simpler: Loop availableTasks (which we should store with refs maybe? no, state serialization issues).
-
-                // Let's just fetch all project tasks again and filter.
                 const allTasksQ = query(tasksRef, where('projectId', '==', projectId));
                 const allTasksSnap = await getDocs(allTasksQ);
 
-                const batchUpdates = [];
+                const batchUpdates: Promise<void>[] = [];
                 allTasksSnap.forEach(docSnap => {
                     if (linkedTaskIds.includes(docSnap.id)) {
                         const taskData = docSnap.data();
                         if (!taskData.dueDate) {
-                            // Task has no due date, update it!
                             batchUpdates.push(updateDoc(docSnap.ref, { dueDate }));
                         }
                     }
@@ -165,140 +130,93 @@ export const MilestoneModal = ({ projectId, isOpen, onClose, milestone }: Milest
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-card rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-fade-up ring-1 ring-white/10">
-                <div className="px-6 py-4 border-b border-surface flex items-center justify-between bg-surface-hover/30">
-                    <h2 className="text-lg font-bold text-main">
-                        {milestone ? 'Edit Milestone' : 'New Milestone'}
-                    </h2>
-                    <button
-                        onClick={onClose}
-                        className="text-muted hover:text-main transition-colors"
+        <Modal
+            isOpen={isOpen}
+            onClose={onClose}
+            title={milestone ? t('projectMilestones.modal.title.edit') : t('projectMilestones.modal.title.new')}
+            size="md"
+            footer={(
+                <>
+                    <Button variant="ghost" onClick={onClose} disabled={loading}>
+                        {t('projectMilestones.modal.actions.cancel')}
+                    </Button>
+                    <Button
+                        variant="primary"
+                        onClick={handleSave}
+                        isLoading={loading}
+                        disabled={!title || loading}
                     >
-                        <span className="material-symbols-outlined">close</span>
-                    </button>
-                </div>
+                        {milestone ? t('projectMilestones.modal.actions.update') : t('projectMilestones.modal.actions.create')}
+                    </Button>
+                </>
+            )}
+        >
+            <div className="milestone-modal">
+                <div className="milestone-modal__form">
+                    <TextInput
+                        label={t('projectMilestones.modal.fields.title')}
+                        placeholder={t('projectMilestones.modal.fields.titlePlaceholder')}
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        autoFocus
+                    />
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-subtle mb-1">
-                            Title
-                        </label>
-                        <input
-                            type="text"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            className="w-full px-3 py-2 bg-surface border border-surface rounded-lg text-main focus:ring-2 focus:ring-primary outline-none transition-all"
-                            placeholder="e.g. MVP Release"
-                            required
-                        />
-                    </div>
+                    <TextArea
+                        label={t('projectMilestones.modal.fields.description')}
+                        placeholder={t('projectMilestones.modal.fields.descriptionPlaceholder')}
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        rows={4}
+                    />
 
-                    <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-subtle mb-1">
-                            Description
-                        </label>
-                        <textarea
-                            value={description}
-                            onChange={(e) => setDescription(e.target.value)}
-                            className="w-full px-3 py-2 bg-surface border border-surface rounded-lg text-main focus:ring-2 focus:ring-primary outline-none transition-all resize-none h-24"
-                            placeholder="Optional description..."
-                        />
-                    </div>
+                    <DatePicker
+                        label={t('projectMilestones.modal.fields.dueDate')}
+                        value={dueDate ? new Date(dueDate) : null}
+                        onChange={(date) => setDueDate(date ? format(date, 'yyyy-MM-dd') : '')}
+                    />
 
-                    <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-subtle mb-1">
-                            Due Date
-                        </label>
-                        <input
-                            type="date"
-                            value={dueDate}
-                            onChange={(e) => setDueDate(e.target.value)}
-                            className="w-full px-3 py-2 bg-surface border border-surface rounded-lg text-main focus:ring-2 focus:ring-primary outline-none transition-all"
-                        />
-                    </div>
+                    <Select
+                        label={t('projectMilestones.modal.fields.initiative')}
+                        value={linkedInitiativeId}
+                        onChange={(value) => setLinkedInitiativeId(String(value))}
+                        options={initiativeOptions}
+                        className="milestone-modal__select"
+                    />
 
-                    <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-subtle mb-1">
-                            Link Initiative
-                        </label>
-                        <select
-                            value={linkedInitiativeId}
-                            onChange={(e) => setLinkedInitiativeId(e.target.value)}
-                            className="w-full px-3 py-2 bg-surface border border-surface rounded-lg text-main focus:ring-2 focus:ring-primary outline-none transition-all"
-                        >
-                            <option value="">No Initiative Linked</option>
-                            {availableInitiatives.map(idea => (
-                                <option key={idea.id} value={idea.id}>{idea.title}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-subtle mb-1">
-                            Link Tasks (Updates Due Date)
-                        </label>
-                        <div className="max-h-32 overflow-y-auto border border-surface rounded-lg bg-surface p-2 space-y-1">
-                            {availableTasks.length === 0 && <p className="text-xs text-muted">No tasks found.</p>}
+                    <div className="milestone-modal__tasks">
+                        <div className="milestone-modal__tasks-header">
+                            <span>{t('projectMilestones.modal.fields.tasks')}</span>
+                            <span className="milestone-modal__tasks-hint">{t('projectMilestones.modal.fields.tasksHint')}</span>
+                        </div>
+                        <div className="milestone-modal__tasks-list">
+                            {availableTasks.length === 0 && (
+                                <p className="milestone-modal__tasks-empty">{t('projectMilestones.modal.fields.tasksEmpty')}</p>
+                            )}
                             {availableTasks.map(task => (
-                                <label key={task.id} className="flex items-center gap-2 p-1 hover:bg-surface-hover rounded cursor-pointer">
-                                    <input
-                                        type="checkbox"
-                                        checked={linkedTaskIds.includes(task.id)}
-                                        onChange={(e) => {
-                                            if (e.target.checked) setLinkedTaskIds([...linkedTaskIds, task.id]);
-                                            else setLinkedTaskIds(linkedTaskIds.filter(id => id !== task.id));
-                                        }}
-                                        className="rounded border-surface bg-transparent text-primary"
-                                    />
-                                    <span className="text-sm truncate text-main">{task.title}</span>
-                                </label>
+                                <Checkbox
+                                    key={task.id}
+                                    checked={linkedTaskIds.includes(task.id)}
+                                    onChange={(e) => {
+                                        if (e.target.checked) setLinkedTaskIds([...linkedTaskIds, task.id]);
+                                        else setLinkedTaskIds(linkedTaskIds.filter(id => id !== task.id));
+                                    }}
+                                    label={<span className="milestone-modal__task-title">{task.title}</span>}
+                                />
                             ))}
                         </div>
                     </div>
 
                     {milestone && (
-                        <div>
-                            <label className="block text-xs font-bold uppercase tracking-wider text-subtle mb-1">
-                                Status
-                            </label>
-                            <div className="flex bg-surface border border-surface rounded-lg p-1">
-                                {(['Pending', 'Achieved', 'Missed'] as const).map((s) => (
-                                    <button
-                                        key={s}
-                                        type="button"
-                                        onClick={() => setStatus(s)}
-                                        className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${status === s
-                                            ? 'bg-card text-main shadow-sm'
-                                            : 'text-muted hover:text-main'
-                                            }`}
-                                    >
-                                        {s}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+                        <Select
+                            label={t('projectMilestones.modal.fields.status')}
+                            value={status}
+                            onChange={(value) => setStatus(value as 'Pending' | 'Achieved' | 'Missed')}
+                            options={statusOptions}
+                            className="milestone-modal__select"
+                        />
                     )}
-
-                    <div className="pt-4 flex justify-end gap-3">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-4 py-2 text-sm font-medium text-muted hover:text-main transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="px-4 py-2 bg-primary text-on-primary rounded-lg text-sm font-bold shadow-md hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center gap-2"
-                        >
-                            {loading && <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>}
-                            {milestone ? 'Update' : 'Create'}
-                        </button>
-                    </div>
-                </form>
+                </div>
             </div>
-        </div>
+        </Modal>
     );
 };

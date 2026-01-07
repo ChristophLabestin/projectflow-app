@@ -85,7 +85,7 @@ Note: In the old routing, `ideas` reused the same components as `flows`.
 
 ### 3.5 Milestones & Sprints
 
-- [ ] `/project/:id/milestones` — Milestones overview
+- [x] `/project/:id/milestones` - Milestones overview (SCSS refactor, common components + i18n)
 - [ ] `/project/:id/sprints` — Sprints (module-gated: `sprints`)
 
 ---
