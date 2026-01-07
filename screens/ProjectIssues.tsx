@@ -1,15 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { subscribeProjectIssues, getProjectById, createIssue, subscribeTenantUsers, deleteIssue } from '../services/dataService';
+import { subscribeProjectIssues, getProjectById, subscribeTenantUsers, deleteIssue } from '../services/dataService';
 import { subscribeProjectGroups } from '../services/projectGroupService';
 import { Issue, Project, Member, ProjectGroup } from '../types';
-import { auth } from '../services/firebase';
-import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Textarea } from '../components/ui/Textarea';
-import { Select } from '../components/ui/Select';
-import { MultiAssigneeSelector } from '../components/MultiAssigneeSelector';
+import { Button } from '../components/common/Button/Button';
+import { Badge } from '../components/common/Badge/Badge';
+import { TextInput } from '../components/common/Input/TextInput';
+import { CreateIssueModal } from '../components/CreateIssueModal';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
 import { toMillis } from '../utils/time';
 import { useConfirm } from '../context/UIContext';
@@ -18,6 +15,7 @@ import { OnboardingOverlay, OnboardingStep } from '../components/onboarding/Onbo
 import { useOnboardingTour } from '../components/onboarding/useOnboardingTour';
 import { format } from 'date-fns';
 import { useLanguage } from '../context/LanguageContext';
+import { useArrowReplacement } from '../hooks/useArrowReplacement';
 
 export const ProjectIssues = () => {
     const { id } = useParams<{ id: string }>();
@@ -50,18 +48,10 @@ export const ProjectIssues = () => {
         All: t('projectIssues.filters.all')
     }), [t]);
 
-    // Modal State
+    const handleSearchChange = useArrowReplacement((e) => setSearch(e.target.value));
+
     const [showNewIssueModal, setShowNewIssueModal] = useState(false);
 
-    // New Issue Form State
-    const [newIssueTitle, setNewIssueTitle] = useState('');
-    const [newIssueDescription, setNewIssueDescription] = useState('');
-    const [newIssuePriority, setNewIssuePriority] = useState<Issue['priority']>('Medium');
-    const [newIssueAssigneeIds, setNewIssueAssigneeIds] = useState<string[]>([]);
-    const [newIssueGroupIds, setNewIssueGroupIds] = useState<string[]>([]);
-    const [submitting, setSubmitting] = useState(false);
-
-    const user = auth.currentUser;
     const { can } = useProjectPermissions(project);
 
     useEffect(() => {
@@ -107,28 +97,6 @@ export const ProjectIssues = () => {
         };
     }, [id]);
 
-    const handleCreateIssue = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!user || !id || !project || !newIssueTitle.trim()) return;
-
-        setSubmitting(true);
-        try {
-            await createIssue(id, {
-                title: newIssueTitle.trim(),
-                description: newIssueDescription.trim(),
-                priority: newIssuePriority,
-                assigneeIds: newIssueAssigneeIds,
-                assignedGroupIds: newIssueGroupIds,
-            }, project.tenantId);
-            setShowNewIssueModal(false);
-            resetForm();
-        } catch (error) {
-            console.error("Error creating issue:", error);
-        } finally {
-            setSubmitting(false);
-        }
-    };
-
     const handleDelete = async (issueId: string) => {
         if (!can('canManageTasks')) return; // Assuming managing issues falls under managing tasks or similar
         if (!await confirm(t('projectIssues.confirm.delete.title'), t('projectIssues.confirm.delete.body'))) return;
@@ -138,14 +106,6 @@ export const ProjectIssues = () => {
             console.error("Failed to delete issue:", e);
         }
     };
-
-    const resetForm = () => {
-        setNewIssueTitle('');
-        setNewIssueDescription('');
-        setNewIssuePriority('Medium');
-        setNewIssueAssigneeIds([]);
-        setNewIssueGroupIds([]);
-    }
 
     const filteredIssues = useMemo(() => {
         return issues.filter(i => {
@@ -209,96 +169,80 @@ export const ProjectIssues = () => {
 
     const IssueCard = ({ issue }: { issue: Issue }) => {
         const isClosed = issue.status === 'Closed' || issue.status === 'Resolved';
-        const priorityLabel = issue.priority ? (priorityLabels[issue.priority] || issue.priority) : '';
-        const statusLabel = issue.status ? (statusLabels[issue.status] || issue.status) : t('projectIssues.status.unknown');
+        const priorityValue = issue.priority || 'Medium';
+        const priorityLabel = priorityLabels[priorityValue] || priorityValue;
+        const statusValue = issue.status || 'Open';
+        const statusLabel = statusLabels[statusValue] || t('projectIssues.status.unknown');
+        const statusKey = statusValue.toLowerCase().replace(' ', '-');
+        const priorityKey = priorityValue.toLowerCase();
+        const createdLabel = issue.createdAt
+            ? format(new Date(toMillis(issue.createdAt)), dateFormat, { locale: dateLocale })
+            : '-';
 
         return (
             <div
                 onClick={() => navigate(`/project/${id}/issues/${issue.id}`)}
-                className={`
-                    group relative flex flex-col md:flex-row md:items-center gap-4 p-5 rounded-[24px] border transition-all duration-300 cursor-pointer
-                    ${isClosed
-                        ? 'bg-slate-50/50 dark:bg-white/[0.01] border-slate-100 dark:border-white/5 opacity-80'
-                        : 'bg-white dark:bg-white/[0.03] border-black/5 dark:border-white/5 hover:border-primary/30 hover:shadow-xl hover:shadow-black/5 hover:-translate-y-0.5'
-                    }
-                `}
+                className={`issue-card ${isClosed ? 'issue-card--closed' : ''}`}
             >
-                {/* Left: Status & Main Info */}
-                <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className={`
-                        flex-shrink-0 size-10 rounded-xl border flex items-center justify-center transition-all duration-300
-                        ${isClosed
-                            ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
-                            : issue.priority === 'Urgent' ? 'bg-rose-500/10 border-rose-500/20 text-rose-500 animate-pulse'
-                                : 'bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/10 text-muted'}
-                    `}>
-                        <span className="material-symbols-outlined text-[20px]">
+                <div className="issue-card__main">
+                    <div className={`issue-card__status-icon issue-card__status-icon--${statusKey} ${isClosed ? 'is-closed' : ''}`}>
+                        <span className="material-symbols-outlined">
                             {isClosed ? 'check_circle' : 'bug_report'}
                         </span>
                     </div>
 
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center flex-wrap gap-2 mb-2">
-                            <span className="text-xs font-mono font-bold text-muted opacity-60">
-                                #{issue.id.slice(0, 4).toUpperCase()}
-                            </span>
-                            <h4 className={`text-lg font-bold truncate transition-all duration-300 ${isClosed ? 'text-muted line-through' : 'text-main group-hover:text-primary'}`}>
+                    <div className="issue-card__content">
+                        <div className="issue-card__title-row">
+                            <span className="issue-card__id">#{issue.id.slice(0, 4).toUpperCase()}</span>
+                            <h4 className={`issue-card__title ${isClosed ? 'is-closed' : ''}`}>
                                 {issue.title}
                             </h4>
                             {issue.priority && (
-                                <div className={`
-                                    flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border
-                                    ${issue.priority === 'Urgent' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
-                                        issue.priority === 'High' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                                            issue.priority === 'Medium' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                                'bg-slate-500/10 text-slate-500 border-slate-500/20'}
-                                `}>
-                                    <span className="material-symbols-outlined text-[14px]">
-                                        {issue.priority === 'Urgent' ? 'error' :
-                                            issue.priority === 'High' ? 'keyboard_double_arrow_up' :
-                                                issue.priority === 'Medium' ? 'drag_handle' :
+                                <Badge
+                                    variant="neutral"
+                                    className={`issue-card__badge issue-card__badge--priority issue-card__badge--${priorityKey}`}
+                                >
+                                    <span className="material-symbols-outlined">
+                                        {priorityValue === 'Urgent' ? 'error' :
+                                            priorityValue === 'High' ? 'keyboard_double_arrow_up' :
+                                                priorityValue === 'Medium' ? 'drag_handle' :
                                                     'keyboard_arrow_down'}
                                     </span>
                                     {priorityLabel}
-                                </div>
+                                </Badge>
                             )}
                         </div>
 
-                        <div className="flex flex-wrap items-center gap-4 mb-1">
-                            {/* Status Pill */}
-                            <div className={`
-                                flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-[0.15em] border transition-all duration-300
-                                ${issue.status === 'Resolved' || issue.status === 'Closed' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' :
-                                    issue.status === 'In Progress' ? 'bg-blue-600/15 text-blue-400 border-blue-500/40 shadow-[0_0_12px_rgba(59,130,246,0.2)]' :
-                                        issue.status === 'Open' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
-                                            'bg-slate-500/5 text-slate-400 border-slate-500/10'}
-                            `}>
-                                <span className="material-symbols-outlined text-[13px]">
-                                    {issue.status === 'Resolved' || issue.status === 'Closed' ? 'check_circle' :
-                                        issue.status === 'In Progress' ? 'sync' :
-                                            issue.status === 'Open' ? 'error_outline' :
+                        <div className="issue-card__meta">
+                            <Badge
+                                variant="neutral"
+                                className={`issue-card__badge issue-card__badge--status issue-card__badge--${statusKey}`}
+                            >
+                                <span className="material-symbols-outlined">
+                                    {statusValue === 'Resolved' || statusValue === 'Closed' ? 'check_circle' :
+                                        statusValue === 'In Progress' ? 'sync' :
+                                            statusValue === 'Open' ? 'error_outline' :
                                                 'circle'}
                                 </span>
                                 {statusLabel}
+                            </Badge>
+
+                            <div className="issue-card__date">
+                                <span className="material-symbols-outlined">calendar_today</span>
+                                {createdLabel}
                             </div>
 
-                            {/* Date */}
-                            <div className="flex items-center gap-1 text-[11px] font-bold text-muted opacity-70">
-                                <span className="material-symbols-outlined text-[14px]">calendar_today</span>
-                                {format(new Date(toMillis(issue.createdAt)), dateFormat, { locale: dateLocale })}
-                            </div>
-
-                            {/* Assignees */}
                             {(issue.assignedGroupIds?.length > 0 || issue.assigneeIds?.length > 0) && (
-                                <div className="flex -space-x-1.5 overflow-hidden py-1 pl-2 border-l border-black/5 dark:border-white/5">
+                                <div className="issue-card__assignees">
                                     {(issue.assigneeIds || []).slice(0, 3).map(uid => {
                                         const member = allUsers.find(u => u.uid === uid || (u as any).id === uid);
                                         return (
                                             <img
                                                 key={uid}
                                                 src={member?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'}
-                                                className="size-6 rounded-full ring-2 ring-white dark:ring-[#1E1E1E]"
+                                                className="issue-card__avatar"
                                                 title={member?.displayName || t('projectIssues.assignee.unknown')}
+                                                alt=""
                                             />
                                         );
                                     })}
@@ -308,7 +252,7 @@ export const ProjectIssues = () => {
                                         return (
                                             <div
                                                 key={gid}
-                                                className="size-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-[#1E1E1E]"
+                                                className="issue-card__group"
                                                 style={{ backgroundColor: group.color }}
                                                 title={t('projectIssues.groupLabel').replace('{name}', group.name)}
                                             >
@@ -322,18 +266,19 @@ export const ProjectIssues = () => {
                     </div>
                 </div>
 
-                {/* Right Actions */}
-                <div className="flex flex-col md:flex-row items-center gap-4 md:pl-6 md:border-l border-black/5 dark:border-white/5">
+                <div className="issue-card__actions">
                     {can('canManageTasks') && (
                         <button
+                            type="button"
                             onClick={(e) => { e.stopPropagation(); handleDelete(issue.id); }}
-                            className="size-10 rounded-xl bg-slate-100 dark:bg-white/5 text-rose-500 hover:bg-rose-500 hover:text-white transition-all duration-300 opacity-0 group-hover:opacity-100 flex items-center justify-center shrink-0"
+                            className="issue-card__action issue-card__action--delete"
                             title={t('projectIssues.actions.delete')}
                         >
-                            <span className="material-symbols-outlined text-xl">delete</span>
+                            <span className="material-symbols-outlined">delete</span>
                         </button>
                     )}
                     <button
+                        type="button"
                         onClick={(e) => {
                             e.stopPropagation();
                             if (isPinned(issue.id)) {
@@ -351,19 +296,15 @@ export const ProjectIssues = () => {
                             e.preventDefault();
                             setFocusItem(focusItemId === issue.id ? null : issue.id);
                         }}
-                        className={`
-                            size-10 rounded-xl flex items-center justify-center transition-all duration-300 shrink-0
-                            bg-slate-100 dark:bg-white/5
-                            ${isPinned(issue.id) ? 'opacity-100 text-primary' : 'opacity-0 group-hover:opacity-100 text-muted shadow-sm'}
-                        `}
+                        className={`issue-card__action issue-card__action--pin ${isPinned(issue.id) ? 'is-pinned' : 'is-unpinned'}`}
                         title={isPinned(issue.id) ? t('projectIssues.actions.unpinTitle') : t('projectIssues.actions.pinTitle')}
                     >
-                        <span className={`material-symbols-outlined text-xl transition-colors duration-300 ${focusItemId === issue.id ? 'text-amber-500' : ''}`}>
+                        <span className={`material-symbols-outlined ${focusItemId === issue.id ? 'issue-card__action-icon--focused' : ''}`}>
                             push_pin
                         </span>
                     </button>
-                    <div className="size-10 rounded-xl bg-slate-100 dark:bg-white/5 flex items-center justify-center text-main transition-all duration-300 group-hover:bg-primary group-hover:text-on-primary group-hover:translate-x-1 shrink-0">
-                        <span className="material-symbols-outlined text-xl">east</span>
+                    <div className="issue-card__action issue-card__action--arrow" aria-hidden="true">
+                        <span className="material-symbols-outlined">east</span>
                     </div>
                 </div>
             </div>
@@ -371,57 +312,57 @@ export const ProjectIssues = () => {
     };
 
     if (loading) return (
-        <div className="flex items-center justify-center p-12">
-            <span className="material-symbols-outlined text-subtle animate-spin text-3xl">rotate_right</span>
+        <div className="issues-loading">
+            <span className="material-symbols-outlined issues-loading__icon">rotate_right</span>
         </div>
     );
 
     return (
         <>
-            <div className="flex flex-col gap-8 fade-in max-w-6xl mx-auto pb-20 px-4 md:px-0">
-                {/* Premium Header */}
-                <div data-onboarding-id="project-issues-header" className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-2">
+            <div className="project-issues-container">
+                <div data-onboarding-id="project-issues-header" className="issues-header">
                     <div>
-                        <h1 className="text-4xl font-black text-main tracking-tight mb-2">
-                            {t('projectIssues.header.title')} <span className="text-primary">{t('projectIssues.header.titleEmphasis')}</span>
+                        <h1>
+                            {t('projectIssues.header.title')} <span>{t('projectIssues.header.titleEmphasis')}</span>
                         </h1>
-                        <p className="text-muted text-lg font-medium opacity-80">
+                        <p className="issues-header__subtitle">
                             {project?.name
                                 ? t('projectIssues.header.subtitleWithProject').replace('{project}', project.name)
                                 : t('projectIssues.header.subtitleFallback')}
                         </p>
                     </div>
-                    <Button
-                        onClick={() => setShowNewIssueModal(true)}
-                        icon={<span className="material-symbols-outlined font-bold">bug_report</span>}
-                        variant="primary"
-                        size="lg"
-                        className="shadow-2xl shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all px-8 py-4 rounded-2xl"
-                    >
-                        {t('projectIssues.actions.reportIssue')}
-                    </Button>
+                    {can('canManageTasks') && (
+                        <Button
+                            onClick={() => setShowNewIssueModal(true)}
+                            icon={<span className="material-symbols-outlined">bug_report</span>}
+                            variant="primary"
+                            size="lg"
+                            className="issues-header__action"
+                        >
+                            {t('projectIssues.actions.reportIssue')}
+                        </Button>
+                    )}
                 </div>
 
-                {/* Stats Row */}
-                <div data-onboarding-id="project-issues-stats" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div data-onboarding-id="project-issues-stats" className="issues-stats-grid">
                     {[
                         { label: t('projectIssues.stats.active'), val: stats.open + stats.inProgress, icon: 'bug_report', color: 'indigo' },
                         { label: t('projectIssues.stats.resolved'), val: stats.resolved, icon: 'check_circle', color: 'emerald', progress: stats.progress },
                         { label: t('projectIssues.stats.inProgress'), val: stats.inProgress, icon: 'sync', color: 'blue' },
                         { label: t('projectIssues.stats.urgent'), val: stats.urgent, icon: 'warning', color: 'rose' }
                     ].map((stat, idx) => (
-                        <div key={idx} className={`p-6 rounded-2xl bg-white dark:bg-white/[0.03] border border-${stat.color}-100 dark:border-${stat.color}-500/20 shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300`}>
-                            <div className="absolute -right-2 -top-2 p-4 opacity-[0.05] group-hover:opacity-[0.15] group-hover:scale-110 transition-all duration-500">
-                                <span className={`material-symbols-outlined text-8xl text-${stat.color}-500`}>{stat.icon}</span>
+                        <div key={idx} className={`stat-card variant-${stat.color}`}>
+                            <div className="bg-icon">
+                                <span className="material-symbols-outlined">{stat.icon}</span>
                             </div>
-                            <div className="relative z-10">
-                                <p className={`text-xs font-bold text-${stat.color}-600 dark:text-${stat.color}-400 uppercase tracking-[0.1em] mb-2`}>{stat.label}</p>
-                                <div className="flex items-baseline gap-3">
-                                    <p className="text-4xl font-black text-main">{stat.val}</p>
+                            <div className="content">
+                                <p className="label">{stat.label}</p>
+                                <div className="value-row">
+                                    <p className="value">{stat.val}</p>
                                     {stat.progress !== undefined && (
-                                        <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30">
+                                        <Badge variant="neutral" className="badge">
                                             {stat.progress}%
-                                        </span>
+                                        </Badge>
                                     )}
                                 </div>
                             </div>
@@ -429,63 +370,55 @@ export const ProjectIssues = () => {
                     ))}
                 </div>
 
-                {/* Interactive Controls Bar */}
-                <div data-onboarding-id="project-issues-controls" className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 sticky top-6 z-20">
-                    <div className="flex flex-wrap gap-2">
-                        <div className="flex bg-white/60 dark:bg-black/40 backdrop-blur-2xl p-1.5 rounded-2xl border border-white/20 dark:border-white/10 shadow-xl shadow-black/5 ring-1 ring-black/5">
+                <div data-onboarding-id="project-issues-controls" className="issues-controls-bar">
+                    <div className="issues-controls-group">
+                        <div className="control-group">
                             {(['Active', 'Resolved', 'All'] as const).map((f) => (
                                 <button
                                     key={f}
+                                    type="button"
                                     onClick={() => setFilter(f)}
-                                    className={`
-                                    relative flex-1 lg:flex-none px-6 py-2.5 rounded-xl text-sm font-bold transition-all capitalize z-10
-                                    ${filter === f
-                                            ? 'text-primary'
-                                            : 'text-muted hover:text-main'}
-                                `}
+                                    className={`control-btn ${filter === f ? 'active' : ''}`}
                                 >
-                                    {filter === f && (
-                                        <div className="absolute inset-0 bg-white dark:bg-white/10 rounded-xl shadow-sm z-[-1] fade-in" />
-                                    )}
                                     {filterLabels[f]}
                                 </button>
                             ))}
                         </div>
                     </div>
 
-                    <div className="relative group w-full lg:w-96 shadow-xl shadow-black/5">
-                        <input
-                            type="text"
+                    <div className="issues-search">
+                        <TextInput
                             value={search}
-                            onChange={(e) => setSearch(e.target.value)}
+                            onChange={handleSearchChange}
                             placeholder={t('projectIssues.search.placeholder')}
-                            className="w-full bg-white/60 dark:bg-black/40 backdrop-blur-2xl border-none ring-1 ring-black/5 dark:ring-white/10 focus:ring-2 focus:ring-primary rounded-2xl pl-12 pr-6 py-4 text-sm font-medium transition-all outline-none"
+                            className="issues-search__input"
+                            leftElement={<span className="material-symbols-outlined">search</span>}
                         />
-                        <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-muted group-focus-within:text-primary transition-colors">search</span>
                     </div>
                 </div>
 
-                {/* Issues List */}
-                <div data-onboarding-id="project-issues-list" className="flex flex-col gap-4 min-h-[400px]">
+                <div data-onboarding-id="project-issues-list" className="issues-list">
                     {filteredIssues.length === 0 ? (
-                        <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-white/30 dark:bg-white/[0.02] border-2 border-dashed border-black/5 dark:border-white/5 rounded-[32px] fade-in">
-                            <div className="size-24 bg-gradient-to-br from-rose-500/10 to-indigo-500/10 rounded-full flex items-center justify-center mb-6 ring-8 ring-indigo-500/5">
-                                <span className="material-symbols-outlined text-5xl text-rose-500 animate-pulse">bug_report</span>
+                        <div className="issues-empty">
+                            <div className="issues-empty__icon">
+                                <span className="material-symbols-outlined">bug_report</span>
                             </div>
-                            <h3 className="text-2xl font-bold text-main mb-2">{t('projectIssues.empty.title')}</h3>
-                            <p className="text-muted max-w-sm font-medium opacity-70">
+                            <h3 className="issues-empty__title">{t('projectIssues.empty.title')}</h3>
+                            <p className="issues-empty__description">
                                 {t('projectIssues.empty.description')}
                             </p>
-                            <Button
-                                variant="secondary"
-                                className="mt-8 rounded-xl px-10"
-                                onClick={() => setShowNewIssueModal(true)}
-                            >
-                                {t('projectIssues.actions.reportNew')}
-                            </Button>
+                            {can('canManageTasks') && (
+                                <Button
+                                    variant="secondary"
+                                    className="issues-empty__action"
+                                    onClick={() => setShowNewIssueModal(true)}
+                                >
+                                    {t('projectIssues.actions.reportNew')}
+                                </Button>
+                            )}
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 gap-3">
+                        <div className="issue-list-grid">
                             {filteredIssues.map(issue => (
                                 <IssueCard key={issue.id} issue={issue} />
                             ))}
@@ -493,72 +426,12 @@ export const ProjectIssues = () => {
                     )}
                 </div>
 
-                {/* Create Issue Modal */}
-                {showNewIssueModal && createPortal(
-                    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                        <div className="bg-card rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-surface animate-in fade-in zoom-in-95 duration-200">
-                            <div className="flex items-center justify-between mb-6">
-                                <h2 className="text-xl font-bold text-main">{t('projectIssues.modal.title')}</h2>
-                                <button onClick={() => setShowNewIssueModal(false)} className="text-muted hover:text-main transition-colors">
-                                    <span className="material-symbols-outlined">close</span>
-                                </button>
-                            </div>
-
-                            <form onSubmit={handleCreateIssue} className="space-y-5">
-                                <Input
-                                    label={t('projectIssues.modal.fields.title')}
-                                    value={newIssueTitle}
-                                    onChange={(e) => setNewIssueTitle(e.target.value)}
-                                    placeholder={t('projectIssues.modal.fields.titlePlaceholder')}
-                                    className="w-full"
-                                    required
-                                    autoFocus
-                                />
-
-                                <Textarea
-                                    label={t('projectIssues.modal.fields.description')}
-                                    value={newIssueDescription}
-                                    onChange={(e) => setNewIssueDescription(e.target.value)}
-                                    placeholder={t('projectIssues.modal.fields.descriptionPlaceholder')}
-                                    className="w-full min-h-[120px]"
-                                />
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Select
-                                        label={t('projectIssues.modal.fields.priority')}
-                                        value={newIssuePriority}
-                                        onChange={(e) => setNewIssuePriority(e.target.value as any)}
-                                        className="w-full"
-                                    >
-                                        <option value="Low">{t('tasks.priority.low')}</option>
-                                        <option value="Medium">{t('tasks.priority.medium')}</option>
-                                        <option value="High">{t('tasks.priority.high')}</option>
-                                        <option value="Urgent">{t('tasks.priority.urgent')}</option>
-                                    </Select>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-bold text-muted uppercase ml-1">{t('projectIssues.modal.fields.assignees')}</label>
-                                        <MultiAssigneeSelector
-                                            projectId={id!}
-                                            assigneeIds={newIssueAssigneeIds}
-                                            assignedGroupIds={newIssueGroupIds}
-                                            onChange={setNewIssueAssigneeIds}
-                                            onGroupChange={setNewIssueGroupIds}
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex justify-end gap-3 pt-4 mt-2">
-                                    <Button type="button" variant="ghost" onClick={() => setShowNewIssueModal(false)}>
-                                        {t('projectIssues.actions.cancel')}
-                                    </Button>
-                                    <Button type="submit" isLoading={submitting}>
-                                        {t('projectIssues.actions.reportIssue')}
-                                    </Button>
-                                </div>
-                            </form>
-                        </div>
-                    </div >,
-                    document.body
+                {showNewIssueModal && can('canManageTasks') && id && (
+                    <CreateIssueModal
+                        isOpen={showNewIssueModal}
+                        onClose={() => setShowNewIssueModal(false)}
+                        projectId={id}
+                    />
                 )}
             </div>
             <OnboardingOverlay

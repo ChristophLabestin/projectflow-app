@@ -80,7 +80,7 @@ Note: In the old routing, `ideas` reused the same components as `flows`.
 
 ### 3.4 Issues
 
-- [ ] `/project/:id/issues` — Issues list
+- [x] `/project/:id/issues` – Issues list (SCSS refactor, common components + issue modals aligned)
 - [ ] `/project/:id/issues/:issueId` — Issue detail
 
 ### 3.5 Milestones & Sprints
