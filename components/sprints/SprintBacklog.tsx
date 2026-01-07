@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { Task, Sprint } from '../../types';
-import { Button } from '../../components/ui/Button';
-import { useLanguage } from '../../context/LanguageContext';
+import React, { useMemo, useState } from 'react';
 import { format } from 'date-fns';
 import { DndContext, DragOverlay, useDraggable, useDroppable, DragEndEvent } from '@dnd-kit/core';
+import { Task, Sprint } from '../../types';
+import { Button } from '../../components/common/Button/Button';
+import { Badge } from '../../components/common/Badge/Badge';
+import { Card } from '../../components/common/Card/Card';
+import { useLanguage } from '../../context/LanguageContext';
 
-// Simplified Sprint Card for the list
 const SprintItem = ({ sprint, tasks, onStart, onDelete, onEdit, isDroppable = false }: {
     sprint: Sprint,
     tasks: Task[],
@@ -14,82 +15,98 @@ const SprintItem = ({ sprint, tasks, onStart, onDelete, onEdit, isDroppable = fa
     onEdit: (sprint: Sprint) => void,
     isDroppable?: boolean
 }) => {
-    const { t, dateFormat } = useLanguage();
+    const { t, dateFormat, dateLocale } = useLanguage();
     const { setNodeRef, isOver } = useDroppable({
         id: `sprint-${sprint.id}`,
         data: { type: 'sprint', sprintId: sprint.id }
     });
 
+    const statusLabels = useMemo(() => ({
+        Active: t('projectSprints.status.active'),
+        Planning: t('projectSprints.status.planning'),
+        Completed: t('projectSprints.status.completed')
+    }), [t]);
+
+    const statusVariant = sprint.status === 'Active' ? 'success' : sprint.status === 'Completed' ? 'neutral' : 'neutral';
     const isPlanning = sprint.status === 'Planning';
 
     return (
         <div
             ref={isDroppable ? setNodeRef : undefined}
-            className={`
-                flex flex-col gap-3 p-5 rounded-2xl border transition-all duration-300
-                ${isOver ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20 scale-[1.02] shadow-xl' : 'border-surface bg-surface hover:shadow-md'}
-            `}
+            className={`sprint-backlog__dropzone ${isOver ? 'is-over' : ''}`}
         >
-            <div className="flex items-start justify-between">
-                <div>
-                    <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-bold text-lg text-main">{sprint.name}</h3>
-                        <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${sprint.status === 'Active' ? 'bg-emerald-100/50 text-emerald-600 border-emerald-200' : 'bg-slate-100 text-slate-500 border-slate-200'}`}>
-                            {sprint.status}
-                        </span>
-                        {sprint.autoStart && sprint.status === 'Planning' && (
-                            <span className="flex items-center gap-1 text-[10px] font-bold text-amber-600 bg-amber-100/50 border border-amber-200 px-2 py-0.5 rounded-full" title="Will auto-start on start date">
-                                <span className="material-symbols-outlined text-xs">schedule</span>
-                                Auto
-                            </span>
+            <Card className="sprint-backlog__sprint-card">
+                <div className="sprint-backlog__sprint-header">
+                    <div className="sprint-backlog__sprint-main">
+                        <div className="sprint-backlog__sprint-title-row">
+                            <h3 className="sprint-backlog__sprint-title">{sprint.name}</h3>
+                            <Badge variant={statusVariant} className="sprint-backlog__status">
+                                {statusLabels[sprint.status]}
+                            </Badge>
+                            {sprint.autoStart && sprint.status === 'Planning' && (
+                                <Badge variant="warning" className="sprint-backlog__auto" title={t('projectSprints.upcoming.autoTitle')}>
+                                    {t('projectSprints.upcoming.auto')}
+                                </Badge>
+                            )}
+                        </div>
+                        <p className="sprint-backlog__sprint-dates">
+                            {format(new Date(sprint.startDate), dateFormat, { locale: dateLocale })}
+                            <span className="sprint-backlog__date-separator">-</span>
+                            {format(new Date(sprint.endDate), dateFormat, { locale: dateLocale })}
+                        </p>
+                        {sprint.goal && (
+                            <p className="sprint-backlog__sprint-goal">{sprint.goal}</p>
                         )}
                     </div>
-                    <p className="text-xs text-muted font-medium mb-2">
-                        {format(new Date(sprint.startDate), dateFormat)} - {format(new Date(sprint.endDate), dateFormat)}
-                    </p>
-                    {sprint.goal && (
-                        <p className="text-sm text-subtle line-clamp-2">{sprint.goal}</p>
-                    )}
-                </div>
-                <div className="flex items-center gap-1">
-                    {isPlanning && (
-                        <Button size="sm" variant="ghost" className="text-primary" onClick={() => onStart(sprint.id)}>
-                            Start
+                    <div className="sprint-backlog__sprint-actions">
+                        {isPlanning && (
+                            <Button size="sm" variant="ghost" onClick={() => onStart(sprint.id)}>
+                                {t('projectSprints.actions.start')}
+                            </Button>
+                        )}
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            className="sprint-backlog__icon-button"
+                            onClick={() => onEdit(sprint)}
+                            aria-label={t('projectSprints.actions.edit')}
+                        >
+                            <span className="material-symbols-outlined">edit</span>
                         </Button>
-                    )}
-                    <button onClick={() => onEdit(sprint)} className="p-2 text-muted hover:text-main">
-                        <span className="material-symbols-outlined text-lg">edit</span>
-                    </button>
-                    <button onClick={() => onDelete(sprint.id)} className="p-2 text-muted hover:text-rose-500">
-                        <span className="material-symbols-outlined text-lg">delete</span>
-                    </button>
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            className="sprint-backlog__icon-button sprint-backlog__icon-button--danger"
+                            onClick={() => onDelete(sprint.id)}
+                            aria-label={t('projectSprints.actions.delete')}
+                        >
+                            <span className="material-symbols-outlined">delete</span>
+                        </Button>
+                    </div>
                 </div>
-            </div>
 
-            {/* Task Stats */}
-            <div className="flex items-center gap-3 text-xs font-bold text-muted bg-black/5 dark:bg-white/5 p-2 rounded-lg">
-                <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">list</span>
-                    {tasks.length} tasks
-                </span>
-                <span className="w-px h-3 bg-current opacity-20" />
-                <span className="flex items-center gap-1">
-                    <span className="material-symbols-outlined text-sm">check_circle</span>
-                    {tasks.filter(t => t.isCompleted).length} done
-                </span>
-            </div>
-
-            {/* Droppable Hint */}
-            {isDroppable && isOver && (
-                <div className="flex items-center justify-center py-4 border-2 border-dashed border-indigo-300 rounded-xl bg-indigo-50/50 text-indigo-500 font-bold text-sm">
-                    Drop to assign
+                <div className="sprint-backlog__sprint-stats">
+                    <span>
+                        <span className="material-symbols-outlined">list</span>
+                        {t('projectSprints.backlog.stats.tasks').replace('{count}', String(tasks.length))}
+                    </span>
+                    <span className="sprint-backlog__stat-divider" />
+                    <span>
+                        <span className="material-symbols-outlined">check_circle</span>
+                        {t('projectSprints.backlog.stats.done').replace('{count}', String(tasks.filter(t => t.isCompleted).length))}
+                    </span>
                 </div>
-            )}
+
+                {isDroppable && isOver && (
+                    <div className="sprint-backlog__drop-hint">
+                        {t('projectSprints.sprints.drop')}
+                    </div>
+                )}
+            </Card>
         </div>
     );
 };
 
-// Draggable Task Row
 const DraggableTask = ({ task, renderTask }: { task: Task, renderTask: (task: Task) => React.ReactNode }) => {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: task.id,
@@ -102,7 +119,7 @@ const DraggableTask = ({ task, renderTask }: { task: Task, renderTask: (task: Ta
     } : undefined;
 
     return (
-        <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={`touch-none ${isDragging ? 'opacity-50' : ''}`}>
+        <div ref={setNodeRef} style={style} {...listeners} {...attributes} className={`sprint-backlog__draggable ${isDragging ? 'is-dragging' : ''}`}>
             {renderTask(task)}
         </div>
     );
@@ -111,7 +128,7 @@ const DraggableTask = ({ task, renderTask }: { task: Task, renderTask: (task: Ta
 interface SprintBacklogProps {
     backlogTasks: Task[];
     sprints: Sprint[];
-    allTasks: Task[]; // To select tasks for sprints
+    allTasks: Task[];
     renderTask: (task: Task) => React.ReactNode;
     onCreateSprint: () => void;
     onEditSprint: (sprint: Sprint) => void;
@@ -131,6 +148,7 @@ export const SprintBacklog: React.FC<SprintBacklogProps> = ({
     onStartSprint,
     onTaskDrop
 }) => {
+    const { t } = useLanguage();
     const [activeDraggable, setActiveDraggable] = useState<Task | null>(null);
 
     const handleDragStart = (event: any) => {
@@ -156,7 +174,6 @@ export const SprintBacklog: React.FC<SprintBacklogProps> = ({
         }
     };
 
-    // Sort sprints: Active first, then Planning by date
     const sortedSprints = [...sprints].sort((a, b) => {
         if (a.status === 'Active' && b.status !== 'Active') return -1;
         if (a.status !== 'Active' && b.status === 'Active') return 1;
@@ -168,7 +185,6 @@ export const SprintBacklog: React.FC<SprintBacklogProps> = ({
         data: { type: 'backlog' }
     });
 
-    // Sort backlog tasks by due date
     const sortedBacklogTasks = [...backlogTasks].sort((a, b) => {
         if (!a.dueDate && !b.dueDate) return 0;
         if (!a.dueDate) return 1;
@@ -178,42 +194,36 @@ export const SprintBacklog: React.FC<SprintBacklogProps> = ({
 
     return (
         <DndContext onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 h-[calc(100vh-200px)] min-h-[500px] overflow-hidden">
-                {/* Left: Backlog (Unassigned Tasks) */}
+            <div className="sprint-backlog">
                 <div
                     ref={setBacklogRef}
-                    className={`
-                        lg:col-span-4 flex flex-col gap-4 rounded-[32px] p-6 border transition-all h-full overflow-hidden
-                        ${isBacklogOver ? 'border-primary bg-primary/5' : 'border-surface bg-surface'}
-                    `}
+                    className={`sprint-backlog__panel ${isBacklogOver ? 'is-over' : ''}`}
                 >
-                    <div className="flex items-center justify-between mb-2 shrink-0">
-                        <h2 className="text-xl font-black text-main">Backlog</h2>
-                        <span className="px-2 py-1 rounded-lg bg-surface-hover text-xs font-bold text-muted">
-                            {sortedBacklogTasks.length}
-                        </span>
+                    <div className="sprint-backlog__panel-header">
+                        <h2>{t('projectSprints.backlog.title')}</h2>
+                        <span className="sprint-backlog__count">{sortedBacklogTasks.length}</span>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-gray-200 dark:scrollbar-thumb-white/10">
+                    <div className="sprint-backlog__panel-body">
                         {sortedBacklogTasks.map(task => (
                             <DraggableTask key={task.id} task={task} renderTask={renderTask} />
                         ))}
                         {sortedBacklogTasks.length === 0 && (
-                            <div className="flex flex-col items-center justify-center py-12 text-muted border-2 border-dashed border-slate-200 dark:border-white/5 rounded-2xl">
-                                <span className="material-symbols-outlined text-4xl mb-2 opacity-50">inbox</span>
-                                <span className="text-sm font-medium">All caught up!</span>
+                            <div className="sprint-backlog__empty">
+                                <span className="material-symbols-outlined">inbox</span>
+                                <span>{t('projectSprints.backlog.empty.title')}</span>
+                                <p>{t('projectSprints.backlog.empty.description')}</p>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* Right: Sprints List */}
-                <div className="lg:col-span-8 flex flex-col gap-6 h-full overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-gray-200 dark:scrollbar-thumb-white/10">
-                    <div className="flex items-center justify-between">
-                        <h2 className="text-2xl font-black text-main">Sprints</h2>
+                <div className="sprint-backlog__list">
+                    <div className="sprint-backlog__list-header">
+                        <h2>{t('projectSprints.sprints.title')}</h2>
                     </div>
 
-                    <div className="space-y-4">
+                    <div className="sprint-backlog__list-body">
                         {sortedSprints.map(sprint => (
                             <SprintItem
                                 key={sprint.id}
@@ -226,10 +236,12 @@ export const SprintBacklog: React.FC<SprintBacklogProps> = ({
                             />
                         ))}
                         {sortedSprints.length === 0 && (
-                            <div className="p-12 text-center rounded-[32px] bg-slate-50 dark:bg-white/5 border border-dashed border-slate-200 dark:border-white/10">
-                                <h3 className="text-lg font-bold text-main mb-2">No Sprints Planned</h3>
-                                <p className="text-muted mb-6">Create a sprint to organize your backlog tasks.</p>
-                                <Button variant="secondary" onClick={onCreateSprint}>Create your first Sprint</Button>
+                            <div className="sprint-backlog__empty-card">
+                                <h3>{t('projectSprints.sprints.empty.title')}</h3>
+                                <p>{t('projectSprints.sprints.empty.description')}</p>
+                                <Button variant="secondary" onClick={onCreateSprint}>
+                                    {t('projectSprints.sprints.empty.action')}
+                                </Button>
                             </div>
                         )}
                     </div>
@@ -238,11 +250,11 @@ export const SprintBacklog: React.FC<SprintBacklogProps> = ({
 
             <DragOverlay>
                 {activeDraggable ? (
-                    <div className="opacity-90 rotate-2 scale-105 pointer-events-none">
+                    <div className="sprint-backlog__drag-overlay">
                         {renderTask(activeDraggable)}
                     </div>
                 ) : null}
             </DragOverlay>
-        </DndContext >
+        </DndContext>
     );
 };
