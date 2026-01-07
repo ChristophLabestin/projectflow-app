@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Modal } from '../ui/Modal';
-import { Button } from '../ui/Button';
-import { Input } from '../ui/Input';
-import { Textarea } from '../ui/Textarea';
-import { Select } from '../ui/Select';
-import { Checkbox } from '../ui/Checkbox';
-import { Badge } from '../ui/Badge';
+import { Modal } from '../common/Modal/Modal';
+import { Button } from '../common/Button/Button';
+import { TextInput } from '../common/Input/TextInput';
+import { TextArea } from '../common/Input/TextArea';
+import { Select } from '../common/Select/Select';
+import { Checkbox } from '../common/Checkbox/Checkbox';
+import { Badge } from '../common/Badge/Badge';
 import { Project, WorkspaceGroup, CustomRole } from '../../types';
 import { MediaLibrary } from '../MediaLibrary/MediaLibraryModal';
 
@@ -19,7 +19,7 @@ import { RolesTab } from './RolesTab';
 import { getWorkspaceRoles } from '../../services/rolesService';
 
 import { auth } from '../../services/firebase';
-import { getUserProfile, linkWithGithub, updateUserData, getUserProjectNavPrefs, setUserProjectNavPrefs, ProjectNavPrefs } from '../../services/dataService';
+import { getUserProfile, linkWithGithub, updateUserData, getUserProjectNavPrefs, setUserProjectNavPrefs } from '../../services/dataService';
 import { fetchUserRepositories, GithubRepo } from '../../services/githubService';
 
 interface ProjectEditModalProps {
@@ -63,7 +63,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     const [visibilityGroupIds, setVisibilityGroupIds] = useState<string[]>(project.visibilityGroupIds || (project.visibilityGroupId ? [project.visibilityGroupId] : []));
     const [isPrivate, setIsPrivate] = useState(project.isPrivate || false);
     const [workspaceGroups, setWorkspaceGroups] = useState<WorkspaceGroup[]>([]);
-    const [customRoles, setCustomRoles] = useState<import('../../types').CustomRole[]>([]);
+    const [customRoles, setCustomRoles] = useState<CustomRole[]>([]);
     const [loadingRoles, setLoadingRoles] = useState(false);
     const { can } = useProjectPermissions(project, customRoles);
 
@@ -277,220 +277,209 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
         released: t('projectSettings.state.released')
     };
 
+    const projectStatusOptions = [
+        { value: 'Active', label: projectStatusLabels.Active },
+        { value: 'Planning', label: projectStatusLabels.Planning },
+        { value: 'On Hold', label: projectStatusLabels['On Hold'] },
+        { value: 'Completed', label: projectStatusLabels.Completed },
+        { value: 'Brainstorming', label: projectStatusLabels.Brainstorming },
+        { value: 'Review', label: projectStatusLabels.Review },
+    ];
+
+    const projectPriorityOptions = [
+        { value: 'Low', label: t('tasks.priority.low') },
+        { value: 'Medium', label: t('tasks.priority.medium') },
+        { value: 'High', label: t('tasks.priority.high') },
+        { value: 'Urgent', label: t('tasks.priority.urgent') },
+    ];
+
+    const projectStateOptions = [
+        { value: 'not specified', label: projectStateLabels['not specified'] },
+        { value: 'pre-release', label: projectStateLabels['pre-release'] },
+        { value: 'released', label: projectStateLabels.released },
+    ];
+
     const renderContent = () => {
         switch (activeTab) {
-            case 'general':
+            case 'general': {
+                const isEveryone = !isPrivate && visibilityGroupIds.length === 0;
+                const isGroupOnly = !isPrivate && visibilityGroupIds.length > 0;
+
                 return (
-                    <div className="space-y-6 animate-in fade-in duration-300">
-                        <div className="space-y-4">
-                            <Input
+                    <div className="project-edit-modal__panel project-edit-modal__panel--general animate-fade-in">
+                        <div className="project-edit-modal__stack">
+                            <TextInput
                                 label={t('projectSettings.general.fields.title')}
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
-                                className="w-full"
                             />
-                            <Textarea
+                            <TextArea
                                 label={t('projectSettings.general.fields.description')}
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
                                 rows={5}
-                                className="w-full"
                             />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="project-edit-modal__grid project-edit-modal__grid--two">
                             <Select
                                 label={t('projectSettings.general.fields.status')}
-                                value={status}
-                                onChange={(e) => setStatus(e.target.value as any)}
-                            >
-                                <option value="Active">{projectStatusLabels.Active}</option>
-                                <option value="Planning">{projectStatusLabels.Planning}</option>
-                                <option value="On Hold">{projectStatusLabels['On Hold']}</option>
-                                <option value="Completed">{projectStatusLabels.Completed}</option>
-                                <option value="Brainstorming">{projectStatusLabels.Brainstorming}</option>
-                                <option value="Review">{projectStatusLabels.Review}</option>
-                            </Select>
+                                value={status || 'Active'}
+                                onChange={(value) => setStatus(value as any)}
+                                options={projectStatusOptions}
+                            />
                             <Select
                                 label={t('projectSettings.general.fields.priority')}
                                 value={priority || 'Medium'}
-                                onChange={(e) => setPriority(e.target.value)}
-                            >
-                                <option value="Low">{t('tasks.priority.low')}</option>
-                                <option value="Medium">{t('tasks.priority.medium')}</option>
-                                <option value="High">{t('tasks.priority.high')}</option>
-                                <option value="Urgent">{t('tasks.priority.urgent')}</option>
-                            </Select>
+                                onChange={(value) => setPriority(String(value))}
+                                options={projectPriorityOptions}
+                            />
                         </div>
-                        <div className="grid grid-cols-1">
+                        <div className="project-edit-modal__grid">
                             <Select
                                 label={t('projectSettings.general.fields.state')}
                                 value={projectState || 'not specified'}
-                                onChange={(e) => setProjectState(e.target.value as any)}
-                            >
-                                <option value="not specified">{projectStateLabels['not specified']}</option>
-                                <option value="pre-release">{projectStateLabels['pre-release']}</option>
-                                <option value="released">{projectStateLabels.released}</option>
-                            </Select>
+                                onChange={(value) => setProjectState(value as any)}
+                                options={projectStateOptions}
+                            />
                         </div>
 
                         {/* Visibility Settings - Only for Owners/Internal Members */}
-                        {
-                            canChangeVisibility && workspaceGroups.length > 0 && (
-                                <div className="pt-6 mt-6 border-t border-surface">
-                                    <label className="text-base font-semibold text-main mb-3 block flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-subtle">visibility</span>
-                                        {t('projectSettings.visibility.title')}
-                                    </label>
-
-                                    <div className="grid grid-cols-1 gap-3 mb-4">
-                                        {/* Everyone Option */}
-                                        <button
-                                            type="button"
-                                            onClick={() => { setVisibilityGroupIds([]); setIsPrivate(false); }}
-                                            className={`relative p-4 rounded-xl border text-left transition-all flex items-start gap-4 group ${!isPrivate && visibilityGroupIds.length === 0
-                                                ? 'bg-emerald-50/50 dark:bg-emerald-500/10 border-emerald-500 ring-1 ring-emerald-500'
-                                                : 'bg-surface border-surface hover:border-[var(--color-text-subtle)] hover:bg-surface-hover'
-                                                }`}
-                                        >
-                                            <div className={`mt-0.5 p-2 rounded-lg shrink-0 ${!isPrivate && visibilityGroupIds.length === 0
-                                                ? 'bg-emerald-100/50 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
-                                                : 'bg-surface-hover text-subtle group-hover:text-main'
-                                                }`}>
-                                                <span className="material-symbols-outlined text-xl">public</span>
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <span className={`font-semibold ${!isPrivate && visibilityGroupIds.length === 0
-                                                        ? 'text-emerald-900 dark:text-emerald-100'
-                                                        : 'text-main'
-                                                        }`}>{t('projectSettings.visibility.everyone')}</span>
-                                                    {(!isPrivate && visibilityGroupIds.length === 0) && (
-                                                        <span className="material-symbols-outlined text-emerald-600 text-[20px]">check_circle</span>
-                                                    )}
-                                                </div>
-                                                <p className={`text-sm ${!isPrivate && visibilityGroupIds.length === 0
-                                                    ? 'text-emerald-700/80 dark:text-emerald-300/80'
-                                                    : 'text-muted'
-                                                    }`}>{t('projectSettings.visibility.everyoneDescription')}</p>
-                                            </div>
-                                        </button>
-
-                                        {/* Specific Groups Option */}
-                                        <button
-                                            type="button"
-                                            onClick={() => {
-                                                setIsPrivate(false);
-                                                if (workspaceGroups.length > 0 && visibilityGroupIds.length === 0) {
-                                                    setVisibilityGroupIds([workspaceGroups[0].id]);
-                                                }
-                                            }}
-                                            className={`relative p-4 rounded-xl border text-left transition-all flex items-start gap-4 group ${!isPrivate && visibilityGroupIds.length > 0
-                                                ? 'bg-primary/5 border-primary ring-1 ring-primary'
-                                                : 'bg-surface border-surface hover:border-[var(--color-text-subtle)] hover:bg-surface-hover'
-                                                }`}
-                                        >
-                                            <div className={`mt-0.5 p-2 rounded-lg shrink-0 ${!isPrivate && visibilityGroupIds.length > 0
-                                                ? 'bg-primary/10 text-primary'
-                                                : 'bg-surface-hover text-subtle group-hover:text-main'
-                                                }`}>
-                                                <span className="material-symbols-outlined text-xl">lock_person</span>
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <span className={`font-semibold ${!isPrivate && visibilityGroupIds.length > 0
-                                                        ? 'text-primary'
-                                                        : 'text-main'
-                                                        }`}>{t('projectSettings.visibility.specificGroup')}</span>
-                                                    {(!isPrivate && visibilityGroupIds.length > 0) && (
-                                                        <span className="material-symbols-outlined text-primary text-[20px]">check_circle</span>
-                                                    )}
-                                                </div>
-                                                <p className={`text-sm ${!isPrivate && visibilityGroupIds.length > 0
-                                                    ? 'text-primary/80'
-                                                    : 'text-muted'
-                                                    }`}>{t('projectSettings.visibility.specificGroupDescription')}</p>
-                                            </div>
-                                        </button>
-
-                                        {/* Private Option */}
-                                        <button
-                                            type="button"
-                                            onClick={() => { setIsPrivate(true); setVisibilityGroupIds([]); }}
-                                            className={`relative p-4 rounded-xl border text-left transition-all flex items-start gap-4 group ${isPrivate
-                                                ? 'bg-rose-50/50 dark:bg-rose-500/10 border-rose-500 ring-1 ring-rose-500'
-                                                : 'bg-surface border-surface hover:border-[var(--color-text-subtle)] hover:bg-surface-hover'
-                                                }`}
-                                        >
-                                            <div className={`mt-0.5 p-2 rounded-lg shrink-0 ${isPrivate
-                                                ? 'bg-rose-100/50 dark:bg-rose-500/20 text-rose-600 dark:text-rose-400'
-                                                : 'bg-surface-hover text-subtle group-hover:text-main'
-                                                }`}>
-                                                <span className="material-symbols-outlined text-xl">lock</span>
-                                            </div>
-                                            <div className="flex-1">
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <span className={`font-semibold ${isPrivate
-                                                        ? 'text-rose-900 dark:text-rose-100'
-                                                        : 'text-main'
-                                                        }`}>{t('projectSettings.visibility.private')}</span>
-                                                    {isPrivate && (
-                                                        <span className="material-symbols-outlined text-rose-600 text-[20px]">check_circle</span>
-                                                    )}
-                                                </div>
-                                                <p className={`text-sm ${isPrivate
-                                                    ? 'text-rose-700/80 dark:text-rose-300/80'
-                                                    : 'text-muted'
-                                                    }`}>{t('projectSettings.visibility.privateDescription')}</p>
-                                            </div>
-                                        </button>
-                                    </div>
-
-                                    {!isPrivate && visibilityGroupIds.length > 0 && (
-                                        <div className="ml-14 animate-fade-in space-y-3">
-                                            <label className="text-xs font-bold text-muted uppercase tracking-wider flex items-center gap-2">
-                                                <span className="w-4 h-px bg-surface-border"></span>
-                                                {t('projectSettings.visibility.allowedGroups')}
-                                            </label>
-                                            <div className="grid grid-cols-2 gap-2">
-                                                {workspaceGroups.map(group => {
-                                                    const isSelected = visibilityGroupIds.includes(group.id);
-                                                    return (
-                                                        <button
-                                                            key={group.id}
-                                                            type="button"
-                                                            onClick={() => {
-                                                                if (isSelected) {
-                                                                    setVisibilityGroupIds(prev => prev.filter(id => id !== group.id));
-                                                                } else {
-                                                                    setVisibilityGroupIds(prev => [...prev, group.id]);
-                                                                }
-                                                            }}
-                                                            className={`p-2.5 rounded-lg flex items-center gap-3 border transition-all text-left ${isSelected
-                                                                ? 'bg-primary/10 border-primary text-main'
-                                                                : 'bg-surface border-surface text-muted hover:border-[var(--color-text-subtle)]'
-                                                                }`}
-                                                        >
-                                                            <div
-                                                                className="size-3 rounded-full shrink-0 ring-1 ring-white/20"
-                                                                style={{ backgroundColor: group.color || '#9ca3af' }}
-                                                            />
-                                                            <div className="flex-1 min-w-0">
-                                                                <span className="text-sm font-medium truncate block">{group.name}</span>
-                                                            </div>
-                                                            {isSelected && (
-                                                                <span className="material-symbols-outlined text-[18px] text-primary shrink-0">check</span>
-                                                            )}
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
+                        {canChangeVisibility && workspaceGroups.length > 0 && (
+                            <div className="project-edit-modal__visibility">
+                                <div className="project-edit-modal__visibility-title">
+                                    <span className="material-symbols-outlined">visibility</span>
+                                    {t('projectSettings.visibility.title')}
                                 </div>
-                            )
-                        }
-                    </div >
+
+                                <div className="project-edit-modal__visibility-options">
+                                    {/* Everyone Option */}
+                                    <button
+                                        type="button"
+                                        onClick={() => { setVisibilityGroupIds([]); setIsPrivate(false); }}
+                                        className="project-edit-modal__visibility-option"
+                                        data-tone="success"
+                                        data-selected={isEveryone ? 'true' : 'false'}
+                                    >
+                                        <div className="project-edit-modal__visibility-icon" data-tone="success">
+                                            <span className="material-symbols-outlined">public</span>
+                                        </div>
+                                        <div className="project-edit-modal__visibility-body">
+                                            <div className="project-edit-modal__visibility-row">
+                                                <span className="project-edit-modal__visibility-label">
+                                                    {t('projectSettings.visibility.everyone')}
+                                                </span>
+                                                {isEveryone && (
+                                                    <span className="material-symbols-outlined project-edit-modal__visibility-check">check_circle</span>
+                                                )}
+                                            </div>
+                                            <p className="project-edit-modal__visibility-description">
+                                                {t('projectSettings.visibility.everyoneDescription')}
+                                            </p>
+                                        </div>
+                                    </button>
+
+                                    {/* Specific Groups Option */}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setIsPrivate(false);
+                                            if (workspaceGroups.length > 0 && visibilityGroupIds.length === 0) {
+                                                setVisibilityGroupIds([workspaceGroups[0].id]);
+                                            }
+                                        }}
+                                        className="project-edit-modal__visibility-option"
+                                        data-tone="primary"
+                                        data-selected={isGroupOnly ? 'true' : 'false'}
+                                    >
+                                        <div className="project-edit-modal__visibility-icon" data-tone="primary">
+                                            <span className="material-symbols-outlined">lock_person</span>
+                                        </div>
+                                        <div className="project-edit-modal__visibility-body">
+                                            <div className="project-edit-modal__visibility-row">
+                                                <span className="project-edit-modal__visibility-label">
+                                                    {t('projectSettings.visibility.specificGroup')}
+                                                </span>
+                                                {isGroupOnly && (
+                                                    <span className="material-symbols-outlined project-edit-modal__visibility-check">check_circle</span>
+                                                )}
+                                            </div>
+                                            <p className="project-edit-modal__visibility-description">
+                                                {t('projectSettings.visibility.specificGroupDescription')}
+                                            </p>
+                                        </div>
+                                    </button>
+
+                                    {/* Private Option */}
+                                    <button
+                                        type="button"
+                                        onClick={() => { setIsPrivate(true); setVisibilityGroupIds([]); }}
+                                        className="project-edit-modal__visibility-option"
+                                        data-tone="danger"
+                                        data-selected={isPrivate ? 'true' : 'false'}
+                                    >
+                                        <div className="project-edit-modal__visibility-icon" data-tone="danger">
+                                            <span className="material-symbols-outlined">lock</span>
+                                        </div>
+                                        <div className="project-edit-modal__visibility-body">
+                                            <div className="project-edit-modal__visibility-row">
+                                                <span className="project-edit-modal__visibility-label">
+                                                    {t('projectSettings.visibility.private')}
+                                                </span>
+                                                {isPrivate && (
+                                                    <span className="material-symbols-outlined project-edit-modal__visibility-check">check_circle</span>
+                                                )}
+                                            </div>
+                                            <p className="project-edit-modal__visibility-description">
+                                                {t('projectSettings.visibility.privateDescription')}
+                                            </p>
+                                        </div>
+                                    </button>
+                                </div>
+
+                                {isGroupOnly && (
+                                    <div className="project-edit-modal__visibility-groups animate-fade-in">
+                                        <label className="project-edit-modal__visibility-groups-title">
+                                            <span className="project-edit-modal__visibility-groups-line" />
+                                            {t('projectSettings.visibility.allowedGroups')}
+                                        </label>
+                                        <div className="project-edit-modal__visibility-group-list">
+                                            {workspaceGroups.map(group => {
+                                                const isSelected = visibilityGroupIds.includes(group.id);
+                                                return (
+                                                    <button
+                                                        key={group.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (isSelected) {
+                                                                setVisibilityGroupIds(prev => prev.filter(id => id !== group.id));
+                                                            } else {
+                                                                setVisibilityGroupIds(prev => [...prev, group.id]);
+                                                            }
+                                                        }}
+                                                        className="project-edit-modal__visibility-group"
+                                                        data-selected={isSelected ? 'true' : 'false'}
+                                                    >
+                                                        <div
+                                                            className="project-edit-modal__visibility-group-dot"
+                                                            style={{ backgroundColor: group.color || '#9ca3af' }}
+                                                        />
+                                                        <div className="project-edit-modal__visibility-group-name">
+                                                            {group.name}
+                                                        </div>
+                                                        {isSelected && (
+                                                            <span className="material-symbols-outlined project-edit-modal__visibility-group-check">check</span>
+                                                        )}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
                 );
+            }
             case 'team':
                 return (
                     <ProjectTeamManager
@@ -510,104 +499,101 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 );
             case 'appearance':
                 return (
-                    <div className="space-y-6 animate-in fade-in duration-300">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="project-edit-modal__panel project-edit-modal__panel--appearance animate-fade-in">
+                        <div className="project-edit-modal__media-grid">
                             {/* Cover Image */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-main">{t('projectSettings.appearance.coverLabel')}</label>
-                                <div
-                                    className="group relative aspect-video rounded-xl border border-dashed border-surface hover:border-primary bg-surface-hover/30 overflow-hidden cursor-pointer transition-all"
+                            <div className="project-edit-modal__media-block">
+                                <label className="project-edit-modal__media-label">{t('projectSettings.appearance.coverLabel')}</label>
+                                <button
+                                    type="button"
+                                    className="project-edit-modal__media-preview project-edit-modal__media-preview--cover"
+                                    data-has-image={coverImage ? 'true' : 'false'}
                                     onClick={() => { setMediaTarget('cover'); setShowMediaLibrary(true); }}
                                 >
                                     {coverImage ? (
                                         <>
-                                            <img src={coverImage} alt={t('projectSettings.appearance.coverAlt')} className="w-full h-full object-cover" />
-                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <span className="text-white text-sm font-medium">{t('projectSettings.appearance.coverChange')}</span>
+                                            <img src={coverImage} alt={t('projectSettings.appearance.coverAlt')} className="project-edit-modal__media-image" />
+                                            <div className="project-edit-modal__media-overlay">
+                                                <span className="project-edit-modal__media-overlay-text">{t('projectSettings.appearance.coverChange')}</span>
                                             </div>
                                             <button
-                                                className="absolute top-2 right-2 p-1 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                                type="button"
+                                                className="project-edit-modal__media-remove"
                                                 onClick={(e) => { e.stopPropagation(); setCoverImage(undefined); }}
                                             >
-                                                <span className="material-symbols-outlined text-[16px]">close</span>
+                                                <span className="material-symbols-outlined">close</span>
                                             </button>
                                         </>
                                     ) : (
-                                        <div className="flex flex-col items-center justify-center h-full text-muted">
-                                            <span className="material-symbols-outlined text-3xl mb-2">image</span>
-                                            <span className="text-sm">{t('projectSettings.appearance.coverUpload')}</span>
+                                        <div className="project-edit-modal__media-empty">
+                                            <span className="material-symbols-outlined project-edit-modal__media-empty-icon">image</span>
+                                            <span className="project-edit-modal__media-empty-text">{t('projectSettings.appearance.coverUpload')}</span>
                                         </div>
                                     )}
-                                </div>
+                                </button>
                             </div>
 
                             {/* Icon */}
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium text-main">{t('projectSettings.appearance.iconLabel')}</label>
-                                <div
-                                    className="group relative w-32 h-32 rounded-2xl border border-dashed border-surface hover:border-primary bg-surface-hover/30 overflow-hidden cursor-pointer transition-all"
+                            <div className="project-edit-modal__media-block">
+                                <label className="project-edit-modal__media-label">{t('projectSettings.appearance.iconLabel')}</label>
+                                <button
+                                    type="button"
+                                    className="project-edit-modal__media-preview project-edit-modal__media-preview--icon"
+                                    data-has-image={squareIcon ? 'true' : 'false'}
                                     onClick={() => { setMediaTarget('icon'); setShowMediaLibrary(true); }}
                                 >
                                     {squareIcon ? (
                                         <>
-                                            <img src={squareIcon} alt={t('projectSettings.appearance.iconAlt')} className="w-full h-full object-cover" />
-                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <span className="text-white text-xs font-medium">{t('projectSettings.appearance.iconChange')}</span>
+                                            <img src={squareIcon} alt={t('projectSettings.appearance.iconAlt')} className="project-edit-modal__media-image" />
+                                            <div className="project-edit-modal__media-overlay">
+                                                <span className="project-edit-modal__media-overlay-text">{t('projectSettings.appearance.iconChange')}</span>
                                             </div>
                                             <button
-                                                className="absolute top-1 right-1 p-0.5 rounded-full bg-red-500 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                                type="button"
+                                                className="project-edit-modal__media-remove project-edit-modal__media-remove--compact"
                                                 onClick={(e) => { e.stopPropagation(); setSquareIcon(undefined); }}
                                             >
-                                                <span className="material-symbols-outlined text-[14px]">close</span>
+                                                <span className="material-symbols-outlined">close</span>
                                             </button>
                                         </>
                                     ) : (
-                                        <div className="flex flex-col items-center justify-center h-full text-muted">
-                                            <span className="material-symbols-outlined text-2xl mb-1">apps</span>
-                                            <span className="text-xs">{t('projectSettings.appearance.iconUpload')}</span>
+                                        <div className="project-edit-modal__media-empty">
+                                            <span className="material-symbols-outlined project-edit-modal__media-empty-icon">apps</span>
+                                            <span className="project-edit-modal__media-empty-text">{t('projectSettings.appearance.iconUpload')}</span>
                                         </div>
                                     )}
-                                </div>
+                                </button>
                             </div>
                         </div>
                     </div>
                 );
             case 'modules':
                 return (
-                    <div className="space-y-4 animate-in fade-in duration-300">
-                        <p className="text-sm text-muted">{t('projectSettings.modules.description')}</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="project-edit-modal__panel project-edit-modal__panel--modules animate-fade-in">
+                        <p className="project-edit-modal__hint">{t('projectSettings.modules.description')}</p>
+                        <div className="project-edit-modal__modules-grid">
                             {['tasks', 'sprints', 'issues', 'ideas', 'milestones', 'activity', 'social', 'marketing', 'accounting'].map((mod) => {
-                                // Restricted Check
-                                // Restricted Check - using top-level hooks
-
-
                                 if (mod === 'social' && !isSocialAllowed) return null;
                                 if (mod === 'marketing' && !isMarketingAllowed) return null;
                                 if (mod === 'accounting' && !isAccountingAllowed) return null;
 
+                                const isEnabled = modules.includes(mod as any);
+
                                 return (
-                                    <div
+                                    <button
                                         key={mod}
-                                        className={`
-                                        flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all
-                                        ${modules.includes(mod as any)
-                                                ? 'border-primary bg-primary/5 dark:bg-primary/10'
-                                                : 'border-surface hover:border-[var(--color-surface-border-hover)] hover:bg-surface-hover'
-                                            }
-                                    `}
+                                        type="button"
+                                        className="project-edit-modal__module-card"
+                                        data-active={isEnabled ? 'true' : 'false'}
                                         onClick={() => {
-                                            if (modules.includes(mod as any)) {
+                                            if (isEnabled) {
                                                 setModules(modules.filter(m => m !== mod));
                                             } else {
                                                 setModules([...modules, mod as any]);
                                             }
                                         }}
                                     >
-                                        <div className={`
-                                        size-10 rounded-lg flex items-center justify-center transition-colors
-                                        ${modules.includes(mod as any) ? 'bg-black text-white dark:bg-white dark:text-black' : 'bg-surface-hover text-muted'}
-                                    `}>
+                                        <div className="project-edit-modal__module-icon" data-active={isEnabled ? 'true' : 'false'}>
                                             <span className="material-symbols-outlined">
                                                 {mod === 'tasks' ? 'check_circle' :
                                                     mod === 'ideas' ? 'lightbulb' :
@@ -615,20 +601,21 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                             mod === 'social' ? 'campaign' :
                                                                 mod === 'marketing' ? 'ads_click' :
                                                                     mod === 'accounting' ? 'receipt_long' :
-
                                                                         mod === 'sprints' ? 'directions_run' :
                                                                             mod === 'activity' ? 'history' : 'bug_report'}
                                             </span>
                                         </div>
-                                        <div className="flex-1">
-                                            <p className="font-semibold text-sm text-main">{moduleLabels[mod] || mod}</p>
+                                        <div className="project-edit-modal__module-body">
+                                            <p className="project-edit-modal__module-title">{moduleLabels[mod] || mod}</p>
                                         </div>
                                         <Checkbox
-                                            checked={modules.includes(mod as any)}
+                                            checked={isEnabled}
                                             readOnly
-                                            className="pointer-events-none"
+                                            tabIndex={-1}
+                                            className="project-edit-modal__module-check"
+                                            aria-hidden="true"
                                         />
-                                    </div>
+                                    </button>
                                 );
                             })}
                         </div>
@@ -680,13 +667,13 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                 };
 
                 return (
-                    <div className="space-y-4 animate-in fade-in duration-300">
-                        <p className="text-sm text-muted">
+                    <div className="project-edit-modal__panel project-edit-modal__panel--navigation animate-fade-in">
+                        <p className="project-edit-modal__hint">
                             {t('projectSettings.navigation.description')}
-                            <span className="font-medium"> {t('projectSettings.navigation.note')}</span>
+                            <span className="project-edit-modal__hint-strong"> {t('projectSettings.navigation.note')}</span>
                         </p>
 
-                        <div className="space-y-2">
+                        <div className="project-edit-modal__nav-list">
                             {availableNavItems.map((item) => {
                                 const isHidden = navHidden.includes(item.id);
                                 const canHide = item.canHide !== false;
@@ -698,56 +685,34 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                         onDragStart={(e) => handleDragStart(e, item.id)}
                                         onDragOver={(e) => handleDragOver(e, item.id)}
                                         onDragEnd={handleDragEnd}
-                                        className={`
-                                            flex items-center gap-3 p-3 rounded-xl border transition-all cursor-grab active:cursor-grabbing
-                                            ${draggedItem === item.id
-                                                ? 'border-primary bg-primary/5 scale-[1.02] shadow-lg'
-                                                : isHidden
-                                                    ? 'border-surface bg-surface-hover/30 opacity-50'
-                                                    : 'border-surface hover:border-primary/50 bg-white dark:bg-card'
-                                            }
-                                        `}
+                                        className="project-edit-modal__nav-item"
+                                        data-dragging={draggedItem === item.id ? 'true' : 'false'}
+                                        data-hidden={isHidden ? 'true' : 'false'}
                                     >
-                                        {/* Drag Handle */}
-                                        <span className="material-symbols-outlined text-muted text-lg">drag_indicator</span>
+                                        <span className="material-symbols-outlined project-edit-modal__nav-handle">drag_indicator</span>
 
-                                        {/* Icon */}
-                                        <div className={`
-                                            size-9 rounded-lg flex items-center justify-center transition-colors
-                                            ${isHidden
-                                                ? 'bg-surface-hover text-muted'
-                                                : 'bg-primary/10 text-primary'
-                                            }
-                                        `}>
-                                            <span className="material-symbols-outlined text-lg">{item.icon}</span>
+                                        <div className="project-edit-modal__nav-icon" data-hidden={isHidden ? 'true' : 'false'}>
+                                            <span className="material-symbols-outlined">{item.icon}</span>
                                         </div>
 
-                                        {/* Label */}
-                                        <div className="flex-1">
-                                            <p className={`font-semibold text-sm ${isHidden ? 'text-muted' : 'text-main'}`}>
-                                                {item.label}
-                                            </p>
+                                        <div className="project-edit-modal__nav-label" data-hidden={isHidden ? 'true' : 'false'}>
+                                            {item.label}
                                         </div>
 
-                                        {/* Visibility Toggle */}
                                         {canHide ? (
                                             <button
+                                                type="button"
                                                 onClick={(e) => { e.stopPropagation(); toggleHidden(item.id); }}
-                                                className={`
-                                                    size-8 rounded-lg flex items-center justify-center transition-all
-                                                    ${isHidden
-                                                        ? 'bg-surface-hover text-muted hover:bg-rose-100 hover:text-rose-600'
-                                                        : 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 hover:bg-emerald-100'
-                                                    }
-                                                `}
+                                                className="project-edit-modal__nav-toggle"
+                                                data-hidden={isHidden ? 'true' : 'false'}
                                                 title={isHidden ? t('projectSettings.navigation.show') : t('projectSettings.navigation.hide')}
                                             >
-                                                <span className="material-symbols-outlined text-[18px]">
+                                                <span className="material-symbols-outlined">
                                                     {isHidden ? 'visibility_off' : 'visibility'}
                                                 </span>
                                             </button>
                                         ) : (
-                                            <span className="text-[10px] font-bold text-muted uppercase tracking-wide px-2 py-1 rounded bg-surface-hover">
+                                            <span className="project-edit-modal__nav-always">
                                                 {t('projectSettings.navigation.alwaysVisible')}
                                             </span>
                                         )}
@@ -757,87 +722,96 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                         </div>
 
                         {availableNavItems.length === 0 && (
-                            <div className="text-center py-8 text-muted">
-                                <span className="material-symbols-outlined text-4xl opacity-30 mb-2 block">extension_off</span>
-                                <p className="text-sm">{t('projectSettings.navigation.empty')}</p>
+                            <div className="project-edit-modal__empty">
+                                <span className="material-symbols-outlined">extension_off</span>
+                                <p>{t('projectSettings.navigation.empty')}</p>
                             </div>
                         )}
                     </div>
                 );
-            case 'integrations':
+            case 'integrations': {
+                const githubRepoOptions = githubRepos.map(repo => ({
+                    value: repo.full_name,
+                    label: repo.full_name,
+                }));
+
                 return (
-                    <div className="space-y-6 animate-in fade-in duration-300">
-                        <div className="border border-surface rounded-xl p-4 bg-surface-paper/50">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="size-10 bg-black rounded-full flex items-center justify-center text-white">
+                    <div className="project-edit-modal__panel project-edit-modal__panel--integrations animate-fade-in">
+                        <div className="project-edit-modal__integration-card">
+                            <div className="project-edit-modal__integration-header">
+                                <div className="project-edit-modal__integration-icon">
                                     <span className="material-symbols-outlined">terminal</span>
                                 </div>
-                                <div className="flex-1">
-                                    <h3 className="font-bold text-main">{t('projectSettings.integrations.github.title')}</h3>
-                                    <p className="text-xs text-muted">{t('projectSettings.integrations.github.subtitle')}</p>
+                                <div className="project-edit-modal__integration-meta">
+                                    <h3 className="project-edit-modal__integration-title">{t('projectSettings.integrations.github.title')}</h3>
+                                    <p className="project-edit-modal__integration-subtitle">{t('projectSettings.integrations.github.subtitle')}</p>
                                 </div>
-                                <Badge variant={githubRepo ? 'success' : 'secondary'}>{githubRepo ? t('projectSettings.integrations.github.connected') : t('projectSettings.integrations.github.notLinked')}</Badge>
+                                <Badge
+                                    variant={githubRepo ? 'success' : 'neutral'}
+                                    className="project-edit-modal__integration-badge"
+                                >
+                                    {githubRepo ? t('projectSettings.integrations.github.connected') : t('projectSettings.integrations.github.notLinked')}
+                                </Badge>
                             </div>
 
                             {!githubToken ? (
-                                <button
+                                <Button
                                     onClick={handleConnectGithub}
                                     disabled={connectingGithub}
-                                    className="w-full p-3 rounded-lg bg-black/[0.05] dark:bg-white/[0.05] hover:bg-black/[0.1] dark:hover:bg-white/[0.1] transition-colors flex items-center justify-center gap-2 text-sm font-medium text-main"
+                                    isLoading={connectingGithub}
+                                    variant="secondary"
+                                    className="project-edit-modal__integration-button"
+                                    icon={<span className="material-symbols-outlined">link</span>}
                                 >
-                                    {connectingGithub ? (
-                                        <><span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span> {t('projectSettings.integrations.github.connecting')}</>
-                                    ) : (
-                                        <>{t('projectSettings.integrations.github.connectAccount')}</>
-                                    )}
-                                </button>
+                                    {connectingGithub
+                                        ? t('projectSettings.integrations.github.connecting')
+                                        : t('projectSettings.integrations.github.connectAccount')}
+                                </Button>
                             ) : (
-                                <div className="space-y-4">
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-semibold text-muted uppercase tracking-wider">{t('projectSettings.integrations.github.repositoryLabel')}</label>
-                                        <select
-                                            value={githubRepo}
-                                            onChange={(e) => setGithubRepo(e.target.value)}
-                                            disabled={loadingGithub}
-                                            className="w-full h-10 bg-surface border border-surface rounded-lg px-3 text-sm text-main outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                                        >
-                                            <option value="">{loadingGithub ? t('projectSettings.integrations.github.loadingRepos') : t('projectSettings.integrations.github.selectRepo')}</option>
-                                            {githubRepos.map(repo => (
-                                                <option key={repo.id} value={repo.full_name}>{repo.full_name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                <div className="project-edit-modal__integration-body">
+                                    <Select
+                                        label={t('projectSettings.integrations.github.repositoryLabel')}
+                                        value={githubRepo || null}
+                                        onChange={(value) => setGithubRepo(String(value))}
+                                        options={githubRepoOptions}
+                                        placeholder={loadingGithub ? t('projectSettings.integrations.github.loadingRepos') : t('projectSettings.integrations.github.selectRepo')}
+                                        disabled={loadingGithub}
+                                    />
 
-                                    <div className="flex items-center gap-3 pt-2">
-                                        <Checkbox
-                                            id="gh-sync"
-                                            checked={githubIssueSync}
-                                            onChange={(e) => setGithubIssueSync(e.target.checked)}
-                                            disabled={!githubRepo}
-                                        />
-                                        <label htmlFor="gh-sync" className={`text-sm ${!githubRepo ? 'opacity-50' : ''} text-main`}>
-                                            {t('projectSettings.integrations.github.issueSync')}
-                                        </label>
-                                    </div>
+                                    <Checkbox
+                                        id="gh-sync"
+                                        checked={githubIssueSync}
+                                        onChange={(e) => setGithubIssueSync(e.target.checked)}
+                                        disabled={!githubRepo}
+                                        label={t('projectSettings.integrations.github.issueSync')}
+                                        className="project-edit-modal__integration-checkbox"
+                                    />
                                 </div>
                             )}
                         </div>
                     </div>
                 );
+            }
             case 'resources':
                 return (
-                    <div className="space-y-6 animate-in fade-in duration-300">
+                    <div className="project-edit-modal__panel project-edit-modal__panel--resources animate-fade-in">
                         {/* Overview Links */}
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <label className="text-sm font-semibold text-main">{t('projectSettings.resources.overviewTitle')}</label>
-                                <Button size="sm" variant="ghost" onClick={() => setLinks([...links, { title: '', url: '' }])}>{t('projectSettings.resources.addLink')}</Button>
+                        <div className="project-edit-modal__resource-section">
+                            <div className="project-edit-modal__resource-header">
+                                <label className="project-edit-modal__resource-title">{t('projectSettings.resources.overviewTitle')}</label>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setLinks([...links, { title: '', url: '' }])}
+                                >
+                                    {t('projectSettings.resources.addLink')}
+                                </Button>
                             </div>
-                            <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
+                            <div className="project-edit-modal__resource-list">
                                 {links.map((link, idx) => (
-                                    <div key={idx} className="flex gap-2 items-start">
-                                        <div className="flex-1 grid grid-cols-2 gap-2">
-                                            <Input
+                                    <div key={idx} className="project-edit-modal__resource-item">
+                                        <div className="project-edit-modal__resource-fields project-edit-modal__resource-fields--two">
+                                            <TextInput
                                                 placeholder={t('projectSettings.resources.linkTitlePlaceholder')}
                                                 value={link.title}
                                                 onChange={(e) => {
@@ -846,7 +820,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                     setLinks(newLinks);
                                                 }}
                                             />
-                                            <Input
+                                            <TextInput
                                                 placeholder={t('projectSettings.resources.linkUrlPlaceholder')}
                                                 value={link.url}
                                                 onChange={(e) => {
@@ -856,28 +830,40 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                 }}
                                             />
                                         </div>
-                                        <button onClick={() => setLinks(links.filter((_, i) => i !== idx))} className="mt-2 text-subtle hover:text-red-500">
+                                        <button
+                                            type="button"
+                                            onClick={() => setLinks(links.filter((_, i) => i !== idx))}
+                                            className="project-edit-modal__resource-remove"
+                                        >
                                             <span className="material-symbols-outlined">delete</span>
                                         </button>
                                     </div>
                                 ))}
-                                {links.length === 0 && <p className="text-sm text-muted italic">{t('projectSettings.resources.noLinks')}</p>}
+                                {links.length === 0 && (
+                                    <p className="project-edit-modal__resource-empty">{t('projectSettings.resources.noLinks')}</p>
+                                )}
                             </div>
                         </div>
 
-                        <div className="h-px bg-surface-border" />
+                        <div className="project-edit-modal__divider" />
 
                         {/* Sidebar Resources */}
-                        <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <label className="text-sm font-semibold text-main">{t('projectSettings.resources.sidebarTitle')}</label>
-                                <Button size="sm" variant="ghost" onClick={() => setExternalResources([...externalResources, { title: '', url: '', icon: 'link' }])}>{t('projectSettings.resources.addShortcut')}</Button>
+                        <div className="project-edit-modal__resource-section">
+                            <div className="project-edit-modal__resource-header">
+                                <label className="project-edit-modal__resource-title">{t('projectSettings.resources.sidebarTitle')}</label>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setExternalResources([...externalResources, { title: '', url: '', icon: 'link' }])}
+                                >
+                                    {t('projectSettings.resources.addShortcut')}
+                                </Button>
                             </div>
-                            <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
+                            <div className="project-edit-modal__resource-list">
                                 {externalResources.map((res, idx) => (
-                                    <div key={idx} className="flex gap-2 items-start">
-                                        <div className="flex-1 grid grid-cols-2 gap-2">
-                                            <Input
+                                    <div key={idx} className="project-edit-modal__resource-item">
+                                        <div className="project-edit-modal__resource-fields project-edit-modal__resource-fields--two">
+                                            <TextInput
                                                 placeholder={t('projectSettings.resources.shortcutTitlePlaceholder')}
                                                 value={res.title}
                                                 onChange={(e) => {
@@ -886,7 +872,7 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                     setExternalResources(newRes);
                                                 }}
                                             />
-                                            <Input
+                                            <TextInput
                                                 placeholder={t('projectSettings.resources.shortcutUrlPlaceholder')}
                                                 value={res.url}
                                                 onChange={(e) => {
@@ -896,12 +882,18 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
                                                 }}
                                             />
                                         </div>
-                                        <button onClick={() => setExternalResources(externalResources.filter((_, i) => i !== idx))} className="mt-2 text-subtle hover:text-red-500">
+                                        <button
+                                            type="button"
+                                            onClick={() => setExternalResources(externalResources.filter((_, i) => i !== idx))}
+                                            className="project-edit-modal__resource-remove"
+                                        >
                                             <span className="material-symbols-outlined">delete</span>
                                         </button>
                                     </div>
                                 ))}
-                                {externalResources.length === 0 && <p className="text-sm text-muted italic">{t('projectSettings.resources.noShortcuts')}</p>}
+                                {externalResources.length === 0 && (
+                                    <p className="project-edit-modal__resource-empty">{t('projectSettings.resources.noShortcuts')}</p>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -912,36 +904,38 @@ export const ProjectEditModal: React.FC<ProjectEditModalProps> = ({
     return (
         <>
             <Modal isOpen={isOpen} onClose={onClose} title={t('projectSettings.title')} size="xl">
-                <div className="flex h-[600px] -m-6">
-                    {/* Sidebar */}
-                    <div className="w-64 shrink-0 bg-surface-hover/30 border-r border-surface p-4 flex flex-col gap-1">
-                        {tabs.map(tab => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`
-                                    flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
-                                    ${activeTab === tab.id
-                                        ? 'bg-primary/10 text-primary'
-                                        : 'text-muted hover:bg-surface-hover hover:text-main'}
-                                `}
-                            >
-                                <span className={`material-symbols-outlined text-[20px] ${activeTab === tab.id ? 'fill' : ''}`}>{tab.icon}</span>
-                                {tab.label}
-                            </button>
-                        ))}
-                    </div>
-
-                    {/* Content Area */}
-                    <div className="flex-1 flex flex-col min-w-0">
-                        <div className="flex-1 overflow-y-auto p-6 scrollbar-thin">
-                            {renderContent()}
+                <div className="project-edit-modal">
+                    <div className="project-edit-modal__layout">
+                        {/* Sidebar */}
+                        <div className="project-edit-modal__sidebar">
+                            {tabs.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    type="button"
+                                    onClick={() => setActiveTab(tab.id)}
+                                    className={`project-edit-modal__tab ${activeTab === tab.id ? 'project-edit-modal__tab--active' : ''}`}
+                                >
+                                    <span className={`material-symbols-outlined project-edit-modal__tab-icon ${activeTab === tab.id ? 'fill' : ''}`}>
+                                        {tab.icon}
+                                    </span>
+                                    <span className="project-edit-modal__tab-label">{tab.label}</span>
+                                </button>
+                            ))}
                         </div>
 
-                        {/* Footer */}
-                        <div className="shrink-0 p-4 border-t border-surface flex items-center justify-end gap-3 bg-surface-paper">
-                            <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
-                            <Button variant="primary" onClick={handleSave} isLoading={isSaving}>{t('common.saveChanges')}</Button>
+                        {/* Content Area */}
+                        <div className="project-edit-modal__content">
+                            <div className="project-edit-modal__body">
+                                {renderContent()}
+                            </div>
+
+                            {/* Footer */}
+                            <div className="project-edit-modal__footer">
+                                <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
+                                <Button variant="primary" onClick={handleSave} isLoading={isSaving}>
+                                    {t('common.saveChanges')}
+                                </Button>
+                            </div>
                         </div>
                     </div>
                 </div>
