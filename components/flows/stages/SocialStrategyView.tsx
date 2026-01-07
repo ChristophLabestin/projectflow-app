@@ -1,5 +1,8 @@
 import React from 'react';
-import { Button } from '../../ui/Button';
+import { Button } from '../../common/Button/Button';
+import { Card } from '../../common/Card/Card';
+import { Select } from '../../common/Select/Select';
+import { TextArea } from '../../common/Input/TextArea';
 import { subscribeSocialStrategy, subscribeCampaigns } from '../../../services/dataService';
 import { SocialStrategy as SocialStrategyType, Idea, SocialPlatform, SocialCampaign } from '../../../types';
 import {
@@ -23,7 +26,7 @@ interface SocialStrategy {
     pillar: string;
     scope: 'post' | 'campaign';
     linkedCampaignId?: string;
-    plays: Record<string, { play: string, tips: string[] }>;
+    plays: Record<string, { play: string; tips: string[] }>;
 }
 
 export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, onUpdate }) => {
@@ -88,7 +91,7 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
             });
             updateStrategy({ plays: playbookData });
         } catch (error) {
-            console.error("Playbook generation error:", error);
+            console.error('Playbook generation error:', error);
         } finally {
             setGenerating(false);
         }
@@ -110,7 +113,7 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
                 }
             });
         } catch (error) {
-            console.error("Regeneration error:", error);
+            console.error('Regeneration error:', error);
         } finally {
             setRegeneratingPlatform(null);
         }
@@ -119,7 +122,7 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
     const toggleChannel = (channel: SocialPlatform) => {
         const current = strategy.channels;
         if (current.includes(channel)) {
-            updateStrategy({ channels: current.filter(c => c !== channel) });
+            updateStrategy({ channels: current.filter((c) => c !== channel) });
         } else {
             updateStrategy({ channels: [...current, channel] });
         }
@@ -143,139 +146,140 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
         return GOALS.find((goal) => goal.id === value)?.label || value;
     };
 
+    const selectedCampaign = availableCampaigns.find((campaign) => campaign.id === strategy.linkedCampaignId);
+
     const missionText = (
-        <div className="text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
-            "{t('flowStages.socialStrategy.mission.prefix')} <span className="text-rose-500 font-black">{strategy.scope === 'post' ? t('flowStages.socialStrategy.scope.post') : t('flowStages.socialStrategy.mission.campaign')}</span>
-            {strategy.scope === 'post' && strategy.linkedCampaignId && availableCampaigns.find(c => c.id === strategy.linkedCampaignId) && (
-                <>{' '}{t('flowStages.socialStrategy.mission.for')} <span className="text-rose-500 font-black">{availableCampaigns.find(c => c.id === strategy.linkedCampaignId)?.name}</span></>
+        <p className="flow-social-strategy__mission">
+            "{t('flowStages.socialStrategy.mission.prefix')} <span className="flow-social-strategy__mission-highlight">
+                {strategy.scope === 'post' ? t('flowStages.socialStrategy.scope.post') : t('flowStages.socialStrategy.mission.campaign')}
+            </span>
+            {strategy.scope === 'post' && selectedCampaign && (
+                <>
+                    {' '}{t('flowStages.socialStrategy.mission.for')} <span className="flow-social-strategy__mission-highlight">{selectedCampaign.name}</span>
+                </>
             )}
-            {' '}{t('flowStages.socialStrategy.mission.targeting')} <span className="text-rose-500 font-black">{strategy.targetAudience || t('flowStages.socialStrategy.mission.audienceFallback')}</span>
-            {' '}{t('flowStages.socialStrategy.mission.on')} <span className="text-rose-500 font-black">{strategy.channels.length > 0 ? strategy.channels.join(', ') : t('flowStages.socialStrategy.mission.channelFallback')}</span>
-            {' '}{t('flowStages.socialStrategy.mission.toDrive')} <span className="text-rose-500 font-black">
+            {' '}{t('flowStages.socialStrategy.mission.targeting')} <span className="flow-social-strategy__mission-highlight">
+                {strategy.targetAudience || t('flowStages.socialStrategy.mission.audienceFallback')}
+            </span>
+            {' '}{t('flowStages.socialStrategy.mission.on')} <span className="flow-social-strategy__mission-highlight">
+                {strategy.channels.length > 0 ? strategy.channels.join(', ') : t('flowStages.socialStrategy.mission.channelFallback')}
+            </span>
+            {' '}{t('flowStages.socialStrategy.mission.toDrive')} <span className="flow-social-strategy__mission-highlight">
                 {getGoalLabel(strategy.campaignType) || t('flowStages.socialStrategy.mission.goalFallback')}
-                {strategy.subGoal && <span className="text-slate-400 font-normal px-1">&</span>}
+                {strategy.subGoal && <span className="flow-social-strategy__mission-muted">&amp;</span>}
                 {strategy.subGoal ? getGoalLabel(strategy.subGoal) : ''}
             </span>."
-        </div>
+        </p>
     );
 
+    const campaignOptions = [
+        { label: t('flowStages.socialStrategy.scope.noneOption'), value: '' },
+        ...availableCampaigns.map((campaign) => ({ label: campaign.name, value: campaign.id })),
+    ];
+
+    const subGoalOptions = GOALS
+        .filter((goal) => goal.id !== strategy.campaignType)
+        .map((goal) => ({ label: goal.label, value: goal.id }));
+
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="max-w-7xl mx-auto flex flex-col gap-4 pt-6 px-6">
-                {/* Campaign Mission Hero */}
-                <div className="bg-gradient-to-br from-rose-100 via-pink-50 to-white dark:from-rose-900/30 dark:via-pink-900/10 dark:to-slate-900/50 rounded-3xl p-6 md:p-8 border border-rose-200 dark:border-rose-800/50 relative overflow-hidden shadow-xl shadow-rose-100 dark:shadow-none">
-                    <div className="absolute top-0 right-0 p-8 opacity-[0.03] dark:opacity-[0.05] pointer-events-none select-none">
-                        <span className="material-symbols-outlined text-[200px] text-rose-600 rotate-12 -translate-y-10 translate-x-10">flag</span>
+        <div className="flow-social-strategy">
+            <div className="flow-social-strategy__container">
+                <div className="flow-social-strategy__hero">
+                    <div className="flow-social-strategy__hero-glow">
+                        <span className="material-symbols-outlined">flag</span>
                     </div>
-                    <div className="relative z-10">
-                        <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
-                            <div className="flex items-center gap-2 shrink-0">
-                                <div className="px-3 py-1 bg-rose-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-rose-200 dark:shadow-none">
-                                    {t('flowStages.socialStrategy.hero.badge')}
-                                </div>
-                                <div className="h-[1px] w-8 bg-rose-200 dark:bg-rose-800 rounded-full" />
+                    <div className="flow-social-strategy__hero-content">
+                        <div className="flow-social-strategy__hero-header">
+                            <div className="flow-social-strategy__badge">
+                                {t('flowStages.socialStrategy.hero.badge')}
                             </div>
-                            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+                            <h1 className="flow-social-strategy__title">
                                 {t('flowStages.socialStrategy.hero.title')}
                             </h1>
                         </div>
-                        <div className="max-w-3xl p-5 bg-white/70 dark:bg-slate-950/50 rounded-2xl border border-white dark:border-slate-800 shadow-lg shadow-rose-100/50 dark:shadow-none backdrop-blur-md">
+                        <div className="flow-social-strategy__mission-card">
                             {missionText}
                         </div>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-10">
-                    {/* Column: Foundations */}
-                    <div className="lg:col-span-4 space-y-5">
-                        {/* Scope Selection */}
-                        <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest mb-4 opacity-50">{t('flowStages.socialStrategy.scope.title')}</h3>
-                            <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                <div className="flow-social-strategy__grid">
+                    <div className="flow-social-strategy__sidebar">
+                        <Card className="flow-social-strategy__panel">
+                            <h3 className="flow-social-strategy__panel-title">{t('flowStages.socialStrategy.scope.title')}</h3>
+                            <div className="flow-social-strategy__toggle">
                                 <button
+                                    type="button"
+                                    className={`flow-social-strategy__toggle-button ${strategy.scope === 'post' ? 'is-active' : ''}`}
                                     onClick={() => updateStrategy({ scope: 'post' })}
-                                    className={`flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${strategy.scope === 'post' ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
-                                    <span className="material-symbols-outlined text-[16px]">sticky_note_2</span>
+                                    <span className="material-symbols-outlined">sticky_note_2</span>
                                     {t('flowStages.socialStrategy.scope.post')}
                                 </button>
                                 <button
+                                    type="button"
+                                    className={`flow-social-strategy__toggle-button ${strategy.scope === 'campaign' ? 'is-active' : ''}`}
                                     onClick={() => updateStrategy({ scope: 'campaign' })}
-                                    className={`flex-1 flex items-center justify-center gap-2 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${strategy.scope === 'campaign' ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                                 >
-                                    <span className="material-symbols-outlined text-[16px]">layers</span>
+                                    <span className="material-symbols-outlined">layers</span>
                                     {t('flowStages.socialStrategy.scope.campaign')}
                                 </button>
                             </div>
 
-                            {/* Campaign Link Select (Visible only for Single Post) */}
                             {strategy.scope === 'post' && (
-                                <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2 duration-300">
-                                    <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-2 block opacity-70 flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-[14px]">link</span>
-                                        {t('flowStages.socialStrategy.scope.linkLabel')}
-                                    </label>
-                                    <div className="relative">
-                                        <select
-                                            value={strategy.linkedCampaignId || ''}
-                                            onChange={(e) => updateStrategy({ linkedCampaignId: e.target.value || undefined })}
-                                            className="w-full appearance-none bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-3 py-2 text-[11px] font-bold text-slate-700 dark:text-white focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all pr-8"
-                                        >
-                                            <option value="">{t('flowStages.socialStrategy.scope.noneOption')}</option>
-                                            {availableCampaigns.map(c => (
-                                                <option key={c.id} value={c.id}>{c.name}</option>
-                                            ))}
-                                        </select>
-                                        <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                            <span className="material-symbols-outlined text-[16px]">expand_more</span>
-                                        </div>
-                                    </div>
+                                <div className="flow-social-strategy__linked">
+                                    <Select
+                                        label={t('flowStages.socialStrategy.scope.linkLabel')}
+                                        value={strategy.linkedCampaignId || ''}
+                                        onChange={(value) => updateStrategy({ linkedCampaignId: value ? String(value) : undefined })}
+                                        options={campaignOptions}
+                                        className="flow-social-strategy__select"
+                                    />
                                 </div>
                             )}
-                        </div>
+                        </Card>
 
-                        {/* Channel Selection */}
-                        <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest mb-4 opacity-50">{t('flowStages.socialStrategy.channels.title')}</h3>
-                            <div className="grid grid-cols-2 gap-2">
-                                {COMMON_CHANNELS.map(c => (
-                                    <button
-                                        key={c}
-                                        onClick={() => toggleChannel(c)}
-                                        className={`flex items-center justify-between p-2 rounded-xl border-2 transition-all group ${strategy.channels.includes(c)
-                                            ? 'bg-rose-50 dark:bg-rose-900/10 border-rose-200 dark:border-rose-800 shadow-sm'
-                                            : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800/50'}`}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            <div className="size-6 shadow-md group-hover:scale-110 transition-transform">
-                                                <PlatformIcon platform={c} />
+                        <Card className="flow-social-strategy__panel">
+                            <h3 className="flow-social-strategy__panel-title">{t('flowStages.socialStrategy.channels.title')}</h3>
+                            <div className="flow-social-strategy__channels">
+                                {COMMON_CHANNELS.map((channel) => {
+                                    const isActive = strategy.channels.includes(channel);
+                                    return (
+                                        <button
+                                            key={channel}
+                                            type="button"
+                                            className={`flow-social-strategy__channel ${isActive ? 'is-active' : ''}`}
+                                            onClick={() => toggleChannel(channel)}
+                                        >
+                                            <div className="flow-social-strategy__channel-main">
+                                                <div className="flow-social-strategy__channel-icon">
+                                                    <PlatformIcon platform={channel} />
+                                                </div>
+                                                <span>{channel}</span>
                                             </div>
-                                            <span className={`text-[11px] font-black tracking-tight ${strategy.channels.includes(c) ? 'text-rose-900 dark:text-rose-100' : 'text-slate-500'}`}>
-                                                {c}
-                                            </span>
-                                        </div>
-                                        <div className={`size-4 rounded-md flex items-center justify-center border transition-all ${strategy.channels.includes(c) ? 'bg-rose-600 border-rose-600 text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
-                                            {strategy.channels.includes(c) && <span className="material-symbols-outlined text-[10px] font-black">check</span>}
-                                        </div>
-                                    </button>
-                                ))}
+                                            <div className="flow-social-strategy__channel-check">
+                                                {isActive && <span className="material-symbols-outlined">check</span>}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
                             </div>
-                        </div>
+                        </Card>
 
-                        <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest opacity-50">{t('flowStages.socialStrategy.base.title')}</h3>
-                                <button
+                        <Card className="flow-social-strategy__panel">
+                            <div className="flow-social-strategy__panel-header">
+                                <h3 className="flow-social-strategy__panel-title">{t('flowStages.socialStrategy.base.title')}</h3>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
                                     onClick={async () => {
                                         setGenerating(true);
                                         try {
-                                            // 1. Generate Base Strategy & Audience Alts in parallel
                                             const [strategyRes, altsRes] = await Promise.all([
                                                 generateSocialStrategyAI(idea),
                                                 generateAudienceAlternativesAI(idea)
                                             ]);
 
-                                            // 2. Update Local State immediately for UI feedback
                                             setAudienceSuggestions(altsRes);
                                             updateStrategy({
                                                 campaignType: strategyRes.goal,
@@ -283,31 +287,30 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
                                                 targetAudience: strategyRes.targetAudience,
                                                 pillar: strategyRes.pillar
                                             });
-
                                         } catch (e) {
                                             console.error(e);
                                         } finally {
                                             setGenerating(false);
                                         }
                                     }}
-                                    className="text-[9px] font-black text-rose-600 hover:text-rose-700 bg-rose-50 dark:bg-rose-900/20 px-2.5 py-1.5 rounded-full flex items-center gap-1 transition-all"
+                                    isLoading={generating}
+                                    className="flow-social-strategy__ai-button"
+                                    icon={<span className="material-symbols-outlined">auto_awesome</span>}
                                 >
-                                    <span className={`material-symbols-outlined text-[12px] ${generating ? 'animate-spin' : ''}`}>
-                                        {generating ? 'progress_activity' : 'auto_awesome'}
-                                    </span>
                                     {t('flowStages.socialStrategy.base.aiSuggest')}
-                                </button>
+                                </Button>
                             </div>
 
-                            <div className="space-y-6">
+                            <div className="flow-social-strategy__form">
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-3 block opacity-70">{t('flowStages.socialStrategy.base.goalLabel')}</label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {GOALS.map(goal => (
+                                    <label className="flow-social-strategy__label">{t('flowStages.socialStrategy.base.goalLabel')}</label>
+                                    <div className="flow-social-strategy__goal-grid">
+                                        {GOALS.map((goal) => (
                                             <button
                                                 key={goal.id}
+                                                type="button"
+                                                className={`flow-social-strategy__goal ${strategy.campaignType === goal.id ? 'is-active' : ''}`}
                                                 onClick={() => updateStrategy({ campaignType: goal.id })}
-                                                className={`px-2 py-2 text-[10px] font-black rounded-lg border-2 transition-all ${strategy.campaignType === goal.id ? 'bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-200 dark:shadow-none' : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-800 text-slate-500 hover:border-rose-200'}`}
                                             >
                                                 {goal.label}
                                             </button>
@@ -316,165 +319,154 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
                                 </div>
 
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-3 block opacity-70">{t('flowStages.socialStrategy.base.secondaryLabel')}</label>
-                                    <div className="relative">
-                                        <select
-                                            value={strategy.subGoal}
-                                            onChange={(e) => updateStrategy({ subGoal: e.target.value })}
-                                            className="w-full appearance-none bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-3 text-[11px] font-black text-slate-700 dark:text-white focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all"
-                                        >
-                                            <option value="">{t('flowStages.socialStrategy.base.secondaryPlaceholder')}</option>
-                                            {GOALS.filter(goal => goal.id !== strategy.campaignType).map(goal => (
-                                                <option key={goal.id} value={goal.id}>{goal.label}</option>
-                                            ))}
-                                        </select>
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                            <span className="material-symbols-outlined text-[18px]">expand_more</span>
-                                        </div>
-                                    </div>
+                                    <Select
+                                        label={t('flowStages.socialStrategy.base.secondaryLabel')}
+                                        value={strategy.subGoal}
+                                        onChange={(value) => updateStrategy({ subGoal: String(value) })}
+                                        options={subGoalOptions}
+                                        placeholder={t('flowStages.socialStrategy.base.secondaryPlaceholder')}
+                                        className="flow-social-strategy__select"
+                                    />
                                 </div>
 
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-3 block opacity-70">{t('flowStages.socialStrategy.base.audienceLabel')}</label>
-                                    <textarea
-                                        className="w-full text-xs font-bold bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-3 py-2.5 focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 outline-none h-24 resize-none leading-snug tracking-tight text-slate-700 dark:text-slate-200"
+                                    <label className="flow-social-strategy__label">{t('flowStages.socialStrategy.base.audienceLabel')}</label>
+                                    <TextArea
                                         value={strategy.targetAudience}
                                         onChange={(e) => updateStrategy({ targetAudience: e.target.value })}
+                                        className="flow-social-strategy__textarea"
                                     />
-                                    <div className="mt-2 flex flex-wrap gap-2">
-                                        <button
+                                    <div className="flow-social-strategy__audience-actions">
+                                        <Button
+                                            size="sm"
+                                            variant="ghost"
                                             onClick={async () => {
                                                 if (generating) return;
                                                 setGenerating(true);
                                                 try {
                                                     const alts = await generateAudienceAlternativesAI(idea);
                                                     setAudienceSuggestions(alts);
-                                                } finally { setGenerating(false); }
+                                                } finally {
+                                                    setGenerating(false);
+                                                }
                                             }}
-                                            className="text-[9px] font-black text-slate-500 hover:text-rose-600 flex items-center gap-1"
+                                            icon={<span className="material-symbols-outlined">auto_awesome</span>}
+                                            className="flow-social-strategy__audience-button"
                                         >
-                                            <span className="material-symbols-outlined text-[12px]">auto_awesome</span> {t('flowStages.socialStrategy.base.suggestAlternatives')}
-                                        </button>
+                                            {t('flowStages.socialStrategy.base.suggestAlternatives')}
+                                        </Button>
                                     </div>
                                     {audienceSuggestions.length > 0 && (
-                                        <div className="mt-3 p-3 bg-rose-50 dark:bg-rose-950/30 rounded-xl border border-rose-100 dark:border-rose-900/30 space-y-2 shadow-inner">
-                                            {audienceSuggestions.map((s, i) => (
+                                        <div className="flow-social-strategy__audience-suggestions">
+                                            {audienceSuggestions.map((suggestion, index) => (
                                                 <button
-                                                    key={i}
-                                                    onClick={() => { updateStrategy({ targetAudience: s }); setAudienceSuggestions([]); }}
-                                                    className="w-full text-left text-[10px] font-bold text-rose-700 dark:text-rose-300 hover:text-rose-900 leading-tight block hover:bg-white/50 dark:hover:bg-slate-900/50 p-1.5 rounded-lg transition-all"
+                                                    key={`${suggestion}-${index}`}
+                                                    type="button"
+                                                    className="flow-social-strategy__audience-option"
+                                                    onClick={() => {
+                                                        updateStrategy({ targetAudience: suggestion });
+                                                        setAudienceSuggestions([]);
+                                                    }}
                                                 >
-                                                    {s}
+                                                    {suggestion}
                                                 </button>
                                             ))}
                                         </div>
                                     )}
                                 </div>
                             </div>
-                        </div>
+                        </Card>
                     </div>
 
-                    {/* Column: The Playbook */}
-                    <div className="lg:col-span-8 space-y-5 flex flex-col">
-                        <div className="flex-1 bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm min-h-[500px] flex flex-col">
-                            <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+                    <div className="flow-social-strategy__main">
+                        <Card className="flow-social-strategy__playbook">
+                            <div className="flow-social-strategy__playbook-header">
                                 <div>
-                                    <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialStrategy.playbook.title')}</h3>
-                                    <p className="text-[10px] text-slate-500 font-bold mt-1 tracking-tight">{t('flowStages.socialStrategy.playbook.subtitle')}</p>
+                                    <h3>{t('flowStages.socialStrategy.playbook.title')}</h3>
+                                    <p>{t('flowStages.socialStrategy.playbook.subtitle')}</p>
                                 </div>
                                 <Button
                                     onClick={handleGeneratePlaybook}
                                     isLoading={generating}
                                     disabled={strategy.channels.length === 0}
-                                    className="h-11 px-6 rounded-xl border-none shadow-xl shadow-slate-200 dark:shadow-none hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                                    className="flow-social-strategy__playbook-button"
+                                    icon={<span className="material-symbols-outlined">bolt</span>}
                                 >
-                                    <span className={`material-symbols-outlined text-[20px] ${generating ? 'animate-spin' : ''}`}>
-                                        {generating ? 'progress_activity' : 'bolt'}
-                                    </span>
-                                    <span className="text-[11px] font-black uppercase tracking-widest">{t('flowStages.socialStrategy.playbook.generate')}</span>
+                                    {t('flowStages.socialStrategy.playbook.generate')}
                                 </Button>
                             </div>
 
                             {strategy.channels.length === 0 ? (
-                                <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-slate-50 dark:bg-slate-800/20 rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-slate-800">
-                                    <div className="size-24 bg-white dark:bg-slate-900 rounded-3xl flex items-center justify-center shadow-xl border border-slate-100 dark:border-slate-800 mb-8">
-                                        <span className="material-symbols-outlined text-5xl text-slate-300">ads_click</span>
-                                    </div>
-                                    <h4 className="text-xl font-black text-slate-400 tracking-tight">{t('flowStages.socialStrategy.playbook.empty.title')}</h4>
-                                    <p className="text-sm text-slate-400 font-bold max-w-[280px] mt-3 leading-relaxed opacity-60">{t('flowStages.socialStrategy.playbook.empty.subtitle')}</p>
+                                <div className="flow-social-strategy__playbook-empty">
+                                    <span className="material-symbols-outlined">ads_click</span>
+                                    <h4>{t('flowStages.socialStrategy.playbook.empty.title')}</h4>
+                                    <p>{t('flowStages.socialStrategy.playbook.empty.subtitle')}</p>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {strategy.channels.map(c => (
-                                        <div key={c} className="bg-slate-50 dark:bg-slate-800/30 rounded-3xl p-6 border-2 border-slate-100 dark:border-slate-800 group hover:border-rose-400/30 transition-all hover:bg-white dark:hover:bg-slate-950/50 hover:shadow-xl hover:shadow-rose-100 dark:hover:shadow-none h-full flex flex-col">
-                                            <div className="flex items-center justify-between mb-6">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="size-10 shadow-lg group-hover:rotate-6 transition-transform">
-                                                        <PlatformIcon platform={c} />
+                                <div className="flow-social-strategy__playbook-grid">
+                                    {strategy.channels.map((channel) => (
+                                        <div key={channel} className="flow-social-strategy__playbook-card">
+                                            <div className="flow-social-strategy__playbook-card-header">
+                                                <div className="flow-social-strategy__channel-main">
+                                                    <div className="flow-social-strategy__channel-icon">
+                                                        <PlatformIcon platform={channel} />
                                                     </div>
-                                                    <span className="font-black text-[12px] tracking-widest text-slate-900 dark:text-white uppercase">{c}</span>
+                                                    <span>{channel}</span>
                                                 </div>
-                                                <div className="flex items-center gap-2">
-                                                    <button
-                                                        onClick={(e) => { e.stopPropagation(); handleRegeneratePlatform(c); }}
-                                                        disabled={!!regeneratingPlatform}
-                                                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-all opacity-0 group-hover:opacity-100"
-                                                        title={t('flowStages.socialStrategy.playbook.regenerate')}
-                                                    >
-                                                        <span className={`material-symbols-outlined text-[18px] ${regeneratingPlatform === c ? 'animate-spin text-rose-600' : ''}`}>
-                                                            {regeneratingPlatform === c ? 'sync' : 'refresh'}
-                                                        </span>
-                                                    </button>
-                                                    <div className="p-1.5 bg-rose-50 dark:bg-rose-900/20 rounded-lg text-rose-500 opacity-0 group-hover:opacity-100 transition-all scale-75 group-hover:scale-100">
-                                                        <span className="material-symbols-outlined text-[18px]">sports_score</span>
-                                                    </div>
-                                                </div>
+                                                <button
+                                                    type="button"
+                                                    className="flow-social-strategy__refresh"
+                                                    onClick={(event) => {
+                                                        event.stopPropagation();
+                                                        handleRegeneratePlatform(channel);
+                                                    }}
+                                                    disabled={!!regeneratingPlatform}
+                                                    title={t('flowStages.socialStrategy.playbook.regenerate')}
+                                                >
+                                                    <span className={`material-symbols-outlined ${regeneratingPlatform === channel ? 'animate-spin' : ''}`}>
+                                                        {regeneratingPlatform === channel ? 'sync' : 'refresh'}
+                                                    </span>
+                                                </button>
                                             </div>
 
-                                            {strategy.plays[c] ? (
-                                                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 flex-1">
+                                            {strategy.plays[channel] ? (
+                                                <div className="flow-social-strategy__playbook-content">
                                                     <div>
-                                                        <div className="text-[9px] font-black text-rose-600 uppercase tracking-[.25em] mb-1.5 opacity-80">{t('flowStages.socialStrategy.playbook.playTitle')}</div>
-                                                        <h4 className="font-black text-base text-slate-900 dark:text-white leading-tight tracking-tight">
-                                                            {strategy.plays[c].play}
-                                                        </h4>
+                                                        <span className="flow-social-strategy__playbook-label">{t('flowStages.socialStrategy.playbook.playTitle')}</span>
+                                                        <h4>{strategy.plays[channel].play}</h4>
                                                     </div>
-                                                    <div className="space-y-2.5 pr-1">
-                                                        <div className="text-[9px] font-black text-slate-400 uppercase tracking-[.25em] mb-1.5 opacity-80">{t('flowStages.socialStrategy.playbook.tipsTitle')}</div>
-                                                        {strategy.plays[c].tips.map((tip, idx) => (
-                                                            <div key={idx} className="flex gap-2.5 items-start">
-                                                                <div className="size-4 rounded-md bg-rose-600 text-white flex items-center justify-center text-[8px] font-black mt-0.5 shrink-0 shadow-sm">
-                                                                    {idx + 1}
+                                                    <div>
+                                                        <span className="flow-social-strategy__playbook-label">{t('flowStages.socialStrategy.playbook.tipsTitle')}</span>
+                                                        <div className="flow-social-strategy__tips">
+                                                            {strategy.plays[channel].tips.map((tip, index) => (
+                                                                <div key={index} className="flow-social-strategy__tip">
+                                                                    <span>{index + 1}</span>
+                                                                    <p>{tip}</p>
                                                                 </div>
-                                                                <p className="text-[11px] font-bold text-slate-600 dark:text-slate-400 leading-snug tracking-tight">
-                                                                    {tip}
-                                                                </p>
-                                                            </div>
-                                                        ))}
+                                                            ))}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="flex-1 flex flex-col items-center justify-center py-12 text-center opacity-40">
-                                                    <div className="material-symbols-outlined text-slate-300 text-4xl mb-3 animate-pulse">hourglass_bottom</div>
-                                                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{t('flowStages.socialStrategy.playbook.pending')}</p>
+                                                <div className="flow-social-strategy__playbook-placeholder">
+                                                    <span className="material-symbols-outlined">hourglass_bottom</span>
+                                                    <p>{t('flowStages.socialStrategy.playbook.pending')}</p>
                                                 </div>
                                             )}
                                         </div>
                                     ))}
                                 </div>
                             )}
-                        </div>
+                        </Card>
 
-                        {/* Integrated Footer Link */}
-                        <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+                        <div className="flow-social-strategy__footer">
                             <Button
-                                className="h-14 px-10 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-[.2em] shadow-xl shadow-rose-200 dark:shadow-none hover:scale-105 active:scale-95 transition-all flex items-center gap-4 group"
+                                className="flow-social-strategy__advance"
                                 onClick={() => onUpdate({ stage: 'CreativeLab' })}
+                                icon={<span className="material-symbols-outlined">science</span>}
+                                iconPosition="right"
                             >
                                 {t('flowStages.socialStrategy.actions.advance')}
-                                <div className="size-7 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-2 transition-all">
-                                    <span className="material-symbols-outlined text-[18px] font-black">science</span>
-                                </div>
                             </Button>
                         </div>
                     </div>
