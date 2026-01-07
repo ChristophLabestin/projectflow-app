@@ -1,15 +1,19 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
-import { Button } from '../../ui/Button';
-import { Idea, SocialPlatform, SocialStrategy as SocialStrategyType, SocialCampaign, SocialPostFormat } from '../../../types';
+import { Button } from '../../common/Button/Button';
+import { Card } from '../../common/Card/Card';
+import { Select } from '../../common/Select/Select';
+import { TextArea } from '../../common/Input/TextArea';
+import { TextInput } from '../../common/Input/TextInput';
+import { Idea, SocialPlatform, SocialStrategy as SocialStrategyType, SocialPostFormat } from '../../../types';
 import { PLATFORM_FORMATS } from '../constants';
 import {
     generateSocialCampaignStrategyAI,
     generateAudienceAlternativesAI
 } from '../../../services/geminiService';
-import { subscribeSocialStrategy, subscribeCampaigns } from '../../../services/dataService';
+import { subscribeSocialStrategy } from '../../../services/dataService';
 import { PlatformIcon } from '../../../screens/social/components/PlatformIcon';
-import { PLATFORM_FREQUENCY_GUIDELINES, YOUTUBE_SYNERGY, getDefaultPlatformFrequency } from '../constants/platformFrequencyData';
+import { getDefaultPlatformFrequency } from '../constants/platformFrequencyData';
 import { useLanguage } from '../../../context/LanguageContext';
 
 interface SocialCampaignStrategyViewProps {
@@ -32,7 +36,7 @@ interface CampaignStrategy {
         role: string;
         frequencyValue?: number;
         frequencyUnit?: string;
-        frequency?: string; // Keep for migration/compat
+        frequency?: string;
         phaseFrequencies?: { phaseId: string; frequencyValue?: number; frequencyUnit: string; format?: SocialPostFormat }[];
         format?: SocialPostFormat;
     }[];
@@ -46,14 +50,9 @@ interface CampaignStrategy {
 }
 
 const SOCIAL_PLATFORMS = ['Instagram', 'Facebook', 'LinkedIn', 'TikTok', 'X', 'YouTube Video', 'YouTube Shorts'];
+const PHASE_TONES = ['primary', 'warning', 'success', 'neutral', 'danger'] as const;
 
-const PHASE_COLORS = [
-    { bg: 'from-rose-500 to-pink-600', light: 'bg-rose-50 dark:bg-rose-900/20', text: 'text-rose-600 dark:text-rose-400', border: 'border-rose-200 dark:border-rose-800' },
-    { bg: 'from-orange-500 to-amber-500', light: 'bg-orange-50 dark:bg-orange-900/20', text: 'text-orange-600 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-800' },
-    { bg: 'from-emerald-500 to-teal-500', light: 'bg-emerald-50 dark:bg-emerald-900/20', text: 'text-emerald-600 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-800' },
-    { bg: 'from-blue-500 to-indigo-500', light: 'bg-blue-50 dark:bg-blue-900/20', text: 'text-blue-600 dark:text-blue-400', border: 'border-blue-200 dark:border-blue-800' },
-    { bg: 'from-violet-500 to-purple-600', light: 'bg-violet-50 dark:bg-violet-900/20', text: 'text-violet-600 dark:text-violet-400', border: 'border-violet-200 dark:border-violet-800' },
-];
+const getPhaseTone = (index: number) => PHASE_TONES[index % PHASE_TONES.length];
 
 export const SocialCampaignStrategyView: React.FC<SocialCampaignStrategyViewProps> = ({ idea, onUpdate }) => {
     const { t } = useLanguage();
@@ -64,7 +63,6 @@ export const SocialCampaignStrategyView: React.FC<SocialCampaignStrategyViewProp
     const [editingPlatformId, setEditingPlatformId] = useState<string | null>(null);
     const [editingAudienceIndex, setEditingAudienceIndex] = useState<number | null>(null);
     const [audienceSuggestions, setAudienceSuggestions] = useState<string[]>([]);
-    const [expandedPlatformId, setExpandedPlatformId] = useState<string | null>(null);
     const [showAIConfig, setShowAIConfig] = useState(false);
     const [aiInstructions, setAiInstructions] = useState('');
 
@@ -77,35 +75,38 @@ export const SocialCampaignStrategyView: React.FC<SocialCampaignStrategyViewProp
     const enabledPlatforms = useMemo(() => {
         const raw = socialStrategy?.defaultPlatforms || SOCIAL_PLATFORMS;
         const expanded: string[] = [];
-        raw.forEach(p => {
-            if (p === 'YouTube') {
+        raw.forEach((platform) => {
+            if (platform === 'YouTube') {
                 expanded.push('YouTube Video', 'YouTube Shorts');
-            } else if (!expanded.includes(p)) {
-                expanded.push(p);
+            } else if (!expanded.includes(platform)) {
+                expanded.push(platform);
             }
         });
         return expanded;
     }, [socialStrategy?.defaultPlatforms]);
 
-    const getBasePlatform = (p: string): SocialPlatform => {
-        if (p === 'YouTube Video' || p === 'YouTube Shorts') return 'YouTube';
-        return p as SocialPlatform;
+    const getBasePlatform = (platform: string): SocialPlatform => {
+        if (platform === 'YouTube Video' || platform === 'YouTube Shorts') return 'YouTube';
+        return platform as SocialPlatform;
     };
 
     const phaseToDays = (phase: Phase): number => {
         const val = phase.durationValue || 1;
         switch (phase.durationUnit) {
-            case 'Weeks': return val * 7;
-            case 'Months': return val * 30;
-            default: return val;
+            case 'Weeks':
+                return val * 7;
+            case 'Months':
+                return val * 30;
+            default:
+                return val;
         }
     };
 
     const calculatePlatformTotal = (platform: { frequencyValue?: number; frequencyUnit?: string; phaseFrequencies?: any[] }, phases: Phase[]) => {
         let total = 0;
-        phases.forEach(phase => {
+        phases.forEach((phase) => {
             const days = phaseToDays(phase);
-            const override = platform.phaseFrequencies?.find(pf => pf.phaseId === phase.id);
+            const override = platform.phaseFrequencies?.find((pf) => pf.phaseId === phase.id);
 
             let val = platform.frequencyValue || 1;
             let unit = platform.frequencyUnit || 'Posts/Week';
@@ -129,40 +130,42 @@ export const SocialCampaignStrategyView: React.FC<SocialCampaignStrategyViewProp
         try {
             if (idea.concept && idea.concept.startsWith('{')) {
                 const parsed = JSON.parse(idea.concept);
-                const phases = Array.isArray(parsed.phases) ? parsed.phases.map((p: any) => ({
-                    id: p.id || Math.random().toString(36).substr(2, 9),
-                    name: p.name || '',
-                    durationValue: p.durationValue || parseInt(p.duration) || 1,
-                    durationUnit: p.durationUnit || 'Days',
-                    focus: p.focus || '',
-                })) : [];
-                const platforms = Array.isArray(parsed.platforms) ? parsed.platforms.map((p: any) => {
-                    // Migration logic: if only string frequency exists, parse it
-                    let frequencyValue = p.frequencyValue;
-                    let frequencyUnit = p.frequencyUnit || 'Posts/Week';
+                const phases = Array.isArray(parsed.phases)
+                    ? parsed.phases.map((phase: any) => ({
+                        id: phase.id || Math.random().toString(36).substr(2, 9),
+                        name: phase.name || '',
+                        durationValue: phase.durationValue || parseInt(phase.duration) || 1,
+                        durationUnit: phase.durationUnit || 'Days',
+                        focus: phase.focus || '',
+                    }))
+                    : [];
+                const platforms = Array.isArray(parsed.platforms)
+                    ? parsed.platforms.map((platform: any) => {
+                        let frequencyValue = platform.frequencyValue;
+                        let frequencyUnit = platform.frequencyUnit || 'Posts/Week';
 
-                    if (frequencyValue === undefined && p.frequency) {
-                        const match = p.frequency.match(/(\d+)/);
-                        frequencyValue = match ? parseInt(match[1]) : 1;
-                        if (p.frequency.toLowerCase().includes('day')) frequencyUnit = 'Posts/Day';
-                        else if (p.frequency.toLowerCase().includes('month')) frequencyUnit = 'Posts/Month';
-                    }
+                        if (frequencyValue === undefined && platform.frequency) {
+                            const match = platform.frequency.match(/(\d+)/);
+                            frequencyValue = match ? parseInt(match[1]) : 1;
+                            if (platform.frequency.toLowerCase().includes('day')) frequencyUnit = 'Posts/Day';
+                            else if (platform.frequency.toLowerCase().includes('month')) frequencyUnit = 'Posts/Month';
+                        }
 
-                    // Parse phase overrides
-                    const phaseFrequencies = (p.phaseFrequencies || []).map((pf: any) => ({
-                        phaseId: pf.phaseId,
-                        frequencyValue: pf.frequencyValue || pf.value || 1,
-                        frequencyUnit: pf.frequencyUnit || pf.unit || 'Posts/Week',
-                        format: pf.format
-                    }));
+                        const phaseFrequencies = (platform.phaseFrequencies || []).map((phaseFrequency: any) => ({
+                            phaseId: phaseFrequency.phaseId,
+                            frequencyValue: phaseFrequency.frequencyValue || phaseFrequency.value || 1,
+                            frequencyUnit: phaseFrequency.frequencyUnit || phaseFrequency.unit || 'Posts/Week',
+                            format: phaseFrequency.format
+                        }));
 
-                    return {
-                        ...p,
-                        frequencyValue,
-                        frequencyUnit,
-                        phaseFrequencies
-                    };
-                }) : [];
+                        return {
+                            ...platform,
+                            frequencyValue,
+                            frequencyUnit,
+                            phaseFrequencies
+                        };
+                    })
+                    : [];
 
                 return {
                     phases,
@@ -176,22 +179,35 @@ export const SocialCampaignStrategyView: React.FC<SocialCampaignStrategyViewProp
                     aiTactics: Array.isArray(parsed.aiTactics) ? parsed.aiTactics : [],
                 };
             }
-        } catch (e) { console.error("Strategy Parse Error", e); }
+        } catch (e) {
+            console.error('Strategy Parse Error', e);
+        }
 
-        return { phases: [], platforms: [], kpis: [], audienceSegments: [], campaignType: '', subGoal: '', pillar: '', aiSuggestedPlatforms: [], aiTactics: [] };
+        return {
+            phases: [],
+            platforms: [],
+            kpis: [],
+            audienceSegments: [],
+            campaignType: '',
+            subGoal: '',
+            pillar: '',
+            aiSuggestedPlatforms: [],
+            aiTactics: []
+        };
     }, [idea.concept]);
 
     const totalCampaignPosts = useMemo(() => {
-        return strategyData.platforms.reduce((sum, p) => sum + calculatePlatformTotal(p, strategyData.phases), 0);
+        return strategyData.platforms.reduce((sum, platform) => sum + calculatePlatformTotal(platform, strategyData.phases), 0);
     }, [strategyData.platforms, strategyData.phases]);
-
     const updateStrategy = (updates: Partial<CampaignStrategy>) => {
         let existingJson = {};
         try {
             if (idea.concept && idea.concept.startsWith('{')) {
                 existingJson = JSON.parse(idea.concept);
             }
-        } catch { }
+        } catch {
+            existingJson = {};
+        }
         onUpdate({ concept: JSON.stringify({ ...existingJson, ...updates }) });
     };
 
@@ -204,15 +220,17 @@ export const SocialCampaignStrategyView: React.FC<SocialCampaignStrategyViewProp
                 if (idea.concept && idea.concept.startsWith('{')) {
                     conceptContext = JSON.parse(idea.concept);
                 }
-            } catch { }
+            } catch {
+                conceptContext = {};
+            }
 
             const result = await generateSocialCampaignStrategyAI(idea, conceptContext, enabledPlatforms, aiInstructions, {
                 preferredTone: socialStrategy?.preferredTone,
                 brandPillars: socialStrategy?.brandPillars
             });
 
-            const structuredPhases = result.phases.map((p: any) => {
-                const durationStr = (p.duration || '1 week').toLowerCase();
+            const structuredPhases = result.phases.map((phase: any) => {
+                const durationStr = (phase.duration || '1 week').toLowerCase();
                 const numericMatch = durationStr.match(/(\d+)/);
                 const durationValue = numericMatch ? parseInt(numericMatch[1]) : 1;
                 let durationUnit: 'Days' | 'Weeks' | 'Months' = 'Days';
@@ -221,21 +239,18 @@ export const SocialCampaignStrategyView: React.FC<SocialCampaignStrategyViewProp
 
                 return {
                     id: Math.random().toString(36).substr(2, 9),
-                    name: p.name,
+                    name: phase.name,
                     durationValue,
                     durationUnit,
-                    focus: p.focus,
+                    focus: phase.focus,
                 };
             });
 
-            const structuredPlatforms = result.platforms.map((p: any) => {
-                const freqStr = (p.frequency || '').toLowerCase();
-
-                // Enhanced frequency parsing - handle decimals and various formats
+            const structuredPlatforms = result.platforms.map((platform: any) => {
+                const freqStr = (platform.frequency || '').toLowerCase();
                 const decimalMatch = freqStr.match(/(\d+\.?\d*)/);
-                let val = decimalMatch ? parseFloat(decimalMatch[1]) : 3; // Default to 3 if no number found
+                let val = decimalMatch ? parseFloat(decimalMatch[1]) : 3;
 
-                // Handle special cases like "daily" which means 1/day or 7/week
                 if (freqStr.includes('daily') && !decimalMatch) {
                     val = 1;
                 }
@@ -244,39 +259,38 @@ export const SocialCampaignStrategyView: React.FC<SocialCampaignStrategyViewProp
                 if (freqStr.includes('day') || freqStr.includes('daily')) unit = 'Posts/Day';
                 else if (freqStr.includes('month')) unit = 'Posts/Month';
 
-                // Round to nearest integer for display (can't post 0.5 times)
                 const frequencyValue = Math.max(1, Math.round(val));
 
-                // Map phase overrides
-                const phaseFrequencies = (p.phaseFrequencies || []).map((pf: any) => {
-                    // Find matching phase by name
-                    const matchedPhase = structuredPhases.find(sp => sp.name === pf.phaseName);
-                    if (!matchedPhase) return null;
+                const phaseFrequencies = (platform.phaseFrequencies || [])
+                    .map((phaseFrequency: any) => {
+                        const matchedPhase = structuredPhases.find((phaseItem) => phaseItem.name === phaseFrequency.phaseName);
+                        if (!matchedPhase) return null;
 
-                    const pfFreqStr = (pf.frequency || '').toLowerCase();
-                    const pfDecimalMatch = pfFreqStr.match(/(\d+\.?\d*)/);
-                    let pfVal = pfDecimalMatch ? parseFloat(pfDecimalMatch[1]) : 3;
+                        const pfFreqStr = (phaseFrequency.frequency || '').toLowerCase();
+                        const pfDecimalMatch = pfFreqStr.match(/(\d+\.?\d*)/);
+                        let pfVal = pfDecimalMatch ? parseFloat(pfDecimalMatch[1]) : 3;
 
-                    if (pfFreqStr.includes('daily') && !pfDecimalMatch) {
-                        pfVal = 1;
-                    }
+                        if (pfFreqStr.includes('daily') && !pfDecimalMatch) {
+                            pfVal = 1;
+                        }
 
-                    let pfUnit = 'Posts/Week';
-                    if (pfFreqStr.includes('day') || pfFreqStr.includes('daily')) pfUnit = 'Posts/Day';
-                    else if (pfFreqStr.includes('month')) pfUnit = 'Posts/Month';
+                        let pfUnit = 'Posts/Week';
+                        if (pfFreqStr.includes('day') || pfFreqStr.includes('daily')) pfUnit = 'Posts/Day';
+                        else if (pfFreqStr.includes('month')) pfUnit = 'Posts/Month';
 
-                    const pfFrequencyValue = Math.max(1, Math.round(pfVal));
+                        const pfFrequencyValue = Math.max(1, Math.round(pfVal));
 
-                    return {
-                        phaseId: matchedPhase.id,
-                        frequencyValue: pfFrequencyValue,
-                        frequencyUnit: pfUnit,
-                        format: pf.format
-                    };
-                }).filter(Boolean); // Remove nulls
+                        return {
+                            phaseId: matchedPhase.id,
+                            frequencyValue: pfFrequencyValue,
+                            frequencyUnit: pfUnit,
+                            format: phaseFrequency.format
+                        };
+                    })
+                    .filter(Boolean);
 
                 return {
-                    ...p,
+                    ...platform,
                     frequencyValue,
                     frequencyUnit: unit,
                     phaseFrequencies
@@ -285,8 +299,8 @@ export const SocialCampaignStrategyView: React.FC<SocialCampaignStrategyViewProp
 
             updateStrategy({
                 phases: structuredPhases,
-                platforms: structuredPlatforms, // Actually update the platforms with AI-generated data
-                aiSuggestedPlatforms: result.platforms.map((p: any) => p.id),
+                platforms: structuredPlatforms,
+                aiSuggestedPlatforms: result.platforms.map((platform: any) => platform.id),
                 aiTactics: structuredPlatforms,
                 campaignType: result.campaignType,
                 subGoal: result.subGoal,
@@ -305,8 +319,8 @@ export const SocialCampaignStrategyView: React.FC<SocialCampaignStrategyViewProp
         if (generating) return;
         setGenerating(true);
         try {
-            const alts = await generateAudienceAlternativesAI(idea);
-            setAudienceSuggestions(alts);
+            const alternatives = await generateAudienceAlternativesAI(idea);
+            setAudienceSuggestions(alternatives);
         } catch (e) {
             console.error(e);
         } finally {
@@ -337,68 +351,65 @@ export const SocialCampaignStrategyView: React.FC<SocialCampaignStrategyViewProp
         setEditingPhaseId(null);
     };
 
-    const togglePlatform = (platform: string) => {
-        const index = strategyData.platforms.findIndex(p => p.id === platform);
+    const togglePlatform = (platformId: string) => {
+        const index = strategyData.platforms.findIndex((platform) => platform.id === platformId);
         if (index >= 0) {
             updateStrategy({ platforms: strategyData.platforms.filter((_, i) => i !== index) });
         } else {
-            // Check if AI suggested this platform and use its data
-            const aiData = strategyData.aiTactics?.find(p => p.id === platform);
+            const aiData = strategyData.aiTactics?.find((platform) => platform.id === platformId);
+            const smartDefault = getDefaultPlatformFrequency(platformId);
 
-            // Get smart default frequency from platform guidelines
-            const smartDefault = getDefaultPlatformFrequency(platform);
-
-            const newPlatform = aiData ? {
-                id: platform,
-                role: aiData.role || '',
-                frequencyValue: aiData.frequencyValue,
-                frequencyUnit: aiData.frequencyUnit,
-                phaseFrequencies: aiData.phaseFrequencies || []
-            } : {
-                id: platform,
-                role: '',
-                frequencyValue: smartDefault.value,
-                frequencyUnit: smartDefault.unit,
-                phaseFrequencies: []
-            };
+            const newPlatform = aiData
+                ? {
+                    id: platformId,
+                    role: aiData.role || '',
+                    frequencyValue: aiData.frequencyValue,
+                    frequencyUnit: aiData.frequencyUnit,
+                    phaseFrequencies: aiData.phaseFrequencies || []
+                }
+                : {
+                    id: platformId,
+                    role: '',
+                    frequencyValue: smartDefault.value,
+                    frequencyUnit: smartDefault.unit,
+                    phaseFrequencies: []
+                };
 
             updateStrategy({ platforms: [...strategyData.platforms, newPlatform] });
         }
     };
 
-    // YouTube synergy check: warn if Video is selected but Shorts is not
-    const hasYouTubeVideo = strategyData.platforms.some(p => p.id === 'YouTube Video');
-    const hasYouTubeShorts = strategyData.platforms.some(p => p.id === 'YouTube Shorts');
+    const hasYouTubeVideo = strategyData.platforms.some((platform) => platform.id === 'YouTube Video');
+    const hasYouTubeShorts = strategyData.platforms.some((platform) => platform.id === 'YouTube Shorts');
     const showYouTubeSynergyWarning = hasYouTubeVideo && !hasYouTubeShorts && enabledPlatforms.includes('YouTube Shorts');
 
     const updatePlatform = (platformId: string, updates: any) => {
-        const newPlatforms = strategyData.platforms.map(p => {
-            if (p.id === platformId) {
-                return { ...p, ...updates };
+        const newPlatforms = strategyData.platforms.map((platform) => {
+            if (platform.id === platformId) {
+                return { ...platform, ...updates };
             }
-            return p;
+            return platform;
         });
         updateStrategy({ platforms: newPlatforms });
     };
 
     const updatePhaseFrequency = (platformId: string, phaseId: string, frequencyValue: number | undefined, frequencyUnit: string, format?: SocialPostFormat) => {
-        const platform = strategyData.platforms.find(p => p.id === platformId);
+        const platform = strategyData.platforms.find((entry) => entry.id === platformId);
         if (!platform) return;
 
-        const currentFreqs = platform.phaseFrequencies || [];
-        const existingIndex = currentFreqs.findIndex(pf => pf.phaseId === phaseId);
+        const currentFrequencies = platform.phaseFrequencies || [];
+        const existingIndex = currentFrequencies.findIndex((frequency) => frequency.phaseId === phaseId);
 
-        let newFreqs;
+        let newFrequencies;
         if (existingIndex >= 0) {
-            newFreqs = [...currentFreqs];
-            newFreqs[existingIndex] = { phaseId, frequencyValue, frequencyUnit, format };
+            newFrequencies = [...currentFrequencies];
+            newFrequencies[existingIndex] = { phaseId, frequencyValue, frequencyUnit, format };
         } else {
-            newFreqs = [...currentFreqs, { phaseId, frequencyValue, frequencyUnit, format }];
+            newFrequencies = [...currentFrequencies, { phaseId, frequencyValue, frequencyUnit, format }];
         }
 
-        updatePlatform(platformId, { phaseFrequencies: newFreqs });
+        updatePlatform(platformId, { phaseFrequencies: newFrequencies });
     };
-
     const GOALS = [
         { id: 'Brand Awareness', label: t('flowStages.socialCampaignStrategy.goals.brandAwareness') },
         { id: 'Engagement', label: t('flowStages.socialCampaignStrategy.goals.engagement') },
@@ -425,6 +436,7 @@ export const SocialCampaignStrategyView: React.FC<SocialCampaignStrategyViewProp
         if (!value) return '';
         return PILLARS.find((pillar) => pillar.id === value)?.label || value;
     };
+
     const frequencyUnitLabels: Record<string, string> = {
         'Posts/Day': t('flowStages.socialCampaignStrategy.tactics.frequency.units.day'),
         'Posts/Week': t('flowStages.socialCampaignStrategy.tactics.frequency.units.week'),
@@ -435,723 +447,635 @@ export const SocialCampaignStrategyView: React.FC<SocialCampaignStrategyViewProp
         'Posts/Week': t('flowStages.socialCampaignStrategy.tactics.frequency.units.shortWeek'),
         'Posts/Month': t('flowStages.socialCampaignStrategy.tactics.frequency.units.shortMonth'),
     };
+
     const formatFrequencyUnit = (unit?: string) => frequencyUnitLabels[unit || ''] || unit || '';
     const formatFrequencyUnitShort = (unit?: string) => frequencyUnitShortLabels[unit || ''] || unit?.replace('Posts/', '') || '';
 
+    const durationOptions = [
+        { label: t('flowStages.socialCampaignStrategy.timeline.units.days'), value: 'Days' },
+        { label: t('flowStages.socialCampaignStrategy.timeline.units.weeks'), value: 'Weeks' },
+        { label: t('flowStages.socialCampaignStrategy.timeline.units.months'), value: 'Months' },
+    ];
+
+    const frequencyOptions = [
+        { label: t('flowStages.socialCampaignStrategy.tactics.frequency.units.day'), value: 'Posts/Day' },
+        { label: t('flowStages.socialCampaignStrategy.tactics.frequency.units.week'), value: 'Posts/Week' },
+        { label: t('flowStages.socialCampaignStrategy.tactics.frequency.units.month'), value: 'Posts/Month' },
+    ];
+
+    const frequencyOptionsShort = [
+        { label: t('flowStages.socialCampaignStrategy.tactics.frequency.units.shortDay'), value: 'Posts/Day' },
+        { label: t('flowStages.socialCampaignStrategy.tactics.frequency.units.shortWeek'), value: 'Posts/Week' },
+        { label: t('flowStages.socialCampaignStrategy.tactics.frequency.units.shortMonth'), value: 'Posts/Month' },
+    ];
+
+    const secondaryGoalOptions = [
+        { label: t('flowStages.socialCampaignStrategy.objectives.secondaryPlaceholder'), value: '' },
+        ...GOALS.filter((goal) => goal.id !== strategyData.campaignType).map((goal) => ({
+            label: goal.label,
+            value: goal.id
+        }))
+    ];
+
     const missionText = (
-        <div className="text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
-            "{t('flowStages.socialCampaignStrategy.mission.prefix')} <span className="text-rose-500 font-black">{t('flowStages.socialCampaignStrategy.mission.campaign')}</span>
-            {' '}{t('flowStages.socialCampaignStrategy.mission.targeting')} <span className="text-rose-500 font-black">{strategyData.audienceSegments[0] || t('flowStages.socialCampaignStrategy.mission.audienceFallback')}</span>
-            {' '}{t('flowStages.socialCampaignStrategy.mission.on')} <span className="text-rose-500 font-black">{strategyData.platforms.length > 0 ? strategyData.platforms.map(p => p.id).join(', ') : t('flowStages.socialCampaignStrategy.mission.channelFallback')}</span>
-            {' '}{t('flowStages.socialCampaignStrategy.mission.toDrive')} <span className="text-rose-500 font-black">
+        <p className="flow-social-campaign-strategy__mission">
+            "{t('flowStages.socialCampaignStrategy.mission.prefix')} <span className="flow-social-campaign-strategy__mission-highlight">{t('flowStages.socialCampaignStrategy.mission.campaign')}</span>
+            {' '}{t('flowStages.socialCampaignStrategy.mission.targeting')} <span className="flow-social-campaign-strategy__mission-highlight">{strategyData.audienceSegments[0] || t('flowStages.socialCampaignStrategy.mission.audienceFallback')}</span>
+            {' '}{t('flowStages.socialCampaignStrategy.mission.on')} <span className="flow-social-campaign-strategy__mission-highlight">{strategyData.platforms.length > 0 ? strategyData.platforms.map((platform) => platform.id).join(', ') : t('flowStages.socialCampaignStrategy.mission.channelFallback')}</span>
+            {' '}{t('flowStages.socialCampaignStrategy.mission.toDrive')} <span className="flow-social-campaign-strategy__mission-highlight">
                 {getGoalLabel(strategyData.campaignType) || t('flowStages.socialCampaignStrategy.mission.goalFallback')}
-                {strategyData.subGoal && <span className="text-slate-400 font-normal px-1">&</span>}
+                {strategyData.subGoal && <span className="flow-social-campaign-strategy__mission-muted">&amp;</span>}
                 {strategyData.subGoal ? getGoalLabel(strategyData.subGoal) : ''}
             </span>
-            {strategyData.pillar && <> {t('flowStages.socialCampaignStrategy.mission.pillarPrefix')} <span className="text-rose-500 font-black">{getPillarLabel(strategyData.pillar)}</span> {t('flowStages.socialCampaignStrategy.mission.pillarSuffix')}</>}."
-        </div>
+            {strategyData.pillar && (
+                <> {t('flowStages.socialCampaignStrategy.mission.pillarPrefix')} <span className="flow-social-campaign-strategy__mission-highlight">{getPillarLabel(strategyData.pillar)}</span> {t('flowStages.socialCampaignStrategy.mission.pillarSuffix')}</>
+            )}."
+        </p>
     );
-
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="max-w-7xl mx-auto flex flex-col gap-4 pt-6 px-6">
-
-                {/* Campaign Mission Hero */}
-                <div className="bg-gradient-to-br from-rose-100 via-pink-50 to-white dark:from-rose-900/30 dark:via-pink-900/10 dark:to-slate-900/50 rounded-3xl p-6 md:p-8 border border-rose-200 dark:border-rose-800/50 relative overflow-hidden shadow-xl shadow-rose-100 dark:shadow-none">
-                    <div className="absolute top-0 right-0 p-8 opacity-[0.03] dark:opacity-[0.05] pointer-events-none select-none">
-                        <span className="material-symbols-outlined text-[200px] text-rose-600 rotate-12 -translate-y-10 translate-x-10">flag</span>
+        <div className="flow-social-campaign-strategy">
+            <div className="flow-social-campaign-strategy__container">
+                <div className="flow-social-campaign-strategy__hero">
+                    <div className="flow-social-campaign-strategy__hero-glow">
+                        <span className="material-symbols-outlined">flag</span>
                     </div>
-                    <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div className="flex-1">
-                            <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
-                                <div className="flex items-center gap-2 shrink-0">
-                                    <div className="px-3 py-1 bg-rose-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-rose-200 dark:shadow-none">
-                                        {t('flowStages.socialCampaignStrategy.hero.badge')}
-                                    </div>
-                                    <div className="h-[1px] w-8 bg-rose-200 dark:bg-rose-800 rounded-full" />
-                                </div>
-                                <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-                                    {t('flowStages.socialCampaignStrategy.hero.title')}
-                                </h1>
-                            </div>
-                            <div className="max-w-3xl p-5 bg-white/70 dark:bg-slate-950/50 rounded-2xl border border-white dark:border-slate-800 shadow-lg shadow-rose-100/50 dark:shadow-none backdrop-blur-md">
-                                {missionText}
-                            </div>
+                    <div className="flow-social-campaign-strategy__hero-content">
+                        <div className="flow-social-campaign-strategy__badge">
+                            {t('flowStages.socialCampaignStrategy.hero.badge')}
                         </div>
-                        <div className="relative z-10 flex flex-col justify-between items-end">
-                            <Button
-                                onClick={handleGenerateAI}
-                                disabled={generating}
-                                className="h-10 px-5 rounded-xl bg-white/20 hover:bg-white/30 text-white border border-white/30 backdrop-blur-sm font-black text-[10px] uppercase tracking-[.2em] transition-all flex items-center gap-2"
-                            >
-                                <span className={`material-symbols-outlined text-[18px] ${generating ? 'animate-spin' : ''}`}>
-                                    {generating ? 'progress_activity' : 'auto_awesome'}
-                                </span>
-                                {generating ? t('flowStages.socialCampaignStrategy.actions.dreaming') : (showAIConfig ? t('flowStages.socialCampaignStrategy.actions.generating') : t('flowStages.socialCampaignStrategy.actions.aiSuggest'))}
-                            </Button>
+                        <h1 className="flow-social-campaign-strategy__title">{t('flowStages.socialCampaignStrategy.hero.title')}</h1>
+                        <div className="flow-social-campaign-strategy__mission-card">
+                            {missionText}
                         </div>
                     </div>
-                    {showAIConfig && (
-                        <div className="absolute top-full left-0 right-0 mt-2 z-20 bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-rose-100 dark:border-rose-900 p-4 animate-in slide-in-from-top-2">
-                            <div className="flex flex-col gap-3">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t('flowStages.socialCampaignStrategy.aiConfig.label')}</label>
-                                <textarea
-                                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-xs font-medium focus:outline-none focus:border-rose-500 min-h-[80px]"
-                                    placeholder={t('flowStages.socialCampaignStrategy.aiConfig.placeholder')}
-                                    value={aiInstructions}
-                                    onChange={(e) => setAiInstructions(e.target.value)}
-                                />
-                                <div className="flex justify-end gap-2">
-                                    <button
-                                        onClick={() => setShowAIConfig(false)}
-                                        className="px-4 py-2 text-[10px] font-bold text-slate-500 hover:text-slate-700 uppercase tracking-wider"
-                                    >
-                                        {t('flowStages.socialCampaignStrategy.aiConfig.cancel')}
-                                    </button>
-                                    <Button
-                                        onClick={() => {
-                                            handleGenerateAI();
-                                            setShowAIConfig(false);
-                                        }}
-                                        disabled={generating}
-                                        className="h-8 px-6 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-[10px] font-black uppercase tracking-widest"
-                                    >
-                                        {t('flowStages.socialCampaignStrategy.aiConfig.run')}
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    <div className="flow-social-campaign-strategy__hero-actions">
+                        <Button
+                            onClick={handleGenerateAI}
+                            isLoading={generating}
+                            variant="secondary"
+                            size="sm"
+                            icon={<span className="material-symbols-outlined">auto_awesome</span>}
+                        >
+                            {generating ? t('flowStages.socialCampaignStrategy.actions.dreaming') : t('flowStages.socialCampaignStrategy.actions.aiSuggest')}
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`flow-social-campaign-strategy__config-toggle ${showAIConfig ? 'is-active' : ''}`}
+                            onClick={() => setShowAIConfig((prev) => !prev)}
+                        >
+                            {t('flowStages.socialCampaignStrategy.aiConfig.label')}
+                        </Button>
+                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-10">
-
-                    {/* Left Column: Execution Plan (8/12) */}
-                    <div className="lg:col-span-8 space-y-6">
-                        <div className="flex items-center gap-3 px-2">
-                            <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-                            <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">{t('flowStages.socialCampaignStrategy.execution.title')}</h2>
-                            <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
+                {showAIConfig && (
+                    <Card className="flow-social-campaign-strategy__ai-config">
+                        <div className="flow-social-campaign-strategy__ai-config-header">
+                            <span className="material-symbols-outlined">tune</span>
+                            <h3>{t('flowStages.socialCampaignStrategy.aiConfig.label')}</h3>
                         </div>
+                        <TextArea
+                            className="flow-social-campaign-strategy__ai-config-input"
+                            placeholder={t('flowStages.socialCampaignStrategy.aiConfig.placeholder')}
+                            value={aiInstructions}
+                            onChange={(e) => setAiInstructions(e.target.value)}
+                        />
+                        <div className="flow-social-campaign-strategy__ai-config-actions">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setShowAIConfig(false)}
+                            >
+                                {t('flowStages.socialCampaignStrategy.aiConfig.cancel')}
+                            </Button>
+                            <Button
+                                size="sm"
+                                onClick={() => {
+                                    handleGenerateAI();
+                                    setShowAIConfig(false);
+                                }}
+                                isLoading={generating}
+                            >
+                                {t('flowStages.socialCampaignStrategy.aiConfig.run')}
+                            </Button>
+                        </div>
+                    </Card>
+                )}
 
-                        {/* Phase Timeline Section */}
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm relative overflow-hidden">
-                            <div className="flex items-center justify-between mb-8 relative z-10">
+                <div className="flow-social-campaign-strategy__layout">
+                    <div className="flow-social-campaign-strategy__main">
+                        <Card className="flow-social-campaign-strategy__panel flow-social-campaign-strategy__timeline">
+                            <div className="flow-social-campaign-strategy__panel-header">
                                 <div>
-                                    <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialCampaignStrategy.timeline.title')}</h3>
-                                    <p className="text-[10px] text-slate-500 font-bold mt-1 tracking-tight">{t('flowStages.socialCampaignStrategy.timeline.subtitle')}</p>
+                                    <h3>{t('flowStages.socialCampaignStrategy.timeline.title')}</h3>
+                                    <p>{t('flowStages.socialCampaignStrategy.timeline.subtitle')}</p>
                                 </div>
                                 <Button
+                                    size="sm"
+                                    variant="secondary"
                                     onClick={addPhase}
-                                    className="h-9 px-4 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:scale-105 transition-all"
+                                    icon={<span className="material-symbols-outlined">add</span>}
                                 >
-                                    <span className="material-symbols-outlined text-[18px]">add</span>
                                     {t('flowStages.socialCampaignStrategy.timeline.addPhase')}
                                 </Button>
                             </div>
+                            {strategyData.phases.length === 0 ? (
+                                <div className="flow-social-campaign-strategy__empty">
+                                    <span className="material-symbols-outlined">timeline</span>
+                                    <h4>{t('flowStages.socialCampaignStrategy.timeline.empty.title')}</h4>
+                                    <p>{t('flowStages.socialCampaignStrategy.timeline.empty.subtitle')}</p>
+                                </div>
+                            ) : (
+                                <div className="flow-social-campaign-strategy__phase-list">
+                                    {strategyData.phases.map((phase, index) => {
+                                        const isEditing = editingPhaseId === phase.id;
+                                        const tone = getPhaseTone(index);
 
-                            <div className="space-y-6 relative">
-                                {/* Vertical Timeline Line */}
-                                {strategyData.phases.length > 1 && (
-                                    <div className="absolute left-[65px] md:left-[64px] top-10 bottom-10 w-px bg-slate-100 dark:bg-slate-800 z-0 hidden md:block" />
-                                )}
-                                {strategyData.phases.map((phase, i) => {
-                                    const color = PHASE_COLORS[i % PHASE_COLORS.length];
-                                    const isEditing = editingPhaseId === phase.id;
-
-                                    return (
-                                        <div key={phase.id} className="relative group z-10">
+                                        return (
                                             <div
-                                                className={`flex flex-col md:flex-row gap-4 p-5 rounded-3xl border-2 transition-all cursor-pointer ${isEditing ? `${color.border} bg-white dark:bg-slate-900 shadow-xl` : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-800 hover:border-rose-400/30 hover:shadow-lg shadow-sm'}`}
+                                                key={phase.id}
+                                                className={`flow-social-campaign-strategy__phase ${isEditing ? 'is-editing' : ''}`}
+                                                data-tone={tone}
                                                 onClick={() => !isEditing && setEditingPhaseId(phase.id)}
                                             >
-                                                <div className="flex flex-row md:flex-col items-center md:items-start justify-between md:justify-start gap-4 shrink-0 md:w-32 bg-inherit/50">
-                                                    <div className={`size-10 rounded-2xl bg-gradient-to-br ${color.bg} flex items-center justify-center text-white text-base font-black shadow-lg relative z-10`}>
-                                                        {i + 1}
-                                                    </div>
-                                                    <div className={`px-2 py-1 ${color.light} ${color.text} rounded-lg text-[10px] font-black uppercase tracking-wider`}>
-                                                        {phase.durationValue} {phase.durationUnit}
-                                                    </div>
-                                                </div>
-
-                                                <div className="flex-1 space-y-1">
+                                                <div className="flow-social-campaign-strategy__phase-index">{index + 1}</div>
+                                                <div className="flow-social-campaign-strategy__phase-body">
                                                     {isEditing ? (
-                                                        <div className="space-y-4 pr-1">
-                                                            <div className="flex flex-col md:flex-row gap-3">
-                                                                <input
-                                                                    type="text"
+                                                        <div className="flow-social-campaign-strategy__phase-form">
+                                                            <div className="flow-social-campaign-strategy__phase-row">
+                                                                <TextInput
                                                                     value={phase.name}
-                                                                    onChange={(e) => updatePhase(i, 'name', e.target.value)}
-                                                                    className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:border-rose-500"
+                                                                    onChange={(e) => updatePhase(index, 'name', e.target.value)}
                                                                     placeholder={t('flowStages.socialCampaignStrategy.timeline.phaseNamePlaceholder')}
+                                                                    className="flow-social-campaign-strategy__phase-input"
                                                                     autoFocus
                                                                 />
-                                                                <div className="flex gap-2">
-                                                                    <input
+                                                                <div className="flow-social-campaign-strategy__phase-duration">
+                                                                    <TextInput
                                                                         type="number"
+                                                                        min={1}
                                                                         value={phase.durationValue}
-                                                                        onChange={(e) => updatePhase(i, 'durationValue', parseInt(e.target.value) || 1)}
-                                                                        className="w-20 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-sm font-black text-slate-900 dark:text-white text-center focus:outline-none focus:border-rose-500"
+                                                                        onChange={(e) => updatePhase(index, 'durationValue', parseInt(e.target.value) || 1)}
+                                                                        className="flow-social-campaign-strategy__phase-input flow-social-campaign-strategy__phase-input--number"
                                                                     />
-                                                                    <select
+                                                                    <Select
                                                                         value={phase.durationUnit}
-                                                                        onChange={(e) => updatePhase(i, 'durationUnit', e.target.value)}
-                                                                        className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-xs font-black text-slate-700 dark:text-slate-200 focus:outline-none focus:border-rose-500"
-                                                                    >
-                                                                        <option value="Days">{t('flowStages.socialCampaignStrategy.timeline.units.days')}</option>
-                                                                        <option value="Weeks">{t('flowStages.socialCampaignStrategy.timeline.units.weeks')}</option>
-                                                                        <option value="Months">{t('flowStages.socialCampaignStrategy.timeline.units.months')}</option>
-                                                                    </select>
+                                                                        onChange={(value) => updatePhase(index, 'durationUnit', value)}
+                                                                        options={durationOptions}
+                                                                        className="flow-social-campaign-strategy__phase-select"
+                                                                    />
                                                                 </div>
                                                             </div>
-                                                            <textarea
+                                                            <TextArea
                                                                 value={phase.focus}
-                                                                onChange={(e) => updatePhase(i, 'focus', e.target.value)}
-                                                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-xs font-bold text-slate-600 dark:text-slate-400 focus:outline-none focus:border-rose-500 h-24 resize-none leading-relaxed"
+                                                                onChange={(e) => updatePhase(index, 'focus', e.target.value)}
                                                                 placeholder={t('flowStages.socialCampaignStrategy.timeline.focusPlaceholder')}
+                                                                className="flow-social-campaign-strategy__phase-textarea"
                                                             />
-                                                            <div className="flex justify-between items-center pt-2">
+                                                            <div className="flow-social-campaign-strategy__phase-actions">
                                                                 <button
-                                                                    onClick={(e) => { e.stopPropagation(); removePhase(i); }}
-                                                                    className="text-[10px] font-black text-red-500 hover:text-red-700 uppercase tracking-widest flex items-center gap-1.5"
+                                                                    type="button"
+                                                                    className="flow-social-campaign-strategy__phase-delete"
+                                                                    onClick={() => removePhase(index)}
                                                                 >
-                                                                    <span className="material-symbols-outlined text-[16px]">delete</span>
+                                                                    <span className="material-symbols-outlined">delete</span>
                                                                     {t('flowStages.socialCampaignStrategy.timeline.deletePhase')}
                                                                 </button>
                                                                 <Button
-                                                                    onClick={(e) => { e.stopPropagation(); setEditingPhaseId(null); }}
                                                                     size="sm"
-                                                                    className="px-6 py-2 h-auto rounded-xl text-[10px] font-black uppercase tracking-widest"
+                                                                    onClick={() => setEditingPhaseId(null)}
                                                                 >
                                                                     {t('flowStages.socialCampaignStrategy.timeline.savePhase')}
                                                                 </Button>
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <div className="pr-12">
-                                                            <h4 className="text-base font-black text-slate-900 dark:text-white leading-tight mb-1">{phase.name || t('flowStages.socialCampaignStrategy.timeline.untitledPhase')}</h4>
-                                                            <p className="text-[11px] font-bold text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">
-                                                                {phase.focus || t('flowStages.socialCampaignStrategy.timeline.focusEmpty')}
-                                                            </p>
+                                                        <div className="flow-social-campaign-strategy__phase-summary">
+                                                            <div className="flow-social-campaign-strategy__phase-title-row">
+                                                                <h4>{phase.name || t('flowStages.socialCampaignStrategy.timeline.untitledPhase')}</h4>
+                                                                <span className="flow-social-campaign-strategy__phase-duration-pill">
+                                                                    {phase.durationValue} {phase.durationUnit}
+                                                                </span>
+                                                            </div>
+                                                            <p>{phase.focus || t('flowStages.socialCampaignStrategy.timeline.focusEmpty')}</p>
                                                         </div>
                                                     )}
                                                 </div>
-
-                                                {!isEditing && (
-                                                    <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-all">
-                                                        <div className="size-8 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-400">
-                                                            <span className="material-symbols-outlined text-[18px]">edit</span>
-                                                        </div>
-                                                    </div>
-                                                )}
                                             </div>
-                                        </div>
-                                    );
-                                })}
-
-                                {strategyData.phases.length === 0 && (
-                                    <div className="flex-1 flex flex-col items-center justify-center text-center p-12 bg-slate-50 dark:bg-slate-800/20 rounded-[2rem] border-2 border-dashed border-slate-200 dark:border-slate-800">
-                                        <div className="size-16 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center shadow-xl mb-4">
-                                            <span className="material-symbols-outlined text-3xl text-slate-200">timeline</span>
-                                        </div>
-                                        <h4 className="text-base font-black text-slate-400">{t('flowStages.socialCampaignStrategy.timeline.empty.title')}</h4>
-                                        <p className="text-[11px] text-slate-400 font-bold max-w-[200px] mt-2 leading-relaxed">{t('flowStages.socialCampaignStrategy.timeline.empty.subtitle')}</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Channel Strategy Detailed */}
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-                            <div className="flex items-center justify-between mb-8">
-                                <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">{t('flowStages.socialCampaignStrategy.tactics.title')}</h3>
-                                <div className="flex items-center gap-2">
-                                    <div className="flex flex-col items-end">
-                                        <span className="text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-widest leading-none mb-1">{t('flowStages.socialCampaignStrategy.tactics.postCount').replace('{count}', `${totalCampaignPosts}`)}</span>
-                                        <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('flowStages.socialCampaignStrategy.tactics.totalReach')}</span>
-                                    </div>
-                                    <div className="size-8 rounded-xl bg-rose-50 dark:bg-rose-900/20 flex items-center justify-center text-rose-600 dark:text-rose-400">
-                                        <span className="material-symbols-outlined text-[18px]">analytics</span>
-                                    </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </Card>
+                        <Card className="flow-social-campaign-strategy__panel flow-social-campaign-strategy__tactics">
+                            <div className="flow-social-campaign-strategy__panel-header">
+                                <div>
+                                    <h3>{t('flowStages.socialCampaignStrategy.tactics.title')}</h3>
+                                    <p>{t('flowStages.socialCampaignStrategy.tactics.totalReach')}</p>
+                                </div>
+                                <div className="flow-social-campaign-strategy__tactics-meta">
+                                    <span>{t('flowStages.socialCampaignStrategy.tactics.postCount').replace('{count}', `${totalCampaignPosts}`)}</span>
+                                    <span className="flow-social-campaign-strategy__tactics-label">{t('flowStages.socialCampaignStrategy.tactics.postsLabel')}</span>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {strategyData.platforms.map((platform, i) => {
-                                    const isEditing = editingPlatformId === platform.id;
+                            {strategyData.platforms.length === 0 ? (
+                                <div className="flow-social-campaign-strategy__empty">
+                                    <span className="material-symbols-outlined">hourglass_bottom</span>
+                                    <h4>{t('flowStages.socialCampaignStrategy.tactics.empty')}</h4>
+                                </div>
+                            ) : (
+                                <div className="flow-social-campaign-strategy__platform-grid">
+                                    {strategyData.platforms.map((platform) => {
+                                        const isEditing = editingPlatformId === platform.id;
+                                        const hasAdvanced = !!platform.phaseFrequencies && platform.phaseFrequencies.length > 0;
 
-                                    return (
-                                        <div
-                                            key={platform.id}
-                                            className={`bg-white dark:bg-slate-900 rounded-3xl p-6 border-2 transition-all relative group cursor-pointer ${isEditing ? 'border-rose-400/50 shadow-xl' : 'border-slate-100 dark:border-slate-800 hover:border-rose-400/30 hover:shadow-lg shadow-sm hover:bg-slate-50/50 dark:hover:bg-slate-800/20'}`}
-                                            onClick={() => !isEditing && setEditingPlatformId(platform.id)}
-                                        >
-                                            <div className="flex items-center justify-between mb-6">
-                                                <div className="flex items-center gap-3">
-                                                    <div className="size-10 shadow-lg group-hover:rotate-6 transition-transform">
-                                                        <PlatformIcon platform={platform.id as SocialPlatform} />
+                                        return (
+                                            <div
+                                                key={platform.id}
+                                                className={`flow-social-campaign-strategy__platform ${isEditing ? 'is-editing' : ''}`}
+                                                onClick={() => !isEditing && setEditingPlatformId(platform.id)}
+                                            >
+                                                <div className="flow-social-campaign-strategy__platform-header">
+                                                    <div className="flow-social-campaign-strategy__platform-id">
+                                                        <div className="flow-social-campaign-strategy__platform-icon">
+                                                            <PlatformIcon platform={platform.id as SocialPlatform} />
+                                                        </div>
+                                                        <span>{platform.id}</span>
                                                     </div>
-                                                    <span className="font-black text-[12px] tracking-widest text-slate-900 dark:text-white uppercase">{platform.id}</span>
+                                                    <div className="flow-social-campaign-strategy__platform-count">
+                                                        <span>{calculatePlatformTotal(platform, strategyData.phases)}</span>
+                                                        <span>{t('flowStages.socialCampaignStrategy.tactics.postsLabel')}</span>
+                                                    </div>
                                                 </div>
-                                                <div className="flex flex-col items-end">
-                                                    <span className="text-[10px] font-black text-slate-900 dark:text-white">{calculatePlatformTotal(platform, strategyData.phases)}</span>
-                                                    <span className="text-[8px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t('flowStages.socialCampaignStrategy.tactics.postsLabel')}</span>
-                                                </div>
-                                            </div>
 
-                                            <div className="space-y-4">
                                                 {isEditing ? (
-                                                    <div className="space-y-4">
-                                                        <div>
-                                                            <label className="text-[9px] font-black text-rose-600 uppercase tracking-[.25em] mb-1.5 block opacity-80">{t('flowStages.socialCampaignStrategy.tactics.role.label')}</label>
-                                                            <textarea
+                                                    <div className="flow-social-campaign-strategy__platform-form">
+                                                        <div className="flow-social-campaign-strategy__field">
+                                                            <label>{t('flowStages.socialCampaignStrategy.tactics.role.label')}</label>
+                                                            <TextArea
                                                                 value={platform.role}
-                                                                onChange={(e) => updatePlatform(i, 'role', e.target.value)}
+                                                                onChange={(e) => updatePlatform(platform.id, { role: e.target.value })}
                                                                 placeholder={t('flowStages.socialCampaignStrategy.tactics.role.placeholder')}
-                                                                className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-[11px] font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:border-rose-500 h-20 resize-none"
-                                                                autoFocus
+                                                                className="flow-social-campaign-strategy__platform-textarea"
                                                             />
                                                         </div>
-                                                        <div>
-                                                            <div>
-                                                                <div className="flex items-center justify-between mb-2">
-                                                                    <label className="text-[9px] font-black text-rose-600 uppercase tracking-[.25em] mb-1.5 block opacity-80">{t('flowStages.socialCampaignStrategy.tactics.frequency.label')}</label>
-                                                                    <div className="flex bg-slate-100 dark:bg-slate-800 rounded-lg p-0.5">
-                                                                        <button
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                if (platform.phaseFrequencies && platform.phaseFrequencies.length > 0) {
-                                                                                    if (confirm(t('flowStages.socialCampaignStrategy.tactics.frequency.confirmSimple'))) {
-                                                                                        updatePlatform(platform.id, { phaseFrequencies: [] });
-                                                                                    }
-                                                                                }
-                                                                            }}
-                                                                            className={`px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-wider transition-all ${(!platform.phaseFrequencies || platform.phaseFrequencies.length === 0)
-                                                                                ? 'bg-white dark:bg-slate-700 shadow-sm text-slate-900 dark:text-white'
-                                                                                : 'text-slate-400 hover:text-slate-600'
-                                                                                }`}
-                                                                        >
-                                                                            {t('flowStages.socialCampaignStrategy.tactics.frequency.simple')}
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                if (!platform.phaseFrequencies || platform.phaseFrequencies.length === 0) {
-                                                                                    // Initialize with current values
-                                                                                    const initial = strategyData.phases.map(p => ({
-                                                                                        phaseId: p.id,
-                                                                                        frequencyValue: platform.frequencyValue || 1,
-                                                                                        frequencyUnit: platform.frequencyUnit || 'Posts/Week'
-                                                                                    }));
-                                                                                    updatePlatform(platform.id, { phaseFrequencies: initial });
-                                                                                }
-                                                                            }}
-                                                                            className={`px-3 py-1 rounded-md text-[9px] font-black uppercase tracking-wider transition-all ${(platform.phaseFrequencies && platform.phaseFrequencies.length > 0)
-                                                                                ? 'bg-white dark:bg-slate-700 shadow-sm text-indigo-600'
-                                                                                : 'text-slate-400 hover:text-slate-600'
-                                                                                }`}
-                                                                        >
-                                                                            {t('flowStages.socialCampaignStrategy.tactics.frequency.advanced')}
-                                                                        </button>
+
+                                                        <div className="flow-social-campaign-strategy__field">
+                                                            <div className="flow-social-campaign-strategy__field-header">
+                                                                <label>{t('flowStages.socialCampaignStrategy.tactics.frequency.label')}</label>
+                                                                <div className="flow-social-campaign-strategy__frequency-toggle">
+                                                                    <button
+                                                                        type="button"
+                                                                        className={!hasAdvanced ? 'is-active' : ''}
+                                                                        onClick={() => updatePlatform(platform.id, { phaseFrequencies: [] })}
+                                                                    >
+                                                                        {t('flowStages.socialCampaignStrategy.tactics.frequency.simple')}
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        className={hasAdvanced ? 'is-active' : ''}
+                                                                        onClick={() => {
+                                                                            if (!hasAdvanced) {
+                                                                                const initial = strategyData.phases.map((phase) => ({
+                                                                                    phaseId: phase.id,
+                                                                                    frequencyValue: platform.frequencyValue || 1,
+                                                                                    frequencyUnit: platform.frequencyUnit || 'Posts/Week'
+                                                                                }));
+                                                                                updatePlatform(platform.id, { phaseFrequencies: initial });
+                                                                            }
+                                                                        }}
+                                                                    >
+                                                                        {t('flowStages.socialCampaignStrategy.tactics.frequency.advanced')}
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+
+                                                            {!hasAdvanced && (
+                                                                <div className="flow-social-campaign-strategy__format-row">
+                                                                    <div className="flow-social-campaign-strategy__format-list">
+                                                                        {(PLATFORM_FORMATS[getBasePlatform(platform.id)] || []).map((format) => (
+                                                                            <button
+                                                                                key={format}
+                                                                                type="button"
+                                                                                onClick={() => updatePlatform(platform.id, { format })}
+                                                                                className={platform.format === format ? 'is-active' : ''}
+                                                                            >
+                                                                                {format}
+                                                                            </button>
+                                                                        ))}
                                                                     </div>
                                                                 </div>
+                                                            )}
 
-                                                                {/* Global Format Selection (if not using advanced) */}
-                                                                {(!platform.phaseFrequencies || platform.phaseFrequencies.length === 0) && (
-                                                                    <div className="mb-2">
-                                                                        <label className="text-[9px] font-black text-rose-600 uppercase tracking-[.25em] mb-1.5 block opacity-80">{t('flowStages.socialCampaignStrategy.tactics.format.label')}</label>
-                                                                        <div className="flex gap-2 flex-wrap">
-                                                                            {(PLATFORM_FORMATS[getBasePlatform(platform.id)] || []).map(fmt => (
-                                                                                <button
-                                                                                    key={fmt}
-                                                                                    onClick={(e) => { e.stopPropagation(); updatePlatform(platform.id, { format: fmt }); }}
-                                                                                    className={`px-3 py-1 rounded-lg text-[10px] font-bold border transition-all ${platform.format === fmt
-                                                                                        ? 'bg-rose-50 dark:bg-rose-900 border-rose-200 text-rose-700 dark:text-rose-300 shadow-sm'
-                                                                                        : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 hover:border-rose-300'
-                                                                                        }`}
-                                                                                >
-                                                                                    {fmt}
-                                                                                </button>
-                                                                            ))}
-                                                                        </div>
-                                                                    </div>
-                                                                )}
+                                                            {!hasAdvanced ? (
+                                                                <div className="flow-social-campaign-strategy__frequency-row">
+                                                                    <TextInput
+                                                                        type="number"
+                                                                        min={1}
+                                                                        value={platform.frequencyValue ?? ''}
+                                                                        onChange={(e) => updatePlatform(platform.id, { frequencyValue: e.target.value === '' ? undefined : parseInt(e.target.value) })}
+                                                                        placeholder={t('flowStages.socialCampaignStrategy.tactics.frequency.placeholder')}
+                                                                        className="flow-social-campaign-strategy__platform-input"
+                                                                    />
+                                                                    <Select
+                                                                        value={platform.frequencyUnit || 'Posts/Week'}
+                                                                        onChange={(value) => updatePlatform(platform.id, { frequencyUnit: value })}
+                                                                        options={frequencyOptions}
+                                                                        className="flow-social-campaign-strategy__platform-select"
+                                                                    />
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flow-social-campaign-strategy__frequency-advanced">
+                                                                    {strategyData.phases.map((phase, phaseIndex) => {
+                                                                        const phaseFrequency = platform.phaseFrequencies?.find((entry) => entry.phaseId === phase.id);
+                                                                        const val = phaseFrequency ? phaseFrequency.frequencyValue : platform.frequencyValue ?? 1;
+                                                                        const unit = phaseFrequency ? phaseFrequency.frequencyUnit : platform.frequencyUnit ?? 'Posts/Week';
+                                                                        const tone = getPhaseTone(phaseIndex);
 
-                                                                {!platform.phaseFrequencies || platform.phaseFrequencies.length === 0 ? (
-                                                                    <div className="flex gap-2 animate-in fade-in duration-200">
-                                                                        <input
-                                                                            type="number"
-                                                                            value={platform.frequencyValue ?? ''}
-                                                                            onChange={(e) => updatePlatform(platform.id, { frequencyValue: e.target.value === '' ? undefined : parseInt(e.target.value) })}
-                                                                            placeholder={t('flowStages.socialCampaignStrategy.tactics.frequency.placeholder')}
-                                                                            className="w-20 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-[11px] font-black text-slate-700 dark:text-slate-300 focus:outline-none focus:border-rose-500 text-center"
-                                                                        />
-                                                                        <select
-                                                                            value={platform.frequencyUnit}
-                                                                            onChange={(e) => updatePlatform(platform.id, { frequencyUnit: e.target.value })}
-                                                                            className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-[10px] font-black text-slate-700 dark:text-slate-300 focus:outline-none focus:border-rose-500"
-                                                                        >
-                                                                            <option value="Posts/Day">{t('flowStages.socialCampaignStrategy.tactics.frequency.units.day')}</option>
-                                                                            <option value="Posts/Week">{t('flowStages.socialCampaignStrategy.tactics.frequency.units.week')}</option>
-                                                                            <option value="Posts/Month">{t('flowStages.socialCampaignStrategy.tactics.frequency.units.month')}</option>
-                                                                        </select>
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="mt-2 space-y-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-indigo-200 dark:border-indigo-900/50 animate-in slide-in-from-top-2">
-                                                                        {strategyData.phases.map((phase) => {
-                                                                            const phaseFreq = platform.phaseFrequencies?.find(pf => pf.phaseId === phase.id);
-                                                                            const val = phaseFreq ? phaseFreq.frequencyValue : platform.frequencyValue ?? 1;
-                                                                            const unit = phaseFreq ? phaseFreq.frequencyUnit : platform.frequencyUnit ?? 'Posts/Week';
-
-                                                                            const phaseIndex = strategyData.phases.findIndex(p => p.id === phase.id);
-                                                                                            const colors = PHASE_COLORS[phaseIndex % PHASE_COLORS.length] || PHASE_COLORS[0];
-
-                                                                                            return (
-                                                                                                <div key={phase.id} className="flex flex-col gap-2 border-b border-indigo-100 dark:border-indigo-900/40 pb-3 last:pb-0 last:border-0">
-                                                                                                    <div className="flex items-center justify-between gap-4">
-                                                                                                        <div className="flex items-center gap-2">
-                                                                                                            <div className={`size-2 rounded-full bg-gradient-to-r ${colors.bg}`} />
-                                                                                                            <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 truncate max-w-[120px]">{phase.name || t('flowStages.socialCampaignStrategy.timeline.untitledPhase')}</span>
-                                                                                                        </div>
-                                                                                                        <div className="flex items-center gap-2">
-                                                                                                            <input
-                                                                                                                type="number"
-                                                                                                value={val ?? ''}
-                                                                                                onChange={(e) => updatePhaseFrequency(platform.id, phase.id, e.target.value === '' ? undefined : parseInt(e.target.value), unit || 'Posts/Week', phaseFreq?.format)}
-                                                                                                className="w-10 h-6 rounded-md px-1 text-[10px] font-bold text-center border bg-white dark:bg-slate-900 border-indigo-200 dark:border-indigo-800 text-indigo-600 focus:outline-none focus:border-rose-500"
-                                                                                            />
-                                                                                            <select
-                                                                                                value={unit}
-                                                                                                onChange={(e) => updatePhaseFrequency(platform.id, phase.id, val || 1, e.target.value, phaseFreq?.format)}
-                                                                                                className="h-6 rounded-md px-1 text-[10px] font-bold border appearance-none bg-white dark:bg-slate-900 border-indigo-200 dark:border-indigo-800 text-indigo-600 focus:outline-none focus:border-rose-500"
-                                                                                            >
-                                                                                                <option value="Posts/Day">{t('flowStages.socialCampaignStrategy.tactics.frequency.units.shortDay')}</option>
-                                                                                                <option value="Posts/Week">{t('flowStages.socialCampaignStrategy.tactics.frequency.units.shortWeek')}</option>
-                                                                                                <option value="Posts/Month">{t('flowStages.socialCampaignStrategy.tactics.frequency.units.shortMonth')}</option>
-                                                                                            </select>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                    {/* Per-phase Format Selection */}
-                                                                                    <div className="flex gap-1 flex-wrap pl-4">
-                                                                                        {(PLATFORM_FORMATS[getBasePlatform(platform.id)] || []).map(fmt => (
-                                                                                            <button
-                                                                                                key={fmt}
-                                                                                                onClick={(e) => {
-                                                                                                    e.stopPropagation();
-                                                                                                    updatePhaseFrequency(platform.id, phase.id, val || 1, unit || 'Posts/Week', fmt);
-                                                                                                }}
-                                                                                                className={`px-2 py-0.5 rounded text-[9px] font-bold border transition-all ${phaseFreq?.format === fmt
-                                                                                                    ? 'bg-indigo-50 dark:bg-indigo-900 border-indigo-200 text-indigo-700 dark:text-indigo-300'
-                                                                                                    : 'bg-white dark:bg-slate-900 border-indigo-100 dark:border-indigo-900/50 text-slate-400 hover:border-indigo-200'
-                                                                                                    }`}
-                                                                                            >
-                                                                                                {fmt}
-                                                                                            </button>
-                                                                                        ))}
+                                                                        return (
+                                                                            <div key={phase.id} className="flow-social-campaign-strategy__phase-frequency" data-tone={tone}>
+                                                                                <div className="flow-social-campaign-strategy__phase-frequency-header">
+                                                                                    <span>{phase.name || t('flowStages.socialCampaignStrategy.timeline.untitledPhase')}</span>
+                                                                                    <div className="flow-social-campaign-strategy__phase-frequency-inputs">
+                                                                                        <TextInput
+                                                                                            type="number"
+                                                                                            min={1}
+                                                                                            value={val ?? ''}
+                                                                                            onChange={(e) => updatePhaseFrequency(platform.id, phase.id, e.target.value === '' ? undefined : parseInt(e.target.value), unit || 'Posts/Week', phaseFrequency?.format)}
+                                                                                            className="flow-social-campaign-strategy__platform-input"
+                                                                                        />
+                                                                                        <Select
+                                                                                            value={unit}
+                                                                                            onChange={(value) => updatePhaseFrequency(platform.id, phase.id, val || 1, String(value), phaseFrequency?.format)}
+                                                                                            options={frequencyOptionsShort}
+                                                                                            className="flow-social-campaign-strategy__platform-select"
+                                                                                        />
                                                                                     </div>
                                                                                 </div>
-                                                                            );
-                                                                        })}
-                                                                    </div>
-                                                                )}
-                                                            </div>
+                                                                                <div className="flow-social-campaign-strategy__format-list">
+                                                                                    {(PLATFORM_FORMATS[getBasePlatform(platform.id)] || []).map((format) => (
+                                                                                        <button
+                                                                                            key={format}
+                                                                                            type="button"
+                                                                                            onClick={() => updatePhaseFrequency(platform.id, phase.id, val || 1, unit || 'Posts/Week', format)}
+                                                                                            className={phaseFrequency?.format === format ? 'is-active' : ''}
+                                                                                        >
+                                                                                            {format}
+                                                                                        </button>
+                                                                                    ))}
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )}
                                                         </div>
-                                                        <div className="flex justify-between items-center pt-2">
+
+                                                        <div className="flow-social-campaign-strategy__platform-actions">
                                                             <button
-                                                                onClick={(e) => { e.stopPropagation(); togglePlatform(platform.id); setEditingPlatformId(null); }}
-                                                                className="text-[10px] font-black text-red-500 hover:text-red-700 uppercase tracking-widest flex items-center gap-1.5"
+                                                                type="button"
+                                                                className="flow-social-campaign-strategy__platform-remove"
+                                                                onClick={() => {
+                                                                    togglePlatform(platform.id);
+                                                                    setEditingPlatformId(null);
+                                                                }}
                                                             >
-                                                                <span className="material-symbols-outlined text-[16px]">delete</span>
+                                                                <span className="material-symbols-outlined">delete</span>
                                                                 {t('flowStages.socialCampaignStrategy.tactics.remove')}
                                                             </button>
                                                             <Button
-                                                                onClick={(e) => { e.stopPropagation(); setEditingPlatformId(null); }}
                                                                 size="sm"
-                                                                className="px-6 py-2 h-auto rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md"
+                                                                onClick={() => setEditingPlatformId(null)}
                                                             >
                                                                 {t('flowStages.socialCampaignStrategy.tactics.save')}
                                                             </Button>
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <div>
-                                                        <div className="mb-4">
-                                                            <label className="text-[9px] font-black text-rose-600 uppercase tracking-[.25em] mb-1.5 block opacity-50">{t('flowStages.socialCampaignStrategy.tactics.role.label')}</label>
-                                                            <p className="text-[11px] font-bold text-slate-600 dark:text-slate-400 leading-relaxed min-h-[2.5rem]">
-                                                                {platform.role || t('flowStages.socialCampaignStrategy.tactics.role.empty')}
-                                                            </p>
+                                                    <div className="flow-social-campaign-strategy__platform-summary">
+                                                        <div className="flow-social-campaign-strategy__platform-role">
+                                                            <span>{t('flowStages.socialCampaignStrategy.tactics.role.label')}</span>
+                                                            <p>{platform.role || t('flowStages.socialCampaignStrategy.tactics.role.empty')}</p>
                                                         </div>
-                                                        <div className="flex flex-col gap-2">
-                                                            {platform.phaseFrequencies && platform.phaseFrequencies.length > 0 ? (
-                                                                <div className="space-y-1.5">
-                                                                    <div className="text-[9px] font-bold text-indigo-500 uppercase tracking-wider mb-1">{t('flowStages.socialCampaignStrategy.tactics.frequency.advancedSchedule')}</div>
-                                                                    {platform.phaseFrequencies.map((pf) => {
-                                                                        const phase = strategyData.phases.find(p => p.id === pf.phaseId);
+                                                        <div className="flow-social-campaign-strategy__platform-frequency">
+                                                            {hasAdvanced ? (
+                                                                <div className="flow-social-campaign-strategy__frequency-list">
+                                                                    {platform.phaseFrequencies?.map((phaseFrequency) => {
+                                                                        const phase = strategyData.phases.find((entry) => entry.id === phaseFrequency.phaseId);
                                                                         if (!phase) return null;
-
-                                                                        const phaseIndex = strategyData.phases.findIndex(p => p.id === phase.id);
-                                                                        const colors = PHASE_COLORS[phaseIndex % PHASE_COLORS.length] || PHASE_COLORS[0];
+                                                                        const phaseIndex = strategyData.phases.findIndex((entry) => entry.id === phaseFrequency.phaseId);
+                                                                        const tone = getPhaseTone(phaseIndex);
 
                                                                         return (
-                                                                            <div key={pf.phaseId} className="flex items-center gap-2">
-                                                                                <div className={`size-1.5 rounded-full bg-gradient-to-r ${colors.bg}`} />
-                                                                                <span className="text-[10px] font-medium text-slate-500 dark:text-slate-400 w-16 truncate">{phase.name || t('flowStages.socialCampaignStrategy.timeline.untitledPhase')}</span>
-                                                                                <div className="px-1.5 py-0.5 bg-indigo-50 dark:bg-indigo-900/20 rounded text-[9px] font-black text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                                                                                    <span>{pf.frequencyValue} {formatFrequencyUnitShort(pf.frequencyUnit)}</span>
-                                                                                    {pf.format && (
-                                                                                        <>
-                                                                                            <span className="text-indigo-300">•</span>
-                                                                                            <span className="text-indigo-500">{pf.format}</span>
-                                                                                        </>
-                                                                                    )}
+                                                                            <div key={phaseFrequency.phaseId} className="flow-social-campaign-strategy__frequency-item" data-tone={tone}>
+                                                                                <span>{phase.name || t('flowStages.socialCampaignStrategy.timeline.untitledPhase')}</span>
+                                                                                <div>
+                                                                                    {phaseFrequency.frequencyValue} {formatFrequencyUnitShort(phaseFrequency.frequencyUnit)}
+                                                                                    {phaseFrequency.format && <span className="flow-social-campaign-strategy__format-label">{phaseFrequency.format}</span>}
                                                                                 </div>
                                                                             </div>
                                                                         );
                                                                     })}
                                                                 </div>
                                                             ) : (
-                                                                <div className="flex items-center gap-2">
-                                                                <div className="px-2.5 py-1 bg-rose-50 dark:bg-rose-900/20 rounded-lg text-[10px] font-black text-rose-600 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
-                                                                        <span>{platform.frequencyValue} {formatFrequencyUnit(platform.frequencyUnit)}</span>
-                                                                        {platform.format && (
-                                                                            <>
-                                                                                <span className="text-rose-300">•</span>
-                                                                                <span className="text-rose-500">{platform.format}</span>
-                                                                            </>
-                                                                        )}
-                                                                    </div>
-                                                                    <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest opacity-60">{t('flowStages.socialCampaignStrategy.tactics.frequency.labelShort')}</span>
+                                                                <div className="flow-social-campaign-strategy__frequency-pill">
+                                                                    <span>
+                                                                        {platform.frequencyValue} {formatFrequencyUnit(platform.frequencyUnit)}
+                                                                    </span>
+                                                                    {platform.format && <span>{platform.format}</span>}
                                                                 </div>
                                                             )}
-                                                        </div>
-                                                        <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-all">
-                                                            <div className="size-8 rounded-full bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 flex items-center justify-center text-slate-400 shadow-sm">
-                                                                <span className="material-symbols-outlined text-[18px]">edit</span>
-                                                            </div>
                                                         </div>
                                                     </div>
                                                 )}
                                             </div>
-                                        </div>
-                                    );
-                                })}
-
-                                {strategyData.platforms.length === 0 && (
-                                    <div className="col-span-full py-12 text-center opacity-40">
-                                        <div className="material-symbols-outlined text-slate-300 text-4xl mb-3 animate-pulse">hourglass_bottom</div>
-                                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">{t('flowStages.socialCampaignStrategy.tactics.empty')}</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </Card>
                     </div>
-
-                    {/* Right Column: The Brief (4/12) */}
-                    <div className="lg:col-span-4 space-y-6">
-                        <div className="flex items-center gap-3 px-2">
-                            <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-                            <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em]">{t('flowStages.socialCampaignStrategy.brief.title')}</h2>
-                            <div className="h-px flex-1 bg-slate-200 dark:bg-slate-800" />
-                        </div>
-
-                        {/* Channel Selection */}
-                        <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest mb-4 opacity-50">{t('flowStages.socialCampaignStrategy.brief.channels.title')}</h3>
-                            <div className="grid grid-cols-2 gap-2">
-                                {enabledPlatforms.map(c => {
-                                    const isAdded = strategyData.platforms.find(p => p.id === c);
-                                    const isRecommended = strategyData.aiSuggestedPlatforms?.includes(c);
+                    <div className="flow-social-campaign-strategy__sidebar">
+                        <Card className="flow-social-campaign-strategy__panel flow-social-campaign-strategy__channels">
+                            <div className="flow-social-campaign-strategy__panel-header">
+                                <div>
+                                    <h3>{t('flowStages.socialCampaignStrategy.brief.channels.title')}</h3>
+                                    <p>{t('flowStages.socialCampaignStrategy.brief.title')}</p>
+                                </div>
+                            </div>
+                            <div className="flow-social-campaign-strategy__channel-grid">
+                                {enabledPlatforms.map((channel) => {
+                                    const isAdded = strategyData.platforms.find((platform) => platform.id === channel);
+                                    const isRecommended = strategyData.aiSuggestedPlatforms?.includes(channel);
 
                                     return (
-                                        <div key={c} className="relative group">
-                                            <button
-                                                onClick={() => togglePlatform(c)}
-                                                className={`w-full flex items-center justify-between p-2 rounded-xl border-2 transition-all ${isAdded
-                                                    ? 'bg-rose-50 dark:bg-rose-900/10 border-rose-200 dark:border-rose-800 shadow-sm'
-                                                    : 'bg-slate-50 dark:bg-slate-800/30 border-slate-100 dark:border-slate-800/50 hover:border-rose-200'}`}
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <div className="size-6 shadow-md group-hover:scale-110 transition-transform">
-                                                        <PlatformIcon platform={c} />
-                                                    </div>
-                                                    <span className={`text-[11px] font-black tracking-tight ${isAdded ? 'text-rose-900 dark:text-rose-100' : 'text-slate-500'}`}>
-                                                        {c}
-                                                    </span>
-                                                </div>
-                                                <div className={`size-4 rounded-md flex items-center justify-center border transition-all ${isAdded ? 'bg-rose-600 border-rose-600 text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700'}`}>
-                                                    {isAdded && <span className="material-symbols-outlined text-[10px] font-black">check</span>}
-                                                </div>
-                                            </button>
-
-                                            {isRecommended && !isAdded && (
-                                                <div className="absolute -top-1 -right-1 z-10 animate-bounce">
-                                                    <div className="bg-violet-600 text-white text-[7px] font-black px-1 py-0.5 rounded shadow-lg border border-violet-400 uppercase tracking-tighter">
-                                                        {t('flowStages.socialCampaignStrategy.brief.channels.aiRec')}
-                                                    </div>
-                                                </div>
+                                        <button
+                                            key={channel}
+                                            type="button"
+                                            className={`flow-social-campaign-strategy__channel ${isAdded ? 'is-active' : ''}`}
+                                            data-recommended={isRecommended ? 'true' : 'false'}
+                                            onClick={() => togglePlatform(channel)}
+                                        >
+                                            <span className="flow-social-campaign-strategy__channel-icon">
+                                                <PlatformIcon platform={channel} />
+                                            </span>
+                                            <span className="flow-social-campaign-strategy__channel-label">{channel}</span>
+                                            {isAdded && (
+                                                <span className="material-symbols-outlined flow-social-campaign-strategy__channel-check">check</span>
                                             )}
-
-                                            {isRecommended && isAdded && (
-                                                <div className="absolute top-1/2 -left-1 -translate-y-1/2 w-1 h-3 bg-violet-500 rounded-full shadow-[0_0_8px_rgba(139,92,246,0.5)]" title={t('flowStages.socialCampaignStrategy.brief.channels.aiRecommended')} />
+                                            {isRecommended && (
+                                                <span className="flow-social-campaign-strategy__channel-badge">
+                                                    {t('flowStages.socialCampaignStrategy.brief.channels.aiRec')}
+                                                </span>
                                             )}
-                                        </div>
+                                        </button>
                                     );
                                 })}
                             </div>
 
-                            {/* YouTube Synergy Warning */}
                             {showYouTubeSynergyWarning && (
-                                <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800/50 animate-in slide-in-from-top-2">
-                                    <div className="flex items-start gap-2.5">
-                                        <span className="material-symbols-outlined text-amber-600 dark:text-amber-400 text-lg mt-0.5">tips_and_updates</span>
-                                        <div className="flex-1">
-                                            <p className="text-[10px] font-black text-amber-800 dark:text-amber-200 uppercase tracking-wide mb-1">{t('flowStages.socialCampaignStrategy.brief.channels.youtube.title')}</p>
-                                            <p className="text-[11px] font-medium text-amber-700 dark:text-amber-300 leading-relaxed">
-                                                {t('flowStages.socialCampaignStrategy.brief.channels.youtube.message')}
-                                            </p>
-                                            <button
-                                                onClick={() => togglePlatform('YouTube Shorts')}
-                                                className="mt-2 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-[9px] font-black uppercase tracking-wider rounded-lg transition-all flex items-center gap-1.5"
-                                            >
-                                                <span className="material-symbols-outlined text-[14px]">add</span>
-                                                {t('flowStages.socialCampaignStrategy.brief.channels.youtube.action')}
-                                            </button>
-                                        </div>
+                                <div className="flow-social-campaign-strategy__synergy">
+                                    <span className="material-symbols-outlined">tips_and_updates</span>
+                                    <div>
+                                        <h4>{t('flowStages.socialCampaignStrategy.brief.channels.youtube.title')}</h4>
+                                        <p>{t('flowStages.socialCampaignStrategy.brief.channels.youtube.message')}</p>
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            onClick={() => togglePlatform('YouTube Shorts')}
+                                            icon={<span className="material-symbols-outlined">add</span>}
+                                        >
+                                            {t('flowStages.socialCampaignStrategy.brief.channels.youtube.action')}
+                                        </Button>
                                     </div>
                                 </div>
                             )}
-                        </div>
+                        </Card>
 
-                        <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest mb-6 opacity-50">{t('flowStages.socialCampaignStrategy.objectives.title')}</h3>
+                        <Card className="flow-social-campaign-strategy__panel flow-social-campaign-strategy__objectives">
+                            <div className="flow-social-campaign-strategy__panel-header">
+                                <h3>{t('flowStages.socialCampaignStrategy.objectives.title')}</h3>
+                            </div>
 
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-3 block opacity-70 flex items-center gap-1.5">
-                                        <span className="material-symbols-outlined text-[14px]">target</span>
-                                        {t('flowStages.socialCampaignStrategy.objectives.primary')}
-                                    </label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {GOALS.map(goal => (
-                                            <button
-                                                key={goal.id}
-                                                onClick={() => updateStrategy({ campaignType: goal.id })}
-                                                className={`px-2 py-2 text-[10px] font-black rounded-lg border-2 transition-all ${strategyData.campaignType === goal.id ? 'bg-rose-600 text-white border-rose-600 shadow-md shadow-rose-200 dark:shadow-none' : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-800 text-slate-500 hover:border-rose-200'}`}
-                                            >
-                                                {goal.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div>
-                                    <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-3 block opacity-70 flex items-center gap-1.5">
-                                        <span className="material-symbols-outlined text-[14px]">analytics</span>
-                                        {t('flowStages.socialCampaignStrategy.objectives.secondary')}
-                                    </label>
-                                    <div className="relative">
-                                        <select
-                                            value={strategyData.subGoal}
-                                            onChange={(e) => updateStrategy({ subGoal: e.target.value })}
-                                            className="w-full appearance-none bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-3 text-[11px] font-black text-slate-700 dark:text-white focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all pr-10"
+                            <div className="flow-social-campaign-strategy__objective-group">
+                                <label className="flow-social-campaign-strategy__label">
+                                    {t('flowStages.socialCampaignStrategy.objectives.primary')}
+                                </label>
+                                <div className="flow-social-campaign-strategy__option-grid">
+                                    {GOALS.map((goal) => (
+                                        <button
+                                            key={goal.id}
+                                            type="button"
+                                            className={`flow-social-campaign-strategy__option ${strategyData.campaignType === goal.id ? 'is-active' : ''}`}
+                                            onClick={() => updateStrategy({ campaignType: goal.id })}
                                         >
-                                            <option value="">{t('flowStages.socialCampaignStrategy.objectives.secondaryPlaceholder')}</option>
-                                            {GOALS.filter(goal => goal.id !== strategyData.campaignType).map(goal => (
-                                                <option key={goal.id} value={goal.id}>{goal.label}</option>
-                                            ))}
-                                        </select>
-                                        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                            <span className="material-symbols-outlined text-[18px]">expand_more</span>
-                                        </div>
-                                    </div>
+                                            {goal.label}
+                                        </button>
+                                    ))}
                                 </div>
+                            </div>
 
+                            <div className="flow-social-campaign-strategy__objective-group">
+                                <Select
+                                    label={t('flowStages.socialCampaignStrategy.objectives.secondary')}
+                                    value={strategyData.subGoal || ''}
+                                    onChange={(value) => updateStrategy({ subGoal: String(value) })}
+                                    options={secondaryGoalOptions}
+                                    className="flow-social-campaign-strategy__select"
+                                />
+                            </div>
+
+                            <div className="flow-social-campaign-strategy__objective-group">
+                                <label className="flow-social-campaign-strategy__label">
+                                    {t('flowStages.socialCampaignStrategy.objectives.pillar')}
+                                </label>
+                                <div className="flow-social-campaign-strategy__option-grid">
+                                    {PILLARS.map((pillar) => (
+                                        <button
+                                            key={pillar.id}
+                                            type="button"
+                                            className={`flow-social-campaign-strategy__option ${strategyData.pillar === pillar.id ? 'is-active' : ''}`}
+                                            onClick={() => updateStrategy({ pillar: pillar.id })}
+                                        >
+                                            {pillar.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </Card>
+                        <Card className="flow-social-campaign-strategy__panel flow-social-campaign-strategy__audience">
+                            <div className="flow-social-campaign-strategy__panel-header">
                                 <div>
-                                    <label className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-[.15em] mb-3 block opacity-70 flex items-center gap-1.5">
-                                        <span className="material-symbols-outlined text-[14px]">view_quilt</span>
-                                        {t('flowStages.socialCampaignStrategy.objectives.pillar')}
-                                    </label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {PILLARS.map(pillar => (
-                                            <button
-                                                key={pillar.id}
-                                                onClick={() => updateStrategy({ pillar: pillar.id })}
-                                                className={`px-2 py-2 text-[10px] font-black rounded-lg border-2 transition-all ${strategyData.pillar === pillar.id ? 'bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-100 dark:shadow-none' : 'bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-800 text-slate-500 hover:border-amber-500'}`}
-                                            >
-                                                {pillar.label}
-                                            </button>
-                                        ))}
-                                    </div>
+                                    <h3>{t('flowStages.socialCampaignStrategy.audience.title')}</h3>
                                 </div>
-                            </div>
-                        </div>
-
-                        {/* Target Audience */}
-                        <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest opacity-50">{t('flowStages.socialCampaignStrategy.audience.title')}</h3>
-                                <button
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
                                     onClick={handleSuggestAudience}
-                                    disabled={generating}
-                                    className="text-[9px] font-black text-rose-600 hover:text-rose-700 bg-rose-50 dark:bg-rose-900/20 px-2.5 py-1.5 rounded-full flex items-center gap-1 transition-all"
+                                    isLoading={generating}
+                                    icon={<span className="material-symbols-outlined">auto_awesome</span>}
                                 >
-                                    <span className={`material-symbols-outlined text-[12px] ${generating ? 'animate-spin' : ''}`}>
-                                        {generating ? 'progress_activity' : 'auto_awesome'}
-                                    </span>
                                     {t('flowStages.socialCampaignStrategy.audience.aiSuggest')}
-                                </button>
+                                </Button>
                             </div>
 
-                            <div className="space-y-3">
-                                {strategyData.audienceSegments.map((segment, i) => {
-                                    const isEditing = editingAudienceIndex === i;
+                            <div className="flow-social-campaign-strategy__audience-list">
+                                {strategyData.audienceSegments.map((segment, index) => {
+                                    const isEditing = editingAudienceIndex === index;
 
                                     return (
                                         <div
-                                            key={i}
-                                            className={`relative group p-4 rounded-xl border-2 transition-all cursor-pointer ${isEditing ? 'bg-white dark:bg-slate-900 border-rose-400/50 shadow-lg' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800 hover:border-rose-400/30'}`}
-                                            onClick={() => !isEditing && setEditingAudienceIndex(i)}
+                                            key={index}
+                                            className={`flow-social-campaign-strategy__audience-item ${isEditing ? 'is-editing' : ''}`}
+                                            onClick={() => !isEditing && setEditingAudienceIndex(index)}
                                         >
                                             {isEditing ? (
-                                                <div className="space-y-3">
-                                                    <textarea
-                                                        className="w-full text-xs font-bold bg-transparent border-0 outline-none h-24 resize-none leading-snug tracking-tight text-slate-700 dark:text-slate-200"
+                                                <div className="flow-social-campaign-strategy__audience-edit">
+                                                    <TextArea
                                                         value={segment}
                                                         onChange={(e) => {
-                                                            const newSegs = [...strategyData.audienceSegments];
-                                                            newSegs[i] = e.target.value;
-                                                            updateStrategy({ audienceSegments: newSegs });
+                                                            const newSegments = [...strategyData.audienceSegments];
+                                                            newSegments[index] = e.target.value;
+                                                            updateStrategy({ audienceSegments: newSegments });
                                                         }}
                                                         placeholder={t('flowStages.socialCampaignStrategy.audience.placeholder')}
-                                                        autoFocus
+                                                        className="flow-social-campaign-strategy__audience-textarea"
                                                     />
-                                                    <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-800">
+                                                    <div className="flow-social-campaign-strategy__audience-actions">
                                                         <button
-                                                            onClick={(e) => { e.stopPropagation(); updateStrategy({ audienceSegments: strategyData.audienceSegments.filter((_, idx) => idx !== i) }); setEditingAudienceIndex(null); }}
-                                                            className="text-[10px] font-black text-red-500 hover:text-red-700 uppercase tracking-widest flex items-center gap-1.5"
+                                                            type="button"
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                updateStrategy({ audienceSegments: strategyData.audienceSegments.filter((_, idx) => idx !== index) });
+                                                                setEditingAudienceIndex(null);
+                                                            }}
                                                         >
-                                                            <span className="material-symbols-outlined text-[16px]">delete</span>
+                                                            <span className="material-symbols-outlined">delete</span>
                                                             {t('flowStages.socialCampaignStrategy.audience.remove')}
                                                         </button>
                                                         <Button
-                                                            onClick={(e) => { e.stopPropagation(); setEditingAudienceIndex(null); }}
                                                             size="sm"
-                                                            className="px-4 py-1.5 h-auto rounded-lg text-[10px] font-black uppercase tracking-widest"
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                setEditingAudienceIndex(null);
+                                                            }}
                                                         >
                                                             {t('flowStages.socialCampaignStrategy.audience.save')}
                                                         </Button>
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="flex items-start justify-between gap-4">
-                                                    <p className="text-xs font-bold text-slate-600 dark:text-slate-400 leading-relaxed">
-                                                        {segment || <span className="text-slate-400 italic font-medium">{t('flowStages.socialCampaignStrategy.audience.emptySegment')}</span>}
+                                                <div className="flow-social-campaign-strategy__audience-summary">
+                                                    <p>
+                                                        {segment || (
+                                                            <span className="flow-social-campaign-strategy__audience-empty">
+                                                                {t('flowStages.socialCampaignStrategy.audience.emptySegment')}
+                                                            </span>
+                                                        )}
                                                     </p>
-                                                    <div className="opacity-0 group-hover:opacity-100 transition-all shrink-0">
-                                                        <span className="material-symbols-outlined text-[18px] text-slate-400">edit</span>
-                                                    </div>
+                                                    <span className="material-symbols-outlined">edit</span>
                                                 </div>
                                             )}
                                         </div>
@@ -1159,72 +1083,76 @@ export const SocialCampaignStrategyView: React.FC<SocialCampaignStrategyViewProp
                                 })}
 
                                 <button
+                                    type="button"
+                                    className="flow-social-campaign-strategy__audience-add"
                                     onClick={() => {
-                                        const newSegs = [...strategyData.audienceSegments, ''];
-                                        updateStrategy({ audienceSegments: newSegs });
-                                        setEditingAudienceIndex(newSegs.length - 1);
+                                        const newSegments = [...strategyData.audienceSegments, ''];
+                                        updateStrategy({ audienceSegments: newSegments });
+                                        setEditingAudienceIndex(newSegments.length - 1);
                                     }}
-                                    className="w-full py-3 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl text-[10px] font-black text-slate-400 hover:border-rose-200 hover:text-rose-500 transition-all uppercase tracking-[0.2em] flex items-center justify-center gap-2 group mt-2"
                                 >
-                                    <span className="material-symbols-outlined text-lg group-hover:scale-110 transition-transform">add_circle</span>
+                                    <span className="material-symbols-outlined">add_circle</span>
                                     {t('flowStages.socialCampaignStrategy.audience.add')}
                                 </button>
 
                                 {audienceSuggestions.length > 0 && (
-                                    <div className="mt-4 p-4 bg-gradient-to-br from-rose-50 to-pink-50/30 dark:from-rose-950/20 dark:to-pink-950/10 rounded-2xl border border-rose-100 dark:border-rose-900/30 space-y-3 shadow-inner">
-                                        <div className="flex items-center justify-between px-1">
-                                            <div className="text-[9px] font-black text-rose-500 uppercase tracking-widest">{t('flowStages.socialCampaignStrategy.audience.aiAlternatives')}</div>
-                                            <button onClick={() => setAudienceSuggestions([])} className="text-rose-300 hover:text-rose-500 transition-colors">
-                                                <span className="material-symbols-outlined text-[14px]">close</span>
+                                    <div className="flow-social-campaign-strategy__suggestions">
+                                        <div className="flow-social-campaign-strategy__suggestions-header">
+                                            <span>{t('flowStages.socialCampaignStrategy.audience.aiAlternatives')}</span>
+                                            <button type="button" onClick={() => setAudienceSuggestions([])}>
+                                                <span className="material-symbols-outlined">close</span>
                                             </button>
                                         </div>
-                                        <div className="space-y-2">
-                                            {audienceSuggestions.map((s, i) => (
-                                                <div key={i} className="flex items-stretch gap-1.5 group/sug">
+                                        <div className="flow-social-campaign-strategy__suggestions-list">
+                                            {audienceSuggestions.map((suggestion, suggestionIndex) => (
+                                                <div key={suggestionIndex} className="flow-social-campaign-strategy__suggestion">
                                                     <button
+                                                        type="button"
+                                                        className="flow-social-campaign-strategy__suggestion-main"
                                                         onClick={() => {
-                                                            const newSegs = [...strategyData.audienceSegments];
+                                                            const newSegments = [...strategyData.audienceSegments];
                                                             let targetIdx = editingAudienceIndex;
                                                             if (targetIdx === null) {
-                                                                const emptyIdx = newSegs.findIndex(seg => !seg || seg.trim() === '');
+                                                                const emptyIdx = newSegments.findIndex((entry) => !entry || entry.trim() === '');
                                                                 if (emptyIdx !== -1) targetIdx = emptyIdx;
                                                             }
                                                             if (targetIdx !== null) {
-                                                                newSegs[targetIdx] = s;
-                                                                updateStrategy({ audienceSegments: newSegs });
+                                                                newSegments[targetIdx] = suggestion;
+                                                                updateStrategy({ audienceSegments: newSegments });
                                                             } else {
-                                                                updateStrategy({ audienceSegments: [...newSegs, s] });
-                                                                targetIdx = newSegs.length;
+                                                                updateStrategy({ audienceSegments: [...newSegments, suggestion] });
+                                                                targetIdx = newSegments.length;
                                                             }
-                                                            setAudienceSuggestions(audienceSuggestions.filter((_, idx) => idx !== i));
+                                                            setAudienceSuggestions(audienceSuggestions.filter((_, idx) => idx !== suggestionIndex));
                                                             setEditingAudienceIndex(targetIdx);
                                                         }}
-                                                        className="flex-1 text-left text-[11px] font-black text-rose-700 dark:text-rose-300 hover:text-white dark:hover:text-rose-100 leading-snug p-2.5 rounded-xl border border-rose-100/50 dark:border-rose-800/30 transition-all bg-white/50 dark:bg-slate-900/50 shadow-sm hover:bg-rose-600 dark:hover:bg-rose-900/50"
                                                         title={t('flowStages.socialCampaignStrategy.audience.replace')}
                                                     >
-                                                        {s}
+                                                        {suggestion}
                                                     </button>
                                                     <button
+                                                        type="button"
+                                                        className="flow-social-campaign-strategy__suggestion-add"
                                                         onClick={() => {
-                                                            updateStrategy({ audienceSegments: [...strategyData.audienceSegments, s] });
-                                                            setAudienceSuggestions(audienceSuggestions.filter((_, idx) => idx !== i));
+                                                            updateStrategy({ audienceSegments: [...strategyData.audienceSegments, suggestion] });
+                                                            setAudienceSuggestions(audienceSuggestions.filter((_, idx) => idx !== suggestionIndex));
                                                             setEditingAudienceIndex(strategyData.audienceSegments.length);
                                                         }}
-                                                        className="size-10 shrink-0 flex items-center justify-center bg-white/50 dark:bg-slate-900/50 rounded-xl border border-rose-100/50 dark:border-rose-800/30 text-rose-400 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-all shadow-sm"
                                                         title={t('flowStages.socialCampaignStrategy.audience.addNew')}
                                                     >
-                                                        <span className="material-symbols-outlined text-[20px]">add</span>
+                                                        <span className="material-symbols-outlined">add</span>
                                                     </button>
                                                 </div>
                                             ))}
                                         </div>
                                         {strategyData.audienceSegments.length > 0 && (
                                             <button
+                                                type="button"
+                                                className="flow-social-campaign-strategy__suggestions-clear"
                                                 onClick={() => {
                                                     updateStrategy({ audienceSegments: [] });
                                                     setEditingAudienceIndex(null);
                                                 }}
-                                                className="w-full text-[9px] font-black text-slate-400 hover:text-red-500 uppercase tracking-widest pt-1 transition-colors"
                                             >
                                                 {t('flowStages.socialCampaignStrategy.audience.clear')}
                                             </button>
@@ -1232,16 +1160,16 @@ export const SocialCampaignStrategyView: React.FC<SocialCampaignStrategyViewProp
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        </Card>
 
-                        {/* Navigation Action */}
-                        <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
+                        <div className="flow-social-campaign-strategy__footer">
                             <Button
-                                className="w-full h-12 rounded-xl hover:bg-rose-600 dark:hover:bg-rose-500 hover:text-white font-black text-xs uppercase tracking-[.2em] shadow-lg shadow-slate-200 dark:shadow-none transition-all flex items-center justify-center gap-2 group"
+                                className="flow-social-campaign-strategy__advance"
                                 onClick={() => onUpdate({ stage: 'Planning' })}
+                                icon={<span className="material-symbols-outlined">arrow_forward</span>}
+                                iconPosition="right"
                             >
                                 {t('flowStages.socialCampaignStrategy.actions.advance')}
-                                <span className="material-symbols-outlined text-[16px] group-hover:translate-x-1 transition-transform">arrow_forward</span>
                             </Button>
                         </div>
                     </div>
