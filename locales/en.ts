@@ -1911,11 +1911,17 @@ const en = {
     'createIssue.placeholder.title': "What's the issue?",
     'createIssue.placeholder.description': 'Describe the issue in detail...',
     'createIssue.labels.assignees': 'Assignees',
+    'createIssue.labels.status': 'Status',
     'createIssue.labels.startDate': 'Start Date',
     'createIssue.labels.dueDate': 'Due Date',
+    'createIssue.hint.keyAlt': 'Alt',
+    'createIssue.hint.keyP': 'P',
     'createIssue.hint.togglePin': 'to toggle',
     'createIssue.pin.label': 'Pin on Create',
     'createIssue.actions.create': 'Create Issue',
+
+    'issueEdit.title': 'Edit Issue',
+    'issueEdit.subtitle': 'Update issue details. Changes will sync to GitHub if linked.',
 
     'taskDetail.notFound.title': 'Task not found',
     'taskDetail.notFound.action': 'Return to Tasks',
