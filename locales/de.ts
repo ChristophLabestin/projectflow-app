@@ -15,6 +15,7 @@
 
     'common.active': 'Aktiv',
     'common.add': 'HinzufÃ¼gen',
+    'common.delete': 'Loeschen',
     'common.manage': 'Verwalten',
     'common.noDescription': 'Keine Beschreibung',
     'common.create': 'Erstellen',

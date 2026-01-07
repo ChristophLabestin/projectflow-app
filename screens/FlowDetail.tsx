@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../components/common/Button/Button';
 import { Select } from '../components/common/Select/Select';
 import { deleteField } from 'firebase/firestore';
-import { getIdeaById, updateIdea, addTask, createSocialCampaign, getSocialCampaign, updateCampaign, deleteSocialCampaign, subscribeToIdea } from '../services/dataService';
+import { updateIdea, addTask, getSocialCampaign, updateCampaign, deleteSocialCampaign, subscribeToIdea } from '../services/dataService';
 import { BrainstormView } from '../components/flows/stages/BrainstormView';
 import { RefinementView } from '../components/flows/stages/RefinementView';
 import { ConceptView } from '../components/flows/stages/ConceptView';
