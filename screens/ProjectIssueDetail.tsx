@@ -1,12 +1,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { createPortal } from 'react-dom';
 import { Link, useParams, useNavigate, useOutletContext } from 'react-router-dom';
 import { getProjectById, subscribeProjectIssues, updateIssue, deleteIssue, addTask, getIssueById, getUserProfile, subscribeTenantUsers } from '../services/dataService';
 import { Issue, Project } from '../types';
 import { usePinnedTasks } from '../context/PinnedTasksContext';
-import { Button } from '../components/ui/Button';
-import { Select } from '../components/ui/Select';
-import { Badge } from '../components/ui/Badge';
 import { CommentSection } from '../components/CommentSection';
 import { MultiAssigneeSelector } from '../components/MultiAssigneeSelector';
 import { fetchCommitsReferencingIssue, GithubCommit } from '../services/githubService';
@@ -15,10 +11,16 @@ import { auth } from '../services/firebase';
 import { EditIssueModal } from '../components/EditIssueModal';
 import { format } from 'date-fns';
 import { useLanguage } from '../context/LanguageContext';
+import { Badge } from '../components/common/Badge/Badge';
+import { Button } from '../components/common/Button/Button';
+import { Card } from '../components/common/Card/Card';
+import { Modal } from '../components/common/Modal/Modal';
+import { ConfirmModal } from '../components/common/Modal/ConfirmModal';
+import { Select, type SelectOption } from '../components/common/Select/Select';
 
 export const ProjectIssueDetail = () => {
     const { id, issueId } = useParams<{ id: string; issueId: string }>();
-    const { dateFormat, dateLocale } = useLanguage();
+    const { dateFormat, dateLocale, t } = useLanguage();
     const navigate = useNavigate();
     const [issue, setIssue] = useState<Issue | null>(null);
     const [project, setProject] = useState<Project | null>(null);
@@ -33,6 +35,27 @@ export const ProjectIssueDetail = () => {
     const [commentCount, setCommentCount] = useState(0);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [copiedId, setCopiedId] = useState(false);
+
+    const priorityLabels = useMemo(() => ({
+        Low: t('tasks.priority.low'),
+        Medium: t('tasks.priority.medium'),
+        High: t('tasks.priority.high'),
+        Urgent: t('tasks.priority.urgent'),
+    }), [t]);
+
+    const statusLabels = useMemo(() => ({
+        Open: t('projectIssues.status.open'),
+        'In Progress': t('projectIssues.status.inProgress'),
+        Resolved: t('projectIssues.status.resolved'),
+        Closed: t('projectIssues.status.closed'),
+    }), [t]);
+
+    const statusOptions = useMemo<SelectOption[]>(() => ([
+        { value: 'Open', label: statusLabels.Open },
+        { value: 'In Progress', label: statusLabels['In Progress'] },
+        { value: 'Resolved', label: statusLabels.Resolved },
+        { value: 'Closed', label: statusLabels.Closed },
+    ]), [statusLabels]);
 
     const isProjectOwner = useMemo(() => {
         return project?.ownerId === auth.currentUser?.uid;
@@ -210,25 +233,36 @@ export const ProjectIssueDetail = () => {
 
     if (loading) {
         return (
-            <div className="flex justify-center items-center min-h-[50vh]">
-                <div className="flex flex-col items-center gap-3">
-                    <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
-                </div>
+            <div className="issue-detail__loading">
+                <span className="material-symbols-outlined issue-detail__loading-icon">progress_activity</span>
             </div>
         );
     }
 
     if (!issue) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
-                <h3 className="text-xl font-bold text-main">Issue not found</h3>
-                <Link to={`/project/${id}/issues`} className="btn-secondary">Return to Issues</Link>
+            <div className="issue-detail__empty">
+                <h3 className="issue-detail__empty-title">{t('issueDetail.notFound.title')}</h3>
+                <Button variant="secondary" onClick={() => navigate(`/project/${id}/issues`)}>
+                    {t('issueDetail.notFound.action')}
+                </Button>
             </div>
         );
     }
 
+    const statusValue = issue.status || 'Open';
+    const priorityValue = issue.priority || 'Medium';
+    const statusKey = statusValue.toLowerCase().replace(' ', '-');
+    const priorityKey = priorityValue.toLowerCase();
+    const statusLabel = statusLabels[statusValue] || statusValue;
+    const priorityLabel = priorityLabels[priorityValue] || priorityValue;
+    const assigneeIds = issue.assigneeIds || (issue.assigneeId ? [issue.assigneeId] : []);
+    const reporter = issue.ownerId
+        ? allUsers.find(u => (u as any).id === issue.ownerId || u.uid === issue.ownerId)
+        : null;
+
     return (
-        <div className="max-w-6xl mx-auto px-4 md:px-8 py-8 animate-fade-in pb-20">
+        <div className="issue-detail">
             {isEditModalOpen && issue && (
                 <EditIssueModal
                     issue={issue}
@@ -238,115 +272,105 @@ export const ProjectIssueDetail = () => {
                 />
             )}
 
-            {showDeleteConfirm && createPortal(
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="bg-card rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-surface">
-                        <div className="space-y-4 text-center">
-                            <h3 className="text-lg font-bold text-main">Delete Issue?</h3>
-                            <p className="text-sm text-muted">
-                                Are you sure you want to delete <strong>"{issue.title}"</strong>? This action cannot be undone.
-                            </p>
-                            <div className="grid grid-cols-2 gap-3">
-                                <Button variant="ghost" onClick={() => setShowDeleteConfirm(false)}>Cancel</Button>
-                                <Button variant="danger" onClick={handleDelete} isLoading={deleting}>Delete</Button>
+            <ConfirmModal
+                isOpen={showDeleteConfirm}
+                onClose={() => setShowDeleteConfirm(false)}
+                onConfirm={handleDelete}
+                title={t('issueDetail.confirm.delete.title')}
+                message={t('issueDetail.confirm.delete.message').replace('{title}', issue.title)}
+                confirmLabel={t('issueDetail.confirm.delete.confirm')}
+                cancelLabel={t('common.cancel')}
+                variant="danger"
+                isLoading={deleting}
+            />
+
+            {showConvertModal && (
+                <Modal
+                    isOpen={showConvertModal}
+                    onClose={() => setShowConvertModal(false)}
+                    size="md"
+                    title={t('issueDetail.convert.title')}
+                >
+                    <div className="issue-detail__convert">
+                        <p className="issue-detail__convert-description">{t('issueDetail.convert.description')}</p>
+                        <div className="issue-detail__convert-card">
+                            <p className="issue-detail__convert-title">{issue.title}</p>
+                            <div className="issue-detail__convert-meta">
+                                <span className="material-symbols-outlined">group</span>
+                                {assigneeIds.length > 0
+                                    ? t('issueDetail.convert.assignees').replace('{count}', String(assigneeIds.length))
+                                    : t('issueDetail.convert.assigneeFallback').replace('{name}', issue.assignee || t('assignees.unassigned'))}
                             </div>
                         </div>
-                    </div>
-                </div>,
-                document.body
-            )}
-
-            {showConvertModal && createPortal(
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-                    <div className="bg-card rounded-2xl shadow-2xl max-w-md w-full p-6 border border-surface">
-                        <div className="space-y-4">
-                            <h3 className="text-xl font-bold text-main">Convert to Task</h3>
-                            <p className="text-sm text-muted">
-                                This will create a new task with the same title and description, and mark this issue as <strong>Closed</strong>.
-                            </p>
-                            <div className="bg-surface-hover p-4 rounded-xl text-sm border border-surface">
-                                <p className="font-bold text-main">{issue.title}</p>
-                                <p className="text-xs text-muted mt-1.5 flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-[14px]">group</span>
-                                    {issue.assigneeIds && issue.assigneeIds.length > 0
-                                        ? `${issue.assigneeIds.length} Assignees`
-                                        : `Assignee: ${issue.assignee || 'Unassigned'}`}
-                                </p>
-                            </div>
-                            <div className="flex justify-end gap-3 pt-2">
-                                <Button variant="ghost" onClick={() => setShowConvertModal(false)}>Cancel</Button>
-                                <Button onClick={handleConvertToTask} isLoading={convertLoading}>Convert Issue</Button>
-                            </div>
+                        <div className="issue-detail__convert-actions">
+                            <Button variant="ghost" onClick={() => setShowConvertModal(false)}>
+                                {t('common.cancel')}
+                            </Button>
+                            <Button onClick={handleConvertToTask} isLoading={convertLoading}>
+                                {t('issueDetail.convert.action')}
+                            </Button>
                         </div>
                     </div>
-                </div>,
-                document.body
+                </Modal>
             )}
 
-            {/* Header / Hero Section */}
-            <header className="relative mb-10 overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--color-surface-card)] to-[var(--color-surface-bg)] border border-surface shadow-sm">
-                {/* Decorative background element */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 blur-3xl rounded-full -mr-20 -mt-20 pointer-events-none" />
-
-                <div className="relative px-6 py-8 md:px-10 md:py-10">
-                    <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8">
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-3 mb-4 flex-wrap">
-                                {/* Project Context */}
+            <header className="issue-detail__hero">
+                <div className="issue-detail__hero-glow" />
+                <div className="issue-detail__hero-content">
+                    <div className="issue-detail__hero-layout">
+                        <div className="issue-detail__hero-main">
+                            <div className="issue-detail__badges">
                                 {project && (
-                                    <Link to={`/project/${project.id}`} className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-surface-hover border border-surface rounded-full transition-all group">
-                                        <div className="size-2 rounded-full bg-primary" />
-                                        <span className="text-xs font-bold text-subtle group-hover:text-primary uppercase tracking-wide">{project.title}</span>
-                                        <span className="material-symbols-outlined text-[14px] text-muted group-hover:text-primary">arrow_forward</span>
+                                    <Link to={`/project/${project.id}`} className="issue-detail__project-link">
+                                        <span className="issue-detail__project-dot" />
+                                        <span className="issue-detail__project-text">{project.title}</span>
+                                        <span className="material-symbols-outlined issue-detail__project-icon">arrow_forward</span>
                                     </Link>
                                 )}
-                                <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border ${issue.status === 'Resolved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                    issue.status === 'Open' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                        'bg-slate-500/10 text-slate-500 border-slate-500/20'
-                                    }`}>
-                                    <span className="material-symbols-outlined text-[14px] leading-none">
-                                        {issue.status === 'Resolved' ? 'check_circle' :
-                                            issue.status === 'Closed' ? 'cancel' :
-                                                'error'}
+                                <span className="issue-detail__status-pill" data-status={statusKey}>
+                                    <span className="material-symbols-outlined issue-detail__status-icon">
+                                        {getIssueStatusIcon(statusValue)}
                                     </span>
-                                    {issue.status || 'Open'}
+                                    {statusLabel}
                                 </span>
-                                <PriorityBadge priority={issue.priority} />
+                                <span className="issue-detail__priority-pill" data-priority={priorityKey}>
+                                    <span className="material-symbols-outlined issue-detail__priority-icon">
+                                        {getIssuePriorityIcon(priorityValue)}
+                                    </span>
+                                    {priorityLabel}
+                                </span>
                             </div>
 
-                            <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-main leading-[1.1] tracking-tight mb-8">
-                                {issue.title}
-                            </h1>
+                            <h1 className="issue-detail__title">{issue.title}</h1>
 
-                            <div className="flex flex-wrap items-center gap-6 text-sm">
-                                <div className="flex items-center gap-2.5 px-4 py-2 bg-surface-hover rounded-xl border border-surface">
-                                    <span className="material-symbols-outlined text-[20px] text-muted">calendar_today</span>
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] leading-none uppercase font-bold text-subtle mb-0.5">Reported</span>
-                                        <span className="text-main font-semibold whitespace-nowrap">
+                            <div className="issue-detail__meta-row">
+                                <div className="issue-detail__meta-card">
+                                    <span className="material-symbols-outlined issue-detail__meta-icon">calendar_today</span>
+                                    <div className="issue-detail__meta-body">
+                                        <span className="issue-detail__meta-label">{t('issueDetail.hero.reported')}</span>
+                                        <span className="issue-detail__meta-value">
                                             {issue.createdAt ? format(new Date(toMillis(issue.createdAt)), dateFormat, { locale: dateLocale }) : '-'}
                                         </span>
                                     </div>
                                 </div>
-
-                                <div className="hidden md:flex items-center gap-3 ml-2">
-                                    <div className="h-8 w-[1px] bg-surface-border" />
-                                    <div className="flex -space-x-2">
-                                        {(issue.assigneeIds || (issue.assigneeId ? [issue.assigneeId] : [])).filter(id => id).map((uid, i) => {
+                                <div className="issue-detail__assignees">
+                                    <span className="issue-detail__assignees-divider" />
+                                    <div className="issue-detail__assignee-stack">
+                                        {assigneeIds.filter(id => id).map((uid, i) => {
                                             const user = allUsers.find(u => (u as any).id === uid || u.uid === uid);
                                             return (
                                                 <img
                                                     key={uid + i}
                                                     src={user?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'}
                                                     alt=""
-                                                    className="size-8 rounded-full border-2 border-card shadow-sm"
-                                                    title={user?.displayName || 'Assignee'}
+                                                    className="issue-detail__assignee"
+                                                    title={user?.displayName || t('projectIssues.assignee.unknown')}
                                                 />
                                             );
                                         })}
-                                        {((!issue.assigneeIds || issue.assigneeIds.length === 0) && !issue.assigneeId) && (
-                                            <div className="size-8 rounded-full border-2 border-dashed border-surface flex items-center justify-center text-subtle">
-                                                <span className="material-symbols-outlined text-[16px]">person</span>
+                                        {assigneeIds.length === 0 && (
+                                            <div className="issue-detail__assignee issue-detail__assignee--placeholder">
+                                                <span className="material-symbols-outlined">person</span>
                                             </div>
                                         )}
                                     </div>
@@ -354,11 +378,13 @@ export const ProjectIssueDetail = () => {
                             </div>
                         </div>
 
-                        <div className="flex flex-col items-stretch lg:items-end gap-3 lg:mb-1">
-                            <div className="flex items-center gap-2 bg-surface-hover p-1 rounded-xl border border-surface w-full lg:w-fit">
+                        <div className="issue-detail__actions">
+                            <div className="issue-detail__action-toolbar">
                                 <Button
                                     variant="ghost"
                                     size="sm"
+                                    className="issue-detail__action-button"
+                                    data-state={isPinned(issue.id) ? 'pinned' : 'default'}
                                     onClick={() => {
                                         if (isPinned(issue.id)) {
                                             unpinItem(issue.id);
@@ -372,29 +398,29 @@ export const ProjectIssueDetail = () => {
                                             });
                                         }
                                     }}
-                                    className={`flex-1 lg:flex-none ${isPinned(issue.id) ? 'text-primary bg-primary/10' : 'hover:bg-card'}`}
-                                    icon={<span className="material-symbols-outlined text-[20px]">push_pin</span>}
+                                    icon={<span className="material-symbols-outlined issue-detail__action-icon">push_pin</span>}
                                 >
-                                    {isPinned(issue.id) ? 'Pinned' : 'Pin'}
+                                    {isPinned(issue.id) ? t('issueDetail.actions.pinned') : t('issueDetail.actions.pin')}
                                 </Button>
-                                <div className="w-[1px] h-4 bg-surface-border" />
+                                <span className="issue-detail__action-divider" />
                                 <Button
                                     variant="ghost"
                                     size="sm"
+                                    className="issue-detail__action-button"
                                     onClick={() => setIsEditModalOpen(true)}
-                                    className="flex-1 lg:flex-none hover:bg-card"
-                                    icon={<span className="material-symbols-outlined text-[20px]">edit</span>}
+                                    icon={<span className="material-symbols-outlined issue-detail__action-icon">edit</span>}
                                 >
-                                    Edit
+                                    {t('issueDetail.actions.edit')}
                                 </Button>
-                                <div className="w-[1px] h-4 bg-surface-border" />
+                                <span className="issue-detail__action-divider" />
                                 <Button
                                     variant="ghost"
                                     size="sm"
-                                    className="flex-1 lg:flex-none text-rose-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                                    className="issue-detail__action-button issue-detail__action-button--danger"
                                     onClick={() => setShowDeleteConfirm(true)}
+                                    icon={<span className="material-symbols-outlined issue-detail__action-icon">delete</span>}
                                 >
-                                    <span className="material-symbols-outlined text-[20px]">delete</span>
+                                    {t('issueDetail.actions.delete')}
                                 </Button>
                             </div>
 
@@ -402,334 +428,298 @@ export const ProjectIssueDetail = () => {
                                 variant="primary"
                                 onClick={() => setShowConvertModal(true)}
                                 size="lg"
-                                className="shadow-lg shadow-indigo-500/10 w-full lg:w-fit"
+                                className="issue-detail__convert-button"
                                 icon={<span className="material-symbols-outlined">task_alt</span>}
                             >
-                                Convert to Task
+                                {t('issueDetail.actions.convert')}
                             </Button>
                         </div>
                     </div>
                 </div>
             </header>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {/* Main Content */}
-                <div className="lg:col-span-8 space-y-8">
-                    {/* Description */}
-                    <div className="p-0">
-                        <h3 className="text-xs font-bold text-muted uppercase mb-3 flex items-center gap-2 tracking-wider">
-                            <span className="material-symbols-outlined text-[16px]">description</span>
-                            Description
+            <div className="issue-detail__layout">
+                <div className="issue-detail__main">
+                    <section className="issue-detail__section">
+                        <h3 className="issue-detail__section-title">
+                            <span className="material-symbols-outlined issue-detail__section-icon">description</span>
+                            {t('issueDetail.section.description')}
                         </h3>
-                        <div className="app-card p-6 min-h-[120px]">
+                        <Card className="issue-detail__card issue-detail__card--roomy">
                             {issue.description ? (
-                                <div className="prose prose-sm max-w-none text-main">
-                                    <p className="whitespace-pre-wrap leading-relaxed">{issue.description}</p>
+                                <div className="prose issue-detail__description-text">
+                                    <p className="issue-detail__description-paragraph">{issue.description}</p>
                                 </div>
                             ) : (
-                                <p className="text-muted italic">No description provided.</p>
+                                <p className="issue-detail__empty-text">{t('issueDetail.description.empty')}</p>
                             )}
-                        </div>
-                    </div>
+                        </Card>
+                    </section>
 
-                    {/* Comments */}
-                    <div>
-                        <h3 className="text-xs font-bold text-muted uppercase mb-3 flex items-center gap-2 tracking-wider">
-                            <span className="material-symbols-outlined text-[16px]">chat</span>
-                            Discussion ({commentCount})
+                    <section className="issue-detail__section">
+                        <h3 className="issue-detail__section-title">
+                            <span className="material-symbols-outlined issue-detail__section-icon">chat</span>
+                            {t('issueDetail.section.discussion').replace('{count}', String(commentCount))}
                         </h3>
-                        <CommentSection
-                            projectId={id!}
-                            targetId={issueId!}
-                            targetType="issue"
-                            tenantId={project?.tenantId}
-                            isProjectOwner={isProjectOwner}
-                            targetTitle={issue?.title}
-                            hideHeader={true}
-                            onCountChange={setCommentCount}
-                        />
-                    </div>
+                        <Card className="issue-detail__card issue-detail__card--roomy">
+                            <CommentSection
+                                projectId={id!}
+                                targetId={issueId!}
+                                targetType="issue"
+                                tenantId={project?.tenantId}
+                                isProjectOwner={isProjectOwner}
+                                targetTitle={issue?.title}
+                                hideHeader={true}
+                                onCountChange={setCommentCount}
+                            />
+                        </Card>
+                    </section>
                 </div>
 
-                {/* Sidebar / Meta Column */}
-                <div className="lg:col-span-4 space-y-6">
-
-                    {/* GitHub Integration Card */}
+                <aside className="issue-detail__sidebar">
                     {issue.githubIssueNumber && (
-                        <div className="app-card overflow-hidden">
-                            <div className="p-4 flex items-center justify-between border-b border-surface">
-                                <div className="flex items-center gap-2">
-                                    <span className="material-symbols-outlined text-[20px] text-indigo-500">terminal</span>
-                                    <h3 className="text-sm font-bold text-main tracking-wide uppercase">GitHub Reference</h3>
+                        <Card className="issue-detail__card issue-detail__card--flush issue-detail__github-card">
+                            <div className="issue-detail__github-header">
+                                <div className="issue-detail__github-title">
+                                    <span className="material-symbols-outlined">terminal</span>
+                                    <span>{t('issueDetail.github.title')}</span>
                                 </div>
-                                <Badge variant="success" className="bg-emerald-500/20 text-emerald-400 border-none text-[10px]">SYNCED</Badge>
+                                <Badge variant="success" className="issue-detail__github-badge">
+                                    {t('issueDetail.github.synced')}
+                                </Badge>
                             </div>
-                            <div className="p-5 space-y-6">
-                                <div>
-                                    <p className="text-[10px] font-bold text-muted uppercase tracking-wider mb-2">Linked Issue</p>
+                            <div className="issue-detail__github-body">
+                                <div className="issue-detail__github-section">
+                                    <p className="issue-detail__github-label">{t('issueDetail.github.linkedIssue')}</p>
                                     <a
                                         href={issue.githubIssueUrl}
                                         target="_blank"
                                         rel="noopener noreferrer"
-                                        className="flex items-center justify-between p-3 rounded-xl bg-surface-hover border border-surface hover:border-primary transition-all group"
+                                        className="issue-detail__github-link"
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <div className="size-8 bg-white dark:bg-zinc-800 rounded-lg flex items-center justify-center border border-surface">
-                                                <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                                        <div className="issue-detail__github-link-body">
+                                            <div className="issue-detail__github-link-icon">
+                                                <span className="material-symbols-outlined">open_in_new</span>
                                             </div>
                                             <div>
-                                                <p className="text-sm font-bold text-main">Issue #{issue.githubIssueNumber}</p>
-                                                <p className="text-[10px] text-muted">View on GitHub</p>
+                                                <p className="issue-detail__github-link-title">{t('issueDetail.github.issueLabel').replace('{number}', String(issue.githubIssueNumber))}</p>
+                                                <p className="issue-detail__github-link-subtitle">{t('issueDetail.github.view')}</p>
                                             </div>
                                         </div>
-                                        <span className="material-symbols-outlined text-[18px] text-subtle group-hover:text-primary transition-colors">chevron_right</span>
+                                        <span className="material-symbols-outlined issue-detail__github-link-arrow">chevron_right</span>
                                     </a>
                                 </div>
 
-                                <div>
-                                    <div className="flex items-center justify-between mb-3">
-                                        <p className="text-[10px] font-bold text-muted uppercase tracking-wider">Related Commits</p>
-                                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-surface-hover text-muted">
-                                            {relatedCommits.length} Found
+                                <div className="issue-detail__github-section">
+                                    <div className="issue-detail__github-meta">
+                                        <p className="issue-detail__github-label">{t('issueDetail.github.relatedCommits')}</p>
+                                        <span className="issue-detail__github-count">
+                                            {t('issueDetail.github.found').replace('{count}', String(relatedCommits.length))}
                                         </span>
                                     </div>
 
                                     {loadingCommits ? (
-                                        <div className="flex items-center gap-2 py-2">
-                                            <span className="material-symbols-outlined animate-spin text-[16px] text-primary">progress_activity</span>
-                                            <span className="text-[11px] text-muted">Searching repository...</span>
+                                        <div className="issue-detail__github-loading">
+                                            <span className="material-symbols-outlined">progress_activity</span>
+                                            <span>{t('issueDetail.github.searching')}</span>
                                         </div>
                                     ) : relatedCommits.length > 0 ? (
-                                        <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1 custom-scrollbar">
+                                        <div className="issue-detail__github-list">
                                             {relatedCommits.map(commit => (
                                                 <a
                                                     key={commit.sha}
                                                     href={commit.html_url}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="block p-2.5 rounded-lg border border-surface bg-surface-paper hover:bg-surface-hover transition-all group"
+                                                    className="issue-detail__github-item"
                                                 >
-                                                    <p className="text-[11px] font-medium text-main line-clamp-1 group-hover:text-primary">
-                                                        {commit.commit.message}
-                                                    </p>
-                                                    <div className="flex items-center justify-between mt-1.5">
-                                                        <div className="flex items-center gap-1.5">
+                                                    <p className="issue-detail__github-item-title">{commit.commit.message}</p>
+                                                    <div className="issue-detail__github-item-meta">
+                                                        <div className="issue-detail__github-author">
                                                             {commit.author?.avatar_url && (
-                                                                <img src={commit.author.avatar_url} className="size-4 rounded-full border border-surface" alt="" />
+                                                                <img src={commit.author.avatar_url} className="issue-detail__github-avatar" alt="" />
                                                             )}
-                                                            <span className="text-[9px] text-muted">@{commit.author?.login || 'unknown'}</span>
+                                                            <span>@{commit.author?.login || t('issueDetail.github.unknown')}</span>
                                                         </div>
-                                                        <div className="flex flex-col items-end">
-                                                            <span className="text-[9px] font-mono text-subtle">{commit.sha.slice(0, 7)}</span>
-                                                            <span className="text-[8px] text-subtle">{timeAgo(commit.commit.author.date)}</span>
+                                                        <div className="issue-detail__github-sha">
+                                                            <span>{commit.sha.slice(0, 7)}</span>
+                                                            <span>{timeAgo(commit.commit.author.date)}</span>
                                                         </div>
                                                     </div>
                                                 </a>
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="py-4 text-center bg-surface-hover/50 rounded-xl border border-dashed border-surface">
-                                            <p className="text-[10px] text-muted">No commits found referencing this issue.</p>
+                                        <div className="issue-detail__github-empty">
+                                            {t('issueDetail.github.empty')}
                                         </div>
                                     )}
                                 </div>
                             </div>
-                        </div>
+                        </Card>
                     )}
 
-                    {/* Status Card */}
-                    <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3">Status</h3>
-                        <div className="relative">
+                    <Card className="issue-detail__card">
+                        <div className="issue-detail__card-header">
+                            <span className="material-symbols-outlined issue-detail__card-icon">timelapse</span>
+                            <span className="issue-detail__card-label">{t('issueDetail.sidebar.status')}</span>
+                        </div>
+                        <div className="issue-detail__card-body">
                             <Select
-                                value={issue.status}
-                                onChange={(e) => handleUpdateStatus(e.target.value as any)}
-                                className="w-full"
-                            >
-                                <option value="Open">Open</option>
-                                <option value="In Progress">In Progress</option>
-                                <option value="Resolved">Resolved</option>
-                                <option value="Closed">Closed</option>
-                            </Select>
+                                value={statusValue}
+                                onChange={(value) => handleUpdateStatus(value as Issue['status'])}
+                                options={statusOptions}
+                                className="issue-detail__select"
+                            />
                         </div>
-                    </div>
+                    </Card>
 
-                    {/* Assignees Card */}
-                    <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3">Assignees</h3>
-                        <MultiAssigneeSelector
-                            projectId={id!}
-                            assigneeIds={issue.assigneeIds || (issue.assigneeId ? [issue.assigneeId] : [])}
-                            onChange={handleUpdateAssignees}
-                        />
-                    </div>
-
-                    {/* Priority Card */}
-                    <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-3">Priority</h3>
-                        <div className="flex flex-col gap-1">
-                            {(['Low', 'Medium', 'High', 'Urgent'] as const).map(p => (
-                                <button
-                                    key={p}
-                                    onClick={() => handleUpdateField('priority', p)}
-                                    className={`
-                                        flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-all
-                                        ${issue.priority === p
-                                            ? 'bg-surface-hover text-main shadow-sm'
-                                            : 'text-muted hover:bg-surface-hover'
-                                        }
-                                    `}
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <PriorityIcon priority={p} />
-                                        {p}
-                                    </div>
-                                    {issue.priority === p && <span className="material-symbols-outlined text-[16px] text-primary">check</span>}
-                                </button>
-                            ))}
+                    <Card className="issue-detail__card issue-detail__assignee-card">
+                        <div className="issue-detail__card-header">
+                            <span className="material-symbols-outlined issue-detail__card-icon">group</span>
+                            <span className="issue-detail__card-label">{t('issueDetail.sidebar.assignees')}</span>
                         </div>
-                    </div>
+                        <div className="issue-detail__card-body">
+                            <MultiAssigneeSelector
+                                projectId={id!}
+                                assigneeIds={assigneeIds}
+                                onChange={handleUpdateAssignees}
+                            />
+                        </div>
+                    </Card>
 
-                    {/* Meta Card */}
-                    <div className="app-card p-5">
-                        <h3 className="text-xs font-bold text-muted uppercase tracking-wider mb-4">Issue Details</h3>
-                        <div className="space-y-4">
-                            <div className="flex flex-col gap-1">
-                                <span className="text-[10px] font-bold text-subtle uppercase">Issue ID</span>
-                                <div className="group relative">
-                                    <code className="block w-full text-[11px] font-mono text-main bg-surface-hover p-2 rounded-lg border border-surface break-all truncate hover:whitespace-normal transition-all cursor-pointer" title="Click to copy ID" onClick={() => {
-                                        navigator.clipboard.writeText(issue.id);
-                                        setCopiedId(true);
-                                        setTimeout(() => setCopiedId(false), 2000);
-                                    }}>
-                                        {issue.id}
-                                    </code>
-                                    <span className={`absolute right-2 top-2 transition-all material-symbols-outlined text-[14px] ${copiedId ? 'text-emerald-500 scale-110' : 'opacity-0 group-hover:opacity-100 text-muted'} pointer-events-none`}>
-                                        {copiedId ? 'check_circle' : 'content_copy'}
-                                    </span>
-                                    {copiedId && (
-                                        <span className="absolute -top-7 right-0 text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 animate-fade-in-up">
-                                            Copied!
+                    <Card className="issue-detail__card">
+                        <div className="issue-detail__card-header">
+                            <span className="material-symbols-outlined issue-detail__card-icon">flag</span>
+                            <span className="issue-detail__card-label">{t('issueDetail.sidebar.priority')}</span>
+                        </div>
+                        <div className="issue-detail__card-body">
+                            <div className="issue-detail__priority-list">
+                                {(['Low', 'Medium', 'High', 'Urgent'] as const).map(p => {
+                                    const isSelected = (issue.priority || 'Medium') === p;
+                                    return (
+                                        <button
+                                            key={p}
+                                            type="button"
+                                            onClick={() => handleUpdateField('priority', p)}
+                                            className={`issue-detail__priority-option ${isSelected ? 'is-selected' : ''}`}
+                                            data-priority={p.toLowerCase()}
+                                        >
+                                            <span className="issue-detail__priority-option-label">
+                                                <span className="material-symbols-outlined issue-detail__priority-option-icon">{getIssuePriorityIcon(p)}</span>
+                                                {priorityLabels[p]}
+                                            </span>
+                                            {isSelected && <span className="material-symbols-outlined issue-detail__priority-option-check">check</span>}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    </Card>
+
+                    <Card className="issue-detail__card issue-detail__card--roomy">
+                        <h3 className="issue-detail__details-title">{t('issueDetail.details.title')}</h3>
+                        <div className="issue-detail__details-body">
+                            <div className="issue-detail__detail-row">
+                                <span className="issue-detail__detail-label">{t('issueDetail.details.id')}</span>
+                                <div className="issue-detail__detail-value">
+                                    <button
+                                        type="button"
+                                        className="issue-detail__id-button"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(issue.id);
+                                            setCopiedId(true);
+                                            setTimeout(() => setCopiedId(false), 2000);
+                                        }}
+                                    >
+                                        <span className="issue-detail__id-text">{issue.id}</span>
+                                        <span className="material-symbols-outlined issue-detail__id-icon">
+                                            {copiedId ? 'check_circle' : 'content_copy'}
                                         </span>
+                                    </button>
+                                    {copiedId && (
+                                        <span className="issue-detail__copy-toast">{t('issueDetail.details.copied')}</span>
                                     )}
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 gap-4">
-                                <div className="flex flex-col gap-1">
-                                    <span className="text-[10px] font-bold text-subtle uppercase">Reported</span>
-                                    <span className="text-xs font-semibold text-main flex items-center gap-1.5">
-                                        <span className="material-symbols-outlined text-[16px] text-muted">history</span>
+                            <div className="issue-detail__detail-row">
+                                <span className="issue-detail__detail-label">{t('issueDetail.details.reported')}</span>
+                                <div className="issue-detail__detail-meta">
+                                    <span className="issue-detail__detail-date">
                                         {issue.createdAt ? format(new Date(toMillis(issue.createdAt)), dateFormat, { locale: dateLocale }) : '-'}
                                     </span>
                                 </div>
-
-                                {issue.ownerId && (
-                                    <div className="flex flex-col gap-1">
-                                        <span className="text-[10px] font-bold text-subtle uppercase">Reporter</span>
-                                        <div className="flex items-center gap-2">
-                                            <img
-                                                src={allUsers.find(u => (u as any).id === issue.ownerId || u.uid === issue.ownerId)?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'}
-                                                className="size-5 rounded-full border border-surface"
-                                                alt=""
-                                            />
-                                            <span className="text-xs font-semibold text-main">
-                                                {allUsers.find(u => (u as any).id === issue.ownerId || u.uid === issue.ownerId)?.displayName || 'Unknown User'}
-                                            </span>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="pt-3 border-t border-surface flex items-center justify-between">
-                                    <span className="text-[10px] font-bold text-subtle uppercase">Status</span>
-                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${issue.status === 'Resolved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-                                        issue.status === 'Open' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                                            'bg-slate-500/10 text-slate-500 border-slate-500/20'
-                                        }`}>
-                                        {issue.status}
-                                    </span>
-                                </div>
-
-                                {issue.linkedTaskId && (
-                                    <div className="pt-3 border-t border-surface">
-                                        <span className="text-[10px] font-bold text-subtle uppercase block mb-1">Related Task</span>
-                                        <Link to={`/project/${id}/tasks/${issue.linkedTaskId}`} className="text-xs font-bold text-primary hover:underline flex items-center gap-1.5">
-                                            <span className="material-symbols-outlined text-[16px]">task_alt</span>
-                                            View Task
-                                        </Link>
-                                    </div>
-                                )}
-
-                                {(issue.status === 'Resolved' || issue.status === 'Closed') && (issue.completedBy || issue.completedAt) && (
-                                    <div className="pt-3 border-t border-surface flex flex-col gap-1">
-                                        <span className="text-[10px] font-bold text-subtle uppercase">Completed</span>
-                                        <div className="flex flex-col gap-1">
-                                            {issue.completedAt && (
-                                                <span className="text-xs font-semibold text-main flex items-center gap-1.5">
-                                                    <span className="material-symbols-outlined text-[16px] text-muted">event_available</span>
-                                                    {format(new Date(toMillis(issue.completedAt)), dateFormat, { locale: dateLocale })}
-                                                </span>
-                                            )}
-                                            {issue.completedBy && (
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <img
-                                                        src={allUsers.find(u => (u as any).id === issue.completedBy || u.uid === issue.completedBy)?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'}
-                                                        className="size-5 rounded-full border border-surface"
-                                                        alt=""
-                                                    />
-                                                    <span className="text-xs font-semibold text-main">
-                                                        by {allUsers.find(u => (u as any).id === issue.completedBy || u.uid === issue.completedBy)?.displayName || 'Unknown User'}
-                                                    </span>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
-                        </div>
-                    </div>
 
-                </div>
+                            {issue.ownerId && (
+                                <div className="issue-detail__detail-row">
+                                    <span className="issue-detail__detail-label">{t('issueDetail.details.reporter')}</span>
+                                    <div className="issue-detail__detail-user">
+                                        <img
+                                            src={reporter?.photoURL || 'https://www.gravatar.com/avatar/?d=mp'}
+                                            className="issue-detail__detail-avatar"
+                                            alt=""
+                                        />
+                                        <span className="issue-detail__detail-user-name">
+                                            {reporter?.displayName || t('issueDetail.details.unknownUser')}
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="issue-detail__detail-row">
+                                <span className="issue-detail__detail-label">{t('issueDetail.details.status')}</span>
+                                <span className="issue-detail__detail-status" data-status={statusKey}>
+                                    {statusLabel}
+                                </span>
+                            </div>
+
+                            {issue.linkedTaskId && (
+                                <div className="issue-detail__detail-row issue-detail__detail-row--stack">
+                                    <span className="issue-detail__detail-label">{t('issueDetail.details.relatedTask')}</span>
+                                    <Link to={`/project/${id}/tasks/${issue.linkedTaskId}`} className="issue-detail__detail-link">
+                                        <span className="material-symbols-outlined issue-detail__detail-link-icon">task_alt</span>
+                                        <span className="issue-detail__detail-link-text">{t('issueDetail.details.relatedTaskAction')}</span>
+                                    </Link>
+                                </div>
+                            )}
+
+                            {(issue.status === 'Resolved' || issue.status === 'Closed') && (issue.completedBy || issue.completedAt) && (
+                                <div className="issue-detail__detail-row issue-detail__detail-row--stack">
+                                    <span className="issue-detail__detail-label">{t('issueDetail.details.completed')}</span>
+                                    <div className="issue-detail__detail-meta">
+                                        {issue.completedAt && (
+                                            <span className="issue-detail__detail-date">
+                                                {format(new Date(toMillis(issue.completedAt)), dateFormat, { locale: dateLocale })}
+                                            </span>
+                                        )}
+                                        {issue.completedBy && (
+                                            <span className="issue-detail__detail-by">
+                                                {t('issueDetail.details.by').replace('{name}', allUsers.find(u => (u as any).id === issue.completedBy || u.uid === issue.completedBy)?.displayName || t('issueDetail.details.unknownUser'))}
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </Card>
+                </aside>
             </div>
-        </div >
+        </div>
     );
 };
 
-const PriorityIcon = ({ priority }: { priority: string }) => {
-    const icons: Record<string, string> = {
-        'Urgent': 'error',
-        'High': 'keyboard_double_arrow_up',
-        'Medium': 'drag_handle',
-        'Low': 'keyboard_arrow_down',
-    };
-    const colors: Record<string, string> = {
-        'Urgent': 'text-rose-500',
-        'High': 'text-orange-500',
-        'Medium': 'text-blue-500',
-        'Low': 'text-slate-500',
-    };
-    return <span className={`material-symbols-outlined text-[18px] ${colors[priority]}`}>{icons[priority]}</span>;
-}
+const getIssueStatusIcon = (status?: Issue['status']) => {
+    if (status === 'Resolved' || status === 'Closed') return 'check_circle';
+    if (status === 'In Progress') return 'sync';
+    if (status === 'Open') return 'error_outline';
+    return 'circle';
+};
 
-const PriorityBadge = ({ priority }: { priority: string }) => {
-    const styles: Record<string, string> = {
-        'Urgent': 'bg-rose-500/10 text-rose-500 border-rose-500/20',
-        'High': 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-        'Medium': 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-        'Low': 'bg-slate-500/10 text-slate-500 border-slate-500/20',
-    };
-
-    const icons: Record<string, string> = {
-        'Urgent': 'error',
-        'High': 'keyboard_double_arrow_up',
-        'Medium': 'drag_handle',
-        'Low': 'keyboard_arrow_down',
-    }
-
-    return (
-        <span className={`px-2 py-0.5 rounded-full text-xs font-bold border flex items-center gap-1.5 ${styles[priority] || styles['Medium']}`}>
-            <span className="material-symbols-outlined text-[14px]">{icons[priority]}</span>
-            {priority}
-        </span>
-    );
+const getIssuePriorityIcon = (priority?: Issue['priority']) => {
+    if (priority === 'Urgent') return 'error';
+    if (priority === 'High') return 'keyboard_double_arrow_up';
+    if (priority === 'Medium') return 'drag_handle';
+    return 'keyboard_arrow_down';
 };
