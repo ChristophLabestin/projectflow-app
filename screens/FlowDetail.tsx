@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Button } from '../components/ui/Button';
-import { Select } from '../components/ui/Select';
+import { useParams, useNavigate } from 'react-router-dom';
+import { Button } from '../components/common/Button/Button';
+import { Select } from '../components/common/Select/Select';
 import { deleteField } from 'firebase/firestore';
 import { getIdeaById, updateIdea, addTask, createSocialCampaign, getSocialCampaign, updateCampaign, deleteSocialCampaign, subscribeToIdea } from '../services/dataService';
 import { BrainstormView } from '../components/flows/stages/BrainstormView';
@@ -42,7 +42,6 @@ import { PaidAdsLiveView } from '../components/flows/stages/PaidAdsLiveView';
 import { PaidAdsOptimizationView } from '../components/flows/stages/PaidAdsOptimizationView';
 import { MarketingTypeSelection } from '../components/flows/stages/MarketingTypeSelection';
 import { Idea, SocialCampaign } from '../types';
-import { useConfirm } from '../context/UIContext';
 import { PIPELINE_CONFIGS } from '../components/flows/constants';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -51,7 +50,6 @@ import { useLanguage } from '../context/LanguageContext';
 export const FlowDetail = () => {
     const { id: projectId, flowId } = useParams<{ id: string; flowId: string }>();
     const navigate = useNavigate();
-    const confirm = useConfirm();
     const { t } = useLanguage();
 
     const [idea, setIdea] = useState<Idea | null>(null);
@@ -479,16 +477,20 @@ export const FlowDetail = () => {
     };
 
     if (loading) return (
-        <div className="flex items-center justify-center h-screen">
-            <span className="material-symbols-outlined text-subtle animate-spin text-4xl">progress_activity</span>
+        <div className="flow-detail__loading">
+            <span className="material-symbols-outlined flow-detail__loading-icon animate-spin">progress_activity</span>
         </div>
     );
 
     if (!idea) return null;
 
+    const isSocialCampaign = idea.type === 'Social' && idea.socialType === 'campaign';
+    const isSocialStageFullBleed = idea.type === 'Social' && ['Strategy', 'Brainstorm', 'CreativeLab', 'Studio', 'Distribution'].includes(activeTab);
+    const isFullBleed = isSocialCampaign || idea.type === 'PaidAds' || isSocialStageFullBleed;
+
     // Get current pipeline configuration
     let pipelineStages = PIPELINE_CONFIGS[idea.type] || PIPELINE_CONFIGS['Feature'];
-    if (idea.type === 'Social' && idea.socialType === 'campaign') {
+    if (isSocialCampaign) {
         pipelineStages = PIPELINE_CONFIGS['SocialCampaign'].filter(stage => {
             if (stage.id === 'Approved') {
                 return idea.stage === 'Approved' || linkedCampaign?.status === 'Active' || linkedCampaign?.status === 'Completed';
@@ -500,38 +502,52 @@ export const FlowDetail = () => {
         });
     }
 
+    const stageOptions = [
+        ...pipelineStages.map(stage => ({
+            value: stage.id,
+            label: isSocialCampaign
+                ? (socialCampaignStageLabels[stage.id] || stage.title)
+                : (stageLabels[stage.id] || stage.title),
+        })),
+        { value: 'Implemented', label: stageLabels.Implemented },
+        { value: 'Archived', label: stageLabels.Archived },
+    ];
+
     return (
-        <div className="flex flex-col h-full bg-surface">
+        <div className="flow-detail">
             {/* Unified Toolbar: Back, Title, Nav, Actions */}
-            <div className="flex items-center justify-between border-b border-surface px-4 h-14 shrink-0 bg-surface-paper z-10 gap-4">
-
+            <div className="flow-detail__toolbar">
                 {/* Left: Back & Title & Tabs */}
-                <div className="flex items-center h-full gap-4 overflow-x-auto no-scrollbar">
-                    <button onClick={handleBack} className="size-8 rounded-lg hover:bg-surface-hover flex items-center justify-center text-muted transition-colors shrink-0">
-                        <span className="material-symbols-outlined text-[20px]">arrow_back</span>
-                    </button>
+                <div className="flow-detail__toolbar-left">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="flow-detail__back"
+                        onClick={handleBack}
+                        aria-label={t('flows.actions.back')}
+                    >
+                        <span className="material-symbols-outlined">arrow_back</span>
+                    </Button>
 
-                    <div className="h-6 w-px bg-surface-border shrink-0" />
+                    <div className="flow-detail__divider" />
 
-                    <div className="flex items-center gap-2 max-w-[200px] shrink-0">
-                        <h1 className="text-sm font-bold text-main truncate" title={idea.title}>{idea.title}</h1>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-surface-hover text-muted font-medium shrink-0">{flowTypeLabels[idea.type] || idea.type}</span>
+                    <div className="flow-detail__title-block">
+                        <h1 className="flow-detail__title" title={idea.title}>{idea.title}</h1>
+                        <span className="flow-detail__type">{flowTypeLabels[idea.type] || idea.type}</span>
                     </div>
 
-                    <div className="h-6 w-px bg-surface-border shrink-0" />
+                    <div className="flow-detail__divider" />
 
-                    <div className="flex items-center h-full gap-1">
+                    <div className="flow-detail__tabs">
                         {pipelineStages.map((step) => (
                             <button
                                 key={step.id}
+                                type="button"
                                 onClick={() => setActiveTab(step.id)}
-                                className={`relative h-8 px-3 rounded-md flex items-center gap-2 text-xs font-bold transition-all whitespace-nowrap ${activeTab === step.id
-                                    ? 'text-primary bg-primary/10'
-                                    : 'text-muted hover:text-main hover:text-muted/10'
-                                    }`}
+                                className={`flow-detail__tab ${activeTab === step.id ? 'is-active' : ''}`}
                             >
-                                <span className={`material-symbols-outlined text-[16px] ${activeTab === step.id ? 'filled' : ''}`}>{step.icon}</span>
-                                {(idea.type === 'Social' && idea.socialType === 'campaign')
+                                <span className={`material-symbols-outlined flow-detail__tab-icon ${activeTab === step.id ? 'filled' : ''}`}>{step.icon}</span>
+                                {isSocialCampaign
                                     ? (socialCampaignStageLabels[step.id] || step.title)
                                     : (stageLabels[step.id] || step.title)}
                             </button>
@@ -540,42 +556,32 @@ export const FlowDetail = () => {
                 </div>
 
                 {/* Right: Actions */}
-                <div className="flex items-center gap-3 shrink-0">
-
-                    <div className="h-6 w-px bg-surface-border" />
+                <div className="flow-detail__toolbar-right">
+                    <div className="flow-detail__divider" />
 
                     <Select
                         value={idea.stage || pipelineStages[0].id}
-                        onChange={(e) => handleUpdate({ stage: e.target.value as any })}
-                        className="w-28 h-8 text-xs bg-transparent hover:bg-surface-hover border-none font-semibold focus:ring-0 cursor-pointer text-right"
-                    >
-                        {pipelineStages.map(stage => (
-                            <option key={stage.id} value={stage.id}>
-                                {(idea.type === 'Social' && idea.socialType === 'campaign')
-                                    ? (socialCampaignStageLabels[stage.id] || stage.title)
-                                    : (stageLabels[stage.id] || stage.title)}
-                            </option>
-                        ))}
-                        <option value="Implemented">{stageLabels.Implemented}</option>
-                        <option value="Archived">{stageLabels.Archived}</option>
-                    </Select>
+                        onChange={(value) => handleUpdate({ stage: value as any })}
+                        options={stageOptions}
+                        className="flow-detail__stage-select"
+                    />
 
-                    <div className="flex items-center gap-2 px-3">
+                    <div className="flow-detail__save">
                         {saveStatus === 'saving' && (
-                            <span className="text-[10px] text-muted animate-pulse flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[12px] animate-spin">sync</span>
+                            <span className="flow-detail__save-status" data-state="saving">
+                                <span className="material-symbols-outlined">sync</span>
                                 {t('flows.save.saving')}
                             </span>
                         )}
                         {saveStatus === 'saved' && (
-                            <span className="text-[10px] text-emerald-500 font-bold flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[14px]">cloud_done</span>
+                            <span className="flow-detail__save-status" data-state="saved">
+                                <span className="material-symbols-outlined">cloud_done</span>
                                 {t('flows.save.saved')}
                             </span>
                         )}
                         {saveStatus === 'error' && (
-                            <span className="text-[10px] text-rose-500 font-bold flex items-center gap-1">
-                                <span className="material-symbols-outlined text-[14px]">error</span>
+                            <span className="flow-detail__save-status" data-state="error">
+                                <span className="material-symbols-outlined">error</span>
                                 {t('flows.save.error')}
                             </span>
                         )}
@@ -584,14 +590,8 @@ export const FlowDetail = () => {
             </div>
 
             {/* Content Area */}
-            <div className={`flex-1 overflow-auto bg-surface ${(idea.type === 'Social' && idea.socialType === 'campaign') || idea.type === 'PaidAds' ||
-                ((activeTab === 'Strategy' || activeTab === 'Brainstorm' || activeTab === 'CreativeLab' || activeTab === 'Studio' || activeTab === 'Distribution') && idea.type === 'Social')
-                ? 'p-0' : 'p-6'
-                }`}>
-                <div className={`${(idea.type === 'Social' && idea.socialType === 'campaign') || idea.type === 'PaidAds' ||
-                    ((activeTab === 'Strategy' || activeTab === 'Brainstorm' || activeTab === 'CreativeLab' || activeTab === 'Studio' || activeTab === 'Distribution') && idea.type === 'Social')
-                    ? 'h-full flex flex-col' : 'max-w-6xl mx-auto h-full flex flex-col'
-                    }`}>
+            <div className={`flow-detail__content ${isFullBleed ? 'flow-detail__content--flush' : 'flow-detail__content--padded'}`}>
+                <div className={`flow-detail__content-inner ${isFullBleed ? 'flow-detail__content-inner--full' : 'flow-detail__content-inner--centered'}`}>
                     {renderStageView()}
                 </div>
             </div>

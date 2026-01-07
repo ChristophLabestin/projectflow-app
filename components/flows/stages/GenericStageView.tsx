@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Idea } from '../../../types';
-import { Card } from '../../ui/Card';
+import { Card } from '../../common/Card/Card';
+import { TextArea } from '../../common/Input/TextArea';
 import { useLanguage } from '../../../context/LanguageContext';
 
 interface GenericStageViewProps {
@@ -55,23 +56,23 @@ export const GenericStageView: React.FC<GenericStageViewProps> = ({ idea, stageI
     const typeLabel = typeLabels[idea.type as keyof typeof typeLabels] || idea.type;
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500">
-            <div className="bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-900/50 p-8 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 text-center">
-                <div className="size-16 bg-slate-200 dark:bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <span className="material-symbols-outlined text-3xl text-slate-400">construction</span>
+        <div className="flow-stage flow-stage--generic animate-fade-in">
+            <div className="flow-stage__hero">
+                <div className="flow-stage__hero-icon">
+                    <span className="material-symbols-outlined">construction</span>
                 </div>
-                <h3 className="text-lg font-bold text-main mb-2">
+                <h3 className="flow-stage__hero-title">
                     {t('flowStages.generic.title').replace('{stage}', stageLabel)}
                 </h3>
-                <p className="text-muted max-w-md mx-auto">
+                <p className="flow-stage__hero-subtitle">
                     {t('flowStages.generic.subtitle').replace('{type}', typeLabel)}
                 </p>
             </div>
 
-            <Card className="p-6">
-                <h4 className="font-bold text-main mb-4">{t('flowStages.generic.notesTitle')}</h4>
-                <textarea
-                    className="w-full h-32 bg-surface border border-surface rounded-xl p-4 text-sm focus:ring-2 focus:ring-primary outline-none transition-all resize-none"
+            <Card className="flow-stage__card">
+                <h4 className="flow-stage__card-title">{t('flowStages.generic.notesTitle')}</h4>
+                <TextArea
+                    className="flow-stage__textarea-group"
                     placeholder={t('flowStages.generic.placeholder').replace('{stage}', stageLabel)}
                     defaultValue={idea.description}
                     onBlur={(e) => onUpdate({ description: e.target.value })}
