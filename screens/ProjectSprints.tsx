@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { format } from 'date-fns';
+import { useOutletContext, useParams } from 'react-router-dom';
 import { Sprint, Task, Member } from '../types';
 import {
     subscribeProjectSprints,
@@ -21,13 +22,17 @@ import { ActiveSprintBoard } from '../components/sprints/ActiveSprintBoard';
 import { UpcomingSprintsList } from '../components/sprints/UpcomingSprintsList';
 import { SprintDetailsModal } from '../components/sprints/SprintDetailsModal';
 import { CreateSprintModal } from '../components/sprints/CreateSprintModal';
-import { Button } from '../components/ui/Button';
+import { Button } from '../components/common/Button/Button';
+import { Badge } from '../components/common/Badge/Badge';
+import { ConfirmModal } from '../components/common/Modal/ConfirmModal';
 import { useLanguage } from '../context/LanguageContext';
-import { TaskCard } from '../components/TaskCard';
+import { useToast } from '../context/UIContext';
 
 export const ProjectSprints: React.FC = () => {
     const { id: projectId } = useParams<{ id: string }>();
-    const { t } = useLanguage();
+    const { setTaskTitle } = useOutletContext<{ setTaskTitle: (t: string | null) => void }>();
+    const { t, dateFormat, dateLocale } = useLanguage();
+    const { showError } = useToast();
     const currentUser = auth.currentUser;
     const [sprints, setSprints] = useState<Sprint[]>([]);
     const [tasks, setTasks] = useState<Task[]>([]);
@@ -37,19 +42,32 @@ export const ProjectSprints: React.FC = () => {
     const [editingSprint, setEditingSprint] = useState<Sprint | null>(null);
     const [selectedSprintDetails, setSelectedSprintDetails] = useState<Sprint | null>(null);
     const [currentUserRole, setCurrentUserRole] = useState<'Owner' | 'Editor' | 'Viewer' | null>(null);
+    const [pendingDeleteSprintId, setPendingDeleteSprintId] = useState<string | null>(null);
+    const [pendingCompleteSprintId, setPendingCompleteSprintId] = useState<string | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [isCompleting, setIsCompleting] = useState(false);
     const tenantId = getActiveTenantId();
 
-    // Initial Data Fetch
+    const priorityLabels = useMemo(() => ({
+        Low: t('tasks.priority.low'),
+        Medium: t('tasks.priority.medium'),
+        High: t('tasks.priority.high'),
+        Urgent: t('tasks.priority.urgent')
+    }), [t]);
+
+    useEffect(() => {
+        setTaskTitle(t('nav.sprints'));
+        return () => setTaskTitle(null);
+    }, [setTaskTitle, t]);
+
     useEffect(() => {
         if (!projectId) return;
 
-        // Fetch project to get member IDs, then fetch members
         const fetchMembers = async () => {
             if (!tenantId) return;
             try {
                 const project = await getProjectById(projectId, tenantId);
 
-                // Determine current user role
                 if (project && currentUser) {
                     if (project.ownerId === currentUser.uid) {
                         setCurrentUserRole('Owner');
@@ -76,14 +94,13 @@ export const ProjectSprints: React.FC = () => {
                     setProjectMembers(users);
                 }
             } catch (err) {
-                console.error("Failed to fetch project members", err);
+                console.error('Failed to fetch project members', err);
             }
         };
         fetchMembers();
 
         const unsubSprints = subscribeProjectSprints(projectId, (data) => {
             setSprints(data);
-            // Update selected sprint details if it's currently open
             if (selectedSprintDetails) {
                 const updated = data.find(s => s.id === selectedSprintDetails.id);
                 if (updated) setSelectedSprintDetails(updated);
@@ -98,7 +115,7 @@ export const ProjectSprints: React.FC = () => {
             unsubSprints();
             unsubTasks();
         };
-    }, [projectId, tenantId]); // Removing selectedSprintDetails from deps to prevent loop
+    }, [projectId, tenantId]);
 
     const activeSprint = sprints.find(s => s.status === 'Active');
 
@@ -113,30 +130,49 @@ export const ProjectSprints: React.FC = () => {
             setEditingSprint(null);
             setIsCreateModalOpen(false);
         } catch (error) {
-            console.error("handleCreateSprint: Error caught", error);
-            alert("Failed to save sprint: " + (error as any).message);
+            console.error('handleCreateSprint: Error caught', error);
+            showError(t('projectSprints.errors.save'), (error as any)?.message);
         }
     };
 
     const handleDeleteSprint = async (sprintId: string) => {
         if (!projectId) return;
-        if (confirm("Are you sure? This will not delete tasks, but unassign them.")) {
+        setIsDeleting(true);
+        try {
             const sprintTasks = tasks.filter(t => t.sprintId === sprintId);
             for (const task of sprintTasks) {
                 await updateTaskFields(task.id, { sprintId: null as any }, projectId, tenantId);
             }
             await deleteSprint(projectId, sprintId, tenantId);
             setSelectedSprintDetails(null);
+        } catch (error) {
+            console.error('Failed to delete sprint', error);
+            showError(t('projectSprints.errors.delete'), (error as any)?.message);
+        } finally {
+            setIsDeleting(false);
         }
     };
 
-    // Member Management Handlers
+    const handleCompleteSprint = async (sprintId: string) => {
+        if (!projectId) return;
+        setIsCompleting(true);
+        try {
+            await completeSprint(projectId, sprintId, tenantId);
+            setView('backlog');
+        } catch (error) {
+            console.error('Failed to complete sprint', error);
+            showError(t('projectSprints.errors.complete'), (error as any)?.message);
+        } finally {
+            setIsCompleting(false);
+        }
+    };
+
     const handleAddMember = async (userId: string) => {
         if (!projectId || !selectedSprintDetails || !tenantId) return;
         try {
             await addSprintMember(projectId, selectedSprintDetails.id, userId, tenantId);
         } catch (e) {
-            console.error("Failed to add sprint member", e);
+            console.error('Failed to add sprint member', e);
         }
     };
 
@@ -145,7 +181,7 @@ export const ProjectSprints: React.FC = () => {
         try {
             await removeSprintMember(projectId, selectedSprintDetails.id, userId, tenantId);
         } catch (e) {
-            console.error("Failed to remove sprint member", e);
+            console.error('Failed to remove sprint member', e);
         }
     };
 
@@ -154,7 +190,7 @@ export const ProjectSprints: React.FC = () => {
         try {
             await requestToJoinSprint(projectId, selectedSprintDetails.id, currentUser.uid, tenantId);
         } catch (e) {
-            console.error("Failed to request to join", e);
+            console.error('Failed to request to join', e);
         }
     };
 
@@ -163,7 +199,7 @@ export const ProjectSprints: React.FC = () => {
         try {
             await addSprintMember(projectId, selectedSprintDetails.id, userId, tenantId);
         } catch (e) {
-            console.error("Failed to approve request", e);
+            console.error('Failed to approve request', e);
         }
     };
 
@@ -172,7 +208,7 @@ export const ProjectSprints: React.FC = () => {
         try {
             await rejectJoinRequest(projectId, selectedSprintDetails.id, userId, tenantId);
         } catch (e) {
-            console.error("Failed to reject request", e);
+            console.error('Failed to reject request', e);
         }
     };
 
@@ -181,100 +217,89 @@ export const ProjectSprints: React.FC = () => {
         const sprint = sprints.find(s => s.id === sprintId);
         if (!sprint) return;
         try {
-            await startSprint(projectId, sprintId, sprint.startDate, sprint.endDate, tenantId); // Start/End dates might need verification/update
+            await startSprint(projectId, sprintId, sprint.startDate, sprint.endDate, tenantId);
             setView('board');
         } catch (e: any) {
-            alert(e.message);
-        }
-    };
-
-    const handleCompleteSprint = async () => {
-        if (!projectId || !activeSprint) return;
-        if (confirm("Complete this sprint?")) {
-            await completeSprint(projectId, activeSprint.id, tenantId);
-            setView('backlog');
+            showError(t('projectSprints.errors.start'), e?.message);
         }
     };
 
     const handleTaskDrop = async (taskId: string, sprintId: string | null) => {
         if (!projectId) return;
-        // Optimistic update?
-        // For now, standard update.
-        // Convert null to undefined or empty string for Firestore? 
-        // Types say `sprintId?: string`. So undefined or deleteField().
-        // updateTaskFields probably handles Partial<Task>.
-        // updateTaskFields signature: (taskId, updates, projectId, tenantId)
         await updateTaskFields(taskId, { sprintId: sprintId || undefined }, projectId, tenantId);
     };
 
-    const renderTask = (task: Task) => (
-        // Placeholder for actual TaskCard. 
-        // We'll try to import TaskCard from components/TaskCard
-        // If it fails, I'll need to fix imports.
-        // For now, simple div to avoid breakage if import fails.
-        // I will replace this with valid import in real file.
-        <div className="p-3 bg-card rounded-xl border border-surface shadow-sm">
-            <p className="text-sm font-medium text-main">{task.title}</p>
-            <div className="flex items-center gap-2 mt-2">
-                <span className={`px-2 py-0.5 text-[10px] uppercase font-bold rounded ${task.priority === 'Urgent' ? 'bg-rose-100 text-rose-600' : 'bg-slate-100 text-slate-500'}`}>
-                    {task.priority || 'Medium'}
-                </span>
-            </div>
-        </div>
-    );
+    const requestDeleteSprint = (sprintId: string) => {
+        setPendingDeleteSprintId(sprintId);
+        setSelectedSprintDetails(null);
+    };
 
-    // Import TaskCard if available.
-    // Assuming TaskCard is not available based on file list (didn't see it explicitly), 
-    // but ProjectTasks used something.
-    // I will check ProjectTasks imports via grep or view_file later.
-    // Reusing the simple render above for now.
+    const requestCompleteSprint = (sprintId: string) => {
+        setPendingCompleteSprintId(sprintId);
+        setSelectedSprintDetails(null);
+    };
+
+    const renderTask = (task: Task) => {
+        const priority = task.priority || 'Medium';
+        const priorityLabel = priorityLabels[priority] || priority;
+        const priorityVariant = priority === 'Urgent' ? 'error' : priority === 'High' ? 'warning' : 'neutral';
+        const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+
+        return (
+            <div className={`sprint-task-card ${task.isCompleted ? 'is-complete' : ''}`}>
+                <div className="sprint-task-card__title">{task.title}</div>
+                <div className="sprint-task-card__meta">
+                    <Badge variant={priorityVariant} className="sprint-task-card__badge">
+                        {priorityLabel}
+                    </Badge>
+                    {dueDate && (
+                        <span className="sprint-task-card__date">
+                            {t('projectSprints.labels.due').replace('{date}', format(dueDate, dateFormat, { locale: dateLocale }))}
+                        </span>
+                    )}
+                </div>
+            </div>
+        );
+    };
 
     const backlogTasks = tasks.filter(t => !t.sprintId && !t.isCompleted);
-    // Usually backlog contains all unassigned tasks.
-    // Also including Completed tasks in backlog is weird.
-
-    // Filter tasks for active sprint
     const activeSprintTasks = activeSprint ? tasks.filter(t => t.sprintId === activeSprint.id) : [];
 
+    const pendingDeleteSprint = pendingDeleteSprintId
+        ? sprints.find(s => s.id === pendingDeleteSprintId)
+        : null;
 
+    const pendingCompleteSprint = pendingCompleteSprintId
+        ? sprints.find(s => s.id === pendingCompleteSprintId)
+        : null;
 
     return (
-        <div className="h-full flex flex-col gap-6 animate-in fade-in duration-500">
-            {/* Header / Toggle */}
-            <div className="flex items-center justify-between">
-                <div className="flex bg-surface-hover p-1 rounded-xl">
+        <div className="project-sprints">
+            <header className="project-sprints__header">
+                <div className="project-sprints__toggle">
                     <button
+                        type="button"
                         onClick={() => setView('board')}
-                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${view === 'board'
-                            ? 'bg-card text-main shadow-sm'
-                            : 'text-muted hover:text-main'
-                            }`}
+                        className={`project-sprints__toggle-button ${view === 'board' ? 'is-active' : ''}`}
                     >
-                        Active Board
+                        {t('projectSprints.view.board')}
                     </button>
                     <button
+                        type="button"
                         onClick={() => setView('backlog')}
-                        className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${view === 'backlog'
-                            ? 'bg-card text-main shadow-sm'
-                            : 'text-muted hover:text-main'
-                            }`}
+                        className={`project-sprints__toggle-button ${view === 'backlog' ? 'is-active' : ''}`}
                     >
-                        Backlog & Planning
+                        {t('projectSprints.view.backlog')}
                     </button>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <Button variant="primary" onClick={() => setIsCreateModalOpen(true)}>
+                    <span className="material-symbols-outlined">add</span>
+                    {t('projectSprints.actions.create')}
+                </Button>
+            </header>
 
-
-                    <Button variant="primary" onClick={() => setIsCreateModalOpen(true)}>
-                        <span className="material-symbols-outlined text-lg">add</span>
-                        {t('Create Sprint', 'Create Sprint')}
-                    </Button>
-                </div>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 min-h-0">
+            <div className="project-sprints__content">
                 {view === 'board' ? (
                     activeSprint ? (
                         <ActiveSprintBoard
@@ -282,32 +307,21 @@ export const ProjectSprints: React.FC = () => {
                             tasks={activeSprintTasks}
                             upcomingSprints={sprints.filter(s => s.status === 'Planning')}
                             allTasks={tasks}
-                            onCompleteSprint={handleCompleteSprint}
+                            onCompleteSprint={() => requestCompleteSprint(activeSprint.id)}
                             onStartSprint={handleStartSprint}
                             onSprintClick={setSelectedSprintDetails}
                             renderTask={renderTask}
                         />
                     ) : (
-                        <div className="flex flex-col gap-8">
-                            <div className="h-[400px] flex flex-col items-center justify-center text-center p-12 rounded-[32px] border-2 border-dashed border-surface">
-                                <div className="size-16 rounded-full bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center text-indigo-500 mb-4">
-                                    <span className="material-symbols-outlined text-3xl">directions_run</span>
-                                </div>
-                                <h2 className="text-xl font-bold text-main mb-2">No Active Sprint</h2>
-                                <p className="text-muted max-w-md mb-6">
-                                    There is no sprint currently in progress. Go to the Backlog to plan and start a new sprint.
-                                </p>
-                                <Button variant="primary" onClick={() => setView('backlog')}>
-                                    Go to Backlog
-                                </Button>
+                        <div className="project-sprints__empty">
+                            <div className="project-sprints__empty-icon">
+                                <span className="material-symbols-outlined">directions_run</span>
                             </div>
-
-                            <UpcomingSprintsList
-                                sprints={sprints.filter(s => s.status === 'Planning')}
-                                allTasks={tasks}
-                                onStartSprint={handleStartSprint}
-                                onSprintClick={setSelectedSprintDetails}
-                            />
+                            <h2 className="project-sprints__empty-title">{t('projectSprints.empty.active.title')}</h2>
+                            <p className="project-sprints__empty-text">{t('projectSprints.empty.active.description')}</p>
+                            <Button variant="primary" onClick={() => setView('backlog')}>
+                                {t('projectSprints.empty.active.action')}
+                            </Button>
                         </div>
                     )
                 ) : (
@@ -318,12 +332,21 @@ export const ProjectSprints: React.FC = () => {
                         renderTask={renderTask}
                         onCreateSprint={() => { setEditingSprint(null); setIsCreateModalOpen(true); }}
                         onEditSprint={(s) => { setEditingSprint(s); setIsCreateModalOpen(true); }}
-                        onDeleteSprint={handleDeleteSprint}
+                        onDeleteSprint={requestDeleteSprint}
                         onStartSprint={handleStartSprint}
                         onTaskDrop={handleTaskDrop}
                     />
                 )}
             </div>
+
+            {view === 'board' && !activeSprint && (
+                <UpcomingSprintsList
+                    sprints={sprints.filter(s => s.status === 'Planning')}
+                    allTasks={tasks}
+                    onStartSprint={handleStartSprint}
+                    onSprintClick={setSelectedSprintDetails}
+                />
+            )}
 
             <CreateSprintModal
                 isOpen={isCreateModalOpen}
@@ -345,18 +368,45 @@ export const ProjectSprints: React.FC = () => {
                     setEditingSprint(s);
                     setIsCreateModalOpen(true);
                 }}
-                onDelete={handleDeleteSprint}
+                onDelete={requestDeleteSprint}
                 onStart={handleStartSprint}
-                onComplete={async (id) => {
-                    await completeSprint(projectId, id, tenantId);
-                    setSelectedSprintDetails(null);
-                    setView('backlog');
-                }}
+                onComplete={(id) => requestCompleteSprint(id)}
                 onAddMember={handleAddMember}
                 onRemoveMember={handleRemoveMember}
                 onJoinRequest={handleJoinRequest}
                 onApproveRequest={handleApproveRequest}
                 onRejectRequest={handleRejectRequest}
+            />
+
+            <ConfirmModal
+                isOpen={!!pendingDeleteSprintId}
+                onClose={() => setPendingDeleteSprintId(null)}
+                onConfirm={async () => {
+                    if (!pendingDeleteSprintId) return;
+                    await handleDeleteSprint(pendingDeleteSprintId);
+                    setPendingDeleteSprintId(null);
+                }}
+                title={t('projectSprints.confirm.delete.title')}
+                message={t('projectSprints.confirm.delete.message').replace('{name}', pendingDeleteSprint?.name || t('projectSprints.labels.sprint'))}
+                confirmLabel={t('projectSprints.confirm.delete.confirm')}
+                cancelLabel={t('common.cancel')}
+                variant="danger"
+                isLoading={isDeleting}
+            />
+
+            <ConfirmModal
+                isOpen={!!pendingCompleteSprintId}
+                onClose={() => setPendingCompleteSprintId(null)}
+                onConfirm={async () => {
+                    if (!pendingCompleteSprintId) return;
+                    await handleCompleteSprint(pendingCompleteSprintId);
+                    setPendingCompleteSprintId(null);
+                }}
+                title={t('projectSprints.confirm.complete.title')}
+                message={t('projectSprints.confirm.complete.message').replace('{name}', pendingCompleteSprint?.name || t('projectSprints.labels.sprint'))}
+                confirmLabel={t('projectSprints.confirm.complete.confirm')}
+                cancelLabel={t('common.cancel')}
+                isLoading={isCompleting}
             />
         </div>
     );

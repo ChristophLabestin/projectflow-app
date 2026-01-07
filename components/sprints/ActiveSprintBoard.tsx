@@ -1,9 +1,10 @@
 import React from 'react';
+import { differenceInDays, format } from 'date-fns';
 import { Task, Sprint } from '../../types';
 import { ProjectBoard } from '../../components/ProjectBoard';
-import { Button } from '../../components/ui/Button';
+import { Button } from '../../components/common/Button/Button';
+import { Badge } from '../../components/common/Badge/Badge';
 import { useLanguage } from '../../context/LanguageContext';
-import { differenceInDays, format } from 'date-fns';
 import { UpcomingSprintsList } from './UpcomingSprintsList';
 
 interface ActiveSprintBoardProps {
@@ -27,31 +28,39 @@ export const ActiveSprintBoard: React.FC<ActiveSprintBoardProps> = ({
     onSprintClick,
     renderTask
 }) => {
-    const { t, dateFormat } = useLanguage();
+    const { t, dateFormat, dateLocale } = useLanguage();
     const daysLeft = differenceInDays(new Date(sprint.endDate), new Date());
     const isOverdue = daysLeft < 0;
 
+    const daysLabel = isOverdue
+        ? t('projectSprints.active.daysOverdue').replace('{count}', String(Math.abs(daysLeft)))
+        : t('projectSprints.active.daysLeft').replace('{count}', String(daysLeft));
+
     return (
-        <div className="flex flex-col gap-6 h-full overflow-y-auto">
-            {/* Sprint Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-indigo-50/50 dark:bg-indigo-900/10 p-6 rounded-[24px] border border-indigo-100 dark:border-indigo-500/20 shrink-0">
-                <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <span className="px-2.5 py-1 rounded-full bg-indigo-500 text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-indigo-500/20">
-                            Active Sprint
-                        </span>
-                        <h2 className="text-2xl font-black text-main uppercase tracking-tight">{sprint.name}</h2>
+        <div className="sprint-board">
+            <div className="sprint-board__header">
+                <div className="sprint-board__header-main">
+                    <div className="sprint-board__heading">
+                        <Badge variant="neutral" className="sprint-board__badge">
+                            {t('projectSprints.active.badge')}
+                        </Badge>
+                        <h2 className="sprint-board__title">{sprint.name}</h2>
                     </div>
                     {sprint.goal && (
-                        <p className="text-muted font-medium">Goal: <span className="text-main">{sprint.goal}</span></p>
+                        <p className="sprint-board__goal">
+                            <span className="sprint-board__goal-label">{t('projectSprints.active.goal')}</span>
+                            <span className="sprint-board__goal-text">{sprint.goal}</span>
+                        </p>
                     )}
-                    <div className="flex items-center gap-4 mt-3 text-xs font-bold uppercase tracking-widest text-subtle">
-                        <span className="flex items-center gap-1.5">
-                            <span className="material-symbols-outlined text-[16px]">calendar_today</span>
-                            {format(new Date(sprint.startDate), dateFormat)} - {format(new Date(sprint.endDate), dateFormat)}
+                    <div className="sprint-board__meta">
+                        <span className="sprint-board__meta-item">
+                            <span className="material-symbols-outlined">calendar_today</span>
+                            {format(new Date(sprint.startDate), dateFormat, { locale: dateLocale })}
+                            <span className="sprint-board__meta-separator">-</span>
+                            {format(new Date(sprint.endDate), dateFormat, { locale: dateLocale })}
                         </span>
-                        <span className={`px-2 py-0.5 rounded-md ${isOverdue ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
-                            {isOverdue ? `${Math.abs(daysLeft)} days overdue` : `${daysLeft} days left`}
+                        <span className={`sprint-board__meta-item ${isOverdue ? 'is-overdue' : 'is-ontrack'}`}>
+                            {daysLabel}
                         </span>
                     </div>
                 </div>
@@ -59,15 +68,14 @@ export const ActiveSprintBoard: React.FC<ActiveSprintBoardProps> = ({
                 <Button
                     variant="primary"
                     onClick={onCompleteSprint}
-                    className="shadow-xl shadow-indigo-500/20 hover:scale-105 active:scale-95 transition-all"
+                    className="sprint-board__complete"
+                    icon={<span className="material-symbols-outlined">flag</span>}
                 >
-                    <span className="material-symbols-outlined mr-2">flag</span>
-                    Complete Sprint
+                    {t('projectSprints.active.complete')}
                 </Button>
             </div>
 
-            {/* Board Area */}
-            <div className="flex-1 min-h-[400px]">
+            <div className="sprint-board__body">
                 <ProjectBoard
                     tasks={tasks}
                     renderTask={renderTask}
@@ -75,7 +83,6 @@ export const ActiveSprintBoard: React.FC<ActiveSprintBoardProps> = ({
                 />
             </div>
 
-            {/* Upcoming Sprints */}
             <UpcomingSprintsList
                 sprints={upcomingSprints}
                 allTasks={allTasks}

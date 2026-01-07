@@ -1,8 +1,9 @@
 import React from 'react';
-import { Sprint, Task } from '../../types';
-import { Button } from '../../components/ui/Button';
-import { useLanguage } from '../../context/LanguageContext';
 import { differenceInDays, format } from 'date-fns';
+import { Sprint, Task } from '../../types';
+import { Button } from '../../components/common/Button/Button';
+import { Badge } from '../../components/common/Badge/Badge';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface UpcomingSprintsListProps {
     sprints: Sprint[];
@@ -12,81 +13,72 @@ interface UpcomingSprintsListProps {
 }
 
 export const UpcomingSprintsList: React.FC<UpcomingSprintsListProps> = ({ sprints, allTasks, onStartSprint, onSprintClick }) => {
-    const { t, dateFormat } = useLanguage();
+    const { t, dateFormat, dateLocale } = useLanguage();
 
     if (sprints.length === 0) return null;
 
     return (
-        <div className="shrink-0 mt-4">
-            <h3 className="text-lg font-bold text-main mb-3 flex items-center gap-2">
-                <span className="material-symbols-outlined text-xl text-muted">upcoming</span>
-                Upcoming Sprints
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="sprint-upcoming">
+            <div className="sprint-upcoming__header">
+                <span className="material-symbols-outlined">upcoming</span>
+                <h3>{t('projectSprints.upcoming.title')}</h3>
+            </div>
+            <div className="sprint-upcoming__grid">
                 {sprints.map(upcoming => {
                     const upcomingTasks = allTasks.filter(t => t.sprintId === upcoming.id);
                     const startsIn = differenceInDays(new Date(upcoming.startDate), new Date());
+                    const startsLabel = startsIn <= 0
+                        ? t('projectSprints.upcoming.startsToday')
+                        : t('projectSprints.upcoming.startsIn').replace('{count}', String(startsIn));
 
                     return (
                         <div
                             key={upcoming.id}
                             onClick={() => onSprintClick?.(upcoming)}
-                            className="group relative p-5 rounded-2xl border border-surface bg-card hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer"
+                            className="sprint-upcoming__card"
                         >
-                            <div className="flex items-start justify-between mb-3">
-                                <div className="space-y-1">
-                                    <div className="flex items-center gap-2">
-                                        <h4 className="font-bold text-lg text-main group-hover:text-primary transition-colors">
-                                            {upcoming.name}
-                                        </h4>
+                            <div className="sprint-upcoming__card-header">
+                                <div>
+                                    <div className="sprint-upcoming__title-row">
+                                        <h4 className="sprint-upcoming__title">{upcoming.name}</h4>
                                         {upcoming.autoStart && (
-                                            <span
-                                                className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 bg-amber-100/80 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 px-2 py-0.5 rounded-full"
-                                                title="Auto-start enabled"
-                                            >
-                                                Auto
-                                            </span>
+                                            <Badge variant="warning" className="sprint-upcoming__auto" title={t('projectSprints.upcoming.autoTitle')}>
+                                                {t('projectSprints.upcoming.auto')}
+                                            </Badge>
                                         )}
                                     </div>
-                                    <div className="flex items-center gap-2 text-xs font-medium text-muted">
-                                        <span className="material-symbols-outlined text-[14px]">calendar_today</span>
-                                        {format(new Date(upcoming.startDate), dateFormat)} - {format(new Date(upcoming.endDate), dateFormat)}
+                                    <div className="sprint-upcoming__dates">
+                                        <span className="material-symbols-outlined">calendar_today</span>
+                                        {format(new Date(upcoming.startDate), dateFormat, { locale: dateLocale })}
+                                        <span className="sprint-upcoming__date-separator">-</span>
+                                        {format(new Date(upcoming.endDate), dateFormat, { locale: dateLocale })}
                                     </div>
                                 </div>
                                 {onStartSprint && (
                                     <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="text-primary bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        className="sprint-upcoming__start"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             onStartSprint(upcoming.id);
                                         }}
                                     >
-                                        Start
+                                        {t('projectSprints.upcoming.start')}
                                     </Button>
                                 )}
                             </div>
 
                             {upcoming.goal && (
-                                <p className="text-sm text-subtle line-clamp-2 mb-4 leading-relaxed">
-                                    {upcoming.goal}
-                                </p>
+                                <p className="sprint-upcoming__goal">{upcoming.goal}</p>
                             )}
 
-                            <div className="flex items-center justify-between pt-3 border-t border-surface">
-                                <div className="flex items-center gap-3 text-xs font-bold text-muted">
-                                    <span className="flex items-center gap-1.5" title={`${upcomingTasks.length} tasks assigned`}>
-                                        <span className="material-symbols-outlined text-sm">list_alt</span>
-                                        {upcomingTasks.length}
-                                    </span>
-                                </div>
-                                <span className={`text-xs font-bold px-2.5 py-1 rounded-md ${startsIn <= 0
-                                        ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'
-                                        : 'bg-surface-hover text-muted'
-                                    }`}>
-                                    {startsIn <= 0 ? 'Starts today' : `Starts in ${startsIn} days`}
+                            <div className="sprint-upcoming__footer">
+                                <span className="sprint-upcoming__tasks">
+                                    <span className="material-symbols-outlined">list_alt</span>
+                                    {t('projectSprints.upcoming.tasks').replace('{count}', String(upcomingTasks.length))}
                                 </span>
+                                <span className="sprint-upcoming__starts">{startsLabel}</span>
                             </div>
                         </div>
                     );

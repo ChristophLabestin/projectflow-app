@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Modal } from '../../components/ui/Modal';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { Textarea } from '../../components/ui/Textarea';
-import { useLanguage } from '../../context/LanguageContext';
+import React, { useEffect, useState } from 'react';
+import { addDays } from 'date-fns';
 import { Sprint } from '../../types';
-import { addDays, format } from 'date-fns';
-import { DatePicker } from '../../components/ui/DatePicker';
+import { Modal } from '../common/Modal/Modal';
+import { Button } from '../common/Button/Button';
+import { TextInput } from '../common/Input/TextInput';
+import { TextArea } from '../common/Input/TextArea';
+import { DatePicker } from '../common/DateTime/DatePicker';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface CreateSprintModalProps {
     isOpen: boolean;
@@ -19,42 +19,42 @@ export const CreateSprintModal: React.FC<CreateSprintModalProps> = ({ isOpen, on
     const { t } = useLanguage();
     const [name, setName] = useState('');
     const [goal, setGoal] = useState('');
-    const [startDate, setStartDate] = useState('');
-    const [endDate, setEndDate] = useState('');
+    const [startDate, setStartDate] = useState<Date | null>(null);
+    const [endDate, setEndDate] = useState<Date | null>(null);
     const [autoStart, setAutoStart] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
 
     useEffect(() => {
-        if (isOpen) {
-            if (initialData) {
-                setName(initialData.name);
-                setGoal(initialData.goal || '');
-                setStartDate(initialData.startDate.split('T')[0]);
-                setEndDate(initialData.endDate.split('T')[0]);
-                setAutoStart(initialData.autoStart || false);
-            } else {
-                // Default to next Monday or tomorrow
-                const today = new Date();
-                const start = today; // Simplified
-                const end = addDays(start, 14); // 2 weeks default
+        if (!isOpen) return;
 
-                setName('');
-                setGoal('');
-                setStartDate(format(start, 'yyyy-MM-dd'));
-                setEndDate(format(end, 'yyyy-MM-dd'));
-                setAutoStart(false);
-            }
+        if (initialData) {
+            setName(initialData.name);
+            setGoal(initialData.goal || '');
+            setStartDate(initialData.startDate ? new Date(initialData.startDate) : null);
+            setEndDate(initialData.endDate ? new Date(initialData.endDate) : null);
+            setAutoStart(initialData.autoStart || false);
+            return;
         }
+
+        const start = new Date();
+        const end = addDays(start, 14);
+
+        setName('');
+        setGoal('');
+        setStartDate(start);
+        setEndDate(end);
+        setAutoStart(false);
     }, [isOpen, initialData]);
 
     const handleSave = async () => {
+        if (!startDate || !endDate || !name) return;
         setIsSaving(true);
         try {
             await onSave({
                 name,
                 goal,
-                startDate: new Date(startDate).toISOString(),
-                endDate: new Date(endDate).toISOString(),
+                startDate: startDate.toISOString(),
+                endDate: endDate.toISOString(),
                 autoStart
             });
             onClose();
@@ -69,73 +69,67 @@ export const CreateSprintModal: React.FC<CreateSprintModalProps> = ({ isOpen, on
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            title={initialData ? "Edit Sprint" : "Create Sprint"}
+            title={initialData ? t('projectSprints.create.title.edit') : t('projectSprints.create.title.new')}
             size="md"
-            footer={
+            footer={(
                 <>
-                    <Button variant="ghost" onClick={onClose} disabled={isSaving}>Cancel</Button>
-                    <Button variant="primary" onClick={handleSave} loading={isSaving} disabled={!name || !startDate || !endDate}>
-                        {initialData ? "Update Sprint" : "Create Sprint"}
+                    <Button variant="ghost" onClick={onClose} disabled={isSaving}>
+                        {t('projectSprints.create.actions.cancel')}
+                    </Button>
+                    <Button
+                        variant="primary"
+                        onClick={handleSave}
+                        isLoading={isSaving}
+                        disabled={!name || !startDate || !endDate}
+                    >
+                        {initialData ? t('projectSprints.create.actions.update') : t('projectSprints.create.actions.create')}
                     </Button>
                 </>
-            }
+            )}
         >
-            <div className="space-y-4">
-                <Input
-                    label="Sprint Name"
-                    placeholder="e.g. Sprint 1, Board Overhaul"
+            <div className="sprint-modal">
+                <TextInput
+                    label={t('projectSprints.create.fields.name')}
+                    placeholder={t('projectSprints.create.fields.namePlaceholder')}
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     autoFocus
                 />
 
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                        <DatePicker
-                            label="Start Date"
-                            value={startDate}
-                            onChange={setStartDate}
-                        />
-                    </div>
-                    <div className="space-y-1">
-                        <DatePicker
-                            label="End Date"
-                            value={endDate}
-                            onChange={setEndDate}
-                            align="right"
-                        />
-                    </div>
+                <div className="sprint-modal__dates">
+                    <DatePicker
+                        label={t('projectSprints.create.fields.startDate')}
+                        value={startDate}
+                        onChange={setStartDate}
+                    />
+                    <DatePicker
+                        label={t('projectSprints.create.fields.endDate')}
+                        value={endDate}
+                        onChange={setEndDate}
+                    />
                 </div>
 
-                <Textarea
-                    label="Sprint Goal"
-                    placeholder="What is the main objective of this sprint?"
+                <TextArea
+                    label={t('projectSprints.create.fields.goal')}
+                    placeholder={t('projectSprints.create.fields.goalPlaceholder')}
                     value={goal}
                     onChange={(e) => setGoal(e.target.value)}
                     rows={3}
                 />
 
-                <div className="flex items-center gap-3 p-4 rounded-xl border border-surface bg-surface">
+                <div className="sprint-modal__switch">
                     <button
                         type="button"
                         onClick={() => setAutoStart(!autoStart)}
-                        className={`
-                            relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
-                            ${autoStart ? 'bg-primary' : 'bg-slate-200 dark:bg-slate-700'}
-                        `}
+                        className={`switch-track ${autoStart ? 'active' : ''}`}
                         role="switch"
                         aria-checked={autoStart}
                     >
-                        <span
-                            className={`
-                                inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                                ${autoStart ? 'translate-x-6' : 'translate-x-1'}
-                            `}
-                        />
+                        <span className="switch-handle" />
                     </button>
                     <div>
-                        <div className="text-sm font-medium text-main">Auto-start on Start Date</div>
-                        <div className="text-xs text-muted">Automatically change status to Active when the start date arrives</div>
+                        <div className="sprint-modal__switch-title">{t('projectSprints.create.fields.autoStart')}</div>
+                        <div className="sprint-modal__switch-hint">{t('projectSprints.create.fields.autoStartHint')}</div>
                     </div>
                 </div>
             </div>
