@@ -177,9 +177,12 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
         ...availableCampaigns.map((campaign) => ({ label: campaign.name, value: campaign.id })),
     ];
 
-    const subGoalOptions = GOALS
-        .filter((goal) => goal.id !== strategy.campaignType)
-        .map((goal) => ({ label: goal.label, value: goal.id }));
+    const subGoalOptions = [
+        { label: t('flowStages.socialStrategy.base.secondaryPlaceholder'), value: '' },
+        ...GOALS
+            .filter((goal) => goal.id !== strategy.campaignType)
+            .map((goal) => ({ label: goal.label, value: goal.id })),
+    ];
 
     return (
         <div className="flow-social-strategy">
@@ -321,10 +324,9 @@ export const SocialStrategyView: React.FC<SocialStrategyViewProps> = ({ idea, on
                                 <div>
                                     <Select
                                         label={t('flowStages.socialStrategy.base.secondaryLabel')}
-                                        value={strategy.subGoal}
+                                        value={strategy.subGoal || ''}
                                         onChange={(value) => updateStrategy({ subGoal: String(value) })}
                                         options={subGoalOptions}
-                                        placeholder={t('flowStages.socialStrategy.base.secondaryPlaceholder')}
                                         className="flow-social-strategy__select"
                                     />
                                 </div>
