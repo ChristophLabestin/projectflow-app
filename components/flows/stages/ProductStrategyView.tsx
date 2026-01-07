@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Idea } from '../../../types';
-import { Button } from '../../ui/Button';
+import { Button } from '../../common/Button/Button';
+import { Card } from '../../common/Card/Card';
+import { TextArea } from '../../common/Input/TextArea';
 import { SWOTCard } from './SWOTCard';
 import { generateProductStrategyAI, generateSWOTAnalysisAI } from '../../../services/geminiService';
 import { useLanguage } from '../../../context/LanguageContext';
@@ -14,7 +16,6 @@ export const ProductStrategyView: React.FC<ProductStrategyViewProps> = ({ idea, 
     const { t } = useLanguage();
     const [generating, setGenerating] = useState(false);
 
-    // Default empty analysis if not present
     const analysis = idea.analysis || {
         strengths: [],
         weaknesses: [],
@@ -22,7 +23,6 @@ export const ProductStrategyView: React.FC<ProductStrategyViewProps> = ({ idea, 
         threats: []
     };
 
-    // Generic handler for SWOT updates
     const handleSwotUpdate = (category: keyof typeof analysis, newList: string[]) => {
         onUpdate({
             analysis: {
@@ -35,18 +35,19 @@ export const ProductStrategyView: React.FC<ProductStrategyViewProps> = ({ idea, 
     const handleGenerateStrategy = async () => {
         setGenerating(true);
         try {
-            // Run both in parallel
             const [strategyData, swotData] = await Promise.all([
                 generateProductStrategyAI(idea),
                 generateSWOTAnalysisAI(idea)
             ]);
 
             onUpdate({
-                description: strategyData.vision, // Use description field for Vision for now
+                description: strategyData.vision,
                 riskWinAnalysis: {
                     ...(idea.riskWinAnalysis || {
                         successProbability: 0,
-                        risks: [], wins: [], recommendation: ''
+                        risks: [],
+                        wins: [],
+                        recommendation: ''
                     }),
                     marketFitScore: strategyData.marketFit,
                     technicalFeasibilityScore: strategyData.feasibility
@@ -65,125 +66,119 @@ export const ProductStrategyView: React.FC<ProductStrategyViewProps> = ({ idea, 
         }
     };
 
+    const marketFitScore = idea.riskWinAnalysis?.marketFitScore || 0;
+    const feasibilityScore = idea.riskWinAnalysis?.technicalFeasibilityScore || 0;
+
     return (
-        <div className="h-full flex flex-col gap-6 overflow-hidden animate-in fade-in duration-500">
-            {/* Header Area */}
-            <div className="flex items-center justify-between shrink-0">
-                <div>
-                    <h2 className="text-xl font-bold text-main">{t('flowStages.productStrategy.title')}</h2>
-                    <p className="text-sm text-muted">{t('flowStages.productStrategy.subtitle')}</p>
+        <div className="flow-product-strategy">
+            <div className="flow-product-strategy__header">
+                <div className="flow-product-strategy__heading">
+                    <h2>{t('flowStages.productStrategy.title')}</h2>
+                    <p>{t('flowStages.productStrategy.subtitle')}</p>
                 </div>
                 <Button
                     variant="primary"
                     size="sm"
                     onClick={handleGenerateStrategy}
-                    loading={generating}
-                    className="bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-600 hover:to-orange-600 border-none shadow-md !text-white"
+                    isLoading={generating}
+                    className="flow-product-strategy__generate"
                     icon={<span className="material-symbols-outlined">auto_awesome</span>}
                 >
                     {t('flowStages.productStrategy.actions.generate')}
                 </Button>
             </div>
 
-            <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0 overflow-y-auto pr-2 pb-4">
-
-                {/* Left Panel: Vision & Metrics (5 cols) */}
-                <div className="lg:col-span-5 flex flex-col gap-6">
-
-                    {/* Vision Statement */}
-                    <div className="bg-surface-paper p-5 rounded-2xl border border-surface shadow-sm flex flex-col gap-3 min-h-[200px]">
-                        <div className="flex items-center gap-2 text-main font-bold border-b border-surface pb-3">
-                            <span className="material-symbols-outlined text-[20px] text-rose-500">visibility</span>
-                            {t('flowStages.productStrategy.vision.title')}
+            <div className="flow-product-strategy__layout">
+                <div className="flow-product-strategy__sidebar">
+                    <Card className="flow-product-strategy__panel">
+                        <div className="flow-product-strategy__panel-header">
+                            <span className="material-symbols-outlined">visibility</span>
+                            <span>{t('flowStages.productStrategy.vision.title')}</span>
                         </div>
-                        <textarea
+                        <TextArea
                             value={idea.description}
                             onChange={(e) => onUpdate({ description: e.target.value })}
-                            className="flex-1 w-full bg-transparent border-none focus:ring-0 p-0 resize-none text-sm leading-relaxed text-main placeholder-[var(--color-text-subtle)] focus:outline-none"
                             placeholder={t('flowStages.productStrategy.vision.placeholder')}
+                            className="flow-product-strategy__vision"
                         />
-                    </div>
+                    </Card>
 
-                    {/* Target Audience (Stored in concept for now or custom field if available, reusing concept as a scratchpad potentially, but let's stick to description for vision. 
-                        Let's use a new section for 'Target Audience' but store it in 'keywords' for simplicity as we don't have a dedicated field yet? 
-                        Actually, let's keep it simple: Vision (Description) + SWOT + Market Fit (RiskWinAnalysis).
-                    */}
-
-                    {/* Strategic value / Market Fit */}
-                    <div className="bg-surface-paper p-5 rounded-2xl border border-surface shadow-sm space-y-6">
-                        <div className="flex items-center gap-2 text-main font-bold border-b border-surface pb-3">
-                            <span className="material-symbols-outlined text-[20px] text-amber-500">ads_click</span>
-                            {t('flowStages.productStrategy.marketFit.title')}
+                    <Card className="flow-product-strategy__panel">
+                        <div className="flow-product-strategy__panel-header">
+                            <span className="material-symbols-outlined">ads_click</span>
+                            <span>{t('flowStages.productStrategy.marketFit.title')}</span>
                         </div>
-
-                        <div className="space-y-4">
-                            <div>
-                                <div className="flex justify-between text-xs font-semibold mb-2 text-subtle">
+                        <div className="flow-product-strategy__sliders">
+                            <div className="flow-product-strategy__slider">
+                                <div className="flow-product-strategy__slider-header">
                                     <span>{t('flowStages.productStrategy.marketFit.demand')}</span>
-                                    <span>{idea.riskWinAnalysis?.marketFitScore || 0}/10</span>
+                                    <span>{marketFitScore}/10</span>
                                 </div>
                                 <input
                                     type="range"
-                                    min="0" max="10"
-                                    value={idea.riskWinAnalysis?.marketFitScore || 0}
+                                    min="0"
+                                    max="10"
+                                    value={marketFitScore}
                                     onChange={(e) => onUpdate({
                                         riskWinAnalysis: {
                                             ...(idea.riskWinAnalysis || {
                                                 successProbability: 0,
                                                 technicalFeasibilityScore: 0,
-                                                risks: [], wins: [], recommendation: ''
+                                                risks: [],
+                                                wins: [],
+                                                recommendation: ''
                                             }),
-                                            marketFitScore: parseInt(e.target.value)
+                                            marketFitScore: parseInt(e.target.value, 10)
                                         }
                                     })}
-                                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700 accent-rose-500"
+                                    className="flow-product-strategy__range"
+                                    data-tone="primary"
                                 />
                             </div>
 
-                            <div>
-                                <div className="flex justify-between text-xs font-semibold mb-2 text-subtle">
+                            <div className="flow-product-strategy__slider">
+                                <div className="flow-product-strategy__slider-header">
                                     <span>{t('flowStages.productStrategy.marketFit.feasibility')}</span>
-                                    <span>{idea.riskWinAnalysis?.technicalFeasibilityScore || 0}/10</span>
+                                    <span>{feasibilityScore}/10</span>
                                 </div>
                                 <input
                                     type="range"
-                                    min="0" max="10"
-                                    value={idea.riskWinAnalysis?.technicalFeasibilityScore || 0}
+                                    min="0"
+                                    max="10"
+                                    value={feasibilityScore}
                                     onChange={(e) => onUpdate({
                                         riskWinAnalysis: {
                                             ...(idea.riskWinAnalysis || {
                                                 successProbability: 0,
                                                 marketFitScore: 0,
-                                                risks: [], wins: [], recommendation: ''
+                                                risks: [],
+                                                wins: [],
+                                                recommendation: ''
                                             }),
-                                            technicalFeasibilityScore: parseInt(e.target.value)
+                                            technicalFeasibilityScore: parseInt(e.target.value, 10)
                                         }
                                     })}
-                                    className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer dark:bg-slate-700 accent-blue-500"
+                                    className="flow-product-strategy__range"
+                                    data-tone="warning"
                                 />
                             </div>
                         </div>
-                    </div>
+                    </Card>
 
-                    {/* Advance Action */}
-                    <div className="mt-auto">
+                    <div className="flow-product-strategy__advance">
                         <Button
-                            className="w-full h-12 text-base justify-between group hover:opacity-90 shadow-lg hover:shadow-xl transition-all rounded-xl border-none"
+                            className="flow-product-strategy__advance-button"
                             onClick={() => onUpdate({ stage: 'Discovery' })}
+                            icon={<span className="material-symbols-outlined">arrow_forward</span>}
+                            iconPosition="right"
                         >
-                            <span className="font-bold pl-1">{t('flowStages.productStrategy.actions.advance')}</span>
-                            <div className="size-8 rounded-lg bg-white/20 dark:bg-black/10 flex items-center justify-center group-hover:translate-x-1 transition-transform">
-                                <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
-                            </div>
+                            {t('flowStages.productStrategy.actions.advance')}
                         </Button>
                     </div>
-
                 </div>
 
-                {/* Right Panel: SWOT (7 cols) */}
-                <div className="lg:col-span-7 flex flex-col gap-4">
-                    {/* SWOT Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 h-full">
+                <div className="flow-product-strategy__main">
+                    <div className="flow-product-strategy__swot-grid">
                         <SWOTCard
                             title={t('flowStages.refinement.swot.strengths')}
                             icon="check_circle"
