@@ -618,7 +618,394 @@
 }
 
 @include mixins.mq('lg') {
-    .flow-refinement__content {
+.flow-refinement__content {
+        grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
+    }
+}
+
+.flow-brainstorm {
+    height: 100%;
+    overflow-y: auto;
+}
+
+.flow-brainstorm__container {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.flow-brainstorm__hero {
+    position: relative;
+    padding: 32px;
+    border-radius: var(--radius-2xl);
+    background: var(--color-surface-card);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+}
+
+.flow-brainstorm__hero-glow {
+    position: absolute;
+    top: -20px;
+    right: -10px;
+    opacity: 0.08;
+    pointer-events: none;
+
+    span.material-symbols-outlined {
+        font-size: 160px;
+        color: var(--color-text-main);
+        transform: rotate(12deg);
+    }
+}
+
+.flow-brainstorm__hero-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.flow-brainstorm__hero-header {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.flow-brainstorm__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    font-size: 0.55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--color-primary-text);
+    background: var(--color-primary);
+    width: fit-content;
+}
+
+.flow-brainstorm__title {
+    margin: 0;
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+.flow-brainstorm__mission-card {
+    padding: 16px 20px;
+    border-radius: var(--radius-xl);
+    background: var(--color-surface-hover);
+    box-shadow: var(--shadow-sm);
+    max-width: 720px;
+}
+
+.flow-brainstorm__mission {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--color-text-muted);
+    font-weight: 500;
+}
+
+.flow-brainstorm__mission-highlight {
+    color: var(--color-text-main);
+    font-weight: 700;
+}
+
+.flow-brainstorm__grid {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: 1fr;
+}
+
+.flow-brainstorm__sidebar,
+.flow-brainstorm__main {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.flow-brainstorm__panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.flow-brainstorm__panel-title {
+    margin: 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-text-subtle);
+}
+
+.flow-brainstorm__panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.flow-brainstorm__input {
+    .text-input {
+        font-weight: 600;
+    }
+}
+
+.flow-brainstorm__keyword-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.flow-brainstorm__keyword-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    .text-input-group {
+        flex: 1;
+    }
+}
+
+.flow-brainstorm__keyword-input {
+    .text-input {
+        font-size: 0.85rem;
+    }
+}
+
+.flow-brainstorm__keyword-add {
+    width: 40px;
+    height: 40px;
+}
+
+.flow-brainstorm__keywords {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.flow-brainstorm__keyword {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: var(--radius-md);
+    background: var(--color-surface-hover);
+    color: var(--color-text-main);
+    font-size: 0.7rem;
+    font-weight: 600;
+
+    button {
+        border: none;
+        background: transparent;
+        color: var(--color-text-subtle);
+        cursor: pointer;
+
+        span.material-symbols-outlined {
+            font-size: 12px;
+        }
+    }
+}
+
+.flow-brainstorm__keywords-empty {
+    margin: 0;
+    font-size: 0.75rem;
+    color: var(--color-text-subtle);
+    font-style: italic;
+}
+
+.flow-brainstorm__suggestions {
+    padding-top: 12px;
+    border-top: 1px solid var(--color-surface-border);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.flow-brainstorm__suggestions-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-text-subtle);
+
+    button {
+        border: none;
+        background: transparent;
+        color: var(--color-text-muted);
+        font-size: 0.65rem;
+        cursor: pointer;
+    }
+}
+
+.flow-brainstorm__suggestions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.flow-brainstorm__suggestion {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--color-surface-hover);
+    border-radius: var(--radius-md);
+    padding: 6px 8px;
+}
+
+.flow-brainstorm__suggestion-main {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: var(--color-text-main);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+}
+
+.flow-brainstorm__suggestion-dismiss {
+    border: none;
+    background: transparent;
+    color: var(--color-text-subtle);
+    cursor: pointer;
+
+    span.material-symbols-outlined {
+        font-size: 14px;
+    }
+}
+
+.flow-brainstorm__visual {
+    position: relative;
+    min-height: 520px;
+    padding: 0;
+    overflow: hidden;
+}
+
+.flow-brainstorm__visual-grid {
+    position: absolute;
+    inset: 0;
+    opacity: 0.05;
+    background-image: linear-gradient(currentColor 1px, transparent 1px), linear-gradient(90deg, currentColor 1px, transparent 1px);
+    background-size: 48px 48px;
+    color: var(--color-text-main);
+}
+
+.flow-brainstorm__visual-center {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.flow-brainstorm__node {
+    width: 160px;
+    height: 160px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-card);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-align: center;
+    padding: 16px;
+    position: relative;
+
+    span.material-symbols-outlined {
+        font-size: 32px;
+        color: var(--color-primary);
+    }
+}
+
+.flow-brainstorm__node-title {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+.flow-brainstorm__keyword-cloud {
+    position: absolute;
+    inset: 0;
+}
+
+.flow-brainstorm__link {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+
+    line {
+        stroke: var(--color-surface-border);
+        stroke-width: 2px;
+        stroke-dasharray: 4 4;
+    }
+}
+
+.flow-brainstorm__keyword-node {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: var(--radius-lg);
+    background: rgba(var(--color-surface-card-rgb), 0.92);
+    box-shadow: var(--shadow-sm);
+    color: var(--color-text-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow var(--transition-fast), color var(--transition-fast);
+    max-width: 140px;
+
+    span {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    &.is-active {
+        color: var(--color-text-main);
+        box-shadow: var(--shadow-md);
+        transform: scale(1.05);
+    }
+
+    button {
+        border: none;
+        background: transparent;
+        color: var(--color-text-subtle);
+        cursor: pointer;
+
+        span.material-symbols-outlined {
+            font-size: 14px;
+        }
+    }
+}
+
+.flow-brainstorm__footer {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.flow-brainstorm__advance {
+    font-weight: 700;
+}
+
+@include mixins.mq('lg') {
+    .flow-brainstorm__grid {
         grid-template-columns: minmax(0, 4fr) minmax(0, 8fr);
     }
 }
