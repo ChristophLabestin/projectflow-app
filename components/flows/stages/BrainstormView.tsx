@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Idea } from '../../../types';
-import { Button } from '../../ui/Button';
+import { Button } from '../../common/Button/Button';
+import { TextInput } from '../../common/Input/TextInput';
+import { Card } from '../../common/Card/Card';
 import { generateKeywordsAI } from '../../../services/geminiService';
 import { useLanguage } from '../../../context/LanguageContext';
 
@@ -72,7 +74,7 @@ export const BrainstormView: React.FC<BrainstormViewProps> = ({ idea, onUpdate }
 
     useEffect(() => {
         const animate = () => {
-            setTime(t => t + 0.005);
+            setTime((prev) => prev + 0.005);
             frameRef.current = requestAnimationFrame(animate);
         };
         frameRef.current = requestAnimationFrame(animate);
@@ -87,11 +89,11 @@ export const BrainstormView: React.FC<BrainstormViewProps> = ({ idea, onUpdate }
         }
         setKeywordInput('');
         // Remove from suggestions if added
-        setSuggestions(prev => prev.filter(s => s !== word));
+        setSuggestions((prev) => prev.filter((s) => s !== word));
     };
 
     const handleDismissSuggestion = (word: string) => {
-        setSuggestions(prev => prev.filter(s => s !== word));
+        setSuggestions((prev) => prev.filter((s) => s !== word));
         const newDismissed = [...dismissedSuggestions, word];
         setDismissedSuggestions(newDismissed);
         onUpdate({ dismissedSuggestions: newDismissed });
@@ -99,7 +101,7 @@ export const BrainstormView: React.FC<BrainstormViewProps> = ({ idea, onUpdate }
 
     const removeKeyword = (keyword: string) => {
         const currentKeywords = idea.keywords || [];
-        onUpdate({ keywords: currentKeywords.filter(k => k !== keyword) });
+        onUpdate({ keywords: currentKeywords.filter((k) => k !== keyword) });
     };
 
     const handleGenerateKeywords = async () => {
@@ -110,7 +112,7 @@ export const BrainstormView: React.FC<BrainstormViewProps> = ({ idea, onUpdate }
             const excludeList = [...(idea.keywords || []), ...suggestions, ...dismissedSuggestions];
             const results = await generateKeywordsAI(idea, excludeList);
             // Append new results to existing suggestions instead of replacing
-            setSuggestions(prev => [...prev, ...results.filter(r => !prev.includes(r))]);
+            setSuggestions((prev) => [...prev, ...results.filter((r) => !prev.includes(r))]);
         } catch (e) {
             console.error(e);
         } finally {
@@ -140,231 +142,205 @@ export const BrainstormView: React.FC<BrainstormViewProps> = ({ idea, onUpdate }
     const keywords = idea.keywords || [];
 
     const missionText = (
-        <div className="text-sm md:text-base text-slate-700 dark:text-slate-300 font-medium leading-relaxed">
+        <p className="flow-brainstorm__mission">
             "{t('flowStages.brainstorm.mission.prefix')}{' '}
-            <span className="text-rose-500 font-black">{t('flowStages.brainstorm.mission.concept')}</span>
+            <span className="flow-brainstorm__mission-highlight">{t('flowStages.brainstorm.mission.concept')}</span>
             {' '}{t('flowStages.brainstorm.mission.for')}{' '}
-            <span className="text-rose-500 font-black">{idea.title || t('flowStages.brainstorm.untitled')}</span>
+            <span className="flow-brainstorm__mission-highlight">{idea.title || t('flowStages.brainstorm.untitled')}</span>
             {' '}{t('flowStages.brainstorm.mission.expandBy')}{' '}
-            <span className="text-rose-500 font-black">
+            <span className="flow-brainstorm__mission-highlight">
                 {t('flowStages.brainstorm.mission.coreKeywords').replace('{count}', String(keywords.length))}
             </span>
             {' '}{t('flowStages.brainstorm.mission.associations')}{' '}
-            <span className="text-rose-500 font-black">{t('flowStages.brainstorm.mission.angles')}</span>."
-        </div>
+            <span className="flow-brainstorm__mission-highlight">{t('flowStages.brainstorm.mission.angles')}</span>."
+        </p>
     );
 
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="max-w-7xl mx-auto flex flex-col gap-4 pt-6 px-6">
-                {/* Campaign Mission Hero */}
-                <div className="bg-gradient-to-br from-rose-100 via-pink-50 to-white dark:from-rose-900/30 dark:via-pink-900/10 dark:to-slate-900/50 rounded-3xl p-6 md:p-8 border border-rose-200 dark:border-rose-800/50 relative overflow-hidden shadow-xl shadow-rose-100 dark:shadow-none">
-                    <div className="absolute top-0 right-0 p-8 opacity-[0.03] dark:opacity-[0.05] pointer-events-none select-none">
-                        <span className="material-symbols-outlined text-[200px] text-rose-600 rotate-12 -translate-y-10 translate-x-10">lightbulb</span>
+        <div className="flow-brainstorm">
+            <div className="flow-brainstorm__container">
+                <div className="flow-brainstorm__hero">
+                    <div className="flow-brainstorm__hero-glow">
+                        <span className="material-symbols-outlined">lightbulb</span>
                     </div>
-                    <div className="relative z-10">
-                        <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
-                            <div className="flex items-center gap-2 shrink-0">
-                                <div className="px-3 py-1 bg-rose-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-rose-200 dark:shadow-none">
-                                    {t('flowStages.brainstorm.badge')}
-                                </div>
-                                <div className="h-[1px] w-8 bg-rose-200 dark:bg-rose-800 rounded-full" />
+                    <div className="flow-brainstorm__hero-content">
+                        <div className="flow-brainstorm__hero-header">
+                            <div className="flow-brainstorm__badge">
+                                {t('flowStages.brainstorm.badge')}
                             </div>
-                            <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
+                            <h1 className="flow-brainstorm__title">
                                 {t('flowStages.brainstorm.title')}
                             </h1>
                         </div>
-                        <div className="max-w-3xl p-5 bg-white/70 dark:bg-slate-950/50 rounded-2xl border border-white dark:border-slate-800 shadow-lg shadow-rose-100/50 dark:shadow-none backdrop-blur-md">
+                        <div className="flow-brainstorm__mission-card">
                             {missionText}
                         </div>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mb-10">
-                    {/* Column: Foundations (Controls) */}
-                    <div className="lg:col-span-4 space-y-5">
-                        {/* Core Concept Input */}
-                        <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest mb-4 opacity-50">{t('flowStages.brainstorm.coreConcept.title')}</h3>
-                            <div className="relative">
-                                <input
-                                    value={idea.title}
-                                    onChange={(e) => onUpdate({ title: e.target.value })}
-                                    className="w-full bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-4 py-3 text-sm font-bold text-slate-700 dark:text-white focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all placeholder:text-slate-400"
-                                    placeholder={t('flowStages.brainstorm.coreConcept.placeholder')}
-                                />
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
-                                    <span className="material-symbols-outlined text-[18px]">edit</span>
-                                </div>
-                            </div>
-                        </div>
+                <div className="flow-brainstorm__grid">
+                    <div className="flow-brainstorm__sidebar">
+                        <Card className="flow-brainstorm__panel">
+                            <h3 className="flow-brainstorm__panel-title">{t('flowStages.brainstorm.coreConcept.title')}</h3>
+                            <TextInput
+                                value={idea.title}
+                                onChange={(e) => onUpdate({ title: e.target.value })}
+                                placeholder={t('flowStages.brainstorm.coreConcept.placeholder')}
+                                className="flow-brainstorm__input"
+                                rightElement={<span className="material-symbols-outlined">edit</span>}
+                            />
+                        </Card>
 
-                        {/* Keyword Input & Suggestions */}
-                        <div className="bg-white dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="font-black text-slate-900 dark:text-white uppercase text-[10px] tracking-widest opacity-50">{t('flowStages.brainstorm.associative.title')}</h3>
-                                <button
+                        <Card className="flow-brainstorm__panel">
+                            <div className="flow-brainstorm__panel-header">
+                                <h3 className="flow-brainstorm__panel-title">{t('flowStages.brainstorm.associative.title')}</h3>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
                                     onClick={handleGenerateKeywords}
-                                    disabled={suggesting}
-                                    className="text-[9px] font-black text-rose-600 hover:text-rose-700 bg-rose-50 dark:bg-rose-900/20 px-2.5 py-1.5 rounded-full flex items-center gap-1 transition-all"
+                                    isLoading={suggesting}
+                                    className="flow-brainstorm__ai-button"
+                                    icon={<span className="material-symbols-outlined">auto_awesome</span>}
                                 >
-                                    <span className={`material-symbols-outlined text-[12px] ${suggesting ? 'animate-spin' : ''}`}>
-                                        {suggesting ? 'progress_activity' : 'auto_awesome'}
-                                    </span>
                                     {t('flowStages.brainstorm.associative.aiSuggest')}
-                                </button>
+                                </Button>
                             </div>
 
-                            <div className="space-y-4">
-                                {/* Input */}
-                                <div className="flex gap-2">
-                                    <input
+                            <div className="flow-brainstorm__keyword-stack">
+                                <div className="flow-brainstorm__keyword-row">
+                                    <TextInput
                                         value={keywordInput}
                                         onChange={(e) => setKeywordInput(e.target.value)}
                                         onKeyDown={(e) => e.key === 'Enter' && handleAddKeyword(keywordInput)}
-                                        className="flex-1 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-800 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 dark:text-white focus:outline-none focus:border-rose-500 focus:ring-2 focus:ring-rose-500/20 transition-all placeholder:text-slate-400"
                                         placeholder={t('flowStages.brainstorm.keywords.placeholder')}
+                                        className="flow-brainstorm__keyword-input"
                                     />
-                                    <button
+                                    <Button
+                                        size="icon"
+                                        variant="primary"
+                                        className="flow-brainstorm__keyword-add"
                                         onClick={() => handleAddKeyword(keywordInput)}
-                                        className="bg-rose-600 text-white rounded-xl px-3 flex items-center justify-center hover:bg-rose-700 transition-colors shadow-md shadow-rose-200 dark:shadow-none"
+                                        aria-label={t('common.add')}
                                     >
-                                        <span className="material-symbols-outlined text-[18px]">add</span>
-                                    </button>
+                                        <span className="material-symbols-outlined">add</span>
+                                    </Button>
                                 </div>
 
-                                {/* Active Keywords List (Mini) */}
-                                <div className="flex flex-wrap gap-1.5">
-                                    {keywords.map(k => (
-                                        <span key={k} className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] font-bold text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                                            {k}
-                                            <button onClick={() => removeKeyword(k)} className="hover:text-rose-500">
-                                                <span className="material-symbols-outlined text-[10px]">close</span>
+                                <div className="flow-brainstorm__keywords">
+                                    {keywords.map((keyword) => (
+                                        <span key={keyword} className="flow-brainstorm__keyword">
+                                            {keyword}
+                                            <button type="button" onClick={() => removeKeyword(keyword)} aria-label={t('common.delete')}>
+                                                <span className="material-symbols-outlined">close</span>
                                             </button>
                                         </span>
                                     ))}
                                     {keywords.length === 0 && (
-                                        <p className="text-[10px] text-slate-400 italic">{t('flowStages.brainstorm.keywords.empty')}</p>
+                                        <p className="flow-brainstorm__keywords-empty">{t('flowStages.brainstorm.keywords.empty')}</p>
                                     )}
                                 </div>
 
-                                {/* Suggestions */}
                                 {suggestions.length > 0 && (
-                                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 animate-in fade-in slide-in-from-top-2">
-                                        <div className="flex items-center justify-between mb-3">
-                                            <span className="text-[9px] font-black text-rose-500 uppercase tracking-widest">{t('flowStages.brainstorm.keywords.suggested')}</span>
-                                            <button onClick={() => setSuggestions([])} className="text-[9px] text-slate-400 hover:text-slate-600 underline decoration-dotted">{t('flowStages.brainstorm.keywords.clear')}</button>
+                                    <div className="flow-brainstorm__suggestions">
+                                        <div className="flow-brainstorm__suggestions-header">
+                                            <span>{t('flowStages.brainstorm.keywords.suggested')}</span>
+                                            <button type="button" onClick={() => setSuggestions([])}>
+                                                {t('flowStages.brainstorm.keywords.clear')}
+                                            </button>
                                         </div>
-                                        <div className="flex flex-wrap gap-2">
-                                            {suggestions.map((s, i) => (
-                                                <button
-                                                    key={i}
-                                                    onClick={() => handleAddKeyword(s)}
-                                                    className="group flex items-center gap-1.5 pl-2 pr-1.5 py-1 text-[10px] font-bold text-rose-700 dark:text-rose-300 bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-100 dark:hover:bg-rose-900/40 rounded-lg border border-rose-100 dark:border-rose-900/30 transition-all text-left"
-                                                >
-                                                    {s}
-                                                    <div className="size-4 hover:bg-rose-200 dark:hover:bg-rose-800/50 rounded flex items-center justify-center text-rose-400 hover:text-rose-700 transition-colors"
-                                                        onClick={(e) => { e.stopPropagation(); handleDismissSuggestion(s); }}
+                                        <div className="flow-brainstorm__suggestions-list">
+                                            {suggestions.map((suggestion, index) => (
+                                                <div key={`${suggestion}-${index}`} className="flow-brainstorm__suggestion">
+                                                    <button
+                                                        type="button"
+                                                        className="flow-brainstorm__suggestion-main"
+                                                        onClick={() => handleAddKeyword(suggestion)}
                                                     >
-                                                        <span className="material-symbols-outlined text-[10px]">close</span>
-                                                    </div>
-                                                </button>
+                                                        {suggestion}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="flow-brainstorm__suggestion-dismiss"
+                                                        onClick={() => handleDismissSuggestion(suggestion)}
+                                                        aria-label={t('common.delete')}
+                                                    >
+                                                        <span className="material-symbols-outlined">close</span>
+                                                    </button>
+                                                </div>
                                             ))}
                                         </div>
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        </Card>
                     </div>
 
-                    {/* Column: Visualizer */}
-                    <div className="lg:col-span-8 flex flex-col space-y-5">
-                        <div className="flex-1 bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 relative overflow-hidden shadow-sm min-h-[500px]">
-                            {/* Visualizer Background */}
-                            <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.05]"
-                                style={{
-                                    backgroundImage: 'linear-gradient(currentColor 1px, transparent 1px), linear-gradient(90deg, currentColor 1px, transparent 1px)',
-                                    backgroundSize: '40px 40px',
-                                }}
-                            />
+                    <div className="flow-brainstorm__main">
+                        <Card className="flow-brainstorm__visual">
+                            <div className="flow-brainstorm__visual-grid" />
 
-                            {/* Visualizer Content */}
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                {/* Center Node: Main Flow */}
-                                <div className="relative z-20 size-32 md:size-40 rounded-full bg-white dark:bg-slate-900 border-4 border-rose-100 dark:border-rose-900/30 shadow-2xl shadow-rose-200/50 dark:shadow-none flex flex-col items-center justify-center p-4 text-center group transition-all duration-500 hover:scale-105 hover:border-rose-200">
-                                    <div className="absolute inset-0 rounded-full border border-dashed border-rose-200 dark:border-rose-800 animate-[spin_60s_linear_infinite]" />
-
-                                    <span className="material-symbols-outlined text-3xl md:text-4xl text-rose-500 mb-2 drop-shadow-sm group-hover:scale-110 transition-transform">lightbulb</span>
-                                    <span className="font-black text-slate-800 dark:text-white text-xs md:text-sm line-clamp-2 leading-tight px-2 tracking-tight">
+                            <div className="flow-brainstorm__visual-center">
+                                <div className="flow-brainstorm__node">
+                                    <span className="material-symbols-outlined">lightbulb</span>
+                                    <span className="flow-brainstorm__node-title">
                                         {idea.title || t('flowStages.brainstorm.untitled')}
                                     </span>
                                 </div>
 
-                                {/* Floating Keywords */}
-                                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                                    {keywords.map((keyword, i) => {
-                                        const pos = getKeywordPosition(i, keywords.length);
+                                <div className="flow-brainstorm__keyword-cloud">
+                                    {keywords.map((keyword, index) => {
+                                        const pos = getKeywordPosition(index, keywords.length);
+                                        const isActive = hoveredKeyword === keyword;
 
                                         return (
                                             <React.Fragment key={keyword}>
-                                                {/* Connection Line */}
-                                                <svg className="absolute w-full h-full pointer-events-none top-0 left-0 z-0 overflow-visible">
+                                                <svg className="flow-brainstorm__link">
                                                     <line
                                                         x1="50%" y1="50%"
                                                         x2={`calc(50% + ${pos.x}px)`} y2={`calc(50% + ${pos.y}px)`}
-                                                        className="stroke-slate-200 dark:stroke-slate-800"
-                                                        strokeWidth="2"
-                                                        strokeDasharray="4 4"
                                                     />
                                                 </svg>
 
-                                                {/* Keyword Node */}
                                                 <div
-                                                    className="absolute pointer-events-auto z-10"
+                                                    className={`flow-brainstorm__keyword-node ${isActive ? 'is-active' : ''}`}
                                                     style={{
                                                         transform: `translate3d(${pos.x}px, ${pos.y}px, 0)`,
-                                                        transition: 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)'
                                                     }}
                                                     onMouseEnter={() => setHoveredKeyword(keyword)}
                                                     onMouseLeave={() => setHoveredKeyword(null)}
                                                 >
-                                                    <div className={`px-4 py-2 rounded-xl backdrop-blur-md cursor-pointer transition-all duration-300 flex items-center gap-2 border shadow-sm group
-                                                        ${hoveredKeyword === keyword
-                                                            ? 'bg-rose-600 border-rose-600 text-white scale-110 z-20 shadow-xl shadow-rose-200 dark:shadow-none'
-                                                            : 'bg-white/90 dark:bg-slate-900/90 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:border-rose-300 dark:hover:border-rose-700 hover:text-rose-600 dark:hover:text-rose-400'
-                                                        }`}
-                                                    >
-                                                        <span className="text-xs font-bold whitespace-nowrap max-w-[120px] truncate tracking-tight">{keyword}</span>
-                                                        {hoveredKeyword === keyword && (
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); removeKeyword(keyword); }}
-                                                                className="size-4 flex items-center justify-center rounded-full bg-white/20 text-white hover:bg-white/30"
-                                                            >
-                                                                <span className="material-symbols-outlined text-[10px]">close</span>
-                                                            </button>
-                                                        )}
-                                                    </div>
+                                                    <span>{keyword}</span>
+                                                    {isActive && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(event) => {
+                                                                event.stopPropagation();
+                                                                removeKeyword(keyword);
+                                                            }}
+                                                            aria-label={t('common.delete')}
+                                                        >
+                                                            <span className="material-symbols-outlined">close</span>
+                                                        </button>
+                                                    )}
                                                 </div>
                                             </React.Fragment>
                                         );
                                     })}
                                 </div>
                             </div>
-                        </div>
+                        </Card>
 
-                        {/* Footer Action */}
-                        <div className="pt-2 flex justify-end">
+                        <div className="flow-brainstorm__footer">
                             <Button
-                                className="h-14 px-10 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-[.2em] shadow-xl shadow-rose-200 dark:shadow-none hover:scale-105 active:scale-95 transition-all flex items-center gap-4 group"
+                                className="flow-brainstorm__advance"
                                 onClick={() => {
                                     const nextStage = idea.type === 'Social' ? 'Strategy' : 'Refining';
                                     onUpdate({ stage: nextStage });
                                 }}
+                                icon={<span className="material-symbols-outlined">arrow_forward</span>}
+                                iconPosition="right"
                             >
                                 {t('flowStages.brainstorm.actions.advance').replace('{stage}', idea.type === 'Social' ? t('flows.stage.strategy') : t('flows.stage.refining'))}
-                                <div className="size-7 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-2 transition-all">
-                                    <span className="material-symbols-outlined text-[18px] font-black">arrow_forward</span>
-                                </div>
                             </Button>
                         </div>
                     </div>
