@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
+import React, { useEffect, useState } from 'react';
 import { Issue } from '../types';
-import { Button } from './ui/Button';
-import { Input } from './ui/Input';
-import { Textarea } from './ui/Textarea';
-import { MultiAssigneeSelector } from './MultiAssigneeSelector';
 import { updateIssue } from '../services/dataService';
+import { useLanguage } from '../context/LanguageContext';
+import { Button } from './common/Button/Button';
+import { TextInput } from './common/Input/TextInput';
+import { TextArea } from './common/Input/TextArea';
+import { Modal } from './common/Modal/Modal';
+import { MultiAssigneeSelector } from './MultiAssigneeSelector';
 
 interface EditIssueModalProps {
     issue: Issue;
@@ -22,6 +23,7 @@ export const EditIssueModal: React.FC<EditIssueModalProps> = ({ issue, isOpen, o
     const [startDate, setStartDate] = useState(issue.startDate || '');
     const [dueDate, setDueDate] = useState(issue.dueDate || issue.scheduledDate || '');
     const [loading, setLoading] = useState(false);
+    const { t } = useLanguage();
 
     useEffect(() => {
         if (isOpen) {
@@ -57,84 +59,67 @@ export const EditIssueModal: React.FC<EditIssueModalProps> = ({ issue, isOpen, o
 
     if (!isOpen) return null;
 
-    return createPortal(
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fade-in" onClick={onClose}>
-            <div
-                className="w-full max-w-2xl bg-card rounded-xl shadow-2xl animate-scale-up border border-surface flex flex-col max-h-[90vh] overflow-y-auto"
-                onClick={(e) => e.stopPropagation()}
-            >
-                {/* Header */}
-                <div className="p-4 border-b border-surface flex justify-between items-center">
-                    <div>
-                        <h3 className="text-xl font-bold text-main">Edit Issue</h3>
-                        <p className="text-sm text-muted mt-1">Update issue details. Changes will sync to GitHub if linked.</p>
+    return (
+        <Modal isOpen={isOpen} onClose={onClose} size="lg" title={t('issueEdit.title')}>
+            <form onSubmit={handleSave} className="issue-edit">
+                <p className="issue-edit__subtitle">{t('issueEdit.subtitle')}</p>
+                <div className="issue-edit__fields">
+                    <TextInput
+                        label={t('projectIssues.modal.fields.title')}
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder={t('projectIssues.modal.fields.titlePlaceholder')}
+                        required
+                        className="issue-edit__title"
+                    />
+
+                    <TextArea
+                        label={t('projectIssues.modal.fields.description')}
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder={t('projectIssues.modal.fields.descriptionPlaceholder')}
+                        rows={8}
+                        className="issue-edit__description"
+                    />
+
+                    <div className="issue-edit__field">
+                        <label className="issue-edit__label">{t('projectIssues.modal.fields.assignees')}</label>
+                        <MultiAssigneeSelector
+                            projectId={issue.projectId}
+                            assigneeIds={assigneeIds}
+                            assignedGroupIds={assignedGroupIds}
+                            onChange={setAssigneeIds}
+                            onGroupChange={setAssignedGroupIds}
+                        />
                     </div>
-                    <Button variant="ghost" onClick={onClose} size="sm">Close</Button>
+
+                    <div className="issue-edit__dates">
+                        <TextInput
+                            type="date"
+                            label={t('createIssue.labels.startDate')}
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="issue-edit__date-input"
+                        />
+                        <TextInput
+                            type="date"
+                            label={t('createIssue.labels.dueDate')}
+                            value={dueDate}
+                            onChange={(e) => setDueDate(e.target.value)}
+                            className="issue-edit__date-input"
+                        />
+                    </div>
                 </div>
 
-                <form onSubmit={handleSave} className="p-6">
-                    <div className="flex flex-col gap-6">
-                        <Input
-                            label="Title"
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            placeholder="Issue title"
-                            required
-                            className="text-lg font-medium"
-                        />
-
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-bold uppercase tracking-wider text-muted ml-1">Description</label>
-                            <Textarea
-                                value={description}
-                                onChange={(e) => setDescription(e.target.value)}
-                                placeholder="Describe the issue..."
-                                rows={8}
-                                className="min-h-[200px]"
-                            />
-                        </div>
-
-                        <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-bold uppercase tracking-wider text-muted ml-1">Assignees</label>
-                            <MultiAssigneeSelector
-                                projectId={issue.projectId}
-                                assigneeIds={assigneeIds}
-                                assignedGroupIds={assignedGroupIds}
-                                onChange={setAssigneeIds}
-                                onGroupChange={setAssignedGroupIds}
-                            />
-                        </div>
-
-                        {/* Dates */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-bold uppercase tracking-wider text-muted ml-1">Start Date</label>
-                                <input
-                                    type="date"
-                                    value={startDate}
-                                    onChange={(e) => setStartDate(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-xl bg-surface border border-surface text-sm text-main outline-none focus:border-[var(--color-accent)] transition-colors"
-                                />
-                            </div>
-                            <div className="flex flex-col gap-1.5">
-                                <label className="text-xs font-bold uppercase tracking-wider text-muted ml-1">Due Date</label>
-                                <input
-                                    type="date"
-                                    value={dueDate}
-                                    onChange={(e) => setDueDate(e.target.value)}
-                                    className="w-full px-3 py-2 rounded-xl bg-surface border border-surface text-sm text-main outline-none focus:border-[var(--color-accent)] transition-colors"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex justify-end gap-2 mt-8 pt-4 border-t border-surface">
-                        <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>Cancel</Button>
-                        <Button type="submit" isLoading={loading} disabled={!title.trim()}>Save Changes</Button>
-                    </div>
-                </form>
-            </div>
-        </div>,
-        document.body
+                <div className="issue-edit__actions">
+                    <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>
+                        {t('common.cancel')}
+                    </Button>
+                    <Button type="submit" isLoading={loading} disabled={!title.trim()}>
+                        {t('common.saveChanges')}
+                    </Button>
+                </div>
+            </form>
+        </Modal>
     );
 };

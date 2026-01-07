@@ -1,0 +1,266 @@
+// Issue modal styles (create/edit)
+
+.issue-modal.modal-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 10vh 1rem 1rem;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    animation: fadeIn 0.2s ease-out;
+}
+
+.issue-modal__content {
+    width: 100%;
+    max-width: 40rem;
+    background-color: var(--color-surface-card);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-soft);
+    animation: scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+}
+
+.issue-modal__form {
+    display: flex;
+    flex-direction: column;
+}
+
+.issue-modal__title {
+    padding: 1.5rem 1.5rem 1rem;
+}
+
+.issue-modal__title-input {
+    gap: 0;
+}
+
+.issue-modal__title-input .text-input {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    padding: 0;
+    font-size: 1.6rem;
+    font-weight: 600;
+    background: transparent;
+    border-radius: 0;
+    color: var(--color-text-main);
+    box-shadow: none;
+}
+
+.issue-modal__title-input .text-input::placeholder {
+    color: var(--color-text-muted);
+    opacity: 0.6;
+}
+
+.issue-modal__title-input .text-input:hover,
+.issue-modal__title-input .text-input:focus,
+.issue-modal__title-input .text-input:focus-visible {
+    background: transparent;
+    box-shadow: none;
+    transform: none;
+}
+
+.issue-modal__toolbar {
+    padding: 0 1.5rem 1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+}
+
+.issue-modal__select .select-input__label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-text-subtle);
+}
+
+.issue-modal__select .select-input__trigger {
+    background-color: var(--color-surface-hover);
+    border: 0;
+    box-shadow: var(--shadow-sm);
+}
+
+.issue-modal__section {
+    padding: 0 1.5rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.issue-modal__label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.issue-modal__description-input .text-area {
+    width: 100%;
+    min-height: 0;
+    padding: 0.75rem;
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface-bg);
+    border: 0;
+    font-size: 0.875rem;
+    color: var(--color-text-main);
+    outline: none;
+    resize: none;
+    box-shadow: var(--shadow-inner);
+}
+
+.issue-modal__description-input .text-area::placeholder {
+    color: var(--color-text-muted);
+}
+
+.issue-modal__description-input .text-area:hover,
+.issue-modal__description-input .text-area:focus,
+.issue-modal__description-input .text-area:focus-visible {
+    background-color: var(--color-surface-bg);
+    box-shadow: var(--shadow-inner);
+    transform: none;
+}
+
+.issue-modal__dates {
+    padding: 0 1.5rem 1rem;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+
+    @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.issue-modal__date-input .text-input {
+    background-color: var(--color-surface-bg);
+    border: 0;
+    box-shadow: var(--shadow-inner);
+}
+
+.issue-modal__footer {
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    background-color: var(--color-surface-hover);
+    flex-wrap: wrap;
+}
+
+.issue-modal__hint {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.issue-modal__hint kbd {
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    background-color: var(--color-surface-bg);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-size: 0.625rem;
+}
+
+.issue-modal__hint-label {
+    margin-left: 0.25rem;
+}
+
+.issue-modal__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.issue-modal__pin-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: var(--radius-md);
+    font-size: 0.7rem;
+    font-weight: 600;
+    border: 0;
+    background: transparent;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.issue-modal__pin-toggle span {
+    font-size: 1rem;
+}
+
+.issue-modal__pin-toggle:hover {
+    background-color: var(--color-surface-bg);
+    color: var(--color-text-main);
+}
+
+.issue-modal__pin-toggle.is-active {
+    background-color: rgba(var(--color-warning-rgb), 0.15);
+    color: var(--color-warning);
+}
+
+.issue-edit {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.issue-edit__subtitle {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--color-text-muted);
+}
+
+.issue-edit__fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.issue-edit__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.issue-edit__label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-muted);
+    margin-left: 0.25rem;
+}
+
+.issue-edit__description .text-area {
+    min-height: 200px;
+}
+
+.issue-edit__dates {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+
+    @media (max-width: 768px) {
+        grid-template-columns: 1fr;
+    }
+}
+
+.issue-edit__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-surface-border);
+}

@@ -3142,6 +3142,9 @@
     'createIssue.pin.label': 'Beim Erstellen anheften',
     'createIssue.actions.create': 'Issue erstellen',
 
+    'issueEdit.title': 'Issue bearbeiten',
+    'issueEdit.subtitle': 'Issue-Details aktualisieren. ?nderungen werden mit GitHub synchronisiert, falls verkn?pft.',
+
     'taskDetail.notFound.title': 'Aufgabe nicht gefunden',
     'taskDetail.notFound.action': 'ZurÃ¼ck zu Aufgaben',
     'taskDetail.confirm.delete.title': 'Aufgabe lÃ¶schen?',
