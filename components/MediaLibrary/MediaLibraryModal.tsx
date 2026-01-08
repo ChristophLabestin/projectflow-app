@@ -35,6 +35,7 @@ interface MediaLibraryProps {
     existingAssets?: MediaAsset[];
     deferredUpload?: boolean;
     circularCrop?: boolean;
+    storagePath?: string;
 }
 
 type TabType = 'upload' | 'gallery' | 'stock' | 'ai';
@@ -51,6 +52,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
     existingAssets = [],
     deferredUpload = false,
     circularCrop = false,
+    storagePath,
 }) => {
     const [activeTab, setActiveTab] = useState<TabType>('gallery');
     const [searchQuery, setSearchQuery] = useState('');
@@ -163,7 +165,12 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             try {
                 let allItems: any[] = [];
 
-                if (collectionType === 'user') {
+                if (storagePath) {
+                    // Custom path override
+                    const customRef = ref(storage, storagePath);
+                    const customResult = await listAll(customRef);
+                    allItems = customResult.items; // Assuming flat structure for now or filter if needed
+                } else if (collectionType === 'user') {
                     // Fetch from user-specific folder
                     if (!resolvedUserId) return;
                     try {
@@ -303,7 +310,9 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                 const uniqueFileName = `${timestamp}_media_${contextId}_${cleanFileName}`;
 
                 let path = '';
-                if (collectionType === 'user' && resolvedUserId) {
+                if (storagePath) {
+                    path = `${storagePath}/${uniqueFileName}`;
+                } else if (collectionType === 'user' && resolvedUserId) {
                     path = `tenants/${resolvedTenantId}/users/${resolvedUserId}/${uniqueFileName}`;
                 } else {
                     const folderPath = projectId && projectId !== 'uncategorized' ? `${projectId}/` : '';
@@ -493,7 +502,9 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             const resolvedUserId = userId || auth.currentUser?.uid;
             let path = '';
 
-            if (collectionType === 'user' && resolvedUserId) {
+            if (storagePath) {
+                path = `${storagePath}/${asset.id}`;
+            } else if (collectionType === 'user' && resolvedUserId) {
                 path = `tenants/${resolvedTenantId}/users/${resolvedUserId}/${asset.id}`;
             } else {
                 // Heuristic for project assets (check subfolder if projectId matches)

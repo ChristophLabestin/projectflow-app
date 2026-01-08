@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../context/ThemeContext';
 import { Button } from '../components/common/Button/Button';
 import { Card, CardHeader, CardBody, CardFooter } from '../components/common/Card/Card';
 import { TextInput } from '../components/common/Input/TextInput';
@@ -10,13 +10,13 @@ import { Modal } from '../components/common/Modal/Modal';
 import { ConfirmModal } from '../components/common/Modal/ConfirmModal';
 import { SettingsModal } from '../components/common/Modal/SettingsModal';
 import './style-guide.scss';
-import { Link } from '../routing/Router';
+import { Link } from 'react-router-dom';
 import { DatePicker } from '../components/common/DateTime/DatePicker';
 import { TimePicker } from '../components/common/DateTime/TimePicker';
 import { DateTimePicker } from '../components/common/DateTime/DateTimePicker';
 import { PrioritySelect, type Priority } from '../components/common/PrioritySelect/PrioritySelect';
 import { Select } from '../components/common/Select/Select';
-import { MediaLibraryModal } from '../components/common/MediaLibrary/MediaLibraryModal';
+import { MediaLibrary } from '../components/MediaLibrary/MediaLibraryModal';
 import { useLanguage } from '../context/LanguageContext';
 
 type NoticeTone = 'info' | 'success';
@@ -82,8 +82,12 @@ const ColorSwatch = ({ name, token }: { name: string; token: string }) => (
 );
 
 export const StyleGuidePage = () => {
-    const { theme, toggleTheme } = useTheme();
+    const { theme, setTheme } = useTheme();
     const { t } = useLanguage();
+
+    const toggleTheme = () => {
+        setTheme(theme === 'light' ? 'dark' : 'light');
+    };
 
     // Modal States
     const [isBaseModalOpen, setBaseModalOpen] = useState(false);
@@ -125,218 +129,221 @@ export const StyleGuidePage = () => {
 
     return (
         <div className="style-guide">
-            <header className="style-guide__header">
-                <h1>{t('styleGuide.title')}</h1>
-                <div className="style-guide__actions">
-                    <Button variant="ghost" onClick={toggleTheme}>
-                        {theme === 'light' ? t('styleGuide.toggleDark') : t('styleGuide.toggleLight')}
-                    </Button>
-                    <Link className="style-guide__link" to="/">{t('styleGuide.backHome')}</Link>
-                </div>
-            </header>
-
-            <main className="style-guide__content">
-                {actionNotice && (
-                    <div className={`style-guide__notice style-guide__notice--${actionNotice.tone}`}>
-                        <span className="material-symbols-outlined">
-                            {actionNotice.tone === 'success' ? 'check_circle' : 'info'}
-                        </span>
-                        <span>{actionNotice.message}</span>
+            <div className="style-guide__content-wrapper">
+                <header className="style-guide__header">
+                    <h1>{t('styleGuide.title')}</h1>
+                    <div className="style-guide__actions">
+                        <Button variant="ghost" onClick={toggleTheme}>
+                            {theme === 'light' ? t('styleGuide.toggleDark') : t('styleGuide.toggleLight')}
+                        </Button>
+                        <Link className="style-guide__link" to="/">{t('styleGuide.backHome')}</Link>
                     </div>
-                )}
+                </header>
 
-                <section className="guide-section">
-                    <h2>{t('styleGuide.sections.colors')}</h2>
-                    <div className="color-grid">
-                        <ColorSwatch name={t('styleGuide.colors.primary')} token="--color-primary" />
-                        <ColorSwatch name={t('styleGuide.colors.primaryDark')} token="--color-primary-dark" />
-                        <ColorSwatch name={t('styleGuide.colors.primaryLight')} token="--color-primary-light" />
-                        <ColorSwatch name={t('styleGuide.colors.surfaceBg')} token="--color-surface-bg" />
-                        <ColorSwatch name={t('styleGuide.colors.surfaceCard')} token="--color-surface-card" />
-                        <ColorSwatch name={t('styleGuide.colors.surfaceHover')} token="--color-surface-hover" />
-                        <ColorSwatch name={t('styleGuide.colors.success')} token="--color-success" />
-                        <ColorSwatch name={t('styleGuide.colors.warning')} token="--color-warning" />
-                        <ColorSwatch name={t('styleGuide.colors.error')} token="--color-error" />
-                        <ColorSwatch name={t('styleGuide.colors.textMain')} token="--color-text-main" />
-                        <ColorSwatch name={t('styleGuide.colors.textMuted')} token="--color-text-muted" />
-                    </div>
-                </section>
+                <main className="style-guide__content">
+                    {actionNotice && (
+                        <div className={`style-guide__notice style-guide__notice--${actionNotice.tone}`}>
+                            <span className="material-symbols-outlined">
+                                {actionNotice.tone === 'success' ? 'check_circle' : 'info'}
+                            </span>
+                            <span>{actionNotice.message}</span>
+                        </div>
+                    )}
 
-                <Divider />
+                    <section className="guide-section">
+                        <h2>{t('styleGuide.sections.colors')}</h2>
+                        <div className="color-grid">
+                            <ColorSwatch name={t('styleGuide.colors.primary')} token="--color-primary" />
+                            <ColorSwatch name={t('styleGuide.colors.primaryDark')} token="--color-primary-dark" />
+                            <ColorSwatch name={t('styleGuide.colors.primaryLight')} token="--color-primary-light" />
+                            <ColorSwatch name={t('styleGuide.colors.surfaceBg')} token="--color-surface-bg" />
+                            <ColorSwatch name={t('styleGuide.colors.surfaceCard')} token="--color-surface-card" />
+                            <ColorSwatch name={t('styleGuide.colors.surfaceHover')} token="--color-surface-hover" />
+                            <ColorSwatch name={t('styleGuide.colors.success')} token="--color-success" />
+                            <ColorSwatch name={t('styleGuide.colors.warning')} token="--color-warning" />
+                            <ColorSwatch name={t('styleGuide.colors.error')} token="--color-error" />
+                            <ColorSwatch name={t('styleGuide.colors.textMain')} token="--color-text-main" />
+                            <ColorSwatch name={t('styleGuide.colors.textMuted')} token="--color-text-muted" />
+                        </div>
+                    </section>
 
-                <section className="guide-section">
-                    <h2>{t('styleGuide.sections.typography')}</h2>
-                    <div className="type-sample">
-                        <h1>{t('styleGuide.typography.heading1')}</h1>
-                        <span className="type-sample__meta">{t('styleGuide.typography.weight700')}</span>
-                    </div>
-                    <div className="type-sample">
-                        <h2>{t('styleGuide.typography.heading2')}</h2>
-                        <span className="type-sample__meta">{t('styleGuide.typography.weight600')}</span>
-                    </div>
-                    <div className="type-sample">
-                        <h3>{t('styleGuide.typography.heading3')}</h3>
-                        <span className="type-sample__meta">{t('styleGuide.typography.weight600')}</span>
-                    </div>
-                    <div className="type-sample">
-                        <p>{t('styleGuide.typography.bodySample')}</p>
-                        <span className="type-sample__meta">{t('styleGuide.typography.weight400')}</span>
-                    </div>
-                    <div className="type-sample">
-                        <small>{t('styleGuide.typography.smallSample')}</small>
-                        <span className="type-sample__meta">{t('styleGuide.typography.weight400')}</span>
-                    </div>
-                </section>
+                    <Divider />
 
-                <Divider />
+                    <section className="guide-section">
+                        <h2>{t('styleGuide.sections.typography')}</h2>
+                        <div className="type-sample">
+                            <h1>{t('styleGuide.typography.heading1')}</h1>
+                            <span className="type-sample__meta">{t('styleGuide.typography.weight700')}</span>
+                        </div>
+                        <div className="type-sample">
+                            <h2>{t('styleGuide.typography.heading2')}</h2>
+                            <span className="type-sample__meta">{t('styleGuide.typography.weight600')}</span>
+                        </div>
+                        <div className="type-sample">
+                            <h3>{t('styleGuide.typography.heading3')}</h3>
+                            <span className="type-sample__meta">{t('styleGuide.typography.weight600')}</span>
+                        </div>
+                        <div className="type-sample">
+                            <p>{t('styleGuide.typography.bodySample')}</p>
+                            <span className="type-sample__meta">{t('styleGuide.typography.weight400')}</span>
+                        </div>
+                        <div className="type-sample">
+                            <small>{t('styleGuide.typography.smallSample')}</small>
+                            <span className="type-sample__meta">{t('styleGuide.typography.weight400')}</span>
+                        </div>
+                    </section>
 
-                <section className="guide-section">
-                    <h2>{t('styleGuide.sections.buttons')}</h2>
-                    <div className="guide-row">
-                        <Button variant="primary">{t('styleGuide.buttons.primary')}</Button>
-                        <Button variant="secondary">{t('styleGuide.buttons.secondary')}</Button>
-                        <Button variant="ghost">{t('styleGuide.buttons.ghost')}</Button>
-                    </div>
-                    <div className="guide-row">
-                        <Button size="sm">{t('styleGuide.buttons.small')}</Button>
-                        <Button size="md">{t('styleGuide.buttons.medium')}</Button>
-                        <Button size="lg">{t('styleGuide.buttons.large')}</Button>
-                    </div>
-                    <div className="guide-row">
-                        <Button isLoading>{t('styleGuide.buttons.loading')}</Button>
-                        <Button disabled>{t('styleGuide.buttons.disabled')}</Button>
-                    </div>
-                </section>
+                    <Divider />
 
-                <Divider />
+                    <section className="guide-section">
+                        <h2>{t('styleGuide.sections.buttons')}</h2>
+                        <div className="guide-row">
+                            <Button variant="primary">{t('styleGuide.buttons.primary')}</Button>
+                            <Button variant="secondary">{t('styleGuide.buttons.secondary')}</Button>
+                            <Button variant="ghost">{t('styleGuide.buttons.ghost')}</Button>
+                        </div>
+                        <div className="guide-row">
+                            <Button size="sm">{t('styleGuide.buttons.small')}</Button>
+                            <Button size="md">{t('styleGuide.buttons.medium')}</Button>
+                            <Button size="lg">{t('styleGuide.buttons.large')}</Button>
+                        </div>
+                        <div className="guide-row">
+                            <Button isLoading>{t('styleGuide.buttons.loading')}</Button>
+                            <Button disabled>{t('styleGuide.buttons.disabled')}</Button>
+                        </div>
+                    </section>
 
-                <section className="guide-section">
-                    <h2>{t('styleGuide.sections.modals')}</h2>
-                    <div className="guide-row">
-                        <Button onClick={() => setBaseModalOpen(true)}>{t('styleGuide.modals.openBase')}</Button>
-                        <Button variant="secondary" onClick={() => setConfirmModalOpen(true)}>{t('styleGuide.modals.openConfirm')}</Button>
-                        <Button variant="ghost" onClick={() => setSettingsModalOpen(true)}>{t('styleGuide.modals.openSettings')}</Button>
-                    </div>
-                </section>
+                    <Divider />
 
-                {/* Base Modal Demo */}
-                <Modal
-                    isOpen={isBaseModalOpen}
-                    onClose={() => setBaseModalOpen(false)}
-                    title={t('styleGuide.modals.baseTitle')}
-                    footer={
-                        <>
-                            <Button variant="ghost" onClick={() => setBaseModalOpen(false)}>{t('styleGuide.modals.cancel')}</Button>
-                            <Button onClick={handleSaveChanges}>{t('styleGuide.modals.saveChanges')}</Button>
-                        </>
-                    }
-                >
-                    <p>{t('styleGuide.modals.baseDescription')}</p>
-                    <div className="style-guide__modal-field">
-                        <TextInput label={t('styleGuide.modals.baseInputLabel')} placeholder={t('styleGuide.modals.baseInputPlaceholder')} />
-                    </div>
-                </Modal>
+                    <section className="guide-section">
+                        <h2>{t('styleGuide.sections.modals')}</h2>
+                        <div className="guide-row">
+                            <Button onClick={() => setBaseModalOpen(true)}>{t('styleGuide.modals.openBase')}</Button>
+                            <Button variant="secondary" onClick={() => setConfirmModalOpen(true)}>{t('styleGuide.modals.openConfirm')}</Button>
+                            <Button variant="ghost" onClick={() => setSettingsModalOpen(true)}>{t('styleGuide.modals.openSettings')}</Button>
+                        </div>
+                    </section>
 
-                {/* Confirm Modal Demo */}
-                <ConfirmModal
-                    isOpen={isConfirmModalOpen}
-                    onClose={() => setConfirmModalOpen(false)}
-                    onConfirm={handleConfirm}
-                    title={t('styleGuide.modals.confirmTitle')}
-                    message={t('styleGuide.modals.confirmMessage')}
-                    confirmLabel={t('styleGuide.modals.confirmAction')}
-                    variant="danger"
-                />
+                    {/* Base Modal Demo */}
+                    <Modal
+                        isOpen={isBaseModalOpen}
+                        onClose={() => setBaseModalOpen(false)}
+                        title={t('styleGuide.modals.baseTitle')}
+                        footer={
+                            <>
+                                <Button variant="ghost" onClick={() => setBaseModalOpen(false)}>{t('styleGuide.modals.cancel')}</Button>
+                                <Button onClick={handleSaveChanges}>{t('styleGuide.modals.saveChanges')}</Button>
+                            </>
+                        }
+                    >
+                        <p>{t('styleGuide.modals.baseDescription')}</p>
+                        <div className="style-guide__modal-field">
+                            <TextInput label={t('styleGuide.modals.baseInputLabel')} placeholder={t('styleGuide.modals.baseInputPlaceholder')} />
+                        </div>
+                    </Modal>
 
-                {/* Settings Modal Demo */}
-                <SettingsModal
-                    isOpen={isSettingsModalOpen}
-                    onClose={() => setSettingsModalOpen(false)}
-                    tabs={settingsTabs}
-                />
-
-                <Divider />
-
-                <section className="guide-section">
-                    <h2>{t('styleGuide.sections.cards')}</h2>
-                    <div className="guide-grid">
-                        <Card>
-                            <CardHeader><h3>{t('styleGuide.cards.title')}</h3></CardHeader>
-                            <CardBody>
-                                <p>{t('styleGuide.cards.body')}</p>
-                            </CardBody>
-                            <CardFooter>
-                                <Button size="sm" variant="ghost">{t('styleGuide.cards.cancel')}</Button>
-                                <Button size="sm">{t('styleGuide.cards.action')}</Button>
-                            </CardFooter>
-                        </Card>
-
-                        <Card>
-                            <CardBody>
-                                <p>{t('styleGuide.cards.bodyOnly')}</p>
-                            </CardBody>
-                        </Card>
-                    </div>
-                </section>
-
-                <Divider />
-
-                <section className="guide-section">
-                    <h2>{t('styleGuide.sections.inputs')}</h2>
-                    <div className="guide-grid">
-                        <TextInput label={t('styleGuide.inputs.username.label')} placeholder={t('styleGuide.inputs.username.placeholder')} />
-                        <TextInput label={t('styleGuide.inputs.email.label')} placeholder={t('styleGuide.inputs.email.placeholder')} helpText={t('styleGuide.inputs.email.help')} />
-                        <TextInput label={t('styleGuide.inputs.password.label')} type="password" error={t('styleGuide.inputs.password.error')} placeholder={t('styleGuide.inputs.password.placeholder')} />
-                        <TextArea label={t('styleGuide.inputs.bio.label')} placeholder={t('styleGuide.inputs.bio.placeholder')} helpText={t('styleGuide.inputs.bio.help')} />
-                        <PrioritySelectExample
-                            dropdownLabel={t('styleGuide.inputs.priority.dropdown')}
-                            groupLabel={t('styleGuide.inputs.priority.group')}
-                        />
-                        <SelectExample
-                            label={t('styleGuide.inputs.select.label')}
-                            placeholder={t('styleGuide.inputs.select.placeholder')}
-                            options={selectOptions}
-                        />
-                    </div>
-                </section>
-
-                <Divider />
-
-                <section className="guide-section">
-                    <h2>{t('styleGuide.sections.dateTime')}</h2>
-                    <div className="guide-grid">
-                        <DatePickerExample label={t('styleGuide.dateTime.date')} />
-                        <TimePickerExample label={t('styleGuide.dateTime.time')} />
-                        <DateTimePickerExample label={t('styleGuide.dateTime.dateTime')} />
-                    </div>
-                </section>
-
-                <Divider />
-
-                <section className="guide-section">
-                    <h2>{t('styleGuide.sections.mediaLibrary')}</h2>
-                    <Button onClick={() => setMediaModalOpen(true)}>{t('styleGuide.mediaLibrary.open')}</Button>
-                    {/* Media Modal Demo */}
-                    <MediaLibraryModal
-                        isOpen={isMediaModalOpen}
-                        onClose={() => setMediaModalOpen(false)}
-                        onSelect={handleMediaSelect}
-                        allowMultiSelect
+                    {/* Confirm Modal Demo */}
+                    <ConfirmModal
+                        isOpen={isConfirmModalOpen}
+                        onClose={() => setConfirmModalOpen(false)}
+                        onConfirm={handleConfirm}
+                        title={t('styleGuide.modals.confirmTitle')}
+                        message={t('styleGuide.modals.confirmMessage')}
+                        confirmLabel={t('styleGuide.modals.confirmAction')}
+                        variant="danger"
                     />
-                </section>
 
-                <Divider />
+                    {/* Settings Modal Demo */}
+                    <SettingsModal
+                        isOpen={isSettingsModalOpen}
+                        onClose={() => setSettingsModalOpen(false)}
+                        tabs={settingsTabs}
+                    />
 
-                <section className="guide-section">
-                    <h2>{t('styleGuide.sections.badges')}</h2>
-                    <div className="guide-row">
-                        <Badge variant="neutral">{t('styleGuide.badges.neutral')}</Badge>
-                        <Badge variant="success">{t('styleGuide.badges.success')}</Badge>
-                        <Badge variant="warning">{t('styleGuide.badges.warning')}</Badge>
-                        <Badge variant="error">{t('styleGuide.badges.error')}</Badge>
-                    </div>
-                </section>
-            </main>
+                    <Divider />
+
+                    <section className="guide-section">
+                        <h2>{t('styleGuide.sections.cards')}</h2>
+                        <div className="guide-grid">
+                            <Card>
+                                <CardHeader><h3>{t('styleGuide.cards.title')}</h3></CardHeader>
+                                <CardBody>
+                                    <p>{t('styleGuide.cards.body')}</p>
+                                </CardBody>
+                                <CardFooter>
+                                    <Button size="sm" variant="ghost">{t('styleGuide.cards.cancel')}</Button>
+                                    <Button size="sm">{t('styleGuide.cards.action')}</Button>
+                                </CardFooter>
+                            </Card>
+
+                            <Card>
+                                <CardBody>
+                                    <p>{t('styleGuide.cards.bodyOnly')}</p>
+                                </CardBody>
+                            </Card>
+                        </div>
+                    </section>
+
+                    <Divider />
+
+                    <section className="guide-section">
+                        <h2>{t('styleGuide.sections.inputs')}</h2>
+                        <div className="guide-grid">
+                            <TextInput label={t('styleGuide.inputs.username.label')} placeholder={t('styleGuide.inputs.username.placeholder')} />
+                            <TextInput label={t('styleGuide.inputs.email.label')} placeholder={t('styleGuide.inputs.email.placeholder')} helpText={t('styleGuide.inputs.email.help')} />
+                            <TextInput label={t('styleGuide.inputs.password.label')} type="password" error={t('styleGuide.inputs.password.error')} placeholder={t('styleGuide.inputs.password.placeholder')} />
+                            <TextArea label={t('styleGuide.inputs.bio.label')} placeholder={t('styleGuide.inputs.bio.placeholder')} helpText={t('styleGuide.inputs.bio.help')} />
+                            <PrioritySelectExample
+                                dropdownLabel={t('styleGuide.inputs.priority.dropdown')}
+                                groupLabel={t('styleGuide.inputs.priority.group')}
+                            />
+                            <SelectExample
+                                label={t('styleGuide.inputs.select.label')}
+                                placeholder={t('styleGuide.inputs.select.placeholder')}
+                                options={selectOptions}
+                            />
+                        </div>
+                    </section>
+
+                    <Divider />
+
+                    <section className="guide-section">
+                        <h2>{t('styleGuide.sections.dateTime')}</h2>
+                        <div className="guide-grid">
+                            <DatePickerExample label={t('styleGuide.dateTime.date')} />
+                            <TimePickerExample label={t('styleGuide.dateTime.time')} />
+                            <DateTimePickerExample label={t('styleGuide.dateTime.dateTime')} />
+                        </div>
+                    </section>
+
+                    <Divider />
+
+                    <section className="guide-section">
+                        <h2>{t('styleGuide.sections.mediaLibrary')}</h2>
+                        <Button onClick={() => setMediaModalOpen(true)}>{t('styleGuide.mediaLibrary.open')}</Button>
+                        {/* Media Modal Demo */}
+                        <MediaLibrary
+                            isOpen={isMediaModalOpen}
+                            onClose={() => setMediaModalOpen(false)}
+                            onSelect={(asset) => handleMediaSelect([asset])}
+                            projectId="styleguide"
+                            storagePath="uploads"
+                        />
+                    </section>
+
+                    <Divider />
+
+                    <section className="guide-section">
+                        <h2>{t('styleGuide.sections.badges')}</h2>
+                        <div className="guide-row">
+                            <Badge variant="neutral">{t('styleGuide.badges.neutral')}</Badge>
+                            <Badge variant="success">{t('styleGuide.badges.success')}</Badge>
+                            <Badge variant="warning">{t('styleGuide.badges.warning')}</Badge>
+                            <Badge variant="error">{t('styleGuide.badges.error')}</Badge>
+                        </div>
+                    </section>
+                </main>
+            </div>
         </div>
     );
 }

@@ -14,6 +14,7 @@ import { getDownloadURL, ref, uploadBytes, listAll } from 'firebase/storage';
 import { format, addDays, startOfToday, endOfToday, isWithinInterval, parseISO } from 'date-fns';
 import { getRoleDisplayInfo, getWorkspaceRoles } from '../services/rolesService';
 import { useLanguage } from '../context/LanguageContext';
+import confetti from 'canvas-confetti';
 import { Button } from '../components/common/Button/Button';
 import { Card } from '../components/common/Card/Card';
 import { Badge } from '../components/common/Badge/Badge';
@@ -448,6 +449,15 @@ export const ProjectOverview = () => {
     const handleToggleMilestone = async (milestone: Milestone) => {
         if (!project) return;
         const newStatus = milestone.status === 'Achieved' ? 'Pending' : 'Achieved';
+
+        if (newStatus === 'Achieved') {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+        }
+
         // Optimistic update
         setMilestones(prev => prev.map(m => m.id === milestone.id ? { ...m, status: newStatus } : m));
         await updateMilestone(project.id, milestone.id, { status: newStatus });
@@ -1276,7 +1286,7 @@ export const ProjectOverview = () => {
                                                     {activity[0]
                                                         ? (
                                                             <>
-                                                                <span className="user-name">{activity[0].user}</span> {activity[0].action}
+                                                                <span className="user-name">{activity[0].user}</span> {activity[0].action.length > 35 ? activity[0].action.substring(0, 35) + '...' : activity[0].action}
                                                                 <span className="time">{timeAgo(activity[0].createdAt)}</span>
                                                             </>
                                                         )
@@ -2134,7 +2144,7 @@ export const ProjectOverview = () => {
                                                                     <div className="milestone-row">
                                                                         <div className="milestone-text">
                                                                             <p className={`milestone-title ${isFirst ? 'is-next' : ''}`}>
-                                                                                {milestone.title}
+                                                                                {milestone.title.length > 35 ? milestone.title.substring(0, 35) + '...' : milestone.title}
                                                                             </p>
                                                                             <div className="milestone-meta">
                                                                                 <p className={`milestone-date ${isOverdue ? 'is-overdue' : isFirst ? 'is-up-next' : ''}`}>

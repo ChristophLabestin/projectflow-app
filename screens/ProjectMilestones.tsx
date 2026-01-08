@@ -12,6 +12,7 @@ import { Badge } from '../components/common/Badge/Badge';
 import { Button } from '../components/common/Button/Button';
 import { Card } from '../components/common/Card/Card';
 import { useLanguage } from '../context/LanguageContext';
+import confetti from 'canvas-confetti';
 
 export const ProjectMilestones = () => {
     type RiskLevel = 'Low' | 'Medium' | 'High';
@@ -148,6 +149,14 @@ export const ProjectMilestones = () => {
     const handleStatusToggle = async (milestone: Milestone) => {
         if (!projectId) return;
         const newStatus = milestone.status === 'Achieved' ? 'Pending' : 'Achieved';
+
+        if (newStatus === 'Achieved') {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+        }
 
         const optimisticMilestones = milestones.map(m =>
             m.id === milestone.id ? { ...m, status: newStatus as Milestone['status'] } : m

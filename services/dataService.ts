@@ -3189,8 +3189,7 @@ export const subscribeProjectActivity = (
     return onSnapshot(projectSubCollection(resolvedTenant, projectId, ACTIVITIES), (snap) => {
         const items = snap.docs
             .map(docSnap => ({ id: docSnap.id, ...docSnap.data() } as Activity))
-            .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt))
-            .slice(0, 20);
+            .sort((a, b) => toMillis(b.createdAt) - toMillis(a.createdAt));
         callback(items);
     });
 };

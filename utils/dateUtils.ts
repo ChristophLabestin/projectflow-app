@@ -22,6 +22,14 @@ export const formatDateDisplay = (date: Date): string => {
     return format(date, 'MMM. dd yyyy');
 };
 
+export const formatDateTimeDisplay = (date: Date): string => {
+    return format(date, 'yyyy-MM-dd HH:mm');
+};
+
+export const formatTime = (date: Date): string => {
+    return format(date, 'HH:mm');
+};
+
 export const isSameDay = (date1: Date, date2: Date): boolean => {
     return (
         date1.getDate() === date2.getDate() &&

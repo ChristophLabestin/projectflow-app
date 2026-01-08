@@ -32,6 +32,7 @@ import { Profile } from './screens/Profile';
 import { Notifications } from './screens/Notifications';
 import { MediaLibraryPage } from './screens/MediaLibraryPage';
 import { PersonalTasksPage } from './screens/PersonalTasksPage';
+import { StyleGuidePage } from './screens/StyleGuidePage';
 import { PersonalTaskDetailPage } from './screens/PersonalTaskDetailPage';
 import { SocialLayout } from './screens/social/SocialLayout';
 import { SocialDashboard } from './screens/social/SocialDashboard';
@@ -174,6 +175,12 @@ const App = () => {
                     <Route path="/invite-project/:projectId" element={<ProjectInviteLanding />} />
                     <Route path="/join/:inviteLinkId" element={<JoinProjectViaLink />} />
                     <Route path="/join-workspace/:inviteLinkId" element={<JoinWorkspaceViaLink />} />
+
+                    <Route path="/ui" element={
+                        <RequireAuth>
+                            <StyleGuidePage />
+                        </RequireAuth>
+                    } />
 
                     {/* Authenticated Routes Block */}
                     <Route element={<AuthenticatedLayout user={user} />}>
