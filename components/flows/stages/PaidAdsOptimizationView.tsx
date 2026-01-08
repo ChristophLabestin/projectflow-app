@@ -1,19 +1,40 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Idea } from '../../../types';
-import { Button } from '../../ui/Button';
+import { Button } from '../../common/Button/Button';
+import { Card } from '../../common/Card/Card';
+import { TextArea } from '../../common/Input/TextArea';
+import { TextInput } from '../../common/Input/TextInput';
+import { Select } from '../../common/Select/Select';
 import { usePaidAdsData } from '../../../hooks/usePaidAdsData';
 import { Link, useParams } from 'react-router-dom';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface PaidAdsOptimizationViewProps {
     idea: Idea;
     onUpdate: (updates: Partial<Idea>) => void;
 }
 
+const REPORTING_OPTIONS = [
+    { value: 'Weekly', labelKey: 'flowStages.paidAdsOptimization.reporting.weekly' },
+    { value: 'Bi-weekly', labelKey: 'flowStages.paidAdsOptimization.reporting.biWeekly' },
+    { value: 'Monthly', labelKey: 'flowStages.paidAdsOptimization.reporting.monthly' },
+];
+
 export const PaidAdsOptimizationView: React.FC<PaidAdsOptimizationViewProps> = ({ idea, onUpdate }) => {
     const { id: projectId } = useParams<{ id: string }>();
+    const { t } = useLanguage();
     const { adData, updateAdData } = usePaidAdsData(idea, onUpdate);
     const optimization = adData.optimization || {};
     const [hypothesisInput, setHypothesisInput] = useState('');
+
+    const reportingOptions = useMemo(
+        () => REPORTING_OPTIONS.map((option) => ({ value: option.value, label: t(option.labelKey) })),
+        [t]
+    );
+
+    const selectedReporting = REPORTING_OPTIONS.some((option) => option.value === optimization.reportingCadence)
+        ? (optimization.reportingCadence as string)
+        : REPORTING_OPTIONS[0].value;
 
     const addHypothesis = () => {
         if (!hypothesisInput.trim()) return;
@@ -28,124 +49,134 @@ export const PaidAdsOptimizationView: React.FC<PaidAdsOptimizationViewProps> = (
     };
 
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="max-w-7xl mx-auto flex flex-col gap-6 pt-6 px-6 pb-20">
-                <div className="bg-gradient-to-br from-teal-100 via-emerald-50 to-white dark:from-teal-900/30 dark:via-emerald-900/10 dark:to-slate-900/50 rounded-3xl p-6 md:p-8 border border-teal-200 dark:border-teal-800/50 relative overflow-hidden shadow-xl shadow-teal-100 dark:shadow-none flex items-center justify-between">
-                    <div className="relative z-10 flex flex-col justify-center h-full">
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="px-3 py-1 bg-teal-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-teal-200 dark:shadow-none">
-                                OPTIMIZATION
-                            </div>
-                        </div>
-                        <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-                            Scale & Iterate
+        <div className="flow-paid-ads-optimization">
+            <div className="flow-paid-ads-optimization__container">
+                <Card className="flow-paid-ads-optimization__hero">
+                    <div className="flow-paid-ads-optimization__hero-content">
+                        <span className="flow-paid-ads-optimization__badge">
+                            {t('flowStages.paidAdsOptimization.hero.badge')}
+                        </span>
+                        <h1 className="flow-paid-ads-optimization__title">
+                            {t('flowStages.paidAdsOptimization.hero.title')}
                         </h1>
                     </div>
-                    <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-teal-100/50 to-transparent dark:from-teal-900/20" />
-                    <span className="material-symbols-outlined absolute right-10 -bottom-10 text-[180px] text-teal-500/10 rotate-12">auto_graph</span>
-                </div>
+                    <div className="flow-paid-ads-optimization__hero-icon">
+                        <span className="material-symbols-outlined">auto_graph</span>
+                    </div>
+                </Card>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    <div className="lg:col-span-7 space-y-6">
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em] mb-6">Experiment Backlog</h3>
-                            <div className="flex gap-2 mb-4">
-                                <input
-                                    type="text"
+                <div className="flow-paid-ads-optimization__grid">
+                    <div className="flow-paid-ads-optimization__main">
+                        <Card className="flow-paid-ads-optimization__panel">
+                            <h3 className="flow-paid-ads-optimization__panel-title">
+                                {t('flowStages.paidAdsOptimization.sections.backlog')}
+                            </h3>
+                            <div className="flow-paid-ads-optimization__input-row">
+                                <TextInput
                                     value={hypothesisInput}
-                                    onChange={(e) => setHypothesisInput(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && addHypothesis()}
-                                    placeholder="Test hypothesis or variation..."
-                                    className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:border-teal-500"
+                                    onChange={(event) => setHypothesisInput(event.target.value)}
+                                    onKeyDown={(event) => event.key === 'Enter' && addHypothesis()}
+                                    placeholder={t('flowStages.paidAdsOptimization.placeholders.hypothesisInput')}
+                                    aria-label={t('flowStages.paidAdsOptimization.fields.hypothesisInput')}
+                                    className="flow-paid-ads-optimization__control"
                                 />
-                                <button
+                                <Button
+                                    size="sm"
+                                    variant="secondary"
                                     onClick={addHypothesis}
-                                    className="px-4 rounded-xl bg-teal-600 hover:bg-teal-500 text-white font-black text-xs uppercase tracking-widest"
+                                    className="flow-paid-ads-optimization__add"
+                                    icon={<span className="material-symbols-outlined">add</span>}
                                 >
-                                    Add
-                                </button>
+                                    {t('common.add')}
+                                </Button>
                             </div>
-                            <div className="space-y-2 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
-                                {(optimization.hypotheses || []).map((item, index) => (
-                                    <div key={index} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-100 dark:border-slate-800 group">
-                                        <span className="text-sm text-slate-700 dark:text-slate-300">{item}</span>
-                                        <button onClick={() => removeHypothesis(index)} className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <span className="material-symbols-outlined text-[16px]">close</span>
-                                        </button>
-                                    </div>
-                                ))}
-                                {(optimization.hypotheses || []).length === 0 && (
-                                    <div className="text-sm text-slate-400 italic">No tests planned yet.</div>
+                            <div className="flow-paid-ads-optimization__list">
+                                {(optimization.hypotheses || []).length === 0 ? (
+                                    <span className="flow-paid-ads-optimization__empty">
+                                        {t('flowStages.paidAdsOptimization.empty')}
+                                    </span>
+                                ) : (
+                                    (optimization.hypotheses || []).map((item, index) => (
+                                        <div key={index} className="flow-paid-ads-optimization__item">
+                                            <span>{item}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeHypothesis(index)}
+                                                className="flow-paid-ads-optimization__remove"
+                                                aria-label={t('common.delete')}
+                                            >
+                                                <span className="material-symbols-outlined">close</span>
+                                            </button>
+                                        </div>
+                                    ))
                                 )}
                             </div>
-                        </div>
+                        </Card>
 
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em] mb-6">Learnings & Iteration Notes</h3>
-                            <textarea
+                        <Card className="flow-paid-ads-optimization__panel">
+                            <h3 className="flow-paid-ads-optimization__panel-title">
+                                {t('flowStages.paidAdsOptimization.sections.learnings')}
+                            </h3>
+                            <TextArea
                                 value={optimization.learnings || ''}
-                                onChange={(e) => updateAdData({ optimization: { learnings: e.target.value } })}
-                                placeholder="Document insights, performance drivers, and next steps..."
-                                className="w-full min-h-[160px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-5 py-4 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:border-teal-500 resize-none"
+                                onChange={(event) => updateAdData({ optimization: { learnings: event.target.value } })}
+                                placeholder={t('flowStages.paidAdsOptimization.placeholders.learnings')}
+                                className="flow-paid-ads-optimization__control flow-paid-ads-optimization__control--tall"
                             />
-                        </div>
+                        </Card>
                     </div>
 
-                    <div className="lg:col-span-5 space-y-6">
-                        <div className="bg-slate-900 rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
-                                <span className="material-symbols-outlined text-[150px] text-white -mr-10 -mt-10">trending_up</span>
-                            </div>
-                            <div className="relative z-10 space-y-6">
-                                <h3 className="font-black text-white uppercase text-[11px] tracking-[.25em]">Scaling Plan</h3>
-                                <textarea
-                                    value={optimization.scalingPlan || ''}
-                                    onChange={(e) => updateAdData({ optimization: { scalingPlan: e.target.value } })}
-                                    placeholder="Budget ramps, geo expansion, new creatives..."
-                                    className="w-full min-h-[140px] bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-xs font-medium text-white placeholder-white/30 focus:outline-none focus:border-teal-500 resize-none"
-                                />
-                            </div>
-                        </div>
+                    <div className="flow-paid-ads-optimization__aside">
+                        <Card className="flow-paid-ads-optimization__panel">
+                            <h3 className="flow-paid-ads-optimization__panel-title">
+                                {t('flowStages.paidAdsOptimization.sections.scalingPlan')}
+                            </h3>
+                            <TextArea
+                                value={optimization.scalingPlan || ''}
+                                onChange={(event) => updateAdData({ optimization: { scalingPlan: event.target.value } })}
+                                placeholder={t('flowStages.paidAdsOptimization.placeholders.scalingPlan')}
+                                className="flow-paid-ads-optimization__control"
+                            />
+                        </Card>
 
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm space-y-5">
-                            <div>
-                                <label className="text-[9px] font-black text-teal-600 uppercase tracking-[.25em] mb-2 block opacity-80">Reporting Cadence</label>
-                                <select
-                                    value={optimization.reportingCadence || 'Weekly'}
-                                    onChange={(e) => updateAdData({ optimization: { reportingCadence: e.target.value } })}
-                                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold text-slate-900 dark:text-white focus:outline-none focus:border-teal-500 appearance-none"
-                                >
-                                    {['Weekly', 'Bi-weekly', 'Monthly'].map(opt => (
-                                        <option key={opt} value={opt}>{opt}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="text-[9px] font-black text-teal-600 uppercase tracking-[.25em] mb-2 block opacity-80">Guardrails</label>
-                                <input
+                        <Card className="flow-paid-ads-optimization__panel">
+                            <h3 className="flow-paid-ads-optimization__panel-title">
+                                {t('flowStages.paidAdsOptimization.sections.reporting')}
+                            </h3>
+                            <div className="flow-paid-ads-optimization__field-stack">
+                                <Select
+                                    label={t('flowStages.paidAdsOptimization.fields.reportingCadence')}
+                                    value={selectedReporting}
+                                    onChange={(value) => updateAdData({ optimization: { reportingCadence: value as string } })}
+                                    options={reportingOptions}
+                                    className="flow-paid-ads-optimization__control"
+                                />
+                                <TextInput
+                                    label={t('flowStages.paidAdsOptimization.fields.guardrails')}
                                     value={optimization.guardrails || ''}
-                                    onChange={(e) => updateAdData({ optimization: { guardrails: e.target.value } })}
-                                    placeholder="Max CPA, ROAS floor, frequency cap..."
-                                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:border-teal-500"
+                                    onChange={(event) => updateAdData({ optimization: { guardrails: event.target.value } })}
+                                    placeholder={t('flowStages.paidAdsOptimization.placeholders.guardrails')}
+                                    className="flow-paid-ads-optimization__control"
                                 />
                             </div>
-                        </div>
+                        </Card>
 
                         {idea.convertedCampaignId && projectId && (
                             <Link
                                 to={`/project/${projectId}/marketing/ads/${idea.convertedCampaignId}`}
-                                className="w-full inline-flex items-center justify-between h-14 rounded-2xl bg-teal-600 hover:bg-teal-500 text-white font-black uppercase tracking-widest text-xs shadow-lg shadow-teal-500/20 px-6"
+                                className="flow-paid-ads-optimization__dashboard-link"
                             >
-                                <span>Open Campaign Dashboard</span>
+                                <span>{t('flowStages.paidAdsOptimization.actions.openDashboard')}</span>
                                 <span className="material-symbols-outlined">analytics</span>
                             </Link>
                         )}
 
                         <Button
-                            className="w-full h-12 rounded-2xl bg-transparent hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold border border-slate-200 dark:border-slate-800"
+                            variant="ghost"
+                            className="flow-paid-ads-optimization__back"
                             onClick={() => onUpdate({ stage: 'Live' })}
                         >
-                            Back to Launch
+                            {t('flowStages.paidAdsOptimization.actions.backToLaunch')}
                         </Button>
                     </div>
                 </div>
