@@ -1,6 +1,9 @@
 import React from 'react';
 import { Idea } from '../../../types';
-import { Button } from '../../ui/Button';
+import { Button } from '../../common/Button/Button';
+import { Card } from '../../common/Card/Card';
+import { TextArea } from '../../common/Input/TextArea';
+import { TextInput } from '../../common/Input/TextInput';
 import { useLanguage } from '../../../context/LanguageContext';
 
 interface MarketingStrategyViewProps {
@@ -9,10 +12,10 @@ interface MarketingStrategyViewProps {
 }
 
 interface MarketingStrategy {
-    campaignGoal: string; // e.g., Brand Awareness, Lead Gen
+    campaignGoal: string;
     targetSegments: string;
     keyMessage: string;
-    channels: string[]; // Email, Search Ads, Display Ads, Social Ads (maybe?)
+    channels: string[];
     budgetEstimate: string;
 }
 
@@ -72,32 +75,27 @@ export const MarketingStrategyView: React.FC<MarketingStrategyViewProps> = ({ id
     ];
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-            {/* Left Column: Strategy */}
-            <div className="col-span-1 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-surface shadow-sm p-6 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-50 pointer-events-none">
-                    <span className="material-symbols-outlined text-[100px] text-[var(--color-surface-border)] rotate-12 -mr-6 -mt-6">ads_click</span>
-                </div>
+        <div className="flow-marketing-strategy">
+            <div className="flow-marketing-strategy__container">
+                <div className="flow-marketing-strategy__grid">
+                    <Card className="flow-marketing-strategy__panel">
+                        <div className="flow-marketing-strategy__header">
+                            <div>
+                                <h2 className="flow-marketing-strategy__title">{t('flowStages.marketingStrategy.title')}</h2>
+                                <p className="flow-marketing-strategy__subtitle">{t('flowStages.marketingStrategy.subtitle')}</p>
+                            </div>
+                            <div className="flow-marketing-strategy__accent" />
+                        </div>
 
-                <div className="flex flex-col h-full relative z-10">
-                    <div className="mb-6">
-                        <h2 className="text-xl font-extrabold text-main tracking-tight">{t('flowStages.marketingStrategy.title')}</h2>
-                        <p className="text-xs text-muted mt-1">{t('flowStages.marketingStrategy.subtitle')}</p>
-                        <div className="h-1 w-10 bg-pink-500 rounded-full mt-3" />
-                    </div>
-
-                    <div className="space-y-5">
-                        <div>
-                            <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">{t('flowStages.marketingStrategy.goal.label')}</label>
-                            <div className="grid grid-cols-2 gap-2">
+                        <div className="flow-marketing-strategy__section">
+                            <label className="flow-marketing-strategy__label">{t('flowStages.marketingStrategy.goal.label')}</label>
+                            <div className="flow-marketing-strategy__goal-grid">
                                 {GOALS.map((goal) => (
                                     <button
                                         key={goal.id}
+                                        type="button"
                                         onClick={() => updateStrategy({ campaignGoal: goal.id })}
-                                        className={`text-xs px-2 py-2 rounded-lg border transition-all truncate text-center ${strategy.campaignGoal === goal.id
-                                            ? 'bg-pink-50 dark:bg-pink-900/20 border-pink-200 dark:border-pink-800 text-pink-700 dark:text-pink-300 font-semibold'
-                                            : 'bg-surface border-surface text-muted hover:border-pink-200'
-                                            }`}
+                                        className={`flow-marketing-strategy__goal ${strategy.campaignGoal === goal.id ? 'is-active' : ''}`}
                                     >
                                         {goal.label}
                                     </button>
@@ -105,108 +103,90 @@ export const MarketingStrategyView: React.FC<MarketingStrategyViewProps> = ({ id
                             </div>
                         </div>
 
-                        <div>
-                            <label className="text-xs font-bold text-muted uppercase tracking-wider mb-1.5 block">{t('flowStages.marketingStrategy.target.label')}</label>
-                            <input
-                                type="text"
+                        <div className="flow-marketing-strategy__section">
+                            <TextInput
+                                label={t('flowStages.marketingStrategy.target.label')}
                                 value={strategy.targetSegments}
-                                onChange={(e) => updateStrategy({ targetSegments: e.target.value })}
+                                onChange={(event) => updateStrategy({ targetSegments: event.target.value })}
                                 placeholder={t('flowStages.marketingStrategy.target.placeholder')}
-                                className="w-full text-sm bg-surface border border-surface rounded-lg px-3 py-2.5 focus:ring-1 focus:ring-pink-500 outline-none"
+                                className="flow-marketing-strategy__control"
                             />
                         </div>
 
-                        <div className="flex-1">
-                            <label className="text-xs font-bold text-muted uppercase tracking-wider mb-1.5 block">{t('flowStages.marketingStrategy.message.label')}</label>
-                            <textarea
+                        <div className="flow-marketing-strategy__section flow-marketing-strategy__section--stretch">
+                            <TextArea
+                                label={t('flowStages.marketingStrategy.message.label')}
                                 value={strategy.keyMessage}
-                                onChange={(e) => updateStrategy({ keyMessage: e.target.value })}
-                                className="w-full h-32 bg-surface border border-surface rounded-lg px-3 py-2.5 focus:ring-1 focus:ring-pink-500 outline-none text-sm resize-none"
+                                onChange={(event) => updateStrategy({ keyMessage: event.target.value })}
                                 placeholder={t('flowStages.marketingStrategy.message.placeholder')}
+                                className="flow-marketing-strategy__control flow-marketing-strategy__control--message"
                             />
                         </div>
-                    </div>
-                </div>
-            </div>
+                    </Card>
 
-            {/* Middle Column: Channels & Budget */}
-            <div className="col-span-1 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-surface shadow-sm p-6 overflow-hidden">
-                <div className="mb-4">
-                    <h3 className="font-bold text-main">{t('flowStages.marketingStrategy.channels.title')}</h3>
-                    <p className="text-xs text-muted">{t('flowStages.marketingStrategy.channels.subtitle')}</p>
-                </div>
-
-                <div className="space-y-4">
-                    <div>
-                        <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">{t('flowStages.marketingStrategy.channels.label')}</label>
-                        <div className="flex flex-col gap-2">
-                            {MARKETING_CHANNELS.map((channel) => (
-                                <button
-                                    key={channel.id}
-                                    onClick={() => toggleChannel(channel.id)}
-                                    className={`flex items-center justify-between p-3 rounded-xl border transition-all ${strategy.channels.includes(channel.id)
-                                        ? 'bg-pink-50 dark:bg-pink-900/10 border-pink-200 dark:border-pink-800'
-                                        : 'bg-surface border-surface hover:border-muted'
-                                        }`}
-                                >
-                                    <span className={`text-sm font-medium ${strategy.channels.includes(channel.id) ? 'text-pink-700 dark:text-pink-300' : 'text-main'}`}>
-                                        {channel.label}
-                                    </span>
-                                    <div className={`size-5 rounded-full flex items-center justify-center border ${strategy.channels.includes(channel.id)
-                                        ? 'bg-pink-500 border-pink-500 text-white'
-                                        : 'border-muted text-transparent'
-                                        }`}>
-                                        <span className="material-symbols-outlined text-[14px]">check</span>
-                                    </div>
-                                </button>
-                            ))}
+                    <Card className="flow-marketing-strategy__panel">
+                        <div className="flow-marketing-strategy__section">
+                            <h3 className="flow-marketing-strategy__panel-title">{t('flowStages.marketingStrategy.channels.title')}</h3>
+                            <p className="flow-marketing-strategy__helper">{t('flowStages.marketingStrategy.channels.subtitle')}</p>
                         </div>
-                    </div>
 
-                    <div>
-                        <label className="text-xs font-bold text-muted uppercase tracking-wider mb-1.5 block">{t('flowStages.marketingStrategy.budget.label')}</label>
-                        <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted">$</span>
-                            <input
-                                type="text"
+                        <div className="flow-marketing-strategy__section">
+                            <label className="flow-marketing-strategy__label">{t('flowStages.marketingStrategy.channels.label')}</label>
+                            <div className="flow-marketing-strategy__channel-list">
+                                {MARKETING_CHANNELS.map((channel) => {
+                                    const isActive = strategy.channels.includes(channel.id);
+                                    return (
+                                        <button
+                                            key={channel.id}
+                                            type="button"
+                                            onClick={() => toggleChannel(channel.id)}
+                                            className={`flow-marketing-strategy__channel ${isActive ? 'is-active' : ''}`}
+                                        >
+                                            <span>{channel.label}</span>
+                                            <span className="flow-marketing-strategy__channel-check">
+                                                <span className="material-symbols-outlined">check</span>
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="flow-marketing-strategy__section">
+                            <TextInput
+                                label={t('flowStages.marketingStrategy.budget.label')}
                                 value={strategy.budgetEstimate}
-                                onChange={(e) => updateStrategy({ budgetEstimate: e.target.value })}
+                                onChange={(event) => updateStrategy({ budgetEstimate: event.target.value })}
                                 placeholder={t('flowStages.marketingStrategy.budget.placeholder')}
-                                className="w-full text-sm bg-surface border border-surface rounded-lg pl-8 pr-3 py-2.5 focus:ring-1 focus:ring-pink-500 outline-none"
+                                leftElement={<span className="flow-marketing-strategy__currency">$</span>}
+                                className="flow-marketing-strategy__control"
                             />
                         </div>
-                    </div>
-                </div>
 
-                <div className="mt-auto pt-4 border-t border-surface">
-                    <Button
-                        className="w-full h-12 text-base justify-between group bg-[var(--color-text-main)] text-[var(--color-surface-bg)] hover:bg-[var(--color-text-main)]/90 shadow-lg hover:shadow-xl transition-all rounded-xl"
-                        onClick={() => onUpdate({ stage: 'Planning' })}
-                    >
-                        <span className="font-bold pl-1">{t('flowStages.marketingStrategy.actions.advance')}</span>
-                        <div className="size-8 rounded-lg bg-white/20 flex items-center justify-center group-hover:translate-x-1 transition-transform">
-                            <span className="material-symbols-outlined text-[20px]">arrow_forward</span>
+                        <Button
+                            className="flow-marketing-strategy__advance"
+                            onClick={() => onUpdate({ stage: 'Planning' })}
+                            icon={<span className="material-symbols-outlined">arrow_forward</span>}
+                            iconPosition="right"
+                        >
+                            {t('flowStages.marketingStrategy.actions.advance')}
+                        </Button>
+                    </Card>
+
+                    <Card className="flow-marketing-strategy__panel flow-marketing-strategy__panel--aside">
+                        <div className="flow-marketing-strategy__section">
+                            <h3 className="flow-marketing-strategy__panel-title">{t('flowStages.marketingStrategy.metrics.title')}</h3>
+                            <p className="flow-marketing-strategy__helper">{t('flowStages.marketingStrategy.metrics.subtitle')}</p>
                         </div>
-                    </Button>
-                </div>
-            </div>
-
-            {/* Right Column: Key Metrics to Track (Preview) */}
-            <div className="col-span-1 lg:col-span-1 flex flex-col h-full bg-surface-paper rounded-2xl border border-surface shadow-sm p-6 overflow-hidden">
-                <div className="mb-4">
-                    <h3 className="font-bold text-main">{t('flowStages.marketingStrategy.metrics.title')}</h3>
-                    <p className="text-xs text-muted">{t('flowStages.marketingStrategy.metrics.subtitle')}</p>
-                </div>
-
-                <div className="prose prose-sm dark:prose-invert">
-                    <p className="text-sm text-muted italic">
-                        {t('flowStages.marketingStrategy.metrics.description')}
-                    </p>
-                    <ul className="text-sm space-y-2 mt-4 text-main">
-                        <li>• {t('flowStages.marketingStrategy.metrics.point1')}</li>
-                        <li>• {t('flowStages.marketingStrategy.metrics.point2')}</li>
-                        <li>• {t('flowStages.marketingStrategy.metrics.point3')}</li>
-                    </ul>
+                        <p className="flow-marketing-strategy__metrics-description">
+                            {t('flowStages.marketingStrategy.metrics.description')}
+                        </p>
+                        <ul className="flow-marketing-strategy__metrics-list">
+                            <li>{t('flowStages.marketingStrategy.metrics.point1')}</li>
+                            <li>{t('flowStages.marketingStrategy.metrics.point2')}</li>
+                            <li>{t('flowStages.marketingStrategy.metrics.point3')}</li>
+                        </ul>
+                    </Card>
                 </div>
             </div>
         </div>
