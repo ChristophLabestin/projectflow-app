@@ -6390,6 +6390,84 @@
     }
 }
 
+.flow-social-campaign-production {
+    min-height: 100%;
+    background: var(--color-surface-bg);
+}
+
+.flow-social-campaign-production__container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.flow-social-campaign-production__hero {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.flow-social-campaign-production__title {
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+.flow-social-campaign-production__subtitle {
+    margin: 8px 0 0;
+    font-size: 0.95rem;
+    color: var(--color-text-muted);
+}
+
+.flow-social-campaign-production__hero-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-subtle);
+
+    span.material-symbols-outlined {
+        font-size: 24px;
+    }
+}
+
+.flow-social-campaign-production__panel {
+    padding: 24px;
+}
+
+.flow-social-campaign-production__placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 10px;
+
+    span.material-symbols-outlined {
+        font-size: 36px;
+        color: var(--color-text-subtle);
+    }
+
+    p {
+        margin: 0;
+        font-size: 0.95rem;
+        color: var(--color-text-main);
+    }
+}
+
+.flow-social-campaign-production__placeholder-subtitle {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
 @include mixins.mq('md') {
     .flow-social-campaign-strategy__hero,
     .flow-social-campaign-planning__hero,
@@ -6441,6 +6519,12 @@
 
     .flow-social-campaign-review__dock {
         flex-wrap: nowrap;
+    }
+
+    .flow-social-campaign-production__hero {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
     }
 }
 
