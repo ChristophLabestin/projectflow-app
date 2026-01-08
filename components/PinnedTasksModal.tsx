@@ -2,16 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePinnedTasks, PinnedItem } from '../context/PinnedTasksContext';
 import { Task, SubTask, Project, Member, PersonalTask } from '../types';
-import { getProjectById, getSubTasks, toggleTaskStatus, updateTaskFields, createSubTask, toggleSubTaskStatus, deleteSubTask, getUserProfile, updateSubtaskFields, deleteTask, addPersonalTask, deletePersonalTask, movePersonalTaskToProject, getUserProjects } from '../services/dataService';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { getProjectById, getSubTasks, toggleTaskStatus, updateTaskFields, createSubTask, toggleSubTaskStatus, deleteSubTask, getUserProfile, updateSubtaskFields, deleteTask, addPersonalTask, deletePersonalTask } from '../services/dataService';
+import { doc, getDoc } from 'firebase/firestore';
 import { db, auth } from '../services/firebase';
 import { Button } from './ui/Button';
-import { Badge } from './ui/Badge';
-import { Input } from './ui/Input';
 import { useConfirm } from '../context/UIContext';
 import { CommentSection } from './CommentSection';
 import { fetchCommitsReferencingIssue, GithubCommit } from '../services/githubService';
-import { timeAgo, toMillis } from '../utils/time';
 import { useLanguage } from '../context/LanguageContext';
 
 const TASK_STATUS_OPTIONS = ['Backlog', 'Open', 'In Progress', 'On Hold', 'Blocked', 'Done'] as const;
@@ -19,23 +16,20 @@ const ISSUE_STATUS_OPTIONS = ['Open', 'In Progress', 'Resolved', 'Closed'] as co
 
 type StatusKind = 'task' | 'issue';
 
-const getStatusStyle = (status?: string, kind: StatusKind = 'task') => {
-    if (kind === 'issue') {
-        return status === 'Resolved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-            status === 'Open' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' :
-                status === 'In Progress' ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/25' :
-                    status === 'Closed' ? 'bg-slate-500/10 text-slate-500 border-slate-500/20' :
-                        'bg-slate-500/5 text-slate-400 border-slate-500/10';
-    }
+const getStatusClass = (status?: string) => {
+    if (!status) return 'status-badge--default';
+    const normalized = status.toLowerCase().replace(/\s+/g, '-');
 
-    return status === 'Done' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' :
-        status === 'In Progress' ? 'bg-blue-600/15 text-blue-400 border-blue-500/40 shadow-[0_0_8px_rgba(59,130,246,0.15)]' :
-            status === 'Review' ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/30' :
-                status === 'Open' || status === 'Todo' ? 'bg-violet-500/10 text-violet-400 border-violet-500/20' :
-                    status === 'Backlog' ? 'bg-slate-500/10 text-slate-400 border-slate-500/20 opacity-80' :
-                        status === 'On Hold' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' :
-                            status === 'Blocked' ? 'bg-rose-600/20 text-rose-500 border-rose-500/50' :
-                                'bg-slate-500/5 text-slate-400 border-slate-500/10';
+    if (normalized === 'done') return 'status-badge--done';
+    if (normalized === 'in-progress') return 'status-badge--in-progress';
+    if (normalized === 'review') return 'status-badge--review';
+    if (normalized === 'open' || normalized === 'todo') return 'status-badge--open';
+    if (normalized === 'backlog') return 'status-badge--backlog';
+    if (normalized === 'on-hold') return 'status-badge--on-hold';
+    if (normalized === 'blocked') return 'status-badge--blocked';
+    if (normalized === 'resolved') return 'status-badge--resolved';
+    if (normalized === 'closed') return 'status-badge--closed';
+    return 'status-badge--default';
 };
 
 const getStatusIcon = (status?: string, kind: StatusKind = 'task') => {
@@ -378,22 +372,22 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
     const statusKind: StatusKind = itemType === 'issue' ? 'issue' : 'task';
     const currentStatus = item?.status || 'Open';
 
-    if (loading) return <div className="p-8 text-center text-[var(--color-text-subtle)]">{t('pinnedTasks.loading')}</div>;
+    if (loading) return <div className="pinned-tasks__loading">{t('pinnedTasks.loading')}</div>;
     if (!item) {
         const pinnedItem = pinnedItems.find(i => i.id === itemId);
         if (pinnedItem) {
             return (
-                <div className="flex flex-col items-center justify-center p-8 h-full text-center">
-                    <div className="w-16 h-16 rounded-full bg-[var(--color-surface-hover)] flex items-center justify-center mb-4">
-                        <span className="material-symbols-outlined text-3xl text-[var(--color-text-muted)]">sentiment_dissatisfied</span>
+                <div className="pinned-tasks__empty-state">
+                    <div className="pinned-tasks__empty-icon">
+                        <span className="material-symbols-outlined">sentiment_dissatisfied</span>
                     </div>
-                    <h3 className="text-lg font-bold text-[var(--color-text-main)] mb-2">{t('pinnedTasks.errors.unavailableTitle')}</h3>
-                    <p className="text-sm text-[var(--color-text-subtle)] mb-6 max-w-[250px]">
+                    <h3 className="pinned-tasks__empty-title">{t('pinnedTasks.errors.unavailableTitle')}</h3>
+                    <p className="pinned-tasks__empty-body">
                         {t('pinnedTasks.errors.unavailableBody')}
                     </p>
-                    <div className="bg-[var(--color-surface-hover)] p-4 rounded-xl mb-6 w-full max-w-[300px] border border-[var(--color-surface-border)]">
-                        <p className="text-xs font-bold text-[var(--color-text-muted)] uppercase tracking-wider mb-1">{t('pinnedTasks.errors.pinnedAs')}</p>
-                        <p className="font-medium text-[var(--color-text-main)] truncate">{pinnedItem.title}</p>
+                    <div className="pinned-tasks__empty-card">
+                        <p className="pinned-tasks__empty-label">{t('pinnedTasks.errors.pinnedAs')}</p>
+                        <p className="pinned-tasks__empty-value">{pinnedItem.title}</p>
                     </div>
                     <Button
                         variant="ghost"
@@ -401,19 +395,19 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                             unpinItem(itemId);
                             if (onClose) onClose();
                         }}
-                        className="text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
+                        className="pinned-tasks__unpin-action"
                     >
-                        <span className="material-symbols-outlined text-lg mr-2">keep_off</span>
+                        <span className="material-symbols-outlined pinned-tasks__unpin-icon">keep_off</span>
                         {t('pinnedTasks.actions.unpinBroken')}
                     </Button>
                 </div>
             );
         }
-        return <div className="p-8 text-center text-[var(--color-text-subtle)]">{t('pinnedTasks.empty.itemNotFound')}</div>;
+        return <div className="pinned-tasks__empty-note">{t('pinnedTasks.empty.itemNotFound')}</div>;
     }
 
     return (
-        <div className="pinned-tasks-modal-container flex flex-col h-full animate-fade-in">
+        <div className="pinned-tasks-modal-container">
             {/* Header (Title Only - Actions moved to Parent) */}
             <div className="pinned-header">
                 <button
@@ -421,7 +415,7 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                     className={`completion-toggle ${isCompleted ? (itemType === 'task' ? 'completed-task' : 'completed') : ''}`}
                     title={itemType === 'task' ? t('pinnedTasks.actions.markComplete') : t('pinnedTasks.actions.markResolved')}
                 >
-                    <span className="material-symbols-outlined text-[16px] font-bold">check</span>
+                    <span className="material-symbols-outlined pinned-tasks__completion-icon">check</span>
                 </button>
                 <div className="title-area">
                     <h3 className={isCompleted ? 'completed' : ''}>
@@ -434,13 +428,13 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                                 <button
                                     type="button"
                                     onClick={() => setStatusMenuOpen((open) => !open)}
-                                    className={`trigger-btn ${getStatusStyle(currentStatus, statusKind)}`}
+                                    className={`trigger-btn status-badge status-badge--${statusKind} ${getStatusClass(currentStatus)}`}
                                 >
-                                    <span className="material-symbols-outlined text-[11px]">
+                                    <span className="material-symbols-outlined status-dropdown__icon">
                                         {getStatusIcon(currentStatus, statusKind)}
                                     </span>
                                     <span>{getStatusLabel(currentStatus, statusKind)}</span>
-                                    <span className={`material-symbols-outlined text-[10px] chevron ${statusMenuOpen ? 'open' : ''}`}>expand_more</span>
+                                    <span className={`material-symbols-outlined status-dropdown__chevron ${statusMenuOpen ? 'is-open' : ''}`}>expand_more</span>
                                 </button>
                                 {statusMenuOpen && (
                                     <div className="menu">
@@ -452,9 +446,9 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                                                     setStatusMenuOpen(false);
                                                     handleStatusChange(status);
                                                 }}
-                                                className={status === currentStatus ? 'bg-[var(--color-surface-hover)]' : ''}
+                                                className={`status-dropdown__item ${status === currentStatus ? 'is-active' : ''}`}
                                             >
-                                                <span className="material-symbols-outlined text-[12px]">
+                                                <span className="material-symbols-outlined status-dropdown__icon">
                                                     {getStatusIcon(status, statusKind)}
                                                 </span>
                                                 <span>{getStatusLabel(status, statusKind)}</span>
@@ -472,22 +466,22 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
             {/* Description Section */}
             {/* Description Section */}
             {(item.description || itemType === 'task' || itemType === 'personal-task' || isEditingDesc) && (
-                <div className="mb-6">
-                    <div className="flex items-center justify-between mb-2">
+                <div className="pinned-tasks__section pinned-tasks__section--description">
+                    <div className="pinned-tasks__section-header">
                         <button
                             onClick={() => setIsDescExpanded(!isDescExpanded)}
                             className="section-header-btn"
                         >
-                            <span className="material-symbols-outlined text-[16px]">description</span>
+                            <span className="material-symbols-outlined pinned-tasks__section-icon">description</span>
                             {t('pinnedTasks.sections.description')}
-                            <span className="material-symbols-outlined text-[14px]">
+                            <span className="material-symbols-outlined pinned-tasks__section-icon-small">
                                 {isDescExpanded ? 'expand_less' : 'expand_more'}
                             </span>
                         </button>
                         {!isEditingDesc && (
                             <button
                                 onClick={() => { setIsEditingDesc(true); setIsDescExpanded(true); }}
-                                className="text-[10px] text-[var(--color-primary)] hover:underline font-medium"
+                                className="pinned-tasks__text-action"
                             >
                                 {t('pinnedTasks.actions.edit')}
                             </button>
@@ -496,27 +490,27 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
 
                     {isDescExpanded && (
                         isEditingDesc ? (
-                            <div className="space-y-2">
+                            <div className="pinned-tasks__description-editor">
                                 <textarea
                                     value={descValue}
                                     onChange={(e) => setDescValue(e.target.value)}
-                                    className="w-full h-24 p-3 text-sm bg-[var(--color-surface-bg)] border border-[var(--color-surface-border)] rounded-xl focus:ring-2 focus:ring-[var(--color-primary)]/20 outline-none resize-none"
+                                    className="pinned-tasks__description-input"
                                     placeholder={t('pinnedTasks.placeholder.description')}
                                     autoFocus
                                 />
-                                <div className="flex justify-end gap-2">
+                                <div className="pinned-tasks__description-actions">
                                     <button
                                         onClick={() => {
                                             setIsEditingDesc(false);
                                             setDescValue(item.description || "");
                                         }}
-                                        className="px-3 py-1.5 text-xs font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] rounded-lg transition-colors"
+                                        className="pinned-tasks__button pinned-tasks__button--ghost"
                                     >
                                         {t('pinnedTasks.actions.cancel')}
                                     </button>
                                     <button
                                         onClick={handleSaveDescription}
-                                        className="px-3 py-1.5 text-xs font-medium bg-[var(--color-primary)] text-[var(--color-primary-text)] rounded-lg hover:bg-[var(--color-primary-hover)] transition-colors"
+                                        className="pinned-tasks__button pinned-tasks__button--primary"
                                     >
                                         {t('pinnedTasks.actions.save')}
                                     </button>
@@ -528,9 +522,9 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                                 onClick={() => setIsEditingDesc(true)}
                                 title={t('pinnedTasks.description.clickToEdit')}
                             >
-                                {item.description || <span className="italic opacity-50">{t('pinnedTasks.description.empty')}</span>}
+                                {item.description || <span className="pinned-tasks__description-empty">{t('pinnedTasks.description.empty')}</span>}
                                 <div className="edit-icon">
-                                    <span className="material-symbols-outlined text-[14px]">edit</span>
+                                    <span className="material-symbols-outlined">edit</span>
                                 </div>
                             </div>
                         )
@@ -538,44 +532,44 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                 </div>
             )}
 
-            <div className="flex-1 overflow-y-auto pr-2 space-y-6 custom-scrollbar">
+            <div className="pinned-tasks__body custom-scrollbar">
                 {/* Subtasks (Only for Tasks) */}
                 {itemType === 'task' ? (
-                    <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                            <h4 className="section-header-btn cursor-default">{t('pinnedTasks.sections.subtasks')}</h4>
-                            <div className="flex items-center gap-2">
+                    <div className="pinned-tasks__subtasks">
+                        <div className="pinned-tasks__subtasks-header">
+                            <h4 className="section-header-btn is-static">{t('pinnedTasks.sections.subtasks')}</h4>
+                            <div className="pinned-tasks__subtasks-controls">
                                 <button
                                     onClick={() => setShowCompletedSubtasks(!showCompletedSubtasks)}
-                                    className={`text-[10px] font-medium px-2 py-0.5 rounded-full transition-colors ${showCompletedSubtasks ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]' : 'bg-[var(--color-surface-hover)] text-[var(--color-text-muted)] hover:text-[var(--color-text-main)]'}`}
+                                    className={`pinned-tasks__toggle ${showCompletedSubtasks ? 'is-active' : ''}`}
                                 >
                                     {showCompletedSubtasks ? t('pinnedTasks.subtasks.hideDone') : t('pinnedTasks.subtasks.showAll')}
                                 </button>
-                                <span className="text-xs font-medium bg-[var(--color-surface-hover)] px-2 py-0.5 rounded-full text-[var(--color-text-muted)]">
+                                <span className="pinned-tasks__count">
                                     {subtasks.filter(s => s.isCompleted).length}/{subtasks.length}
                                 </span>
                             </div>
                         </div>
 
-                        <form onSubmit={handleAddSubtask} className="mb-3 flex items-center gap-2 group">
-                            <span className="material-symbols-outlined text-[var(--color-text-muted)] group-focus-within:text-[var(--color-primary)]">add</span>
+                        <form onSubmit={handleAddSubtask} className="pinned-tasks__subtask-form">
+                            <span className="material-symbols-outlined pinned-tasks__subtask-icon">add</span>
                             <input
                                 type="text"
                                 value={newSubtaskTitle}
                                 onChange={(e) => setNewSubtaskTitle(e.target.value)}
                                 placeholder={t('pinnedTasks.placeholder.addSubtask')}
-                                className="flex-1 bg-transparent border-none focus:ring-0 p-0 text-sm placeholder-[var(--color-text-subtle)]"
+                                className="pinned-tasks__subtask-input"
                             />
                         </form>
 
                         <div className="subtasks-list">
                             {subtasks.filter(sub => showCompletedSubtasks || !sub.isCompleted).map(sub => (
-                                <div key={sub.id} className="subtask-row group">
+                                <div key={sub.id} className="subtask-row">
                                     <button
                                         onClick={() => handleToggleSubtask(sub.id, sub.isCompleted)}
                                         className={`check-box ${sub.isCompleted ? 'completed' : ''}`}
                                     >
-                                        <span className="material-symbols-outlined text-[12px] font-bold">check</span>
+                                        <span className="material-symbols-outlined pinned-tasks__subtask-check-icon">check</span>
                                     </button>
 
                                     <div className="content">
@@ -609,21 +603,21 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
                                         }}
                                         className="delete-btn"
                                     >
-                                        <span className="material-symbols-outlined text-[16px]">delete</span>
+                                        <span className="material-symbols-outlined pinned-tasks__subtask-delete-icon">delete</span>
                                     </button>
                                 </div>
                             ))}
                         </div>
                     </div>
                 ) : itemType === 'personal-task' ? null : (
-                    <div className="space-y-6">
+                    <div className="pinned-tasks__issue-sections">
                         {/* Discussion / Comments for Issues */}
                         <div>
-                            <h4 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-3 flex items-center gap-2 tracking-wider">
-                                <span className="material-symbols-outlined text-[16px]">chat</span>
+                            <h4 className="pinned-tasks__section-title">
+                                <span className="material-symbols-outlined pinned-tasks__section-title-icon">chat</span>
                                 {t('pinnedTasks.sections.discussion').replace('{count}', String(commentCount))}
                             </h4>
-                            <div className="scale-95 origin-top">
+                            <div className="pinned-tasks__comment-section">
                                 <CommentSection
                                     projectId={project?.id || ''}
                                     targetId={itemId}
@@ -639,47 +633,47 @@ const TaskDetailView = ({ itemId, onClose, onComplete }: { itemId: string; onClo
 
                         {/* GitHub reference for Issues */}
                         {item.githubIssueNumber && (
-                            <div className="pt-4 border-t border-[var(--color-surface-border)]">
-                                <h4 className="text-xs font-bold text-[var(--color-text-muted)] uppercase mb-3 flex items-center gap-2 tracking-wider">
-                                    <span className="material-symbols-outlined text-[16px] text-indigo-500">terminal</span>
+                            <div className="pinned-tasks__github-section">
+                                <h4 className="pinned-tasks__section-title">
+                                    <span className="material-symbols-outlined pinned-tasks__section-title-icon pinned-tasks__section-title-icon--github">terminal</span>
                                     {t('pinnedTasks.sections.githubReference')}
                                 </h4>
                                 <a
                                     href={item.githubIssueUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-center justify-between p-2.5 rounded-xl bg-[var(--color-surface-hover)] border border-[var(--color-surface-border)] hover:border-indigo-500/50 transition-all group mb-3"
+                                    className="pinned-tasks__github-link"
                                 >
-                                    <div className="flex items-center gap-2">
-                                        <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)]">open_in_new</span>
-                                        <span className="text-xs font-bold text-[var(--color-text-main)]">
+                                    <div className="pinned-tasks__github-link-content">
+                                        <span className="material-symbols-outlined pinned-tasks__github-link-icon">open_in_new</span>
+                                        <span className="pinned-tasks__github-link-title">
                                             {t('pinnedTasks.github.issueLabel').replace('{number}', String(item.githubIssueNumber))}
                                         </span>
                                     </div>
-                                    <span className="text-[10px] text-[var(--color-text-muted)]">{t('pinnedTasks.github.viewOnGithub')}</span>
+                                    <span className="pinned-tasks__github-link-meta">{t('pinnedTasks.github.viewOnGithub')}</span>
                                 </a>
 
                                 {loadingCommits ? (
-                                    <div className="flex items-center gap-2 py-2">
-                                        <span className="material-symbols-outlined animate-spin text-[14px] text-[var(--color-primary)]">progress_activity</span>
-                                        <span className="text-[10px] text-[var(--color-text-muted)]">{t('pinnedTasks.github.searchingCommits')}</span>
+                                    <div className="pinned-tasks__github-loading">
+                                        <span className="material-symbols-outlined pinned-tasks__spinner">progress_activity</span>
+                                        <span className="pinned-tasks__github-loading-text">{t('pinnedTasks.github.searchingCommits')}</span>
                                     </div>
                                 ) : relatedCommits.length > 0 && (
-                                    <div className="space-y-1.5 max-h-[150px] overflow-y-auto pr-1">
+                                    <div className="pinned-tasks__commit-list">
                                         {relatedCommits.map(commit => (
                                             <a
                                                 key={commit.sha}
                                                 href={commit.html_url}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="block p-2 rounded-lg border border-[var(--color-surface-border)] hover:bg-[var(--color-surface-hover)] transition-all"
+                                                className="pinned-tasks__commit"
                                             >
-                                                <p className="text-[10px] font-medium text-[var(--color-text-main)] line-clamp-1">
+                                                <p className="pinned-tasks__commit-title">
                                                     {commit.commit.message}
                                                 </p>
-                                                <div className="flex items-center justify-between mt-1">
-                                                    <span className="text-[9px] text-[var(--color-text-muted)]">@{commit.author?.login}</span>
-                                                    <span className="text-[9px] font-mono text-[var(--color-text-subtle)]">{commit.sha.slice(0, 7)}</span>
+                                                <div className="pinned-tasks__commit-meta">
+                                                    <span className="pinned-tasks__commit-author">@{commit.author?.login}</span>
+                                                    <span className="pinned-tasks__commit-sha">{commit.sha.slice(0, 7)}</span>
                                                 </div>
                                             </a>
                                         ))}
@@ -941,7 +935,7 @@ export const PinnedTasksModal = () => {
     if (isCompactMode && selectedItemId) {
         return (
             <div
-                className="fixed z-50 bg-[var(--color-surface-card)] rounded-2xl shadow-2xl border border-[var(--color-surface-border)] flex flex-col overflow-hidden"
+                className="pinned-tasks-compact"
                 style={{
                     left: position.x,
                     top: position.y,
@@ -951,17 +945,17 @@ export const PinnedTasksModal = () => {
             >
                 {/* Compact Header - Draggable */}
                 <div
-                    className={`flex items-center justify-between gap-2 px-4 py-3 border-b border-[var(--color-surface-border)] bg-[var(--color-surface-bg)] select-none ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                    className={`pinned-tasks-compact__header ${isDragging ? 'is-dragging' : ''}`}
                     onMouseDown={handleDragStart}
                 >
-                    <div className="flex items-center gap-2 min-w-0">
-                        <span className="material-symbols-outlined text-[16px] text-[var(--color-text-muted)]">drag_indicator</span>
-                        <span className="material-symbols-outlined text-[18px] text-amber-500">center_focus_strong</span>
-                        <span className="text-sm font-semibold text-[var(--color-text-main)] truncate">
+                    <div className="pinned-tasks-compact__title-group">
+                        <span className="material-symbols-outlined pinned-tasks-compact__drag-icon">drag_indicator</span>
+                        <span className="material-symbols-outlined pinned-tasks-compact__focus-icon">center_focus_strong</span>
+                        <span className="pinned-tasks-compact__title">
                             {pinnedItems.find(i => i.id === selectedItemId)?.title || t('pinnedTasks.header.focusFallback')}
                         </span>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="pinned-tasks-compact__actions">
                         {/* Compact Actions */}
                         {selectedItemId && (
                             <>
@@ -973,50 +967,50 @@ export const PinnedTasksModal = () => {
                                             navigate(`/project/${item.projectId}/${item.type === 'issue' ? 'issues' : 'tasks'}/${item.id}`);
                                         }
                                     }}
-                                    className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)] transition-colors"
+                                    className="pinned-tasks-compact__action"
                                     title={t('pinnedTasks.actions.openDetail')}
                                 >
-                                    <span className="material-symbols-outlined text-[18px]">open_in_new</span>
+                                    <span className="material-symbols-outlined">open_in_new</span>
                                 </button>
                                 <button
                                     onClick={() => setFocusItem(focusItemId === selectedItemId ? null : selectedItemId)}
-                                    className={`p-1.5 rounded-lg transition-colors ${focusItemId === selectedItemId ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/30' : 'text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)]'}`}
+                                    className={`pinned-tasks-compact__action ${focusItemId === selectedItemId ? 'is-active' : ''}`}
                                     title={t('pinnedTasks.actions.toggleFocus')}
                                 >
-                                    <span className="material-symbols-outlined text-[18px]">{focusItemId === selectedItemId ? 'center_focus_strong' : 'center_focus_weak'}</span>
+                                    <span className="material-symbols-outlined">{focusItemId === selectedItemId ? 'center_focus_strong' : 'center_focus_weak'}</span>
                                 </button>
                                 <button
                                     onClick={() => {
                                         unpinItem(selectedItemId);
                                         if (pinnedItems.length <= 1) toggleModal();
                                     }}
-                                    className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/30 transition-colors"
+                                    className="pinned-tasks-compact__action is-danger"
                                     title={t('pinnedTasks.actions.unpin')}
                                 >
-                                    <span className="material-symbols-outlined text-[18px]">keep_off</span>
+                                    <span className="material-symbols-outlined">keep_off</span>
                                 </button>
-                                <div className="w-[1px] h-4 bg-[var(--color-surface-border)] mx-1" />
+                                <div className="pinned-tasks-compact__divider" />
                             </>
                         )}
                         <button
                             onClick={() => setIsCompactMode(false)}
-                            className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-main)] transition-colors"
+                            className="pinned-tasks-compact__action"
                             title={t('pinnedTasks.actions.expand')}
                         >
-                            <span className="material-symbols-outlined text-[18px]">open_in_full</span>
+                            <span className="material-symbols-outlined">open_in_full</span>
                         </button>
                         <button
                             onClick={toggleModal}
-                            className="p-1.5 rounded-lg text-[var(--color-text-muted)] hover:bg-rose-100 hover:text-rose-600 dark:hover:bg-rose-900/30 transition-colors"
+                            className="pinned-tasks-compact__action is-danger"
                             title={t('pinnedTasks.actions.close')}
                         >
-                            <span className="material-symbols-outlined text-[18px]">close</span>
+                            <span className="material-symbols-outlined">close</span>
                         </button>
                     </div>
                 </div>
 
                 {/* Compact Content */}
-                <div className="flex-1 p-4 overflow-y-auto">
+                <div className="pinned-tasks-compact__body">
                     <TaskDetailView
                         itemId={selectedItemId}
                         key={selectedItemId}
@@ -1027,41 +1021,41 @@ export const PinnedTasksModal = () => {
                 {/* Edge Resize Handles */}
                 {/* Right edge */}
                 <div
-                    className="absolute top-4 right-0 bottom-4 w-2 cursor-ew-resize hover:bg-[var(--color-primary)]/20 transition-colors"
+                    className="pinned-tasks-compact__resize-handle pinned-tasks-compact__resize-handle--e"
                     onMouseDown={(e) => handleResizeStart(e, 'e')}
                 />
                 {/* Left edge */}
                 <div
-                    className="absolute top-4 left-0 bottom-4 w-2 cursor-ew-resize hover:bg-[var(--color-primary)]/20 transition-colors"
+                    className="pinned-tasks-compact__resize-handle pinned-tasks-compact__resize-handle--w"
                     onMouseDown={(e) => handleResizeStart(e, 'w')}
                 />
                 {/* Bottom edge */}
                 <div
-                    className="absolute bottom-0 left-4 right-4 h-2 cursor-ns-resize hover:bg-[var(--color-primary)]/20 transition-colors"
+                    className="pinned-tasks-compact__resize-handle pinned-tasks-compact__resize-handle--s"
                     onMouseDown={(e) => handleResizeStart(e, 's')}
                 />
 
                 {/* Corner Resize Handles */}
                 {/* Bottom Right */}
                 <div
-                    className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize"
+                    className="pinned-tasks-compact__corner pinned-tasks-compact__corner--se"
                     onMouseDown={(e) => handleResizeStart(e, 'se')}
                 >
-                    <span className="material-symbols-outlined text-[12px] text-[var(--color-text-subtle)] rotate-[-45deg]">drag_handle</span>
+                    <span className="material-symbols-outlined pinned-tasks-compact__corner-icon">drag_handle</span>
                 </div>
                 {/* Bottom Left */}
                 <div
-                    className="absolute bottom-0 left-0 w-4 h-4 cursor-sw-resize"
+                    className="pinned-tasks-compact__corner pinned-tasks-compact__corner--sw"
                     onMouseDown={(e) => handleResizeStart(e, 'sw')}
                 />
                 {/* Top Right */}
                 <div
-                    className="absolute top-0 right-0 w-4 h-4 cursor-ne-resize"
+                    className="pinned-tasks-compact__corner pinned-tasks-compact__corner--ne"
                     onMouseDown={(e) => handleResizeStart(e, 'ne')}
                 />
                 {/* Top Left */}
                 <div
-                    className="absolute top-0 left-0 w-4 h-4 cursor-nw-resize"
+                    className="pinned-tasks-compact__corner pinned-tasks-compact__corner--nw"
                     onMouseDown={(e) => handleResizeStart(e, 'nw')}
                 />
             </div>
@@ -1074,7 +1068,6 @@ export const PinnedTasksModal = () => {
             <div
                 className="pinned-tasks-layout"
                 onClick={(e) => e.stopPropagation()}
-                style={{ resize: 'both', overflow: 'hidden' }}
             >
                 {/* Header Bar with close button */}
                 <div className="modal-actions-header">
@@ -1091,14 +1084,14 @@ export const PinnedTasksModal = () => {
                                 className="action-btn"
                                 title={t('pinnedTasks.actions.openDetail')}
                             >
-                                <span className="material-symbols-outlined text-[18px] leading-none flex items-center justify-center">open_in_new</span>
+                                <span className="material-symbols-outlined">open_in_new</span>
                             </button>
                             <button
                                 onClick={() => setFocusItem(focusItemId === selectedItemId ? null : selectedItemId)}
                                 className={`action-btn ${focusItemId === selectedItemId ? 'active' : ''}`}
                                 title={focusItemId === selectedItemId ? t('pinnedTasks.actions.unsetFocus') : t('pinnedTasks.actions.setFocus')}
                             >
-                                <span className="material-symbols-outlined text-[18px] leading-none">{focusItemId === selectedItemId ? 'center_focus_strong' : 'center_focus_weak'}</span>
+                                <span className="material-symbols-outlined">{focusItemId === selectedItemId ? 'center_focus_strong' : 'center_focus_weak'}</span>
                             </button>
                             <button
                                 onClick={() => {
@@ -1107,7 +1100,7 @@ export const PinnedTasksModal = () => {
                                 className="action-btn danger"
                                 title={t('pinnedTasks.actions.unpin')}
                             >
-                                <span className="material-symbols-outlined text-[18px] leading-none">keep_off</span>
+                                <span className="material-symbols-outlined">keep_off</span>
                             </button>
                             <div className="divider" />
                             <button
@@ -1115,7 +1108,7 @@ export const PinnedTasksModal = () => {
                                 className="action-btn"
                                 title={t('pinnedTasks.actions.compactMode')}
                             >
-                                <span className="material-symbols-outlined text-[18px] leading-none">picture_in_picture_alt</span>
+                                <span className="material-symbols-outlined">picture_in_picture_alt</span>
                             </button>
                         </>
                     )}
@@ -1124,7 +1117,7 @@ export const PinnedTasksModal = () => {
                         className="action-btn danger"
                         title={t('pinnedTasks.actions.closeEsc')}
                     >
-                        <span className="material-symbols-outlined text-[18px] leading-none">close</span>
+                        <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
 
@@ -1132,7 +1125,7 @@ export const PinnedTasksModal = () => {
                 <div className="sidebar">
                     <div className="sidebar-header">
                         <h2>
-                            <span className="material-symbols-outlined text-[var(--color-primary)]">push_pin</span>
+                            <span className="material-symbols-outlined sidebar-header__icon">push_pin</span>
                             {t('pinnedTasks.header.quickAccess')}
                         </h2>
                         <span className="shortcut-badge">⌘+Shift+F</span>
@@ -1156,7 +1149,7 @@ export const PinnedTasksModal = () => {
 
                     <div className="pinned-list">
                         {pinnedItems.filter(i => pinnedFilter === 'all' || i.type === pinnedFilter || (pinnedFilter === 'task' && i.type === 'personal-task')).length === 0 && (
-                            <div className="text-center p-8 text-[var(--color-text-muted)] text-sm">
+                            <div className="pinned-tasks__empty-list">
                                 {pinnedFilter === 'all'
                                     ? t('pinnedTasks.empty.all')
                                     : pinnedFilter === 'task'
@@ -1182,25 +1175,22 @@ export const PinnedTasksModal = () => {
                                     className={`pinned-item-btn ${isSelected ? 'selected' : ''} ${isAdding ? 'adding' : ''}`}
                                 >
                                     <div className={`icon-box ${isFocus ? 'focused' : ''}`}>
-                                        <span className={`material-symbols-outlined text-[18px] ${!isFocus ? (isIssue ? 'text-indigo-500' : 'text-cyan-500') : ''}`}>
+                                        <span className={`material-symbols-outlined pinned-item-icon ${isFocus ? 'is-focus' : isIssue ? 'is-issue' : 'is-task'}`}>
                                             {isIssue ? 'bug_report' : 'task_alt'}
                                         </span>
                                         {isFocus && <div className="indicator-dot" />}
                                     </div>
                                     <div className="item-content">
-                                        <p className={`item-title ${isFocus ? 'text-amber-600 dark:text-amber-400' : ''}`}>
+                                        <p className={`item-title ${isFocus ? 'is-focus' : ''}`}>
                                             {item.title}
                                         </p>
                                         <div className="item-meta">
-                                            <span className="badge" style={{
-                                                backgroundColor: isFocus ? 'rgba(245, 158, 11, 0.1)' : (isIssue ? 'rgba(99, 102, 241, 0.1)' : 'rgba(6, 182, 212, 0.1)'),
-                                                color: isFocus ? '#d97706' : (isIssue ? '#4f46e5' : '#0891b2')
-                                            }}>
+                                            <span className={`item-type-badge ${isFocus ? 'is-focus' : isIssue ? 'is-issue' : 'is-task'}`}>
                                                 {itemTypeLabels[item.type] || item.type}
                                             </span>
 
                                             {item.priority && (
-                                                <span className="text-[9px] font-medium text-[var(--color-text-muted)]">
+                                                <span className="item-priority">
                                                     • {priorityLabels[item.priority] || item.priority}
                                                 </span>
                                             )}
@@ -1213,7 +1203,7 @@ export const PinnedTasksModal = () => {
                                         onClick={(e) => handleDeleteTask(e, item)}
                                         title={t('pinnedTasks.actions.delete')}
                                     >
-                                        <span className="material-symbols-outlined text-[16px]">delete</span>
+                                        <span className="material-symbols-outlined pinned-tasks__delete-icon">delete</span>
                                     </div>
                                 </button>
                             );
@@ -1228,7 +1218,7 @@ export const PinnedTasksModal = () => {
                             </div>
                         )}
 
-                        <div className="input-wrapper group">
+                        <div className="input-wrapper">
                             <input
                                 type="text"
                                 value={newTaskTitle}
@@ -1241,18 +1231,18 @@ export const PinnedTasksModal = () => {
                             />
                             <div className="icon-container">
                                 {isCreatingTask ? (
-                                    <div className="size-4 border-2 border-[var(--color-primary)]/30 border-t-[var(--color-primary)] rounded-full animate-spin" />
+                                    <div className="pinned-tasks__spinner-circle" />
                                 ) : (
-                                    <span className="material-symbols-outlined text-[18px] text-[var(--color-text-muted)] group-focus-within:text-[var(--color-primary)] transition-colors">
+                                    <span className="material-symbols-outlined pinned-tasks__add-icon">
                                         add_circle
                                     </span>
                                 )}
                             </div>
                         </div>
-                        <div className="mt-1 text-[10px] text-[var(--color-text-subtle)] px-2 flex justify-between items-center">
+                        <div className="pinned-tasks__hint">
                             <span>
                                 {pressEnterPrefix}
-                                <kbd className="font-mono bg-[var(--color-surface-card)] px-1 rounded">Enter</kbd>
+                                <kbd className="pinned-tasks__kbd">Enter</kbd>
                                 {pressEnterSuffix}
                             </span>
                         </div>
@@ -1281,31 +1271,8 @@ export const PinnedTasksModal = () => {
     );
 };
 
-const PriorityIcon = ({ priority }: { priority: string }) => {
-    const icons: Record<string, string> = {
-        'Urgent': 'error',
-        'High': 'keyboard_double_arrow_up',
-        'Medium': 'drag_handle',
-        'Low': 'keyboard_arrow_down',
-    };
-    const colors: Record<string, string> = {
-        'Urgent': 'text-rose-500',
-        'High': 'text-orange-500',
-        'Medium': 'text-blue-500',
-        'Low': 'text-slate-500',
-    };
-    return <span className={`material-symbols-outlined text-[18px] ${colors[priority]}`}>{icons[priority]}</span>;
-}
-
 const PriorityBadge = ({ priority }: { priority: string }) => {
     const { t } = useLanguage();
-    const styles: Record<string, string> = {
-        'Urgent': 'bg-rose-500/10 text-rose-500 border-rose-500/20',
-        'High': 'bg-amber-500/10 text-amber-500 border-amber-500/20',
-        'Medium': 'bg-blue-500/10 text-blue-500 border-blue-500/20',
-        'Low': 'bg-slate-500/10 text-slate-500 border-slate-500/20',
-    };
-
     const icons: Record<string, string> = {
         'Urgent': 'error',
         'High': 'keyboard_double_arrow_up',
@@ -1320,9 +1287,16 @@ const PriorityBadge = ({ priority }: { priority: string }) => {
         Low: t('tasks.priority.low')
     };
 
+    const priorityClass = (() => {
+        if (priority === 'Urgent') return 'priority-badge--urgent';
+        if (priority === 'High') return 'priority-badge--high';
+        if (priority === 'Low') return 'priority-badge--low';
+        return 'priority-badge--medium';
+    })();
+
     return (
-        <span className={`flex items-center gap-1 pl-2 pr-1 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest border ${styles[priority] || styles['Medium']}`}>
-            <span className="material-symbols-outlined text-[11px]">{icons[priority] || 'drag_handle'}</span>
+        <span className={`priority-badge ${priorityClass}`}>
+            <span className="material-symbols-outlined priority-badge__icon">{icons[priority] || 'drag_handle'}</span>
             <span>{priorityLabels[priority] || priority}</span>
         </span>
     );
