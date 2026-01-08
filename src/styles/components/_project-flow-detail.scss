@@ -10453,6 +10453,183 @@ html.dark .flow-paid-ads-live__visual-center span.material-symbols-outlined {
     }
 }
 
+.flow-moonshot-greenlight {
+    min-height: 100%;
+    background: var(--color-surface-bg);
+}
+
+.flow-moonshot-greenlight__grid {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: 1fr;
+}
+
+.flow-moonshot-greenlight__panel {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.flow-moonshot-greenlight__header {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    h2 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--color-text-main);
+    }
+
+    p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+    }
+}
+
+.flow-moonshot-greenlight__accent {
+    width: 40px;
+    height: 4px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary);
+}
+
+.flow-moonshot-greenlight__resource-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.flow-moonshot-greenlight__control {
+    width: 100%;
+}
+
+.flow-moonshot-greenlight__control--wide {
+    grid-column: span 2;
+}
+
+.flow-moonshot-greenlight__control--notes .text-area {
+    min-height: 160px;
+}
+
+.flow-moonshot-greenlight__panel--decision {
+    align-items: center;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.flow-moonshot-greenlight__panel--decision::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.1;
+    transition: opacity var(--transition-normal);
+}
+
+.flow-moonshot-greenlight__panel--decision[data-decision='GO']::before {
+    background: rgba(var(--color-success-rgb), 0.4);
+}
+
+.flow-moonshot-greenlight__panel--decision[data-decision='PIVOT']::before {
+    background: rgba(var(--color-warning-rgb), 0.4);
+}
+
+.flow-moonshot-greenlight__panel--decision[data-decision='NO-GO']::before {
+    background: rgba(var(--color-error-rgb), 0.4);
+}
+
+.flow-moonshot-greenlight__panel--decision h3 {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+    position: relative;
+    z-index: 1;
+}
+
+.flow-moonshot-greenlight__decision-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 100%;
+    position: relative;
+    z-index: 1;
+}
+
+.flow-moonshot-greenlight__decision {
+    border: none;
+    border-radius: var(--radius-xl);
+    padding: 16px;
+    background: var(--color-surface-hover);
+    color: var(--color-text-main);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    cursor: pointer;
+    text-align: left;
+    transition: background var(--transition-fast), transform var(--transition-fast), box-shadow var(--transition-fast);
+
+    span.material-symbols-outlined {
+        font-size: 32px;
+    }
+
+    &:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+    }
+}
+
+.flow-moonshot-greenlight__decision-title {
+    display: block;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.flow-moonshot-greenlight__decision-subtitle {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    margin-top: 4px;
+}
+
+.flow-moonshot-greenlight__decision.is-active[data-tone='success'] {
+    background: var(--color-success);
+    color: var(--color-text-ondark);
+}
+
+.flow-moonshot-greenlight__decision.is-active[data-tone='warning'] {
+    background: var(--color-warning);
+    color: var(--color-text-ondark);
+}
+
+.flow-moonshot-greenlight__decision.is-active[data-tone='error'] {
+    background: var(--color-error);
+    color: var(--color-text-ondark);
+}
+
+.flow-moonshot-greenlight__decision.is-active .flow-moonshot-greenlight__decision-subtitle {
+    color: var(--color-text-ondark);
+    opacity: 0.8;
+}
+
+.flow-moonshot-greenlight__initialize {
+    width: 100%;
+    position: relative;
+    z-index: 1;
+    justify-content: space-between;
+}
+
+@include mixins.mq('lg') {
+    .flow-moonshot-greenlight__grid {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    }
+}
+
 .review-timeline-modal {
     height: 100%;
     min-height: 0;

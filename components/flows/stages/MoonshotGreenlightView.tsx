@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Idea } from '../../../types';
-import { Button } from '../../ui/Button';
+import { Button } from '../../common/Button/Button';
+import { Card } from '../../common/Card/Card';
+import { TextArea } from '../../common/Input/TextArea';
+import { TextInput } from '../../common/Input/TextInput';
 import { useLanguage } from '../../../context/LanguageContext';
 
 interface MoonshotGreenlightViewProps {
@@ -17,6 +20,30 @@ interface GreenlightData {
     decision: 'GO' | 'NO-GO' | 'PIVOT' | 'PENDING';
     decisionNotes: string;
 }
+
+const DECISIONS = [
+    {
+        id: 'GO' as const,
+        labelKey: 'flowStages.moonshotGreenlight.decision.go.label',
+        subtitleKey: 'flowStages.moonshotGreenlight.decision.go.subtitle',
+        icon: 'check_circle',
+        tone: 'success'
+    },
+    {
+        id: 'PIVOT' as const,
+        labelKey: 'flowStages.moonshotGreenlight.decision.pivot.label',
+        subtitleKey: 'flowStages.moonshotGreenlight.decision.pivot.subtitle',
+        icon: 'shuffle',
+        tone: 'warning'
+    },
+    {
+        id: 'NO-GO' as const,
+        labelKey: 'flowStages.moonshotGreenlight.decision.noGo.label',
+        subtitleKey: 'flowStages.moonshotGreenlight.decision.noGo.subtitle',
+        icon: 'cancel',
+        tone: 'error'
+    }
+];
 
 export const MoonshotGreenlightView: React.FC<MoonshotGreenlightViewProps> = ({ idea, onUpdate }) => {
     const { t } = useLanguage();
@@ -51,125 +78,91 @@ export const MoonshotGreenlightView: React.FC<MoonshotGreenlightViewProps> = ({ 
                 [field]: value
             }
         });
-    }
+    };
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-            {/* Left Column: Summary & Resources */}
-            <div className="col-span-1 lg:col-span-2 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-surface shadow-sm p-6">
-                <div className="mb-6">
-                    <h2 className="text-xl font-extrabold text-main tracking-tight">{t('flowStages.moonshotGreenlight.title')}</h2>
-                    <p className="text-xs text-muted mt-1">{t('flowStages.moonshotGreenlight.subtitle')}</p>
-                    <div className="h-1 w-10 bg-lime-500 rounded-full mt-3" />
-                </div>
+        <div className="flow-moonshot-greenlight">
+            <div className="flow-moonshot-greenlight__grid">
+                <Card className="flow-moonshot-greenlight__panel flow-moonshot-greenlight__panel--main">
+                    <div className="flow-moonshot-greenlight__header">
+                        <div>
+                            <h2>{t('flowStages.moonshotGreenlight.title')}</h2>
+                            <p>{t('flowStages.moonshotGreenlight.subtitle')}</p>
+                        </div>
+                        <div className="flow-moonshot-greenlight__accent" />
+                    </div>
 
-                <div className="grid grid-cols-2 gap-4 mb-8">
-                    <div className="p-4 rounded-xl bg-surface border border-surface space-y-2">
-                        <label className="text-xs font-bold text-muted uppercase">{t('flowStages.moonshotGreenlight.resources.budget')}</label>
-                        <input
+                    <div className="flow-moonshot-greenlight__resource-grid">
+                        <TextInput
+                            label={t('flowStages.moonshotGreenlight.resources.budget')}
                             value={data.resourceReqs.budget}
-                            onChange={(e) => updateResource('budget', e.target.value)}
+                            onChange={(event) => updateResource('budget', event.target.value)}
                             placeholder={t('flowStages.moonshotGreenlight.resources.budgetPlaceholder')}
-                            className="w-full bg-transparent border-none p-0 text-xl font-bold text-main placeholder-[var(--color-text-subtle)] focus:ring-0"
+                            className="flow-moonshot-greenlight__control"
                         />
-                    </div>
-                    <div className="p-4 rounded-xl bg-surface border border-surface space-y-2">
-                        <label className="text-xs font-bold text-muted uppercase">{t('flowStages.moonshotGreenlight.resources.team')}</label>
-                        <input
+                        <TextInput
+                            label={t('flowStages.moonshotGreenlight.resources.team')}
                             value={data.resourceReqs.personnel}
-                            onChange={(e) => updateResource('personnel', e.target.value)}
+                            onChange={(event) => updateResource('personnel', event.target.value)}
                             placeholder={t('flowStages.moonshotGreenlight.resources.teamPlaceholder')}
-                            className="w-full bg-transparent border-none p-0 text-xl font-bold text-main placeholder-[var(--color-text-subtle)] focus:ring-0"
+                            className="flow-moonshot-greenlight__control"
                         />
-                    </div>
-                    <div className="col-span-2 p-4 rounded-xl bg-surface border border-surface space-y-2">
-                        <label className="text-xs font-bold text-muted uppercase">{t('flowStages.moonshotGreenlight.resources.timeline')}</label>
-                        <input
+                        <TextInput
+                            label={t('flowStages.moonshotGreenlight.resources.timeline')}
                             value={data.resourceReqs.timeline}
-                            onChange={(e) => updateResource('timeline', e.target.value)}
+                            onChange={(event) => updateResource('timeline', event.target.value)}
                             placeholder={t('flowStages.moonshotGreenlight.resources.timelinePlaceholder')}
-                            className="w-full bg-transparent border-none p-0 text-xl font-bold text-main placeholder-[var(--color-text-subtle)] focus:ring-0"
+                            className="flow-moonshot-greenlight__control flow-moonshot-greenlight__control--wide"
                         />
                     </div>
-                </div>
 
-                <div className="flex-1 flex flex-col">
-                    <label className="text-xs font-bold text-muted uppercase mb-2">{t('flowStages.moonshotGreenlight.notes.label')}</label>
-                    <textarea
+                    <TextArea
+                        label={t('flowStages.moonshotGreenlight.notes.label')}
                         value={data.decisionNotes}
-                        onChange={(e) => updateData({ decisionNotes: e.target.value })}
-                        className="flex-1 w-full bg-surface border border-surface rounded-xl p-4 focus:ring-1 focus:ring-lime-500 outline-none resize-none leading-relaxed"
+                        onChange={(event) => updateData({ decisionNotes: event.target.value })}
                         placeholder={t('flowStages.moonshotGreenlight.notes.placeholder')}
+                        className="flow-moonshot-greenlight__control flow-moonshot-greenlight__control--notes"
                     />
-                </div>
-            </div>
+                </Card>
 
-            {/* Right Column: The Big Button */}
-            <div className="col-span-1 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-surface shadow-sm p-6 items-center justify-center text-center relative overflow-hidden">
-                {/* Background Glow based on decision */}
-                <div className={`absolute inset-0 opacity-10 pointer-events-none transition-colors duration-500 ${data.decision === 'GO' ? 'bg-lime-500' :
-                        data.decision === 'NO-GO' ? 'bg-rose-500' :
-                            data.decision === 'PIVOT' ? 'bg-amber-500' : 'bg-transparent'
-                    }`} />
+                <Card className="flow-moonshot-greenlight__panel flow-moonshot-greenlight__panel--decision" data-decision={data.decision}>
+                    <h3>{t('flowStages.moonshotGreenlight.verdict.title')}</h3>
+                    <div className="flow-moonshot-greenlight__decision-list">
+                        {DECISIONS.map((decision) => {
+                            const isActive = data.decision === decision.id;
+                            return (
+                                <button
+                                    key={decision.id}
+                                    type="button"
+                                    onClick={() => updateData({ decision: decision.id })}
+                                    className={`flow-moonshot-greenlight__decision ${isActive ? 'is-active' : ''}`}
+                                    data-tone={decision.tone}
+                                >
+                                    <div>
+                                        <span className="flow-moonshot-greenlight__decision-title">
+                                            {t(decision.labelKey)}
+                                        </span>
+                                        <span className="flow-moonshot-greenlight__decision-subtitle">
+                                            {t(decision.subtitleKey)}
+                                        </span>
+                                    </div>
+                                    <span className="material-symbols-outlined">{decision.icon}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
 
-                <h3 className="text-lg font-bold text-main mb-8">{t('flowStages.moonshotGreenlight.verdict.title')}</h3>
-
-                <div className="flex flex-col gap-4 w-full max-w-xs relative z-10">
-                    <button
-                        onClick={() => updateData({ decision: 'GO' })}
-                        className={`p-6 rounded-2xl border-2 transition-all duration-300 flex items-center justify-between group ${data.decision === 'GO'
-                                ? 'bg-lime-500 border-lime-500 text-white shadow-lg scale-105'
-                                : 'bg-white dark:bg-slate-800 border-lime-200 dark:border-lime-900/50 text-lime-600 dark:text-lime-400 hover:border-lime-400 hover:bg-lime-50 dark:hover:bg-lime-900/10'
-                            }`}
-                    >
-                        <div className="text-left">
-                            <span className="block text-2xl font-black tracking-tight">{t('flowStages.moonshotGreenlight.decision.go.label')}</span>
-                            <span className="text-xs opacity-90">{t('flowStages.moonshotGreenlight.decision.go.subtitle')}</span>
-                        </div>
-                        <span className="material-symbols-outlined text-4xl">check_circle</span>
-                    </button>
-
-                    <button
-                        onClick={() => updateData({ decision: 'PIVOT' })}
-                        className={`p-4 rounded-2xl border-2 transition-all duration-300 flex items-center justify-between group ${data.decision === 'PIVOT'
-                                ? 'bg-amber-500 border-amber-500 text-white shadow-lg scale-105'
-                                : 'bg-white dark:bg-slate-800 border-amber-200 dark:border-amber-900/50 text-amber-600 dark:text-amber-400 hover:border-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/10'
-                            }`}
-                    >
-                        <div className="text-left">
-                            <span className="block text-xl font-black tracking-tight">{t('flowStages.moonshotGreenlight.decision.pivot.label')}</span>
-                            <span className="text-xs opacity-90">{t('flowStages.moonshotGreenlight.decision.pivot.subtitle')}</span>
-                        </div>
-                        <span className="material-symbols-outlined text-3xl">shuffle</span>
-                    </button>
-
-                    <button
-                        onClick={() => updateData({ decision: 'NO-GO' })}
-                        className={`p-4 rounded-2xl border-2 transition-all duration-300 flex items-center justify-between group ${data.decision === 'NO-GO'
-                                ? 'bg-rose-500 border-rose-500 text-white shadow-lg scale-105'
-                                : 'bg-white dark:bg-slate-800 border-rose-200 dark:border-rose-900/50 text-rose-600 dark:text-rose-400 hover:border-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/10'
-                            }`}
-                    >
-                        <div className="text-left">
-                            <span className="block text-xl font-black tracking-tight">{t('flowStages.moonshotGreenlight.decision.noGo.label')}</span>
-                            <span className="text-xs opacity-90">{t('flowStages.moonshotGreenlight.decision.noGo.subtitle')}</span>
-                        </div>
-                        <span className="material-symbols-outlined text-3xl">cancel</span>
-                    </button>
-                </div>
-
-                {data.decision === 'GO' && (
-                    <div className="mt-8 animate-in fade-in slide-in-from-bottom-4">
+                    {data.decision === 'GO' && (
                         <Button
-                            className="bg-[var(--color-text-main)] text-[var(--color-surface-bg)] hover:opacity-90 shadow-xl"
-                            // Handle convert logic here or pass up
-                            onClick={() => onUpdate({ stage: 'Approved' })} // Assuming Approved is a subsequent state or mapped
+                            className="flow-moonshot-greenlight__initialize"
+                            onClick={() => onUpdate({ stage: 'Approved' })}
+                            icon={<span className="material-symbols-outlined">rocket_launch</span>}
+                            iconPosition="right"
                         >
                             {t('flowStages.moonshotGreenlight.actions.initialize')}
-                            <span className="material-symbols-outlined ml-2">rocket_launch</span>
                         </Button>
-                    </div>
-                )}
+                    )}
+                </Card>
             </div>
         </div>
     );
