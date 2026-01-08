@@ -5892,6 +5892,504 @@
     gap: 8px;
 }
 
+.flow-social-campaign-review {
+    min-height: 100%;
+    background: var(--color-surface-bg);
+    padding-bottom: 96px;
+}
+
+.flow-social-campaign-review__container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.flow-social-campaign-review__hero {
+    position: relative;
+    padding: 32px;
+    border-radius: var(--radius-2xl);
+    background: linear-gradient(135deg, rgba(var(--color-primary-rgb), 0.12), rgba(var(--color-surface-card-rgb), 0.96));
+    box-shadow: var(--shadow-soft);
+    overflow: hidden;
+    min-height: 260px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+.flow-social-campaign-review__hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 90% 0%, rgba(var(--color-primary-rgb), 0.22), transparent 55%),
+        radial-gradient(circle at 0% 100%, rgba(var(--color-primary-rgb), 0.16), transparent 60%);
+    opacity: 0.9;
+}
+
+.flow-social-campaign-review__hero-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-width: 720px;
+}
+
+.flow-social-campaign-review__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--color-primary);
+    background: rgba(var(--color-primary-rgb), 0.12);
+    width: fit-content;
+}
+
+.flow-social-campaign-review__status[data-status='approved'] {
+    color: var(--color-success);
+    background: rgba(var(--color-success-rgb), 0.16);
+}
+
+.flow-social-campaign-review__status[data-status='reviewer-pending'],
+.flow-social-campaign-review__status[data-status='creator-changes-requested'] {
+    color: var(--color-warning);
+    background: rgba(var(--color-warning-rgb), 0.16);
+}
+
+.flow-social-campaign-review__status[data-status='rejected'] {
+    color: var(--color-error);
+    background: rgba(var(--color-error-rgb), 0.16);
+}
+
+.flow-social-campaign-review__status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--radius-full);
+    background: var(--color-text-subtle);
+}
+
+.flow-social-campaign-review__status-dot[data-status='approved'] {
+    background: var(--color-success);
+}
+
+.flow-social-campaign-review__status-dot[data-status='reviewer-pending'],
+.flow-social-campaign-review__status-dot[data-status='creator-changes-requested'] {
+    background: var(--color-warning);
+    animation: review-status-pulse 1.6s ease-in-out infinite;
+}
+
+.flow-social-campaign-review__status-dot[data-status='rejected'] {
+    background: var(--color-error);
+}
+
+.flow-social-campaign-review__title {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+.flow-social-campaign-review__description {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--color-text-muted);
+}
+
+.flow-social-campaign-review__grid {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: 1fr;
+}
+
+.flow-social-campaign-review__timeline {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.flow-social-campaign-review__timeline-header {
+    h3 {
+        margin: 0;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--color-text-muted);
+    }
+}
+
+.flow-social-campaign-review__timeline-list {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding-left: 8px;
+}
+
+.flow-social-campaign-review__timeline-list::before {
+    content: '';
+    position: absolute;
+    left: 24px;
+    top: 10px;
+    bottom: 10px;
+    width: 2px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-border);
+}
+
+.flow-social-campaign-review__timeline-item {
+    --timeline-accent: var(--color-primary);
+    --timeline-soft: rgba(var(--color-primary-rgb), 0.1);
+    --timeline-strong: rgba(var(--color-primary-rgb), 0.2);
+
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: 16px;
+    align-items: start;
+}
+
+.flow-social-campaign-review__timeline-item[data-tone='warning'] {
+    --timeline-accent: var(--color-warning);
+    --timeline-soft: rgba(var(--color-warning-rgb), 0.12);
+    --timeline-strong: rgba(var(--color-warning-rgb), 0.2);
+}
+
+.flow-social-campaign-review__timeline-item[data-tone='success'] {
+    --timeline-accent: var(--color-success);
+    --timeline-soft: rgba(var(--color-success-rgb), 0.12);
+    --timeline-strong: rgba(var(--color-success-rgb), 0.2);
+}
+
+.flow-social-campaign-review__timeline-item[data-tone='neutral'] {
+    --timeline-accent: var(--color-text-subtle);
+    --timeline-soft: var(--color-surface-hover);
+    --timeline-strong: rgba(var(--color-surface-hover-rgb), 0.8);
+}
+
+.flow-social-campaign-review__timeline-item[data-tone='danger'] {
+    --timeline-accent: var(--color-error);
+    --timeline-soft: rgba(var(--color-error-rgb), 0.12);
+    --timeline-strong: rgba(var(--color-error-rgb), 0.2);
+}
+
+.flow-social-campaign-review__timeline-index {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-full);
+    background: var(--timeline-strong);
+    color: var(--timeline-accent);
+    font-size: 0.95rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.flow-social-campaign-review__timeline-body {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    h4 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--color-text-main);
+    }
+
+    p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+    }
+}
+
+.flow-social-campaign-review__timeline-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.flow-social-campaign-review__timeline-duration {
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-hover);
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+}
+
+.flow-social-campaign-review__intelligence {
+    padding: 24px;
+    background: var(--color-primary);
+    color: var(--color-text-ondark);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.flow-social-campaign-review__intelligence-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.flow-social-campaign-review__eyebrow {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.flow-social-campaign-review__subtext {
+    margin: 6px 0 0;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.flow-social-campaign-review__intelligence-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-full);
+    background: rgba(255, 255, 255, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+}
+
+.flow-social-campaign-review__score {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.flow-social-campaign-review__score-ring {
+    position: relative;
+    width: 160px;
+    height: 160px;
+
+    svg {
+        width: 100%;
+        height: 100%;
+        transform: rotate(-90deg);
+    }
+}
+
+.flow-social-campaign-review__ring-base {
+    stroke: rgba(255, 255, 255, 0.12);
+}
+
+.flow-social-campaign-review__ring-progress {
+    stroke: var(--color-success);
+    opacity: 0;
+    transition: stroke-dashoffset 800ms ease, opacity 300ms ease;
+}
+
+.flow-social-campaign-review__ring-progress.is-visible {
+    opacity: 1;
+}
+
+.flow-social-campaign-review__score-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    text-align: center;
+
+    strong {
+        font-size: 2.1rem;
+        font-weight: 700;
+        color: var(--color-text-ondark);
+    }
+
+    span {
+        font-size: 0.6rem;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: rgba(255, 255, 255, 0.55);
+    }
+}
+
+.flow-social-campaign-review__intelligence-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.flow-social-campaign-review__win-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.flow-social-campaign-review__win {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: var(--radius-lg);
+    background: rgba(var(--color-success-rgb), 0.16);
+    color: var(--color-success);
+    font-size: 0.75rem;
+    font-weight: 600;
+
+    span.material-symbols-outlined {
+        font-size: 16px;
+    }
+}
+
+.flow-social-campaign-review__analyze {
+    width: 100%;
+    justify-content: center;
+    font-weight: 600;
+}
+
+.flow-social-campaign-review__dna {
+    padding: 20px;
+}
+
+.flow-social-campaign-review__dna-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: 1fr;
+}
+
+.flow-social-campaign-review__dna-block {
+    padding: 16px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-hover);
+
+    h4 {
+        margin: 0 0 8px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--color-text-subtle);
+    }
+
+    p {
+        margin: 0;
+        font-size: 0.95rem;
+        color: var(--color-text-main);
+    }
+}
+
+.flow-social-campaign-review__platforms {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.flow-social-campaign-review__platform {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-card);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-sm);
+}
+
+.flow-social-campaign-review__dock {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(var(--color-surface-card-rgb), 0.92);
+    backdrop-filter: blur(12px);
+    border-radius: var(--radius-full);
+    box-shadow: var(--shadow-lg);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    z-index: 40;
+    max-width: calc(100% - 32px);
+}
+
+.flow-social-campaign-review__dock-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-text-subtle);
+}
+
+.flow-social-campaign-review__dock-divider {
+    width: 1px;
+    height: 20px;
+    background: var(--color-surface-border);
+}
+
+.flow-social-campaign-review__dock-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.flow-social-campaign-review__dock-button {
+    border-radius: var(--radius-full);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.flow-social-campaign-review__reject-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+
+    p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+    }
+}
+
+.flow-social-campaign-review__reject-input {
+    .text-area {
+        min-height: 140px;
+        resize: vertical;
+    }
+}
+
+@keyframes review-status-pulse {
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+    50% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+}
+
 @include mixins.mq('md') {
     .flow-social-campaign-strategy__hero,
     .flow-social-campaign-planning__hero,
@@ -5931,6 +6429,18 @@
 
     .flow-social-campaign-submit__analysis-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .flow-social-campaign-review__grid {
+        grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);
+    }
+
+    .flow-social-campaign-review__dna-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .flow-social-campaign-review__dock {
+        flex-wrap: nowrap;
     }
 }
 
