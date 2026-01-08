@@ -6682,6 +6682,430 @@ html.dark .flow-paid-ads-brief__summary {
     }
 }
 
+.flow-paid-ads-budget {
+    min-height: 100%;
+    background: var(--color-surface-bg);
+}
+
+.flow-paid-ads-budget__container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.flow-paid-ads-budget__hero {
+    padding: 24px;
+    border-radius: var(--radius-2xl);
+    background: var(--color-surface-card);
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+}
+
+.flow-paid-ads-budget__hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 15% 0%, rgba(var(--color-primary-rgb), 0.14), transparent 55%),
+        radial-gradient(circle at 90% 90%, rgba(var(--color-primary-rgb), 0.1), transparent 60%);
+}
+
+.flow-paid-ads-budget__hero-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.flow-paid-ads-budget__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    font-size: 0.55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    background: var(--color-primary);
+    color: var(--color-primary-text);
+    width: fit-content;
+}
+
+.flow-paid-ads-budget__title {
+    margin: 0;
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+.flow-paid-ads-budget__hero-icon {
+    position: relative;
+    z-index: 1;
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-xl);
+    background: var(--color-surface-hover);
+    color: var(--color-text-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    span.material-symbols-outlined {
+        font-size: 28px;
+    }
+}
+
+.flow-paid-ads-budget__grid {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: 1fr;
+}
+
+.flow-paid-ads-budget__main,
+.flow-paid-ads-budget__aside {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.flow-paid-ads-budget__panel {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.flow-paid-ads-budget__panel-title {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--color-text-muted);
+}
+
+.flow-paid-ads-budget__panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    h3 {
+        margin: 0;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--color-text-muted);
+    }
+}
+
+.flow-paid-ads-budget__row {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: 1fr;
+}
+
+.flow-paid-ads-budget__field {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.flow-paid-ads-budget__field-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.flow-paid-ads-budget__label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--color-text-subtle);
+}
+
+.flow-paid-ads-budget__hint {
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-hover);
+    font-size: 0.55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-text-muted);
+}
+
+.flow-paid-ads-budget__segmented {
+    display: flex;
+    gap: 6px;
+    padding: 4px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-hover);
+}
+
+.flow-paid-ads-budget__segment {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 6px 10px;
+    border-radius: var(--radius-full);
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    transition: background-color var(--transition-fast), color var(--transition-fast);
+
+    &.is-active {
+        background: var(--color-primary);
+        color: var(--color-primary-text);
+    }
+}
+
+.flow-paid-ads-budget__control {
+    .text-input-group__label {
+        font-size: 0.6rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.16em;
+        color: var(--color-text-subtle);
+    }
+
+    .text-input {
+        font-size: 0.85rem;
+    }
+}
+
+.flow-paid-ads-budget__currency {
+    font-size: 0.85rem;
+    font-weight: 700;
+}
+
+.flow-paid-ads-budget__strategy-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.flow-paid-ads-budget__strategy {
+    border: none;
+    background: var(--color-surface-card);
+    border-radius: var(--radius-xl);
+    padding: 12px;
+    display: flex;
+    gap: 12px;
+    text-align: left;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+    transition: box-shadow var(--transition-fast), transform var(--transition-fast), background-color var(--transition-fast);
+
+    &:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+    }
+
+    &.is-active {
+        background: var(--color-surface-hover);
+        box-shadow: var(--shadow-md);
+    }
+}
+
+.flow-paid-ads-budget__strategy-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-hover);
+    color: var(--color-text-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    span.material-symbols-outlined {
+        font-size: 18px;
+    }
+}
+
+.flow-paid-ads-budget__strategy-title {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-text-main);
+    margin-bottom: 4px;
+}
+
+.flow-paid-ads-budget__strategy-description {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+    line-height: 1.4;
+}
+
+.flow-paid-ads-budget__duration {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-hover);
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--color-text-muted);
+
+    span.material-symbols-outlined {
+        font-size: 14px;
+    }
+}
+
+.flow-paid-ads-budget__field-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: 1fr;
+}
+
+.flow-paid-ads-budget__summary {
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.flow-paid-ads-budget__summary-header h3 {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--color-text-muted);
+}
+
+.flow-paid-ads-budget__summary-amount {
+    padding: 18px;
+    border-radius: var(--radius-xl);
+    background: var(--color-surface-hover);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    box-shadow: var(--shadow-sm);
+}
+
+.flow-paid-ads-budget__summary-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+.flow-paid-ads-budget__summary-type {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--color-text-subtle);
+}
+
+.flow-paid-ads-budget__summary-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.flow-paid-ads-budget__summary-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.flow-paid-ads-budget__summary-item span:last-child {
+    color: var(--color-text-main);
+    font-weight: 600;
+}
+
+.flow-paid-ads-budget__advance {
+    width: 100%;
+    justify-content: space-between;
+}
+
+.flow-paid-ads-budget__insight {
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    background: var(--color-surface-hover);
+    box-shadow: var(--shadow-sm);
+}
+
+.flow-paid-ads-budget__insight-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    h4 {
+        margin: 0;
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--color-text-muted);
+    }
+}
+
+.flow-paid-ads-budget__insight-action {
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    font-size: 0.55rem;
+    font-weight: 700;
+}
+
+.flow-paid-ads-budget__insight-text {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+    line-height: 1.5;
+}
+
+@include mixins.mq('md') {
+    .flow-paid-ads-budget__row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .flow-paid-ads-budget__field-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@include mixins.mq('lg') {
+    .flow-paid-ads-budget__grid {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    }
+
+    .flow-paid-ads-budget__hero {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
 .flow-paid-ads-targeting {
     min-height: 100%;
     background: var(--color-surface-bg);
