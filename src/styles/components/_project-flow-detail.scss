@@ -9984,6 +9984,202 @@ html.dark .flow-paid-ads-live__visual-center span.material-symbols-outlined {
     }
 }
 
+.flow-marketing-execution {
+    min-height: 100%;
+    background: var(--color-surface-bg);
+}
+
+.flow-marketing-execution__container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.flow-marketing-execution__grid {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: 1fr;
+}
+
+.flow-marketing-execution__panel {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.flow-marketing-execution__title {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+.flow-marketing-execution__subtitle {
+    margin: 4px 0 0;
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}
+
+.flow-marketing-execution__header {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.flow-marketing-execution__status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 6px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-hover);
+    width: fit-content;
+}
+
+.flow-marketing-execution__status-pill {
+    border: none;
+    padding: 6px 14px;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    background: transparent;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast);
+
+    &:hover {
+        color: var(--color-text-main);
+    }
+
+    &.is-active {
+        background: var(--color-surface-card);
+        color: var(--color-text-main);
+        box-shadow: var(--shadow-sm);
+    }
+}
+
+.flow-marketing-execution__date-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.flow-marketing-execution__list-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.flow-marketing-execution__list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.flow-marketing-execution__label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--color-text-subtle);
+}
+
+.flow-marketing-execution__list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.flow-marketing-execution__empty {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+.flow-marketing-execution__control {
+    width: 100%;
+}
+
+.flow-marketing-execution__footer {
+    margin-top: auto;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.flow-marketing-execution__advance {
+    justify-content: space-between;
+}
+
+.flow-marketing-execution__panel-title {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--color-text-muted);
+}
+
+.flow-marketing-execution__budget {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.flow-marketing-execution__budget-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+.flow-marketing-execution__currency {
+    font-size: 0.85rem;
+    color: var(--color-text-subtle);
+}
+
+.flow-marketing-execution__converted {
+    padding: 32px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    text-align: center;
+}
+
+.flow-marketing-execution__converted-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: var(--radius-full);
+    background: rgba(var(--color-success-rgb), 0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-success);
+
+    span.material-symbols-outlined {
+        font-size: 32px;
+    }
+}
+
+.flow-marketing-execution__converted-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+}
+
+@include mixins.mq('lg') {
+    .flow-marketing-execution__grid {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    }
+
+    .flow-marketing-execution__header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+}
+
 .review-timeline-modal {
     height: 100%;
     min-height: 0;
