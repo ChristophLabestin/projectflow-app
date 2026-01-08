@@ -158,7 +158,7 @@ These are outside the Social module shell in the old routing.
 
 ## 6) Shared Components (SCSS migration tracker)
 
-- [ ] components/PinnedTasksModal.tsx - Pinned tasks modal
+- [x] components/PinnedTasksModal.tsx - Pinned tasks modal (SCSS)
 - [ ] components/SettingsModal.tsx - App settings modal (legacy UI)
 - [ ] components/MediaLibrary/MediaLibraryModal.tsx - Media library modal
 - [ ] components/GroupCreateModal.tsx - Group create modal
