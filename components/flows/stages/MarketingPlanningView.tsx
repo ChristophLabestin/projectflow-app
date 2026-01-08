@@ -1,7 +1,12 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Idea } from '../../../types';
-import { Button } from '../../ui/Button';
-import { DatePicker } from '../../ui/DatePicker';
+import { Button } from '../../common/Button/Button';
+import { Card } from '../../common/Card/Card';
+import { Checkbox } from '../../common/Checkbox/Checkbox';
+import { DatePicker } from '../../common/DateTime/DatePicker';
+import { Select } from '../../common/Select/Select';
+import { TextArea } from '../../common/Input/TextArea';
+import { TextInput } from '../../common/Input/TextInput';
 import { createEmailCampaignFromIdea, createAdCampaignFromIdea } from '../../../services/marketingService';
 import { auth } from '../../../services/firebase';
 import { useNavigate } from 'react-router-dom';
@@ -13,19 +18,14 @@ interface MarketingPlanningViewProps {
 }
 
 interface MarketingPlan {
-    // Email Specifics
     emailSenderName: string;
-    emailSubjectLines: string[]; // For A/B testing
+    emailSubjectLines: string[];
     emailPreheader: string;
-
-    // Ads Specifics
-    adPlatform: string; // Google, Meta, LinkedIn, etc.
+    adPlatform: string;
     dailyBudget: string;
     adHeadlines: string[];
-    adCreativeType: string; // Image, Video, Carousel
-
-    // General
-    audienceCriteria: string; // Detailed targeting (kept as text for flexibility)
+    adCreativeType: string;
+    audienceCriteria: string;
     assetsRequired: { name: string; done: boolean }[];
     timelineStart: string;
     timelineEnd: string;
@@ -79,7 +79,6 @@ export const MarketingPlanningView: React.FC<MarketingPlanningViewProps> = ({ id
         onUpdate({ concept: JSON.stringify(newData) });
     };
 
-    // Helper for array management
     const addToArray = (field: 'emailSubjectLines' | 'adHeadlines') => {
         updatePlan({ [field]: [...plan[field], ''] });
     };
@@ -102,9 +101,6 @@ export const MarketingPlanningView: React.FC<MarketingPlanningViewProps> = ({ id
         updatePlan({ assetsRequired: newAssets });
     };
 
-
-
-
     const navigate = useNavigate();
     const [isConverting, setIsConverting] = useState(false);
 
@@ -126,299 +122,281 @@ export const MarketingPlanningView: React.FC<MarketingPlanningViewProps> = ({ id
                 campaignId = await createAdCampaignFromIdea(idea.projectId, { id: idea.id, concept: idea.concept, title: idea.title });
             }
 
-            // Update idea with conversion info
             onUpdate({
                 convertedCampaignId: campaignId,
                 campaignType: type,
-                stage: 'Execution' // Auto-advance to Execution
+                stage: 'Execution'
             });
-
-            // Optional: Show success notification
         } catch (error) {
-            console.error("Failed to convert campaign", error);
+            console.error('Failed to convert campaign', error);
         } finally {
             setIsConverting(false);
         }
     };
-
 
     const [activeTab, setActiveTab] = useState<'Email' | 'Ads'>('Email');
     const tabLabels: Record<'Email' | 'Ads', string> = {
         Email: t('flowStages.marketingPlanning.tabs.email'),
         Ads: t('flowStages.marketingPlanning.tabs.ads'),
     };
-    const adPlatformOptions = [
+
+    const adPlatformOptions = useMemo(() => [
         { value: 'Google Ads', label: t('flowStages.marketingPlanning.ads.platform.google') },
         { value: 'Meta (FB/Insta)', label: t('flowStages.marketingPlanning.ads.platform.meta') },
         { value: 'LinkedIn Ads', label: t('flowStages.marketingPlanning.ads.platform.linkedin') },
         { value: 'Twitter / X', label: t('flowStages.marketingPlanning.ads.platform.x') },
         { value: 'TikTok Ads', label: t('flowStages.marketingPlanning.ads.platform.tiktok') },
-    ];
-    const adFormatOptions = [
+    ], [t]);
+
+    const adFormatOptions = useMemo(() => [
         { value: 'Image', label: t('flowStages.marketingPlanning.ads.format.image') },
         { value: 'Video', label: t('flowStages.marketingPlanning.ads.format.video') },
         { value: 'Carousel', label: t('flowStages.marketingPlanning.ads.format.carousel') },
         { value: 'Text Only', label: t('flowStages.marketingPlanning.ads.format.textOnly') },
-    ];
+    ], [t]);
 
+    const timelineStartDate = plan.timelineStart ? new Date(plan.timelineStart) : null;
+    const timelineEndDate = plan.timelineEnd ? new Date(plan.timelineEnd) : null;
+
+    const actionLabel = isConverting
+        ? t('flowStages.marketingPlanning.actions.creating')
+        : idea.convertedCampaignId
+            ? t('flowStages.marketingPlanning.actions.created')
+            : t('flowStages.marketingPlanning.actions.createAndNext');
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
-            {/* Left: Planning Configuration */}
-            <div className="col-span-1 lg:col-span-2 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-surface shadow-sm p-6 overflow-hidden">
-                <div className="mb-6 flex items-center justify-between">
-                    <div>
-                        <h2 className="text-xl font-extrabold text-main tracking-tight">{t('flowStages.marketingPlanning.title')}</h2>
-                        <p className="text-xs text-muted mt-1">{t('flowStages.marketingPlanning.subtitle')}</p>
-                    </div>
-                    {/* Channel Switcher */}
-                    <div className="flex bg-surface rounded-lg p-1 border border-surface">
-                        <button
-                            onClick={() => setActiveTab('Email')}
-                            className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-2 ${activeTab === 'Email'
-                                ? 'bg-white shadow text-purple-600'
-                                : 'text-muted hover:text-main'}`}
-                        >
-                            <span className="material-symbols-outlined text-[16px]">mail</span>
-                            {tabLabels.Email}
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('Ads')}
-                            className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all flex items-center gap-2 ${activeTab === 'Ads'
-                                ? 'bg-white shadow text-purple-600'
-                                : 'text-muted hover:text-main'}`}
-                        >
-                            <span className="material-symbols-outlined text-[16px]">ads_click</span>
-                            {tabLabels.Ads}
-                        </button>
-                    </div>
-                </div>
-
-                <div className="flex-1 overflow-y-auto pr-2">
-                    {activeTab === 'Email' ? (
-                        <div className="space-y-6 animate-fadeIn">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.email.sender.label')}</label>
-                                    <input
-                                        type="text"
-                                        value={plan.emailSenderName}
-                                        onChange={(e) => updatePlan({ emailSenderName: e.target.value })}
-                                        className="w-full text-sm bg-surface border border-surface rounded-lg px-3 py-2.5 outline-none focus:ring-1 focus:ring-purple-500"
-                                        placeholder={t('flowStages.marketingPlanning.email.sender.placeholder')}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.email.preheader.label')}</label>
-                                    <input
-                                        type="text"
-                                        value={plan.emailPreheader}
-                                        onChange={(e) => updatePlan({ emailPreheader: e.target.value })}
-                                        className="w-full text-sm bg-surface border border-surface rounded-lg px-3 py-2.5 outline-none focus:ring-1 focus:ring-purple-500"
-                                        placeholder={t('flowStages.marketingPlanning.email.preheader.placeholder')}
-                                    />
-                                </div>
+        <div className="flow-marketing-planning">
+            <div className="flow-marketing-planning__container">
+                <div className="flow-marketing-planning__grid">
+                    <Card className="flow-marketing-planning__panel flow-marketing-planning__panel--main">
+                        <div className="flow-marketing-planning__header">
+                            <div>
+                                <h2 className="flow-marketing-planning__title">{t('flowStages.marketingPlanning.title')}</h2>
+                                <p className="flow-marketing-planning__subtitle">{t('flowStages.marketingPlanning.subtitle')}</p>
                             </div>
-
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <label className="text-xs font-bold text-muted uppercase tracking-wider">{t('flowStages.marketingPlanning.email.subjects.label')}</label>
-                                    <button onClick={() => addToArray('emailSubjectLines')} className="text-xs text-purple-600 font-medium hover:text-purple-700">
-                                        {t('flowStages.marketingPlanning.email.subjects.add')}
+                            <div className="flow-marketing-planning__tabs">
+                                {(['Email', 'Ads'] as const).map((tab) => (
+                                    <button
+                                        key={tab}
+                                        type="button"
+                                        onClick={() => setActiveTab(tab)}
+                                        className={`flow-marketing-planning__tab ${activeTab === tab ? 'is-active' : ''}`}
+                                    >
+                                        <span className="material-symbols-outlined">
+                                            {tab === 'Email' ? 'mail' : 'ads_click'}
+                                        </span>
+                                        {tabLabels[tab]}
                                     </button>
-                                </div>
-                                {plan.emailSubjectLines.length === 0 && <p className="text-xs text-muted italic">{t('flowStages.marketingPlanning.email.subjects.empty')}</p>}
-                                {plan.emailSubjectLines.map((line, idx) => (
-                                    <div key={idx} className="flex gap-2">
-                                        <div className="flex items-center justify-center size-9 bg-surface border border-surface rounded-lg text-xs font-bold text-muted">
-                                            {String.fromCharCode(65 + idx)}
-                                        </div>
-                                        <input
-                                            type="text"
-                                            value={line}
-                                            onChange={(e) => updateArrayItem('emailSubjectLines', idx, e.target.value)}
-                                            className="flex-1 text-sm bg-surface border border-surface rounded-lg px-3 py-2 outline-none focus:border-purple-500"
-                                            placeholder={t('flowStages.marketingPlanning.email.subjects.placeholder')}
-                                        />
-                                        <button onClick={() => removeArrayItem('emailSubjectLines', idx)} className="text-muted hover:text-rose-500 px-2">
-                                            <span className="material-symbols-outlined text-sm">close</span>
-                                        </button>
-                                    </div>
                                 ))}
                             </div>
                         </div>
-                    ) : (
-                        <div className="space-y-6 animate-fadeIn">
-                            <div className="grid grid-cols-3 gap-4">
-                                <div className="col-span-1">
-                                    <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.ads.platform.label')}</label>
-                                    <select
-                                        value={plan.adPlatform}
-                                        onChange={(e) => updatePlan({ adPlatform: e.target.value })}
-                                        className="w-full text-sm bg-surface border border-surface rounded-lg px-3 py-2.5 outline-none focus:ring-1 focus:ring-purple-500"
-                                    >
-                                        {adPlatformOptions.map((option) => (
-                                            <option key={option.value} value={option.value}>{option.label}</option>
-                                        ))}
-                                    </select>
+
+                        <div className="flow-marketing-planning__body">
+                            {activeTab === 'Email' ? (
+                                <div className="flow-marketing-planning__section">
+                                    <div className="flow-marketing-planning__field-grid">
+                                        <TextInput
+                                            label={t('flowStages.marketingPlanning.email.sender.label')}
+                                            value={plan.emailSenderName}
+                                            onChange={(event) => updatePlan({ emailSenderName: event.target.value })}
+                                            placeholder={t('flowStages.marketingPlanning.email.sender.placeholder')}
+                                            className="flow-marketing-planning__control"
+                                        />
+                                        <TextInput
+                                            label={t('flowStages.marketingPlanning.email.preheader.label')}
+                                            value={plan.emailPreheader}
+                                            onChange={(event) => updatePlan({ emailPreheader: event.target.value })}
+                                            placeholder={t('flowStages.marketingPlanning.email.preheader.placeholder')}
+                                            className="flow-marketing-planning__control"
+                                        />
+                                    </div>
+
+                                    <div className="flow-marketing-planning__list-section">
+                                        <div className="flow-marketing-planning__list-header">
+                                            <span className="flow-marketing-planning__label">{t('flowStages.marketingPlanning.email.subjects.label')}</span>
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => addToArray('emailSubjectLines')}
+                                            >
+                                                {t('flowStages.marketingPlanning.email.subjects.add')}
+                                            </Button>
+                                        </div>
+                                        {plan.emailSubjectLines.length === 0 && (
+                                            <p className="flow-marketing-planning__empty">{t('flowStages.marketingPlanning.email.subjects.empty')}</p>
+                                        )}
+                                        <div className="flow-marketing-planning__list">
+                                            {plan.emailSubjectLines.map((line, idx) => (
+                                                <div key={idx} className="flow-marketing-planning__list-row">
+                                                    <div className="flow-marketing-planning__index">
+                                                        {String.fromCharCode(65 + idx)}
+                                                    </div>
+                                                    <TextInput
+                                                        value={line}
+                                                        onChange={(event) => updateArrayItem('emailSubjectLines', idx, event.target.value)}
+                                                        placeholder={t('flowStages.marketingPlanning.email.subjects.placeholder')}
+                                                        className="flow-marketing-planning__control"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeArrayItem('emailSubjectLines', idx)}
+                                                        className="flow-marketing-planning__remove"
+                                                        aria-label={t('common.delete')}
+                                                    >
+                                                        <span className="material-symbols-outlined">close</span>
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="col-span-1">
-                                    <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.ads.format.label')}</label>
-                                    <select
-                                        value={plan.adCreativeType}
-                                        onChange={(e) => updatePlan({ adCreativeType: e.target.value })}
-                                        className="w-full text-sm bg-surface border border-surface rounded-lg px-3 py-2.5 outline-none focus:ring-1 focus:ring-purple-500"
-                                    >
-                                        {adFormatOptions.map((option) => (
-                                            <option key={option.value} value={option.value}>{option.label}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div className="col-span-1">
-                                    <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.ads.budget.label')}</label>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted">$</span>
-                                        <input
-                                            type="text"
+                            ) : (
+                                <div className="flow-marketing-planning__section">
+                                    <div className="flow-marketing-planning__field-grid flow-marketing-planning__field-grid--wide">
+                                        <Select
+                                            label={t('flowStages.marketingPlanning.ads.platform.label')}
+                                            value={plan.adPlatform}
+                                            onChange={(value) => updatePlan({ adPlatform: String(value) })}
+                                            options={adPlatformOptions}
+                                            className="flow-marketing-planning__control"
+                                        />
+                                        <Select
+                                            label={t('flowStages.marketingPlanning.ads.format.label')}
+                                            value={plan.adCreativeType}
+                                            onChange={(value) => updatePlan({ adCreativeType: String(value) })}
+                                            options={adFormatOptions}
+                                            className="flow-marketing-planning__control"
+                                        />
+                                        <TextInput
+                                            label={t('flowStages.marketingPlanning.ads.budget.label')}
                                             value={plan.dailyBudget}
-                                            onChange={(e) => updatePlan({ dailyBudget: e.target.value })}
-                                            className="w-full text-sm bg-surface border border-surface rounded-lg pl-6 pr-3 py-2.5 outline-none focus:ring-1 focus:ring-purple-500"
+                                            onChange={(event) => updatePlan({ dailyBudget: event.target.value })}
                                             placeholder={t('flowStages.marketingPlanning.ads.budget.placeholder')}
+                                            leftElement={<span className="flow-marketing-planning__currency">$</span>}
+                                            className="flow-marketing-planning__control"
                                         />
                                     </div>
-                                </div>
-                            </div>
 
-                            <div className="space-y-3">
-                                <div className="flex items-center justify-between">
-                                    <label className="text-xs font-bold text-muted uppercase tracking-wider">{t('flowStages.marketingPlanning.ads.headlines.label')}</label>
-                                    <button onClick={() => addToArray('adHeadlines')} className="text-xs text-purple-600 font-medium hover:text-purple-700">
-                                        {t('flowStages.marketingPlanning.ads.headlines.add')}
-                                    </button>
-                                </div>
-                                {plan.adHeadlines.length === 0 && <p className="text-xs text-muted italic">{t('flowStages.marketingPlanning.ads.headlines.empty')}</p>}
-                                {plan.adHeadlines.map((line, idx) => (
-                                    <div key={idx} className="flex gap-2">
-                                        <div className="flex items-center justify-center size-9 bg-surface border border-surface rounded-lg text-xs font-bold text-muted">
-                                            #{idx + 1}
+                                    <div className="flow-marketing-planning__list-section">
+                                        <div className="flow-marketing-planning__list-header">
+                                            <span className="flow-marketing-planning__label">{t('flowStages.marketingPlanning.ads.headlines.label')}</span>
+                                            <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => addToArray('adHeadlines')}
+                                            >
+                                                {t('flowStages.marketingPlanning.ads.headlines.add')}
+                                            </Button>
                                         </div>
-                                        <input
-                                            type="text"
-                                            value={line}
-                                            onChange={(e) => updateArrayItem('adHeadlines', idx, e.target.value)}
-                                            className="flex-1 text-sm bg-surface border border-surface rounded-lg px-3 py-2 outline-none focus:border-purple-500"
-                                            placeholder={t('flowStages.marketingPlanning.ads.headlines.placeholder')}
-                                        />
-                                        <button onClick={() => removeArrayItem('adHeadlines', idx)} className="text-muted hover:text-rose-500 px-2">
-                                            <span className="material-symbols-outlined text-sm">close</span>
-                                        </button>
+                                        {plan.adHeadlines.length === 0 && (
+                                            <p className="flow-marketing-planning__empty">{t('flowStages.marketingPlanning.ads.headlines.empty')}</p>
+                                        )}
+                                        <div className="flow-marketing-planning__list">
+                                            {plan.adHeadlines.map((line, idx) => (
+                                                <div key={idx} className="flow-marketing-planning__list-row">
+                                                    <div className="flow-marketing-planning__index">
+                                                        #{idx + 1}
+                                                    </div>
+                                                    <TextInput
+                                                        value={line}
+                                                        onChange={(event) => updateArrayItem('adHeadlines', idx, event.target.value)}
+                                                        placeholder={t('flowStages.marketingPlanning.ads.headlines.placeholder')}
+                                                        className="flow-marketing-planning__control"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeArrayItem('adHeadlines', idx)}
+                                                        className="flow-marketing-planning__remove"
+                                                        aria-label={t('common.delete')}
+                                                    >
+                                                        <span className="material-symbols-outlined">close</span>
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
-                                ))}
-                            </div>
 
-                            <div>
-                                <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.ads.audience.label')}</label>
-                                <textarea
-                                    value={plan.audienceCriteria}
-                                    onChange={(e) => updatePlan({ audienceCriteria: e.target.value })}
-                                    className="w-full h-24 bg-surface border border-surface rounded-lg px-3 py-2.5 focus:ring-1 focus:ring-purple-500 outline-none text-sm resize-none"
-                                    placeholder={t('flowStages.marketingPlanning.ads.audience.placeholder')}
-                                />
-                            </div>
+                                    <TextArea
+                                        label={t('flowStages.marketingPlanning.ads.audience.label')}
+                                        value={plan.audienceCriteria}
+                                        onChange={(event) => updatePlan({ audienceCriteria: event.target.value })}
+                                        placeholder={t('flowStages.marketingPlanning.ads.audience.placeholder')}
+                                        className="flow-marketing-planning__control flow-marketing-planning__control--audience"
+                                    />
+                                </div>
+                            )}
                         </div>
-                    )}
-                </div>
 
-                <div className="mt-auto pt-6 border-t border-surface flex justify-end">
-                    <Button
-                        className="h-10 text-sm gap-2 bg-purple-600 hover:bg-purple-700 text-white shadow-md rounded-lg"
-                        onClick={handleConvertToCampaign}
-                        disabled={isConverting || !!idea.convertedCampaignId}
-                    >
-                        {isConverting ? t('flowStages.marketingPlanning.actions.creating') : idea.convertedCampaignId ? t('flowStages.marketingPlanning.actions.created') : t('flowStages.marketingPlanning.actions.createAndNext')}
-                        <span>{t('flowStages.marketingPlanning.actions.confirmNext')}</span>
-                        <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                    </Button>
-                </div>
-            </div>
-
-            {/* Link to Converted Campaign if exists */}
-            {idea.convertedCampaignId && (
-                <div className="col-span-1 lg:col-span-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="size-10 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center text-green-600 dark:text-green-400">
-                            <span className="material-symbols-outlined">verified</span>
+                        <div className="flow-marketing-planning__footer">
+                            <Button
+                                onClick={handleConvertToCampaign}
+                                disabled={isConverting || !!idea.convertedCampaignId}
+                                isLoading={isConverting}
+                                icon={<span className="material-symbols-outlined">arrow_forward</span>}
+                                iconPosition="right"
+                                className="flow-marketing-planning__advance"
+                            >
+                                <span className="flow-marketing-planning__advance-text">{actionLabel}</span>
+                                <span className="flow-marketing-planning__advance-subtext">{t('flowStages.marketingPlanning.actions.confirmNext')}</span>
+                            </Button>
                         </div>
-                        <div>
-                            <h4 className="font-bold text-green-800 dark:text-green-200">{t('flowStages.marketingPlanning.converted.title')}</h4>
-                            <p className="text-sm text-green-600 dark:text-green-300">{t('flowStages.marketingPlanning.converted.subtitle')}</p>
-                        </div>
-                    </div>
-                    <Button
-                        size="sm"
-                        className="bg-green-600 hover:bg-green-700 text-white border-none"
-                        onClick={() => navigate(`/projects/${idea.projectId}/marketing/${idea.campaignType === 'email' ? 'email' : 'ads'}/${idea.convertedCampaignId}`)}
-                    >
-                        {t('flowStages.marketingPlanning.converted.action')}
-                    </Button>
-                </div>
-            )}
+                    </Card>
 
-            {/* Right: Assets Checklist & Timeline */}
-            <div className="col-span-1 flex flex-col h-full bg-white dark:bg-slate-900/50 rounded-2xl border border-surface shadow-sm p-6 overflow-hidden">
-                <h3 className="font-bold text-main mb-4">{t('flowStages.marketingPlanning.readiness.title')}</h3>
+                    <Card className="flow-marketing-planning__panel flow-marketing-planning__panel--aside">
+                        <h3 className="flow-marketing-planning__panel-title">{t('flowStages.marketingPlanning.readiness.title')}</h3>
 
-                <div className="space-y-6">
-                    <div>
-                        <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.timeline.title')}</label>
-                        <div className="space-y-3">
-                            <div>
-                                <span className="text-[10px] text-muted uppercase block mb-1">{t('flowStages.marketingPlanning.timeline.start')}</span>
+                        <div className="flow-marketing-planning__section">
+                            <span className="flow-marketing-planning__label">{t('flowStages.marketingPlanning.timeline.title')}</span>
+                            <div className="flow-marketing-planning__field-stack">
                                 <DatePicker
-                                    value={plan.timelineStart}
-                                    onChange={(date) => updatePlan({ timelineStart: date })}
-                                    className="w-full"
+                                    label={t('flowStages.marketingPlanning.timeline.start')}
+                                    value={timelineStartDate}
+                                    onChange={(date) => updatePlan({ timelineStart: date ? date.toISOString().split('T')[0] : '' })}
                                     placeholder={t('flowStages.marketingPlanning.timeline.startPlaceholder')}
                                 />
-                            </div>
-                            <div>
-                                <span className="text-[10px] text-muted uppercase block mb-1">{t('flowStages.marketingPlanning.timeline.end')}</span>
                                 <DatePicker
-                                    value={plan.timelineEnd}
-                                    onChange={(date) => updatePlan({ timelineEnd: date })}
-                                    className="w-full"
+                                    label={t('flowStages.marketingPlanning.timeline.end')}
+                                    value={timelineEndDate}
+                                    onChange={(date) => updatePlan({ timelineEnd: date ? date.toISOString().split('T')[0] : '' })}
                                     placeholder={t('flowStages.marketingPlanning.timeline.endPlaceholder')}
                                 />
                             </div>
                         </div>
-                    </div>
 
-                    <div>
-                        <label className="text-xs font-bold text-muted uppercase tracking-wider mb-2 block">{t('flowStages.marketingPlanning.assets.title')}</label>
-                        <div className="space-y-2">
-                            {plan.assetsRequired.map((asset, idx) => (
-                                <div
-                                    key={idx}
-                                    onClick={() => toggleAsset(idx)}
-                                    className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${asset.done
-                                        ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
-                                        : 'bg-surface border-surface hover:border-purple-300'
-                                        }`}
-                                >
-                                    <div className={`size-5 rounded flex items-center justify-center border ${asset.done
-                                        ? 'bg-emerald-500 border-emerald-500 text-white'
-                                        : 'border-muted bg-white dark:bg-slate-800'
-                                        }`}>
-                                        {asset.done && <span className="material-symbols-outlined text-[14px]">check</span>}
-                                    </div>
-                                    <span className={`text-sm ${asset.done ? 'text-emerald-700 dark:text-emerald-300 line-through opacity-70' : 'text-main'}`}>
-                                        {asset.name}
-                                    </span>
-                                </div>
-                            ))}
+                        <div className="flow-marketing-planning__section">
+                            <span className="flow-marketing-planning__label">{t('flowStages.marketingPlanning.assets.title')}</span>
+                            <div className="flow-marketing-planning__asset-list">
+                                {plan.assetsRequired.map((asset, idx) => (
+                                    <Checkbox
+                                        key={idx}
+                                        label={asset.name}
+                                        checked={asset.done}
+                                        onChange={() => toggleAsset(idx)}
+                                        className={`flow-marketing-planning__asset ${asset.done ? 'is-done' : ''}`}
+                                    />
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    </Card>
                 </div>
+
+                {idea.convertedCampaignId && (
+                    <Card className="flow-marketing-planning__converted">
+                        <div className="flow-marketing-planning__converted-info">
+                            <span className="material-symbols-outlined">verified</span>
+                            <div>
+                                <h4>{t('flowStages.marketingPlanning.converted.title')}</h4>
+                                <p>{t('flowStages.marketingPlanning.converted.subtitle')}</p>
+                            </div>
+                        </div>
+                        <Button
+                            size="sm"
+                            onClick={() => navigate(`/projects/${idea.projectId}/marketing/${idea.campaignType === 'email' ? 'email' : 'ads'}/${idea.convertedCampaignId}`)}
+                        >
+                            {t('flowStages.marketingPlanning.converted.action')}
+                        </Button>
+                    </Card>
+                )}
             </div>
         </div>
     );

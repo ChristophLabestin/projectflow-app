@@ -9688,6 +9688,302 @@ html.dark .flow-paid-ads-live__visual-center span.material-symbols-outlined {
     }
 }
 
+.flow-marketing-planning {
+    min-height: 100%;
+    background: var(--color-surface-bg);
+}
+
+.flow-marketing-planning__container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.flow-marketing-planning__grid {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: 1fr;
+}
+
+.flow-marketing-planning__panel {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.flow-marketing-planning__panel--main {
+    min-height: 100%;
+}
+
+.flow-marketing-planning__header {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.flow-marketing-planning__title {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+.flow-marketing-planning__subtitle {
+    margin: 4px 0 0;
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+}
+
+.flow-marketing-planning__tabs {
+    display: flex;
+    gap: 8px;
+    padding: 6px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-hover);
+    width: fit-content;
+}
+
+.flow-marketing-planning__tab {
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+    background: transparent;
+    cursor: pointer;
+    transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+
+    span.material-symbols-outlined {
+        font-size: 18px;
+    }
+
+    &:hover {
+        color: var(--color-text-main);
+    }
+
+    &.is-active {
+        background: var(--color-surface-card);
+        color: var(--color-text-main);
+        box-shadow: var(--shadow-sm);
+    }
+}
+
+.flow-marketing-planning__body {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.flow-marketing-planning__section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.flow-marketing-planning__label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--color-text-subtle);
+}
+
+.flow-marketing-planning__field-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.flow-marketing-planning__field-grid--wide {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.flow-marketing-planning__control {
+    width: 100%;
+}
+
+.flow-marketing-planning__control--audience .text-area {
+    min-height: 120px;
+}
+
+.flow-marketing-planning__currency {
+    font-size: 0.85rem;
+    color: var(--color-text-subtle);
+}
+
+.flow-marketing-planning__list-section {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.flow-marketing-planning__list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.flow-marketing-planning__list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.flow-marketing-planning__list-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.flow-marketing-planning__index {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--color-text-muted);
+}
+
+.flow-marketing-planning__remove {
+    border: none;
+    background: transparent;
+    color: var(--color-text-subtle);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: color var(--transition-fast), transform var(--transition-fast);
+
+    span.material-symbols-outlined {
+        font-size: 18px;
+    }
+
+    &:hover {
+        color: var(--color-error);
+        transform: scale(1.05);
+    }
+}
+
+.flow-marketing-planning__empty {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+.flow-marketing-planning__footer {
+    margin-top: auto;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.flow-marketing-planning__advance {
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.flow-marketing-planning__advance-text {
+    font-weight: 600;
+}
+
+.flow-marketing-planning__advance-subtext {
+    font-size: 0.7rem;
+    color: var(--color-text-subtle);
+    margin-left: 8px;
+}
+
+.flow-marketing-planning__panel-title {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--color-text-muted);
+}
+
+.flow-marketing-planning__field-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.flow-marketing-planning__asset-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.flow-marketing-planning__asset {
+    padding: 12px 14px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-hover);
+    box-shadow: var(--shadow-sm);
+}
+
+.flow-marketing-planning__asset.is-done {
+    background: rgba(var(--color-success-rgb), 0.12);
+}
+
+.flow-marketing-planning__converted {
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.flow-marketing-planning__converted-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+
+    span.material-symbols-outlined {
+        font-size: 24px;
+        color: var(--color-success);
+    }
+
+    h4 {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--color-text-main);
+    }
+
+    p {
+        margin: 2px 0 0;
+        font-size: 0.8rem;
+        color: var(--color-text-muted);
+    }
+}
+
+@include mixins.mq('lg') {
+    .flow-marketing-planning__grid {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    }
+
+    .flow-marketing-planning__header {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .flow-marketing-planning__footer {
+        justify-content: flex-end;
+    }
+}
+
 .review-timeline-modal {
     height: 100%;
     min-height: 0;
