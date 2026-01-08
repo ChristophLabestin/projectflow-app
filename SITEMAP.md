@@ -160,7 +160,7 @@ These are outside the Social module shell in the old routing.
 
 - [x] components/PinnedTasksModal.tsx - Pinned tasks modal (SCSS)
 - [ ] components/SettingsModal.tsx - App settings modal (legacy UI)
-- [ ] components/MediaLibrary/MediaLibraryModal.tsx - Media library modal
+- [x] components/MediaLibrary/MediaLibraryModal.tsx - Media library modal (SCSS)
 - [ ] components/GroupCreateModal.tsx - Group create modal
 - [ ] components/InviteMemberModal.tsx - Invite member modal
 - [ ] components/EditTaskModal.tsx - Edit task modal (legacy UI)
