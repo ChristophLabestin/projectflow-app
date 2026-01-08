@@ -1,116 +1,135 @@
 import React from 'react';
-import { Idea, RiskWinAnalysis } from '../../../types';
-import { Button } from '../ui/Button';
+import { RiskWinAnalysis } from '../../../types';
+import { Button } from '../common/Button/Button';
+import { Card } from '../common/Card/Card';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface AnalysisDashboardProps {
     analysis?: RiskWinAnalysis;
-    onRunAnalysis: () => void;
+    onRunAnalysis?: () => void;
     loading: boolean;
 }
 
+type ScoreTone = 'success' | 'warning' | 'danger';
+
 export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, onRunAnalysis, loading }) => {
+    const { t } = useLanguage();
     const [loadingStage, setLoadingStage] = React.useState(0);
 
     React.useEffect(() => {
         if (!loading) return;
         const interval = setInterval(() => {
-            setLoadingStage(prev => (prev + 1) % 4);
+            setLoadingStage((prev) => (prev + 1) % 4);
         }, 1500);
         return () => clearInterval(interval);
     }, [loading]);
 
-    if (loading) {
-        const stages = [
-            "Analyzing Market Potential...",
-            "Evaluating Technical Feasibility...",
-            "Identifying Risk Factors...",
-            "Synthesizing Strategic Verdict..."
-        ];
+    const loadingStages = [
+        t('analysisDashboard.loading.stage1'),
+        t('analysisDashboard.loading.stage2'),
+        t('analysisDashboard.loading.stage3'),
+        t('analysisDashboard.loading.stage4'),
+    ];
 
+    if (loading) {
         return (
-            <div className="h-full flex flex-col items-center justify-center p-12 text-center animate-in fade-in duration-300">
-                <div className="relative size-24 mb-8">
-                    {/* Pulsing rings */}
-                    <div className="absolute inset-0 rounded-full border-4 border-violet-500/30 animate-ping delay-75"></div>
-                    <div className="absolute inset-0 rounded-full border-4 border-violet-500/20 animate-ping delay-150"></div>
-                    <div className="absolute inset-0 rounded-full bg-violet-500/10 flex items-center justify-center backdrop-blur-sm border border-violet-500/30 shadow-[0_0_30px_rgba(139,92,246,0.3)]">
-                        <span className="material-symbols-outlined text-5xl text-violet-500 animate-pulse">psychology</span>
-                    </div>
+            <div className="analysis-dashboard analysis-dashboard--loading">
+                <div className="analysis-dashboard__pulse">
+                    <span className="analysis-dashboard__pulse-ring analysis-dashboard__pulse-ring--first" />
+                    <span className="analysis-dashboard__pulse-ring analysis-dashboard__pulse-ring--second" />
+                    <span className="analysis-dashboard__pulse-core">
+                        <span className="material-symbols-outlined">psychology</span>
+                    </span>
                 </div>
 
-                <h3 className="text-xl font-bold text-violet-900 dark:text-violet-100 mb-2 transition-all duration-300 min-h-[30px]">
-                    {stages[loadingStage]}
+                <h3 className="analysis-dashboard__loading-title">
+                    {loadingStages[loadingStage]}
                 </h3>
-                <p className="text-muted text-sm max-w-xs mx-auto">
-                    CORA is simulating a VC & CTO review of your concept.
+                <p className="analysis-dashboard__loading-subtitle">
+                    {t('analysisDashboard.loading.subtitle')}
                 </p>
 
-                {/* Progress bar visual */}
-                <div className="w-64 h-1.5 bg-surface-hover rounded-full mt-8 overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-violet-500 to-fuchsia-500 animate-[loading_2s_ease-in-out_infinite] w-1/3 rounded-full relative left-0"></div>
+                <div className="analysis-dashboard__loading-progress">
+                    <span className="analysis-dashboard__loading-bar" />
                 </div>
-                <style>{`
-                    @keyframes loading {
-                        0% { left: -30%; width: 30%; }
-                        50% { width: 60%; }
-                        100% { left: 100%; width: 30%; }
-                    }
-                `}</style>
             </div>
         );
     }
 
     if (!analysis) {
         return (
-            <div className="h-full flex flex-col items-center justify-center p-8 text-center opacity-60">
-                <div className="size-20 bg-surface-hover rounded-full flex items-center justify-center mb-6">
-                    <span className="material-symbols-outlined text-4xl text-subtle">analytics</span>
+            <div className="analysis-dashboard analysis-dashboard--empty">
+                <div className="analysis-dashboard__empty-icon">
+                    <span className="material-symbols-outlined">analytics</span>
                 </div>
-                <h3 className="text-xl font-bold text-main mb-2">No Analysis Yet</h3>
-                <p className="text-muted max-w-md mb-8">
-                    Run CORA analysis to estimate success probability, identify risks, and uncover potential wins.
-                </p>
-                <Button variant="primary" size="lg" onClick={onRunAnalysis} loading={loading} icon={<span className="material-symbols-outlined">network_intelligence</span>}>
-                    Run Risk/Win Analysis
-                </Button>
+                <h3 className="analysis-dashboard__empty-title">{t('analysisDashboard.empty.title')}</h3>
+                <p className="analysis-dashboard__empty-subtitle">{t('analysisDashboard.empty.subtitle')}</p>
+                {onRunAnalysis && (
+                    <Button
+                        variant="primary"
+                        size="lg"
+                        onClick={onRunAnalysis}
+                        isLoading={loading}
+                        icon={<span className="material-symbols-outlined">network_intelligence</span>}
+                        className="analysis-dashboard__empty-action"
+                    >
+                        {t('analysisDashboard.empty.action')}
+                    </Button>
+                )}
             </div>
         );
     }
 
-    const { successProbability, marketFitScore, technicalFeasibilityScore, risks, wins, recommendation } = analysis;
+    const {
+        successProbability,
+        marketFitScore,
+        technicalFeasibilityScore,
+        risks,
+        wins,
+        recommendation,
+    } = analysis;
 
-    // Color helpers
-    const getScoreColor = (score: number, max: number = 10) => {
-        const percentage = (score / max) * 100;
-        if (percentage >= 80) return 'bg-emerald-500 text-emerald-600';
-        if (percentage >= 50) return 'bg-amber-500 text-amber-600';
-        return 'bg-rose-500 text-rose-600';
+    const getScoreTone = (score: number, max: number = 10): ScoreTone => {
+        const percentage = max > 0 ? (score / max) * 100 : 0;
+        if (percentage >= 80) return 'success';
+        if (percentage >= 50) return 'warning';
+        return 'danger';
     };
 
-    const getSeverityColor = (level: string) => {
-        switch (level) {
-            case 'High': return 'text-rose-600 bg-rose-50 dark:bg-rose-900/20';
-            case 'Medium': return 'text-amber-600 bg-amber-50 dark:bg-amber-900/20';
-            case 'Low': return 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20';
-            default: return 'text-slate-600 bg-slate-50';
-        }
+    const getLevelTone = (level: string): ScoreTone => {
+        const normalized = level.toLowerCase();
+        if (normalized === 'high') return 'danger';
+        if (normalized === 'medium') return 'warning';
+        if (normalized === 'low') return 'success';
+        return 'warning';
     };
+
+    const levelLabels: Record<string, string> = {
+        high: t('analysisDashboard.level.high'),
+        medium: t('analysisDashboard.level.medium'),
+        low: t('analysisDashboard.level.low'),
+    };
+
+    const successTone = getScoreTone(successProbability, 100);
+    const marketTone = getScoreTone(marketFitScore);
+    const feasibilityTone = getScoreTone(technicalFeasibilityScore);
 
     return (
-        <div className="p-6 space-y-8 animate-in fade-in duration-500">
-            {/* Top Row: Probability & Scores */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-                {/* 1. Success Probability Gauge */}
-                <div className="bg-surface-paper border border-surface rounded-2xl p-6 flex flex-col items-center justify-center relative overflow-hidden">
-                    <h4 className="text-xs font-bold text-muted uppercase tracking-wider mb-4">Success Probability</h4>
-                    <div className="relative size-32 flex items-center justify-center">
-                        <svg className="size-full -rotate-90" viewBox="0 0 36 36">
-                            {/* Background Circle */}
-                            <path className="text-[var(--color-surface-hover)]" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" strokeWidth="3" />
-                            {/* Value Circle */}
+        <div className="analysis-dashboard">
+            <div className="analysis-dashboard__grid">
+                <Card className="analysis-dashboard__card analysis-dashboard__card--gauge">
+                    <h4 className="analysis-dashboard__card-label">{t('analysisDashboard.summary.successProbability')}</h4>
+                    <div className="analysis-dashboard__gauge">
+                        <svg className="analysis-dashboard__gauge-svg" viewBox="0 0 36 36">
                             <path
-                                className={successProbability >= 70 ? 'text-emerald-500' : successProbability >= 40 ? 'text-amber-500' : 'text-rose-500'}
+                                className="analysis-dashboard__gauge-bg"
+                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="3"
+                            />
+                            <path
+                                className={`analysis-dashboard__gauge-ring analysis-dashboard__gauge-ring--${successTone}`}
                                 strokeDasharray={`${successProbability}, 100`}
                                 d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                                 fill="none"
@@ -118,86 +137,111 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
                                 strokeWidth="3"
                             />
                         </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-3xl font-bold text-main">{successProbability}%</span>
+                        <div className="analysis-dashboard__gauge-value">
+                            <span>{successProbability}%</span>
                         </div>
                     </div>
-                </div>
+                </Card>
 
-                {/* 2. Market Fit Score */}
-                <div className="bg-surface-paper border border-surface rounded-2xl p-6 flex flex-col justify-between">
-                    <h4 className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Market Fit</h4>
-                    <div className="flex-1 flex flex-col justify-end gap-2">
-                        <div className="flex items-end justify-between mb-1">
-                            <span className="text-4xl font-bold text-main">{marketFitScore}<span className="text-lg text-muted font-normal">/10</span></span>
-                            <span className="material-symbols-outlined text-4xl text-[var(--color-surface-border)] opacity-20">storefront</span>
+                <Card className="analysis-dashboard__card">
+                    <h4 className="analysis-dashboard__card-label">{t('analysisDashboard.summary.marketFit')}</h4>
+                    <div className="analysis-dashboard__score">
+                        <div className="analysis-dashboard__score-row">
+                            <span className="analysis-dashboard__score-value">
+                                {marketFitScore}
+                                <span className="analysis-dashboard__score-total">/10</span>
+                            </span>
+                            <span className="material-symbols-outlined analysis-dashboard__score-icon">storefront</span>
                         </div>
-                        <div className="h-3 w-full bg-surface-hover rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${getScoreColor(marketFitScore)}`} style={{ width: `${(marketFitScore / 10) * 100}%` }} />
+                        <div className="analysis-dashboard__score-bar">
+                            <span
+                                className={`analysis-dashboard__score-bar-fill analysis-dashboard__score-bar-fill--${marketTone}`}
+                                style={{ width: `${(marketFitScore / 10) * 100}%` }}
+                            />
                         </div>
                     </div>
-                </div>
+                </Card>
 
-                {/* 3. Feasibility Score */}
-                <div className="bg-surface-paper border border-surface rounded-2xl p-6 flex flex-col justify-between">
-                    <h4 className="text-xs font-bold text-muted uppercase tracking-wider mb-2">Tech Feasibility</h4>
-                    <div className="flex-1 flex flex-col justify-end gap-2">
-                        <div className="flex items-end justify-between mb-1">
-                            <span className="text-4xl font-bold text-main">{technicalFeasibilityScore}<span className="text-lg text-muted font-normal">/10</span></span>
-                            <span className="material-symbols-outlined text-4xl text-[var(--color-surface-border)] opacity-20">code</span>
+                <Card className="analysis-dashboard__card">
+                    <h4 className="analysis-dashboard__card-label">{t('analysisDashboard.summary.feasibility')}</h4>
+                    <div className="analysis-dashboard__score">
+                        <div className="analysis-dashboard__score-row">
+                            <span className="analysis-dashboard__score-value">
+                                {technicalFeasibilityScore}
+                                <span className="analysis-dashboard__score-total">/10</span>
+                            </span>
+                            <span className="material-symbols-outlined analysis-dashboard__score-icon">code</span>
                         </div>
-                        <div className="h-3 w-full bg-surface-hover rounded-full overflow-hidden">
-                            <div className={`h-full rounded-full ${getScoreColor(technicalFeasibilityScore)}`} style={{ width: `${(technicalFeasibilityScore / 10) * 100}%` }} />
+                        <div className="analysis-dashboard__score-bar">
+                            <span
+                                className={`analysis-dashboard__score-bar-fill analysis-dashboard__score-bar-fill--${feasibilityTone}`}
+                                style={{ width: `${(technicalFeasibilityScore / 10) * 100}%` }}
+                            />
                         </div>
                     </div>
+                </Card>
+            </div>
+
+            <div className="analysis-dashboard__verdict">
+                <span className="material-symbols-outlined">psychology_alt</span>
+                <div className="analysis-dashboard__verdict-body">
+                    <h4 className="analysis-dashboard__verdict-title">{t('analysisDashboard.summary.verdict')}</h4>
+                    <p className="analysis-dashboard__verdict-text">"{recommendation}"</p>
                 </div>
             </div>
 
-            {/* Recommendation Banner */}
-            <div className="bg-gradient-to-r from-violet-500/10 to-fuchsia-500/10 border border-violet-500/20 p-4 rounded-xl flex gap-4 items-start">
-                <span className="material-symbols-outlined text-violet-600 mt-0.5">psychology_alt</span>
-                <div>
-                    <h4 className="text-sm font-bold text-violet-900 dark:text-violet-300 mb-1">CORA Verdict</h4>
-                    <p className="text-sm text-main italic">"{recommendation}"</p>
-                </div>
-            </div>
-
-            {/* Risks vs Wins */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Risks */}
-                <div>
-                    <h4 className="text-sm font-bold text-subtle uppercase tracking-wider mb-4 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[18px]">warning</span> Major Risks
+            <div className="analysis-dashboard__columns">
+                <div className="analysis-dashboard__column">
+                    <h4 className="analysis-dashboard__section-title">
+                        <span className="material-symbols-outlined">warning</span>
+                        {t('analysisDashboard.summary.risks')}
                     </h4>
-                    <div className="space-y-3">
-                        {risks.map((risk, i) => (
-                            <div key={i} className="p-3 rounded-xl border border-surface bg-surface flex gap-3 items-start">
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${getSeverityColor(risk.severity)}`}>
-                                    {risk.severity}
-                                </span>
-                                <div>
-                                    <p className="text-sm font-bold text-main leading-tight mb-1">{risk.title}</p>
-                                    {risk.mitigation && <p className="text-xs text-muted">Tip: {risk.mitigation}</p>}
+                    <div className="analysis-dashboard__list">
+                        {risks.map((risk, i) => {
+                            const tone = getLevelTone(risk.severity);
+                            const label = levelLabels[risk.severity.toLowerCase()] || risk.severity;
+                            return (
+                                <div key={i} className="analysis-dashboard__item">
+                                    <span className={`analysis-dashboard__pill analysis-dashboard__pill--${tone}`}>
+                                        {label}
+                                    </span>
+                                    <div className="analysis-dashboard__item-body">
+                                        <p className="analysis-dashboard__item-title">{risk.title}</p>
+                                        {risk.mitigation && (
+                                            <p className="analysis-dashboard__item-note">
+                                                <span className="analysis-dashboard__item-label">
+                                                    {t('analysisDashboard.risk.mitigationLabel')}
+                                                </span>
+                                                {risk.mitigation}
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
 
-                {/* Wins */}
-                <div>
-                    <h4 className="text-sm font-bold text-subtle uppercase tracking-wider mb-4 flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[18px]">trophy</span> Potential Wins
+                <div className="analysis-dashboard__column">
+                    <h4 className="analysis-dashboard__section-title">
+                        <span className="material-symbols-outlined">trophy</span>
+                        {t('analysisDashboard.summary.wins')}
                     </h4>
-                    <div className="space-y-3">
-                        {wins.map((win, i) => (
-                            <div key={i} className="p-3 rounded-xl border border-surface bg-surface flex gap-3 items-start">
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded uppercase ${getSeverityColor(win.impact)}`}>
-                                    {win.impact}
-                                </span>
-                                <p className="text-sm font-bold text-main leading-tight pt-0.5">{win.title}</p>
-                            </div>
-                        ))}
+                    <div className="analysis-dashboard__list">
+                        {wins.map((win, i) => {
+                            const tone = getLevelTone(win.impact);
+                            const label = levelLabels[win.impact.toLowerCase()] || win.impact;
+                            return (
+                                <div key={i} className="analysis-dashboard__item">
+                                    <span className={`analysis-dashboard__pill analysis-dashboard__pill--${tone}`}>
+                                        {label}
+                                    </span>
+                                    <div className="analysis-dashboard__item-body">
+                                        <p className="analysis-dashboard__item-title">{win.title}</p>
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             </div>
