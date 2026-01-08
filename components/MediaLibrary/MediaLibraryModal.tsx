@@ -11,6 +11,7 @@ import { AIUsage } from '../../types';
 import { searchStockImages, getCuratedPhotos, triggerDownload, UnsplashImage } from '../../services/unsplashService';
 import { Button } from '../ui/Button';
 import { downloadFile } from '../../utils/download';
+import { useLanguage } from '../../context/LanguageContext';
 
 
 interface MediaAsset {
@@ -62,6 +63,15 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
     const [isLoading, setIsLoading] = useState(false);
     const { showSuccess, showError } = useToast();
     const confirm = useConfirm();
+    const { t } = useLanguage();
+    const aiStyles = [
+        { value: 'Photographic', label: t('mediaLibrary.ai.styles.photographic') },
+        { value: 'Digital Art', label: t('mediaLibrary.ai.styles.digitalArt') },
+        { value: 'Cinematic', label: t('mediaLibrary.ai.styles.cinematic') },
+        { value: '3D Render', label: t('mediaLibrary.ai.styles.render3d') },
+        { value: 'Sketch', label: t('mediaLibrary.ai.styles.sketch') },
+        { value: 'Abstract', label: t('mediaLibrary.ai.styles.abstract') },
+    ];
 
     // Editing State
     const [editingImage, setEditingImage] = useState<MediaAsset | null>(null);
@@ -102,9 +112,9 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
         } catch (error: any) {
             console.error("Failed to load stock images", error);
             if (error.message?.includes("Missing Unsplash API Key")) {
-                setStockError("Setup Required: Please add VITE_UNSPLASH_ACCESS_KEY to your .env file.");
+                setStockError(t('mediaLibrary.stock.errors.missingKey'));
             } else {
-                setStockError("Failed to load images. Please try again later.");
+                setStockError(t('mediaLibrary.stock.errors.generic'));
             }
         } finally {
             setIsStockLoading(false);
@@ -129,10 +139,10 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
             // Upload via existing handler
             await handleFileUpload([file]);
-            showSuccess("Stock image saved to library");
+            showSuccess(t('mediaLibrary.stock.saveSuccess'));
         } catch (error) {
             console.error("Failed to save stock image:", error);
-            showError("Failed to save stock image");
+            showError(t('mediaLibrary.stock.saveFailed'));
         } finally {
             setIsUploading(false);
         }
@@ -269,7 +279,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
         const resolvedUserId = userId || auth.currentUser?.uid;
 
         if (!resolvedTenantId && !deferredUpload) {
-            showError('Authentication required');
+            showError(t('mediaLibrary.upload.authRequired'));
             setIsUploading(false);
             return;
         }
@@ -344,7 +354,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             setActiveTab('gallery');
         } catch (error) {
             console.error("Upload failed:", error);
-            showError("Failed to upload image. Please try again.");
+            showError(t('mediaLibrary.upload.failed'));
         } finally {
             setIsUploading(false);
         }
@@ -368,10 +378,10 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
             await handleFileUpload([file]);
             setEditingImage(null);
-            showSuccess("Edited image saved as new.");
+            showSuccess(t('mediaLibrary.edit.saveNewSuccess'));
         } catch (error) {
             console.error("Save edited image failed:", error);
-            showError("Failed to save edited image.");
+            showError(t('mediaLibrary.edit.saveNewFailed'));
         } finally {
             setIsUploading(false);
         }
@@ -412,11 +422,11 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                 f.id === editingImage.id ? { ...f, url: finalUrl, thumbnailUrl: finalUrl } : f
             ));
 
-            showSuccess("Image replaced successfully.");
+            showSuccess(t('mediaLibrary.edit.replaceSuccess'));
             setEditingImage(null);
         } catch (error) {
             console.error("Replace failed:", error);
-            showError("Failed to replace image.");
+            showError(t('mediaLibrary.edit.replaceFailed'));
         } finally {
             setIsUploading(false);
         }
@@ -425,7 +435,7 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
     const handleGenerateAI = async () => {
         if (!aiPrompt) return;
         if (aiMode === 'rework' && !referenceImage) {
-            showError("Please select an image to rework.");
+            showError(t('mediaLibrary.ai.errors.missingReference'));
             return;
         }
         setIsGenerating(true);
@@ -454,12 +464,12 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             setAiView('results');
         } catch (error: any) {
             console.error("CORA generation failed:", error);
-            const msg = error?.message || "Failed to generate images. Please try again.";
+            const msg = error?.message || t('mediaLibrary.ai.errors.generateFailed');
             // User-friendly error for API key issues
             if (msg.includes("API key")) {
-                showError("Google API Key missing or invalid.");
+                showError(t('mediaLibrary.ai.errors.missingKey'));
             } else if (msg.includes("limit")) {
-                showError("CORA usage limit reached.");
+                showError(t('mediaLibrary.ai.errors.limitReached'));
             } else {
                 showError(msg);
             }
@@ -478,10 +488,10 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
             const file = new File([blob], `ai_gen_${Date.now()}.jpg`, { type: 'image/jpeg' });
 
             await handleFileUpload([file]);
-            showSuccess("Image saved to library");
+            showSuccess(t('mediaLibrary.ai.saveSuccess'));
         } catch (error) {
             console.error("Failed to save CORA image:", error);
-            showError("Failed to save image");
+            showError(t('mediaLibrary.ai.saveFailed'));
         } finally {
             setIsUploading(false);
         }
@@ -489,8 +499,8 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
     const handleDeleteImage = async (asset: MediaAsset) => {
         const confirmed = await confirm(
-            "Delete Image?",
-            `Are you sure you want to delete "${asset.name}"? This action cannot be undone.`
+            t('mediaLibrary.gallery.delete.title'),
+            t('mediaLibrary.gallery.delete.body').replace('{name}', asset.name)
         );
         if (!confirmed) return;
 
@@ -517,10 +527,10 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
             // Update UI
             setUploadedFiles(prev => prev.filter(f => f.id !== asset.id));
-            showSuccess(`"${asset.name}" has been deleted.`);
+            showSuccess(t('mediaLibrary.gallery.delete.success').replace('{name}', asset.name));
         } catch (error) {
             console.error("Delete failed:", error);
-            showError("Failed to delete image.");
+            showError(t('mediaLibrary.gallery.delete.failed'));
         }
     };
 
@@ -528,111 +538,116 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
     return createPortal(
         <div
-            className="fixed inset-0 z-[200000] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            className="media-library__overlay"
             onClick={(e) => {
                 // Close when clicking backdrop
                 if (e.target === e.currentTarget) onClose();
             }}
         >
-            <div className="bg-card rounded-2xl shadow-2xl w-[1200px] max-w-[95vw] h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            <div className="media-library">
                 {/* Header */}
-                <div className="flex items-center justify-between p-5 border-b border-surface">
-                    <div className="flex items-center gap-3">
-                        <div className="size-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                            <span className="material-symbols-outlined text-white">perm_media</span>
+                <div className="media-library__header">
+                    <div className="media-library__header-main">
+                        <div className="media-library__brand">
+                            <span className="material-symbols-outlined">perm_media</span>
                         </div>
                         <div>
-                            <h2 className="text-lg font-bold text-main">Media Library</h2>
-                            <p className="text-xs text-muted">
-                                {collectionType === 'user' ? 'Select or upload personal images' : 'Select or upload images for your project'}
+                            <h2 className="media-library__title">{t('mediaLibrary.title')}</h2>
+                            <p className="media-library__subtitle">
+                                {collectionType === 'user'
+                                    ? t('mediaLibrary.subtitle.user')
+                                    : t('mediaLibrary.subtitle.project')}
                             </p>
                         </div>
                     </div>
                     <button
                         onClick={onClose}
-                        className="size-10 rounded-xl hover:bg-surface-hover flex items-center justify-center text-muted hover:text-main transition-colors"
+                        className="media-library__close"
+                        title={t('mediaLibrary.actions.close')}
                     >
                         <span className="material-symbols-outlined">close</span>
                     </button>
                 </div>
 
                 {/* Tabs */}
-                <div className="flex border-b border-surface px-5">
+                <div className="media-library__tabs">
                     {[
-                        { id: 'gallery', label: collectionType === 'user' ? 'Personal Images' : 'Project Images', icon: 'photo_library' },
-                        { id: 'upload', label: 'Upload', icon: 'cloud_upload' },
-                        { id: 'ai', label: 'Nano Banana', icon: 'auto_awesome', color: 'text-amber-500' },
-                        { id: 'stock', label: 'Stock Photos', icon: 'image_search' },
+                        {
+                            id: 'gallery',
+                            label: collectionType === 'user'
+                                ? t('mediaLibrary.tabs.gallery.user')
+                                : t('mediaLibrary.tabs.gallery.project'),
+                            icon: 'photo_library'
+                        },
+                        { id: 'upload', label: t('mediaLibrary.tabs.upload'), icon: 'cloud_upload' },
+                        { id: 'ai', label: t('mediaLibrary.tabs.ai'), icon: 'auto_awesome', accent: true },
+                        { id: 'stock', label: t('mediaLibrary.tabs.stock'), icon: 'image_search' },
                     ].map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as TabType)}
-                            className={`flex items-center gap-2 px-5 py-3.5 text-sm font-medium border-b-2 transition-all ${activeTab === tab.id
-                                ? 'border-primary text-primary'
-                                : 'border-transparent text-muted hover:text-main'
-                                }`}
+                            className={`media-library__tab ${activeTab === tab.id ? 'is-active' : ''}`}
                         >
-                            <span className={`material-symbols-outlined text-[18px] ${tab.color || ''}`}>{tab.icon}</span>
+                            <span className={`material-symbols-outlined media-library__tab-icon ${tab.accent ? 'is-accent' : ''}`}>
+                                {tab.icon}
+                            </span>
                             {tab.label}
                         </button>
                     ))}
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 relative overflow-hidden">
+                <div className="media-library__content">
                     {/* Global Uploading Overlay */}
                     {isUploading && (
-                        <div className="absolute inset-0 z-50 bg-white/60 dark:bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center animate-fade-in">
-                            <div className="size-16 rounded-2xl bg-white dark:bg-zinc-800 shadow-xl flex items-center justify-center mb-4">
-                                <span className="material-symbols-outlined text-4xl text-primary animate-spin">progress_activity</span>
+                        <div className="media-library__uploading">
+                            <div className="media-library__uploading-card">
+                                <span className="material-symbols-outlined">progress_activity</span>
                             </div>
-                            <p className="text-sm font-bold text-main">Uploading your files...</p>
+                            <p className="media-library__uploading-text">{t('mediaLibrary.upload.overlay')}</p>
                         </div>
                     )}
 
                     {/* Upload Tab */}
                     {activeTab === 'upload' && (
-                        <div className="h-full p-6">
+                        <div className="media-library__panel media-library__panel--upload">
                             <div
                                 onDragOver={handleDragOver}
                                 onDragLeave={handleDragLeave}
                                 onDrop={handleDrop}
-                                className={`h-full border-2 border-dashed rounded-2xl flex flex-col items-center justify-center transition-all ${isDragging
-                                    ? 'border-primary bg-primary/5'
-                                    : 'border-zinc-300 dark:border-zinc-700 hover:border-primary/50'
-                                    }`}
+                                className={`media-library__dropzone ${isDragging ? 'is-dragging' : ''}`}
                             >
                                 {isUploading ? (
-                                    <div className="flex flex-col items-center gap-4">
-                                        <span className="material-symbols-outlined text-5xl text-primary animate-spin">progress_activity</span>
-                                        <p className="text-sm text-muted">Uploading...</p>
+                                    <div className="media-library__dropzone-loading">
+                                        <span className="material-symbols-outlined">progress_activity</span>
+                                        <p>{t('mediaLibrary.upload.loading')}</p>
                                     </div>
                                 ) : (
                                     <>
-                                        <div className="size-20 rounded-2xl bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/30 flex items-center justify-center mb-4">
-                                            <span className="material-symbols-outlined text-4xl text-violet-600 dark:text-violet-400">cloud_upload</span>
+                                        <div className="media-library__dropzone-icon">
+                                            <span className="material-symbols-outlined">cloud_upload</span>
                                         </div>
-                                        <h3 className="text-lg font-semibold text-main mb-1">
-                                            Drop files here to upload
+                                        <h3 className="media-library__dropzone-title">
+                                            {t('mediaLibrary.upload.title')}
                                         </h3>
-                                        <p className="text-sm text-muted mb-6">
-                                            or click to browse your computer
+                                        <p className="media-library__dropzone-subtitle">
+                                            {t('mediaLibrary.upload.subtitle')}
                                         </p>
-                                        <label className="cursor-pointer">
+                                        <label className="media-library__file-label">
                                             <input
                                                 type="file"
                                                 multiple
                                                 accept="image/*,video/*"
                                                 onChange={handleFileInputChange}
-                                                className="hidden"
+                                                className="media-library__file-input"
                                             />
-                                            <span className="px-6 py-3 bg-primary text-on-primary rounded-xl font-medium hover:brightness-110 transition-all inline-flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-[18px]">folder_open</span>
-                                                Browse Files
+                                            <span className="media-library__file-button">
+                                                <span className="material-symbols-outlined">folder_open</span>
+                                                {t('mediaLibrary.upload.browse')}
                                             </span>
                                         </label>
-                                        <p className="text-xs text-zinc-400 mt-4">
-                                            Supports: PNG, JPG, GIF, MP4 (max 10MB)
+                                        <p className="media-library__support-hint">
+                                            {t('mediaLibrary.upload.supports')}
                                         </p>
                                     </>
                                 )}
@@ -642,37 +657,37 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
                     {/* Gallery Tab */}
                     {activeTab === 'gallery' && (
-                        <div className="h-full p-6 overflow-y-auto">
+                        <div className="media-library__panel media-library__panel--gallery">
                             {isLoading ? (
-                                <div className="h-full flex flex-col items-center justify-center text-center">
-                                    <span className="material-symbols-outlined text-4xl text-primary animate-spin">progress_activity</span>
-                                    <p className="text-sm text-muted mt-2">Loading library...</p>
+                                <div className="media-library__state">
+                                    <span className="material-symbols-outlined">progress_activity</span>
+                                    <p>{t('mediaLibrary.gallery.loading')}</p>
                                 </div>
                             ) : allAssets.length === 0 ? (
-                                <div className="h-full flex flex-col items-center justify-center text-center">
-                                    <div className="size-20 rounded-2xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-4">
-                                        <span className="material-symbols-outlined text-4xl text-zinc-400">photo_library</span>
+                                <div className="media-library__empty">
+                                    <div className="media-library__empty-icon">
+                                        <span className="material-symbols-outlined">photo_library</span>
                                     </div>
-                                    <h3 className="text-lg font-semibold text-main mb-1">No images yet</h3>
-                                    <p className="text-sm text-muted mb-4">Upload images to see them here</p>
+                                    <h3 className="media-library__empty-title">{t('mediaLibrary.gallery.empty.title')}</h3>
+                                    <p className="media-library__empty-text">{t('mediaLibrary.gallery.empty.body')}</p>
                                     <button
                                         onClick={() => setActiveTab('upload')}
-                                        className="px-4 py-2 text-sm font-medium text-primary hover:bg-primary/5 rounded-lg transition-colors"
+                                        className="media-library__empty-action"
                                     >
-                                        Upload Images
+                                        {t('mediaLibrary.gallery.empty.action')}
                                     </button>
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-4 gap-4">
+                                <div className="media-library__grid media-library__grid--assets">
                                     {allAssets.map(asset => (
                                         <div
                                             key={asset.id}
-                                            className="group relative aspect-video rounded-xl overflow-hidden border-2 border-transparent hover:border-primary transition-all bg-zinc-100 dark:bg-zinc-800"
+                                            className="media-library__asset"
                                         >
                                             {asset.type === 'video' ? (
                                                 <video
                                                     src={asset.url}
-                                                    className="w-full h-full object-cover"
+                                                    className="media-library__asset-media"
                                                     muted
                                                     playsInline
                                                     onMouseEnter={e => (e.currentTarget as HTMLVideoElement).play()}
@@ -686,12 +701,12 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                                 <img
                                                     src={asset.thumbnailUrl || asset.url}
                                                     alt={asset.name}
-                                                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                                                    className="media-library__asset-media"
                                                 />
                                             )}
                                             {/* Selection Overlay */}
                                             <div
-                                                className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors cursor-pointer"
+                                                className="media-library__asset-overlay"
                                                 onClick={() => {
                                                     if (onSelect) {
                                                         onSelect(asset);
@@ -701,52 +716,52 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                                             />
 
                                             {/* Action Buttons */}
-                                            <div className="absolute top-2 right-2 flex gap-2 translate-y-2 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all">
+                                            <div className="media-library__asset-actions">
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         navigator.clipboard.writeText(asset.url);
-                                                        showSuccess("Link copied to clipboard");
+                                                        showSuccess(t('mediaLibrary.gallery.actions.copySuccess'));
                                                     }}
-                                                    className="size-8 rounded-lg bg-white shadow-lg text-zinc-600 hover:text-primary flex items-center justify-center transition-colors"
-                                                    title="Copy Link"
+                                                    className="media-library__asset-action"
+                                                    title={t('mediaLibrary.gallery.actions.copy')}
                                                 >
-                                                    <span className="material-symbols-outlined text-[18px]">link</span>
+                                                    <span className="material-symbols-outlined">link</span>
                                                 </button>
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         downloadFile(asset.url, asset.name);
                                                     }}
-                                                    className="size-8 rounded-lg bg-white shadow-lg text-zinc-600 hover:text-primary flex items-center justify-center transition-colors"
-                                                    title="Download"
+                                                    className="media-library__asset-action"
+                                                    title={t('mediaLibrary.gallery.actions.download')}
                                                 >
-                                                    <span className="material-symbols-outlined text-[18px]">download</span>
+                                                    <span className="material-symbols-outlined">download</span>
                                                 </button>
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         setEditingImage(asset);
                                                     }}
-                                                    className="size-8 rounded-lg bg-white shadow-lg text-zinc-600 hover:text-primary flex items-center justify-center transition-colors"
-                                                    title="Edit Image"
+                                                    className="media-library__asset-action"
+                                                    title={t('mediaLibrary.gallery.actions.edit')}
                                                 >
-                                                    <span className="material-symbols-outlined text-[18px]">edit</span>
+                                                    <span className="material-symbols-outlined">edit</span>
                                                 </button>
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
                                                         handleDeleteImage(asset);
                                                     }}
-                                                    className="size-8 rounded-lg bg-white shadow-lg text-zinc-600 hover:text-red-500 flex items-center justify-center transition-colors"
-                                                    title="Delete Image"
+                                                    className="media-library__asset-action is-danger"
+                                                    title={t('mediaLibrary.gallery.actions.delete')}
                                                 >
-                                                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                                                    <span className="material-symbols-outlined">delete</span>
                                                 </button>
                                             </div>
 
-                                            <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/80 to-transparent p-2 pointer-events-none">
-                                                <p className="text-[10px] text-white truncate font-medium">{asset.name}</p>
+                                            <div className="media-library__asset-caption">
+                                                <p>{asset.name}</p>
                                             </div>
                                         </div>
                                     ))}
@@ -756,186 +771,187 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
                     )}
 
                     {activeTab === 'ai' && (
-                        <div className="h-full flex overflow-hidden">
+                        <div className="media-library__panel media-library__panel--ai">
                             {/* LEFT SIDEBAR - CONTROLS */}
-                            <div className="w-[380px] border-r border-surface bg-zinc-50 dark:bg-black/20 flex flex-col p-6 overflow-y-auto shrink-0">
+                            <div className="media-library__ai-sidebar">
                                 {/* Header */}
-                                <div className="flex items-center gap-3 mb-6">
-                                    <div className="size-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-lg shadow-amber-500/20 shrink-0">
-                                        <span className="material-symbols-outlined text-white text-xl">auto_awesome</span>
+                                <div className="media-library__ai-header">
+                                    <div className="media-library__ai-badge">
+                                        <span className="material-symbols-outlined">auto_awesome</span>
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-main leading-tight">Nano Banana</h3>
-                                        <p className="text-xs text-muted">Design Studio</p>
+                                        <h3 className="media-library__ai-title">{t('mediaLibrary.ai.title')}</h3>
+                                        <p className="media-library__ai-subtitle">{t('mediaLibrary.ai.subtitle')}</p>
                                     </div>
                                 </div>
 
                                 {/* Mode Switcher */}
-                                <div className="p-1 rounded-xl bg-zinc-200 dark:bg-zinc-800 flex text-sm font-medium mb-6">
+                                <div className="media-library__ai-mode">
                                     <button
                                         onClick={() => { setAiMode('generate'); setReferenceImage(null); setAiView('input'); }}
-                                        className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-2 ${aiMode === 'generate'
-                                            ? 'bg-white dark:bg-zinc-700 text-main shadow-sm'
-                                            : 'text-muted hover:text-main'
-                                            }`}
+                                        className={`media-library__ai-mode-button ${aiMode === 'generate' ? 'is-active' : ''}`}
+                                        aria-pressed={aiMode === 'generate'}
                                     >
-                                        <span className="material-symbols-outlined text-[16px]">add_photo_alternate</span>
-                                        Generate
+                                        <span className="material-symbols-outlined">add_photo_alternate</span>
+                                        {t('mediaLibrary.ai.mode.generate')}
                                     </button>
                                     <button
                                         onClick={() => { setAiMode('rework'); setAiView('input'); }}
-                                        className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-2 ${aiMode === 'rework'
-                                            ? 'bg-white dark:bg-zinc-700 text-main shadow-sm'
-                                            : 'text-muted hover:text-main'
-                                            }`}
+                                        className={`media-library__ai-mode-button ${aiMode === 'rework' ? 'is-active' : ''}`}
+                                        aria-pressed={aiMode === 'rework'}
                                     >
-                                        <span className="material-symbols-outlined text-[16px]">auto_fix_high</span>
-                                        Rework
+                                        <span className="material-symbols-outlined">auto_fix_high</span>
+                                        {t('mediaLibrary.ai.mode.rework')}
                                     </button>
                                 </div>
 
                                 {/* Rework: Reference Image Selector */}
                                 {aiMode === 'rework' && (
-                                    <div className="space-y-2 mb-6 animate-in fade-in slide-in-from-top-2">
-                                        <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Source Image</label>
+                                    <div className="media-library__ai-section">
+                                        <label className="media-library__label">{t('mediaLibrary.ai.source.label')}</label>
                                         {referenceImage ? (
-                                            <div className="relative group rounded-xl overflow-hidden border border-surface bg-white dark:bg-zinc-800">
-                                                <div className="aspect-video w-full bg-zinc-100 dark:bg-zinc-700">
-                                                    <img src={referenceImage.thumbnailUrl || referenceImage.url} className="w-full h-full object-cover" />
+                                            <div className="media-library__reference">
+                                                <div className="media-library__reference-media">
+                                                    <img src={referenceImage.thumbnailUrl || referenceImage.url} alt={t('mediaLibrary.ai.source.previewAlt')} />
                                                 </div>
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                                    <button onClick={() => setReferenceImage(null)} className="px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur text-white rounded-lg text-xs font-bold transition-colors">
-                                                        Change Image
+                                                <div className="media-library__reference-overlay">
+                                                    <button onClick={() => setReferenceImage(null)} className="media-library__reference-action">
+                                                        {t('mediaLibrary.ai.source.change')}
                                                     </button>
                                                 </div>
                                             </div>
                                         ) : (
                                             <div
                                                 onClick={() => setAiView('picking_reference')}
-                                                className={`h-32 border-2 border-dashed rounded-xl flex flex-col items-center justify-center transition-all cursor-pointer p-4 text-center ${aiView === 'picking_reference'
-                                                    ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/10 text-amber-600'
-                                                    : 'border-zinc-300 dark:border-zinc-700 text-zinc-400 hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/5 hover:text-amber-500'
-                                                    }`}
+                                                className={`media-library__reference-picker ${aiView === 'picking_reference' ? 'is-active' : ''}`}
                                             >
-                                                <span className="material-symbols-outlined mb-2 text-2xl">add_a_photo</span>
-                                                <span className="text-xs font-medium">Select Reference Image</span>
+                                                <span className="material-symbols-outlined">add_a_photo</span>
+                                                <span>{t('mediaLibrary.ai.source.pick')}</span>
                                             </div>
                                         )}
                                     </div>
                                 )}
 
                                 {/* Prompt Input */}
-                                <div className="space-y-2 mb-6 flex-1">
-                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Prompt</label>
+                                <div className="media-library__ai-section is-flex">
+                                    <label className="media-library__label">{t('mediaLibrary.ai.prompt.label')}</label>
                                     <textarea
                                         value={aiPrompt}
                                         onChange={e => setAiPrompt(e.target.value)}
-                                        placeholder={aiMode === 'rework' ? "Describe how to transform the image..." : "Describe the image you want to see..."}
-                                        className="w-full h-32 p-3 rounded-xl bg-white dark:bg-zinc-800 border border-surface focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none text-sm resize-none transition-all placeholder:text-zinc-400"
+                                        placeholder={aiMode === 'rework'
+                                            ? t('mediaLibrary.ai.prompt.placeholder.rework')
+                                            : t('mediaLibrary.ai.prompt.placeholder.generate')}
+                                        className="media-library__textarea"
                                     />
                                 </div>
 
                                 {/* Style Selector */}
-                                <div className="space-y-2 mb-6">
-                                    <label className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Style</label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {['Photographic', 'Digital Art', 'Cinematic', '3D Render', 'Sketch', 'Abstract'].map(style => (
+                                <div className="media-library__ai-section">
+                                    <label className="media-library__label">{t('mediaLibrary.ai.style.label')}</label>
+                                    <div className="media-library__style-grid">
+                                        {aiStyles.map(style => (
                                             <button
-                                                key={style}
-                                                onClick={() => setSelectedStyle(style)}
-                                                className={`px-3 py-2 rounded-lg text-xs font-medium border text-center transition-all truncate ${selectedStyle === style
-                                                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/50'
-                                                    : 'bg-white dark:bg-zinc-800 border-surface text-muted hover:bg-zinc-50 dark:hover:bg-zinc-700'
-                                                    }`}
+                                                key={style.value}
+                                                onClick={() => setSelectedStyle(style.value)}
+                                                className={`media-library__style-button ${selectedStyle === style.value ? 'is-active' : ''}`}
                                             >
-                                                {style}
+                                                {style.label}
                                             </button>
                                         ))}
                                     </div>
                                 </div>
 
                                 {/* Generate Button */}
-                                <div className="mt-auto space-y-3">
+                                <div className="media-library__ai-footer">
                                     {aiUsage && (
-                                        <div className="flex items-center justify-between text-xs text-muted px-1">
-                                            <span>Monthly Quota</span>
-                                            <span className="font-medium text-main">{Math.max(0, (aiUsage.imageLimit || 50) - (aiUsage.imagesUsed || 0))} remaining</span>
+                                        <div className="media-library__quota">
+                                            <span>{t('mediaLibrary.ai.quota.label')}</span>
+                                            <span>
+                                                {t('mediaLibrary.ai.quota.remaining').replace(
+                                                    '{count}',
+                                                    String(Math.max(0, (aiUsage.imageLimit || 50) - (aiUsage.imagesUsed || 0)))
+                                                )}
+                                            </span>
                                         </div>
                                     )}
                                     <button
                                         onClick={handleGenerateAI}
                                         disabled={!aiPrompt || (aiMode === 'rework' && !referenceImage) || isGenerating}
-                                        className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-xl font-bold hover:brightness-110 shadow-lg shadow-amber-500/20 disabled:opacity-50 disabled:shadow-none transition-all flex items-center justify-center gap-2"
+                                        className="media-library__primary-action"
                                     >
                                         {isGenerating ? (
-                                            <span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>
+                                            <span className="material-symbols-outlined media-library__primary-icon is-loading">progress_activity</span>
                                         ) : (
-                                            <span className="material-symbols-outlined text-[20px]">{aiMode === 'rework' ? 'auto_fix_high' : 'bolt'}</span>
+                                            <span className="material-symbols-outlined media-library__primary-icon">{aiMode === 'rework' ? 'auto_fix_high' : 'bolt'}</span>
                                         )}
-                                        {isGenerating ? 'Designing...' : (aiMode === 'rework' ? 'Rework Image' : 'Generate')}
+                                        {isGenerating
+                                            ? t('mediaLibrary.ai.generate.loading')
+                                            : aiMode === 'rework'
+                                                ? t('mediaLibrary.ai.generate.rework')
+                                                : t('mediaLibrary.ai.generate.generate')}
                                     </button>
                                 </div>
                             </div>
 
                             {/* RIGHT CANVAS - PREVIEW & RESULTS */}
-                            <div className="flex-1 bg-white/50 dark:bg-black/40 relative flex flex-col overflow-hidden">
+                            <div className="media-library__ai-canvas">
                                 {/* Dot Pattern Background */}
-                                <div className="absolute inset-0 opacity-[0.05] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle, currentColor 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
+                                <div className="media-library__ai-pattern" />
 
                                 {/* Loading State */}
                                 {aiView === 'loading' && (
-                                    <div className="absolute inset-0 flex flex-col items-center justify-center z-20 bg-white/80 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-500">
-                                        <div className="relative mx-auto size-24 mb-6">
-                                            <div className="absolute inset-0 rounded-full border-4 border-amber-100 dark:border-amber-900/30"></div>
-                                            <div className="absolute inset-0 rounded-full border-4 border-amber-500 border-t-transparent animate-spin"></div>
-                                            <div className="absolute inset-0 flex items-center justify-center">
-                                                <span className="material-symbols-outlined text-4xl text-amber-500 animate-pulse">auto_awesome</span>
+                                    <div className="media-library__ai-loading">
+                                        <div className="media-library__ai-loading-spinner">
+                                            <div className="media-library__ai-loading-ring" />
+                                            <div className="media-library__ai-loading-ring is-active" />
+                                            <div className="media-library__ai-loading-icon">
+                                                <span className="material-symbols-outlined">auto_awesome</span>
                                             </div>
                                         </div>
-                                        <h3 className="text-xl font-bold text-main animate-pulse">Creating your masterpiece...</h3>
-                                        <p className="text-sm text-muted mt-2">This usually takes about 10-15 seconds</p>
+                                        <h3>{t('mediaLibrary.ai.loading.title')}</h3>
+                                        <p>{t('mediaLibrary.ai.loading.subtitle')}</p>
                                     </div>
                                 )}
 
                                 {/* Default / Empty State */}
                                 {aiView === 'input' && (
-                                    <div className="h-full flex flex-col items-center justify-center text-center p-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                        <div className="size-24 rounded-3xl bg-amber-50 dark:bg-amber-900/10 flex items-center justify-center mb-6 shadow-sm rotate-3">
-                                            <span className="material-symbols-outlined text-6xl text-amber-500/80">auto_awesome</span>
+                                    <div className="media-library__ai-empty">
+                                        <div className="media-library__ai-empty-icon">
+                                            <span className="material-symbols-outlined">auto_awesome</span>
                                         </div>
-                                        <h2 className="text-2xl font-bold text-main mb-3">Ready to Create</h2>
-                                        <p className="text-muted max-w-sm leading-relaxed">
+                                        <h2>{t('mediaLibrary.ai.empty.title')}</h2>
+                                        <p>
                                             {aiMode === 'generate'
-                                                ? 'Describe your vision in the prompt box to generate high-quality unique assets.'
-                                                : 'Select an image and describe how you want to transform it.'}
+                                                ? t('mediaLibrary.ai.empty.body.generate')
+                                                : t('mediaLibrary.ai.empty.body.rework')}
                                         </p>
                                     </div>
                                 )}
 
                                 {/* Picking Reference State */}
                                 {aiView === 'picking_reference' && (
-                                    <div className="absolute inset-0 z-20 bg-card flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
-                                        <div className="p-4 border-b border-surface flex items-center justify-between bg-white dark:bg-zinc-900/50">
-                                            <h3 className="font-bold text-main">Select Reference Image</h3>
-                                            <button onClick={() => setAiView('input')} className="text-xs font-medium text-muted hover:text-main px-3 py-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
-                                                Cancel
+                                    <div className="media-library__ai-reference">
+                                        <div className="media-library__ai-reference-header">
+                                            <h3>{t('mediaLibrary.ai.reference.title')}</h3>
+                                            <button onClick={() => setAiView('input')} className="media-library__ai-secondary">
+                                                {t('mediaLibrary.ai.reference.cancel')}
                                             </button>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto p-4">
-                                            <div className="grid grid-cols-4 gap-4">
+                                        <div className="media-library__ai-reference-body">
+                                            <div className="media-library__ai-reference-grid">
                                                 {allAssets.filter(a => a.type === 'image').map(asset => (
                                                     <div
                                                         key={asset.id}
                                                         onClick={() => { setReferenceImage(asset); setAiView('input'); }}
-                                                        className="group relative aspect-square rounded-xl overflow-hidden cursor-pointer border-2 border-transparent hover:border-amber-500 transition-all shadow-sm"
+                                                        className="media-library__ai-reference-item"
                                                     >
-                                                        <img src={asset.thumbnailUrl || asset.url} className="w-full h-full object-cover" />
-                                                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
+                                                        <img src={asset.thumbnailUrl || asset.url} alt={asset.name} />
+                                                        <div className="media-library__ai-reference-overlay" />
                                                     </div>
                                                 ))}
                                                 {allAssets.filter(a => a.type === 'image').length === 0 && (
-                                                    <div className="col-span-4 text-center py-12 text-muted">
-                                                        No images found. Switch to the Gallery tab to upload some.
+                                                    <div className="media-library__ai-reference-empty">
+                                                        {t('mediaLibrary.ai.reference.empty')}
                                                     </div>
                                                 )}
                                             </div>
@@ -945,37 +961,41 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
                                 {/* Results State */}
                                 {aiView === 'results' && (
-                                    <div className="h-full flex flex-col">
-                                        <div className="p-4 border-b border-surface flex items-center justify-between bg-white/50 dark:bg-black/20 backdrop-blur-sm z-10">
-                                            <div className="flex items-center gap-2">
-                                                <span className="material-symbols-outlined text-amber-500">check_circle</span>
-                                                <span className="font-bold text-main">Generation Complete</span>
+                                    <div className="media-library__ai-results">
+                                        <div className="media-library__ai-results-header">
+                                            <div className="media-library__ai-results-title">
+                                                <span className="material-symbols-outlined">check_circle</span>
+                                                <span>{t('mediaLibrary.ai.results.title')}</span>
                                             </div>
                                             <button
                                                 onClick={() => setAiView('input')}
-                                                className="px-3 py-1.5 text-xs font-medium text-muted hover:text-main hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg transition-colors flex items-center gap-1"
+                                                className="media-library__ai-secondary"
                                             >
-                                                Back to Edit
+                                                {t('mediaLibrary.ai.results.back')}
                                             </button>
                                         </div>
-                                        <div className="flex-1 overflow-y-auto p-8 flex items-center justify-center">
-                                            <div className={`grid gap-8 w-full max-w-4xl ${generatedImages.length === 1 ? 'grid-cols-1 max-w-xl' : 'grid-cols-2'}`}>
+                                        <div className="media-library__ai-results-body">
+                                            <div className={`media-library__ai-results-grid ${generatedImages.length === 1 ? 'is-single' : ''}`}>
                                                 {generatedImages.map((url, i) => (
-                                                    <div key={i} className="group relative aspect-square rounded-2xl overflow-hidden shadow-2xl bg-zinc-900 ring-4 ring-white dark:ring-zinc-800 animate-in zoom-in-95 duration-500" style={{ animationDelay: `${i * 100}ms` }}>
-                                                        <img src={url} alt="Generated" className="w-full h-full object-cover" />
-                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300 flex flex-col justify-end p-6">
-                                                            <div className="flex gap-3">
+                                                    <div
+                                                        key={i}
+                                                        className="media-library__ai-result"
+                                                        style={{ animationDelay: `${i * 100}ms` }}
+                                                    >
+                                                        <img src={url} alt={t('mediaLibrary.ai.results.generatedAlt')} />
+                                                        <div className="media-library__ai-result-overlay">
+                                                            <div className="media-library__ai-result-actions">
                                                                 <button
                                                                     onClick={() => handleSaveAIImage(url)}
-                                                                    className="flex-1 py-3 bg-white text-black font-bold rounded-xl hover:bg-zinc-200 transition-colors shadow-lg flex items-center justify-center gap-2"
+                                                                    className="media-library__ai-save"
                                                                 >
-                                                                    <span className="material-symbols-outlined text-[20px]">save_alt</span>
-                                                                    Save
+                                                                    <span className="material-symbols-outlined">save_alt</span>
+                                                                    {t('mediaLibrary.ai.results.save')}
                                                                 </button>
                                                                 <button
                                                                     onClick={() => window.open(url, '_blank')}
-                                                                    className="size-12 rounded-xl bg-white/20 backdrop-blur text-white hover:bg-white/30 flex items-center justify-center transition-colors"
-                                                                    title="Open Fullscreen"
+                                                                    className="media-library__ai-open"
+                                                                    title={t('mediaLibrary.ai.results.open')}
                                                                 >
                                                                     <span className="material-symbols-outlined">open_in_new</span>
                                                                 </button>
@@ -994,84 +1014,86 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
                     {/* Stock Tab */}
                     {activeTab === 'stock' && (
-                        <div className="h-full flex flex-col p-6">
+                        <div className="media-library__panel media-library__panel--stock">
                             {/* Search Bar */}
-                            <form onSubmit={handleSearchStock} className="flex gap-3 mb-6">
-                                <div className="relative flex-1">
-                                    <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400">search</span>
+                            <form onSubmit={handleSearchStock} className="media-library__stock-search">
+                                <div className="media-library__stock-search-field">
+                                    <span className="material-symbols-outlined">search</span>
                                     <input
                                         type="text"
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        placeholder="Search high-resolution photos from Unsplash..."
-                                        className="w-full pl-10 pr-4 py-3 bg-zinc-100 dark:bg-zinc-800 border-none rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all placeholder:text-zinc-500"
+                                        placeholder={t('mediaLibrary.stock.search.placeholder')}
+                                        className="media-library__stock-input"
                                     />
                                 </div>
                                 <Button
                                     type="submit"
                                     disabled={isStockLoading}
-                                    className="px-6 py-3 font-bold rounded-xl hover:brightness-110 shadow-lg shadow-[var(--color-primary)]/20 transition-all gap-2"
+                                    className="media-library__stock-button"
                                 >
                                     {isStockLoading ? (
-                                        <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                                        <span className="material-symbols-outlined">progress_activity</span>
                                     ) : (
                                         <span className="material-symbols-outlined">search</span>
                                     )}
-                                    Search
+                                    {t('mediaLibrary.stock.search.button')}
                                 </Button>
                             </form>
 
                             {/* Content Area */}
-                            <div className="flex-1 overflow-y-auto min-h-0">
+                            <div className="media-library__stock-content">
                                 {isStockLoading ? (
-                                    <div className="h-full flex flex-col items-center justify-center">
-                                        <span className="material-symbols-outlined text-4xl text-primary animate-spin">progress_activity</span>
-                                        <p className="text-sm text-muted mt-2">Connecting to Unsplash...</p>
+                                    <div className="media-library__state">
+                                        <span className="material-symbols-outlined">progress_activity</span>
+                                        <p>{t('mediaLibrary.stock.loading')}</p>
                                     </div>
                                 ) : stockError ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-center p-8">
-                                        <div className="size-16 rounded-2xl bg-red-50 dark:bg-red-900/10 flex items-center justify-center mb-4">
-                                            <span className="material-symbols-outlined text-3xl text-red-500">error</span>
+                                    <div className="media-library__error">
+                                        <div className="media-library__error-icon">
+                                            <span className="material-symbols-outlined">error</span>
                                         </div>
-                                        <h3 className="text-lg font-bold text-main mb-1">Could not load images</h3>
-                                        <p className="text-sm text-muted max-w-md">{stockError}</p>
+                                        <h3>{t('mediaLibrary.stock.errors.title')}</h3>
+                                        <p>{stockError}</p>
                                         <button
                                             onClick={() => loadStockImages(searchQuery)}
-                                            className="mt-4 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/5 rounded-lg transition-colors"
+                                            className="media-library__error-action"
                                         >
-                                            Try Again
+                                            {t('mediaLibrary.stock.errors.retry')}
                                         </button>
                                     </div>
                                 ) : stockImages.length === 0 ? (
-                                    <div className="h-full flex flex-col items-center justify-center text-center">
-                                        <span className="material-symbols-outlined text-4xl text-zinc-300 mb-2">image_search</span>
-                                        <p className="text-muted">No images found for "{searchQuery}"</p>
+                                    <div className="media-library__state is-empty">
+                                        <span className="material-symbols-outlined">image_search</span>
+                                        <p>
+                                            {t('mediaLibrary.stock.empty').replace('{query}', searchQuery)}
+                                        </p>
                                     </div>
                                 ) : (
-                                    <div className="grid grid-cols-4 gap-4 pb-4">
+                                    <div className="media-library__grid media-library__grid--stock">
                                         {stockImages.map(image => (
-                                            <div key={image.id} className="group relative aspect-video rounded-xl overflow-hidden bg-zinc-200 dark:bg-zinc-800 shadow-sm border border-transparent hover:border-primary transition-all">
+                                            <div key={image.id} className="media-library__stock-card">
                                                 <img
                                                     src={image.urls.small}
-                                                    alt={image.alt_description || "Stock Image"}
-                                                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                                    alt={image.alt_description || t('mediaLibrary.stock.alt')}
+                                                    className="media-library__stock-image"
                                                 />
 
                                                 {/* Author Credit */}
-                                                <div className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <p className="text-[10px] text-white truncate">
-                                                        by <span className="font-bold">{image.user.name}</span> on Unsplash
+                                                <div className="media-library__stock-credit">
+                                                    <p>
+                                                        {t('mediaLibrary.stock.credit').replace('{name}', image.user.name)}
                                                     </p>
                                                 </div>
 
                                                 {/* Action Overlay */}
-                                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center backdrop-blur-[1px]">
+                                                <div className="media-library__stock-overlay">
                                                     <button
                                                         onClick={() => handleSaveStockImage(image)}
-                                                        className="px-4 py-2 bg-white text-black rounded-lg text-xs font-bold shadow-lg hover:scale-105 transition-transform flex items-center gap-2"
+                                                        className="media-library__stock-action"
                                                     >
-                                                        <span className="material-symbols-outlined text-[16px]">save_alt</span>
-                                                        Save to Library
+                                                        <span className="material-symbols-outlined">save_alt</span>
+                                                        {t('mediaLibrary.stock.save')}
                                                     </button>
                                                 </div>
                                             </div>
@@ -1081,9 +1103,9 @@ export const MediaLibrary: React.FC<MediaLibraryProps> = ({
 
                                 {/* Unsplash Attribution */}
                                 {!stockError && !isStockLoading && stockImages.length > 0 && (
-                                    <div className="py-4 text-center">
-                                        <a href="https://unsplash.com/?utm_source=projectflow&utm_medium=referral" target="_blank" rel="noopener noreferrer" className="text-xs text-muted hover:text-main transition-colors">
-                                            Photos provided by Unsplash
+                                    <div className="media-library__stock-attribution">
+                                        <a href="https://unsplash.com/?utm_source=projectflow&utm_medium=referral" target="_blank" rel="noopener noreferrer">
+                                            {t('mediaLibrary.stock.attribution')}
                                         </a>
                                     </div>
                                 )}

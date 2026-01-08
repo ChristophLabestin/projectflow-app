@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Modal } from './ui/Modal';
-import { Input } from './ui/Input';
-import { Button } from './ui/Button';
-import { Textarea } from './ui/Textarea';
+import { Modal } from './common/Modal/Modal';
+import { Button } from './common/Button/Button';
+import { TextInput } from './common/Input/TextInput';
+import { TextArea } from './common/Input/TextArea';
+import { useLanguage } from '../context/LanguageContext';
 
 interface GroupCreateModalProps {
     isOpen: boolean;
@@ -15,6 +16,7 @@ export const GroupCreateModal: React.FC<GroupCreateModalProps> = ({ isOpen, onCl
     const [description, setDescription] = useState('');
     const [color, setColor] = useState('#3b82f6'); // Default Blue
     const [loading, setLoading] = useState(false);
+    const { t } = useLanguage();
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -46,48 +48,57 @@ export const GroupCreateModal: React.FC<GroupCreateModalProps> = ({ isOpen, onCl
     ];
 
     return (
-        <Modal isOpen={isOpen} onClose={onClose} title="Create New Group">
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                <Input
-                    label="Group Name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. Designers, Backend Team"
-                    required
-                />
+        <Modal isOpen={isOpen} onClose={onClose} title={t('projectGroups.modal.createTitle')}>
+            <div className="group-create-modal">
+                <form onSubmit={handleSubmit} className="group-create-modal__form">
+                    <TextInput
+                        label={t('projectGroups.modal.fields.name')}
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder={t('projectGroups.modal.fields.namePlaceholder')}
+                        required
+                        className="group-create-modal__field"
+                    />
 
-                <Textarea
-                    label="Description (Optional)"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="What is this group for?"
-                />
+                    <TextArea
+                        label={t('projectGroups.modal.fields.description')}
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder={t('projectGroups.modal.fields.descriptionPlaceholder')}
+                        className="group-create-modal__field group-create-modal__textarea"
+                    />
 
-                <div className="flex flex-col gap-2">
-                    <label className="text-sm font-medium text-muted">Group Color</label>
-                    <div className="flex gap-2 flex-wrap">
-                        {colors.map(c => (
-                            <button
-                                key={c}
-                                type="button"
-                                onClick={() => setColor(c)}
-                                className={`w-8 h-8 rounded-full border-2 transition-transform ${color === c ? 'border-[var(--color-text-main)] scale-110' : 'border-transparent hover:scale-105'
-                                    }`}
-                                style={{ backgroundColor: c }}
-                            />
-                        ))}
+                    <div className="group-create-modal__color">
+                        <label className="group-create-modal__label">{t('projectGroups.modal.fields.color')}</label>
+                        <div className="group-create-modal__swatches">
+                            {colors.map((c) => (
+                                <button
+                                    key={c}
+                                    type="button"
+                                    onClick={() => setColor(c)}
+                                    className={`group-create-modal__swatch ${color === c ? 'is-selected' : ''}`}
+                                    style={{ backgroundColor: c }}
+                                    aria-pressed={color === c}
+                                />
+                            ))}
+                        </div>
                     </div>
-                </div>
 
-                <div className="flex justify-end gap-2 mt-4">
-                    <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>
-                        Cancel
-                    </Button>
-                    <Button type="submit" variant="primary" disabled={loading || !name.trim()}>
-                        {loading ? 'Creating...' : 'Create Group'}
-                    </Button>
-                </div>
-            </form>
+                    <div className="group-create-modal__actions">
+                        <Button type="button" variant="ghost" onClick={onClose} disabled={loading}>
+                            {t('common.cancel')}
+                        </Button>
+                        <Button
+                            type="submit"
+                            variant="primary"
+                            isLoading={loading}
+                            disabled={loading || !name.trim()}
+                        >
+                            {t('projectGroups.actions.create')}
+                        </Button>
+                    </div>
+                </form>
+            </div>
         </Modal>
     );
 };
