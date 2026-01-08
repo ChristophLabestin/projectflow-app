@@ -154,4 +154,39 @@ These are outside the Social module shell in the old routing.
 - `ideas` and `flows` shared components and detail views. Keep this intentional (alias) or split it if product requirements change.
 - Social has both nested (module-shell) routes and standalone routes under the same prefix. If you redesign routing, consider consolidating them under the social shell for consistency.
 
+---
+
+## 6) Shared Components (SCSS migration tracker)
+
+- [ ] components/PinnedTasksModal.tsx - Pinned tasks modal
+- [ ] components/SettingsModal.tsx - App settings modal (legacy UI)
+- [ ] components/MediaLibrary/MediaLibraryModal.tsx - Media library modal
+- [ ] components/GroupCreateModal.tsx - Group create modal
+- [ ] components/InviteMemberModal.tsx - Invite member modal
+- [ ] components/EditTaskModal.tsx - Edit task modal (legacy UI)
+- [ ] components/project/ProjectReportModal.tsx - Project report modal
+- [ ] components/project/HealthDetailModal.tsx - Project health detail modal
+- [ ] components/ProfileSettingsModal.tsx - Profile settings modal
+- [ ] components/onboarding/OnboardingWelcomeModal.tsx - Onboarding welcome modal
+- [ ] components/modals/PasskeySetupModal.tsx - Passkey setup modal
+- [ ] components/modals/TwoFactorChallengeModal.tsx - 2FA challenge modal
+- [ ] components/modals/TwoFactorSetupModal.tsx - 2FA setup modal
+- [ ] components/flows/InitiativeConversionModal.tsx - Initiative conversion modal
+- [ ] components/ui/Modal.tsx - Legacy modal base
+- [ ] components/ui/GlobalConfirmationModal.tsx - Legacy global confirmation
+- [x] components/common/Modal/Modal.tsx - Common modal base (SCSS)
+- [x] components/common/Modal/ConfirmModal.tsx - Common confirm modal (SCSS)
+- [x] components/common/Modal/SettingsModal.tsx - Common settings modal (SCSS)
+- [x] components/TaskCreateModal.tsx - Task create modal (SCSS)
+- [x] components/CreateIssueModal.tsx - Issue create modal (SCSS)
+- [x] components/EditIssueModal.tsx - Issue edit modal (SCSS)
+- [x] components/sprints/CreateSprintModal.tsx - Sprint create modal (SCSS)
+- [x] components/sprints/SprintDetailsModal.tsx - Sprint details modal (SCSS)
+- [x] components/Milestones/MilestoneModal.tsx - Milestone create/edit modal (SCSS)
+- [x] components/Milestones/MilestoneDetailModal.tsx - Milestone detail modal (SCSS)
+- [x] components/project/ProjectEditModal.tsx - Project edit modal (SCSS)
+- [x] components/ProjectLabelsModal.tsx - Project labels modal (SCSS)
+- [x] components/flows/CreateFlowModal.tsx - Flow create modal (SCSS)
+- [x] components/flows/stages/ReviewTimelineModal.tsx - Review timeline modal (SCSS)
+
 
