@@ -8220,6 +8220,586 @@ html.dark .flow-paid-ads-brief__summary {
     }
 }
 
+.flow-paid-ads-review {
+    min-height: 100%;
+    background: var(--color-surface-bg);
+    padding-bottom: 120px;
+}
+
+.flow-paid-ads-review__container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.flow-paid-ads-review__hero {
+    padding: 24px;
+    border-radius: var(--radius-2xl);
+    background: var(--color-surface-card);
+    box-shadow: var(--shadow-soft);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+}
+
+.flow-paid-ads-review__hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 20% 0%, rgba(var(--color-primary-rgb), 0.18), transparent 55%),
+        radial-gradient(circle at 90% 85%, rgba(var(--color-primary-rgb), 0.12), transparent 60%);
+}
+
+.flow-paid-ads-review__hero-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.flow-paid-ads-review__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.flow-paid-ads-review__title {
+    margin: 0;
+    font-size: 2.1rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+.flow-paid-ads-review__subtitle {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--color-text-muted);
+    line-height: 1.6;
+}
+
+.flow-paid-ads-review__hero-icon {
+    position: relative;
+    z-index: 1;
+    width: 64px;
+    height: 64px;
+    border-radius: var(--radius-xl);
+    background: var(--color-surface-hover);
+    color: var(--color-text-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    span.material-symbols-outlined {
+        font-size: 30px;
+    }
+}
+
+.flow-paid-ads-review__grid {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: 1fr;
+}
+
+.flow-paid-ads-review__main,
+.flow-paid-ads-review__aside {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.flow-paid-ads-review__panel {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.flow-paid-ads-review__panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.flow-paid-ads-review__panel-title {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--color-text-muted);
+}
+
+.flow-paid-ads-review__creative {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: 1fr;
+}
+
+.flow-paid-ads-review__creative-preview {
+    display: flex;
+    justify-content: center;
+}
+
+.flow-paid-ads-review__mockup {
+    width: 100%;
+    max-width: 320px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-bg);
+    box-shadow: var(--shadow-md);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.flow-paid-ads-review__mockup-header {
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--color-surface-card);
+}
+
+.flow-paid-ads-review__mockup-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-hover);
+}
+
+.flow-paid-ads-review__mockup-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.flow-paid-ads-review__mockup-line {
+    height: 6px;
+    width: 70%;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-hover);
+}
+
+.flow-paid-ads-review__mockup-line--short {
+    width: 40%;
+}
+
+.flow-paid-ads-review__mockup-media {
+    min-height: 220px;
+    padding: 20px;
+    background: var(--color-surface-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: var(--color-text-muted);
+
+    span.material-symbols-outlined {
+        font-size: 36px;
+        color: var(--color-text-subtle);
+    }
+}
+
+.flow-paid-ads-review__mockup-visual {
+    font-size: 0.8rem;
+    line-height: 1.4;
+}
+
+.flow-paid-ads-review__mockup-footer {
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    background: var(--color-surface-card);
+}
+
+.flow-paid-ads-review__mockup-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+    margin-bottom: 6px;
+}
+
+.flow-paid-ads-review__mockup-text {
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    line-height: 1.4;
+    margin-bottom: 8px;
+}
+
+.flow-paid-ads-review__mockup-label {
+    font-size: 0.6rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-text-subtle);
+}
+
+.flow-paid-ads-review__mockup-cta {
+    align-self: flex-start;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-hover);
+    color: var(--color-text-main);
+    white-space: nowrap;
+}
+
+.flow-paid-ads-review__creative-details {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.flow-paid-ads-review__summary-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 1fr;
+}
+
+.flow-paid-ads-review__summary-card {
+    padding: 14px 16px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-hover);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.flow-paid-ads-review__summary-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-text-subtle);
+}
+
+.flow-paid-ads-review__summary-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+}
+
+.flow-paid-ads-review__summary-text {
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    line-height: 1.5;
+}
+
+.flow-paid-ads-review__summary-empty {
+    font-size: 0.8rem;
+    color: var(--color-text-muted);
+}
+
+.flow-paid-ads-review__variation-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.flow-paid-ads-review__variation-tag {
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-card);
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.flow-paid-ads-review__analysis-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: 1fr;
+}
+
+.flow-paid-ads-review__analysis-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    margin: 0 0 12px;
+
+    span.material-symbols-outlined {
+        font-size: 18px;
+    }
+}
+
+.flow-paid-ads-review__analysis-title--wins {
+    color: var(--color-success);
+}
+
+.flow-paid-ads-review__analysis-title--risks {
+    color: var(--color-warning);
+}
+
+.flow-paid-ads-review__analysis-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    li {
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+        line-height: 1.5;
+        position: relative;
+        padding-left: 16px;
+    }
+
+    li::before {
+        content: '•';
+        position: absolute;
+        left: 0;
+        color: var(--color-text-subtle);
+    }
+}
+
+.flow-paid-ads-review__score {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.flow-paid-ads-review__score-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--color-text-muted);
+}
+
+.flow-paid-ads-review__score-bar {
+    flex: 1;
+    min-width: 160px;
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-hover);
+    overflow: hidden;
+}
+
+.flow-paid-ads-review__score-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width var(--transition-normal);
+
+    &.is-high {
+        background: var(--color-success);
+    }
+
+    &.is-medium {
+        background: var(--color-warning);
+    }
+
+    &.is-low {
+        background: var(--color-error);
+    }
+}
+
+.flow-paid-ads-review__score-value {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+}
+
+.flow-paid-ads-review__analysis-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    text-align: center;
+    color: var(--color-text-muted);
+    padding: 12px 0;
+
+    span.material-symbols-outlined {
+        font-size: 32px;
+        color: var(--color-text-subtle);
+    }
+
+    p {
+        margin: 0;
+        font-size: 0.85rem;
+        max-width: 360px;
+    }
+}
+
+.flow-paid-ads-review__detail {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+
+    span:last-child {
+        color: var(--color-text-main);
+        font-weight: 600;
+        text-align: right;
+    }
+}
+
+.flow-paid-ads-review__detail--stack {
+    flex-direction: column;
+    align-items: flex-start;
+
+    span:last-child {
+        text-align: left;
+    }
+}
+
+.flow-paid-ads-review__detail-link {
+    word-break: break-word;
+}
+
+.flow-paid-ads-review__detail-muted {
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+}
+
+.flow-paid-ads-review__tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.flow-paid-ads-review__tag {
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-hover);
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+}
+
+.flow-paid-ads-review__budget {
+    padding: 24px;
+    border-radius: var(--radius-2xl);
+    background: var(--color-primary);
+    color: var(--color-primary-text);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.flow-paid-ads-review__budget-title {
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: currentColor;
+}
+
+.flow-paid-ads-review__budget-amount {
+    font-size: 2.2rem;
+    font-weight: 700;
+}
+
+.flow-paid-ads-review__budget-type {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: currentColor;
+    opacity: 0.8;
+}
+
+.flow-paid-ads-review__budget-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 0.85rem;
+
+    div {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        color: currentColor;
+    }
+
+    span:last-child {
+        font-weight: 600;
+    }
+}
+
+.flow-paid-ads-review__publish {
+    width: 100%;
+    background: var(--color-absolute-white);
+    color: var(--color-absolute-black);
+}
+
+.flow-paid-ads-review__quick-edit {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    background: var(--color-surface-card);
+    box-shadow: var(--shadow-lg);
+    border-radius: var(--radius-full);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 50;
+    flex-wrap: wrap;
+    max-width: calc(100% - 32px);
+}
+
+.flow-paid-ads-review__quick-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    color: var(--color-text-muted);
+}
+
+.flow-paid-ads-review__quick-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+@include mixins.mq('md') {
+    .flow-paid-ads-review__hero {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .flow-paid-ads-review__creative {
+        grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+        align-items: start;
+    }
+
+    .flow-paid-ads-review__summary-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .flow-paid-ads-review__analysis-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .flow-paid-ads-review__score {
+        grid-column: 1 / -1;
+    }
+}
+
+@include mixins.mq('lg') {
+    .flow-paid-ads-review__grid {
+        grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    }
+}
+
 .flow-paid-ads-live {
     min-height: 100%;
     background: var(--color-surface-bg);
