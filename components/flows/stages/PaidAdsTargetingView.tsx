@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
 import { Idea } from '../../../types';
-import { Button } from '../../ui/Button';
+import { Button } from '../../common/Button/Button';
+import { Card } from '../../common/Card/Card';
+import { TextInput } from '../../common/Input/TextInput';
 import { generateTargetingSuggestions } from '../../../services/geminiService';
 import { usePaidAdsData } from '../../../hooks/usePaidAdsData';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface PaidAdsTargetingViewProps {
     idea: Idea;
@@ -10,19 +13,25 @@ interface PaidAdsTargetingViewProps {
 }
 
 const PLACEMENTS = [
-    { id: 'feeds', label: 'Feeds', icon: 'feed' },
-    { id: 'stories', label: 'Stories / Reels', icon: 'web_stories' },
-    { id: 'search', label: 'Search Results', icon: 'search' },
-    { id: 'messages', label: 'Messages', icon: 'chat' },
-    { id: 'apps', label: 'Apps & Sites', icon: 'apps' },
+    { id: 'feeds', labelKey: 'flowStages.paidAdsTargeting.placements.feeds', icon: 'feed' },
+    { id: 'stories', labelKey: 'flowStages.paidAdsTargeting.placements.stories', icon: 'web_stories' },
+    { id: 'search', labelKey: 'flowStages.paidAdsTargeting.placements.search', icon: 'search' },
+    { id: 'messages', labelKey: 'flowStages.paidAdsTargeting.placements.messages', icon: 'chat' },
+    { id: 'apps', labelKey: 'flowStages.paidAdsTargeting.placements.apps', icon: 'apps' },
+];
+
+const GENDER_OPTIONS = [
+    { value: 'All', labelKey: 'flowStages.paidAdsTargeting.gender.all' },
+    { value: 'Male', labelKey: 'flowStages.paidAdsTargeting.gender.male' },
+    { value: 'Female', labelKey: 'flowStages.paidAdsTargeting.gender.female' },
 ];
 
 export const PaidAdsTargetingView: React.FC<PaidAdsTargetingViewProps> = ({ idea, onUpdate }) => {
+    const { t } = useLanguage();
     const { adData, updateTargeting } = usePaidAdsData(idea, onUpdate);
     const [isGenerating, setIsGenerating] = useState(false);
     const targeting = adData.targeting || {};
 
-    // Local state for inputs
     const [locationInput, setLocationInput] = useState('');
     const [interestInput, setInterestInput] = useState('');
     const [behaviorInput, setBehaviorInput] = useState('');
@@ -40,11 +49,9 @@ export const PaidAdsTargetingView: React.FC<PaidAdsTargetingViewProps> = ({ idea
             );
 
             if (suggestions) {
-                // Merge suggestions
                 updateTargeting({
                     interests: [...new Set([...(targeting.interests || []), ...(suggestions.interests || [])])],
                     behaviors: [...new Set([...(targeting.behaviors || []), ...(suggestions.behaviors || [])])],
-                    // We could also suggest age/gender if the AI returns it, but for now just interests/behaviors
                 });
             }
         } finally {
@@ -52,12 +59,11 @@ export const PaidAdsTargetingView: React.FC<PaidAdsTargetingViewProps> = ({ idea
         }
     };
 
-    // Generic list handlers
     const addToList = (
         list: string[] | undefined,
         item: string,
         field: 'locations' | 'interests' | 'behaviors' | 'customAudiences' | 'lookalikes' | 'languages',
-        setInput: (s: string) => void
+        setInput: (value: string) => void
     ) => {
         if (item.trim()) {
             const current = list || [];
@@ -68,7 +74,11 @@ export const PaidAdsTargetingView: React.FC<PaidAdsTargetingViewProps> = ({ idea
         }
     };
 
-    const removeFromList = (list: string[] | undefined, index: number, field: 'locations' | 'interests' | 'behaviors' | 'customAudiences' | 'lookalikes' | 'languages') => {
+    const removeFromList = (
+        list: string[] | undefined,
+        index: number,
+        field: 'locations' | 'interests' | 'behaviors' | 'customAudiences' | 'lookalikes' | 'languages'
+    ) => {
         if (!list) return;
         updateTargeting({ [field]: list.filter((_, i) => i !== index) });
     };
@@ -83,307 +93,363 @@ export const PaidAdsTargetingView: React.FC<PaidAdsTargetingViewProps> = ({ idea
     };
 
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="max-w-7xl mx-auto flex flex-col gap-6 pt-6 px-6 pb-20">
-                {/* Header */}
-                <div className="bg-gradient-to-br from-emerald-100 via-teal-50 to-white dark:from-emerald-900/30 dark:via-teal-900/10 dark:to-slate-900/50 rounded-3xl p-6 md:p-8 border border-emerald-200 dark:border-emerald-800/50 relative overflow-hidden shadow-xl shadow-emerald-100 dark:shadow-none flex items-center justify-between">
-                    <div className="relative z-10 flex flex-col justify-center h-full">
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="px-3 py-1 bg-emerald-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-emerald-200 dark:shadow-none">
-                                TARGETING
-                            </div>
-                        </div>
-                        <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-                            Audience Radar
-                        </h1>
+        <div className="flow-paid-ads-targeting">
+            <div className="flow-paid-ads-targeting__container">
+                <Card className="flow-paid-ads-targeting__hero">
+                    <div>
+                        <div className="flow-paid-ads-targeting__badge">{t('flows.stage.targeting')}</div>
+                        <h1 className="flow-paid-ads-targeting__title">{t('flowStages.paidAdsTargeting.hero.title')}</h1>
                     </div>
-                    <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-emerald-100/50 to-transparent dark:from-emerald-900/20" />
-                    <span className="material-symbols-outlined absolute right-10 -bottom-10 text-[180px] text-emerald-500/10 rotate-12">radar</span>
-                </div>
+                    <div className="flow-paid-ads-targeting__hero-icon">
+                        <span className="material-symbols-outlined">radar</span>
+                    </div>
+                </Card>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    {/* Left Column: Demographics & Geo (6/12) */}
-                    <div className="lg:col-span-6 space-y-6">
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em] mb-6">Demographics</h3>
+                <div className="flow-paid-ads-targeting__grid">
+                    <div className="flow-paid-ads-targeting__column">
+                        <Card className="flow-paid-ads-targeting__panel">
+                            <div className="flow-paid-ads-targeting__panel-header">
+                                <h3>{t('flowStages.paidAdsTargeting.sections.demographics')}</h3>
+                            </div>
 
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="text-[9px] font-black text-emerald-600 uppercase tracking-[.25em] mb-3 block opacity-80">Locations</label>
-                                    <div className="relative mb-3">
-                                        <input
-                                            type="text"
+                            <div className="flow-paid-ads-targeting__panel-body">
+                                <div className="flow-paid-ads-targeting__field">
+                                    <div className="flow-paid-ads-targeting__input-row">
+                                        <TextInput
+                                            label={t('flowStages.paidAdsTargeting.fields.locations')}
                                             value={locationInput}
-                                            onChange={(e) => setLocationInput(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && addToList(targeting.locations, locationInput, 'locations', setLocationInput)}
-                                            placeholder="Add countries, cities..."
-                                            className="w-full text-sm font-bold bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:ring-1 focus:ring-emerald-500 outline-none pl-10"
+                                            onChange={(event) => setLocationInput(event.target.value)}
+                                            onKeyDown={(event) => event.key === 'Enter' && addToList(targeting.locations, locationInput, 'locations', setLocationInput)}
+                                            placeholder={t('flowStages.paidAdsTargeting.placeholders.locations')}
+                                            leftElement={<span className="material-symbols-outlined">location_on</span>}
+                                            className="flow-paid-ads-targeting__control"
                                         />
-                                        <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[18px]">location_on</span>
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            className="flow-paid-ads-targeting__add-button"
+                                            onClick={() => addToList(targeting.locations, locationInput, 'locations', setLocationInput)}
+                                        >
+                                            {t('common.add')}
+                                        </Button>
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {targeting.locations?.map((loc, i) => (
-                                            <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-bold">
+                                    <div className="flow-paid-ads-targeting__tag-list">
+                                        {targeting.locations?.map((loc, index) => (
+                                            <span key={index} className="flow-paid-ads-targeting__tag">
                                                 {loc}
-                                                <button onClick={() => removeFromList(targeting.locations, i, 'locations')} className="hover:text-emerald-900 dark:hover:text-emerald-100"><span className="material-symbols-outlined text-[12px]">close</span></button>
+                                                <button
+                                                    type="button"
+                                                    className="flow-paid-ads-targeting__tag-remove"
+                                                    onClick={() => removeFromList(targeting.locations, index, 'locations')}
+                                                    aria-label={t('common.delete')}
+                                                >
+                                                    <span className="material-symbols-outlined">close</span>
+                                                </button>
                                             </span>
                                         ))}
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-[9px] font-black text-emerald-600 uppercase tracking-[.25em] mb-2 block opacity-80">Min Age</label>
-                                        <input
-                                            type="number"
-                                            value={targeting.ageMin || 18}
-                                            onChange={(e) => updateTargeting({ ageMin: Number(e.target.value) })}
-                                            className="w-full text-sm font-black bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:ring-1 focus:ring-emerald-500 outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="text-[9px] font-black text-emerald-600 uppercase tracking-[.25em] mb-2 block opacity-80">Max Age</label>
-                                        <input
-                                            type="number"
-                                            value={targeting.ageMax || 65}
-                                            onChange={(e) => updateTargeting({ ageMax: Number(e.target.value) })}
-                                            className="w-full text-sm font-black bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 focus:ring-1 focus:ring-emerald-500 outline-none"
-                                        />
-                                    </div>
+                                <div className="flow-paid-ads-targeting__field flow-paid-ads-targeting__age-row">
+                                    <TextInput
+                                        type="number"
+                                        label={t('flowStages.paidAdsTargeting.fields.minAge')}
+                                        value={targeting.ageMin || 18}
+                                        onChange={(event) => updateTargeting({ ageMin: Number(event.target.value) })}
+                                        className="flow-paid-ads-targeting__control"
+                                    />
+                                    <TextInput
+                                        type="number"
+                                        label={t('flowStages.paidAdsTargeting.fields.maxAge')}
+                                        value={targeting.ageMax || 65}
+                                        onChange={(event) => updateTargeting({ ageMax: Number(event.target.value) })}
+                                        className="flow-paid-ads-targeting__control"
+                                    />
                                 </div>
 
-                                <div>
-                                    <label className="text-[9px] font-black text-emerald-600 uppercase tracking-[.25em] mb-3 block opacity-80">Gender</label>
-                                    <div className="flex bg-slate-50 dark:bg-slate-800 rounded-xl p-1 border border-slate-200 dark:border-slate-700">
-                                        {['All', 'Male', 'Female'].map((g) => {
-                                            const isSelected = (targeting.genders || ['All']).includes(g as any); // Simplified check
+                                <div className="flow-paid-ads-targeting__field">
+                                    <label className="flow-paid-ads-targeting__label">
+                                        {t('flowStages.paidAdsTargeting.fields.gender')}
+                                    </label>
+                                    <div className="flow-paid-ads-targeting__segmented">
+                                        {GENDER_OPTIONS.map((option) => {
+                                            const isSelected = (targeting.genders || ['All']).includes(option.value as any);
                                             return (
                                                 <button
-                                                    key={g}
-                                                    onClick={() => updateTargeting({ genders: [g as any] })} // Simplified to single select for UI, though type is array
-                                                    className={`flex-1 py-2 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${isSelected ? 'bg-white dark:bg-slate-700 shadow text-emerald-600 dark:text-emerald-400' : 'text-slate-400 hover:text-slate-600'}`}
+                                                    key={option.value}
+                                                    type="button"
+                                                    className={`flow-paid-ads-targeting__segment ${isSelected ? 'is-active' : ''}`}
+                                                    onClick={() => updateTargeting({ genders: [option.value as any] })}
+                                                    aria-pressed={isSelected}
                                                 >
-                                                    {g}
+                                                    {t(option.labelKey)}
                                                 </button>
                                             );
                                         })}
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="text-[9px] font-black text-emerald-600 uppercase tracking-[.25em] mb-2 block opacity-80">Custom Audiences</label>
-                                    <div className="flex gap-2 mb-3">
-                                        <input
-                                            type="text"
+                                <div className="flow-paid-ads-targeting__field">
+                                    <div className="flow-paid-ads-targeting__input-row">
+                                        <TextInput
+                                            label={t('flowStages.paidAdsTargeting.fields.customAudiences')}
                                             value={customAudienceInput}
-                                            onChange={(e) => setCustomAudienceInput(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && addToList(targeting.customAudiences, customAudienceInput, 'customAudiences', setCustomAudienceInput)}
-                                            placeholder="Retargeting, CRM list..."
-                                            className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+                                            onChange={(event) => setCustomAudienceInput(event.target.value)}
+                                            onKeyDown={(event) => event.key === 'Enter' && addToList(targeting.customAudiences, customAudienceInput, 'customAudiences', setCustomAudienceInput)}
+                                            placeholder={t('flowStages.paidAdsTargeting.placeholders.customAudiences')}
+                                            className="flow-paid-ads-targeting__control"
                                         />
-                                        <button
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            className="flow-paid-ads-targeting__add-button"
                                             onClick={() => addToList(targeting.customAudiences, customAudienceInput, 'customAudiences', setCustomAudienceInput)}
-                                            className="px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold"
                                         >
-                                            Add
-                                        </button>
+                                            {t('common.add')}
+                                        </Button>
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {targeting.customAudiences?.map((aud, i) => (
-                                            <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-bold">
-                                                {aud}
-                                                <button onClick={() => removeFromList(targeting.customAudiences, i, 'customAudiences')} className="hover:text-emerald-900 dark:hover:text-emerald-100"><span className="material-symbols-outlined text-[12px]">close</span></button>
+                                    <div className="flow-paid-ads-targeting__tag-list">
+                                        {targeting.customAudiences?.map((audience, index) => (
+                                            <span key={index} className="flow-paid-ads-targeting__tag">
+                                                {audience}
+                                                <button
+                                                    type="button"
+                                                    className="flow-paid-ads-targeting__tag-remove"
+                                                    onClick={() => removeFromList(targeting.customAudiences, index, 'customAudiences')}
+                                                    aria-label={t('common.delete')}
+                                                >
+                                                    <span className="material-symbols-outlined">close</span>
+                                                </button>
                                             </span>
                                         ))}
                                     </div>
                                 </div>
-                                <div>
-                                    <label className="text-[9px] font-black text-emerald-600 uppercase tracking-[.25em] mb-2 block opacity-80">Excluded Audiences</label>
-                                    <input
+
+                                <div className="flow-paid-ads-targeting__field">
+                                    <TextInput
+                                        label={t('flowStages.paidAdsTargeting.fields.excludedAudiences')}
                                         value={targeting.excludedAudiences || ''}
-                                        onChange={(e) => updateTargeting({ excludedAudiences: e.target.value })}
-                                        placeholder="Competitors, Current Customers..."
-                                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+                                        onChange={(event) => updateTargeting({ excludedAudiences: event.target.value })}
+                                        placeholder={t('flowStages.paidAdsTargeting.placeholders.excludedAudiences')}
+                                        className="flow-paid-ads-targeting__control"
                                     />
                                 </div>
                             </div>
 
-                            <div className="pt-6 border-t border-slate-100 dark:border-slate-800">
+                            <div className="flow-paid-ads-targeting__panel-footer">
                                 <Button
-                                    className="w-full h-12 text-base justify-between group bg-white text-slate-900 hover:bg-violet-50 shadow-lg hover:shadow-xl transition-all rounded-xl border-none"
+                                    className="flow-paid-ads-targeting__advance"
                                     onClick={() => onUpdate({ stage: 'Budget' })}
+                                    icon={<span className="material-symbols-outlined">arrow_forward</span>}
+                                    iconPosition="right"
                                 >
-                                    <span className="font-bold pl-1 text-xs uppercase tracking-widest">Next: Budgeting</span>
-                                    <div className="size-8 rounded-lg bg-slate-900/10 flex items-center justify-center group-hover:translate-x-1 transition-transform">
-                                        <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
-                                    </div>
+                                    {t('flowStages.paidAdsTargeting.actions.advance')}
                                 </Button>
                             </div>
-                        </div>
+                        </Card>
                     </div>
 
-                    {/* Right Column: Interests & Placements (6/12) */}
-                    <div className="lg:col-span-6 space-y-6">
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-                            <div className="flex items-center justify-between mb-6">
-                                <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em]">Interests & Behaviors</h3>
-                                <button
+                    <div className="flow-paid-ads-targeting__column">
+                        <Card className="flow-paid-ads-targeting__panel">
+                            <div className="flow-paid-ads-targeting__panel-header">
+                                <h3>{t('flowStages.paidAdsTargeting.sections.interests')}</h3>
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="flow-paid-ads-targeting__suggest"
                                     onClick={handleGenerateSuggestions}
-                                    disabled={isGenerating}
-                                    className="text-[10px] font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-lg transition-colors"
+                                    isLoading={isGenerating}
+                                    icon={<span className="material-symbols-outlined">auto_awesome</span>}
                                 >
-                                    <span className={`material-symbols-outlined text-[14px] ${isGenerating ? 'animate-spin' : ''}`}>
-                                        {isGenerating ? 'sync' : 'auto_awesome'}
-                                    </span>
-                                    {isGenerating ? 'Analyzing...' : 'Suggest'}
-                                </button>
+                                    {isGenerating
+                                        ? t('flowStages.paidAdsTargeting.actions.analyzing')
+                                        : t('flowStages.paidAdsTargeting.actions.suggest')}
+                                </Button>
                             </div>
 
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="text-[9px] font-black text-emerald-600 uppercase tracking-[.25em] mb-2 block opacity-80">Interests</label>
-                                    <div className="flex gap-2 mb-3">
-                                        <input
-                                            type="text"
+                            <div className="flow-paid-ads-targeting__panel-body">
+                                <div className="flow-paid-ads-targeting__field">
+                                    <div className="flow-paid-ads-targeting__input-row">
+                                        <TextInput
+                                            label={t('flowStages.paidAdsTargeting.fields.interests')}
                                             value={interestInput}
-                                            onChange={(e) => setInterestInput(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && addToList(targeting.interests, interestInput, 'interests', setInterestInput)}
-                                            placeholder="Add interests..."
-                                            className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+                                            onChange={(event) => setInterestInput(event.target.value)}
+                                            onKeyDown={(event) => event.key === 'Enter' && addToList(targeting.interests, interestInput, 'interests', setInterestInput)}
+                                            placeholder={t('flowStages.paidAdsTargeting.placeholders.interests')}
+                                            className="flow-paid-ads-targeting__control"
                                         />
-                                        <button
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            className="flow-paid-ads-targeting__add-button"
                                             onClick={() => addToList(targeting.interests, interestInput, 'interests', setInterestInput)}
-                                            className="px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold"
                                         >
-                                            Add
-                                        </button>
+                                            {t('common.add')}
+                                        </Button>
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {targeting.interests?.map((interest, i) => (
-                                            <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-bold">
+                                    <div className="flow-paid-ads-targeting__tag-list">
+                                        {targeting.interests?.map((interest, index) => (
+                                            <span key={index} className="flow-paid-ads-targeting__tag">
                                                 {interest}
-                                                <button onClick={() => removeFromList(targeting.interests, i, 'interests')} className="hover:text-emerald-900 dark:hover:text-emerald-100"><span className="material-symbols-outlined text-[12px]">close</span></button>
+                                                <button
+                                                    type="button"
+                                                    className="flow-paid-ads-targeting__tag-remove"
+                                                    onClick={() => removeFromList(targeting.interests, index, 'interests')}
+                                                    aria-label={t('common.delete')}
+                                                >
+                                                    <span className="material-symbols-outlined">close</span>
+                                                </button>
                                             </span>
                                         ))}
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="text-[9px] font-black text-emerald-600 uppercase tracking-[.25em] mb-2 block opacity-80">Behaviors</label>
-                                    <div className="flex gap-2 mb-3">
-                                        <input
-                                            type="text"
+                                <div className="flow-paid-ads-targeting__field">
+                                    <div className="flow-paid-ads-targeting__input-row">
+                                        <TextInput
+                                            label={t('flowStages.paidAdsTargeting.fields.behaviors')}
                                             value={behaviorInput}
-                                            onChange={(e) => setBehaviorInput(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && addToList(targeting.behaviors, behaviorInput, 'behaviors', setBehaviorInput)}
-                                            placeholder="Add behaviors..."
-                                            className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+                                            onChange={(event) => setBehaviorInput(event.target.value)}
+                                            onKeyDown={(event) => event.key === 'Enter' && addToList(targeting.behaviors, behaviorInput, 'behaviors', setBehaviorInput)}
+                                            placeholder={t('flowStages.paidAdsTargeting.placeholders.behaviors')}
+                                            className="flow-paid-ads-targeting__control"
                                         />
-                                        <button
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            className="flow-paid-ads-targeting__add-button"
                                             onClick={() => addToList(targeting.behaviors, behaviorInput, 'behaviors', setBehaviorInput)}
-                                            className="px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold"
                                         >
-                                            Add
-                                        </button>
+                                            {t('common.add')}
+                                        </Button>
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {targeting.behaviors?.map((behavior, i) => (
-                                            <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-bold">
+                                    <div className="flow-paid-ads-targeting__tag-list">
+                                        {targeting.behaviors?.map((behavior, index) => (
+                                            <span key={index} className="flow-paid-ads-targeting__tag">
                                                 {behavior}
-                                                <button onClick={() => removeFromList(targeting.behaviors, i, 'behaviors')} className="hover:text-emerald-900 dark:hover:text-emerald-100"><span className="material-symbols-outlined text-[12px]">close</span></button>
+                                                <button
+                                                    type="button"
+                                                    className="flow-paid-ads-targeting__tag-remove"
+                                                    onClick={() => removeFromList(targeting.behaviors, index, 'behaviors')}
+                                                    aria-label={t('common.delete')}
+                                                >
+                                                    <span className="material-symbols-outlined">close</span>
+                                                </button>
                                             </span>
                                         ))}
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </Card>
 
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em] mb-6">Lookalikes & Languages</h3>
-                            <div className="space-y-6">
-                                <div>
-                                    <label className="text-[9px] font-black text-emerald-600 uppercase tracking-[.25em] mb-2 block opacity-80">Lookalikes</label>
-                                    <div className="flex gap-2 mb-3">
-                                        <input
-                                            type="text"
+                        <Card className="flow-paid-ads-targeting__panel">
+                            <div className="flow-paid-ads-targeting__panel-header">
+                                <h3>{t('flowStages.paidAdsTargeting.sections.lookalikes')}</h3>
+                            </div>
+
+                            <div className="flow-paid-ads-targeting__panel-body">
+                                <div className="flow-paid-ads-targeting__field">
+                                    <div className="flow-paid-ads-targeting__input-row">
+                                        <TextInput
+                                            label={t('flowStages.paidAdsTargeting.fields.lookalikes')}
                                             value={lookalikeInput}
-                                            onChange={(e) => setLookalikeInput(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && addToList(targeting.lookalikes, lookalikeInput, 'lookalikes', setLookalikeInput)}
-                                            placeholder="Seed list, % range..."
-                                            className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+                                            onChange={(event) => setLookalikeInput(event.target.value)}
+                                            onKeyDown={(event) => event.key === 'Enter' && addToList(targeting.lookalikes, lookalikeInput, 'lookalikes', setLookalikeInput)}
+                                            placeholder={t('flowStages.paidAdsTargeting.placeholders.lookalikes')}
+                                            className="flow-paid-ads-targeting__control"
                                         />
-                                        <button
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            className="flow-paid-ads-targeting__add-button"
                                             onClick={() => addToList(targeting.lookalikes, lookalikeInput, 'lookalikes', setLookalikeInput)}
-                                            className="px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold"
                                         >
-                                            Add
-                                        </button>
+                                            {t('common.add')}
+                                        </Button>
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {targeting.lookalikes?.map((lookalike, i) => (
-                                            <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-bold">
+                                    <div className="flow-paid-ads-targeting__tag-list">
+                                        {targeting.lookalikes?.map((lookalike, index) => (
+                                            <span key={index} className="flow-paid-ads-targeting__tag">
                                                 {lookalike}
-                                                <button onClick={() => removeFromList(targeting.lookalikes, i, 'lookalikes')} className="hover:text-emerald-900 dark:hover:text-emerald-100"><span className="material-symbols-outlined text-[12px]">close</span></button>
+                                                <button
+                                                    type="button"
+                                                    className="flow-paid-ads-targeting__tag-remove"
+                                                    onClick={() => removeFromList(targeting.lookalikes, index, 'lookalikes')}
+                                                    aria-label={t('common.delete')}
+                                                >
+                                                    <span className="material-symbols-outlined">close</span>
+                                                </button>
                                             </span>
                                         ))}
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="text-[9px] font-black text-emerald-600 uppercase tracking-[.25em] mb-2 block opacity-80">Languages</label>
-                                    <div className="flex gap-2 mb-3">
-                                        <input
-                                            type="text"
+                                <div className="flow-paid-ads-targeting__field">
+                                    <div className="flow-paid-ads-targeting__input-row">
+                                        <TextInput
+                                            label={t('flowStages.paidAdsTargeting.fields.languages')}
                                             value={languageInput}
-                                            onChange={(e) => setLanguageInput(e.target.value)}
-                                            onKeyDown={(e) => e.key === 'Enter' && addToList(targeting.languages, languageInput, 'languages', setLanguageInput)}
-                                            placeholder="English, Spanish..."
-                                            className="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-emerald-500"
+                                            onChange={(event) => setLanguageInput(event.target.value)}
+                                            onKeyDown={(event) => event.key === 'Enter' && addToList(targeting.languages, languageInput, 'languages', setLanguageInput)}
+                                            placeholder={t('flowStages.paidAdsTargeting.placeholders.languages')}
+                                            className="flow-paid-ads-targeting__control"
                                         />
-                                        <button
+                                        <Button
+                                            size="sm"
+                                            variant="secondary"
+                                            className="flow-paid-ads-targeting__add-button"
                                             onClick={() => addToList(targeting.languages, languageInput, 'languages', setLanguageInput)}
-                                            className="px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold"
                                         >
-                                            Add
-                                        </button>
+                                            {t('common.add')}
+                                        </Button>
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        {targeting.languages?.map((lang, i) => (
-                                            <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 rounded-lg text-xs font-bold">
+                                    <div className="flow-paid-ads-targeting__tag-list">
+                                        {targeting.languages?.map((lang, index) => (
+                                            <span key={index} className="flow-paid-ads-targeting__tag">
                                                 {lang}
-                                                <button onClick={() => removeFromList(targeting.languages, i, 'languages')} className="hover:text-emerald-900 dark:hover:text-emerald-100"><span className="material-symbols-outlined text-[12px]">close</span></button>
+                                                <button
+                                                    type="button"
+                                                    className="flow-paid-ads-targeting__tag-remove"
+                                                    onClick={() => removeFromList(targeting.languages, index, 'languages')}
+                                                    aria-label={t('common.delete')}
+                                                >
+                                                    <span className="material-symbols-outlined">close</span>
+                                                </button>
                                             </span>
                                         ))}
                                     </div>
                                 </div>
                             </div>
-                        </div>
+                        </Card>
 
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em] mb-6">Placements</h3>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                {PLACEMENTS.map(placement => {
-                                    const selected = (targeting.placements || []).includes(placement.id);
-                                    return (
-                                        <button
-                                            key={placement.id}
-                                            onClick={() => togglePlacement(placement.id)}
-                                            className={`p-4 rounded-2xl border-2 text-left transition-all ${selected
-                                                ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500/50 shadow-lg shadow-emerald-500/10'
-                                                : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-700 hover:border-emerald-300'
-                                                }`}
-                                        >
-                                            <div className={`mb-2 size-8 rounded-lg flex items-center justify-center ${selected ? 'bg-emerald-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-400'}`}>
-                                                <span className="material-symbols-outlined text-[18px]">{placement.icon}</span>
-                                            </div>
-                                            <span className={`text-[10px] font-black uppercase tracking-wider block ${selected ? 'text-emerald-700 dark:text-emerald-300' : 'text-slate-900 dark:text-white'}`}>
-                                                {placement.label}
-                                            </span>
-                                        </button>
-                                    );
-                                })}
+                        <Card className="flow-paid-ads-targeting__panel">
+                            <div className="flow-paid-ads-targeting__panel-header">
+                                <h3>{t('flowStages.paidAdsTargeting.sections.placements')}</h3>
                             </div>
-                        </div>
+                            <div className="flow-paid-ads-targeting__panel-body">
+                                <div className="flow-paid-ads-targeting__placement-grid">
+                                    {PLACEMENTS.map((placement) => {
+                                        const selected = (targeting.placements || []).includes(placement.id);
+                                        return (
+                                            <button
+                                                key={placement.id}
+                                                type="button"
+                                                onClick={() => togglePlacement(placement.id)}
+                                                className={`flow-paid-ads-targeting__placement ${selected ? 'is-active' : ''}`}
+                                                aria-pressed={selected}
+                                            >
+                                                <div className="flow-paid-ads-targeting__placement-icon">
+                                                    <span className="material-symbols-outlined">{placement.icon}</span>
+                                                </div>
+                                                <span className="flow-paid-ads-targeting__placement-label">
+                                                    {t(placement.labelKey)}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </Card>
                     </div>
                 </div>
             </div>

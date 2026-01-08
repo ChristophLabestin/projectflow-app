@@ -6226,6 +6226,306 @@
     }
 }
 
+.flow-paid-ads-targeting {
+    min-height: 100%;
+    background: var(--color-surface-bg);
+}
+
+.flow-paid-ads-targeting__container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.flow-paid-ads-targeting__hero {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+    border-radius: var(--radius-2xl);
+    background: var(--color-surface-card);
+    box-shadow: var(--shadow-soft);
+    position: relative;
+    overflow: hidden;
+}
+
+.flow-paid-ads-targeting__hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 80% 0%, rgba(var(--color-primary-rgb), 0.18), transparent 55%),
+        radial-gradient(circle at 0% 100%, rgba(var(--color-primary-rgb), 0.12), transparent 60%);
+    opacity: 0.8;
+}
+
+.flow-paid-ads-targeting__badge {
+    position: relative;
+    z-index: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 12px;
+    border-radius: var(--radius-full);
+    font-size: 0.55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--color-primary-text);
+    background: var(--color-primary);
+    width: fit-content;
+}
+
+.flow-paid-ads-targeting__title {
+    position: relative;
+    z-index: 1;
+    margin: 0;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+.flow-paid-ads-targeting__hero-icon {
+    position: relative;
+    z-index: 1;
+    width: 56px;
+    height: 56px;
+    border-radius: var(--radius-xl);
+    background: var(--color-surface-hover);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text-subtle);
+
+    span.material-symbols-outlined {
+        font-size: 28px;
+    }
+}
+
+.flow-paid-ads-targeting__grid {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: 1fr;
+}
+
+.flow-paid-ads-targeting__column {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.flow-paid-ads-targeting__panel {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.flow-paid-ads-targeting__panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    h3 {
+        margin: 0;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.18em;
+        color: var(--color-text-muted);
+    }
+}
+
+.flow-paid-ads-targeting__panel-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.flow-paid-ads-targeting__panel-footer {
+    margin-top: 8px;
+}
+
+.flow-paid-ads-targeting__field {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.flow-paid-ads-targeting__label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-text-subtle);
+}
+
+.flow-paid-ads-targeting__input-row {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.flow-paid-ads-targeting__control {
+    flex: 1;
+    min-width: 0;
+
+    .text-input-group__label {
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        color: var(--color-text-subtle);
+    }
+
+    .text-input {
+        height: 38px;
+        font-size: 0.85rem;
+    }
+}
+
+.flow-paid-ads-targeting__add-button {
+    align-self: flex-start;
+    font-weight: 600;
+}
+
+.flow-paid-ads-targeting__tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.flow-paid-ads-targeting__tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-hover);
+    font-size: 0.75rem;
+    color: var(--color-text-main);
+}
+
+.flow-paid-ads-targeting__tag-remove {
+    border: none;
+    background: transparent;
+    color: var(--color-text-subtle);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+
+    span.material-symbols-outlined {
+        font-size: 14px;
+    }
+
+    &:hover {
+        color: var(--color-text-main);
+    }
+}
+
+.flow-paid-ads-targeting__age-row {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.flow-paid-ads-targeting__segmented {
+    display: flex;
+    gap: 6px;
+    padding: 4px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-hover);
+}
+
+.flow-paid-ads-targeting__segment {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 6px 10px;
+    border-radius: var(--radius-full);
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-text-muted);
+    cursor: pointer;
+
+    &.is-active {
+        background: var(--color-primary);
+        color: var(--color-primary-text);
+    }
+}
+
+.flow-paid-ads-targeting__suggest {
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 0.65rem;
+    font-weight: 700;
+}
+
+.flow-paid-ads-targeting__placement-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.flow-paid-ads-targeting__placement {
+    border: none;
+    background: var(--color-surface-hover);
+    border-radius: var(--radius-lg);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-align: left;
+    cursor: pointer;
+    transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+
+    &.is-active {
+        background: var(--color-surface-card);
+        box-shadow: var(--shadow-sm);
+    }
+}
+
+.flow-paid-ads-targeting__placement-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    background: var(--color-surface-card);
+    color: var(--color-text-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    span.material-symbols-outlined {
+        font-size: 18px;
+    }
+}
+
+.flow-paid-ads-targeting__placement.is-active .flow-paid-ads-targeting__placement-icon {
+    background: rgba(var(--color-primary-rgb), 0.12);
+    color: var(--color-primary);
+}
+
+.flow-paid-ads-targeting__placement-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-text-main);
+}
+
+.flow-paid-ads-targeting__advance {
+    width: 100%;
+    justify-content: space-between;
+    font-weight: 600;
+}
+
 .flow-social-campaign-review {
     min-height: 100%;
     background: var(--color-surface-bg);
