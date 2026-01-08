@@ -1,27 +1,55 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Idea, AdPlatform } from '../../../types';
-import { Button } from '../../ui/Button';
+import { Button } from '../../common/Button/Button';
+import { Card } from '../../common/Card/Card';
+import { Checkbox } from '../../common/Checkbox/Checkbox';
+import { TextArea } from '../../common/Input/TextArea';
+import { TextInput } from '../../common/Input/TextInput';
+import { Select } from '../../common/Select/Select';
 import { usePaidAdsData } from '../../../hooks/usePaidAdsData';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface PaidAdsBuildViewProps {
     idea: Idea;
     onUpdate: (updates: Partial<Idea>) => void;
 }
 
-const PLATFORMS: AdPlatform[] = ['Meta', 'Google', 'LinkedIn', 'TikTok', 'Other'];
+const PLATFORMS: Array<{ id: AdPlatform; labelKey: string }> = [
+    { id: 'Meta', labelKey: 'flowStages.paidAdsBuild.platforms.meta' },
+    { id: 'Google', labelKey: 'flowStages.paidAdsBuild.platforms.google' },
+    { id: 'LinkedIn', labelKey: 'flowStages.paidAdsBuild.platforms.linkedin' },
+    { id: 'TikTok', labelKey: 'flowStages.paidAdsBuild.platforms.tiktok' },
+    { id: 'Other', labelKey: 'flowStages.paidAdsBuild.platforms.other' },
+];
 
 const CHECKLIST_ITEMS = [
-    { id: 'pixel', label: 'Pixel / tag firing verified' },
-    { id: 'events', label: 'Conversion events mapped' },
-    { id: 'lp', label: 'Landing page QA complete' },
-    { id: 'policy', label: 'Policy compliance check' },
-    { id: 'naming', label: 'Campaign naming conventions set' },
-    { id: 'budget_caps', label: 'Budget caps and pacing set' },
+    { id: 'pixel', labelKey: 'flowStages.paidAdsBuild.checklist.pixel' },
+    { id: 'events', labelKey: 'flowStages.paidAdsBuild.checklist.events' },
+    { id: 'lp', labelKey: 'flowStages.paidAdsBuild.checklist.lp' },
+    { id: 'policy', labelKey: 'flowStages.paidAdsBuild.checklist.policy' },
+    { id: 'naming', labelKey: 'flowStages.paidAdsBuild.checklist.naming' },
+    { id: 'budget_caps', labelKey: 'flowStages.paidAdsBuild.checklist.budgetCaps' },
+];
+
+const TRACKING_STATUSES = [
+    { value: 'Not Started', labelKey: 'flowStages.paidAdsBuild.tracking.notStarted' },
+    { value: 'In Progress', labelKey: 'flowStages.paidAdsBuild.tracking.inProgress' },
+    { value: 'Verified', labelKey: 'flowStages.paidAdsBuild.tracking.verified' },
 ];
 
 export const PaidAdsBuildView: React.FC<PaidAdsBuildViewProps> = ({ idea, onUpdate }) => {
+    const { t } = useLanguage();
     const { adData, updateAdData } = usePaidAdsData(idea, onUpdate);
     const setup = adData.setup || {};
+
+    const trackingOptions = useMemo(
+        () => TRACKING_STATUSES.map((status) => ({ value: status.value, label: t(status.labelKey) })),
+        [t]
+    );
+
+    const selectedTrackingStatus = TRACKING_STATUSES.some((status) => status.value === setup.trackingStatus)
+        ? (setup.trackingStatus as string)
+        : TRACKING_STATUSES[0].value;
 
     const togglePlatform = (platform: AdPlatform) => {
         const current = setup.platforms || [];
@@ -40,136 +68,117 @@ export const PaidAdsBuildView: React.FC<PaidAdsBuildViewProps> = ({ idea, onUpda
     };
 
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="max-w-7xl mx-auto flex flex-col gap-6 pt-6 px-6 pb-20">
-                <div className="bg-gradient-to-br from-cyan-100 via-sky-50 to-white dark:from-cyan-900/30 dark:via-sky-900/10 dark:to-slate-900/50 rounded-3xl p-6 md:p-8 border border-cyan-200 dark:border-cyan-800/50 relative overflow-hidden shadow-xl shadow-cyan-100 dark:shadow-none flex items-center justify-between">
-                    <div className="relative z-10 flex flex-col justify-center h-full">
-                        <div className="flex items-center gap-2 mb-2">
-                            <div className="px-3 py-1 bg-cyan-600 text-white text-[9px] font-black uppercase tracking-[0.2em] rounded-full shadow-md shadow-cyan-200 dark:shadow-none">
-                                BUILD & QA
-                            </div>
-                        </div>
-                        <h1 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight leading-tight">
-                            Campaign Setup Checklist
-                        </h1>
+        <div className="flow-paid-ads-build">
+            <div className="flow-paid-ads-build__container">
+                <Card className="flow-paid-ads-build__hero">
+                    <div className="flow-paid-ads-build__hero-content">
+                        <span className="flow-paid-ads-build__badge">{t('flowStages.paidAdsBuild.hero.badge')}</span>
+                        <h1 className="flow-paid-ads-build__title">{t('flowStages.paidAdsBuild.hero.title')}</h1>
                     </div>
-                    <div className="absolute right-0 top-0 bottom-0 w-1/3 bg-gradient-to-l from-cyan-100/50 to-transparent dark:from-cyan-900/20" />
-                    <span className="material-symbols-outlined absolute right-10 -bottom-10 text-[180px] text-cyan-500/10 rotate-12">fact_check</span>
-                </div>
+                    <div className="flow-paid-ads-build__hero-icon">
+                        <span className="material-symbols-outlined">fact_check</span>
+                    </div>
+                </Card>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-                    <div className="lg:col-span-7 space-y-6">
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em] mb-6">Platform Mix</h3>
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                                {PLATFORMS.map(platform => {
-                                    const selected = (setup.platforms || []).includes(platform);
+                <div className="flow-paid-ads-build__grid">
+                    <div className="flow-paid-ads-build__main">
+                        <Card className="flow-paid-ads-build__panel">
+                            <h3 className="flow-paid-ads-build__panel-title">
+                                {t('flowStages.paidAdsBuild.sections.platformMix')}
+                            </h3>
+                            <div className="flow-paid-ads-build__platform-grid">
+                                {PLATFORMS.map((platform) => {
+                                    const isSelected = (setup.platforms || []).includes(platform.id);
                                     return (
                                         <button
-                                            key={platform}
-                                            onClick={() => togglePlatform(platform)}
-                                            className={`p-4 rounded-2xl border-2 text-left transition-all ${selected
-                                                ? 'bg-cyan-50 dark:bg-cyan-900/20 border-cyan-500/50 shadow-lg shadow-cyan-500/10'
-                                                : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-700 hover:border-cyan-300'
-                                                }`}
+                                            key={platform.id}
+                                            type="button"
+                                            onClick={() => togglePlatform(platform.id)}
+                                            className={`flow-paid-ads-build__platform ${isSelected ? 'is-active' : ''}`}
+                                            aria-pressed={isSelected}
                                         >
-                                            <span className={`text-xs font-black uppercase tracking-wider block ${selected ? 'text-cyan-700 dark:text-cyan-300' : 'text-slate-900 dark:text-white'}`}>
-                                                {platform}
-                                            </span>
+                                            <span className="flow-paid-ads-build__platform-label">{t(platform.labelKey)}</span>
                                         </button>
                                     );
                                 })}
                             </div>
-                        </div>
+                        </Card>
 
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em] mb-6">Campaign Structure</h3>
-                            <textarea
+                        <Card className="flow-paid-ads-build__panel">
+                            <h3 className="flow-paid-ads-build__panel-title">
+                                {t('flowStages.paidAdsBuild.sections.campaignStructure')}
+                            </h3>
+                            <TextArea
                                 value={setup.campaignStructure || ''}
-                                onChange={(e) => updateAdData({ setup: { campaignStructure: e.target.value } })}
-                                placeholder="Account > Campaign > Ad Set > Ad naming, split tests, geo splits..."
-                                className="w-full min-h-[160px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-5 py-4 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 resize-none"
+                                onChange={(event) => updateAdData({ setup: { campaignStructure: event.target.value } })}
+                                placeholder={t('flowStages.paidAdsBuild.placeholders.campaignStructure')}
+                                className="flow-paid-ads-build__control flow-paid-ads-build__control--tall"
                             />
-                        </div>
+                        </Card>
 
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em] mb-6">QA Notes</h3>
-                            <textarea
+                        <Card className="flow-paid-ads-build__panel">
+                            <h3 className="flow-paid-ads-build__panel-title">
+                                {t('flowStages.paidAdsBuild.sections.qaNotes')}
+                            </h3>
+                            <TextArea
                                 value={setup.qaNotes || ''}
-                                onChange={(e) => updateAdData({ setup: { qaNotes: e.target.value } })}
-                                placeholder="Creative approvals, policy concerns, ad copy checks..."
-                                className="w-full min-h-[120px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-5 py-4 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 resize-none"
+                                onChange={(event) => updateAdData({ setup: { qaNotes: event.target.value } })}
+                                placeholder={t('flowStages.paidAdsBuild.placeholders.qaNotes')}
+                                className="flow-paid-ads-build__control"
                             />
-                        </div>
+                        </Card>
                     </div>
 
-                    <div className="lg:col-span-5 space-y-6">
-                        <div className="bg-slate-900 rounded-3xl p-6 md:p-8 shadow-xl relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
-                                <span className="material-symbols-outlined text-[150px] text-white -mr-10 -mt-10">settings</span>
+                    <div className="flow-paid-ads-build__aside">
+                        <Card className="flow-paid-ads-build__panel">
+                            <div className="flow-paid-ads-build__panel-header">
+                                <h3 className="flow-paid-ads-build__panel-title">
+                                    {t('flowStages.paidAdsBuild.sections.tracking')}
+                                </h3>
                             </div>
-                            <div className="relative z-10 space-y-6">
-                                <h3 className="font-black text-white uppercase text-[11px] tracking-[.25em]">Tracking & UTMs</h3>
-                                <div>
-                                    <label className="text-[9px] font-black text-cyan-300 uppercase tracking-[.25em] mb-2 block opacity-80">Tracking Status</label>
-                                    <select
-                                        value={setup.trackingStatus || 'Not Started'}
-                                        onChange={(e) => updateAdData({ setup: { trackingStatus: e.target.value as any } })}
-                                        className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-xs font-bold text-white focus:outline-none focus:border-cyan-500 appearance-none"
-                                    >
-                                        {['Not Started', 'In Progress', 'Verified'].map(status => (
-                                            <option key={status} value={status}>{status}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-[9px] font-black text-cyan-300 uppercase tracking-[.25em] mb-2 block opacity-80">UTM Scheme</label>
-                                    <input
-                                        value={setup.utmScheme || ''}
-                                        onChange={(e) => updateAdData({ setup: { utmScheme: e.target.value } })}
-                                        placeholder="utm_source=...&utm_campaign=..."
-                                        className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-xs font-medium text-white placeholder-white/30 focus:outline-none focus:border-cyan-500"
+                            <div className="flow-paid-ads-build__field-stack">
+                                <Select
+                                    label={t('flowStages.paidAdsBuild.fields.trackingStatus')}
+                                    value={selectedTrackingStatus}
+                                    onChange={(value) => updateAdData({ setup: { trackingStatus: value as any } })}
+                                    options={trackingOptions}
+                                    className="flow-paid-ads-build__control"
+                                />
+                                <TextInput
+                                    label={t('flowStages.paidAdsBuild.fields.utmScheme')}
+                                    value={setup.utmScheme || ''}
+                                    onChange={(event) => updateAdData({ setup: { utmScheme: event.target.value } })}
+                                    placeholder={t('flowStages.paidAdsBuild.placeholders.utmScheme')}
+                                    className="flow-paid-ads-build__control"
+                                />
+                            </div>
+                        </Card>
+
+                        <Card className="flow-paid-ads-build__panel">
+                            <h3 className="flow-paid-ads-build__panel-title">
+                                {t('flowStages.paidAdsBuild.sections.checklist')}
+                            </h3>
+                            <div className="flow-paid-ads-build__checklist">
+                                {CHECKLIST_ITEMS.map((item) => (
+                                    <Checkbox
+                                        key={item.id}
+                                        checked={(setup.checklist || []).includes(item.id)}
+                                        onChange={() => toggleChecklist(item.id)}
+                                        label={t(item.labelKey)}
+                                        className="flow-paid-ads-build__check"
                                     />
-                                </div>
+                                ))}
                             </div>
-                        </div>
+                        </Card>
 
-                        <div className="bg-white dark:bg-slate-900/50 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm">
-                            <h3 className="font-black text-slate-900 dark:text-white uppercase text-[11px] tracking-[.25em] mb-6">QA Checklist</h3>
-                            <div className="space-y-3">
-                                {CHECKLIST_ITEMS.map(item => {
-                                    const checked = (setup.checklist || []).includes(item.id);
-                                    return (
-                                        <button
-                                            key={item.id}
-                                            onClick={() => toggleChecklist(item.id)}
-                                            className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-all text-left ${checked
-                                                ? 'bg-cyan-50 dark:bg-cyan-900/20 border-cyan-500/50'
-                                                : 'bg-white dark:bg-slate-900 border-slate-100 dark:border-slate-700 hover:border-cyan-300'
-                                                }`}
-                                        >
-                                            <span className={`material-symbols-outlined text-[18px] ${checked ? 'text-cyan-600 dark:text-cyan-300' : 'text-slate-400'}`}>
-                                                {checked ? 'check_circle' : 'radio_button_unchecked'}
-                                            </span>
-                                            <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{item.label}</span>
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        <div className="pt-2">
-                            <Button
-                                className="w-full h-14 rounded-2xl bg-cyan-600 hover:bg-cyan-500 text-white font-black uppercase tracking-widest text-xs shadow-lg shadow-cyan-500/20 flex items-center justify-between px-6 group/btn border-none"
-                                onClick={() => onUpdate({ stage: 'Review' })}
-                            >
-                                <span>Next Step</span>
-                                <div className="flex items-center gap-2 group-hover/btn:translate-x-1 transition-transform">
-                                    <span>Review</span>
-                                    <span className="material-symbols-outlined">arrow_forward</span>
-                                </div>
-                            </Button>
-                        </div>
+                        <Button
+                            className="flow-paid-ads-build__advance"
+                            onClick={() => onUpdate({ stage: 'Review' })}
+                            icon={<span className="material-symbols-outlined">arrow_forward</span>}
+                            iconPosition="right"
+                        >
+                            {t('flowStages.paidAdsBuild.actions.advance')}
+                        </Button>
                     </div>
                 </div>
             </div>
