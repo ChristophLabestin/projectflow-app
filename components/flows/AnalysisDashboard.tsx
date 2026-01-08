@@ -211,7 +211,7 @@ export const AnalysisDashboard: React.FC<AnalysisDashboardProps> = ({ analysis, 
                                             <p className="analysis-dashboard__item-note">
                                                 <span className="analysis-dashboard__item-label">
                                                     {t('analysisDashboard.risk.mitigationLabel')}
-                                                </span>
+                                                </span>{' '}
                                                 {risk.mitigation}
                                             </p>
                                         )}
