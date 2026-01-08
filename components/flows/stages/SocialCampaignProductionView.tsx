@@ -1,4 +1,5 @@
 import React from 'react';
+import { Card } from '../../common/Card/Card';
 import { Idea } from '../../../types';
 import { useLanguage } from '../../../context/LanguageContext';
 
@@ -7,23 +8,37 @@ interface SocialCampaignProductionViewProps {
     onUpdate: (updates: Partial<Idea>) => void;
 }
 
-export const SocialCampaignProductionView: React.FC<SocialCampaignProductionViewProps> = ({ idea, onUpdate }) => {
+export const SocialCampaignProductionView: React.FC<SocialCampaignProductionViewProps> = ({
+    idea: _idea,
+    onUpdate: _onUpdate
+}) => {
     const { t } = useLanguage();
     return (
-        <div className="h-full overflow-y-auto">
-            <div className="max-w-7xl mx-auto p-6 space-y-6">
-                <div className="flex items-center justify-between">
+        <div className="flow-social-campaign-production">
+            <div className="flow-social-campaign-production__container">
+                <Card className="flow-social-campaign-production__hero">
                     <div>
-                        <h2 className="text-2xl font-bold text-main">{t('flowStages.socialCampaignProduction.title')}</h2>
-                        <p className="text-muted">{t('flowStages.socialCampaignProduction.subtitle')}</p>
+                        <h1 className="flow-social-campaign-production__title">
+                            {t('flowStages.socialCampaignProduction.title')}
+                        </h1>
+                        <p className="flow-social-campaign-production__subtitle">
+                            {t('flowStages.socialCampaignProduction.subtitle')}
+                        </p>
                     </div>
-                </div>
+                    <div className="flow-social-campaign-production__hero-icon">
+                        <span className="material-symbols-outlined">precision_manufacturing</span>
+                    </div>
+                </Card>
 
-                <div className="bg-surface-paper rounded-xl border border-surface p-12 text-center text-muted">
-                    <span className="material-symbols-outlined text-4xl mb-4 text-subtle">dashboard</span>
-                    <p>{t('flowStages.socialCampaignProduction.placeholder.title')}</p>
-                    <p className="text-sm mt-2">{t('flowStages.socialCampaignProduction.placeholder.subtitle')}</p>
-                </div>
+                <Card className="flow-social-campaign-production__panel">
+                    <div className="flow-social-campaign-production__placeholder">
+                        <span className="material-symbols-outlined">dashboard</span>
+                        <p>{t('flowStages.socialCampaignProduction.placeholder.title')}</p>
+                        <p className="flow-social-campaign-production__placeholder-subtitle">
+                            {t('flowStages.socialCampaignProduction.placeholder.subtitle')}
+                        </p>
+                    </div>
+                </Card>
             </div>
         </div>
     );
