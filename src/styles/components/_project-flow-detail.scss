@@ -10180,6 +10180,143 @@ html.dark .flow-paid-ads-live__visual-center span.material-symbols-outlined {
     }
 }
 
+.flow-moonshot-feasibility {
+    min-height: 100%;
+    background: var(--color-surface-bg);
+}
+
+.flow-moonshot-feasibility__grid {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: 1fr;
+}
+
+.flow-moonshot-feasibility__panel {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.flow-moonshot-feasibility__header {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+
+    h2,
+    h3 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--color-text-main);
+    }
+
+    p {
+        margin: 0;
+        font-size: 0.85rem;
+        color: var(--color-text-muted);
+    }
+}
+
+.flow-moonshot-feasibility__header--row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.flow-moonshot-feasibility__control {
+    width: 100%;
+}
+
+.flow-moonshot-feasibility__control--hypothesis .text-area {
+    min-height: 160px;
+}
+
+.flow-moonshot-feasibility__risk-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.flow-moonshot-feasibility__advance {
+    width: 100%;
+    justify-content: space-between;
+}
+
+.flow-moonshot-feasibility__empty {
+    padding: 24px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-hover);
+    text-align: center;
+    color: var(--color-text-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+
+    span.material-symbols-outlined {
+        font-size: 32px;
+        color: var(--color-text-subtle);
+    }
+
+    p {
+        margin: 0;
+        font-size: 0.85rem;
+    }
+}
+
+.flow-moonshot-feasibility__reviews {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    max-height: 360px;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.flow-moonshot-feasibility__review {
+    padding: 12px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-hover);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.flow-moonshot-feasibility__review-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.flow-moonshot-feasibility__remove {
+    border: none;
+    background: transparent;
+    color: var(--color-text-subtle);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: color var(--transition-fast), transform var(--transition-fast);
+
+    span.material-symbols-outlined {
+        font-size: 18px;
+    }
+
+    &:hover {
+        color: var(--color-error);
+        transform: scale(1.05);
+    }
+}
+
+@include mixins.mq('lg') {
+    .flow-moonshot-feasibility__grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
 .review-timeline-modal {
     height: 100%;
     min-height: 0;
