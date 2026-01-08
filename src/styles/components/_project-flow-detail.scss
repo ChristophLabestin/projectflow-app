@@ -6526,6 +6526,440 @@
     font-weight: 600;
 }
 
+.flow-paid-ads-live {
+    min-height: 100%;
+    background: var(--color-surface-bg);
+}
+
+.flow-paid-ads-live__container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+}
+
+.flow-paid-ads-live--converted .flow-paid-ads-live__container {
+    min-height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.flow-paid-ads-live__success-card {
+    position: relative;
+    padding: 36px;
+    border-radius: var(--radius-2xl);
+    box-shadow: var(--shadow-soft);
+    text-align: center;
+    align-items: center;
+    gap: 16px;
+    max-width: 760px;
+    width: 100%;
+}
+
+.flow-paid-ads-live__success-bar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 6px;
+    background: linear-gradient(90deg, rgba(var(--color-success-rgb), 0.9), rgba(var(--color-warning-rgb), 0.7));
+}
+
+.flow-paid-ads-live__success-icon {
+    width: 76px;
+    height: 76px;
+    border-radius: var(--radius-full);
+    background: linear-gradient(140deg, rgba(var(--color-success-rgb), 0.95), rgba(var(--color-success-rgb), 0.6));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-lg);
+    color: var(--color-text-ondark);
+    animation: flow-paid-ads-live-bounce 2.6s ease-in-out infinite;
+
+    span.material-symbols-outlined {
+        font-size: 38px;
+    }
+}
+
+.flow-paid-ads-live__success-title {
+    margin: 0;
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+.flow-paid-ads-live__success-message {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--color-text-muted);
+}
+
+.flow-paid-ads-live__success-link {
+    margin-top: 8px;
+    gap: 10px;
+    text-decoration: none;
+}
+
+.flow-paid-ads-live__stats {
+    margin-top: 16px;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: 1fr;
+    width: 100%;
+}
+
+.flow-paid-ads-live__stat {
+    padding: 12px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-hover);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    align-items: center;
+}
+
+.flow-paid-ads-live__stat-label {
+    font-size: 0.55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: var(--color-text-subtle);
+}
+
+.flow-paid-ads-live__stat-value {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.flow-paid-ads-live__stat-value--pending {
+    color: var(--color-warning);
+}
+
+.flow-paid-ads-live__pulse {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: var(--color-warning);
+    box-shadow: 0 0 0 0 rgba(var(--color-warning-rgb), 0.6);
+    animation: flow-paid-ads-live-pulse 1.4s infinite;
+}
+
+.flow-paid-ads-live__grid {
+    display: grid;
+    gap: 24px;
+    grid-template-areas:
+        'visual'
+        'content';
+}
+
+.flow-paid-ads-live__content {
+    grid-area: content;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.flow-paid-ads-live__intro {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.flow-paid-ads-live__badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: fit-content;
+    padding: 6px 14px;
+    border-radius: var(--radius-full);
+    background: var(--color-primary);
+    color: var(--color-primary-text);
+    font-size: 0.55rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+
+    span.material-symbols-outlined {
+        font-size: 14px;
+    }
+}
+
+.flow-paid-ads-live__title {
+    margin: 0;
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+.flow-paid-ads-live__description {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--color-text-muted);
+}
+
+.flow-paid-ads-live__summary {
+    padding: 20px;
+    border-radius: var(--radius-xl);
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.flow-paid-ads-live__summary-item {
+    padding: 16px;
+    border-radius: var(--radius-xl);
+    background: var(--color-surface-hover);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: var(--shadow-sm);
+}
+
+.flow-paid-ads-live__summary-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-lg);
+    background: var(--color-surface-card);
+    color: var(--color-text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-sm);
+
+    span.material-symbols-outlined {
+        font-size: 20px;
+    }
+}
+
+.flow-paid-ads-live__summary-text {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.flow-paid-ads-live__summary-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+.flow-paid-ads-live__summary-subtitle {
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+}
+
+.flow-paid-ads-live__summary-value {
+    margin-left: auto;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--color-text-main);
+}
+
+.flow-paid-ads-live__summary-status {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--color-success);
+
+    span.material-symbols-outlined {
+        font-size: 16px;
+    }
+}
+
+.flow-paid-ads-live__error {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: var(--radius-lg);
+    background: rgba(var(--color-error-rgb), 0.12);
+    color: var(--color-error);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.flow-paid-ads-live__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.flow-paid-ads-live__back,
+.flow-paid-ads-live__launch {
+    width: 100%;
+}
+
+.flow-paid-ads-live__launch {
+    font-weight: 600;
+}
+
+.flow-paid-ads-live__visual {
+    grid-area: visual;
+    position: relative;
+    min-height: 420px;
+    border-radius: var(--radius-3xl);
+    background: var(--color-absolute-black);
+    box-shadow: var(--shadow-soft);
+    overflow: hidden;
+    isolation: isolate;
+    --flow-paid-ads-live-float-bg: rgba(var(--color-surface-card-rgb), 0.12);
+    --flow-paid-ads-live-glow: rgba(var(--color-surface-card-rgb), 0.25);
+}
+
+html.dark .flow-paid-ads-live__visual {
+    --flow-paid-ads-live-float-bg: rgba(var(--color-primary-rgb), 0.12);
+    --flow-paid-ads-live-glow: rgba(var(--color-primary-rgb), 0.25);
+}
+
+.flow-paid-ads-live__visual::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(circle at 20% 20%, rgba(var(--color-primary-rgb), 0.25), transparent 55%),
+        radial-gradient(circle at 80% 0%, rgba(var(--color-primary-rgb), 0.2), transparent 55%);
+    opacity: 0.7;
+}
+
+.flow-paid-ads-live__visual::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url('https://grainy-gradients.vercel.app/noise.svg');
+    opacity: 0.18;
+    mix-blend-mode: overlay;
+}
+
+.flow-paid-ads-live__float {
+    position: absolute;
+    padding: 16px;
+    border-radius: var(--radius-xl);
+    background: var(--flow-paid-ads-live-float-bg);
+    backdrop-filter: blur(16px);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    color: var(--color-text-ondark);
+    animation: flow-paid-ads-live-float 6s ease-in-out infinite;
+    z-index: 1;
+}
+
+.flow-paid-ads-live__float--top {
+    top: 28px;
+    left: 28px;
+    width: 160px;
+}
+
+.flow-paid-ads-live__float--bottom {
+    bottom: 32px;
+    right: 28px;
+    align-items: flex-start;
+    animation: flow-paid-ads-live-float-delayed 7s ease-in-out infinite;
+}
+
+.flow-paid-ads-live__float-block {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-md);
+    background: rgba(var(--color-primary-rgb), 0.35);
+}
+
+.flow-paid-ads-live__float-line {
+    height: 6px;
+    border-radius: var(--radius-full);
+    background: rgba(var(--color-primary-rgb), 0.24);
+}
+
+.flow-paid-ads-live__float-line--short {
+    width: 60%;
+}
+
+.flow-paid-ads-live__float-value {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--color-text-ondark);
+}
+
+.flow-paid-ads-live__float-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.2em;
+    color: rgba(var(--color-surface-card-rgb), 0.7);
+}
+
+html.dark .flow-paid-ads-live__float-label {
+    color: rgba(var(--color-primary-rgb), 0.8);
+}
+
+.flow-paid-ads-live__visual-center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 0;
+
+    span.material-symbols-outlined {
+        font-size: 160px;
+        color: rgba(var(--color-surface-card-rgb), 0.85);
+    }
+}
+
+html.dark .flow-paid-ads-live__visual-center span.material-symbols-outlined {
+    color: rgba(var(--color-primary-rgb), 0.85);
+}
+
+.flow-paid-ads-live__visual-glow {
+    position: absolute;
+    width: 240px;
+    height: 240px;
+    border-radius: var(--radius-full);
+    background: var(--flow-paid-ads-live-glow);
+    filter: blur(60px);
+}
+
+@include mixins.mq('md') {
+    .flow-paid-ads-live__stats {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .flow-paid-ads-live__actions {
+        flex-direction: row;
+    }
+
+    .flow-paid-ads-live__back {
+        width: auto;
+    }
+
+    .flow-paid-ads-live__launch {
+        flex: 1;
+    }
+}
+
+@include mixins.mq('lg') {
+    .flow-paid-ads-live__grid {
+        grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+        grid-template-areas: 'content visual';
+        align-items: center;
+    }
+
+    .flow-paid-ads-live__visual {
+        min-height: 520px;
+    }
+}
+
 .flow-social-campaign-review {
     min-height: 100%;
     background: var(--color-surface-bg);
